@@ -102,3 +102,6 @@ ENV/
 
 # django
 *.sqlite3
+
+# settings
+combine/localsettings.py

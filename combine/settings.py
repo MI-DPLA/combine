@@ -164,18 +164,15 @@ LOGGING = {
     },
 }
 
+#########################
+# Import localsettings.py
+#########################
+try:
+    from combine.localsettings import *
+except ImportError:
+    pass
 
-# Apache Livy settings
-'''
-Combine uses Livy to issue spark statements.
-Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
-'''
-LIVY_HOST = 'localhost'
-LIVY_PORT = 8998
-LIVY_SESSION_CONFIG = {
-    'kind':'pyspark',
-    'jars':['/Users/grahamhukill/sandbox/spark/wsu_ingestion3/target/scala-2.11/ingestion3_2.11-0.0.1.jar']
-    }
+
 
 
 
