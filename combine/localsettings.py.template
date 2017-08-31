@@ -1,0 +1,11 @@
+# Apache Livy settings
+'''
+Combine uses Livy to issue spark statements.
+Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
+'''
+LIVY_HOST = 'localhost'
+LIVY_PORT = 8998
+LIVY_SESSION_CONFIG = {
+    'kind':'pyspark',
+    'jars':['PATH_TO_INGESTION3_JAR']
+    }
