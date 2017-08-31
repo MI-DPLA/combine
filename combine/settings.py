@@ -31,6 +31,7 @@ ALLOWED_HOSTS = []
 # Application definition
 
 INSTALLED_APPS = [
+    'core.apps.CoreConfig',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -38,8 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-    'south',
-    'core' 
 
 ]
 
@@ -126,3 +125,67 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 
 STATIC_URL = '/static/'
+
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {        
+        'simple': {
+            'format': '[%(levelname)s] %(asctime)s %(name)s.%(funcName)s (%(lineno)d): %(message)s'
+        },
+    },
+    'filters': {
+        'require_debug_true': {
+            '()': 'django.utils.log.RequireDebugTrue',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'filters': ['require_debug_true'],
+            'class': 'logging.StreamHandler',
+            'formatter': 'simple'
+        },
+        # 'file': {
+        #     'level': 'DEBUG',
+        #     'class': 'logging.FileHandler',
+        #     'filename': '/var/logs/combine/combine.log',
+        #     'formatter': 'verbose'
+        # },
+    },
+    'loggers': {
+        'core': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+
+# Apache Livy settings
+'''
+Combine uses Livy to issue spark statements.
+Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
+'''
+LIVY_HOST = 'localhost'
+LIVY_PORT = 8998
+LIVY_SESSION_CONFIG = {
+    'kind':'pyspark',
+    'jars':['/Users/grahamhukill/sandbox/spark/wsu_ingestion3/target/scala-2.11/ingestion3_2.11-0.0.1.jar']
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
