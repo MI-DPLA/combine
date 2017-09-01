@@ -1,2 +1,2 @@
-# combine /kämˌbīn/ :tractor:
+# combine /kämˌbīn/
 Service Hub Metadata Aggregator
