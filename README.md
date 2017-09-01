@@ -1,2 +1,2 @@
-# combine /kämˌbīn/
+# Combine /kämˌbīn/
 Service Hub Metadata Aggregator
