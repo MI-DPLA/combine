@@ -22,12 +22,14 @@ logger = logging.getLogger(__name__)
 ##################################
 
 class RecordGroup(models.Model):
+	
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
 	status = models.CharField(max_length=30, null=True)
 
 
 class Job(models.Model):
+
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128)
 	spark_code = models.CharField(max_length=32000)
@@ -37,6 +39,18 @@ class Job(models.Model):
 	job_input = models.CharField(max_length=255)
 	job_output = models.CharField(max_length=255, null=True)
 
+
+class OAIEndpoint(models.Model):
+
+	name = models.CharField(max_length=255)
+	endpoint = models.CharField(max_length=255)
+	verb = models.CharField(max_length=128)
+	metadataPrefix = models.CharField(max_length=128)
+	scope_type = models.CharField(max_length=128) # expecting one of setList, whiteList, blackList
+	scope_value = models.CharField(max_length=1024)
+
+	def __str__(self):
+		return 'OAI endpoint: %s' % self.name
 
 
 ##################################
@@ -112,6 +126,9 @@ class LivyClient(object):
 
 		'''
 		Return current Livy sessions
+
+		Returns:
+			Livy server response (dict)
 		'''
 
 		livy_sessions = self.http_request('GET','sessions')
@@ -128,7 +145,7 @@ class LivyClient(object):
 			config (dict): optional configuration for Livy session, defaults to settings.LIVY_DEFAULT_SESSION_CONFIG
 
 		Returns:
-			session (core.models.SparkSession): instance of SparkSession (TODO)
+			Livy server response (dict)
 		'''
 
 		# if optional session config provided, use, otherwise use default session config from localsettings
@@ -149,6 +166,12 @@ class LivyClient(object):
 
 		'''
 		Return status of Livy session based on session id
+
+		Args:
+			session_id (str/int): Livy session id
+
+		Returns:
+			Livy server response (dict)
 		'''
 
 		livy_session_status = self.http_request('GET','sessions/%s' % session_id)
