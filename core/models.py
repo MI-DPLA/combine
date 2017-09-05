@@ -22,10 +22,13 @@ logger = logging.getLogger(__name__)
 ##################################
 
 class RecordGroup(models.Model):
-	
+
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
 	status = models.CharField(max_length=30, null=True)
+
+	def __str__(self):
+		return 'Record Group: %s' % self.name
 
 
 class Job(models.Model):
@@ -38,6 +41,9 @@ class Job(models.Model):
 	headers = models.CharField(max_length=255)
 	job_input = models.CharField(max_length=255)
 	job_output = models.CharField(max_length=255, null=True)
+
+	def __str__(self):
+		return 'Job: %s, from Record Group: %s' % (self.name, self.record_group.name)
 
 
 class OAIEndpoint(models.Model):

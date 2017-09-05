@@ -2,8 +2,10 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.core import serializers
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+
 
 # import models
 from core import models
@@ -29,7 +31,9 @@ livy = models.LivyClient()
 
 
 
+##################################
 # Livy Sessions
+##################################
 def livy_sessions(request):
 	
 	logger.debug('retrieving current Livy sessions')
@@ -58,16 +62,41 @@ def livy_session_status(request, session_id):
 
 
 
+##################################
+# Record Groups
+##################################
+def record_groups(request):
+
+	'''
+	View all record groups
+	'''
+	
+	logger.debug('retrieving record groups')
+	
+	record_groups = serializers.serialize("json", models.RecordGroup.objects.all())
+	return HttpResponse(record_groups, content_type='application/json')
+
+
+def record_group(request, record_group_id):
+
+	'''
+	View single record group
+
+	Args:
+		record_group_id (str/int): PK for RecordGroup table
+	'''
+	
+	logger.debug('retrieving record group by PK: %s' % record_group_id)
+	
+	record_group = serializers.serialize("json", models.RecordGroup.objects.filter(id=record_group_id))
+	return HttpResponse(record_group, content_type='application/json')
 
 
 
 
-
-
-
-
-
-# Default Index View
+##################################
+# Index
+##################################
 def index(request):
 	logger.info('Welcome to Combine.')
 	return render(request, 'core/index.html', None)

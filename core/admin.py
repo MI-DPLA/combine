@@ -6,4 +6,4 @@ from django.contrib import admin
 from .models import RecordGroup, Job, OAIEndpoint
 
 # register models
-admin.site.register(OAIEndpoint)
+admin.site.register([RecordGroup, Job, OAIEndpoint])
