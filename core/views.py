@@ -2,8 +2,11 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+
+# import models
+from core import models
 
 import json
 import logging
@@ -15,39 +18,61 @@ import time
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+# instantiate Livy handle
+'''
+Consider reworking this: as this LivyClient instance is tethered to the running Django instance.
+	- init with every view?  
+	- have LivyClient.http_request() a @classmethod that can be used anytime?
+Ignoring for now to focus on other moving parts
+'''
+livy = models.LivyClient()
 
+
+
+# Livy Sessions
+def livy_sessions(request):
+	
+	logger.debug('retrieving current Livy sessions')
+	
+	# make request
+	livy_response = livy.get_sessions()
+	return JsonResponse(livy_response)
+
+
+def livy_session_create(request):
+	
+	logger.debug('creating Livy session')
+	
+	# make request
+	livy_response = livy.create_session()
+	return JsonResponse(livy_response)
+
+
+def livy_session_status(request, session_id):
+	
+	logger.debug('retreiving Livy session status')
+	
+	# make request
+	livy_response = livy.session_status(session_id)
+	return JsonResponse(livy_response)
+
+
+
+
+
+
+
+
+
+
+
+
+# Default Index View
 def index(request):
-	logger.info('Welcome to Combine. %s' % u'\U0001F69C')
+	logger.info('Welcome to Combine.')
 	return render(request, 'core/index.html', None)
 
 
-def test_create_session(request):
-	
-	'''
-	proof-of-concept: harvest OAI set with Ingestion3, via Django
-	'''
-
-	# start session
-	host = 'http://%s:%s' % (settings.LIVY_HOST, settings.LIVY_PORT)
-	logger.debug(host)
-	headers = {'Content-Type': 'application/json'}
-	r = requests.post(host + '/sessions', data=json.dumps(settings.LIVY_SESSION_CONFIG), headers=headers)
-	logger.debug(r.json())
-
-	# poll until session started
-	session_url = host + r.headers['location']
-	for x in range(0,30):
-		r = requests.get(session_url, headers=headers).json()
-		logger.debug(r)
-		if r['state'] == 'idle':
-			logger.debug('session is idle and ready!')
-			break
-		time.sleep(.5)
-
-	# close session
-	r = requests.delete(session_url, headers=headers).json()
-	logger.debug(r)
-	return HttpResponse('session started, determined idle, and terminated')
 
 
 

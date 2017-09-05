@@ -1,4 +1,4 @@
-# combine /kämˌbīn/ :tractor:
+# Combine /kämˌbīn/
 Service Hub Metadata Aggregator
 
 ## Documentation
