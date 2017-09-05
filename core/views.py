@@ -80,7 +80,7 @@ def record_groups(request):
 def record_group(request, record_group_id):
 
 	'''
-	View single record group
+	View information about a single record group, including any and all jobs run for this group
 
 	Args:
 		record_group_id (str/int): PK for RecordGroup table
@@ -88,8 +88,22 @@ def record_group(request, record_group_id):
 	
 	logger.debug('retrieving record group by PK: %s' % record_group_id)
 	
-	record_group = serializers.serialize("json", models.RecordGroup.objects.filter(id=record_group_id))
-	return HttpResponse(record_group, content_type='application/json')
+	# retrieve record group
+	rg = models.RecordGroup.objects.filter(id=record_group_id)
+
+	# get all jobs associated with record group
+	rg_jobs = models.Job.objects.filter(record_group=record_group_id)
+
+	# generate response
+	return_dict = {
+		'record_group':json.loads(serializers.serialize("json",rg)),
+		'associated_jobs':json.loads(serializers.serialize("json",rg_jobs))
+	}
+
+	return JsonResponse(return_dict)
+
+
+	
 
 
 
