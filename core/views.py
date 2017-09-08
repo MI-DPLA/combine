@@ -34,73 +34,73 @@ livy = models.LivyClient()
 ##################################
 # Livy Sessions
 ##################################
-def livy_sessions(request):
+# def livy_sessions(request):
 	
-	logger.debug('retrieving current Livy sessions')
+# 	logger.debug('retrieving current Livy sessions')
 	
-	# make request
-	livy_response = livy.get_sessions()
-	return JsonResponse(livy_response)
+# 	# make request
+# 	livy_response = livy.get_sessions()
+# 	return JsonResponse(livy_response)
 
 
-def livy_session_create(request):
+# def livy_session_create(request):
 	
-	logger.debug('creating Livy session')
+# 	logger.debug('creating Livy session')
 	
-	# make request
-	livy_response = livy.create_session()
-	return JsonResponse(livy_response)
+# 	# make request
+# 	livy_response = livy.create_session()
+# 	return JsonResponse(livy_response)
 
 
-def livy_session_status(request, session_id):
+# def livy_session_status(request, session_id):
 	
-	logger.debug('retreiving Livy session status')
+# 	logger.debug('retreiving Livy session status')
 	
-	# make request
-	livy_response = livy.session_status(session_id)
-	return JsonResponse(livy_response)
+# 	# make request
+# 	livy_response = livy.session_status(session_id)
+# 	return JsonResponse(livy_response)
 
 
 
 ##################################
 # Record Groups
 ##################################
-def record_groups(request):
+# def record_groups(request):
 
-	'''
-	View all record groups
-	'''
+# 	'''
+# 	View all record groups
+# 	'''
 	
-	logger.debug('retrieving record groups')
+# 	logger.debug('retrieving record groups')
 	
-	record_groups = serializers.serialize("json", models.RecordGroup.objects.all())
-	return HttpResponse(record_groups, content_type='application/json')
+# 	record_groups = serializers.serialize("json", models.RecordGroup.objects.all())
+# 	return HttpResponse(record_groups, content_type='application/json')
 
 
-def record_group(request, record_group_id):
+# def record_group(request, record_group_id):
 
-	'''
-	View information about a single record group, including any and all jobs run for this group
+# 	'''
+# 	View information about a single record group, including any and all jobs run for this group
 
-	Args:
-		record_group_id (str/int): PK for RecordGroup table
-	'''
+# 	Args:
+# 		record_group_id (str/int): PK for RecordGroup table
+# 	'''
 	
-	logger.debug('retrieving record group by PK: %s' % record_group_id)
+# 	logger.debug('retrieving record group by PK: %s' % record_group_id)
 	
-	# retrieve record group
-	rg = models.RecordGroup.objects.filter(id=record_group_id)
+# 	# retrieve record group
+# 	rg = models.RecordGroup.objects.filter(id=record_group_id)
 
-	# get all jobs associated with record group
-	rg_jobs = models.Job.objects.filter(record_group=record_group_id)
+# 	# get all jobs associated with record group
+# 	rg_jobs = models.Job.objects.filter(record_group=record_group_id)
 
-	# generate response
-	return_dict = {
-		'record_group':json.loads(serializers.serialize("json",rg)),
-		'associated_jobs':json.loads(serializers.serialize("json",rg_jobs))
-	}
+# 	# generate response
+# 	return_dict = {
+# 		'record_group':json.loads(serializers.serialize("json",rg)),
+# 		'associated_jobs':json.loads(serializers.serialize("json",rg_jobs))
+# 	}
 
-	return JsonResponse(return_dict)
+# 	return JsonResponse(return_dict)
 
 
 	
@@ -113,8 +113,9 @@ def record_group(request, record_group_id):
 ##################################
 @login_required
 def index(request):
-	logger.info('Welcome to Combine.')
-	return render(request, 'core/index.html', None)
+	username = request.user.username
+	logger.info('Welcome to Combine, %s' % username)
+	return render(request, 'core/index.html', {'username':username})
 
 
 
