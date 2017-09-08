@@ -203,7 +203,7 @@ def user_logout_handle_livy_sessions(sender, user, **kwargs):
 
 	# end session with Livy HttpClient
 	for user_session in user_sessions:
-			user_sessions.stop_session()
+			user_session.stop_session()
 
 
 
