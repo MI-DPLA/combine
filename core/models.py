@@ -9,6 +9,7 @@ import subprocess
 
 # django imports
 from django.conf import settings
+from django.contrib.auth.models import User
 from django.db import models
 from django.utils.encoding import python_2_unicode_compatible
 
@@ -20,6 +21,18 @@ logger = logging.getLogger(__name__)
 ##################################
 # Django ORM
 ##################################
+
+
+class LivySession(models.Model):
+
+	name = models.CharField(max_length=128)
+	session_url = models.CharField(max_length=128)
+	status = models.CharField(max_length=30, null=True)
+	models.ForeignKey(User, on_delete=models.CASCADE) # connect to user
+
+	def __str__(self):
+		return 'Livy session: %s' % self.name
+
 
 class RecordGroup(models.Model):
 

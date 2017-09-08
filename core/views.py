@@ -2,10 +2,10 @@
 from __future__ import unicode_literals
 
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
-
 
 # import models
 from core import models
@@ -111,6 +111,7 @@ def record_group(request, record_group_id):
 ##################################
 # Index
 ##################################
+@login_required
 def index(request):
 	logger.info('Welcome to Combine.')
 	return render(request, 'core/index.html', None)

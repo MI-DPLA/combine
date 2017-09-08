@@ -106,6 +106,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
 ]
 
+# User Accounts
+LOGIN_URL = '/combine/login'
+LOGIN_REDIRECT_URL = '/combine'
 
 # Internationalization
 # https://docs.djangoproject.com/en/1.11/topics/i18n/
