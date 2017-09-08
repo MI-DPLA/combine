@@ -32,33 +32,23 @@ livy = models.LivyClient()
 
 
 ##################################
-# Livy Sessions
+# User Livy Sessions
 ##################################
-# def livy_sessions(request):
+@login_required
+def livy_sessions(request):
 	
-# 	logger.debug('retrieving current Livy sessions')
+	logger.debug('retrieving Livy sessions for user')
 	
-# 	# make request
-# 	livy_response = livy.get_sessions()
-# 	return JsonResponse(livy_response)
+	# query db
+	user_sessions = models.LivySession.objects.filter(user=request.user)
 
+	# refresh sessions
+	for user_session in user_sessions:
+		user_session.refresh_from_livy()
+	
+	# display
+	return render(request, 'core/user_sessions.html', {'user_sessions':user_sessions})
 
-# def livy_session_create(request):
-	
-# 	logger.debug('creating Livy session')
-	
-# 	# make request
-# 	livy_response = livy.create_session()
-# 	return JsonResponse(livy_response)
-
-
-# def livy_session_status(request, session_id):
-	
-# 	logger.debug('retreiving Livy session status')
-	
-# 	# make request
-# 	livy_response = livy.session_status(session_id)
-# 	return JsonResponse(livy_response)
 
 
 
