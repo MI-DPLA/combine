@@ -5,7 +5,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
 
 # import models
 from core import models
@@ -19,16 +19,6 @@ import time
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
-
-# instantiate Livy handle
-'''
-Consider reworking this: as this LivyClient instance is tethered to the running Django instance.
-	- init with every view?  
-	- have LivyClient.http_request() a @classmethod that can be used anytime?
-Ignoring for now to focus on other moving parts
-'''
-livy = models.LivyClient()
-
 
 
 ##################################
@@ -49,6 +39,22 @@ def livy_sessions(request):
 	# display
 	return render(request, 'core/user_sessions.html', {'user_sessions':user_sessions})
 
+
+@login_required
+def livy_session_delete(request, session_id):
+	
+	logger.debug('deleting Livy session by Combine ID: %s' % session_id)
+
+	user_session = models.LivySession.objects.filter(id=session_id).first()
+	
+	# attempt to stop with Livy
+	models.LivyClient.stop_session(user_session.session_id)
+
+	# remove from DB
+	user_session.delete()
+
+	# redirect
+	return redirect('livy_sessions')
 
 
 
