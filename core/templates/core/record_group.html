@@ -1,0 +1,39 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Jobs for Record Group: {{ record_group.name }}</h3>
+
+	<div>
+		<table border="1">
+			<tr>
+				<th>Job ID</th>
+				<th>Name</th>
+				<th>Status</th>
+				<th>Input</th>
+				<th>Output</th>
+				<th>actions</th>
+			</tr>
+			{% for job in record_group_jobs %}
+				<tr>
+					<td>{{ job.id }}</td>
+					<td>{{ job.name }}</td>
+					<td>{{ job.status }}</td>
+					<td>{{ job.job_input }}</td>
+					<td>{{ job.job_output }}</td>
+					<td><a href="#">Delete</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<div>
+		<h3>Run new job</h3>
+		<p>
+			<ul>
+				<li><a href="{% url 'job_harvest' record_group_id=record_group.id %}">Harvest</a></li>
+			</ul>
+		</p>
+	</div>
+
+{% endblock %}

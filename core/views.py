@@ -68,6 +68,7 @@ def livy_session_delete(request, session_id):
 ##################################
 # Record Groups
 ##################################
+
 def record_groups(request):
 
 	'''
@@ -83,35 +84,60 @@ def record_groups(request):
 	return render(request, 'core/record_groups.html', {'record_groups':record_groups})
 
 
-# def record_group(request, record_group_id):
+def record_group(request, record_group_id):
 
-# 	'''
-# 	View information about a single record group, including any and all jobs run for this group
+	'''
+	View information about a single record group, including any and all jobs run for this group
 
-# 	Args:
-# 		record_group_id (str/int): PK for RecordGroup table
-# 	'''
+	Args:
+		record_group_id (str/int): PK for RecordGroup table
+	'''
 	
-# 	logger.debug('retrieving record group by PK: %s' % record_group_id)
+	logger.debug('retrieving record group ID: %s' % record_group_id)
 	
-# 	# retrieve record group
-# 	rg = models.RecordGroup.objects.filter(id=record_group_id)
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
-# 	# get all jobs associated with record group
-# 	rg_jobs = models.Job.objects.filter(record_group=record_group_id)
+	# get all jobs associated with record group
+	record_group_jobs = models.Job.objects.filter(record_group=record_group_id)
 
-# 	# generate response
-# 	return_dict = {
-# 		'record_group':json.loads(serializers.serialize("json",rg)),
-# 		'associated_jobs':json.loads(serializers.serialize("json",rg_jobs))
-# 	}
-
-# 	return JsonResponse(return_dict)
+	# render page
+	return render(request, 'core/record_group.html', {'record_group':record_group,'record_group_jobs':record_group_jobs})
 
 
+##################################
+# Jobs
+##################################
+
+def job_harvest(request, record_group_id):
+
+	'''
+	Create a new Harvest Job
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# retrieve all OAI endoints
+		oai_endpoints = models.OAIEndpoint.objects.all()
 
+		# render page
+		return render(request, 'core/job_harvest.html', {'record_group':record_group, 'oai_endpoints':oai_endpoints})
 
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('beggining harvest for Record Group: %s' % record_group.name)
+
+		# debug form
+		logger.debug(request.POST)
+
+		
+
+		return redirect('record_group', record_group_id=record_group.id)
 
 
 ##################################

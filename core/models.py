@@ -111,7 +111,7 @@ class RecordGroup(models.Model):
 
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
-	status = models.CharField(max_length=30, null=True)
+	status = models.CharField(max_length=30, null=True, default=None)
 
 
 	def __str__(self):

@@ -12,7 +12,10 @@ urlpatterns = [
 
 	# Record Groups
 	url(r'^record_groups$', views.record_groups, name='record_groups'),
-	# url(r'^record_groups/([0-9]*)$', views.record_group, name='record_groups'),
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
+
+	# Jobs
+	url(r'^job_harvest/(?P<record_group_id>[0-9]+)/jobs/harvest/new$', views.job_harvest, name='job_harvest'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
