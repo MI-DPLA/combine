@@ -150,6 +150,31 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
+class CombineUser(User):
+
+	'''
+	extend User model to provide some additional methods
+	'''
+
+	class Meta:
+		proxy = True
+
+	def active_livy_session(self):
+
+		'''
+		Query DB, determine which Livy session is "active" for user, return instance of LivySession
+		'''
+		
+		active_livy_sessions = LivySession.objects.filter(user=self, active=True)
+
+		# if one found, return
+		if active_livy_sessions.count() == 1:
+			return active_livy_sessions.first()
+
+		# if none found, return False
+		if active_livy_sessions.count() == 0:
+			return False
+
 
 ##################################
 # Signals Handlers
@@ -206,7 +231,6 @@ def user_logout_handle_livy_sessions(sender, user, **kwargs):
 			user_session.stop_session()
 
 
-
 @receiver(models.signals.pre_save, sender=LivySession)
 def create_livy_session(sender, instance, **kwargs):
 
@@ -259,25 +283,6 @@ class LivyClient(object):
 	default_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
 
 
-	def get_livy_server_pid(self):
-
-		'''
-		Return PID of Livy server.
-		This is instrumental in determining if a saved session or statement URL in Livy is current or stale.
-
-		Args:
-			None
-
-		Returns:
-			livy server pid (int)
-		'''
-		try:
-			return int(subprocess.check_output(['lsof','-i',':%s' % self.server_port]).decode('utf-8').split('\n')[1].split('    ')[1].split(' ')[0].strip())
-		except:
-			logger.debug('Could not determine PID of Livy server, returning False')
-			return False
-
-		
 	@classmethod
 	def http_request(self, http_method, url, data=None, headers={'Content-Type':'application/json'}, files=None, stream=False):
 
@@ -368,11 +373,41 @@ class LivyClient(object):
 		Assume session id's are unique, change state of session DB based on session id only
 			- as opposed to passing session row, which while convenient, would limit this method to 
 			only stopping sessions with a LivySession row in the DB
+
+		Args:
+			session_id (str/int): Livy session id
+
+		Returns:
+			Livy server response (dict)
 		'''
+
+		# remove session
+		return self.http_request('DELETE','sessions/%s' % session_id)
+
+
+	@classmethod
+	def submit_job(self, session_id, python_code):
+
+		'''
+		Submit job via HTTP request to /statements
+
+		Args:
+			session_id (str/int): Livy session id
+			python_code (str): 
+
+		Returns:
+			Livy server response (dict)
+		'''
+
+		logger.debug(python_code)
 		
-		# remove
-		client = HttpClient('http://%s:%s/sessions/%s' % (self.server_host, self.server_port, session_id))
-		client.stop(True) # requires arg, but unclear what it does
+		# statement
+		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+		logger.debug(job.json())
+		logger.debug(job.headers)
+		return job
+		
+
 
 
 

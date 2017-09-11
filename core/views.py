@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 ##################################
 # User Livy Sessions
 ##################################
+
 @login_required
 def livy_sessions(request):
 	
@@ -135,7 +136,22 @@ def job_harvest(request, record_group_id):
 		# debug form
 		logger.debug(request.POST)
 
-		
+		# get active session id for user
+		user_session = models.CombineUser.objects.filter(username=request.user.username).first().active_livy_session()
+		logger.debug(user_session)
+
+		harvest_save_path = '/user/harvests/testing1'
+		job_code = {'code': 'spark.read.format("dpla.ingestion3.harvesters.oai")\
+		.option("endpoint", "http://digital.library.wayne.edu/api/oai")\
+		.option("verb", "ListRecords")\
+		.option("metadataPrefix", "mods")\
+		.option("setList", "wayne:collectioncfai,wayne:collectionmot")\
+		.load()\
+		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % {'harvest_save_path':harvest_save_path}}
+
+		# submit job		
+		# job = models.LivyClient().submit_job_livy_client(user_session.session_id, harvest)
+		job = models.LivyClient().submit_job(user_session.session_id, job_code)
 
 		return redirect('record_group', record_group_id=record_group.id)
 
