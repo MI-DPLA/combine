@@ -35,10 +35,10 @@ class LivySession(models.Model):
 	status = models.CharField(max_length=30, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE) # connect to user
 	session_timestamp = models.CharField(max_length=128)
-	# Spark/YARN 
 	appId = models.CharField(max_length=128, null=True)
 	driverLogUrl = models.CharField(max_length=255, null=True)
 	sparkUiUrl = models.CharField(max_length=255, null=True)
+	active = models.BooleanField(default=0)
 
 
 	def __str__(self):

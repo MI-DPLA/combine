@@ -4,6 +4,7 @@
 	<table border="1">
 		<tr>
 			<th>Combine Session ID</th>
+			<th>Active for User</th>
 			<th>Name</th>
 			<th>Livy Session ID</th>
 			<th>Livy Session URL</th>
@@ -17,6 +18,7 @@
 		{% for user_session in user_sessions %}
 			<tr>
 				<td>{{ user_session.id }}</td>
+				<td>{{ user_session.active }}</td>
 				<td>{{ user_session.name }}</td>
 				<td>{{ user_session.session_id }}</td>
 				<td>{{ user_session.session_url }}</td>
@@ -33,7 +35,7 @@
 				{% else %}
 					<td>None</td>
 				{% endif %}
-				<td><a href="{% url 'livy_session_delete' session_id=user_session.id %}">delete</a></td>
+				<td><a href="{% url 'livy_session_delete' session_id=user_session.id %}">Delete</a></td>
 			</tr>
 		{% endfor %}
 	</table>

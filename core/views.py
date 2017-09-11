@@ -35,8 +35,15 @@ def livy_sessions(request):
 	# refresh sessions
 	for user_session in user_sessions:
 		user_session.refresh_from_livy()
+
+		# check user session status, and set active flag for session
+		if user_session.status in ['starting','idle']:
+			user_session.active = True
+		else:
+			user_session.active = False
+		user_session.save()
 	
-	# display
+	# return
 	return render(request, 'core/user_sessions.html', {'user_sessions':user_sessions})
 
 
@@ -61,16 +68,19 @@ def livy_session_delete(request, session_id):
 ##################################
 # Record Groups
 ##################################
-# def record_groups(request):
+def record_groups(request):
 
-# 	'''
-# 	View all record groups
-# 	'''
+	'''
+	View all record groups
+	'''
 	
-# 	logger.debug('retrieving record groups')
+	logger.debug('retrieving record groups')
 	
-# 	record_groups = serializers.serialize("json", models.RecordGroup.objects.all())
-# 	return HttpResponse(record_groups, content_type='application/json')
+	record_groups = models.RecordGroup.objects.all()
+	logger.debug("found %s record groups" % record_groups.count())
+
+	# render page
+	return render(request, 'core/record_groups.html', {'record_groups':record_groups})
 
 
 # def record_group(request, record_group_id):
