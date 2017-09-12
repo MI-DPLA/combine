@@ -109,6 +109,12 @@ def record_group(request, record_group_id):
 		if job.status in ['waiting','pending','starting','running','available']:
 			job.refresh_from_livy()
 
+			# if job is available, and record_count is 0, attempt count
+			combine_job = models.CombineJob(request.user)
+			combine_job.get_job(job.id)
+			job.record_count = combine_job.count_records()
+			job.save()
+
 	'''
 	TODO: ping each URL and get status for job, update in DB
 		- create LivyClient method for updating job status from Livy

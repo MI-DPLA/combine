@@ -10,9 +10,11 @@
 				<th>Job ID</th>
 				<th>Name</th>
 				<th>Status</th>
+				<th>URL</th>
 				<th>Finished</th>
 				<th>Input</th>
 				<th>Output</th>
+				<th>Record Count</th>
 				<th>actions</th>
 			</tr>
 			{% for job in record_group_jobs %}
@@ -20,9 +22,11 @@
 					<td>{{ job.id }}</td>
 					<td>{{ job.name }}</td>
 					<td>{{ job.status }}</td>
+					<td><a href="http://localhost:8998{{ job.url }}" target="_blank">http://localhost:8998{{ job.url }}</a></td>
 					<td>{{ job.finished }}</td>
 					<td>{{ job.job_input }}</td>
 					<td><a href="http://localhost:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+					<td>{{ job.record_count }}</td>
 					<td><a href="{% url 'job_delete' record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
 				</tr>
 			{% endfor %}

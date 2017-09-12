@@ -7,6 +7,7 @@ import json
 import logging
 import requests
 import subprocess
+import time
 
 # django imports
 from django.conf import settings
@@ -129,8 +130,10 @@ class Job(models.Model):
 	finished = models.BooleanField(default=0)
 	url = models.CharField(max_length=255, null=True)
 	headers = models.CharField(max_length=255, null=True)
+	response = models.CharField(max_length=32000, null=True, default=None)
 	job_input = models.CharField(max_length=255, null=True)
 	job_output = models.CharField(max_length=255, null=True)
+	record_count = models.IntegerField(null=True, default=0)
 
 
 	def __str__(self):
@@ -489,7 +492,7 @@ class LivyClient(object):
 # Job Factories
 ##################################
 
-class JobFactory(object):
+class CombineJob(object):
 
 
 	def __init__(self, user):
@@ -509,9 +512,49 @@ class JobFactory(object):
 		return combine_user.active_livy_session()
 
 
+	def get_job(self, job_id):
+
+		'''
+		Retrieve job information from DB to perform other tasks
+
+		Args:
+			job_id (int): Job ID
+		'''
+
+		self.job = Job.objects.filter(id=job_id).first()
 
 
-class HarvestJobFactory(JobFactory):
+	def count_records(self):
+
+		'''
+		For job pinned to this CombineJob instance,
+		count records from self.job_output (HDFS location of avro files)
+		'''
+
+		# prepare code
+		job_code = {'code': 'spark.read.format("com.databricks.spark.avro")\
+		.load("%(harvest_path)s")\
+		.select("record.*").where("record is not null")\
+		.count()' % {'harvest_path':self.job.job_output}}
+
+		# submit job
+		response = LivyClient().submit_job(self.user_session.session_id, job_code)
+		logger.debug(response.json())
+		logger.debug(response.headers)
+
+		# poll until complete
+		while True:
+			count_check = LivyClient().http_request('GET', response.headers['Location'])
+			if count_check.json()['state'] == 'available':
+				record_count = int(count_check.json()['output']['data']['text/plain'])
+				logger.debug('record count complete: %s' % record_count)
+				return record_count
+			else:
+				time.sleep(.25)
+
+
+
+class HarvestJob(CombineJob):
 
 
 	def __init__(self, user, record_group, oai_endpoint, overrides=None):
@@ -531,7 +574,7 @@ class HarvestJobFactory(JobFactory):
 
 		'''
 
-		# perform JobFactory initialization
+		# perform CombineJob initialization
 		super().__init__(user=user)
 
 		self.record_group = record_group
@@ -590,6 +633,9 @@ class HarvestJobFactory(JobFactory):
 		self.job.headers = submit.headers
 		self.job.job_output = harvest_save_path
 		self.job.save()
+
+
+
 
 
 
