@@ -109,7 +109,7 @@ def record_group(request, record_group_id):
 	for job in record_group_jobs:
 
 		# if job is pending, starting, or running, attempt to update status
-		if job.status in ['waiting','pending','starting','running','available']:
+		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
 			job.refresh_from_livy()
 
 			# if job is available, and record_count is 0, attempt count
@@ -146,6 +146,7 @@ def job_delete(request, record_group_id, job_id):
 	return redirect('record_group', record_group_id=record_group_id)
 
 
+@login_required
 def job_harvest(request, record_group_id):
 
 	'''
@@ -172,8 +173,15 @@ def job_harvest(request, record_group_id):
 		# debug form
 		logger.debug(request.POST)
 
+		# retrieve OAIEndpoint
+		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
+
+		# add overrides if set
+		overrides = { override:request.POST[override] for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
+		logger.debug(overrides)
+
 		# initiate and submit job
-		job = models.HarvestJob(request.user, record_group, models.OAIEndpoint.objects.all().first())
+		job = models.HarvestJob(request.user, record_group, oai_endpoint, overrides)
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)

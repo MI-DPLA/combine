@@ -7,16 +7,40 @@
 	<form method="POST" action="{% url 'job_harvest' record_group_id=record_group.id %}">
 		{% csrf_token %}
 		<p>Select OAI endpoint to use:
-			<select name="oai_endpoint">
+			<select name="oai_endpoint_id">
 				<option value="">Select an oai endpoint...</option>
 				{% for oai_endpoint in oai_endpoints %}
 					<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>	
 				{% endfor %}
 			</select>
-			<p>
-				<input type="submit"/>
-			</p>
 		<p>
+
+		<p style="color:red;">Below are optional Overrides to OAI endpoint defaults (each is applied separately, if completed):</p>
+		<p>OAI Verb:
+			<select name="verb">
+				<option value="">Select OAI verb...</option>
+				<option value="ListRecords">ListRecords</option>
+				<option value="ListSets">ListSets</option>
+			</select>
+		<p>
+		<p>OAI metadata prefix:
+			<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
+		<p>
+		<p>Scope type:
+			<select name="scope_type">
+				<option value="">Select scope type...</option>
+				<option value="setList">setList</option>
+				<option value="whiteList">whiteList</option>
+				<option value="blackList">blackList</option>
+				<option value="harvestAllSets">harvestAllSets</option>
+			</select>
+		<p>
+		<p>Scope value:
+			<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
+		<p>
+		<p>
+			<input type="submit" value="Harvest"/>
+		</p>
 	</form>
 
 {% endblock %}

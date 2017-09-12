@@ -616,14 +616,28 @@ class HarvestJob(CombineJob):
 		# construct harvest path
 		harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
 
+		# create shallow copy of oai_endpoint and mix in overrides
+		harvest_vars = self.oai_endpoint.__dict__.copy()
+		harvest_vars.update(self.overrides)
+
 		# prepare job code
 		job_code = {'code': 'spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", "http://digital.library.wayne.edu/api/oai")\
-		.option("verb", "ListRecords")\
-		.option("metadataPrefix", "mods")\
-		.option("setList", "wayne:collectioncfai,wayne:collectionmot")\
+		.option("endpoint", "%(endpoint)s")\
+		.option("verb", "%(verb)s")\
+		.option("metadataPrefix", "%(metadataPrefix)s")\
+		.option("%(scope_type)s", "%(scope_value)s")\
 		.load()\
-		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % {'harvest_save_path':harvest_save_path}}
+		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % 
+			{
+				'endpoint':harvest_vars['endpoint'],
+				'verb':harvest_vars['verb'],
+				'metadataPrefix':harvest_vars['metadataPrefix'],
+				'scope_type':harvest_vars['scope_type'],
+				'scope_value':harvest_vars['scope_value'],
+				'harvest_save_path':harvest_save_path
+			}
+		}
+		logger.debug(job_code)
 
 		# submit job
 		submit = LivyClient().submit_job(self.user_session.session_id, job_code)
@@ -632,7 +646,7 @@ class HarvestJob(CombineJob):
 
 		# update job in DB
 		self.job.spark_code = job_code
-		self.job.job_id = response['id']
+		self.job.job_id = int(response['id'])
 		self.job.status = response['state']
 		self.job.url = headers['Location']
 		self.job.headers = headers

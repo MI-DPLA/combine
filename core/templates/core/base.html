@@ -1,10 +1,21 @@
-<h1><a href="{% url 'combine_home' %}">Combine</a> &#128668;</h1>
-<ul>
-	<li><a href="{% url 'livy_sessions' %}">User Sessions</a></li>
-	<li><a href="{% url 'record_groups' %}">Record Groups</a></li>
-	<li><a href="http://localhost:50070" target="_blank">HDFS Browser</a></li>
-	<!-- <li><a href="#">Jobs</a></li> -->
-</ul>
-<hr>
-{% block content %}
-{% endblock %}
+<html>
+	<head>
+		<style>
+			body {
+				font-family: "Courier New", Courier, monospace;
+			}
+		</style>
+	</head>
+	<body>
+		<h1><a href="{% url 'combine_home' %}">Combine</a> &#128668;</h1>
+		<ul>
+			<li><a href="{% url 'livy_sessions' %}">User Sessions</a></li>
+			<li><a href="{% url 'record_groups' %}">Record Groups</a></li>
+			<li><a href="http://localhost:50070" target="_blank">HDFS Browser</a></li>
+			<!-- <li><a href="#">Jobs</a></li> -->
+		</ul>
+		<hr>
+		{% block content %}
+		{% endblock %}
+	</body>
+</html>
