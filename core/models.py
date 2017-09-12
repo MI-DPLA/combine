@@ -126,6 +126,7 @@ class Job(models.Model):
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
+	job_id = models.IntegerField(null=True, default=None)
 	status = models.CharField(max_length=30, null=True)
 	finished = models.BooleanField(default=0)
 	url = models.CharField(max_length=255, null=True)
@@ -596,6 +597,7 @@ class HarvestJob(CombineJob):
 			record_group = self.record_group,
 			name = 'OAI Harvest',
 			spark_code = None,
+			job_id = None,
 			status = 'init',
 			url = None,
 			headers = None,
@@ -625,12 +627,15 @@ class HarvestJob(CombineJob):
 
 		# submit job
 		submit = LivyClient().submit_job(self.user_session.session_id, job_code)
+		response = submit.json()
+		headers = submit.headers
 
 		# update job in DB
 		self.job.spark_code = job_code
-		self.job.status = submit.json()['state']
-		self.job.url = submit.headers['Location']
-		self.job.headers = submit.headers
+		self.job.job_id = response['id']
+		self.job.status = response['state']
+		self.job.url = headers['Location']
+		self.job.headers = headers
 		self.job.job_output = harvest_save_path
 		self.job.save()
 

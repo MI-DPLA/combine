@@ -95,6 +95,9 @@ def record_group(request, record_group_id):
 	'''
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
+
+	# retrieve user_session
+	user_session = models.CombineUser.objects.filter(id=request.user.id).first().active_livy_session()
 	
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -110,10 +113,11 @@ def record_group(request, record_group_id):
 			job.refresh_from_livy()
 
 			# if job is available, and record_count is 0, attempt count
-			combine_job = models.CombineJob(request.user)
-			combine_job.get_job(job.id)
-			job.record_count = combine_job.count_records()
-			job.save()
+			if job.status == 'available' and job.record_count == 0:
+				combine_job = models.CombineJob(request.user)
+				combine_job.get_job(job.id)
+				job.record_count = combine_job.count_records()
+				job.save()
 
 	'''
 	TODO: ping each URL and get status for job, update in DB
@@ -121,7 +125,7 @@ def record_group(request, record_group_id):
 	'''
 
 	# render page
-	return render(request, 'core/record_group.html', {'record_group':record_group,'record_group_jobs':record_group_jobs})
+	return render(request, 'core/record_group.html', {'user_session':user_session,'record_group':record_group,'record_group_jobs':record_group_jobs})
 
 
 ##################################
@@ -169,7 +173,7 @@ def job_harvest(request, record_group_id):
 		logger.debug(request.POST)
 
 		# initiate and submit job
-		job = models.HarvestJobFactory(request.user, record_group, models.OAIEndpoint.objects.all().first())
+		job = models.HarvestJob(request.user, record_group, models.OAIEndpoint.objects.all().first())
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)

@@ -5,12 +5,13 @@
 	<h3>Jobs for Record Group: {{ record_group.name }}</h3>
 
 	<div>
-		<table border="1">
+		<table border="1" cellpadding="5">
 			<tr>
 				<th>Job ID</th>
 				<th>Name</th>
+				<th>Livy Job ID</th>
 				<th>Status</th>
-				<th>URL</th>
+				<th>Monitor</th>
 				<th>Finished</th>
 				<th>Input</th>
 				<th>Output</th>
@@ -21,8 +22,9 @@
 				<tr>
 					<td>{{ job.id }}</td>
 					<td>{{ job.name }}</td>
+					<td>{{ job.job_id }}</td>
 					<td>{{ job.status }}</td>
-					<td><a href="http://localhost:8998{{ job.url }}" target="_blank">http://localhost:8998{{ job.url }}</a></td>
+					<td><a href="http://localhost:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ user_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
 					<td>{{ job.finished }}</td>
 					<td>{{ job.job_input }}</td>
 					<td><a href="http://localhost:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
