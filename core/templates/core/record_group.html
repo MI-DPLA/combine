@@ -10,6 +10,7 @@
 				<th>Job ID</th>
 				<th>Name</th>
 				<th>Status</th>
+				<th>Finished</th>
 				<th>Input</th>
 				<th>Output</th>
 				<th>actions</th>
@@ -19,9 +20,10 @@
 					<td>{{ job.id }}</td>
 					<td>{{ job.name }}</td>
 					<td>{{ job.status }}</td>
+					<td>{{ job.finished }}</td>
 					<td>{{ job.job_input }}</td>
-					<td>{{ job.job_output }}</td>
-					<td><a href="#">Delete</a></td>
+					<td><a href="http://localhost:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+					<td><a href="{% url 'job_delete' record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
 				</tr>
 			{% endfor %}
 		</table>
@@ -32,6 +34,9 @@
 		<p>
 			<ul>
 				<li><a href="{% url 'job_harvest' record_group_id=record_group.id %}">Harvest</a></li>
+				<li><a href="#">Transform</a></li>
+				<li><a href="#">Map and Index to ElasticSearch</a></li>
+				<li><a href="#">Publish</a></li>
 			</ul>
 		</p>
 	</div>

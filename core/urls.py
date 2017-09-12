@@ -14,7 +14,8 @@ urlpatterns = [
 	url(r'^record_groups$', views.record_groups, name='record_groups'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 
-	# Jobs
+	# Record Group Jobs
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
 	url(r'^job_harvest/(?P<record_group_id>[0-9]+)/jobs/harvest/new$', views.job_harvest, name='job_harvest'),
 
 	# general views

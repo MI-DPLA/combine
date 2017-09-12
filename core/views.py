@@ -38,7 +38,7 @@ def livy_sessions(request):
 		user_session.refresh_from_livy()
 
 		# check user session status, and set active flag for session
-		if user_session.status in ['starting','idle']:
+		if user_session.status in ['starting','idle','busy']:
 			user_session.active = True
 		else:
 			user_session.active = False
@@ -102,6 +102,18 @@ def record_group(request, record_group_id):
 	# get all jobs associated with record group
 	record_group_jobs = models.Job.objects.filter(record_group=record_group_id)
 
+	# loop through jobs and update status
+	for job in record_group_jobs:
+
+		# if job is pending, starting, or running, attempt to update status
+		if job.status in ['waiting','pending','starting','running','available']:
+			job.refresh_from_livy()
+
+	'''
+	TODO: ping each URL and get status for job, update in DB
+		- create LivyClient method for updating job status from Livy
+	'''
+
 	# render page
 	return render(request, 'core/record_group.html', {'record_group':record_group,'record_group_jobs':record_group_jobs})
 
@@ -109,6 +121,20 @@ def record_group(request, record_group_id):
 ##################################
 # Jobs
 ##################################
+
+@login_required
+def job_delete(request, record_group_id, job_id):
+	
+	logger.debug('deleting job by id: %s' % job_id)
+
+	job = models.Job.objects.filter(id=job_id).first()
+	
+	# remove from DB
+	job.delete()
+
+	# redirect
+	return redirect('record_group', record_group_id=record_group_id)
+
 
 def job_harvest(request, record_group_id):
 
@@ -136,22 +162,9 @@ def job_harvest(request, record_group_id):
 		# debug form
 		logger.debug(request.POST)
 
-		# get active session id for user
-		user_session = models.CombineUser.objects.filter(username=request.user.username).first().active_livy_session()
-		logger.debug(user_session)
-
-		harvest_save_path = '/user/harvests/testing1'
-		job_code = {'code': 'spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", "http://digital.library.wayne.edu/api/oai")\
-		.option("verb", "ListRecords")\
-		.option("metadataPrefix", "mods")\
-		.option("setList", "wayne:collectioncfai,wayne:collectionmot")\
-		.load()\
-		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % {'harvest_save_path':harvest_save_path}}
-
-		# submit job		
-		# job = models.LivyClient().submit_job_livy_client(user_session.session_id, harvest)
-		job = models.LivyClient().submit_job(user_session.session_id, job_code)
+		# initiate and submit job
+		job = models.HarvestJobFactory(request.user, record_group, models.OAIEndpoint.objects.all().first())
+		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)
 

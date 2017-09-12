@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+import hashlib
 import json
 import logging
 import requests
@@ -122,17 +123,53 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
-	name = models.CharField(max_length=128)
-	spark_code = models.CharField(max_length=32000)
+	name = models.CharField(max_length=128, null=True)
+	spark_code = models.CharField(max_length=32000, null=True)
 	status = models.CharField(max_length=30, null=True)
-	url = models.CharField(max_length=255)
-	headers = models.CharField(max_length=255)
-	job_input = models.CharField(max_length=255)
+	finished = models.BooleanField(default=0)
+	url = models.CharField(max_length=255, null=True)
+	headers = models.CharField(max_length=255, null=True)
+	job_input = models.CharField(max_length=255, null=True)
 	job_output = models.CharField(max_length=255, null=True)
 
 
 	def __str__(self):
-		return 'Job: %s, from Record Group: %s' % (self.name, self.record_group.name)
+		return '%s, from Record Group: %s' % (self.name, self.record_group.name)
+
+
+	def refresh_from_livy(self):
+
+		# query Livy for statement status
+		livy_response = LivyClient().job_status(self.url)
+
+		# if status_code 404, set as gone
+		if livy_response.status_code == 404:
+			
+			logger.debug('job/statement not found, setting status to gone')
+			self.status = 'gone'
+			# update
+			self.save()
+
+		elif livy_response.status_code == 200:
+
+			# parse response
+			response = livy_response.json()
+			headers = livy_response.headers
+			
+			# update Livy information
+			logger.debug('job/statement found, updating status')
+			self.status = response['state']
+
+			# if state is available, assume finished
+			if self.status == 'available':
+				self.finished = True
+
+			# update
+			self.save()
+
+		else:
+			
+			logger.debug('error retrieving information about Livy job/statement')
 
 
 
@@ -154,6 +191,8 @@ class CombineUser(User):
 
 	'''
 	extend User model to provide some additional methods
+
+	TODO: handle edge cases where user has more than one active session
 	'''
 
 	class Meta:
@@ -174,6 +213,7 @@ class CombineUser(User):
 		# if none found, return False
 		if active_livy_sessions.count() == 0:
 			return False
+
 
 
 ##################################
@@ -386,6 +426,42 @@ class LivyClient(object):
 
 
 	@classmethod
+	def get_jobs(self, session_id, python_code):
+
+		'''
+		Get all jobs (statements) for a session
+
+		Args:
+			session_id (str/int): Livy session id
+
+		Returns:
+			Livy server response (dict)
+		'''
+
+		# statement
+		jobs = self.http_request('GET', 'sessions/%s/statements' % session_id)
+		return job
+
+
+	@classmethod
+	def job_status(self, job_url):
+
+		'''
+		Get status of job (statement) for a session
+
+		Args:
+			job_url (str/int): full URL for statement in Livy session
+
+		Returns:
+			Livy server response (dict)
+		'''
+
+		# statement
+		statement = self.http_request('GET', job_url)
+		return statement
+
+
+	@classmethod
 	def submit_job(self, session_id, python_code):
 
 		'''
@@ -407,6 +483,116 @@ class LivyClient(object):
 		logger.debug(job.headers)
 		return job
 		
+
+
+##################################
+# Job Factories
+##################################
+
+class JobFactory(object):
+
+
+	def __init__(self, user):
+
+		self.user = user
+		self.user_session = self._get_active_user_session()
+
+
+	def _get_active_user_session(self):
+
+		'''
+		method to determine active user session if present,
+		or create if does not exist
+		'''
+
+		combine_user = CombineUser.objects.filter(username=self.user.username).first()
+		return combine_user.active_livy_session()
+
+
+
+
+class HarvestJobFactory(JobFactory):
+
+
+	def __init__(self, user, record_group, oai_endpoint, overrides=None):
+
+		'''
+		Initialize Job.
+
+		Unlike other jobs, harvests do not require input from the output of another job
+
+		Args:
+			user (User or core.models.CombineUser): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
+			overrides (dict): optional dictionary of overrides to OAI endpoint
+
+		Returns:
+
+		'''
+
+		# perform JobFactory initialization
+		super().__init__(user=user)
+
+		self.record_group = record_group
+		self.oai_endpoint = oai_endpoint
+		self.overrides = overrides
+
+		# create Job entry in DB
+		'''
+		record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+		name = models.CharField(max_length=128)
+		spark_code = models.CharField(max_length=32000)
+		status = models.CharField(max_length=30, null=True)
+		url = models.CharField(max_length=255)
+		headers = models.CharField(max_length=255)
+		job_input = models.CharField(max_length=255)
+		job_output = models.CharField(max_length=255, null=True)
+		'''
+		self.job = Job(
+			record_group = self.record_group,
+			name = 'OAI Harvest',
+			spark_code = None,
+			status = 'init',
+			url = None,
+			headers = None,
+			job_input = 'oai',
+			job_output = None
+		)
+		self.job.save()
+
+
+	def start_job(self):
+
+		'''
+		Construct python code that will be sent to Livy for harvest job
+		'''
+
+		# construct harvest path
+		harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
+
+		# prepare job code
+		job_code = {'code': 'spark.read.format("dpla.ingestion3.harvesters.oai")\
+		.option("endpoint", "http://digital.library.wayne.edu/api/oai")\
+		.option("verb", "ListRecords")\
+		.option("metadataPrefix", "mods")\
+		.option("setList", "wayne:collectioncfai,wayne:collectionmot")\
+		.load()\
+		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % {'harvest_save_path':harvest_save_path}}
+
+		# submit job
+		submit = LivyClient().submit_job(self.user_session.session_id, job_code)
+
+		# update job in DB
+		self.job.spark_code = job_code
+		self.job.status = submit.json()['state']
+		self.job.url = submit.headers['Location']
+		self.job.headers = submit.headers
+		self.job.job_output = harvest_save_path
+		self.job.save()
+
+
+
 
 
 
