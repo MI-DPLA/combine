@@ -614,7 +614,8 @@ class HarvestJob(CombineJob):
 		'''
 
 		# construct harvest path
-		harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
+		# harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
+		harvest_save_path = 'file:///Users/grahamhukill/data/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()

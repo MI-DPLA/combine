@@ -119,6 +119,13 @@ def record_group(request, record_group_id):
 				job.record_count = combine_job.count_records()
 				job.save()
 
+		# if job is gone, but finished is True and record count is 0, attempt count
+		if job.status == 'gone' and job.finished == True and job.record_count == 0:
+			combine_job = models.CombineJob(request.user)
+			combine_job.get_job(job.id)
+			job.record_count = combine_job.count_records()
+			job.save()
+
 	'''
 	TODO: ping each URL and get status for job, update in DB
 		- create LivyClient method for updating job status from Livy
