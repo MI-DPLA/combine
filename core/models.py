@@ -191,32 +191,32 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
-class CombineUser(User):
+# class CombineUser(User):
 
-	'''
-	extend User model to provide some additional methods
+# 	'''
+# 	extend User model to provide some additional methods
 
-	TODO: handle edge cases where user has more than one active session
-	'''
+# 	TODO: handle edge cases where user has more than one active session
+# 	'''
 
-	class Meta:
-		proxy = True
+# 	class Meta:
+# 		proxy = True
 
-	def active_livy_session(self):
+# 	def active_livy_session(self):
 
-		'''
-		Query DB, determine which Livy session is "active" for user, return instance of LivySession
-		'''
+# 		'''
+# 		Query DB, determine which Livy session is "active" for user, return instance of LivySession
+# 		'''
 		
-		active_livy_sessions = LivySession.objects.filter(user=self, active=True)
+# 		active_livy_sessions = LivySession.objects.filter(user=self, active=True)
 
-		# if one found, return
-		if active_livy_sessions.count() == 1:
-			return active_livy_sessions.first()
+# 		# if one found, return
+# 		if active_livy_sessions.count() == 1:
+# 			return active_livy_sessions.first()
 
-		# if none found, return False
-		if active_livy_sessions.count() == 0:
-			return False
+# 		# if none found, return False
+# 		if active_livy_sessions.count() == 0:
+# 			return False
 
 
 
@@ -255,24 +255,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 		elif livy_sessions.count() > 1:
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
-
-
-# @receiver(signals.user_logged_out)
-# def user_logout_handle_livy_sessions(sender, user, **kwargs):
-
-# 	'''
-# 	When user logs out, stop all user Livy sessions
-# 	'''
-
-# 	logger.debug('Checking for pre-existing livy sessions to stop')
-
-# 	# get "active" user sessions
-# 	user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
-# 	logger.debug(user_sessions)
-
-# 	# end session with Livy HttpClient
-# 	for user_session in user_sessions:
-# 			user_session.stop_session()
 
 
 @receiver(models.signals.pre_save, sender=LivySession)
