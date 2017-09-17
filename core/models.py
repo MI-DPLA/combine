@@ -10,6 +10,7 @@ import subprocess
 import time
 
 # django imports
+from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
@@ -614,7 +615,7 @@ class HarvestJob(CombineJob):
 
 		# construct harvest path
 		# harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
-		harvest_save_path = 'file:///Users/grahamhukill/data/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
+		harvest_save_path = '%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
@@ -652,20 +653,6 @@ class HarvestJob(CombineJob):
 		self.job.headers = headers
 		self.job.job_output = harvest_save_path
 		self.job.save()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

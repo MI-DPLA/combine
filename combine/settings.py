@@ -26,8 +26,8 @@ SECRET_KEY = '$)1(piv72**m&3bmb)j!=f-h4=of6_knu=c8lj31n7k=y36oi%'
 DEBUG = True
 
 ALLOWED_HOSTS = [
-	'combine-vm',
-	'192.168.45.10'
+    '192.168.45.10', # vagrant build
+    'combine-vm' # vagrant build
 ]
 
 

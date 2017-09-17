@@ -107,7 +107,7 @@ def record_groups(request):
 	logger.debug("found %s record groups" % record_groups.count())
 
 	# render page
-	return render(request, 'core/record_groups.html', {'record_groups':record_groups})
+	return render(request, 'core/record_groups.html', {'settings':settings, 'record_groups':record_groups})
 
 
 def record_group(request, record_group_id):
@@ -157,7 +157,7 @@ def record_group(request, record_group_id):
 	'''
 
 	# render page
-	return render(request, 'core/record_group.html', {'user_session':user_session,'record_group':record_group,'record_group_jobs':record_group_jobs})
+	return render(request, 'core/record_group.html', {'settings':settings, 'user_session':user_session,'record_group':record_group,'record_group_jobs':record_group_jobs})
 
 
 ##################################
