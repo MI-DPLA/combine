@@ -25,7 +25,10 @@ SECRET_KEY = '$)1(piv72**m&3bmb)j!=f-h4=of6_knu=c8lj31n7k=y36oi%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [
+	'combine-vm',
+	'192.168.45.10'
+]
 
 
 # Application definition
