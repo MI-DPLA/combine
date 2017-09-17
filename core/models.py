@@ -124,6 +124,7 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
 	job_id = models.IntegerField(null=True, default=None)
@@ -577,6 +578,7 @@ class HarvestJob(CombineJob):
 		'''
 		self.job = Job(
 			record_group = self.record_group,
+			user = self.user,
 			name = 'OAI Harvest',
 			spark_code = None,
 			job_id = None,
