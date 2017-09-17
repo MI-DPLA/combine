@@ -35,7 +35,6 @@ class LivySession(models.Model):
 	session_id = models.IntegerField()
 	session_url = models.CharField(max_length=128)
 	status = models.CharField(max_length=30, null=True)
-	user = models.ForeignKey(User, on_delete=models.CASCADE) # connect to user
 	session_timestamp = models.CharField(max_length=128)
 	appId = models.CharField(max_length=128, null=True)
 	driverLogUrl = models.CharField(max_length=255, null=True)
@@ -241,38 +240,38 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 		logger.debug('Checking for pre-existing user sessions')
 
 		# get "active" user sessions
-		user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
-		logger.debug(user_sessions)
+		livy_sessions = LivySession.objects.filter(status__in=['starting','running','idle'])
+		logger.debug(livy_sessions)
 
 		# none found
-		if user_sessions.count() == 0:
-			logger.debug('no user sessions found, creating')
-			user_session = LivySession(user=user).save()
+		if livy_sessions.count() == 0:
+			logger.debug('no Livy sessions found, creating')
+			user_session = LivySession().save()
 
 		# if sessions present
-		elif user_sessions.count() == 1:
-			logger.debug('single, active user session found, using')
+		elif livy_sessions.count() == 1:
+			logger.debug('single, active Livy session found, using')
 
-		elif user_sessions.count() > 1:
-			logger.debug('multiple user sessions found, sending to sessions page to select one')
+		elif livy_sessions.count() > 1:
+			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-@receiver(signals.user_logged_out)
-def user_logout_handle_livy_sessions(sender, user, **kwargs):
+# @receiver(signals.user_logged_out)
+# def user_logout_handle_livy_sessions(sender, user, **kwargs):
 
-	'''
-	When user logs out, stop all user Livy sessions
-	'''
+# 	'''
+# 	When user logs out, stop all user Livy sessions
+# 	'''
 
-	logger.debug('Checking for pre-existing user sessions to stop')
+# 	logger.debug('Checking for pre-existing livy sessions to stop')
 
-	# get "active" user sessions
-	user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
-	logger.debug(user_sessions)
+# 	# get "active" user sessions
+# 	user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
+# 	logger.debug(user_sessions)
 
-	# end session with Livy HttpClient
-	for user_session in user_sessions:
-			user_session.stop_session()
+# 	# end session with Livy HttpClient
+# 	for user_session in user_sessions:
+# 			user_session.stop_session()
 
 
 @receiver(models.signals.pre_save, sender=LivySession)
@@ -296,7 +295,7 @@ def create_livy_session(sender, instance, **kwargs):
 		response = livy_response.json()
 		headers = livy_response.headers
 
-		instance.name = 'Livy Session for user %s, sessionId %s' % (instance.user.username, response['id'])
+		instance.name = 'Livy Session, sessionId %s' % (response['id'])
 		instance.session_id = int(response['id'])
 		instance.session_url = headers['Location']
 		instance.status = response['state']

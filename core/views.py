@@ -28,30 +28,55 @@ logger = logging.getLogger(__name__)
 @login_required
 def livy_sessions(request):
 	
-	logger.debug('retrieving Livy sessions for user')
+	logger.debug('retrieving Livy sessions')
 	
 	# query db
-	user_sessions = models.LivySession.objects.filter(user=request.user)
+	livy_sessions = models.LivySession.objects.all()
 
 	# refresh sessions
-	for user_session in user_sessions:
-		user_session.refresh_from_livy()
+	for livy_session in livy_sessions:
+		livy_session.refresh_from_livy()
 
 		# check user session status, and set active flag for session
-		if user_session.status in ['starting','idle','busy']:
-			user_session.active = True
+		if livy_session.status in ['starting','idle','busy']:
+			livy_session.active = True
 		else:
-			user_session.active = False
-		user_session.save()
+			livy_session.active = False
+		livy_session.save()
 	
 	# return
-	return render(request, 'core/user_sessions.html', {'user_sessions':user_sessions})
+	return render(request, 'core/livy_sessions.html', {'livy_sessions':livy_sessions})
 
 
 @login_required
-def livy_session_delete(request, session_id):
+def livy_session_start(request):
 	
-	logger.debug('deleting Livy session by Combine ID: %s' % session_id)
+	logger.debug('Checking for pre-existing user sessions')
+
+	# get "active" user sessions
+	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
+	logger.debug(livy_sessions)
+
+	# none found
+	if livy_sessions.count() == 0:
+		logger.debug('no Livy sessions found, creating')
+		user_session = models.LivySession().save()
+
+	# if sessions present
+	elif livy_sessions.count() == 1:
+		logger.debug('single, active Livy session found, using')
+
+	elif livy_sessions.count() > 1:
+		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
+
+	# redirect
+	return redirect('livy_sessions')
+
+
+@login_required
+def livy_session_stop(request, session_id):
+	
+	logger.debug('stopping Livy session by Combine ID: %s' % session_id)
 
 	user_session = models.LivySession.objects.filter(id=session_id).first()
 	
