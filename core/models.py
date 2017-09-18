@@ -192,34 +192,6 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
-# class CombineUser(User):
-
-# 	'''
-# 	extend User model to provide some additional methods
-
-# 	TODO: handle edge cases where user has more than one active session
-# 	'''
-
-# 	class Meta:
-# 		proxy = True
-
-# 	def active_livy_session(self):
-
-# 		'''
-# 		Query DB, determine which Livy session is "active" for user, return instance of LivySession
-# 		'''
-		
-# 		active_livy_sessions = LivySession.objects.filter(user=self, active=True)
-
-# 		# if one found, return
-# 		if active_livy_sessions.count() == 1:
-# 			return active_livy_sessions.first()
-
-# 		# if none found, return False
-# 		if active_livy_sessions.count() == 0:
-# 			return False
-
-
 
 ##################################
 # Signals Handlers
@@ -248,7 +220,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 		# none found
 		if livy_sessions.count() == 0:
 			logger.debug('no Livy sessions found, creating')
-			user_session = LivySession().save()
+			livy_session = LivySession().save()
 
 		# if sessions present
 		elif livy_sessions.count() == 1:
@@ -482,18 +454,39 @@ class CombineJob(object):
 	def __init__(self, user):
 
 		self.user = user
-		self.user_session = self._get_active_user_session()
+		self.livy_session = self._get_active_livy_session()
 
 
-	def _get_active_user_session(self):
+	def _get_active_livy_session(self):
 
 		'''
-		method to determine active user session if present,
-		or create if does not exist
+		Method to determine active livy session if present, or create if does not exist
 		'''
 
-		combine_user = CombineUser.objects.filter(username=self.user.username).first()
-		return combine_user.active_livy_session()
+		# check for single, active livy session from LivyClient
+		livy_sessions = LivySession.objects.filter(active=True)
+
+		# if single session, confirm active or starting
+		if livy_sessions.count() == 1:
+			
+			livy_session = livy_sessions.first()
+			logger.debug('single livy session found, confirming running')
+			livy_session_status = LivyClient().session_status(livy_session.session_id)
+			
+			if livy_session_status.status_code == 200:
+				status = livy_session_status.json()['state']
+				if status in ['starting','idle','busy']:
+					# return livy session
+					return livy_session
+
+		# if none found, start and return
+		elif livy_sessions.count() == 0:
+			livy_session = LivySession().save()
+			return livy_session
+
+		# if more than one found, for now, raise Exception as only expecting one
+		if livy_sessions.count() > 1:
+			raise Exception('more than one active Livy session found')
 
 
 	def get_job(self, job_id):
@@ -522,7 +515,7 @@ class CombineJob(object):
 		.count()' % {'harvest_path':self.job.job_output}}
 
 		# submit job
-		response = LivyClient().submit_job(self.user_session.session_id, job_code)
+		response = LivyClient().submit_job(self.livy_session.session_id, job_code)
 		logger.debug(response.json())
 		logger.debug(response.headers)
 
@@ -625,7 +618,7 @@ class HarvestJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		submit = LivyClient().submit_job(self.user_session.session_id, job_code)
+		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
 		response = submit.json()
 		headers = submit.headers
 
