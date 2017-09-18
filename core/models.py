@@ -77,8 +77,14 @@ class LivySession(models.Model):
 			
 			# update Livy information
 			logger.debug('session found, updating status')
+			
+			# update status
 			self.status = response['state']
+			if self.status in ['starting','idle','busy']:
+				self.active = True
+			
 			self.session_timestamp = headers['Date']
+			
 			# update Spark/YARN information, if available
 			if 'appId' in response.keys():
 				self.appId = response['appId']
@@ -256,6 +262,7 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.session_url = headers['Location']
 		instance.status = response['state']
 		instance.session_timestamp = headers['Date']
+		instance.active = True
 
 
 
@@ -481,8 +488,30 @@ class CombineJob(object):
 
 		# if none found, start and return
 		elif livy_sessions.count() == 0:
-			livy_session = LivySession().save()
-			return livy_session
+			logger.debug('no active livy sessions found, starting one')
+			
+			# begin session
+			livy_session = LivySession()
+			livy_session.save()
+
+			# poll livy session state until idle
+			while True:
+
+				# update from Livy
+				livy_session.refresh_from_livy()
+				if livy_session.status in ['idle','busy']:
+					return livy_session
+
+				# livy_session_status = LivyClient().session_status(livy_session.session_id)
+				# if livy_session_status.status_code == 200:
+				# 	status = livy_session_status.json()['state']
+				# 	if status in ['idle','busy']:
+						
+				# 		# return livy session
+				# 		return livy_session
+
+				else:
+					time.sleep(3)
 
 		# if more than one found, for now, raise Exception as only expecting one
 		if livy_sessions.count() > 1:
@@ -575,7 +604,7 @@ class HarvestJob(CombineJob):
 			name = 'OAI Harvest',
 			spark_code = None,
 			job_id = None,
-			status = 'init',
+			status = 'initializing',
 			url = None,
 			headers = None,
 			job_input = 'oai',

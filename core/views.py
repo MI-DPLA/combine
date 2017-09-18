@@ -137,24 +137,14 @@ def record_group(request, record_group_id):
 		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
 			job.refresh_from_livy()
 
-		# 	# if job is available, and record_count is 0, attempt count
-		# 	if job.status == 'available' and job.record_count == 0:
-		# 		combine_job = models.CombineJob(request.user)
-		# 		combine_job.get_job(job.id)
-		# 		job.record_count = combine_job.count_records()
-		# 		job.save()
+		# udpate record count if not already calculated
+		# check record_count is 0
+		if job.record_count == 0:
 
-		# # if job is gone, but finished is True and record count is 0, attempt count
-		# if job.status == 'gone' and job.finished == True and job.record_count == 0:
-		# 	combine_job = models.CombineJob(request.user)
-		# 	combine_job.get_job(job.id)
-		# 	job.record_count = combine_job.count_records()
-		# 	job.save()
+			# if finished, count
+			if job.finished:
+				logger.debug('counting records in avro files at: %s' % job.job_output)
 
-	'''
-	TODO: ping each URL and get status for job, update in DB
-		- create LivyClient method for updating job status from Livy
-	'''
 
 	# render page 
 	return render(request, 'core/record_group.html', {'settings':settings, 'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
@@ -212,8 +202,10 @@ def job_harvest(request, record_group_id):
 		overrides = { override:request.POST[override] for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
-		# initiate and submit job
+		# initiate job
 		job = models.HarvestJob(request.user, record_group, oai_endpoint, overrides)
+		
+		# start job
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)
