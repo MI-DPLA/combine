@@ -183,6 +183,53 @@ class Job(models.Model):
 			logger.debug('error retrieving information about Livy job/statement')
 
 
+	def get_output_as_dataframe(self):
+
+		'''
+		method to use cyavro and return job_output as dataframe
+		'''
+		pass
+		# # reading from local fs
+		# if job.job_output.startswith('file://'):
+			
+		# 	output_dir = job.job_output.split('file://')[-1]
+
+		# 	###########################################################################
+		# 	# cyavro shim
+		# 	###########################################################################
+		# 	'''
+		# 	cyavro currently will fail on avro files written by ingestion3:
+		# 	https://github.com/maxpoint/cyavro/issues/27
+
+		# 	This shim removes any files of length identical to 1375 bytes, which causes
+		# 	the failure in our case
+		# 	'''
+		# 	files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+		# 	for f in files:
+		# 		if os.path.getsize(os.path.join(output_dir,f)) == 1375:
+		# 			logger.debug('detected empty avro and removing: %s' % f)
+		# 			os.remove(os.path.join(output_dir,f))
+		# 	###########################################################################
+		# 	# end cyavro shim
+		# 	###########################################################################
+
+		# 	# open avro files as dataframe with cyavro
+		# 	stime = time.time()
+		# 	df = cyavro.read_avro_path_as_dataframe(output_dir)
+			
+		# 	# count and save to job
+		# 	job.record_count = df.count().record
+		# 	logger.debug('cyavro read time: %s' % (time.time() - stime))
+		# 	job.save()
+
+		# elif job.job_output.startswith('hdfs://'):
+		# 	logger.debug('HDFS record counting not yet implemented')
+
+
+	def update_record_count(self):
+		pass
+
+
 
 class OAIEndpoint(models.Model):
 

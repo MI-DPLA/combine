@@ -10,8 +10,12 @@ from django.shortcuts import render, redirect
 # import models
 from core import models
 
+# import cyavro
+import cyavro
+
 import json
 import logging
+import os
 import requests
 import textwrap
 import time
@@ -143,8 +147,8 @@ def record_group(request, record_group_id):
 
 			# if finished, count
 			if job.finished:
-				logger.debug('counting records in avro files at: %s' % job.job_output)
-
+				logger.debug('updating record count for job #%s' % job.id)
+				job.update_record_count()
 
 	# render page 
 	return render(request, 'core/record_group.html', {'settings':settings, 'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
