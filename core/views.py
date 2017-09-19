@@ -151,7 +151,7 @@ def record_group(request, record_group_id):
 				job.update_record_count()
 
 	# render page 
-	return render(request, 'core/record_group.html', {'settings':settings, 'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
+	return render(request, 'core/record_group.html', {'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
 
 
 ##################################
