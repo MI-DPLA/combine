@@ -1,3 +1,7 @@
+# Combine Front-End
+APP_HOST = 'combine-vm'
+
+
 # Apache Livy settings
 '''
 Combine uses Livy to issue spark statements.
