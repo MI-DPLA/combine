@@ -11,8 +11,11 @@ urlpatterns = [
 	url(r'^livy_sessions/stop$', views.livy_session_start, name='livy_session_start'),
 	url(r'^livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
 
+	# Organizations
+	url(r'^organizations$', views.organizations, name='organizations'),
+	url(r'^organizations/(?P<org_id>[0-9]+)$', views.organization, name='organization'),
+
 	# Record Groups
-	url(r'^record_groups$', views.record_groups, name='record_groups'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 
 	# Record Group Jobs

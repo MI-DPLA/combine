@@ -1,0 +1,28 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Record Groups for Organization: {{ org.name }}</h3>
+
+	<div>
+		<table border="1" cellpadding="5">
+			<tr>
+				<th>Record Group ID</th>
+				<th>Name</th>
+				<th>Timestamp</th>
+				<th>Actions</th>
+			</tr>
+			{% for record_group in record_groups %}
+				<tr>
+					<td>{{ record_group.id }}</td>
+					<td>{{ record_group.name }}</td>
+					<td>{{ record_group.timestamp }}</td>
+					<td>
+						<a href="{% url 'record_group' record_group_id=record_group.id %}">Details</a>
+					</td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+{% endblock %}

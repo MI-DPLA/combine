@@ -3,7 +3,7 @@ from __future__ import unicode_literals
 
 from django.contrib import admin
 
-from .models import RecordGroup, Job, OAIEndpoint, LivySession
+from .models import Organization, RecordGroup, Job, OAIEndpoint, LivySession
 
 # register models
-admin.site.register([RecordGroup, Job, OAIEndpoint, LivySession])
+admin.site.register([Organization, RecordGroup, Job, OAIEndpoint, LivySession])

@@ -96,22 +96,43 @@ def livy_session_stop(request, session_id):
 
 
 ##################################
-# Record Groups
+# Organizations
 ##################################
 
-def record_groups(request):
+def organizations(request):
 
 	'''
-	View all record groups
+	View all Organizations
 	'''
 	
-	logger.debug('retrieving record groups')
+	logger.debug('retrieving organizations')
 	
-	record_groups = models.RecordGroup.objects.all()
-	logger.debug("found %s record groups" % record_groups.count())
+	orgs = models.Organization.objects.all()
 
 	# render page
-	return render(request, 'core/record_groups.html', {'settings':settings, 'record_groups':record_groups})
+	return render(request, 'core/organizations.html', {'orgs':orgs})
+
+
+def organization(request, org_id):
+
+	'''
+	Details for Organization
+	'''
+
+	# get organization
+	org = models.Organization.objects.get(pk=org_id)
+
+	# get record groups for this organization
+	record_groups = models.RecordGroup.objects.filter(organization=org)
+	
+	# render page
+	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups})
+
+
+
+##################################
+# Record Groups
+##################################
 
 
 def record_group(request, record_group_id):

@@ -45,6 +45,7 @@ class LivySession(models.Model):
 	driverLogUrl = models.CharField(max_length=255, null=True)
 	sparkUiUrl = models.CharField(max_length=255, null=True)
 	active = models.BooleanField(default=0)
+	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
 	def __str__(self):
@@ -119,11 +120,26 @@ class LivySession(models.Model):
 
 
 
-class RecordGroup(models.Model):
+class Organization(models.Model):
 
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
-	status = models.CharField(max_length=30, null=True, default=None)
+	publish_id = models.CharField(max_length=255)
+	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+
+
+	def __str__(self):
+		return 'Organization: %s' % self.name
+models.BooleanField(default=0)
+
+
+
+class RecordGroup(models.Model):
+
+	organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
+	name = models.CharField(max_length=128)
+	description = models.CharField(max_length=255, null=True, default=None)
+	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
 	def __str__(self):
@@ -146,6 +162,8 @@ class Job(models.Model):
 	job_input = models.CharField(max_length=255, null=True)
 	job_output = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
+	published = models.BooleanField(default=0)
+	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
 	def __str__(self):

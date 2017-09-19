@@ -26,7 +26,7 @@
 				<td>{{ livy_session.active }}</td>
 				<td>{{ livy_session.name }}</td>
 				<td>{{ livy_session.session_id }}</td>
-				<td><a href="http://localhost:8998{{ livy_session.session_url }}" target="_blank">http://localhost:8998{{ livy_session.session_url }}</td>
+				<td><a href="http://{{ APP_HOST }}:8998{{ livy_session.session_url }}" target="_blank">http://{{ APP_HOST }}:8998{{ livy_session.session_url }}</td>
 				<td>{{ livy_session.status }}</td>
 				<td>{{ livy_session.timestamp }}</td>
 				<td>{{ livy_session.appId }}</td>
