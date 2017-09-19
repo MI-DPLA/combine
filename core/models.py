@@ -25,6 +25,9 @@ from livy.client import HttpClient
 # import cyavro
 import cyavro
 
+# impot pandas
+import pandas as pd
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -750,10 +753,15 @@ class HarvestJob(CombineJob):
 
 
 
+class MergeJob(CombineJob):
+	
+	'''
+	Details to figure, but the actual merge will be straightfoward:
+	merged = pd.concat([j1.get_output_as_dataframe(),j2.get_output_as_dataframe()])
+	'''
 
-
-
-
+	pass
+	
 
 
 
