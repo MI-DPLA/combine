@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import logging
+import os
 import requests
 import subprocess
 import time
@@ -20,6 +21,9 @@ from django.utils.encoding import python_2_unicode_compatible
 
 # Livy
 from livy.client import HttpClient
+
+# import cyavro
+import cyavro
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -188,47 +192,65 @@ class Job(models.Model):
 		'''
 		method to use cyavro and return job_output as dataframe
 		'''
-		pass
-		# # reading from local fs
-		# if job.job_output.startswith('file://'):
+
+		# confirm there is output to work with
+		if not self.job_output:
+			logger.debug('job does not have output, returning False')
+			return False
+
+		# Filesystem
+		if self.job_output.startswith('file://'):
 			
-		# 	output_dir = job.job_output.split('file://')[-1]
+			output_dir = self.job_output.split('file://')[-1]
 
-		# 	###########################################################################
-		# 	# cyavro shim
-		# 	###########################################################################
-		# 	'''
-		# 	cyavro currently will fail on avro files written by ingestion3:
-		# 	https://github.com/maxpoint/cyavro/issues/27
+			###########################################################################
+			# cyavro shim
+			###########################################################################
+			'''
+			cyavro currently will fail on avro files written by ingestion3:
+			https://github.com/maxpoint/cyavro/issues/27
 
-		# 	This shim removes any files of length identical to 1375 bytes, which causes
-		# 	the failure in our case
-		# 	'''
-		# 	files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-		# 	for f in files:
-		# 		if os.path.getsize(os.path.join(output_dir,f)) == 1375:
-		# 			logger.debug('detected empty avro and removing: %s' % f)
-		# 			os.remove(os.path.join(output_dir,f))
-		# 	###########################################################################
-		# 	# end cyavro shim
-		# 	###########################################################################
+			This shim removes any files of length identical to 1375 bytes, which causes
+			the failure in our case
+			'''
+			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+			for f in files:
+				if os.path.getsize(os.path.join(output_dir,f)) == 1375:
+					logger.debug('detected empty avro and removing: %s' % f)
+					os.remove(os.path.join(output_dir,f))
+			###########################################################################
+			# end cyavro shim
+			###########################################################################
 
-		# 	# open avro files as dataframe with cyavro
-		# 	stime = time.time()
-		# 	df = cyavro.read_avro_path_as_dataframe(output_dir)
+			# open avro files as dataframe with cyavro and return
+			stime = time.time()
+			df = cyavro.read_avro_path_as_dataframe(output_dir)
+			logger.debug('cyavro read time: %s' % (time.time() - stime))
+			return df
 			
-		# 	# count and save to job
-		# 	job.record_count = df.count().record
-		# 	logger.debug('cyavro read time: %s' % (time.time() - stime))
-		# 	job.save()
 
-		# elif job.job_output.startswith('hdfs://'):
-		# 	logger.debug('HDFS record counting not yet implemented')
+
+		# HDFS
+		elif self.job_output.startswith('hdfs://'):
+			logger.debug('HDFS record counting not yet implemented')
+			return False
+
+		else:
+			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
 
 
 	def update_record_count(self):
-		pass
 
+		'''
+		count records from self.job_output, and update DB
+		'''
+		
+		# get dataframe
+		df = self.get_output_as_dataframe()
+
+		# count and save records to DB
+		self.record_count = df.count().record
+		self.save()
 
 
 class OAIEndpoint(models.Model):
