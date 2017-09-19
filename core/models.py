@@ -671,6 +671,7 @@ class HarvestJob(CombineJob):
 		super().__init__(user=user)
 
 		self.record_group = record_group
+		self.organization = self.record_group.organization
 		self.oai_endpoint = oai_endpoint
 		self.overrides = overrides
 
@@ -708,7 +709,7 @@ class HarvestJob(CombineJob):
 
 		# construct harvest path
 		# harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
-		harvest_save_path = '%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.record_group.id, self.job.id)
+		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
