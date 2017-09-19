@@ -10,8 +10,12 @@ from django.shortcuts import render, redirect
 # import models
 from core import models
 
+# import cyavro
+import cyavro
+
 import json
 import logging
+import os
 import requests
 import textwrap
 import time
@@ -28,38 +32,63 @@ logger = logging.getLogger(__name__)
 @login_required
 def livy_sessions(request):
 	
-	logger.debug('retrieving Livy sessions for user')
+	logger.debug('retrieving Livy sessions')
 	
 	# query db
-	user_sessions = models.LivySession.objects.filter(user=request.user)
+	livy_sessions = models.LivySession.objects.all()
 
 	# refresh sessions
-	for user_session in user_sessions:
-		user_session.refresh_from_livy()
+	for livy_session in livy_sessions:
+		livy_session.refresh_from_livy()
 
 		# check user session status, and set active flag for session
-		if user_session.status in ['starting','idle','busy']:
-			user_session.active = True
+		if livy_session.status in ['starting','idle','busy']:
+			livy_session.active = True
 		else:
-			user_session.active = False
-		user_session.save()
+			livy_session.active = False
+		livy_session.save()
 	
 	# return
-	return render(request, 'core/user_sessions.html', {'user_sessions':user_sessions})
+	return render(request, 'core/livy_sessions.html', {'livy_sessions':livy_sessions})
 
 
 @login_required
-def livy_session_delete(request, session_id):
+def livy_session_start(request):
 	
-	logger.debug('deleting Livy session by Combine ID: %s' % session_id)
+	logger.debug('Checking for pre-existing user sessions')
 
-	user_session = models.LivySession.objects.filter(id=session_id).first()
+	# get "active" user sessions
+	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
+	logger.debug(livy_sessions)
+
+	# none found
+	if livy_sessions.count() == 0:
+		logger.debug('no Livy sessions found, creating')
+		livy_session = models.LivySession().save()
+
+	# if sessions present
+	elif livy_sessions.count() == 1:
+		logger.debug('single, active Livy session found, using')
+
+	elif livy_sessions.count() > 1:
+		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
+
+	# redirect
+	return redirect('livy_sessions')
+
+
+@login_required
+def livy_session_stop(request, session_id):
+	
+	logger.debug('stopping Livy session by Combine ID: %s' % session_id)
+
+	livy_session = models.LivySession.objects.filter(id=session_id).first()
 	
 	# attempt to stop with Livy
-	models.LivyClient.stop_session(user_session.session_id)
+	models.LivyClient.stop_session(livy_session.session_id)
 
 	# remove from DB
-	user_session.delete()
+	livy_session.delete()
 
 	# redirect
 	return redirect('livy_sessions')
@@ -82,7 +111,7 @@ def record_groups(request):
 	logger.debug("found %s record groups" % record_groups.count())
 
 	# render page
-	return render(request, 'core/record_groups.html', {'record_groups':record_groups})
+	return render(request, 'core/record_groups.html', {'settings':settings, 'record_groups':record_groups})
 
 
 def record_group(request, record_group_id):
@@ -96,9 +125,9 @@ def record_group(request, record_group_id):
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
-	# retrieve user_session
-	user_session = models.CombineUser.objects.filter(id=request.user.id).first().active_livy_session()
-	
+	# retrieve current livy session
+	livy_session = models.LivySession.objects.filter(active=True).first()
+
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
@@ -112,27 +141,17 @@ def record_group(request, record_group_id):
 		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
 			job.refresh_from_livy()
 
-			# if job is available, and record_count is 0, attempt count
-			if job.status == 'available' and job.record_count == 0:
-				combine_job = models.CombineJob(request.user)
-				combine_job.get_job(job.id)
-				job.record_count = combine_job.count_records()
-				job.save()
+		# udpate record count if not already calculated
+		# check record_count is 0
+		if job.record_count == 0:
 
-		# if job is gone, but finished is True and record count is 0, attempt count
-		if job.status == 'gone' and job.finished == True and job.record_count == 0:
-			combine_job = models.CombineJob(request.user)
-			combine_job.get_job(job.id)
-			job.record_count = combine_job.count_records()
-			job.save()
+			# if finished, count
+			if job.finished:
+				logger.debug('updating record count for job #%s' % job.id)
+				job.update_record_count()
 
-	'''
-	TODO: ping each URL and get status for job, update in DB
-		- create LivyClient method for updating job status from Livy
-	'''
-
-	# render page
-	return render(request, 'core/record_group.html', {'user_session':user_session,'record_group':record_group,'record_group_jobs':record_group_jobs})
+	# render page 
+	return render(request, 'core/record_group.html', {'settings':settings, 'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
 
 
 ##################################
@@ -187,8 +206,10 @@ def job_harvest(request, record_group_id):
 		overrides = { override:request.POST[override] for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
-		# initiate and submit job
+		# initiate job
 		job = models.HarvestJob(request.user, record_group, oai_endpoint, overrides)
+		
+		# start job
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)

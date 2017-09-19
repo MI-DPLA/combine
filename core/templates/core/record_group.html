@@ -24,10 +24,14 @@
 					<td>{{ job.name }}</td>
 					<td>{{ job.job_id }}</td>
 					<td>{{ job.status }}</td>
-					<td><a href="http://localhost:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ user_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
+					<td><a href="http://{{ settings.APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
 					<td>{{ job.finished }}</td>
 					<td>{{ job.job_input }}</td>
-					<td><a href="http://localhost:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+					{% if 'hdfs://' in job.job_output %}
+						<td><a href="http://{{ settings.APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+					{% else %}
+						<td>{{ job.job_output }}</td>
+					{% endif %}
 					<td>{{ job.record_count }}</td>
 					<td><a href="{% url 'job_delete' record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
 				</tr>

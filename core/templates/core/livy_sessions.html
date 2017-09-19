@@ -1,0 +1,47 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h2>Livy Sessions</h2>
+
+	<p><a href="{% url 'livy_session_start' %}">start new session</a></p>
+
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>Combine Session ID</th>
+			<th>Active</th>
+			<th>Name</th>
+			<th>Livy Session ID</th>
+			<th>Livy Session URL</th>
+			<th>Status</th>
+			<th>Timestamp</th>
+			<th>YARN Application ID</th>
+			<th>YARN Application GUI</th>
+			<th>Spark Session GUI</th>
+			<th>actions</th>
+		</tr>
+		{% for livy_session in livy_sessions %}
+			<tr>
+				<td>{{ livy_session.id }}</td>
+				<td>{{ livy_session.active }}</td>
+				<td>{{ livy_session.name }}</td>
+				<td>{{ livy_session.session_id }}</td>
+				<td><a href="http://localhost:8998{{ livy_session.session_url }}" target="_blank">http://localhost:8998{{ livy_session.session_url }}</td>
+				<td>{{ livy_session.status }}</td>
+				<td>{{ livy_session.timestamp }}</td>
+				<td>{{ livy_session.appId }}</td>
+				{% if livy_session.driverLogUrl %}
+					<td><a href="{{ livy_session.driverLogUrl }}" target="_blank">{{ livy_session.driverLogUrl }}</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				{% if livy_session.sparkUiUrl %}
+					<td><a href="{{ livy_session.sparkUiUrl }}" target="_blank">{{ livy_session.sparkUiUrl }}</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}">Stop</a></td>
+			</tr>
+		{% endfor %}
+	</table>
+{% endblock %}

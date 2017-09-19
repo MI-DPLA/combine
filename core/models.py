@@ -5,11 +5,13 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import logging
+import os
 import requests
 import subprocess
 import time
 
 # django imports
+from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
@@ -19,6 +21,9 @@ from django.utils.encoding import python_2_unicode_compatible
 
 # Livy
 from livy.client import HttpClient
+
+# import cyavro
+import cyavro
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -35,7 +40,6 @@ class LivySession(models.Model):
 	session_id = models.IntegerField()
 	session_url = models.CharField(max_length=128)
 	status = models.CharField(max_length=30, null=True)
-	user = models.ForeignKey(User, on_delete=models.CASCADE) # connect to user
 	session_timestamp = models.CharField(max_length=128)
 	appId = models.CharField(max_length=128, null=True)
 	driverLogUrl = models.CharField(max_length=255, null=True)
@@ -77,8 +81,14 @@ class LivySession(models.Model):
 			
 			# update Livy information
 			logger.debug('session found, updating status')
+			
+			# update status
 			self.status = response['state']
+			if self.status in ['starting','idle','busy']:
+				self.active = True
+			
 			self.session_timestamp = headers['Date']
+			
 			# update Spark/YARN information, if available
 			if 'appId' in response.keys():
 				self.appId = response['appId']
@@ -124,6 +134,7 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
 	job_id = models.IntegerField(null=True, default=None)
@@ -176,6 +187,71 @@ class Job(models.Model):
 			logger.debug('error retrieving information about Livy job/statement')
 
 
+	def get_output_as_dataframe(self):
+
+		'''
+		method to use cyavro and return job_output as dataframe
+		'''
+
+		# confirm there is output to work with
+		if not self.job_output:
+			logger.debug('job does not have output, returning False')
+			return False
+
+		# Filesystem
+		if self.job_output.startswith('file://'):
+			
+			output_dir = self.job_output.split('file://')[-1]
+
+			###########################################################################
+			# cyavro shim
+			###########################################################################
+			'''
+			cyavro currently will fail on avro files written by ingestion3:
+			https://github.com/maxpoint/cyavro/issues/27
+
+			This shim removes any files of length identical to 1375 bytes, which causes
+			the failure in our case
+			'''
+			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+			for f in files:
+				if os.path.getsize(os.path.join(output_dir,f)) == 1375:
+					logger.debug('detected empty avro and removing: %s' % f)
+					os.remove(os.path.join(output_dir,f))
+			###########################################################################
+			# end cyavro shim
+			###########################################################################
+
+			# open avro files as dataframe with cyavro and return
+			stime = time.time()
+			df = cyavro.read_avro_path_as_dataframe(output_dir)
+			logger.debug('cyavro read time: %s' % (time.time() - stime))
+			return df
+			
+
+
+		# HDFS
+		elif self.job_output.startswith('hdfs://'):
+			logger.debug('HDFS record counting not yet implemented')
+			return False
+
+		else:
+			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+
+
+	def update_record_count(self):
+
+		'''
+		count records from self.job_output, and update DB
+		'''
+		
+		# get dataframe
+		df = self.get_output_as_dataframe()
+
+		# count and save records to DB
+		self.record_count = df.count().record
+		self.save()
+
 
 class OAIEndpoint(models.Model):
 
@@ -189,34 +265,6 @@ class OAIEndpoint(models.Model):
 
 	def __str__(self):
 		return 'OAI endpoint: %s' % self.name
-
-
-class CombineUser(User):
-
-	'''
-	extend User model to provide some additional methods
-
-	TODO: handle edge cases where user has more than one active session
-	'''
-
-	class Meta:
-		proxy = True
-
-	def active_livy_session(self):
-
-		'''
-		Query DB, determine which Livy session is "active" for user, return instance of LivySession
-		'''
-		
-		active_livy_sessions = LivySession.objects.filter(user=self, active=True)
-
-		# if one found, return
-		if active_livy_sessions.count() == 1:
-			return active_livy_sessions.first()
-
-		# if none found, return False
-		if active_livy_sessions.count() == 0:
-			return False
 
 
 
@@ -241,38 +289,20 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 		logger.debug('Checking for pre-existing user sessions')
 
 		# get "active" user sessions
-		user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
-		logger.debug(user_sessions)
+		livy_sessions = LivySession.objects.filter(status__in=['starting','running','idle'])
+		logger.debug(livy_sessions)
 
 		# none found
-		if user_sessions.count() == 0:
-			logger.debug('no user sessions found, creating')
-			user_session = LivySession(user=user).save()
+		if livy_sessions.count() == 0:
+			logger.debug('no Livy sessions found, creating')
+			livy_session = LivySession().save()
 
 		# if sessions present
-		elif user_sessions.count() == 1:
-			logger.debug('single, active user session found, using')
+		elif livy_sessions.count() == 1:
+			logger.debug('single, active Livy session found, using')
 
-		elif user_sessions.count() > 1:
-			logger.debug('multiple user sessions found, sending to sessions page to select one')
-
-
-@receiver(signals.user_logged_out)
-def user_logout_handle_livy_sessions(sender, user, **kwargs):
-
-	'''
-	When user logs out, stop all user Livy sessions
-	'''
-
-	logger.debug('Checking for pre-existing user sessions to stop')
-
-	# get "active" user sessions
-	user_sessions = LivySession.objects.filter(user=user, status__in=['starting','running','idle'])
-	logger.debug(user_sessions)
-
-	# end session with Livy HttpClient
-	for user_session in user_sessions:
-			user_session.stop_session()
+		elif livy_sessions.count() > 1:
+			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
 @receiver(models.signals.pre_save, sender=LivySession)
@@ -296,11 +326,12 @@ def create_livy_session(sender, instance, **kwargs):
 		response = livy_response.json()
 		headers = livy_response.headers
 
-		instance.name = 'Livy Session for user %s, sessionId %s' % (instance.user.username, response['id'])
+		instance.name = 'Livy Session, sessionId %s' % (response['id'])
 		instance.session_id = int(response['id'])
 		instance.session_url = headers['Location']
 		instance.status = response['state']
 		instance.session_timestamp = headers['Date']
+		instance.active = True
 
 
 
@@ -499,18 +530,61 @@ class CombineJob(object):
 	def __init__(self, user):
 
 		self.user = user
-		self.user_session = self._get_active_user_session()
+		self.livy_session = self._get_active_livy_session()
 
 
-	def _get_active_user_session(self):
+	def _get_active_livy_session(self):
 
 		'''
-		method to determine active user session if present,
-		or create if does not exist
+		Method to determine active livy session if present, or create if does not exist
 		'''
 
-		combine_user = CombineUser.objects.filter(username=self.user.username).first()
-		return combine_user.active_livy_session()
+		# check for single, active livy session from LivyClient
+		livy_sessions = LivySession.objects.filter(active=True)
+
+		# if single session, confirm active or starting
+		if livy_sessions.count() == 1:
+			
+			livy_session = livy_sessions.first()
+			logger.debug('single livy session found, confirming running')
+			livy_session_status = LivyClient().session_status(livy_session.session_id)
+			
+			if livy_session_status.status_code == 200:
+				status = livy_session_status.json()['state']
+				if status in ['starting','idle','busy']:
+					# return livy session
+					return livy_session
+
+		# if none found, start and return
+		elif livy_sessions.count() == 0:
+			logger.debug('no active livy sessions found, starting one')
+			
+			# begin session
+			livy_session = LivySession()
+			livy_session.save()
+
+			# poll livy session state until idle
+			while True:
+
+				# update from Livy
+				livy_session.refresh_from_livy()
+				if livy_session.status in ['idle','busy']:
+					return livy_session
+
+				# livy_session_status = LivyClient().session_status(livy_session.session_id)
+				# if livy_session_status.status_code == 200:
+				# 	status = livy_session_status.json()['state']
+				# 	if status in ['idle','busy']:
+						
+				# 		# return livy session
+				# 		return livy_session
+
+				else:
+					time.sleep(3)
+
+		# if more than one found, for now, raise Exception as only expecting one
+		if livy_sessions.count() > 1:
+			raise Exception('more than one active Livy session found')
 
 
 	def get_job(self, job_id):
@@ -539,7 +613,7 @@ class CombineJob(object):
 		.count()' % {'harvest_path':self.job.job_output}}
 
 		# submit job
-		response = LivyClient().submit_job(self.user_session.session_id, job_code)
+		response = LivyClient().submit_job(self.livy_session.session_id, job_code)
 		logger.debug(response.json())
 		logger.debug(response.headers)
 
@@ -595,10 +669,11 @@ class HarvestJob(CombineJob):
 		'''
 		self.job = Job(
 			record_group = self.record_group,
+			user = self.user,
 			name = 'OAI Harvest',
 			spark_code = None,
 			job_id = None,
-			status = 'init',
+			status = 'initializing',
 			url = None,
 			headers = None,
 			job_input = 'oai',
@@ -615,7 +690,7 @@ class HarvestJob(CombineJob):
 
 		# construct harvest path
 		# harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
-		harvest_save_path = 'file:///Users/grahamhukill/data/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
+		harvest_save_path = '%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
@@ -641,7 +716,7 @@ class HarvestJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		submit = LivyClient().submit_job(self.user_session.session_id, job_code)
+		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
 		response = submit.json()
 		headers = submit.headers
 
@@ -653,20 +728,6 @@ class HarvestJob(CombineJob):
 		self.job.headers = headers
 		self.job.job_output = harvest_save_path
 		self.job.save()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
