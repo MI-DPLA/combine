@@ -3,11 +3,13 @@ from __future__ import unicode_literals
 
 # generic imports
 import hashlib
+import inspect
 import json
 import logging
 import os
 import requests
 import subprocess
+import textwrap
 import time
 
 # django imports
@@ -120,6 +122,28 @@ class LivySession(models.Model):
 
 		# update from Livy
 		self.refresh_from_livy()
+
+
+	@staticmethod
+	def get_active_session():
+
+		'''
+		Convenience method to return single active livy session,
+		or multiple if multiple exist
+		'''
+
+		active_livy_sessions = LivySession.objects.filter(active=True)
+
+		if active_livy_sessions.count() == 1:
+			return active_livy_sessions.first()
+
+		elif active_livy_sessions.count() == 0:
+			logger.debug('no active livy sessions found, returning False')
+			return False
+
+		elif active_livy_sessions.count() > 1:
+			logger.debug('multiple active livy sessions found, returning as list')
+			return active_livy_sessions
 
 
 
@@ -248,8 +272,6 @@ class Job(models.Model):
 			df = cyavro.read_avro_path_as_dataframe(output_dir)
 			logger.debug('cyavro read time: %s' % (time.time() - stime))
 			return df
-			
-
 
 		# HDFS
 		elif self.job_output.startswith('hdfs://'):
@@ -267,11 +289,18 @@ class Job(models.Model):
 		'''
 		
 		# get dataframe
-		df = self.get_output_as_dataframe()
+		try:
+			
+			df = self.get_output_as_dataframe()
 
-		# count and save records to DB
-		self.record_count = df.count().record
-		self.save()
+			# count and save records to DB
+			self.record_count = df.count().record
+			self.save()
+
+		except:
+			
+			logger.debug('could not load job output as dataframe')
+
 
 
 class OAIEndpoint(models.Model):
@@ -608,6 +637,23 @@ class CombineJob(object):
 			raise Exception('more than one active Livy session found')
 
 
+	def submit_job(self, job_code, job_output):
+
+		# submit job
+		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
+		response = submit.json()
+		headers = submit.headers
+
+		# update job in DB
+		self.job.spark_code = job_code
+		self.job.job_id = int(response['id'])
+		self.job.status = response['state']
+		self.job.url = headers['Location']
+		self.job.headers = headers
+		self.job.job_output = job_output
+		self.job.save()
+
+
 	def get_job(self, job_id):
 
 		'''
@@ -704,6 +750,22 @@ class HarvestJob(CombineJob):
 		self.job.save()
 
 
+	@staticmethod
+	def spark_function(endpoint, verb, metadataPrefix, scope_type, scope_value, harvest_save_path):
+
+		'''
+		use only double quotes for strings
+		'''
+
+		spark.read.format("dpla.ingestion3.harvesters.oai")\
+		.option("endpoint", endpoint)\
+		.option("verb", verb)\
+		.option("metadataPrefix", metadataPrefix)\
+		.option(scope_type, scope_value)\
+		.load()\
+		.write.format("com.databricks.spark.avro").save(harvest_save_path)
+
+
 	def start_job(self):
 
 		'''
@@ -719,14 +781,10 @@ class HarvestJob(CombineJob):
 		harvest_vars.update(self.overrides)
 
 		# prepare job code
-		job_code = {'code': 'spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", "%(endpoint)s")\
-		.option("verb", "%(verb)s")\
-		.option("metadataPrefix", "%(metadataPrefix)s")\
-		.option("%(scope_type)s", "%(scope_value)s")\
-		.load()\
-		.write.format("com.databricks.spark.avro").save("%(harvest_save_path)s")' % 
+		job_code = {
+			'code':'%(spark_function)s\nspark_function("%(endpoint)s","%(verb)s","%(metadataPrefix)s","%(scope_type)s","%(scope_value)s","%(harvest_save_path)s")' % 
 			{
+				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
 				'metadataPrefix':harvest_vars['metadataPrefix'],
@@ -738,18 +796,7 @@ class HarvestJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
-		response = submit.json()
-		headers = submit.headers
-
-		# update job in DB
-		self.job.spark_code = job_code
-		self.job.job_id = int(response['id'])
-		self.job.status = response['state']
-		self.job.url = headers['Location']
-		self.job.headers = headers
-		self.job.job_output = harvest_save_path
-		self.job.save()
+		self.submit_job(job_code, harvest_save_path)
 
 
 
