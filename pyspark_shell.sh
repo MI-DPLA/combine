@@ -1,0 +1,1 @@
+SPARK_HOME=/opt/spark $SPARK_HOME/bin/pyspark

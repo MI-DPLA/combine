@@ -103,5 +103,9 @@ ENV/
 # django
 *.sqlite3
 
+# metastore_db
+metastore_db
+metastore_db/
+
 # settings
 combine/localsettings.py
