@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import requests
+import shutil
 import subprocess
 import textwrap
 import time
@@ -201,6 +202,15 @@ class Job(models.Model):
 
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
+		
+		# if status_code 404, set as gone
+		if livy_response.status_code == 400:
+			
+			logger.debug(livy_response.json())
+			logger.debug('Livy session likely not active, setting status to gone')
+			self.status = 'gone'
+			# update
+			self.save()
 
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
@@ -230,6 +240,9 @@ class Job(models.Model):
 		else:
 			
 			logger.debug('error retrieving information about Livy job/statement')
+			logger.debug(livy_response.status_code)
+			logger.debug(livy_response.json())
+
 
 
 	def get_output_as_dataframe(self):
@@ -382,6 +395,18 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.status = response['state']
 		instance.session_timestamp = headers['Date']
 		instance.active = True
+
+
+@receiver(models.signals.pre_delete, sender=Job)
+def delete_job_output_pre_delete(sender, instance, **kwargs):
+
+	logger.debug('removing job_output for job id %s' % instance.id)
+
+	# if file://
+	if instance.job_output.startswith('file://'):
+
+		output_dir = instance.job_output.split('file://')[-1]
+		shutil.rmtree(output_dir)
 
 
 
@@ -751,19 +776,19 @@ class HarvestJob(CombineJob):
 
 
 	@staticmethod
-	def spark_function(endpoint, verb, metadataPrefix, scope_type, scope_value, harvest_save_path):
+	def spark_function(**kwargs):
 
 		'''
-		use only double quotes for strings
+		expecting kwargs from self.start_job()
 		'''
 
 		spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", endpoint)\
-		.option("verb", verb)\
-		.option("metadataPrefix", metadataPrefix)\
-		.option(scope_type, scope_value)\
+		.option("endpoint", kwargs['endpoint'])\
+		.option("verb", kwargs['verb'])\
+		.option("metadataPrefix", kwargs['metadataPrefix'])\
+		.option(kwargs['scope_type'], kwargs['scope_value'])\
 		.load()\
-		.write.format("com.databricks.spark.avro").save(harvest_save_path)
+		.write.format("com.databricks.spark.avro").save(kwargs['harvest_save_path'])
 
 
 	def start_job(self):
@@ -773,7 +798,6 @@ class HarvestJob(CombineJob):
 		'''
 
 		# construct harvest path
-		# harvest_save_path = '/user/combine/record_group/%s/jobs/harvest/%s' % (self.record_group.id, self.job.id)
 		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
@@ -782,7 +806,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function("%(endpoint)s","%(verb)s","%(metadataPrefix)s","%(scope_type)s","%(scope_value)s","%(harvest_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
 				'endpoint':harvest_vars['endpoint'],
@@ -797,6 +821,16 @@ class HarvestJob(CombineJob):
 
 		# submit job
 		self.submit_job(job_code, harvest_save_path)
+
+
+
+class TransformJob(CombineJob):
+	
+	'''
+	Apply an XSLT transformation to all records
+	'''
+
+	pass
 
 
 
