@@ -268,12 +268,14 @@ class Job(models.Model):
 			cyavro currently will fail on avro files written by ingestion3:
 			https://github.com/maxpoint/cyavro/issues/27
 
-			This shim removes any files of length identical to 1375 bytes, which causes
-			the failure in our case
+			This shim removes any files of length identical to known values.
+			These files represent "empty" avro files, in that they only contain the schema.
+			The file length varies slightly depending on what subset of the dataframe we 
+			write to disk.
 			'''
 			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
 			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) == 1375:
+				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
 					logger.debug('detected empty avro and removing: %s' % f)
 					os.remove(os.path.join(output_dir,f))
 			###########################################################################
@@ -307,7 +309,7 @@ class Job(models.Model):
 			df = self.get_output_as_dataframe()
 
 			# count and save records to DB
-			self.record_count = df.count().record
+			self.record_count = df.document.count()
 			self.save()
 
 		except:
@@ -782,6 +784,8 @@ class HarvestJob(CombineJob):
 	def spark_function(**kwargs):
 
 		'''
+		Harvest records, select non-null, and write to avro files
+
 		expecting kwargs from self.start_job()
 		'''
 
@@ -791,6 +795,7 @@ class HarvestJob(CombineJob):
 		.option("metadataPrefix", kwargs['metadataPrefix'])\
 		.option(kwargs['scope_type'], kwargs['scope_value'])\
 		.load()\
+		.select("record.*").where("record is not null")\
 		.write.format("com.databricks.spark.avro").save(kwargs['harvest_save_path'])
 
 
