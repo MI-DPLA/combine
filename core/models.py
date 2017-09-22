@@ -405,8 +405,11 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 	# if file://
 	if instance.job_output.startswith('file://'):
 
-		output_dir = instance.job_output.split('file://')[-1]
-		shutil.rmtree(output_dir)
+		try:
+			output_dir = instance.job_output.split('file://')[-1]
+			shutil.rmtree(output_dir)
+		except:
+			logger.debug('could not remove job output directory at: %s' % instance.job_output)
 
 
 
