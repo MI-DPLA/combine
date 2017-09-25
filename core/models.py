@@ -405,7 +405,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 	logger.debug('removing job_output for job id %s' % instance.id)
 
 	# if file://
-	if instance.job_output.startswith('file://'):
+	if instance.job_output and instance.job_output.startswith('file://'):
 
 		try:
 			output_dir = instance.job_output.split('file://')[-1]
@@ -788,15 +788,20 @@ class HarvestJob(CombineJob):
 
 		expecting kwargs from self.start_job()
 		'''
+		from pyspark import StorageLevel
 
-		spark.read.format("dpla.ingestion3.harvesters.oai")\
+		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
 		.option("metadataPrefix", kwargs['metadataPrefix'])\
 		.option(kwargs['scope_type'], kwargs['scope_value'])\
-		.load()\
-		.select("record.*").where("record is not null")\
-		.write.format("com.databricks.spark.avro").save(kwargs['harvest_save_path'])
+		.load()
+		
+		# select only records
+		records = df.select("record.*").where("record is not null")
+		
+		# write them to avro files
+		records.write.format("com.databricks.spark.avro").save(kwargs['harvest_save_path'])
 
 
 	def start_job(self):
