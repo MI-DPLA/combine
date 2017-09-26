@@ -788,8 +788,6 @@ class HarvestJob(CombineJob):
 
 		expecting kwargs from self.start_job()
 		'''
-		from pyspark import StorageLevel
-
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -840,7 +838,7 @@ class HarvestJob(CombineJob):
 class TransformJob(CombineJob):
 	
 	'''
-	Apply an XSLT transformation to all records
+	Apply an XSLT transformation to a record group
 	'''
 
 	pass

@@ -138,7 +138,7 @@ def organization(request, org_id):
 def record_group(request, record_group_id):
 
 	'''
-	View information about a single record group, including any and all jobs run for this group
+	View information about a single record group, including any and all jobs run
 
 	Args:
 		record_group_id (str/int): PK for RecordGroup table
@@ -163,7 +163,6 @@ def record_group(request, record_group_id):
 			job.refresh_from_livy()
 
 		# udpate record count if not already calculated
-		# check record_count is 0
 		if job.record_count == 0:
 
 			# if finished, count
