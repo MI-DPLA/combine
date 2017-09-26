@@ -841,7 +841,88 @@ class TransformJob(CombineJob):
 	Apply an XSLT transformation to a record group
 	'''
 
-	pass
+	def __init__(self, user, record_group, input_job):
+
+		# perform CombineJob initialization
+		super().__init__(user=user)
+
+		self.record_group = record_group
+		self.organization = self.record_group.organization
+		self.input_job = input_job
+
+		# create Job entry in DB
+		self.job = Job(
+			record_group = self.record_group,
+			user = self.user,
+			name = 'Transform',
+			spark_code = None,
+			job_id = None,
+			status = 'initializing',
+			url = None,
+			headers = None,
+			job_input = self.input_job,
+			job_output = None
+		)
+		self.job.save()
+
+
+	@staticmethod
+	def spark_function(**kwargs):
+
+		# import etree
+		from lxml import etree
+
+		# read output from input_job
+		df = spark.read.format('com.databricks.spark.avro').load('file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/2')
+
+		# import etree
+		# from lxml import etree
+
+		# define function for transformation
+		def transform_xml(xml, xslt):
+			xslt_root = etree.fromstring(xslt)
+			transform = etree.XSLT(xslt_root)
+			xml_root = etree.fromstring(xml)
+			mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
+			result_tree = transform(mods_root)
+			result = etree.tostring(result_tree)
+			return result
+
+		# get string of xslt
+		with open('/home/combine/data/combine/xslt/WSUDOR_mods_to_DPLA_mods.xsl','r') as f:
+			xslt = f.read().encode('utf-8')
+
+		# transform via rdd.map
+		transformed = df.rdd.map(lambda row: transform_xml(row.document,xslt))
+
+		# write them to avro files
+		'''
+		This nearly works - but need to convert to another format for writing the avro files out
+		'''
+		transformed.write.format("com.databricks.spark.avro").save(kwargs['transform_save_path'])
+
+
+	def start_job(self):
+
+		'''
+		Construct python code that will be sent to Livy for harvest job
+		'''
+
+		# construct harvest path
+		transform_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
+		# prepare job code
+		job_code = {
+			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s")' % 
+			{
+				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
+				'transform_save_path':transform_save_path
+			}
+		}
+		logger.debug(job_code)
+
+		# submit job
+		self.submit_job(job_code, transform_save_path)
 
 
 
