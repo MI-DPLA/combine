@@ -191,6 +191,7 @@ class Job(models.Model):
 	job_output = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
+	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
@@ -330,6 +331,17 @@ class OAIEndpoint(models.Model):
 
 	def __str__(self):
 		return 'OAI endpoint: %s' % self.name
+
+
+class Transformation(models.Model):
+
+	name = models.CharField(max_length=255)
+	payload = models.TextField()
+	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
+	
+
+	def __str__(self):
+		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
 
 
@@ -841,7 +853,7 @@ class TransformJob(CombineJob):
 	Apply an XSLT transformation to a record group
 	'''
 
-	def __init__(self, user, record_group, input_job):
+	def __init__(self, user, record_group, input_job, transformation):
 
 		# perform CombineJob initialization
 		super().__init__(user=user)
@@ -849,6 +861,7 @@ class TransformJob(CombineJob):
 		self.record_group = record_group
 		self.organization = self.record_group.organization
 		self.input_job = input_job
+		self.transformation = transformation
 
 		# create Job entry in DB
 		self.job = Job(
@@ -861,7 +874,15 @@ class TransformJob(CombineJob):
 			url = None,
 			headers = None,
 			job_input = self.input_job,
-			job_output = None
+			job_output = None,
+			job_details = json.dumps(
+				{'transformation':
+					{
+						'name':self.transformation.name,
+						'type':self.transformation.transformation_type,
+						'id':self.transformation.id
+					}
+				})
 		)
 		self.job.save()
 

@@ -260,10 +260,13 @@ def job_transform(request, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		jobs = models.Job.objects.all()		
+		jobs = models.Job.objects.all()	
+
+		# get all transformation scenarios
+		transformations = models.Transformation.objects.all()	
 
 		# render page
-		return render(request, 'core/job_transform.html', {'record_group':record_group, 'jobs':jobs})
+		return render(request, 'core/job_transform.html', {'record_group':record_group, 'jobs':jobs, 'transformations':transformations})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -277,8 +280,12 @@ def job_transform(request, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('using job as input: %s' % input_job)
 
+		# retrieve transformation
+		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
+		logger.debug('using transformation: %s' % transformation)
+
 		# initiate job
-		job = models.TransformJob(request.user, record_group, input_job)
+		job = models.TransformJob(request.user, record_group, input_job, transformation)
 		
 		# start job
 		job.start_job()

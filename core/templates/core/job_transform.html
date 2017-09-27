@@ -11,7 +11,13 @@
 		<!-- Job Select -->
 		{% include 'core/job_input_select.html' %}
 
-		<p>Select transformation scenario (coming...):
+		<p>Select Transformation Scenario to use:
+			<select name="transformation_id">
+				<option value="">Select a Transformation...</option>
+				{% for transformation in transformations %}
+					<option value="{{ transformation.id }}">{{ transformation.name }} / {{ transformation.transformation_type }}</option>	
+				{% endfor %}
+			</select>
 		<p>
 		
 		<p>
