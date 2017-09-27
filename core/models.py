@@ -195,7 +195,7 @@ class Job(models.Model):
 
 
 	def __str__(self):
-		return '%s, from Record Group: %s' % (self.name, self.record_group.name)
+		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
 
 
 	def refresh_from_livy(self):
@@ -874,7 +874,7 @@ class TransformJob(CombineJob):
 		from pyspark.sql import Row
 
 		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load('file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/1')
+		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
 		# get string of xslt
 		with open('/home/combine/data/combine/xslt/WSUDOR_mods_to_DPLA_mods.xsl','r') as f:
@@ -908,9 +908,10 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
+				'job_input':self.input_job.job_output,
 				'transform_save_path':transform_save_path
 			}
 		}
