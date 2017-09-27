@@ -46,7 +46,7 @@
 		<p>
 			<ul>
 				<li><a href="{% url 'job_harvest' record_group_id=record_group.id %}">Harvest</a></li>
-				<li><a href="#">Transform</a></li>
+				<li><a href="{% url 'job_transform' record_group_id=record_group.id %}">Transform</a></li>
 				<li><a href="#">Map and Index to ElasticSearch</a></li>
 				<li><a href="#">Publish</a></li>
 			</ul>

@@ -193,6 +193,17 @@ def job_delete(request, record_group_id, job_id):
 
 
 @login_required
+def job_input_select(request):
+	
+	logger.debug('loading job selection view')
+
+	jobs = models.Job.objects.all()
+	
+	# redirect
+	return render(request, 'core/job_input_select.html', {'jobs':jobs})
+
+
+@login_required
 def job_harvest(request, record_group_id):
 
 	'''
@@ -214,7 +225,7 @@ def job_harvest(request, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beggining harvest for Record Group: %s' % record_group.name)
+		logger.debug('beginning harvest for Record Group: %s' % record_group.name)
 
 		# debug form
 		logger.debug(request.POST)
@@ -233,6 +244,47 @@ def job_harvest(request, record_group_id):
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)
+
+
+@login_required
+def job_transform(request, record_group_id):
+
+	'''
+	Create a new Transform Job
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# retrieve all jobs
+		jobs = models.Job.objects.all()		
+
+		# render page
+		return render(request, 'core/job_transform.html', {'record_group':record_group, 'jobs':jobs})
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('beginning transform for Record Group: %s' % record_group.name)
+
+		# debug form
+		logger.debug(request.POST)
+
+		# retrieve input job
+		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
+		logger.debug('using job as input: %s' % input_job)
+
+		# initiate job
+		job = models.TransformJob(request.user, record_group, input_job)
+		
+		# start job
+		job.start_job()
+
+		return redirect('record_group', record_group_id=record_group.id)
+
 
 
 ##################################

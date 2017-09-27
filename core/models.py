@@ -187,7 +187,7 @@ class Job(models.Model):
 	url = models.CharField(max_length=255, null=True)
 	headers = models.CharField(max_length=255, null=True)
 	response = models.CharField(max_length=32000, null=True, default=None)
-	job_input = models.CharField(max_length=255, null=True)
+	job_input = models.ForeignKey("Job", null=True, default=None)
 	job_output = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
@@ -774,7 +774,7 @@ class HarvestJob(CombineJob):
 			status = 'initializing',
 			url = None,
 			headers = None,
-			job_input = 'oai',
+			job_input = None,
 			job_output = None
 		)
 		self.job.save()

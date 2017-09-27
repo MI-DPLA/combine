@@ -1,0 +1,23 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Transform Job for Record Group: {{ record_group.name }}</h3>
+
+	<form method="POST" action="{% url 'job_harvest' record_group_id=record_group.id %}">
+
+		{% csrf_token %}
+
+		<!-- Job Select -->
+		{% include 'core/job_input_select.html' %}
+
+		<p>Select transformation scenario (coming...):
+		<p>
+		
+		<p>
+			<input type="submit" value="Transform"/>
+		</p>
+
+	</form>
+
+{% endblock %}

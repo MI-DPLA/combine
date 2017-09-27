@@ -5,7 +5,9 @@
 	<h3>Harvest Job for Record Group: {{ record_group.name }}</h3>
 
 	<form method="POST" action="{% url 'job_harvest' record_group_id=record_group.id %}">
+
 		{% csrf_token %}
+		
 		<p>Select OAI endpoint to use:
 			<select name="oai_endpoint_id">
 				<option value="">Select an oai endpoint...</option>

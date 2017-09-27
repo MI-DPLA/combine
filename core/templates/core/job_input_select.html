@@ -1,0 +1,38 @@
+{% block content %}
+
+	<p>Select Job as Input:
+		<div>
+			<table border="1" cellpadding="5">
+				<tr>
+					<th>Associated Record Group</th>
+					<th>Job ID</th>
+					<th>Name</th>
+					<th>Status</th>
+					<th>Finished</th>
+					<th>Input</th>
+					<th>Output</th>
+					<th>Record Count</th>
+					<th>actions</th>
+				</tr>
+				{% for job in jobs %}
+					<tr>
+						<td><a href="{% url 'record_group' record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
+						<td>{{ job.id }}</td>
+						<td>{{ job.name }}</td>
+						<td>{{ job.status }}</td>
+						<td>{{ job.finished }}</td>
+						<td>{{ job.job_input }}</td>
+						{% if 'hdfs://' in job.job_output %}
+							<td><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+						{% else %}
+							<td>{{ job.job_output }}</td>
+						{% endif %}
+						<td>{{ job.record_count }}</td>
+						<td><input type="radio" name="input_job_id" value="{{ job.id }}"></td>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+	</p>
+
+{% endblock %}
