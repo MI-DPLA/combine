@@ -869,14 +869,16 @@ class TransformJob(CombineJob):
 	@staticmethod
 	def spark_function(**kwargs):
 
-		# import etree
+		# imports
 		from lxml import etree
+		from pyspark.sql import Row
 
 		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load('file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/2')
+		df = spark.read.format('com.databricks.spark.avro').load('file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/1')
 
-		# import etree
-		# from lxml import etree
+		# get string of xslt
+		with open('/home/combine/data/combine/xslt/WSUDOR_mods_to_DPLA_mods.xsl','r') as f:
+			xslt = f.read().encode('utf-8')
 
 		# define function for transformation
 		def transform_xml(xml, xslt):
@@ -886,20 +888,13 @@ class TransformJob(CombineJob):
 			mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
 			result_tree = transform(mods_root)
 			result = etree.tostring(result_tree)
-			return result
-
-		# get string of xslt
-		with open('/home/combine/data/combine/xslt/WSUDOR_mods_to_DPLA_mods.xsl','r') as f:
-			xslt = f.read().encode('utf-8')
+			return Row(document=result.decode('utf-8'))
 
 		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.document,xslt))
+		transformed = df.rdd.map(lambda row: transform_xml(row.document, xslt))
 
 		# write them to avro files
-		'''
-		This nearly works - but need to convert to another format for writing the avro files out
-		'''
-		transformed.write.format("com.databricks.spark.avro").save(kwargs['transform_save_path'])
+		transformed.toDF().write.format("com.databricks.spark.avro").save(kwargs['transform_save_path'])
 
 
 	def start_job(self):
