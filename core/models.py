@@ -354,11 +354,6 @@ class Transformation(models.Model):
 
 
 
-class Record(object):
-
-	pass
-
-
 ##################################
 # Signals Handlers
 ##################################
