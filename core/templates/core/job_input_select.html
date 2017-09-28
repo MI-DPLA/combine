@@ -21,7 +21,7 @@
 						<td>{{ job.name }}</td>
 						<td>{{ job.status }}</td>
 						<td>{{ job.finished }}</td>
-						<td>{{ job.job_input }}</td>
+						<td>{% for input_job in job.jobinput_set.all %}<a href="{{ input_job.input_job }}">{{ input_job.input_job }}</a>{% endfor %}</td>
 						{% if 'hdfs://' in job.job_output %}
 							<td><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
 						{% else %}

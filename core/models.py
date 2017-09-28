@@ -186,9 +186,8 @@ class Job(models.Model):
 	finished = models.BooleanField(default=0)
 	url = models.CharField(max_length=255, null=True)
 	headers = models.CharField(max_length=255, null=True)
-	response = models.CharField(max_length=32000, null=True, default=None)
-	# job_input = models.ForeignKey("Job", null=True, default=None)
-	# job_output = models.CharField(max_length=255, null=True)
+	response = models.TextField(null=True, default=None)
+	job_output = models.TextField(null=True, default=None)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
@@ -243,7 +242,6 @@ class Job(models.Model):
 			logger.debug('error retrieving information about Livy job/statement')
 			logger.debug(livy_response.status_code)
 			logger.debug(livy_response.json())
-
 
 
 	def get_output_as_dataframe(self):
@@ -330,17 +328,6 @@ class JobInput(models.Model):
 
 
 
-class JobOutput(models.Model):
-
-	'''
-	Provides a one-to-many relationship for a job and potential multiple outputs
-	'''
-
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	output = models.TextField(null=True, default=None)
-
-
-
 class OAIEndpoint(models.Model):
 
 	name = models.CharField(max_length=255)
@@ -365,6 +352,11 @@ class Transformation(models.Model):
 	def __str__(self):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
+
+
+class Record(object):
+
+	pass
 
 
 ##################################
@@ -685,14 +677,6 @@ class CombineJob(object):
 				if livy_session.status in ['idle','busy']:
 					return livy_session
 
-				# livy_session_status = LivyClient().session_status(livy_session.session_id)
-				# if livy_session_status.status_code == 200:
-				# 	status = livy_session_status.json()['state']
-				# 	if status in ['idle','busy']:
-						
-				# 		# return livy session
-				# 		return livy_session
-
 				else:
 					time.sleep(3)
 
@@ -714,14 +698,15 @@ class CombineJob(object):
 		self.job.status = response['state']
 		self.job.url = headers['Location']
 		self.job.headers = headers
+		self.job.job_output = job_output
 		self.job.save()
 
-		# save job_output to JobOutput instance
-		job_output_instance = JobOutput(
-			job=self.job,
-			output=job_output
-		)
-		job_output_instance.save()
+		# # save job_output to JobOutput instance
+		# job_output_instance = JobOutput(
+		# 	job=self.job,
+		# 	output=job_output
+		# )
+		# job_output_instance.save()
 
 
 	def get_job(self, job_id):
@@ -814,7 +799,6 @@ class HarvestJob(CombineJob):
 			status = 'initializing',
 			url = None,
 			headers = None,
-			job_input = None,
 			job_output = None
 		)
 		self.job.save()
@@ -901,7 +885,6 @@ class TransformJob(CombineJob):
 			status = 'initializing',
 			url = None,
 			headers = None,
-			job_input = self.input_job,
 			job_output = None,
 			job_details = json.dumps(
 				{'transformation':
@@ -913,6 +896,10 @@ class TransformJob(CombineJob):
 				})
 		)
 		self.job.save()
+
+		# save input job to JobInput table
+		job_input_instance = JobInput(job=self.job, input_job=input_job)
+		job_input_instance.save()
 
 
 	@staticmethod
@@ -930,17 +917,32 @@ class TransformJob(CombineJob):
 			xslt = f.read().encode('utf-8')
 
 		# define function for transformation
-		def transform_xml(xml, xslt):
-			xslt_root = etree.fromstring(xslt)
-			transform = etree.XSLT(xslt_root)
-			xml_root = etree.fromstring(xml)
-			mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-			result_tree = transform(mods_root)
-			result = etree.tostring(result_tree)
-			return Row(document=result.decode('utf-8'))
+		def transform_xml(record_id, xml, xslt):
+
+			# attempt transformation and save out put to 'document'
+			try:
+				xslt_root = etree.fromstring(xslt)
+				transform = etree.XSLT(xslt_root)
+				xml_root = etree.fromstring(xml)
+				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
+				result_tree = transform(mods_root)
+				result = etree.tostring(result_tree)
+				return Row(
+					id=record_id,
+					document=result.decode('utf-8'),
+					error=''
+				)
+
+			# catch transformation exception and save exception to 'error'
+			except Exception as e:
+				return Row(
+					id=record_id,
+					document='',
+					error=str(e)
+				)
 
 		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.document, xslt))
+		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
 
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(kwargs['transform_save_path'])
