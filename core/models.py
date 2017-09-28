@@ -187,8 +187,8 @@ class Job(models.Model):
 	url = models.CharField(max_length=255, null=True)
 	headers = models.CharField(max_length=255, null=True)
 	response = models.CharField(max_length=32000, null=True, default=None)
-	job_input = models.ForeignKey("Job", null=True, default=None)
-	job_output = models.CharField(max_length=255, null=True)
+	# job_input = models.ForeignKey("Job", null=True, default=None)
+	# job_output = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
@@ -316,6 +316,28 @@ class Job(models.Model):
 		except:
 			
 			logger.debug('could not load job output as dataframe')
+
+
+
+class JobInput(models.Model):
+
+	'''
+	Provides a one-to-many relationship for a job and potential multiple input jobs
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	input_job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='input_job')
+
+
+
+class JobOutput(models.Model):
+
+	'''
+	Provides a one-to-many relationship for a job and potential multiple outputs
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	output = models.TextField(null=True, default=None)
 
 
 
@@ -692,8 +714,14 @@ class CombineJob(object):
 		self.job.status = response['state']
 		self.job.url = headers['Location']
 		self.job.headers = headers
-		self.job.job_output = job_output
 		self.job.save()
+
+		# save job_output to JobOutput instance
+		job_output_instance = JobOutput(
+			job=self.job,
+			output=job_output
+		)
+		job_output_instance.save()
 
 
 	def get_job(self, job_id):
