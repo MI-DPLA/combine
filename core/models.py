@@ -6,12 +6,14 @@ import hashlib
 import inspect
 import json
 import logging
+from lxml import etree
 import os
 import requests
 import shutil
 import subprocess
 import textwrap
 import time
+import xmltodict
 
 # django imports
 from django.apps import AppConfig
@@ -178,6 +180,7 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+	# job_type = models.CharField(max_length=128, null=True) # consider adding?
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
@@ -351,6 +354,47 @@ class Transformation(models.Model):
 
 	def __str__(self):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
+
+
+class Record(object):
+
+	def __init__(self, df_row):
+
+		self.df_row = df_row
+		
+		# attempt to pin id
+		if hasattr(self.df_row,'id'):
+			self.id = self.df_row.id
+		
+		# attempt to pin document
+		if hasattr(self.df_row,'document'):
+			self.document = self.df_row.document
+
+
+	def flatten_document_for_es(self):
+
+		'''
+		for time being, assuming MODS
+		'''
+
+		# flatten MODS
+		xsl_file = open('/home/combine/data/combine/xslt/MODS_extract.xsl','r')
+		xslt_tree = etree.parse(xsl_file)
+		transform = etree.XSLT(xslt_tree)
+		xml_root = etree.fromstring(self.document)
+		flat_xml = transform(xml_root)
+
+		# convert to dictionary
+		flat_dict = xmltodict.parse(flat_xml)
+		
+		# prepare as ES-friendly JSON
+		fields = flat_dict['fields']['field']
+		es_json = { field['@name']:field['#text'] for field in fields }
+
+		# return
+		return es_json
+
+
 
 
 
@@ -628,10 +672,21 @@ class LivyClient(object):
 class CombineJob(object):
 
 
-	def __init__(self, user):
+	def __init__(self, user=None, job_id=None):
 
 		self.user = user
 		self.livy_session = self._get_active_livy_session()
+		self.df = None
+		self.job_id = job_id
+
+		# if job_id provided, attempt to retrieve and parse output
+		if self.job_id:
+
+			# retrieve job
+			self.get_job(self.job_id)
+
+			# parse output as dataframe
+			self.df = self.job.get_output_as_dataframe()
 
 
 	def _get_active_livy_session(self):
@@ -648,36 +703,40 @@ class CombineJob(object):
 			
 			livy_session = livy_sessions.first()
 			logger.debug('single livy session found, confirming running')
-			livy_session_status = LivyClient().session_status(livy_session.session_id)
+
+			try:
+				livy_session_status = LivyClient().session_status(livy_session.session_id)
+				if livy_session_status.status_code == 200:
+					status = livy_session_status.json()['state']
+					if status in ['starting','idle','busy']:
+						# return livy session
+						return livy_session
+					
+			except:
+				logger.debug('could not confirm session status')
+
+		# # if none found, start and return
+		# elif livy_sessions.count() == 0:
+		# 	logger.debug('no active livy sessions found, starting one')
 			
-			if livy_session_status.status_code == 200:
-				status = livy_session_status.json()['state']
-				if status in ['starting','idle','busy']:
-					# return livy session
-					return livy_session
+		# 	# begin session
+		# 	livy_session = LivySession()
+		# 	livy_session.save()
 
-		# if none found, start and return
-		elif livy_sessions.count() == 0:
-			logger.debug('no active livy sessions found, starting one')
-			
-			# begin session
-			livy_session = LivySession()
-			livy_session.save()
+		# 	# poll livy session state until idle
+		# 	while True:
 
-			# poll livy session state until idle
-			while True:
+		# 		# update from Livy
+		# 		livy_session.refresh_from_livy()
+		# 		if livy_session.status in ['idle','busy']:
+		# 			return livy_session
 
-				# update from Livy
-				livy_session.refresh_from_livy()
-				if livy_session.status in ['idle','busy']:
-					return livy_session
+		# 		else:
+		# 			time.sleep(3)
 
-				else:
-					time.sleep(3)
-
-		# if more than one found, for now, raise Exception as only expecting one
-		if livy_sessions.count() > 1:
-			raise Exception('more than one active Livy session found')
+		# # if more than one found, for now, raise Exception as only expecting one
+		# if livy_sessions.count() > 1:
+		# 	raise Exception('more than one active Livy session found')
 
 
 	def submit_job(self, job_code, job_output):
@@ -696,13 +755,6 @@ class CombineJob(object):
 		self.job.job_output = job_output
 		self.job.save()
 
-		# # save job_output to JobOutput instance
-		# job_output_instance = JobOutput(
-		# 	job=self.job,
-		# 	output=job_output
-		# )
-		# job_output_instance.save()
-
 
 	def get_job(self, job_id):
 
@@ -719,32 +771,35 @@ class CombineJob(object):
 	def count_records(self):
 
 		'''
-		For job pinned to this CombineJob instance,
-		count records from self.job_output (HDFS location of avro files)
+		Use methods from models.Job
 		'''
 
-		# prepare code
-		job_code = {'code': 'spark.read.format("com.databricks.spark.avro")\
-		.load("%(harvest_path)s")\
-		.select("record.*").where("record is not null")\
-		.count()' % {'harvest_path':self.job.job_output}}
+		if not self.df:
+			self.df = self.job.get_output_as_dataframe()
 
-		# submit job
-		response = LivyClient().submit_job(self.livy_session.session_id, job_code)
-		logger.debug(response.json())
-		logger.debug(response.headers)
-
-		# poll until complete
-		while True:
-			count_check = LivyClient().http_request('GET', response.headers['Location'])
-			if count_check.json()['state'] == 'available':
-				record_count = int(count_check.json()['output']['data']['text/plain'])
-				logger.debug('record count complete: %s' % record_count)
-				return record_count
-			else:
-				time.sleep(.25)
+		return self.df.count()
 
 
+	def get_record(self, id):
+
+		'''
+		Convenience method to return single record from job
+		'''
+
+		if not self.df:
+			self.df = self.job.get_output_as_dataframe()
+
+		records = self.df.loc[self.df['id'] == id]
+
+		# if only one found
+		if len(records) == 1:
+			return records.iloc[0]
+
+		# else, return all results
+		else:
+			return records
+
+	
 
 class HarvestJob(CombineJob):
 
