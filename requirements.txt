@@ -5,6 +5,7 @@ chardet==3.0.4
 decorator==4.1.2
 Django==1.11.4
 django-extensions==1.9.0
+elasticsearch==5.4.0
 enum34==1.1.6
 idna==2.6
 ipython==6.1.0
@@ -28,3 +29,4 @@ six==1.10.0
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
+xmltodict

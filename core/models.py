@@ -33,6 +33,9 @@ import cyavro
 # impot pandas
 import pandas as pd
 
+# import elasticsearch
+from elasticsearch import Elasticsearch
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -378,7 +381,7 @@ class Record(object):
 		'''
 
 		# flatten MODS
-		xsl_file = open('/home/combine/data/combine/xslt/MODS_extract.xsl','r')
+		xsl_file = open('/opt/combine/inc/xslt/MODS_extract.xsl','r')
 		xslt_tree = etree.parse(xsl_file)
 		transform = etree.XSLT(xslt_tree)
 		xml_root = etree.fromstring(self.document)
@@ -393,7 +396,6 @@ class Record(object):
 
 		# return
 		return es_json
-
 
 
 
@@ -799,7 +801,32 @@ class CombineJob(object):
 		else:
 			return records
 
-	
+
+	def index_job_to_es(self):
+
+		'''
+		TODO:
+			- consider moving to psark
+			- get doctype from job type
+		'''
+
+		# setup connection to Elasticsearch (MOVE THIS)
+		es = Elasticsearch(hosts=['192.168.45.10'])
+
+		# create index, ignore error if exists
+		index_name = 'j%s' % self.job.id
+		es.indices.create(index=index_name, ignore=400)
+
+		# loop through rows in dataframe and index to es
+		for row in self.df.iterrows():
+
+			try:
+				record = Record(row[1])
+				es.index(index=index_name, doc_type='transform', id=record.id, body=record.flatten_document_for_es())
+			except:
+				logger.debug('Could not index record: %s' % record.id)
+
+
 
 class HarvestJob(CombineJob):
 
