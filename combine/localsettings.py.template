@@ -14,8 +14,13 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     'jars':[]
     }
 
+
 # Avro file storage
 '''
 Make sure to note file:// or hdfs:// prefix
 '''
 AVRO_STORAGE = 'file:///home/combine/data/combine'
+
+
+# ElasicSearch
+ES_HOST = '192.168.45.10'
