@@ -33,8 +33,9 @@ import cyavro
 # impot pandas
 import pandas as pd
 
-# import elasticsearch
-from elasticsearch import Elasticsearch
+# import elasticsearch and handles
+from core.es import es_handle
+from elasticsearch_dsl import Search, A, Q
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -810,21 +811,69 @@ class CombineJob(object):
 			- get doctype from job type
 		'''
 
-		# setup connection to Elasticsearch (MOVE THIS)
-		es = Elasticsearch(hosts=['192.168.45.10'])
-
 		# create index, ignore error if exists
 		index_name = 'j%s' % self.job.id
-		es.indices.create(index=index_name, ignore=400)
+		es_handle.indices.create(index=index_name, ignore=400)
 
 		# loop through rows in dataframe and index to es
 		for row in self.df.iterrows():
 
 			try:
 				record = Record(row[1])
-				es.index(index=index_name, doc_type='transform', id=record.id, body=record.flatten_document_for_es())
+				es_handle.index(index=index_name, doc_type='record', id=record.id, body=record.flatten_document_for_es())
+
 			except:
 				logger.debug('Could not index record: %s' % record.id)
+
+
+	def count_indexed_fields(self, doc_type='transform'):
+
+		'''
+		1) retrieve mappings
+		2) loop through mappings and add as agg buckets for a single query, returning exists counts
+
+		TODO: re-index jobs, and remove 'doc_type' arg?
+		'''
+
+		# get mappings for job index
+		es_r = es_handle.indices.get(index='j%s' % self.job_id)
+		index_mappings = es_r['j%s' % self.job_id]['mappings'][doc_type]['properties']
+
+		# init search
+		s = Search(using=es_handle, index='j%s' % self.job_id)
+
+		# return no results, only aggs
+		s = s[0]
+
+		# add agg buckets for each field to count number of instances
+		for field_name in index_mappings:
+			s.aggs.bucket(field_name, A('filter', Q('exists', field=field_name)))
+
+		# execute search and capture as dictionary
+		sr = s.execute()
+		sr_dict = sr.to_dict()
+
+		# calc fields percentage and return as list
+		field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),2)} for field in sr_dict['aggregations'] ]
+
+		# return
+		return field_count
+
+
+	def field_analysis(self, field_name):
+
+		# init search
+		s = Search(using=es_handle, index='j%s' % self.job_id)
+
+		# add agg bucket for field values
+		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=250))
+
+		# return zero
+		s = s[0]
+
+		# execute and return aggs
+		sr = s.execute()
+		return sr.aggs[field_name]['buckets']
 
 
 

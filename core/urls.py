@@ -18,13 +18,17 @@ urlpatterns = [
 	# Record Groups
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 
-	# Jobs General
-	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
-
 	# Record Group Jobs
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/details$', views.job_details, name='job_details'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/harvest/new$', views.job_harvest, name='job_harvest'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/transform/new$', views.job_transform, name='job_transform'),
+
+	# Record Group Job Analysis
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/analysis/fields$', views.field_analysis, name='field_analysis'),
+
+	# Jobs General
+	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

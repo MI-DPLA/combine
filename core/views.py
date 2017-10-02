@@ -9,9 +9,13 @@ from django.shortcuts import render, redirect
 
 # import models
 from core import models
+from core.es import es_handle
 
 # import cyavro
 import cyavro
+
+# elasticsearch-dsl
+from elasticsearch_dsl import Search, Q, A
 
 import json
 import logging
@@ -193,13 +197,28 @@ def job_delete(request, record_group_id, job_id):
 
 
 @login_required
+def job_details(request, record_group_id, job_id):
+	
+	logger.debug('details for job id: %s' % job_id)
+
+	# get CombineJob
+	cjob = models.CombineJob(job_id=job_id)
+
+	# field analysis
+	field_counts = cjob.count_indexed_fields()
+	
+	# return
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts})
+
+
+@login_required
 def job_input_select(request):
 	
 	logger.debug('loading job selection view')
 
 	jobs = models.Job.objects.all()
 	
-	# redirect
+	# return
 	return render(request, 'core/job_input_select.html', {'jobs':jobs})
 
 
@@ -291,6 +310,28 @@ def job_transform(request, record_group_id):
 		job.start_job()
 
 		return redirect('record_group', record_group_id=record_group.id)
+
+
+##################################
+# Jobs QA
+##################################
+@login_required
+def field_analysis(request, record_group_id, job_id):
+
+	# get field name
+	field_name = request.GET.get('field_name')
+	logger.debug('field analysis for field "%s", job id: %s' % (field_name, job_id))
+	
+	# get CombineJob
+	cjob = models.CombineJob(job_id=job_id)
+
+	# get analysif for field
+	field_analysis_results = cjob.field_analysis(field_name)
+
+	# return
+	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results})
+
+
 
 
 

@@ -1,0 +1,30 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Job Details: {{ cjob.job.name }}</h3>
+
+	<ul>
+		<li><strong>Record Count:</strong> {{ cjob.job.record_count }}</li>
+	</ul>
+
+	<h4>Field Breakdown</h4>
+
+	<table border="1" cellpadding="5">
+
+		<tr>
+			<th>Field Name</th>
+			<th>Count of Field in Records</th>
+			<th>Percentage of Total Records</th>
+		</tr>
+
+		{% for field in field_counts %}
+			<tr>
+				<td><a href="{% url 'field_analysis' record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}">{{ field.field_name }}</a></td>
+				<td>{{ field.count }}</td>
+				<td>{{ field.percentage }}</td>
+			</tr>
+		{% endfor %}
+	</table>
+
+{% endblock %}

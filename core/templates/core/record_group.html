@@ -35,7 +35,7 @@
 						<td>{{ job.job_output }}</td>
 					{% endif %}
 					<td>{{ job.record_count }}</td>
-					<td><a href="{% url 'job_delete' record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
+					<td><a href="{% url 'job_details' record_group_id=record_group.id job_id=job.id %}">Details</a> / <a href="{% url 'job_delete' record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
 				</tr>
 			{% endfor %}
 		</table>
