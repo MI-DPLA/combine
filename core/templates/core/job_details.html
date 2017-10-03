@@ -5,7 +5,8 @@
 	<h3>Job Details: {{ cjob.job.name }}</h3>
 
 	<ul>
-		<li><strong>Record Count:</strong> {{ cjob.job.record_count }}</li>
+		<li><strong>Job Record Count:</strong> {{ cjob.job.record_count }}</li>
+		<li><strong>Indexed Record Count:</strong> {{ field_counts.total_docs }}</li>		
 	</ul>
 
 	<h4>Field Breakdown</h4>
@@ -14,11 +15,11 @@
 
 		<tr>
 			<th>Field Name</th>
-			<th>Count of Field in Records</th>
-			<th>Percentage of Total Records</th>
+			<th>Count of Field in Indexed Records</th>
+			<th>Percentage of Indexed Records</th>
 		</tr>
 
-		{% for field in field_counts %}
+		{% for field in field_counts.fields %}
 			<tr>
 				<td><a href="{% url 'field_analysis' record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}">{{ field.field_name }}</a></td>
 				<td>{{ field.count }}</td>

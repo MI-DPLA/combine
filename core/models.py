@@ -470,8 +470,16 @@ def create_livy_session(sender, instance, **kwargs):
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
+
+	'''
+	When jobs are removed, a fair amount of clean up is involved:
+		- remove avro files from disk
+		- delete ES index if created
+	'''
+
 	logger.debug('removing job_output for job id %s' % instance.id)
 
+	# remove avro files from disk
 	# if file://
 	if instance.job_output and instance.job_output.startswith('file://'):
 
@@ -480,6 +488,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			shutil.rmtree(output_dir)
 		except:
 			logger.debug('could not remove job output directory at: %s' % instance.job_output)
+
+
+	# remove ES index if exists
+	if es_handle.indices.exists('j%s' % instance.id):
+		logger.debug('removing ES index: j%s' % instance.id)
+		es_handle.indices.delete('j%s' % instance.id)
 
 
 
@@ -826,7 +840,72 @@ class CombineJob(object):
 				logger.debug('Could not index record: %s' % record.id)
 
 
-	def count_indexed_fields(self, doc_type='transform'):
+	@staticmethod
+	def index_job_to_es_spark(**kwargs):
+
+		import django
+		from elasticsearch import Elasticsearch
+		from lxml import etree
+		from pyspark.sql import Row
+		import xmltodict
+
+		# init django settings file
+		import os
+		os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+		import sys
+		sys.path.append('/opt/combine')
+		django.setup()
+		from django.conf import settings
+
+		# setup es handle and create index
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		es_handle_temp.indices.create('j%s' % kwargs['job_id'])
+
+		# define function to index row for lambda
+		def local_index_row(row):
+
+			es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+			
+			try:
+				# flatten file
+				xsl_file = open('/opt/combine/inc/xslt/MODS_extract.xsl','r')
+				xslt_tree = etree.parse(xsl_file)
+				transform = etree.XSLT(xslt_tree)
+				xml_root = etree.fromstring(row.document)
+				flat_xml = transform(xml_root)
+
+				# convert to dictionary
+				flat_dict = xmltodict.parse(flat_xml)
+				
+				# prepare as ES-friendly JSON
+				fields = flat_dict['fields']['field']
+				es_json = { field['@name']:field['#text'] for field in fields }
+
+				# attempt index
+				r = es_handle_temp.index(index='j%s' % kwargs['job_id'], doc_type='record', id=row.id, body=es_json)
+				
+				return Row(
+					id=row.id,
+					document='index_success',
+					error=''
+				)
+			
+			except:
+				return Row(
+					id=row.id,
+					document='',
+					error='index_error'
+				)
+
+		# read output from input_job
+		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
+
+		# run map to index rows
+		indexed_df = df.rdd.map(lambda row: local_index_row(row))
+		indexed_df.count()
+
+
+	def count_indexed_fields(self):
 
 		'''
 		1) retrieve mappings
@@ -837,7 +916,7 @@ class CombineJob(object):
 
 		# get mappings for job index
 		es_r = es_handle.indices.get(index='j%s' % self.job_id)
-		index_mappings = es_r['j%s' % self.job_id]['mappings'][doc_type]['properties']
+		index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
 
 		# init search
 		s = Search(using=es_handle, index='j%s' % self.job_id)
@@ -854,10 +933,13 @@ class CombineJob(object):
 		sr_dict = sr.to_dict()
 
 		# calc fields percentage and return as list
-		field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),2)} for field in sr_dict['aggregations'] ]
+		field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),4)} for field in sr_dict['aggregations'] ]
 
 		# return
-		return field_count
+		return {
+			'total_docs':sr_dict['hits']['total'],
+			'fields':field_count
+		}
 
 
 	def field_analysis(self, field_name):
@@ -866,7 +948,7 @@ class CombineJob(object):
 		s = Search(using=es_handle, index='j%s' % self.job_id)
 
 		# add agg bucket for field values
-		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=250))
+		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
 
 		# return zero
 		s = s[0]
@@ -967,7 +1049,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
 				'endpoint':harvest_vars['endpoint'],
@@ -975,7 +1057,10 @@ class HarvestJob(CombineJob):
 				'metadataPrefix':harvest_vars['metadataPrefix'],
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
-				'harvest_save_path':harvest_save_path
+				'harvest_save_path':harvest_save_path,
+				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+				'job_id':self.job.id,
+				'job_output':harvest_save_path
 			}
 		}
 		logger.debug(job_code)
@@ -1085,11 +1170,14 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")' % 
+			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s")' % 
 			{
-				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
+				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
 				'job_input':self.input_job.job_output,
-				'transform_save_path':transform_save_path
+				'transform_save_path':transform_save_path,
+				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+				'job_id':self.job.id,
+				'job_output':transform_save_path
 			}
 		}
 		logger.debug(job_code)
