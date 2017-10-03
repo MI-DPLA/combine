@@ -6,7 +6,7 @@
 
 	<ul>
 		<li><strong>Job Record Count:</strong> {{ cjob.job.record_count }}</li>
-		<li><strong>Indexed Record Count:</strong> {{ field_counts.total_docs }}</li>		
+		<li><strong>Indexed Record Count:</strong> {{ field_counts.total_docs }} (<a href="{% url 'job_indexing_failures' record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a>)</li>		
 	</ul>
 
 	<h4>Field Breakdown</h4>

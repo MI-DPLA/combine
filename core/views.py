@@ -325,12 +325,24 @@ def field_analysis(request, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob(job_id=job_id)
 
-	# get analysif for field
+	# get analysis for field
 	field_analysis_results = cjob.field_analysis(field_name)
 
 	# return
 	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results})
 
+
+@login_required
+def job_indexing_failures(request, record_group_id, job_id):
+
+	# get CombineJob
+	cjob = models.CombineJob(job_id=job_id)
+
+	# get indexing failures
+	indexing_failures = cjob.get_indexing_failures()
+
+	# return
+	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures})
 
 
 

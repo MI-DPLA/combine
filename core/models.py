@@ -303,6 +303,56 @@ class Job(models.Model):
 			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
 
 
+	def get_indexing_results_as_dataframe(self):
+
+		'''
+		method to use cyavro and return indexing results as dataframe
+		'''
+
+		# derive indexing 
+		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+
+		# Filesystem
+		if indexing_dir.startswith('file://'):
+			
+			output_dir = indexing_dir.split('file://')[-1]
+
+			###########################################################################
+			# cyavro shim
+			###########################################################################
+			'''
+			cyavro currently will fail on avro files written by ingestion3:
+			https://github.com/maxpoint/cyavro/issues/27
+
+			This shim removes any files of length identical to known values.
+			These files represent "empty" avro files, in that they only contain the schema.
+			The file length varies slightly depending on what subset of the dataframe we 
+			write to disk.
+			'''
+			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+			for f in files:
+				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
+					logger.debug('detected empty avro and removing: %s' % f)
+					os.remove(os.path.join(output_dir,f))
+			###########################################################################
+			# end cyavro shim
+			###########################################################################
+
+			# open avro files as dataframe with cyavro and return
+			stime = time.time()
+			df = cyavro.read_avro_path_as_dataframe(output_dir)
+			logger.debug('cyavro read time: %s' % (time.time() - stime))
+			return df
+
+		# HDFS
+		elif self.job_output.startswith('hdfs://'):
+			logger.debug('HDFS record counting not yet implemented')
+			return False
+
+		else:
+			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+
+
 	def update_record_count(self):
 
 		'''
@@ -494,6 +544,14 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 	if es_handle.indices.exists('j%s' % instance.id):
 		logger.debug('removing ES index: j%s' % instance.id)
 		es_handle.indices.delete('j%s' % instance.id)
+
+
+	# attempt to delete indexing results avro files
+	indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id).split('file://')[-1]
+	try:
+		shutil.rmtree(indexing_dir)
+	except:
+		logger.debug('could not remove indexing results at: %s' % indexing_dir)
 
 
 
@@ -732,29 +790,6 @@ class CombineJob(object):
 			except:
 				logger.debug('could not confirm session status')
 
-		# # if none found, start and return
-		# elif livy_sessions.count() == 0:
-		# 	logger.debug('no active livy sessions found, starting one')
-			
-		# 	# begin session
-		# 	livy_session = LivySession()
-		# 	livy_session.save()
-
-		# 	# poll livy session state until idle
-		# 	while True:
-
-		# 		# update from Livy
-		# 		livy_session.refresh_from_livy()
-		# 		if livy_session.status in ['idle','busy']:
-		# 			return livy_session
-
-		# 		else:
-		# 			time.sleep(3)
-
-		# # if more than one found, for now, raise Exception as only expecting one
-		# if livy_sessions.count() > 1:
-		# 	raise Exception('more than one active Livy session found')
-
 
 	def submit_job(self, job_code, job_output):
 
@@ -803,9 +838,6 @@ class CombineJob(object):
 		Convenience method to return single record from job
 		'''
 
-		if not self.df:
-			self.df = self.job.get_output_as_dataframe()
-
 		records = self.df.loc[self.df['id'] == id]
 
 		# if only one found
@@ -817,42 +849,20 @@ class CombineJob(object):
 			return records
 
 
-	def index_job_to_es(self):
-
-		'''
-		TODO:
-			- consider moving to psark
-			- get doctype from job type
-		'''
-
-		# create index, ignore error if exists
-		index_name = 'j%s' % self.job.id
-		es_handle.indices.create(index=index_name, ignore=400)
-
-		# loop through rows in dataframe and index to es
-		for row in self.df.iterrows():
-
-			try:
-				record = Record(row[1])
-				es_handle.index(index=index_name, doc_type='record', id=record.id, body=record.flatten_document_for_es())
-
-			except:
-				logger.debug('Could not index record: %s' % record.id)
-
-
 	@staticmethod
 	def index_job_to_es_spark(**kwargs):
 
 		import django
 		from elasticsearch import Elasticsearch
+		import json
 		from lxml import etree
+		import os
 		from pyspark.sql import Row
+		import sys
 		import xmltodict
 
 		# init django settings file
-		import os
 		os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-		import sys
 		sys.path.append('/opt/combine')
 		django.setup()
 		from django.conf import settings
@@ -886,23 +896,23 @@ class CombineJob(object):
 				
 				return Row(
 					id=row.id,
-					document='index_success',
+					success=json.dumps(r),
 					error=''
 				)
 			
-			except:
+			except Exception as e:
 				return Row(
 					id=row.id,
-					document='',
-					error='index_error'
+					success='',
+					error=json.dumps({'exception':str(e)})
 				)
 
 		# read output from input_job
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
 
-		# run map to index rows
+		# run map to index rows and write results as avro
 		indexed_df = df.rdd.map(lambda row: local_index_row(row))
-		indexed_df.count()
+		indexed_df.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
 
 
 	def count_indexed_fields(self):
@@ -956,6 +966,16 @@ class CombineJob(object):
 		# execute and return aggs
 		sr = s.execute()
 		return sr.aggs[field_name]['buckets']
+
+
+	def get_indexing_failures(self):
+
+		# attempt load of indexing avro results
+		# df = cyavro.read_avro_path_as_dataframe(indexing_dir)
+		df = self.job.get_indexing_results_as_dataframe()
+
+		# return
+		return df[df['error'] != ''][['id','error']].values.tolist()
 
 
 
@@ -1043,13 +1063,16 @@ class HarvestJob(CombineJob):
 		# construct harvest path
 		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
+		# index results save path
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
 		harvest_vars.update(self.overrides)
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s")' % 
+			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
 				'endpoint':harvest_vars['endpoint'],
@@ -1060,7 +1083,8 @@ class HarvestJob(CombineJob):
 				'harvest_save_path':harvest_save_path,
 				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
-				'job_output':harvest_save_path
+				'job_output':harvest_save_path,
+				'index_results_save_path':index_results_save_path
 			}
 		}
 		logger.debug(job_code)
@@ -1168,16 +1192,20 @@ class TransformJob(CombineJob):
 		# construct harvest path
 		transform_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
+		# index results save path
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s")' % 
+			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
 				'job_input':self.input_job.job_output,
 				'transform_save_path':transform_save_path,
 				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
-				'job_output':transform_save_path
+				'job_output':transform_save_path,
+				'index_results_save_path':index_results_save_path
 			}
 		}
 		logger.debug(job_code)

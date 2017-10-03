@@ -1,0 +1,20 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Indexing Failures: {{ cjob.job.name }}</h3>
+
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>id</th>
+			<th>error message</th>
+		</tr>
+		{% for failure in indexing_failures %}
+			<tr>
+				<td>{{ failure.0 }}</td>
+				<td>{{ failure.1 }}</td>
+			</tr>
+		{% endfor %}
+	</table>
+
+{% endblock %}
