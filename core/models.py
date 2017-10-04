@@ -856,6 +856,7 @@ class CombineJob(object):
 		import json
 		from lxml import etree
 		import os
+		from pyspark.sql import Row
 		import sys
 		import xmltodict
 
@@ -896,19 +897,22 @@ class CombineJob(object):
 					es_dict
 				)
 
-			except:
+			except Exception as e:
 				
 				return (
 					'fail',
-					None
+					{
+						'id':row.id,
+						'msg':str(e)
+					}
 				)
 
 		# create rdd with results of function
 		records_rdd = records_df.rdd.map(lambda row: record_generator(row))
 
 		# filter out faliures, write to avro file for reporting on index process
-		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail')
-		# WRITE FAILURES TO DISK
+		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
+		failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
 
 		# retrieve successes to index
 		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
