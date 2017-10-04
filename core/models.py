@@ -356,16 +356,15 @@ class Job(models.Model):
 	def update_record_count(self):
 
 		'''
-		count records from self.job_output, and update DB
+		Count records from self.job_output, where document is not blank string, indicating error
 		'''
 		
-		# get dataframe
 		try:
 			
 			df = self.get_output_as_dataframe()
 
 			# count and save records to DB
-			self.record_count = df.document.count()
+			self.record_count = df[df['document'] != '']['document'].count()
 			self.save()
 
 		except:
@@ -547,11 +546,11 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 
 	# attempt to delete indexing results avro files
-	indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id).split('file://')[-1]
 	try:
+		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id).split('file://')[-1]
 		shutil.rmtree(indexing_dir)
 	except:
-		logger.debug('could not remove indexing results at: %s' % indexing_dir)
+		logger.debug('could not remove indexing results')
 
 
 
@@ -857,71 +856,83 @@ class CombineJob(object):
 		import json
 		from lxml import etree
 		import os
-		from pyspark.sql import Row
 		import sys
 		import xmltodict
 
-		# init django settings file
+		# init django settings file to retrieve settings
 		os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 		sys.path.append('/opt/combine')
 		django.setup()
 		from django.conf import settings
 
-		# setup es handle and create index
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		es_handle_temp.indices.create('j%s' % kwargs['job_id'])
+		# get records from job output
+		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
 
-		# define function to index row for lambda
-		def local_index_row(row):
+		# get string of xslt
+		with open('/opt/combine/inc/xslt/MODS_extract.xsl','r') as f:
+			xslt = f.read().encode('utf-8')
 
-			es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-			
+		def record_generator(row):
+
 			try:
 				# flatten file
-				xsl_file = open('/opt/combine/inc/xslt/MODS_extract.xsl','r')
-				xslt_tree = etree.parse(xsl_file)
+				xslt_tree = etree.fromstring(xslt)
 				transform = etree.XSLT(xslt_tree)
 				xml_root = etree.fromstring(row.document)
 				flat_xml = transform(xml_root)
 
 				# convert to dictionary
 				flat_dict = xmltodict.parse(flat_xml)
-				
+
 				# prepare as ES-friendly JSON
 				fields = flat_dict['fields']['field']
-				es_json = { field['@name']:field['#text'] for field in fields }
+				es_dict = { field['@name']:field['#text'] for field in fields }
 
-				# attempt index
-				r = es_handle_temp.index(index='j%s' % kwargs['job_id'], doc_type='record', id=row.id, body=es_json)
+				# add temporary id field (consider hashing here?)
+				es_dict['temp_id'] = row.id
+
+				return (
+					'success',
+					es_dict
+				)
+
+			except:
 				
-				return Row(
-					id=row.id,
-					success=json.dumps(r),
-					error=''
-				)
-			
-			except Exception as e:
-				return Row(
-					id=row.id,
-					success='',
-					error=json.dumps({'exception':str(e)})
+				return (
+					'fail',
+					None
 				)
 
-		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
+		# create rdd with results of function
+		records_rdd = records_df.rdd.map(lambda row: record_generator(row))
 
-		# run map to index rows and write results as avro
-		indexed_df = df.rdd.map(lambda row: local_index_row(row))
-		indexed_df.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
+		# filter out faliures, write to avro file for reporting on index process
+		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail')
+		# WRITE FAILURES TO DISK
+
+		# retrieve successes to index
+		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
+
+		# create index in advance
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		index_name = 'j%s' % kwargs['job_id']
+		mapping = {'mappings':{'record':{'date_detection':False}}}
+		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+
+		# index to ES
+		to_index_rdd.saveAsNewAPIHadoopFile(
+			path='-',
+			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+			keyClass="org.apache.hadoop.io.NullWritable",
+			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+			conf={ "es.resource" : "%s/record" % index_name, "es.nodes":"192.168.45.10:9200", "es.mapping.exclude":"temp_id", "es.mapping.id":"temp_id"}
+		)
 
 
 	def count_indexed_fields(self):
 
 		'''
-		1) retrieve mappings
-		2) loop through mappings and add as agg buckets for a single query, returning exists counts
-
-		TODO: re-index jobs, and remove 'doc_type' arg?
+		Count instances of fields across all documents in a job's index
 		'''
 
 		# get mappings for job index
@@ -954,6 +965,10 @@ class CombineJob(object):
 
 	def field_analysis(self, field_name):
 
+		'''
+		For a given field, return all values for that field across a job's index
+		'''
+
 		# init search
 		s = Search(using=es_handle, index='j%s' % self.job_id)
 
@@ -970,8 +985,11 @@ class CombineJob(object):
 
 	def get_indexing_failures(self):
 
+		'''
+		return failures for job indexing process
+		'''
+
 		# attempt load of indexing avro results
-		# df = cyavro.read_avro_path_as_dataframe(indexing_dir)
 		df = self.job.get_indexing_results_as_dataframe()
 
 		# return
