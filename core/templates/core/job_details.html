@@ -4,11 +4,27 @@
 
 	<h3>Job Details: {{ cjob.job.name }}</h3>
 
-	<ul>
-		<li><strong>Job Record Count:</strong> {{ cjob.job.record_count }}</li>
-		<li><strong>Indexed Record Count:</strong> {{ field_counts.total_docs }} (<a href="{% url 'job_indexing_failures' record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a>)</li>
-		<li><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">ElasticSearch Index</a></li>
-	</ul>
+	<h4>Record Count Breakdown</h4>
+
+	<table border="1" cellpadding="5">
+		<tr>
+			<th><em>Input</em> job(s) record count</th>
+			<td>
+				{% for input_job in cjob.job.jobinput_set.all %}{{ input_job.input_job.record_count }} {% endfor %}
+			</td>
+			<td><strong>total:</strong> {{ cjob.get_total_input_job_record_count }}</td>
+		</tr>
+		<tr>
+			<th><em>This</em> job record count</th>
+			<td>{{ cjob.job.record_count }}</td>
+			<td><a href="#">see failures</a></td>
+		</tr>
+		<tr>
+			<th><em>Indexed</em> record count</th>
+			<td>{{ field_counts.total_docs }}</td>
+			<td><a href="{% url 'job_indexing_failures' record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+		</tr>
+	</table>	
 
 	<h4>Field Breakdown</h4>
 

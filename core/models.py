@@ -184,7 +184,6 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
-	# job_type = models.CharField(max_length=128, null=True) # consider adding?
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
@@ -547,7 +546,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	# attempt to delete indexing results avro files
 	try:
-		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id).split('file://')[-1]
+		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id)).split('file://')[-1]
 		shutil.rmtree(indexing_dir)
 	except:
 		logger.debug('could not remove indexing results')
@@ -740,7 +739,7 @@ class LivyClient(object):
 
 
 ##################################
-# Job Factories
+# Combine Jobs
 ##################################
 
 class CombineJob(object):
@@ -911,8 +910,12 @@ class CombineJob(object):
 		records_rdd = records_df.rdd.map(lambda row: record_generator(row))
 
 		# filter out faliures, write to avro file for reporting on index process
+		# if no errors are found, pass and interpret missing avro files in the positive during analysis
 		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
-		failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
+		try:
+			failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
+		except:
+			pass
 
 		# retrieve successes to index
 		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
@@ -1000,6 +1003,20 @@ class CombineJob(object):
 		return df[df['error'] != ''][['id','error']].values.tolist()
 
 
+	def get_total_input_job_record_count(self):
+
+		'''
+		return record count sum from all input jobs
+		'''
+
+		if self.job.jobinput_set.count() > 0:
+			total_input_record_count = sum([ input_job.input_job.record_count for input_job in self.job.jobinput_set.all() ])
+			return total_input_record_count
+		else:
+			return None
+		
+
+
 
 class HarvestJob(CombineJob):
 
@@ -1007,7 +1024,8 @@ class HarvestJob(CombineJob):
 	def __init__(self, user, record_group, oai_endpoint, overrides=None):
 
 		'''
-		Initialize Job.
+		
+		Harvest from OAI-PMH endpoint.
 
 		Unlike other jobs, harvests do not require input from the output of another job
 
@@ -1018,6 +1036,11 @@ class HarvestJob(CombineJob):
 			overrides (dict): optional dictionary of overrides to OAI endpoint
 
 		Returns:
+
+			avro file set:
+				- record
+				- error
+				- setIds
 
 		'''
 
@@ -1109,6 +1132,22 @@ class HarvestJob(CombineJob):
 				'index_results_save_path':index_results_save_path
 			}
 		}
+		# job_code = {
+		# 	'code':'%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+		# 	{
+		# 		'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
+		# 		'endpoint':harvest_vars['endpoint'],
+		# 		'verb':harvest_vars['verb'],
+		# 		'metadataPrefix':harvest_vars['metadataPrefix'],
+		# 		'scope_type':harvest_vars['scope_type'],
+		# 		'scope_value':harvest_vars['scope_value'],
+		# 		'harvest_save_path':harvest_save_path,
+		# 		'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+		# 		'job_id':self.job.id,
+		# 		'job_output':'file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/88',
+		# 		'index_results_save_path':index_results_save_path
+		# 	}
+		# }
 		logger.debug(job_code)
 
 		# submit job
