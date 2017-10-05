@@ -21,6 +21,7 @@ urlpatterns = [
 	# Record Group Jobs
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/details$', views.job_details, name='job_details'),
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/errors$', views.job_errors, name='job_errors'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/harvest/new$', views.job_harvest, name='job_harvest'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/transform/new$', views.job_transform, name='job_transform'),
 

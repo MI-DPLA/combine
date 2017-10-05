@@ -202,13 +202,27 @@ def job_details(request, record_group_id, job_id):
 	logger.debug('details for job id: %s' % job_id)
 
 	# get CombineJob
-	cjob = models.CombineJob(job_id=job_id)
+	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 	
 	# return
 	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts})
+
+
+@login_required
+def job_errors(request, record_group_id, job_id):
+	
+	logger.debug('retrieving errors for job id: %s' % job_id)
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	job_errors = cjob.get_job_errors()
+	
+	# return
+	return render(request, 'core/job_errors.html', {'cjob':cjob, 'job_errors':job_errors})
 
 
 @login_required
@@ -257,7 +271,12 @@ def job_harvest(request, record_group_id):
 		logger.debug(overrides)
 
 		# initiate job
-		job = models.HarvestJob(request.user, record_group, oai_endpoint, overrides)
+		job = models.HarvestJob(
+			user=request.user,
+			record_group=record_group,
+			oai_endpoint=oai_endpoint,
+			overrides=overrides
+		)
 		
 		# start job
 		job.start_job()
@@ -304,7 +323,12 @@ def job_transform(request, record_group_id):
 		logger.debug('using transformation: %s' % transformation)
 
 		# initiate job
-		job = models.TransformJob(request.user, record_group, input_job, transformation)
+		job = models.TransformJob(
+			user=request.user,
+			record_group=record_group,
+			input_job=input_job,
+			transformation=transformation
+		)
 		
 		# start job
 		job.start_job()
@@ -323,7 +347,7 @@ def field_analysis(request, record_group_id, job_id):
 	logger.debug('field analysis for field "%s", job id: %s' % (field_name, job_id))
 	
 	# get CombineJob
-	cjob = models.CombineJob(job_id=job_id)
+	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get analysis for field
 	field_analysis_results = cjob.field_analysis(field_name)
@@ -336,7 +360,7 @@ def field_analysis(request, record_group_id, job_id):
 def job_indexing_failures(request, record_group_id, job_id):
 
 	# get CombineJob
-	cjob = models.CombineJob(job_id=job_id)
+	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get indexing failures
 	indexing_failures = cjob.get_indexing_failures()

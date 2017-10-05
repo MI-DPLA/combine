@@ -184,6 +184,7 @@ class RecordGroup(models.Model):
 class Job(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+	job_type = models.CharField(max_length=128, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
 	spark_code = models.CharField(max_length=32000, null=True)
@@ -259,6 +260,12 @@ class Job(models.Model):
 		# confirm there is output to work with
 		if not self.job_output:
 			logger.debug('job does not have output, returning False')
+			return False
+
+		# confirm job is not actively running
+		self.refresh_from_livy()
+		if self.status == 'running':
+			logger.debug('job is found to be running, aborting record count')
 			return False
 
 		# Filesystem
@@ -759,7 +766,21 @@ class CombineJob(object):
 			self.get_job(self.job_id)
 
 			# parse output as dataframe
-			self.df = self.job.get_output_as_dataframe()
+			try:
+				self.df = self.job.get_output_as_dataframe()
+			except:
+				logger.debug('could not parse job output as dataframe')
+				self.df = False
+
+
+	@staticmethod
+	def get_combine_job(job_id):
+
+		# get job from db
+		j = Job.objects.get(pk=job_id)
+
+		# using job_type, return instance of approriate job type
+		return globals()[j.job_type](job_id=job_id)
 
 
 	def _get_active_livy_session(self):
@@ -1021,7 +1042,7 @@ class CombineJob(object):
 class HarvestJob(CombineJob):
 
 
-	def __init__(self, user, record_group, oai_endpoint, overrides=None):
+	def __init__(self, user=None, record_group=None, oai_endpoint=None, overrides=None, job_id=None):
 
 		'''
 		
@@ -1045,36 +1066,40 @@ class HarvestJob(CombineJob):
 		'''
 
 		# perform CombineJob initialization
-		super().__init__(user=user)
+		super().__init__(user=user, job_id=job_id)
 
-		self.record_group = record_group
-		self.organization = self.record_group.organization
-		self.oai_endpoint = oai_endpoint
-		self.overrides = overrides
+		# if job_id not provided, assumed new Job
+		if not job_id:
 
-		# create Job entry in DB
-		'''
-		record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
-		name = models.CharField(max_length=128)
-		spark_code = models.CharField(max_length=32000)
-		status = models.CharField(max_length=30, null=True)
-		url = models.CharField(max_length=255)
-		headers = models.CharField(max_length=255)
-		job_input = models.CharField(max_length=255)
-		job_output = models.CharField(max_length=255, null=True)
-		'''
-		self.job = Job(
-			record_group = self.record_group,
-			user = self.user,
-			name = 'OAI Harvest',
-			spark_code = None,
-			job_id = None,
-			status = 'initializing',
-			url = None,
-			headers = None,
-			job_output = None
-		)
-		self.job.save()
+			self.record_group = record_group		
+			self.organization = self.record_group.organization
+			self.oai_endpoint = oai_endpoint
+			self.overrides = overrides
+
+			# create Job entry in DB
+			'''
+			record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+			name = models.CharField(max_length=128)
+			spark_code = models.CharField(max_length=32000)
+			status = models.CharField(max_length=30, null=True)
+			url = models.CharField(max_length=255)
+			headers = models.CharField(max_length=255)
+			job_input = models.CharField(max_length=255)
+			job_output = models.CharField(max_length=255, null=True)
+			'''
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = type(self).__name__,
+				user = self.user,
+				name = 'OAI Harvest',
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None
+			)
+			self.job.save()
 
 
 	@staticmethod
@@ -1132,26 +1157,20 @@ class HarvestJob(CombineJob):
 				'index_results_save_path':index_results_save_path
 			}
 		}
-		# job_code = {
-		# 	'code':'%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
-		# 	{
-		# 		'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
-		# 		'endpoint':harvest_vars['endpoint'],
-		# 		'verb':harvest_vars['verb'],
-		# 		'metadataPrefix':harvest_vars['metadataPrefix'],
-		# 		'scope_type':harvest_vars['scope_type'],
-		# 		'scope_value':harvest_vars['scope_value'],
-		# 		'harvest_save_path':harvest_save_path,
-		# 		'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
-		# 		'job_id':self.job.id,
-		# 		'job_output':'file:///home/combine/data/combine/organizations/1/record_group/1/jobs/harvest/88',
-		# 		'index_results_save_path':index_results_save_path
-		# 	}
-		# }
 		logger.debug(job_code)
 
 		# submit job
 		self.submit_job(job_code, harvest_save_path)
+
+
+	def get_job_errors(self):
+
+		'''
+		return harvest job specific errors
+		REVISIT: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
+		'''
+
+		return None
 
 
 
@@ -1161,41 +1180,45 @@ class TransformJob(CombineJob):
 	Apply an XSLT transformation to a record group
 	'''
 
-	def __init__(self, user, record_group, input_job, transformation):
+	def __init__(self, user=None, record_group=None, input_job=None, transformation=None, job_id=None):
 
 		# perform CombineJob initialization
-		super().__init__(user=user)
+		super().__init__(user=user, job_id=job_id)
 
-		self.record_group = record_group
-		self.organization = self.record_group.organization
-		self.input_job = input_job
-		self.transformation = transformation
+		# if job_id not provided, assumed new Job
+		if not job_id:
 
-		# create Job entry in DB
-		self.job = Job(
-			record_group = self.record_group,
-			user = self.user,
-			name = 'Transform',
-			spark_code = None,
-			job_id = None,
-			status = 'initializing',
-			url = None,
-			headers = None,
-			job_output = None,
-			job_details = json.dumps(
-				{'transformation':
-					{
-						'name':self.transformation.name,
-						'type':self.transformation.transformation_type,
-						'id':self.transformation.id
-					}
-				})
-		)
-		self.job.save()
+			self.record_group = record_group
+			self.organization = self.record_group.organization
+			self.input_job = input_job
+			self.transformation = transformation
 
-		# save input job to JobInput table
-		job_input_instance = JobInput(job=self.job, input_job=input_job)
-		job_input_instance.save()
+			# create Job entry in DB
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = type(self).__name__,
+				user = self.user,
+				name = 'Transform',
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None,
+				job_details = json.dumps(
+					{'transformation':
+						{
+							'name':self.transformation.name,
+							'type':self.transformation.transformation_type,
+							'id':self.transformation.id
+						}
+					})
+			)
+			self.job.save()
+
+			# save input job to JobInput table
+			job_input_instance = JobInput(job=self.job, input_job=input_job)
+			job_input_instance.save()
 
 
 	@staticmethod
@@ -1273,6 +1296,15 @@ class TransformJob(CombineJob):
 
 		# submit job
 		self.submit_job(job_code, transform_save_path)
+
+
+	def get_job_errors(self):
+
+		'''
+		return transform job specific errors
+		'''
+
+		return self.df[self.df['error'] != '']
 
 
 
