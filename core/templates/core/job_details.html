@@ -2,7 +2,9 @@
 
 {% block content %}
 
-	<h3>Job Details: {{ cjob.job.name }}</h3>
+	<div class="{{ cjob.job.job_type }}">
+		<h3>Job Details: {{ cjob.job.name }}</h3>
+	</div>
 
 	<h4>Record Count Breakdown</h4>
 
@@ -10,7 +12,11 @@
 		<tr>
 			<th><em>Input</em> job(s) and record counts</th>
 			<td>
-				{% for input_job in cjob.job.jobinput_set.all %}(Job <a href="{% url 'job_details' record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">#{{ input_job.input_job.id }}</a>, {{ input_job.input_job.record_count }}) {% endfor %}
+				{% for input_job in cjob.job.jobinput_set.all %}
+				<div class="{{ input_job.input_job.job_type }}" style="padding:5x; clear:both;">
+					Job <a href="{% url 'job_details' record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">#{{ input_job.input_job.id }}</a>, {{ input_job.input_job.record_count }}
+				</div>
+				{% endfor %}
 			</td>
 			<td><strong>total:</strong> {{ cjob.get_total_input_job_record_count }}</td>
 		</tr>

@@ -1449,7 +1449,8 @@ class PublishJob(CombineJob):
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
 		# write them to avro files
-		df.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
+		docs = df[df['document'] != '']
+		docs.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
 
 	def start_job(self):
