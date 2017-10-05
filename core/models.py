@@ -582,25 +582,6 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 		logger.debug('currently only xslt style transformations accepted')
 
 
-# @receiver(models.signals.pre_delete, sender=Job)
-# def remove_published_links(sender, instance, **kwargs):
-
-# 	'''
-# 	when a PublishJob is deleted, remove all links in JobPublish table
-# 	'''
-
-# 	if instance.job_type == 'PublishJob':
-
-# 		logger.debug('removing all published connections to job: %s' % instance.id)
-
-# 		# get published instances
-# 		logger.debug(JobPublish.objects.filter(job=instance).count())
-# 		publish_links = JobPublish.objects.filter(job=instance).all()
-# 		for link in publish_links:
-# 			link.delete()
-
-
-
 
 ##################################
 # Apahce Livy
