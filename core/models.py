@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+import datetime
 import hashlib
 import inspect
 import json
@@ -13,6 +14,7 @@ import shutil
 import subprocess
 import textwrap
 import time
+import uuid
 import xmltodict
 
 # django imports
@@ -316,7 +318,7 @@ class Job(models.Model):
 		'''
 
 		# derive indexing 
-		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 		# Filesystem
 		if indexing_dir.startswith('file://'):
@@ -409,6 +411,7 @@ class Transformation(models.Model):
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
 	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
+	filepath = models.CharField(max_length=1024, null=True, default=None)
 	
 
 	def __str__(self):
@@ -528,11 +531,25 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	'''
 	When jobs are removed, a fair amount of clean up is involved:
+		- attempt to stop job if queued / running
 		- remove avro files from disk
 		- delete ES index if created
 	'''
 
 	logger.debug('removing job_output for job id %s' % instance.id)
+
+	# check if job running or queued, attempt to stop
+	try:
+		instance.refresh_from_livy()
+		if instance.status in ['waiting','running']:
+			
+			# attempt to stop job
+			livy_response = LivyClient().stop_job(instance.url)
+			logger.debug(livy_response)
+	except Exception as e:
+		logger.debug('could not stop job in livy')
+		logger.debug(str(e))
+
 
 	# remove avro files from disk
 	# if file://
@@ -553,10 +570,44 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	# attempt to delete indexing results avro files
 	try:
-		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id)).split('file://')[-1]
+		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id)).split('file://')[-1]
 		shutil.rmtree(indexing_dir)
 	except:
 		logger.debug('could not remove indexing results')
+
+
+@receiver(models.signals.pre_save, sender=Transformation)
+def save_transformation_to_disk(sender, instance, **kwargs):
+
+	'''
+	When users enter a payload for a transformation, write to disk for use in Spark context
+	'''
+
+	# check that transformation directory exists
+	transformations_dir = '%s/transformations' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+	if not os.path.exists(transformations_dir):
+		os.mkdir(transformations_dir)
+
+	# if previously written to disk, remove
+	if instance.filepath:
+		try:
+			os.remove(instance.filepath)
+		except:
+			logger.debug('could not remove transformation file: %s' % instance.filepath)
+
+	# write XSLT type transformation to disk
+	if instance.transformation_type == 'xslt':
+		filename = uuid.uuid4().hex
+
+		filepath = '%s/%s.xsl' % (transformations_dir, filename)
+		with open(filepath, 'w') as f:
+			f.write(instance.payload)
+
+		# update filepath
+		instance.filepath = filepath
+
+	else:
+		logger.debug('currently only xslt style transformations accepted')
 
 
 
@@ -742,6 +793,24 @@ class LivyClient(object):
 		logger.debug(job.json())
 		logger.debug(job.headers)
 		return job
+
+
+	@classmethod
+	def stop_job(self, job_url):
+
+		'''
+		Stop job via HTTP request to /statements
+
+		Args:
+			job_url (str/int): full URL for statement in Livy session
+
+		Returns:
+			Livy server response (dict)
+		'''
+
+		# statement
+		statement = self.http_request('POST', '%s/cancel' % job_url)
+		return statement
 		
 
 
@@ -771,6 +840,15 @@ class CombineJob(object):
 			except:
 				logger.debug('could not parse job output as dataframe')
 				self.df = False
+
+
+	def default_job_name(self):
+
+		'''
+		provide default job name based on class type and date
+		'''
+
+		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().isoformat())
 
 
 	@staticmethod
@@ -1047,7 +1125,7 @@ class CombineJob(object):
 class HarvestJob(CombineJob):
 
 
-	def __init__(self, user=None, record_group=None, oai_endpoint=None, overrides=None, job_id=None):
+	def __init__(self, job_name=None, user=None, record_group=None, oai_endpoint=None, overrides=None, job_id=None):
 
 		'''
 		
@@ -1076,10 +1154,15 @@ class HarvestJob(CombineJob):
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
+			self.job_name = job_name
 			self.record_group = record_group		
 			self.organization = self.record_group.organization
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
 
 			# create Job entry in DB
 			'''
@@ -1096,7 +1179,7 @@ class HarvestJob(CombineJob):
 				record_group = self.record_group,
 				job_type = type(self).__name__,
 				user = self.user,
-				name = 'OAI Harvest',
+				name = self.job_name,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1136,10 +1219,10 @@ class HarvestJob(CombineJob):
 		'''
 
 		# construct harvest path
-		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
@@ -1185,7 +1268,7 @@ class TransformJob(CombineJob):
 	Apply an XSLT transformation to a record group
 	'''
 
-	def __init__(self, user=None, record_group=None, input_job=None, transformation=None, job_id=None):
+	def __init__(self, job_name=None, user=None, record_group=None, input_job=None, transformation=None, job_id=None):
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1193,17 +1276,22 @@ class TransformJob(CombineJob):
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
+			self.job_name = job_name
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.transformation = transformation
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
 
 			# create Job entry in DB
 			self.job = Job(
 				record_group = self.record_group,
 				job_type = type(self).__name__,
 				user = self.user,
-				name = 'Transform',
+				name = self.job_name,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1237,7 +1325,7 @@ class TransformJob(CombineJob):
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
 		# get string of xslt
-		with open('/home/combine/data/combine/xslt/WSUDOR_mods_to_DPLA_mods.xsl','r') as f:
+		with open(kwargs['transform_filepath'],'r') as f:
 			xslt = f.read().encode('utf-8')
 
 		# define function for transformation
@@ -1279,17 +1367,18 @@ class TransformJob(CombineJob):
 		'''
 
 		# construct harvest path
-		transform_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		transform_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.AVRO_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s",job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
 				'job_input':self.input_job.job_output,
+				'transform_filepath':self.transformation.filepath,
 				'transform_save_path':transform_save_path,
 				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
@@ -1316,8 +1405,7 @@ class TransformJob(CombineJob):
 class MergeJob(CombineJob):
 	
 	'''
-	Details to figure, but the actual merge will be straightfoward:
-	merged = pd.concat([j1.get_output_as_dataframe(),j2.get_output_as_dataframe()])
+	Merge multiple jobs into a single 
 	'''
 
 	pass

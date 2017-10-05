@@ -7,6 +7,10 @@
 	<form method="POST" action="{% url 'job_harvest' record_group_id=record_group.id %}">
 
 		{% csrf_token %}
+
+		<p>Harvest Job Name (optional):
+			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
+		<p>
 		
 		<p>Select OAI endpoint to use:
 			<select name="oai_endpoint_id">

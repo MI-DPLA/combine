@@ -8,9 +8,9 @@
 
 	<table border="1" cellpadding="5">
 		<tr>
-			<th><em>Input</em> job(s) record count</th>
+			<th><em>Input</em> job(s) and record counts</th>
 			<td>
-				{% for input_job in cjob.job.jobinput_set.all %}{{ input_job.input_job.record_count }} {% endfor %}
+				{% for input_job in cjob.job.jobinput_set.all %}(Job <a href="{% url 'job_details' record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">#{{ input_job.input_job.id }}</a>, {{ input_job.input_job.record_count }}) {% endfor %}
 			</td>
 			<td><strong>total:</strong> {{ cjob.get_total_input_job_record_count }}</td>
 		</tr>

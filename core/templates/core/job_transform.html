@@ -8,6 +8,10 @@
 
 		{% csrf_token %}
 
+		<p>Transform Job Name (optional):
+			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Transform, 10/10/2017"/>
+		<p>
+
 		<!-- Job Select -->
 		{% include 'core/job_input_select.html' %}
 

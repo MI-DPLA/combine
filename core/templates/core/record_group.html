@@ -11,6 +11,7 @@
 			<tr>
 				<th>Job ID</th>
 				<th>Name</th>
+				<th>Type</th>
 				<th>Livy Job ID</th>
 				<th>Status</th>
 				<th>Monitor</th>
@@ -24,6 +25,7 @@
 				<tr>
 					<td>{{ job.id }}</td>
 					<td>{{ job.name }}</td>
+					<td>{{ job.job_type }}</td>
 					<td>{{ job.job_id }}</td>
 					<td>{{ job.status }}</td>
 					<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 

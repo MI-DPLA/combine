@@ -15,11 +15,11 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     }
 
 
-# Avro file storage
+# Storage for avro files and other binary files
 '''
 Make sure to note file:// or hdfs:// prefix
 '''
-AVRO_STORAGE = 'file:///home/combine/data/combine'
+BINARY_STORAGE = 'file:///home/combine/data/combine'
 
 
 # ElasicSearch

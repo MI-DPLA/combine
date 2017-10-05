@@ -263,6 +263,11 @@ def job_harvest(request, record_group_id):
 		# debug form
 		logger.debug(request.POST)
 
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
 		# retrieve OAIEndpoint
 		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
 
@@ -272,6 +277,7 @@ def job_harvest(request, record_group_id):
 
 		# initiate job
 		job = models.HarvestJob(
+			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
@@ -314,6 +320,11 @@ def job_transform(request, record_group_id):
 		# debug form
 		logger.debug(request.POST)
 
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('using job as input: %s' % input_job)
@@ -324,6 +335,7 @@ def job_transform(request, record_group_id):
 
 		# initiate job
 		job = models.TransformJob(
+			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
