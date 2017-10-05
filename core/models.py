@@ -1018,10 +1018,15 @@ class CombineJob(object):
 		'''
 
 		# attempt load of indexing avro results
-		df = self.job.get_indexing_results_as_dataframe()
+		try:
+			df = self.job.get_indexing_results_as_dataframe()
 
-		# return
-		return df[df['error'] != ''][['id','error']].values.tolist()
+			# return
+			return df[df['error'] != ''][['id','error']].values.tolist()
+
+		except:
+			logger.debug('indexing failures could not be retrieved, perhaps there were none?')
+			return []
 
 
 	def get_total_input_job_record_count(self):
