@@ -1480,7 +1480,7 @@ class PublishJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		# self.submit_job(job_code, output_save_path)
+		self.submit_job(job_code, output_save_path)
 
 
 	def get_job_errors(self):
