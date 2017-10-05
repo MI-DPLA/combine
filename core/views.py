@@ -348,6 +348,57 @@ def job_transform(request, record_group_id):
 		return redirect('record_group', record_group_id=record_group.id)
 
 
+@login_required
+def job_publish(request, record_group_id):
+
+	'''
+	Publish a single job for a Record Group
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.get(pk=record_group_id)
+	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# retrieve all jobs for this record group
+		jobs = record_group.job_set.all()
+
+		# render page
+		return render(request, 'core/job_publish.html', {'record_group':record_group, 'jobs':jobs})
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('Publishing job for Record Group: %s' % record_group.name)
+
+		# debug form
+		logger.debug(request.POST)
+
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# retrieve input job
+		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
+		logger.debug('publishing job: %s' % input_job)
+
+		# initiate job
+		job = models.PublishJob(
+			job_name=job_name,
+			user=request.user,
+			record_group=record_group,
+			input_job=input_job
+		)
+		
+		# start job
+		job.start_job()
+
+		return redirect('record_group', record_group_id=record_group.id)
+
+
+
 ##################################
 # Jobs QA
 ##################################

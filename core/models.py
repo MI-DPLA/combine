@@ -176,6 +176,7 @@ class RecordGroup(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	publish_set_id = models.CharField(max_length=128, null=True, default=None)
 
 
 	def __str__(self):
@@ -392,6 +393,17 @@ class JobInput(models.Model):
 
 
 
+class JobPublish(models.Model):
+
+	'''
+	Provides a one-to-one relationship for a record group and published job
+	'''
+
+	record_group = models.ForeignKey(RecordGroup)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+
+
+
 class OAIEndpoint(models.Model):
 
 	name = models.CharField(max_length=255)
@@ -416,46 +428,6 @@ class Transformation(models.Model):
 
 	def __str__(self):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
-
-
-class Record(object):
-
-	def __init__(self, df_row):
-
-		self.df_row = df_row
-		
-		# attempt to pin id
-		if hasattr(self.df_row,'id'):
-			self.id = self.df_row.id
-		
-		# attempt to pin document
-		if hasattr(self.df_row,'document'):
-			self.document = self.df_row.document
-
-
-	def flatten_document_for_es(self):
-
-		'''
-		for time being, assuming MODS
-		'''
-
-		# flatten MODS
-		xsl_file = open('/opt/combine/inc/xslt/MODS_extract.xsl','r')
-		xslt_tree = etree.parse(xsl_file)
-		transform = etree.XSLT(xslt_tree)
-		xml_root = etree.fromstring(self.document)
-		flat_xml = transform(xml_root)
-
-		# convert to dictionary
-		flat_dict = xmltodict.parse(flat_xml)
-		
-		# prepare as ES-friendly JSON
-		fields = flat_dict['fields']['field']
-		es_json = { field['@name']:field['#text'] for field in fields }
-
-		# return
-		return es_json
-
 
 
 
@@ -608,6 +580,25 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 	else:
 		logger.debug('currently only xslt style transformations accepted')
+
+
+# @receiver(models.signals.pre_delete, sender=Job)
+# def remove_published_links(sender, instance, **kwargs):
+
+# 	'''
+# 	when a PublishJob is deleted, remove all links in JobPublish table
+# 	'''
+
+# 	if instance.job_type == 'PublishJob':
+
+# 		logger.debug('removing all published connections to job: %s' % instance.id)
+
+# 		# get published instances
+# 		logger.debug(JobPublish.objects.filter(job=instance).count())
+# 		publish_links = JobPublish.objects.filter(job=instance).all()
+# 		for link in publish_links:
+# 			link.delete()
+
 
 
 
@@ -1038,35 +1029,41 @@ class CombineJob(object):
 	def count_indexed_fields(self):
 
 		'''
-		Count instances of fields across all documents in a job's index
+		Count instances of fields across all documents in a job's index, if exists
 		'''
 
-		# get mappings for job index
-		es_r = es_handle.indices.get(index='j%s' % self.job_id)
-		index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
+		if es_handle.indices.exists(index='j%s' % self.job_id):
 
-		# init search
-		s = Search(using=es_handle, index='j%s' % self.job_id)
+			# get mappings for job index
+			es_r = es_handle.indices.get(index='j%s' % self.job_id)
+			index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
 
-		# return no results, only aggs
-		s = s[0]
+			# init search
+			s = Search(using=es_handle, index='j%s' % self.job_id)
 
-		# add agg buckets for each field to count number of instances
-		for field_name in index_mappings:
-			s.aggs.bucket(field_name, A('filter', Q('exists', field=field_name)))
+			# return no results, only aggs
+			s = s[0]
 
-		# execute search and capture as dictionary
-		sr = s.execute()
-		sr_dict = sr.to_dict()
+			# add agg buckets for each field to count number of instances
+			for field_name in index_mappings:
+				s.aggs.bucket(field_name, A('filter', Q('exists', field=field_name)))
 
-		# calc fields percentage and return as list
-		field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),4)} for field in sr_dict['aggregations'] ]
+			# execute search and capture as dictionary
+			sr = s.execute()
+			sr_dict = sr.to_dict()
 
-		# return
-		return {
-			'total_docs':sr_dict['hits']['total'],
-			'fields':field_count
-		}
+			# calc fields percentage and return as list
+			field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),4)} for field in sr_dict['aggregations'] ]
+
+			# return
+			return {
+				'total_docs':sr_dict['hits']['total'],
+				'fields':field_count
+			}
+
+		else:
+
+			return False
 
 
 	def field_analysis(self, field_name):
@@ -1209,7 +1206,7 @@ class HarvestJob(CombineJob):
 		records = df.select("record.*").where("record is not null")
 		
 		# write them to avro files
-		records.write.format("com.databricks.spark.avro").save(kwargs['harvest_save_path'])
+		records.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
 
 	def start_job(self):
@@ -1219,7 +1216,7 @@ class HarvestJob(CombineJob):
 		'''
 
 		# construct harvest path
-		harvest_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		output_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# index results save path
 		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
@@ -1230,7 +1227,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", harvest_save_path="%(harvest_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
 				'endpoint':harvest_vars['endpoint'],
@@ -1238,17 +1235,17 @@ class HarvestJob(CombineJob):
 				'metadataPrefix':harvest_vars['metadataPrefix'],
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
-				'harvest_save_path':harvest_save_path,
+				'output_save_path':output_save_path,
 				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
-				'job_output':harvest_save_path,
+				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, harvest_save_path)
+		self.submit_job(job_code, output_save_path)
 
 
 	def get_job_errors(self):
@@ -1310,8 +1307,8 @@ class TransformJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_instance = JobInput(job=self.job, input_job=input_job)
-			job_input_instance.save()
+			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link.save()
 
 
 	@staticmethod
@@ -1357,39 +1354,39 @@ class TransformJob(CombineJob):
 		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
 
 		# write them to avro files
-		transformed.toDF().write.format("com.databricks.spark.avro").save(kwargs['transform_save_path'])
+		transformed.toDF().write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
 
 	def start_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for harvest job
+		Construct python code that will be sent to Livy for transform job
 		'''
 
 		# construct harvest path
-		transform_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+		output_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# index results save path
 		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(transform_save_path="%(transform_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'%(spark_function)s\nspark_function(output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
 				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
 				'job_input':self.input_job.job_output,
 				'transform_filepath':self.transformation.filepath,
-				'transform_save_path':transform_save_path,
+				'output_save_path':output_save_path,
 				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
-				'job_output':transform_save_path,
+				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, transform_save_path)
+		self.submit_job(job_code, output_save_path)
 
 
 	def get_job_errors(self):
@@ -1409,10 +1406,105 @@ class MergeJob(CombineJob):
 	'''
 
 	pass
+
+
+class PublishJob(CombineJob):
 	
+	'''
+	Copy record output from job as published job set
+	'''
+
+	def __init__(self, job_name=None, user=None, record_group=None, input_job=None, job_id=None):
+
+		# perform CombineJob initialization
+		super().__init__(user=user, job_id=job_id)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			self.job_name = job_name
+			self.record_group = record_group
+			self.organization = self.record_group.organization
+			self.input_job = input_job
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
+
+			# create Job entry in DB
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = type(self).__name__,
+				user = self.user,
+				name = self.job_name,
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None,
+				job_details = json.dumps(
+					{'publish':
+						{
+							'publish_job_id':self.input_job.id,
+						}
+					})
+			)
+			self.job.save()
+
+			# save input job to JobInput table
+			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link.save()
+
+			# save input job to JobInput table
+			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
+			job_publish_link.save()
 
 
+	@staticmethod
+	def spark_function(**kwargs):
 
+		# read output from input_job
+		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+
+		# write them to avro files
+		df.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
+
+
+	def start_job(self):
+
+		'''
+		Construct python code that will be sent to Livy for publish job
+		'''
+
+		# construct harvest path
+		output_save_path = '%s/organizations/%s/record_group/%s/jobs/publish/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
+		# index results save path
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
+		# prepare job code
+		job_code = {
+			'code':'%(spark_function)s\nspark_function(output_save_path="%(output_save_path)s", job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			{
+				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
+				'job_input':self.input_job.job_output,
+				'output_save_path':output_save_path,
+				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+				'job_id':self.job.id,
+				'job_output':output_save_path,
+				'index_results_save_path':index_results_save_path
+			}
+		}
+		logger.debug(job_code)
+
+		# submit job
+		# self.submit_job(job_code, output_save_path)
+
+
+	def get_job_errors(self):
+
+		pass
 
 
 

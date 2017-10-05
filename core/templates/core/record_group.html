@@ -2,9 +2,29 @@
 
 {% block content %}
 
-	<h3>Jobs for Record Group: {{ record_group.name }}</h3>
+	<h3>Record Group: {{ record_group.name }}</h3>
 
-	<p>Record Group description: <em>{{ record_group.description }}</em></p>
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>Description</th>
+			<td>{{ record_group.description }}</td>
+		</tr>
+		<tr>
+			<th>Published Records</th>
+			{% if record_group.jobpublish_set.all|length > 0 %}
+				<td><a style="color:green;" href="{% url 'job_details' record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+			{% else %}
+				<td style="color:red;">None</td>
+			{% endif %}
+		</tr>
+		<tr>
+			<th>Published Set ID</th>
+			<td>{{ record_group.publish_set_id }}</td>
+		</tr>
+	</table>
+
+	<h3>Jobs</h3>
+
 
 	<div>
 		<table border="1" cellpadding="5">
@@ -50,7 +70,7 @@
 				<li><a href="{% url 'job_harvest' record_group_id=record_group.id %}">Harvest</a></li>
 				<li><a href="{% url 'job_transform' record_group_id=record_group.id %}">Transform</a></li>
 				<li><a href="#">Map and Index to ElasticSearch</a></li>
-				<li><a href="#">Publish</a></li>
+				<li><a href="{% url 'job_publish' record_group_id=record_group.id %}">Publish</a></li>
 			</ul>
 		</p>
 	</div>
