@@ -20,6 +20,7 @@ from elasticsearch_dsl import Search, Q, A
 import json
 import logging
 import os
+import re
 import requests
 import textwrap
 import time
@@ -27,6 +28,39 @@ import time
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
+
+# breadcrumb parser
+def breadcrumb_parser(path):
+	
+	'''
+	return parsed URL based on the pattern:
+	organization / record_group / job 
+	'''
+
+	crumbs = []
+
+	# org
+	m = re.match(r'(.+?/organization/([0-9]+))',path)
+	if m:
+		org = models.Organization.objects.get(pk=int(m.group(2)))
+		crumbs.append((org.name,m.group(1)))
+
+	# record_group
+	m = re.match(r'(.+?/record_group/([0-9]+))',path)
+	if m:
+		rg = models.RecordGroup.objects.get(pk=int(m.group(2)))
+		crumbs.append((rg.name,m.group(1)))
+
+	# job
+	m = re.match(r'(.+?/job/([0-9]+))',path)
+	if m:
+		j = models.Job.objects.get(pk=int(m.group(2)))
+		crumbs.append((j.name,m.group(1)))
+
+	# return
+	logger.debug(crumbs)
+	return crumbs
 
 
 ##################################
@@ -151,7 +185,7 @@ def organization(request, org_id):
 	record_group_form = forms.RecordGroupForm()
 	
 	# render page
-	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups, 'record_group_form':record_group_form})
+	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups, 'record_group_form':record_group_form, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 
@@ -215,7 +249,7 @@ def record_group(request, org_id, record_group_id):
 				job.update_record_count()
 
 	# render page 
-	return render(request, 'core/record_group.html', {'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
+	return render(request, 'core/record_group.html', {'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 
@@ -249,7 +283,7 @@ def job_details(request, org_id, record_group_id, job_id):
 	field_counts = cjob.count_indexed_fields()
 	
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts})
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -263,7 +297,7 @@ def job_errors(request, org_id, record_group_id, job_id):
 	job_errors = cjob.get_job_errors()
 	
 	# return
-	return render(request, 'core/job_errors.html', {'cjob':cjob, 'job_errors':job_errors})
+	return render(request, 'core/job_errors.html', {'cjob':cjob, 'job_errors':job_errors, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -294,7 +328,7 @@ def job_harvest(request, org_id, record_group_id):
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
 		# render page
-		return render(request, 'core/job_harvest.html', {'record_group':record_group, 'oai_endpoints':oai_endpoints})
+		return render(request, 'core/job_harvest.html', {'record_group':record_group, 'oai_endpoints':oai_endpoints, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -351,7 +385,7 @@ def job_transform(request, org_id, record_group_id):
 		transformations = models.Transformation.objects.all()	
 
 		# render page
-		return render(request, 'core/job_transform.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs, 'transformations':transformations})
+		return render(request, 'core/job_transform.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs, 'transformations':transformations, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -406,7 +440,7 @@ def job_merge(request, org_id, record_group_id):
 		jobs = models.Job.objects.all()
 
 		# render page
-		return render(request, 'core/job_merge.html', {'job_select_type':'multiple', 'record_group':record_group, 'jobs':jobs})
+		return render(request, 'core/job_merge.html', {'job_select_type':'multiple', 'record_group':record_group, 'jobs':jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -456,7 +490,7 @@ def job_publish(request, org_id, record_group_id):
 		jobs = record_group.job_set.all()
 
 		# render page
-		return render(request, 'core/job_publish.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs})
+		return render(request, 'core/job_publish.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -507,7 +541,7 @@ def field_analysis(request, org_id, record_group_id, job_id):
 	field_analysis_results = cjob.field_analysis(field_name)
 
 	# return
-	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results})
+	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -520,7 +554,7 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	indexing_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures})
+	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 

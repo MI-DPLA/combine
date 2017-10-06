@@ -24,15 +24,28 @@
 		</style>
 	</head>
 	<body>
-		<h1><a href="{% url 'combine_home' %}">Combine</a> &#128668;</h1>
+		<h2><a href="{% url 'combine_home' %}">Combine</a> &#128668;</h2>
 		<ul>
 			<li><a href="{% url 'livy_sessions' %}">Livy Sessions</a></li>
 			<li><a href="{% url 'organizations' %}">Organizations</a></li>
 			<li><a href="{% url 'configuration' %}">Configuration</a></li>
 			<li><a href="http://{{ APP_HOST }}:50070" target="_blank">HDFS Browser</a></li>
-		</ul>
+		</ul>	
+
 		<hr>
+
+		<!-- simple breadcrumbs -->
+		{% if breadcrumbs %}
+			<div id="breadcrumbs">
+				/ <a href="/combine"><em>Home</em></a> 
+				{% for crumb in breadcrumbs %}
+					/ <a href="{{ crumb.1 }}"><em>{{ crumb.0 }}</em></a> 
+				{% endfor %}
+			</div>
+		{% endif %}
+
 		{% block content %}
 		{% endblock %}
+
 	</body>
 </html>
