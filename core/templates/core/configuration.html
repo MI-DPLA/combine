@@ -1,0 +1,59 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+	
+	<h2>Configurations</h2>
+
+	<h3>Transformations</h3>
+	<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
+	<div>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Path on disk</th>
+				<th>Actions</th>
+			</tr>
+			{% for transformation in transformations %}
+				<tr>
+					<td>{{transformation.id}}</td>
+					<td>{{transformation.name}}</td>
+					<td>{{transformation.transformation_type}}</td>
+					<td>{{transformation.filepath}}</td>
+					<td><a href="#">Details</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<h3>OAI Endpoints</h3>
+	<p>These are used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.</p>
+	<div>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Endpoint URL</th>
+				<th>Verb</th>
+				<th>Metadata Prefix</th>
+				<th>Scope Type</th>
+				<th>Scope Value</th>
+				<th>Actions</th>
+			</tr>
+			{% for oai_endpoint in oai_endpoints %}
+				<tr>
+					<td>{{oai_endpoint.id}}</td>
+					<td>{{oai_endpoint.name}}</td>
+					<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
+					<td>{{oai_endpoint.verb}}</td>
+					<td>{{oai_endpoint.metadataPrefix}}</td>
+					<td>{{oai_endpoint.scope_type}}</td>
+					<td>{{oai_endpoint.scope_value}}</td>
+					<td><a href="#">Details</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+{% endblock %}

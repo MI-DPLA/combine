@@ -528,10 +528,16 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 # Transformations
 ##################################
 @login_required
-def transformations(request):
+def configuration(request):
+
+	# get all transformations
+	transformations = models.Transformation.objects.all()
+
+	# get all OAI endpoints
+	oai_endpoints = models.OAIEndpoint.objects.all()
 
 	# return
-	return render(request, 'core/transformations.html')
+	return render(request, 'core/configuration.html', {'transformations':transformations, 'oai_endpoints':oai_endpoints})
 
 
 
