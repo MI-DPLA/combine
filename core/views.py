@@ -268,7 +268,7 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job.delete()
 
 	# redirect
-	return redirect('record_group', record_group_id=record_group_id)
+	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
 
 
 @login_required
@@ -362,7 +362,7 @@ def job_harvest(request, org_id, record_group_id):
 		# start job
 		job.start_job()
 
-		return redirect('record_group', record_group_id=record_group.id)
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 @login_required
@@ -420,7 +420,7 @@ def job_transform(request, org_id, record_group_id):
 		# start job
 		job.start_job()
 
-		return redirect('record_group', record_group_id=record_group.id)
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 @login_required
@@ -470,7 +470,7 @@ def job_merge(request, org_id, record_group_id):
 		# # start job
 		job.start_job()
 
-		return redirect('record_group', record_group_id=record_group.id)
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 @login_required
@@ -520,7 +520,7 @@ def job_publish(request, org_id, record_group_id):
 		# start job
 		job.start_job()
 
-		return redirect('record_group', record_group_id=record_group.id)
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 
