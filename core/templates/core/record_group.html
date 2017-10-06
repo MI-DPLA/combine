@@ -53,7 +53,7 @@
 					
 					{% if job.jobinput_set.all|length > 0 %}
 						<td>{% for input_job in job.jobinput_set.all %}
-							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px solid black; margin-bottom:2px;">
+							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
 								<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 							</div>
 							{% endfor %}
