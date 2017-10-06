@@ -4,7 +4,7 @@
 
 	<h3>Harvest Job for Record Group: {{ record_group.name }}</h3>
 
-	<form method="POST" action="{% url 'job_harvest' record_group_id=record_group.id %}">
+	<form method="POST" action="{% url 'job_harvest' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 		{% csrf_token %}
 

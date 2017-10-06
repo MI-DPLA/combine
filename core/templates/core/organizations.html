@@ -25,4 +25,12 @@
 		</table>
 	</div>
 
+	<h4>Create new Organization</h4>
+
+	<form method="POST" action="{% url 'organizations' %}">
+    {% csrf_token %}
+	    {{ organization_form }}
+	    <input type="submit" value="Submit" />
+	</form>
+
 {% endblock %}

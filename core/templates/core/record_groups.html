@@ -19,7 +19,7 @@
 				<td>{{ record_group.name }}</td>
 				<td>{{ record_group.description }}</td>
 				<td>{{ record_group.status }}</td>
-				<td><a href="{% url 'record_group' record_group_id=record_group.id %}">Details</a></td>
+				<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">Details</a></td>
 				<td><a href="#">Delete</a></td>
 			</tr>
 		{% endfor %}

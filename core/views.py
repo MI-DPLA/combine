@@ -8,7 +8,7 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 
 # import models
-from core import models
+from core import models, forms
 from core.es import es_handle
 
 # import cyavro
@@ -109,12 +109,30 @@ def organizations(request):
 	View all Organizations
 	'''
 	
-	logger.debug('retrieving organizations')
-	
-	orgs = models.Organization.objects.all()
+	# show organizations
+	if request.method == 'GET':
 
-	# render page
-	return render(request, 'core/organizations.html', {'orgs':orgs})
+		logger.debug('retrieving organizations')
+		
+		# get all organizations
+		orgs = models.Organization.objects.all()
+
+		# get Organization form
+		organization_form = forms.OrganizationForm()
+
+		# render page
+		return render(request, 'core/organizations.html', {'orgs':orgs, 'organization_form':organization_form})
+
+
+	# create new organization
+	if request.method == 'POST':
+
+		# create new org
+		logger.debug(request.POST)
+		f = forms.OrganizationForm(request.POST)
+		f.save()	
+
+		return redirect('organizations')
 
 
 def organization(request, org_id):
@@ -128,9 +146,12 @@ def organization(request, org_id):
 
 	# get record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org)
+
+	# get RecordGroup form
+	record_group_form = forms.RecordGroupForm()
 	
 	# render page
-	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups})
+	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups, 'record_group_form':record_group_form})
 
 
 
@@ -139,7 +160,7 @@ def organization(request, org_id):
 ##################################
 
 
-def record_group(request, record_group_id):
+def record_group(request, org_id, record_group_id):
 
 	'''
 	View information about a single record group, including any and all jobs run
@@ -178,12 +199,13 @@ def record_group(request, record_group_id):
 	return render(request, 'core/record_group.html', {'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs})
 
 
+
 ##################################
 # Jobs
 ##################################
 
 @login_required
-def job_delete(request, record_group_id, job_id):
+def job_delete(request, org_id, record_group_id, job_id):
 	
 	logger.debug('deleting job by id: %s' % job_id)
 
@@ -197,7 +219,7 @@ def job_delete(request, record_group_id, job_id):
 
 
 @login_required
-def job_details(request, record_group_id, job_id):
+def job_details(request, org_id, record_group_id, job_id):
 	
 	logger.debug('details for job id: %s' % job_id)
 
@@ -212,7 +234,7 @@ def job_details(request, record_group_id, job_id):
 
 
 @login_required
-def job_errors(request, record_group_id, job_id):
+def job_errors(request, org_id, record_group_id, job_id):
 	
 	logger.debug('retrieving errors for job id: %s' % job_id)
 
@@ -237,7 +259,7 @@ def job_input_select(request):
 
 
 @login_required
-def job_harvest(request, record_group_id):
+def job_harvest(request, org_id, record_group_id):
 
 	'''
 	Create a new Harvest Job
@@ -291,7 +313,7 @@ def job_harvest(request, record_group_id):
 
 
 @login_required
-def job_transform(request, record_group_id):
+def job_transform(request, org_id, record_group_id):
 
 	'''
 	Create a new Transform Job
@@ -349,7 +371,7 @@ def job_transform(request, record_group_id):
 
 
 @login_required
-def job_merge(request, record_group_id):
+def job_merge(request, org_id, record_group_id):
 
 	'''
 	Merge multiple jobs into a single job
@@ -399,7 +421,7 @@ def job_merge(request, record_group_id):
 
 
 @login_required
-def job_publish(request, record_group_id):
+def job_publish(request, org_id, record_group_id):
 
 	'''
 	Publish a single job for a Record Group
@@ -453,7 +475,7 @@ def job_publish(request, record_group_id):
 # Jobs QA
 ##################################
 @login_required
-def field_analysis(request, record_group_id, job_id):
+def field_analysis(request, org_id, record_group_id, job_id):
 
 	# get field name
 	field_name = request.GET.get('field_name')
@@ -470,7 +492,7 @@ def field_analysis(request, record_group_id, job_id):
 
 
 @login_required
-def job_indexing_failures(request, record_group_id, job_id):
+def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
