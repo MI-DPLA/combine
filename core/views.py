@@ -44,19 +44,19 @@ def breadcrumb_parser(path):
 	m = re.match(r'(.+?/organization/([0-9]+))',path)
 	if m:
 		org = models.Organization.objects.get(pk=int(m.group(2)))
-		crumbs.append((org.name,m.group(1)))
+		crumbs.append(("%s (Organization)" % org.name,m.group(1)))
 
 	# record_group
 	m = re.match(r'(.+?/record_group/([0-9]+))',path)
 	if m:
 		rg = models.RecordGroup.objects.get(pk=int(m.group(2)))
-		crumbs.append((rg.name,m.group(1)))
+		crumbs.append(("%s (Record Group)" % rg.name,m.group(1)))
 
 	# job
 	m = re.match(r'(.+?/job/([0-9]+))',path)
 	if m:
 		j = models.Job.objects.get(pk=int(m.group(2)))
-		crumbs.append((j.name,m.group(1)))
+		crumbs.append(("%s (Job)" % j.name,m.group(1)))
 
 	# return
 	logger.debug(crumbs)

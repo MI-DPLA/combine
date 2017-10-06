@@ -32,17 +32,17 @@
 			<li><a href="http://{{ APP_HOST }}:50070" target="_blank">HDFS Browser</a></li>
 		</ul>	
 
-		<hr>
-
 		<!-- simple breadcrumbs -->
-		{% if breadcrumbs %}
-			<div id="breadcrumbs">
-				/ <a href="/combine"><em>Home</em></a> 
+		<div id="breadcrumbs">
+			<a href="/combine"><em>Home</em></a> 
+			{% if breadcrumbs %}
 				{% for crumb in breadcrumbs %}
 					/ <a href="{{ crumb.1 }}"><em>{{ crumb.0 }}</em></a> 
 				{% endfor %}
-			</div>
-		{% endif %}
+			{% endif %}
+		</div>
+			
+		<hr>
 
 		{% block content %}
 		{% endblock %}
