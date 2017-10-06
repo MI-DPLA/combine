@@ -160,6 +160,25 @@ def organization(request, org_id):
 ##################################
 
 
+def record_group_new(request, org_id):
+
+	'''
+	Create new Record Group
+	'''
+
+	# create new organization
+	if request.method == 'POST':
+
+		# create new record group
+		logger.debug(request.POST)
+		f = forms.RecordGroupForm(request.POST)
+		f.save()
+
+		# redirect to organization page
+		return redirect('organization', org_id=org_id)
+
+
+
 def record_group(request, org_id, record_group_id):
 
 	'''
@@ -502,6 +521,17 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 	# return
 	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures})
+
+
+
+##################################
+# Transformations
+##################################
+@login_required
+def transformations(request):
+
+	# return
+	return render(request, 'core/transformations.html')
 
 
 

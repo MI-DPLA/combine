@@ -27,4 +27,13 @@
 		</table>
 	</div>
 
+	<h4>Create new Record Group</h4>
+
+	<form method="POST" action="{% url 'record_group_new' org_id=org.id %}">
+    {% csrf_token %}
+	    {{ record_group_form }}
+	    <input type='hidden' name='org_id' value='{{org.id}}'/>
+	    <input type="submit" value="Submit" />
+	</form>
+
 {% endblock %}

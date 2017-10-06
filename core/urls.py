@@ -16,6 +16,7 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)$', views.organization, name='organization'),
 
 	# Record Groups
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/new$', views.record_group_new, name='record_group_new'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 
 	# Record Group Jobs
@@ -33,6 +34,9 @@ urlpatterns = [
 
 	# Jobs General
 	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
+
+	# Transformations
+	url(r'^transformations$', views.transformations, name='transformations'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
