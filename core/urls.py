@@ -24,6 +24,7 @@ urlpatterns = [
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/(?P<job_id>[0-9]+)/errors$', views.job_errors, name='job_errors'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/harvest/new$', views.job_harvest, name='job_harvest'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/transform/new$', views.job_transform, name='job_transform'),
+	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/merge/new$', views.job_merge, name='job_merge'),
 	url(r'^record_groups/(?P<record_group_id>[0-9]+)/jobs/publish/new$', views.job_publish, name='job_publish'),
 
 	# Record Group Job Analysis

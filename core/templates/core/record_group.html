@@ -53,7 +53,7 @@
 					
 					{% if job.jobinput_set.all|length > 0 %}
 						<td>{% for input_job in job.jobinput_set.all %}
-							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px solid black;">
+							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px solid black; margin-bottom:2px;">
 								<a href="{% url 'job_details' record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 							</div>
 							{% endfor %}
@@ -80,6 +80,7 @@
 			<ul>
 				<li><a href="{% url 'job_harvest' record_group_id=record_group.id %}">Harvest</a></li>
 				<li><a href="{% url 'job_transform' record_group_id=record_group.id %}">Transform</a></li>
+				<li><a href="{% url 'job_merge' record_group_id=record_group.id %}">Merge</a></li>
 				<!-- <li><a href="#">Map Service Hub profile to DPLA profile</a></li> -->
 				<li><a href="{% url 'job_publish' record_group_id=record_group.id %}">Publish</a></li>
 			</ul>

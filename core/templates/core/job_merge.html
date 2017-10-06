@@ -1,0 +1,26 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Merge Jobs</h3>
+
+	<p>This allows merging of multiple jobs into a single job.  <strong>Note:</strong> this can be done across Record Groups.</p>
+
+	<form method="POST" action="{% url 'job_merge' record_group_id=record_group.id %}">
+
+		{% csrf_token %}
+
+		<p>Merge Name (optional):
+			<input type="text" name="job_name" size=120 placeholder="e.g. Multiple harvest and transformation merge, 10/10/2017"/>
+		<p>
+
+		<!-- Job Select -->
+		{% include 'core/job_input_select.html' %}
+
+		<p>
+			<input type="submit" value="Merge"/>
+		</p>
+
+	</form>
+
+{% endblock %}

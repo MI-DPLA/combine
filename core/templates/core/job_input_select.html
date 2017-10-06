@@ -12,10 +12,10 @@
 					<th>Input</th>
 					<th>Output</th>
 					<th>Record Count</th>
-					<th>actions</th>
+					<th>Select</th>
 				</tr>
 				{% for job in jobs %}
-					<tr>
+					<tr class="{{ job.job_type }}">
 						<td><a href="{% url 'record_group' record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 						<td>{{ job.id }}</td>
 						<td>{{ job.name }}</td>
@@ -28,7 +28,11 @@
 							<td>{{ job.job_output }}</td>
 						{% endif %}
 						<td>{{ job.record_count }}</td>
-						<td><input type="radio" name="input_job_id" value="{{ job.id }}"></td>
+						{% if job_select_type == 'single' %}
+							<td><input type="radio" name="input_job_id" value="{{ job.id }}"></td>
+						{% else %}
+							<td><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
+						{% endif %}
 					</tr>
 				{% endfor %}
 			</table>

@@ -1383,10 +1383,108 @@ class TransformJob(CombineJob):
 class MergeJob(CombineJob):
 	
 	'''
-	Merge multiple jobs into a single 
+	Merge multiple jobs into a single job
 	'''
 
-	pass
+	def __init__(self, job_name=None, user=None, record_group=None, input_jobs=None, job_id=None):
+
+		# perform CombineJob initialization
+		super().__init__(user=user, job_id=job_id)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			self.job_name = job_name
+			self.record_group = record_group
+			self.organization = self.record_group.organization
+			self.input_jobs = input_jobs
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
+
+			# create Job entry in DB
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = type(self).__name__,
+				user = self.user,
+				name = self.job_name,
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None,
+				job_details = json.dumps(
+					{'publish':
+						{
+							'publish_job_id':str(self.input_jobs),
+						}
+					})
+			)
+			self.job.save()
+
+			# save input job to JobInput table
+			for input_job in self.input_jobs:
+				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link.save()
+
+
+	@staticmethod
+	def spark_function(**kwargs):
+
+		import ast
+
+		# rehydrate list of input jobs
+		input_jobs = ast.literal_eval(kwargs['job_inputs'])
+
+		# get list of RDDs from input jobs
+		input_jobs_rdds = [ spark.read.format('com.databricks.spark.avro').load(job).rdd for job in input_jobs ]
+
+		# create aggregate rdd of frames
+		agg_rdd = sc.union(input_jobs_rdds)
+
+		# TODO: report duplicate IDs as errors in result
+
+		# write agg to new avro files
+		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
+
+
+	def start_job(self):
+
+		'''
+		Construct python code that will be sent to Livy for publish job
+		'''
+
+		# construct harvest path
+		output_save_path = '%s/organizations/%s/record_group/%s/jobs/publish/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
+		# index results save path
+		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
+
+		# prepare job code
+		job_code = {
+			'code':'%(spark_function)s\nspark_function(output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			{
+				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
+				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
+				'output_save_path':output_save_path,
+				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+				'job_id':self.job.id,
+				'job_output':output_save_path,
+				'index_results_save_path':index_results_save_path
+			}
+		}
+		logger.debug(job_code)
+
+		# submit job
+		self.submit_job(job_code, output_save_path)
+
+
+	def get_job_errors(self):
+
+		pass
+
 
 
 class PublishJob(CombineJob):
@@ -1437,7 +1535,7 @@ class PublishJob(CombineJob):
 			job_input_link = JobInput(job=self.job, input_job=self.input_job)
 			job_input_link.save()
 
-			# save input job to JobInput table
+			# save publishing link from job to record_group
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
 
