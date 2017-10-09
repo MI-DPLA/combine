@@ -1,7 +1,7 @@
 
 
 # load elasticsearch spark code
-from es import ESIndex
+from es import ESIndex, MODSMapper
 
 # imports
 from lxml import etree
@@ -41,7 +41,8 @@ class HarvestSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
-			index_results_save_path=kwargs['index_results_save_path']
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
 		)
 
 
@@ -98,7 +99,8 @@ class TransformSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
-			index_results_save_path=kwargs['index_results_save_path']
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
 		)
 
 
@@ -129,7 +131,8 @@ class MergeSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
-			index_results_save_path=kwargs['index_results_save_path']
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
 		)
 
 
@@ -151,7 +154,8 @@ class PublishSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
-			index_results_save_path=kwargs['index_results_save_path']
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
 		)
 
 

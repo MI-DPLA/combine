@@ -1013,7 +1013,14 @@ class CombineJob(object):
 class HarvestJob(CombineJob):
 
 
-	def __init__(self, job_name=None, user=None, record_group=None, oai_endpoint=None, overrides=None, job_id=None):
+	def __init__(self,
+		job_name=None,
+		user=None,
+		record_group=None,
+		oai_endpoint=None,
+		overrides=None,
+		job_id=None,
+		index_mapper=None):
 
 		'''
 		
@@ -1047,6 +1054,7 @@ class HarvestJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
+			self.index_mapper = index_mapper
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -1096,7 +1104,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -1106,7 +1114,8 @@ class HarvestJob(CombineJob):
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path
+				'index_results_save_path':index_results_save_path,
+				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
@@ -1132,7 +1141,14 @@ class TransformJob(CombineJob):
 	Apply an XSLT transformation to a record group
 	'''
 
-	def __init__(self, job_name=None, user=None, record_group=None, input_job=None, transformation=None, job_id=None):
+	def __init__(self,
+		job_name=None,
+		user=None,
+		record_group=None,
+		input_job=None,
+		transformation=None,
+		job_id=None,
+		index_mapper=None):
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1145,6 +1161,7 @@ class TransformJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.transformation = transformation
+			self.index_mapper = index_mapper
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -1192,14 +1209,15 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'transform_filepath':self.transformation.filepath,
 				'output_save_path':output_save_path,
 				'job_input':self.input_job.job_output,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path
+				'index_results_save_path':index_results_save_path,
+				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
@@ -1224,7 +1242,13 @@ class MergeJob(CombineJob):
 	Merge multiple jobs into a single job
 	'''
 
-	def __init__(self, job_name=None, user=None, record_group=None, input_jobs=None, job_id=None):
+	def __init__(self,
+		job_name=None,
+		user=None,
+		record_group=None,
+		input_jobs=None,
+		job_id=None,
+		index_mapper=None):
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1236,6 +1260,7 @@ class MergeJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
+			self.index_mapper = index_mapper
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -1282,13 +1307,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path
+				'index_results_save_path':index_results_save_path,
+				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
@@ -1309,7 +1335,13 @@ class PublishJob(CombineJob):
 	Copy record output from job as published job set
 	'''
 
-	def __init__(self, job_name=None, user=None, record_group=None, input_job=None, job_id=None):
+	def __init__(self,
+		job_name=None,
+		user=None,
+		record_group=None,
+		input_job=None,
+		job_id=None,
+		index_mapper=None):
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1321,6 +1353,7 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
+			self.index_mapper = index_mapper
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -1370,13 +1403,14 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_input':self.input_job.job_output,
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path
+				'index_results_save_path':index_results_save_path,
+				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)

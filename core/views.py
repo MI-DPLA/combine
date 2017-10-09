@@ -350,13 +350,17 @@ def job_harvest(request, org_id, record_group_id):
 		overrides = { override:request.POST[override] for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
 		# initiate job
 		job = models.HarvestJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
-			overrides=overrides
+			overrides=overrides,
+			index_mapper=index_mapper
 		)
 		
 		# start job
@@ -408,13 +412,17 @@ def job_transform(request, org_id, record_group_id):
 		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
 		logger.debug('using transformation: %s' % transformation)
 
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
 		# initiate job
 		job = models.TransformJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
-			transformation=transformation
+			transformation=transformation,
+			index_mapper=index_mapper
 		)
 		
 		# start job
@@ -459,12 +467,16 @@ def job_merge(request, org_id, record_group_id):
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('merging jobs: %s' % input_jobs)
 
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
 		# initiate job
 		job = models.MergeJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
-			input_jobs=input_jobs
+			input_jobs=input_jobs,
+			index_mapper=index_mapper
 		)
 		
 		# # start job
@@ -509,12 +521,16 @@ def job_publish(request, org_id, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
 
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
 		# initiate job
 		job = models.PublishJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
-			input_job=input_job
+			input_job=input_job,
+			index_mapper=index_mapper
 		)
 		
 		# start job

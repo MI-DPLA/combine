@@ -44,9 +44,14 @@
 		<p>Scope value:
 			<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
 		<p>
+
+		<!-- Indexing Mapping Selection -->
+		{% include 'core/index_mapping_select.html' %}
+
 		<p>
 			<input type="submit" value="Harvest"/>
 		</p>
+
 	</form>
 
 {% endblock %}

@@ -28,46 +28,9 @@ class ESIndex(object):
 		# get records from job output
 		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
 
-		# get string of xslt
-		with open('/opt/combine/inc/xslt/MODS_extract.xsl','r') as f:
-			xslt = f.read().encode('utf-8')
-
-		def record_generator(row):
-
-			try:
-				# flatten file
-				xslt_tree = etree.fromstring(xslt)
-				transform = etree.XSLT(xslt_tree)
-				xml_root = etree.fromstring(row.document)
-				flat_xml = transform(xml_root)
-
-				# convert to dictionary
-				flat_dict = xmltodict.parse(flat_xml)
-
-				# prepare as ES-friendly JSON
-				fields = flat_dict['fields']['field']
-				es_dict = { field['@name']:field['#text'] for field in fields }
-
-				# add temporary id field (consider hashing here?)
-				es_dict['temp_id'] = row.id
-
-				return (
-					'success',
-					es_dict
-				)
-
-			except Exception as e:
-				
-				return (
-					'fail',
-					{
-						'id':row.id,
-						'msg':str(e)
-					}
-				)
-
-		# create rdd with results of function
-		records_rdd = records_df.rdd.map(lambda row: record_generator(row))
+		# create rdd from index mapper
+		index_mapper_handle = globals()[kwargs['index_mapper']]
+		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document))
 
 		# filter out faliures, write to avro file for reporting on index process
 		# if no errors are found, pass and interpret missing avro files in the positive during analysis
