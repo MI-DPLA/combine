@@ -36,8 +36,11 @@ urlpatterns = [
 	# Jobs General
 	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
 
-	# Transformations
+	# Configuration
 	url(r'^configuration$', views.configuration, name='configuration'),
+
+	# OAI
+	url(r'^oai$', views.oai, name='oai'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

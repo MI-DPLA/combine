@@ -11,6 +11,9 @@ from django.shortcuts import render, redirect
 from core import models, forms
 from core.es import es_handle
 
+# import oai server
+from core.oai import OAIProvider
+
 # import cyavro
 import cyavro
 
@@ -589,6 +592,29 @@ def configuration(request):
 	# return
 	return render(request, 'core/configuration.html', {'transformations':transformations, 'oai_endpoints':oai_endpoints})
 
+
+
+##################################
+# OAI Server
+##################################
+@login_required
+def oai(request):
+
+	'''
+	Parse GET parameters, send to OAIProvider instance from oai.py
+	Return XML results
+	'''
+
+	# debug args
+	args = {
+		'verb':'Identify'
+	}
+
+	# get OAIProvider instance
+	op = OAIProvider(args)
+
+	# return XML
+	return HttpResponse(op.generate_response(), content_type='text/xml')
 
 
 
