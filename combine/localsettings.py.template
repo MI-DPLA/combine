@@ -1,3 +1,7 @@
+# Combine Install Location
+COMBINE_INSTALL_PATH = '/opt/combine'
+
+
 # Combine Front-End
 APP_HOST = 'combine-vm'
 

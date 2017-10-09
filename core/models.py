@@ -918,93 +918,93 @@ class CombineJob(object):
 			return records
 
 
-	@staticmethod
-	def index_job_to_es_spark(**kwargs):
+	# @staticmethod
+	# def index_job_to_es_spark(**kwargs):
 
-		import django
-		from elasticsearch import Elasticsearch
-		import json
-		from lxml import etree
-		import os
-		from pyspark.sql import Row
-		import sys
-		import xmltodict
+	# 	import django
+	# 	from elasticsearch import Elasticsearch
+	# 	import json
+	# 	from lxml import etree
+	# 	import os
+	# 	from pyspark.sql import Row
+	# 	import sys
+	# 	import xmltodict
 
-		# init django settings file to retrieve settings
-		os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-		sys.path.append('/opt/combine')
-		django.setup()
-		from django.conf import settings
+	# 	# init django settings file to retrieve settings
+	# 	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+	# 	sys.path.append('/opt/combine')
+	# 	django.setup()
+	# 	from django.conf import settings
 
-		# get records from job output
-		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
+	# 	# get records from job output
+	# 	records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
 
-		# get string of xslt
-		with open('/opt/combine/inc/xslt/MODS_extract.xsl','r') as f:
-			xslt = f.read().encode('utf-8')
+	# 	# get string of xslt
+	# 	with open('/opt/combine/inc/xslt/MODS_extract.xsl','r') as f:
+	# 		xslt = f.read().encode('utf-8')
 
-		def record_generator(row):
+	# 	def record_generator(row):
 
-			try:
-				# flatten file
-				xslt_tree = etree.fromstring(xslt)
-				transform = etree.XSLT(xslt_tree)
-				xml_root = etree.fromstring(row.document)
-				flat_xml = transform(xml_root)
+	# 		try:
+	# 			# flatten file
+	# 			xslt_tree = etree.fromstring(xslt)
+	# 			transform = etree.XSLT(xslt_tree)
+	# 			xml_root = etree.fromstring(row.document)
+	# 			flat_xml = transform(xml_root)
 
-				# convert to dictionary
-				flat_dict = xmltodict.parse(flat_xml)
+	# 			# convert to dictionary
+	# 			flat_dict = xmltodict.parse(flat_xml)
 
-				# prepare as ES-friendly JSON
-				fields = flat_dict['fields']['field']
-				es_dict = { field['@name']:field['#text'] for field in fields }
+	# 			# prepare as ES-friendly JSON
+	# 			fields = flat_dict['fields']['field']
+	# 			es_dict = { field['@name']:field['#text'] for field in fields }
 
-				# add temporary id field (consider hashing here?)
-				es_dict['temp_id'] = row.id
+	# 			# add temporary id field (consider hashing here?)
+	# 			es_dict['temp_id'] = row.id
 
-				return (
-					'success',
-					es_dict
-				)
+	# 			return (
+	# 				'success',
+	# 				es_dict
+	# 			)
 
-			except Exception as e:
+	# 		except Exception as e:
 				
-				return (
-					'fail',
-					{
-						'id':row.id,
-						'msg':str(e)
-					}
-				)
+	# 			return (
+	# 				'fail',
+	# 				{
+	# 					'id':row.id,
+	# 					'msg':str(e)
+	# 				}
+	# 			)
 
-		# create rdd with results of function
-		records_rdd = records_df.rdd.map(lambda row: record_generator(row))
+	# 	# create rdd with results of function
+	# 	records_rdd = records_df.rdd.map(lambda row: record_generator(row))
 
-		# filter out faliures, write to avro file for reporting on index process
-		# if no errors are found, pass and interpret missing avro files in the positive during analysis
-		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
-		try:
-			failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
-		except:
-			pass
+	# 	# filter out faliures, write to avro file for reporting on index process
+	# 	# if no errors are found, pass and interpret missing avro files in the positive during analysis
+	# 	failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
+	# 	try:
+	# 		failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
+	# 	except:
+	# 		pass
 
-		# retrieve successes to index
-		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
+	# 	# retrieve successes to index
+	# 	to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
 
-		# create index in advance
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		index_name = 'j%s' % kwargs['job_id']
-		mapping = {'mappings':{'record':{'date_detection':False}}}
-		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+	# 	# create index in advance
+	# 	es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+	# 	index_name = 'j%s' % kwargs['job_id']
+	# 	mapping = {'mappings':{'record':{'date_detection':False}}}
+	# 	es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
-		# index to ES
-		to_index_rdd.saveAsNewAPIHadoopFile(
-			path='-',
-			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
-			keyClass="org.apache.hadoop.io.NullWritable",
-			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
-			conf={ "es.resource" : "%s/record" % index_name, "es.nodes":"192.168.45.10:9200", "es.mapping.exclude":"temp_id", "es.mapping.id":"temp_id"}
-		)
+	# 	# index to ES
+	# 	to_index_rdd.saveAsNewAPIHadoopFile(
+	# 		path='-',
+	# 		outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+	# 		keyClass="org.apache.hadoop.io.NullWritable",
+	# 		valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+	# 		conf={ "es.resource" : "%s/record" % index_name, "es.nodes":"192.168.45.10:9200", "es.mapping.exclude":"temp_id", "es.mapping.id":"temp_id"}
+	# 	)
 
 
 	def count_indexed_fields(self):
@@ -1099,7 +1099,6 @@ class CombineJob(object):
 		
 
 
-
 class HarvestJob(CombineJob):
 
 
@@ -1168,28 +1167,6 @@ class HarvestJob(CombineJob):
 			self.job.save()
 
 
-	@staticmethod
-	def spark_function(**kwargs):
-
-		'''
-		Harvest records, select non-null, and write to avro files
-
-		expecting kwargs from self.start_job()
-		'''
-		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", kwargs['endpoint'])\
-		.option("verb", kwargs['verb'])\
-		.option("metadataPrefix", kwargs['metadataPrefix'])\
-		.option(kwargs['scope_type'], kwargs['scope_value'])\
-		.load()
-		
-		# select only records
-		records = df.select("record.*").where("record is not null")
-		
-		# write them to avro files
-		records.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
-
-
 	def start_job(self):
 
 		'''
@@ -1208,16 +1185,15 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),
+				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
 				'metadataPrefix':harvest_vars['metadataPrefix'],
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'output_save_path':output_save_path,
-				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
 				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path
@@ -1292,52 +1268,6 @@ class TransformJob(CombineJob):
 			job_input_link.save()
 
 
-	@staticmethod
-	def spark_function(**kwargs):
-
-		# imports
-		from lxml import etree
-		from pyspark.sql import Row
-
-		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
-
-		# get string of xslt
-		with open(kwargs['transform_filepath'],'r') as f:
-			xslt = f.read().encode('utf-8')
-
-		# define function for transformation
-		def transform_xml(record_id, xml, xslt):
-
-			# attempt transformation and save out put to 'document'
-			try:
-				xslt_root = etree.fromstring(xslt)
-				transform = etree.XSLT(xslt_root)
-				xml_root = etree.fromstring(xml)
-				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				result_tree = transform(mods_root)
-				result = etree.tostring(result_tree)
-				return Row(
-					id=record_id,
-					document=result.decode('utf-8'),
-					error=''
-				)
-
-			# catch transformation exception and save exception to 'error'
-			except Exception as e:
-				return Row(
-					id=record_id,
-					document='',
-					error=str(e)
-				)
-
-		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
-
-		# write them to avro files
-		transformed.toDF().write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
-
-
 	def start_job(self):
 
 		'''
@@ -1352,13 +1282,12 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
-				'job_input':self.input_job.job_output,
+				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),				
 				'transform_filepath':self.transformation.filepath,
 				'output_save_path':output_save_path,
-				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
+				'job_input':self.input_job.job_output,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path
@@ -1430,25 +1359,6 @@ class MergeJob(CombineJob):
 				job_input_link.save()
 
 
-	@staticmethod
-	def spark_function(**kwargs):
-
-		import ast
-
-		# rehydrate list of input jobs
-		input_jobs = ast.literal_eval(kwargs['job_inputs'])
-
-		# get list of RDDs from input jobs
-		input_jobs_rdds = [ spark.read.format('com.databricks.spark.avro').load(job).rdd for job in input_jobs ]
-
-		# create aggregate rdd of frames
-		agg_rdd = sc.union(input_jobs_rdds)
-
-		# TODO: report duplicate IDs as errors in result
-
-		# write agg to new avro files
-		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
-
 
 	def start_job(self):
 
@@ -1464,12 +1374,11 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'%(spark_function)s\nspark_function(output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s")\n%(index_job_to_es_spark)s\nindex_job_to_es_spark(job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import MergeSpark\nMergeSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'spark_function': textwrap.dedent(inspect.getsource(self.spark_function)).replace('@staticmethod\n',''),				
+				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),				
 				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
 				'output_save_path':output_save_path,
-				'index_job_to_es_spark': textwrap.dedent(inspect.getsource(self.index_job_to_es_spark)).replace('@staticmethod\n',''),
 				'job_id':self.job.id,
 				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path
