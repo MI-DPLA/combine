@@ -8,6 +8,7 @@ from lxml import etree
 from pyspark.sql import Row
 
 
+
 class HarvestSpark(object):
 
 	'''
@@ -105,7 +106,7 @@ class TransformSpark(object):
 class MergeSpark(object):
 
 	@staticmethod
-	def spark_function(spark, **kwargs):
+	def spark_function(spark, sc, **kwargs):
 
 		import ast
 
@@ -135,4 +136,25 @@ class MergeSpark(object):
 
 class PublishSpark(object):
 
-	pass
+	@staticmethod
+	def spark_function(spark, **kwargs):
+
+		# read output from input_job
+		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+
+		# write them to avro files
+		docs = df[df['document'] != '']
+		docs.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
+
+		# finally, index to ElasticSearch
+		ESIndex.index_job_to_es_spark(
+			spark,
+			job_id = kwargs['job_id'],
+			job_output = kwargs['job_output'],
+			index_results_save_path=kwargs['index_results_save_path']
+		)
+
+
+
+
+
