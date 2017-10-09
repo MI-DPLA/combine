@@ -1096,9 +1096,8 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
 				'metadataPrefix':harvest_vars['metadataPrefix'],
@@ -1193,9 +1192,8 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),				
 				'transform_filepath':self.transformation.filepath,
 				'output_save_path':output_save_path,
 				'job_input':self.input_job.job_output,
@@ -1284,9 +1282,8 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),				
 				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
@@ -1373,9 +1370,8 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'sc.addFile("%(combine_install_path)s/core/spark/es.py")\nsc.addFile("%(combine_install_path)s/core/spark/jobs.py")\nfrom jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s")' % 
 			{
-				'combine_install_path':settings.COMBINE_INSTALL_PATH.rstrip('/'),				
 				'job_input':self.input_job.job_output,
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
