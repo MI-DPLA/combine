@@ -183,6 +183,15 @@ class RecordGroup(models.Model):
 		return 'Record Group: %s' % self.name
 
 
+	def get_published_sets(self):
+
+		'''
+		Query DB for jobs published as sets for all record groups
+		'''
+
+
+
+
 
 class Job(models.Model):
 
@@ -401,6 +410,9 @@ class JobPublish(models.Model):
 
 	record_group = models.ForeignKey(RecordGroup)
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+
+	def __str__(self):
+		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
 
 
 

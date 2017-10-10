@@ -7,6 +7,9 @@ import logging
 from lxml import etree
 import time
 
+# django settings
+from django.conf import settings
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -36,6 +39,11 @@ class OAIProvider(object):
 	'''
 
 	def __init__(self, args):
+
+		# debug
+		logger.debug("################ OAIPROVIDER ARGS ################")
+		logger.debug(args)
+		logger.debug("################ OAIPROVIDER ARGS ################")
 
 		self.args = args
 		self.request_timestamp = datetime.datetime.now()
@@ -67,7 +75,7 @@ class OAIProvider(object):
 			self.request_node.attrib['set'] = self.args['set']
 		if 'metadataPrefix' in self.args.keys():
 			self.request_node.attrib['metadataPrefix'] = self.args['metadataPrefix']
-		self.request_node.text = 'http://digital.library.wayne.edu/api/oai'
+		self.request_node.text = settings.COMBINE_OAI_ENDPOINT
 		self.root_node.append(self.request_node)
 
 		# set verb node		
@@ -84,16 +92,15 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
-		# limit search to metadataPrefix provided
-		if self.args['metadataPrefix'] in metadataPrefix_hash.keys():
-			self.search_params['fq'].append('admin_datastreams:*%s*' % metadataPrefix_hash[self.args['metadataPrefix']]['ds_id'] )
-		elif not self.args['metadataPrefix']:
-			return self.raise_error('cannotDisseminateFormat','metadataPrefix is required for verb: %s' % (self.args['verb']))
-		else:
-			return self.raise_error('cannotDisseminateFormat','The metadataPrefix %s is not allowed' % self.args['metadataPrefix'])
+		# # limit search to metadataPrefix provided
+		# if self.args['metadataPrefix'] in metadataPrefix_hash.keys():
+		# 	self.search_params['fq'].append('admin_datastreams:*%s*' % metadataPrefix_hash[self.args['metadataPrefix']]['ds_id'] )
+		# elif not self.args['metadataPrefix']:
+		# 	return self.raise_error('cannotDisseminateFormat','metadataPrefix is required for verb: %s' % (self.args['verb']))
+		# else:
+		# 	return self.raise_error('cannotDisseminateFormat','The metadataPrefix %s is not allowed' % self.args['metadataPrefix'])
 
 		# fire search
-		logger.debug("OAI-PMH record search params: %s" % self.search_params)
 		self.search_results = solr_handle.search(**self.search_params)
 		logger.debug("OAI-PMH record search results: %s records found that meet verb and arg criteria" % self.search_results.total_results)
 
@@ -366,6 +373,7 @@ class OAIRecord(object):
 	def init_record_node(self):
 
 		# init node
+		# TODO: need to add additional namespace here, see https://github.com/WSULib/ouroboros/issues/59
 		self.oai_record_node = etree.Element('record')
 
 		# header node
