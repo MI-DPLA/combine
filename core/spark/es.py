@@ -5,6 +5,7 @@ from elasticsearch import Elasticsearch
 import json
 from lxml import etree
 import os
+import requests
 import sys
 import xmltodict
 
@@ -33,7 +34,7 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		index_mapper_handle = globals()[kwargs['index_mapper']]
-		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document))
+		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, kwargs['publish_set_id']))
 
 		# filter out faliures, write to avro file for reporting on index process
 		# if no errors are found, pass and interpret missing avro files in the positive during analysis
@@ -68,37 +69,33 @@ class ESIndex(object):
 
 
 	@staticmethod
-	def index_published_job(spark, **kwargs):
+	def index_published_job(**kwargs):
 
-		# get records from job output
-		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
-
-		# create rdd from index mapper
-		index_mapper_handle = globals()[kwargs['index_mapper']]
-		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document))
-
-		# retrieve successes to index
-		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
-
-		# create index in advance
+		# copy indexed documents from job to /published
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'published'
-		mapping = {'mappings':{'record':{'date_detection':False}}}
-		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
-		# index to ES
-		to_index_rdd.saveAsNewAPIHadoopFile(
-			path='-',
-			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
-			keyClass="org.apache.hadoop.io.NullWritable",
-			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
-			conf={
-					"es.resource":"%s/record" % index_name,
-					"es.nodes":"192.168.45.10:9200",
-					"es.mapping.exclude":"temp_id",
-					"es.mapping.id":"temp_id"
+		# check if published index exists
+		if not es_handle_temp.indices.exists(index_name):
+			mapping = {'mappings':{'record':{'date_detection':False}}}
+			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+
+		# prepare _reindex query
+		dupe_dict = {
+			'source':{
+				'index': 'j%s' % kwargs['job_id'],
+				'query':{
+					'term':{
+						'publish_set_id':
+						kwargs['publish_set_id']
+					}
 				}
-		)
+			},
+			'dest': {
+				'index':index_name
+			}
+		}
+		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST, data=json.dumps(dupe_dict), headers={'Content-Type':'application/json'})
 
 
 
@@ -142,7 +139,7 @@ class MODSMapper(BaseMapper):
 		self.xsl_transform = etree.XSLT(xslt_tree)
 
 
-	def map_record(self, record_id, record_string):
+	def map_record(self, record_id, record_string, publish_set_id):
 
 		try:
 			
@@ -159,6 +156,9 @@ class MODSMapper(BaseMapper):
 
 			# add temporary id field
 			mapped_dict['temp_id'] = record_id
+
+			# add publish set id
+			mapped_dict['publish_set_id'] = publish_set_id
 
 			return (
 				'success',

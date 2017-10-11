@@ -198,12 +198,9 @@ class PublishSpark(object):
 
 		# index to ES /published
 		ESIndex.index_published_job(
-			spark,
-			job_output = kwargs['job_output'],
-			publish_set_id=kwargs['publish_set_id'],
-			index_mapper=kwargs['index_mapper']
+			job_id = kwargs['job_id'],
+			publish_set_id=kwargs['publish_set_id']
 		)
-
 
 
 

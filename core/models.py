@@ -539,7 +539,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 	# if publish job, remove symlinks to global /published
 	if instance.job_type == 'PublishJob':
 
-		logger.debug('Publish job, removing symlinks')
+		logger.debug('Publish job detected, removing symlinks and removing record set from ES index')
 
 		# open cjob
 		cjob = CombineJob.get_combine_job(instance.id)
@@ -552,6 +552,20 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			# if hash is part of filename, remove
 			if job_output_filename_hash in f:
 				os.remove(os.path.join(published_dir, f))
+
+		# attempting to delete from ES
+		del_dsl = {
+			'query':{
+				'match':{
+					'publish_set_id':instance.record_group.publish_set_id
+				}
+			}
+		}
+		r = es_handle.delete_by_query(
+			index='published',
+			doc_type='record',
+			body=del_dsl
+		)
 
 
 	# remove avro files from disk
@@ -819,8 +833,22 @@ class LivyClient(object):
 
 
 ##################################
-# Combine Jobs
+# Combine Models
 ##################################
+
+class Published(object):
+
+	'''
+	Simple container for all jobs
+	'''
+
+	def __init__(self):
+
+		self.publish_links = JobPublish.objects.all()
+		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		self.df = cyavro.read_avro_path_as_dataframe('%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
+		self.record_count = self.df[self.df['document'] != '']['document'].count()
+
 
 class CombineJob(object):
 

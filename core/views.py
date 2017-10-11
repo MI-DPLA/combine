@@ -603,10 +603,11 @@ def published(request):
 	'''
 	Published records
 	'''
-
 	
+	# get instance of Published model
+	published = models.Published()
 
-	return render(request, 'core/published.html')
+	return render(request, 'core/published.html', {'published':published})
 
 
 

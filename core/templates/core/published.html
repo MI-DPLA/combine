@@ -2,6 +2,35 @@
 
 {% block content %}
 
-<h2>Published Records</h2>
+<h2>Published Sets</h2>
+
+<table border="1" cellpadding="10">
+
+	<tr>
+		<th>Set ID</th>
+		<th>Record Group</th>
+		<th>Published Records</th>
+		<th>Record Count</th>
+	</tr>
+
+	{% for set, job in published.sets.items %}
+		<tr>
+			<td>{{ set }}</td>
+			<td>{{ job.record_group }}</td>
+			<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job }}</a></td>
+			<td>{{ job.record_count }}</td>
+		</tr>
+	{% endfor %}
+
+	<tr>
+		<td></td>
+		<td></td>
+		<td><strong>Total:</strong></td>
+		<td>{{ published.record_count }}</td>
+	</tr>
+
+</table>
+
+<p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
 
 {% endblock %}
