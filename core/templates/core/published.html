@@ -15,9 +15,9 @@
 
 	{% for set, job in published.sets.items %}
 		<tr>
-			<td>{{ set }}</td>
-			<td>{{ job.record_group }}</td>
-			<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job }}</a></td>
+			<td>"{{ set }}"</td>
+			<td>{{ job.record_group.name }}</td>
+			<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 			<td>{{ job.record_count }}</td>
 		</tr>
 	{% endfor %}
@@ -32,5 +32,12 @@
 </table>
 
 <p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
+
+<h2>OAI Endpoint</h2>
+
+<ul>
+	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=Identify" target="_blank">Identify</a></li>
+</ul>
+
 
 {% endblock %}

@@ -8,5 +8,6 @@ def combine_settings(request):
 	'''
 
 	return {
-		'APP_HOST': settings.APP_HOST
+		'APP_HOST': settings.APP_HOST,
+		'COMBINE_OAI_ENDPOINT': settings.COMBINE_OAI_ENDPOINT
 	}
