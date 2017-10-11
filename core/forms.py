@@ -17,5 +17,5 @@ class RecordGroupForm(ModelForm):
 
 	class Meta:
 		model = RecordGroup
-		fields = ['organization', 'name', 'description']
+		fields = ['organization', 'name', 'description', 'publish_set_id']
 

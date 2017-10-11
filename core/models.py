@@ -12,6 +12,7 @@ import os
 import requests
 import shutil
 import subprocess
+import re
 import textwrap
 import time
 import uuid
@@ -207,6 +208,7 @@ class Job(models.Model):
 	headers = models.CharField(max_length=255, null=True)
 	response = models.TextField(null=True, default=None)
 	job_output = models.TextField(null=True, default=None)
+	# job_output_filename_hash = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
@@ -480,6 +482,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
+
 @receiver(models.signals.pre_save, sender=LivySession)
 def create_livy_session(sender, instance, **kwargs):
 
@@ -509,6 +512,7 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.active = True
 
 
+
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
@@ -535,6 +539,24 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 		logger.debug(str(e))
 
 
+	# if publish job, remove symlinks to global /published
+	if instance.job_type == 'PublishJob':
+
+		logger.debug('Publish job, removing symlinks')
+
+		# open cjob
+		cjob = CombineJob.get_combine_job(instance.id)
+		job_output_filename_hash = cjob.get_job_output_filename_hash()
+
+		# loop through published symlinks
+		published_dir = os.path.join(settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'), 'published')
+		for f in os.listdir(published_dir):
+
+			# if hash is part of filename, remove
+			if job_output_filename_hash in f:
+				os.remove(os.path.join(published_dir, f))
+
+
 	# remove avro files from disk
 	# if file://
 	if instance.job_output and instance.job_output.startswith('file://'):
@@ -558,6 +580,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 		shutil.rmtree(indexing_dir)
 	except:
 		logger.debug('could not remove indexing results')
+
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
@@ -805,7 +828,7 @@ class LivyClient(object):
 class CombineJob(object):
 
 
-	def __init__(self, user=None, job_id=None):
+	def __init__(self, user=None, job_id=None, parse_job_output=True):
 
 		self.user = user
 		self.livy_session = self._get_active_livy_session()
@@ -819,11 +842,12 @@ class CombineJob(object):
 			self.get_job(self.job_id)
 
 			# parse output as dataframe
-			try:
-				self.df = self.job.get_output_as_dataframe()
-			except:
-				logger.debug('could not parse job output as dataframe')
-				self.df = False
+			if parse_job_output:
+				try:
+					self.df = self.job.get_output_as_dataframe()
+				except:
+					logger.debug('could not parse job output as dataframe')
+					self.df = False
 
 
 	def default_job_name(self):
@@ -1019,6 +1043,31 @@ class CombineJob(object):
 			return total_input_record_count
 		else:
 			return None
+
+
+	def get_job_output_filename_hash(self):
+
+		'''
+		return hash of avro filenames
+		'''
+
+		# get list of avro files
+		job_output_dir = self.job.job_output.split('file://')[-1]
+
+		try:
+			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
+
+			if len(avros) > 0:
+				job_output_filename_hash = re.match(r'part-r-[0-9]+-(.+?)\.avro', avros[0]).group(1)
+				logger.debug('job output filename hash: %s' % job_output_filename_hash)
+				return job_output_filename_hash
+
+			elif len(avros) == 0:
+				logger.debug('no avro files found in job output directory')
+				return False
+		except:
+			logger.debug('could not load job output to determine filename hash')
+			return False
 		
 
 

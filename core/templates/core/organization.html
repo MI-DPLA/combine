@@ -10,7 +10,8 @@
 				<th>Record Group ID</th>
 				<th>Name</th>
 				<th>Description</th>
-				<th>Timestamp</th>
+				<th>Publish Set ID</th>
+				<th>Created</th>
 				<th>Actions</th>
 			</tr>
 			{% for record_group in record_groups %}
@@ -18,6 +19,7 @@
 					<td>{{ record_group.id }}</td>
 					<td>{{ record_group.name }}</td>
 					<td>{{ record_group.description }}</td>
+					<td>{{ record_group.publish_set_id }}</td>
 					<td>{{ record_group.timestamp }}</td>
 					<td>
 						<a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">Details</a>

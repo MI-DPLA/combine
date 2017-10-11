@@ -1,12 +1,15 @@
 
+# generic imports
 import django
 from elasticsearch import Elasticsearch
 import json
 from lxml import etree
 import os
-from pyspark.sql import Row
 import sys
 import xmltodict
+
+# import Row from pyspark
+from pyspark.sql import Row
 
 
 # init django settings file to retrieve settings

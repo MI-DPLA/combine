@@ -1,12 +1,25 @@
 
+# imports
+import django
+from lxml import etree
+import os
+import sys
 
 # load elasticsearch spark code
 from es import ESIndex, MODSMapper
 
-# imports
-from lxml import etree
+# import Row from pyspark
 from pyspark.sql import Row
 
+
+# init django settings file to retrieve settings
+os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+sys.path.append('/opt/combine')
+django.setup()
+from django.conf import settings
+
+# import select models from Core
+from core.models import CombineJob
 
 
 class HarvestSpark(object):
@@ -149,14 +162,31 @@ class PublishSpark(object):
 		docs = df[df['document'] != '']
 		docs.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
-		# finally, index to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job_id = kwargs['job_id'],
-			job_output = kwargs['job_output'],
-			index_results_save_path=kwargs['index_results_save_path'],
-			index_mapper=kwargs['index_mapper']
-		)
+		# # index published records to ElasticSearch
+		# ESIndex.index_job_to_es_spark(
+		# 	spark,
+		# 	job_id = kwargs['job_id'],
+		# 	job_output = kwargs['job_output'],
+		# 	index_results_save_path=kwargs['index_results_save_path'],
+		# 	index_mapper=kwargs['index_mapper']
+		# )
+
+		# write symlinks
+		# confirm directory exists
+		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
+		if not os.path.exists(published_dir):
+			os.mkdir(published_dir)
+
+		# get avro files
+		job_output_dir = kwargs['output_save_path'].split('file://')[-1]
+		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
+		for avro in avros:
+			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
+
+		# open CombineJob
+		cjob = CombineJob.get_combine_job(int(kwargs['job_id']))
+
+		
 
 
 
