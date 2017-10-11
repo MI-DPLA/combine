@@ -595,6 +595,22 @@ def configuration(request):
 
 
 ##################################
+# Pbulished
+##################################
+@login_required
+def published(request):
+
+	'''
+	Published records
+	'''
+
+	
+
+	return render(request, 'core/published.html')
+
+
+
+##################################
 # OAI Server
 ##################################
 @login_required

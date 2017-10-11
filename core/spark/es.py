@@ -58,7 +58,46 @@ class ESIndex(object):
 			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
 			keyClass="org.apache.hadoop.io.NullWritable",
 			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
-			conf={ "es.resource" : "%s/record" % index_name, "es.nodes":"192.168.45.10:9200", "es.mapping.exclude":"temp_id", "es.mapping.id":"temp_id"}
+			conf={
+					"es.resource":"%s/record" % index_name,
+					"es.nodes":"192.168.45.10:9200",
+					"es.mapping.exclude":"temp_id",
+					"es.mapping.id":"temp_id"
+				}
+		)
+
+
+	@staticmethod
+	def index_published_job(spark, **kwargs):
+
+		# get records from job output
+		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
+
+		# create rdd from index mapper
+		index_mapper_handle = globals()[kwargs['index_mapper']]
+		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document))
+
+		# retrieve successes to index
+		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
+
+		# create index in advance
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		index_name = 'published'
+		mapping = {'mappings':{'record':{'date_detection':False}}}
+		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+
+		# index to ES
+		to_index_rdd.saveAsNewAPIHadoopFile(
+			path='-',
+			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+			keyClass="org.apache.hadoop.io.NullWritable",
+			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+			conf={
+					"es.resource":"%s/record" % index_name,
+					"es.nodes":"192.168.45.10:9200",
+					"es.mapping.exclude":"temp_id",
+					"es.mapping.id":"temp_id"
+				}
 		)
 
 

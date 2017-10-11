@@ -518,10 +518,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 
 	'''
-	When jobs are removed, a fair amount of clean up is involved:
-		- attempt to stop job if queued / running
-		- remove avro files from disk
-		- delete ES index if created
+	When jobs are removed, a fair amount of clean up is involved
 	'''
 
 	logger.debug('removing job_output for job id %s' % instance.id)
@@ -1165,7 +1162,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -1173,6 +1170,7 @@ class HarvestJob(CombineJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'output_save_path':output_save_path,
+				'publish_set_id':self.record_group.publish_set_id,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path,
@@ -1270,10 +1268,11 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s",job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'transform_filepath':self.transformation.filepath,
 				'output_save_path':output_save_path,
+				'publish_set_id':self.record_group.publish_set_id,
 				'job_input':self.input_job.job_output,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
@@ -1368,10 +1367,11 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
 				'output_save_path':output_save_path,
+				'publish_set_id':self.record_group.publish_set_id,
 				'job_id':self.job.id,
 				'job_output':output_save_path,
 				'index_results_save_path':index_results_save_path,
@@ -1464,9 +1464,10 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_input':self.input_job.job_output,
+				'publish_set_id':self.record_group.publish_set_id,
 				'output_save_path':output_save_path,
 				'job_id':self.job.id,
 				'job_output':output_save_path,

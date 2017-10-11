@@ -10,6 +10,8 @@ from es import ESIndex, MODSMapper
 
 # import Row from pyspark
 from pyspark.sql import Row
+from pyspark.sql.types import StringType
+from pyspark.sql.functions import udf
 
 
 # init django settings file to retrieve settings
@@ -54,6 +56,7 @@ class HarvestSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
 			index_results_save_path=kwargs['index_results_save_path'],
 			index_mapper=kwargs['index_mapper']
 		)
@@ -112,6 +115,7 @@ class TransformSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
 			index_results_save_path=kwargs['index_results_save_path'],
 			index_mapper=kwargs['index_mapper']
 		)
@@ -144,6 +148,7 @@ class MergeSpark(object):
 			spark,
 			job_id = kwargs['job_id'],
 			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
 			index_results_save_path=kwargs['index_results_save_path'],
 			index_mapper=kwargs['index_mapper']
 		)
@@ -155,21 +160,29 @@ class PublishSpark(object):
 	@staticmethod
 	def spark_function(spark, **kwargs):
 
+		# open CombineJob
+		cjob = CombineJob.get_combine_job(int(kwargs['job_id']))
+
 		# read output from input_job
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
-
-		# write them to avro files
+		
+		# get rows with document content
 		docs = df[df['document'] != '']
+
+		# rewrite with publish_set_id from RecordGroup
+		set_id = udf(lambda row_id: kwargs['publish_set_id'], StringType())
+		docs = docs.withColumn('setIds', set_id(docs.id))
 		docs.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
-		# # index published records to ElasticSearch
-		# ESIndex.index_job_to_es_spark(
-		# 	spark,
-		# 	job_id = kwargs['job_id'],
-		# 	job_output = kwargs['job_output'],
-		# 	index_results_save_path=kwargs['index_results_save_path'],
-		# 	index_mapper=kwargs['index_mapper']
-		# )
+		# index published records to ElasticSearch
+		ESIndex.index_job_to_es_spark(
+			spark,
+			job_id = kwargs['job_id'],
+			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
+		)
 
 		# write symlinks
 		# confirm directory exists
@@ -183,11 +196,13 @@ class PublishSpark(object):
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
-		# open CombineJob
-		cjob = CombineJob.get_combine_job(int(kwargs['job_id']))
-
-		
-
+		# index to ES /published
+		ESIndex.index_published_job(
+			spark,
+			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
+			index_mapper=kwargs['index_mapper']
+		)
 
 
 

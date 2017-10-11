@@ -39,6 +39,9 @@ urlpatterns = [
 	# Configuration
 	url(r'^configuration$', views.configuration, name='configuration'),
 
+	# Publish
+	url(r'^published$', views.published, name='published'),
+
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
 
