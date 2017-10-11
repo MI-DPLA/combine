@@ -622,13 +622,8 @@ def oai(request):
 	Return XML results
 	'''
 
-	# debug args
-	args = {
-		'verb':'Identify'
-	}
-
 	# get OAIProvider instance
-	op = OAIProvider(args)
+	op = OAIProvider(request.GET)
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')

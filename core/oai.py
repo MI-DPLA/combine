@@ -10,6 +10,9 @@ import time
 # django settings
 from django.conf import settings
 
+# import models
+from core import models
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -41,13 +44,16 @@ class OAIProvider(object):
 	def __init__(self, args):
 
 		# debug
-		logger.debug("################ OAIPROVIDER ARGS ################")
+		logger.debug("################ OAIPROVIDER INIT ################")
 		logger.debug(args)
-		logger.debug("################ OAIPROVIDER ARGS ################")
+		logger.debug("################ OAIPROVIDER INIT ################")
 
 		self.args = args
 		self.request_timestamp = datetime.datetime.now()
 		self.record_nodes = []
+
+		# get instance of Published model
+		self.published = models.Published()
 
 		# begin scaffolding
 		self.scaffold()
@@ -92,33 +98,16 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
-		# # limit search to metadataPrefix provided
-		# if self.args['metadataPrefix'] in metadataPrefix_hash.keys():
-		# 	self.search_params['fq'].append('admin_datastreams:*%s*' % metadataPrefix_hash[self.args['metadataPrefix']]['ds_id'] )
-		# elif not self.args['metadataPrefix']:
-		# 	return self.raise_error('cannotDisseminateFormat','metadataPrefix is required for verb: %s' % (self.args['verb']))
-		# else:
-		# 	return self.raise_error('cannotDisseminateFormat','The metadataPrefix %s is not allowed' % self.args['metadataPrefix'])
-
-		# fire search
-		self.search_results = solr_handle.search(**self.search_params)
-		logger.debug("OAI-PMH record search results: %s records found that meet verb and arg criteria" % self.search_results.total_results)
-
-		# if results none, and GetRecord
-		if self.search_results.total_results == 0 and self.args['verb'] in ['GetRecord']:
-			return self.raise_error('idDoesNotExist','The identifier %s is not found.' % self.args['identifier'])
-
-		# if results none, and ListIdentifiers or ListRecords
-		if self.search_results.total_results == 0 and self.args['verb'] in ['ListIdentifiers','ListRecords']:
-			return self.raise_error('noRecordsMatch','No records were found.')
+		# PLACEHOLDER
+		include_metadata = False
 
 		with ThreadPoolExecutor(max_workers=5) as executor:
-			for i, doc in enumerate(self.search_results.documents):
-				executor.submit(self.record_thread_worker, doc, include_metadata)
+			for i, row in enumerate(self.published.df.iterrows()):
+				executor.submit(self.record_thread_worker, row, include_metadata)
 
 		# add to verb node
-		for oai_record_node in self.record_nodes:
-			self.verb_node.append(oai_record_node)
+		# for oai_record_node in self.record_nodes:
+		# 	self.verb_node.append(oai_record_node)
 
 		# finally, set resumption token
 		self.set_resumption_token()
@@ -128,38 +117,42 @@ class OAIProvider(object):
 		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
 
-	def record_thread_worker(self, doc, include_metadata):
+	def record_thread_worker(self, row, include_metadata):
 
 		'''
 		thread-based worker function for self.retrieve_records()
 		'''
 
-		record = OAIRecord(pid=doc['id'], itemID=doc['rels_itemID'][0], args=self.args)
-		# include full metadata in record
-		if include_metadata:
-			 record.include_metadata()
-		# append to record_nodes
-		self.record_nodes.append(record.oai_record_node)
-		return True
+		logger.debug(row)
+
+		# record = OAIRecord(pid=doc['id'], itemID=doc['rels_itemID'][0], args=self.args)
+		# # include full metadata in record
+		# if include_metadata:
+		# 	 record.include_metadata()
+		# # append to record_nodes
+		# self.record_nodes.append(record.oai_record_node)
+		# return True
 
 
 	def set_resumption_token(self):
 
-		# set resumption token
-		if self.search_params['start'] + self.search_params['rows'] < self.search_results.total_results:
+		# # set resumption token
+		# if self.search_params['start'] + self.search_params['rows'] < self.search_results.total_results:
 
-			# prepare token
-			token = hashlib.md5(self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')).hexdigest()
-			self.search_params['start'] = self.search_params['start'] + self.search_params['rows'] 
-			redisHandles.r_oai.setex(token, 3600, json.dumps({'args':self.args,'search_params':self.search_params}))
+		# 	# prepare token
+		# 	token = hashlib.md5(self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')).hexdigest()
+		# 	self.search_params['start'] = self.search_params['start'] + self.search_params['rows'] 
+		# 	redisHandles.r_oai.setex(token, 3600, json.dumps({'args':self.args,'search_params':self.search_params}))
 
-			# set resumption token node and attributes
-			self.resumptionToken_node = etree.Element('resumptionToken')
-			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
-			self.resumptionToken_node.attrib['completeListSize'] = str(self.search_results.total_results)
-			self.resumptionToken_node.attrib['cursor'] = str(self.search_results.start)
-			self.resumptionToken_node.text = token
-			self.verb_node.append(self.resumptionToken_node)
+		# 	# set resumption token node and attributes
+		# 	self.resumptionToken_node = etree.Element('resumptionToken')
+		# 	self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
+		# 	self.resumptionToken_node.attrib['completeListSize'] = str(self.search_results.total_results)
+		# 	self.resumptionToken_node.attrib['cursor'] = str(self.search_results.start)
+		# 	self.resumptionToken_node.text = token
+		# 	self.verb_node.append(self.resumptionToken_node)
+
+		pass
 
 
 	# convenience function to run all internal methods
