@@ -846,8 +846,22 @@ class Published(object):
 
 		self.publish_links = JobPublish.objects.all()
 		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
-		self.df = cyavro.read_avro_path_as_dataframe('%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
-		self.record_count = self.df[self.df['document'] != '']['document'].count()
+
+		# if avro files present, load as dataframe
+		published_dir = '%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/')
+		
+		# if published links found
+		if self.publish_links.count() > 0 and len([ avro for f in os.litdir(published_dir) if f.endswith('.avro') ]) > 0:
+				
+			self.df = cyavro.read_avro_path_as_dataframe()
+			self.record_count = self.df[self.df['document'] != '']['document'].count()
+
+		# no avro files found, 
+		else:
+			
+			logger.debug('no avro files found in /published')
+			self.df = False
+			self.record_count = None
 
 
 class CombineJob(object):

@@ -98,9 +98,6 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
-		# PLACEHOLDER
-		include_metadata = False
-
 		with ThreadPoolExecutor(max_workers=5) as executor:
 			for i, row in enumerate(self.published.df.iterrows()):
 				executor.submit(self.record_thread_worker, row, include_metadata)
