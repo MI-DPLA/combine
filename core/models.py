@@ -851,9 +851,9 @@ class Published(object):
 		published_dir = '%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/')
 		
 		# if published links found
-		if self.publish_links.count() > 0 and len([ avro for f in os.litdir(published_dir) if f.endswith('.avro') ]) > 0:
+		if self.publish_links.count() > 0 and len([ f for f in os.listdir(published_dir) if f.endswith('.avro') ]) > 0:
 				
-			self.df = cyavro.read_avro_path_as_dataframe()
+			self.df = cyavro.read_avro_path_as_dataframe(published_dir)
 			self.record_count = self.df[self.df['document'] != '']['document'].count()
 
 		# no avro files found, 
