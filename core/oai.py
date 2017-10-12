@@ -6,6 +6,7 @@ import json
 import logging
 from lxml import etree
 import time
+import uuid
 
 # django settings
 from django.conf import settings
@@ -56,7 +57,7 @@ class OAIProvider(object):
 		# debug
 		logger.debug(args)
 
-		self.args = args
+		self.args = args.copy()
 		self.request_timestamp = datetime.datetime.now()
 		self.request_timestamp_string = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 		self.record_nodes = []
@@ -96,7 +97,11 @@ class OAIProvider(object):
 		self.request_node = etree.Element('request')
 
 		# set verb
-		self.request_node.attrib['verb'] = self.args['verb']
+		try:
+			self.request_node.attrib['verb'] = self.args['verb']
+		except:
+			self.args['verb'] = 'NULL'
+			self.request_node.attrib['verb'] = 'NULL'
 
 		# capture set if present
 		if 'set' in self.args.keys():
@@ -163,10 +168,9 @@ class OAIProvider(object):
 		# set resumption token
 		if self.start + self.chunk_size < df_subset.document.count():
 
-			logger.debug('more records determined, setting resumptionToken')
-
 			# set token and slice parameters to DB
-			token = hashlib.md5(self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ').encode('utf-8')).hexdigest()
+			token = str(uuid.uuid4())
+			logger.debug('setting resumption token: %s' % token)
 			oai_trans = models.OAITransaction(
 				verb = self.args['verb'],
 				start = self.start + self.chunk_size,
@@ -207,6 +211,10 @@ class OAIProvider(object):
 				self.args = json.loads(ot.args)
 				self.start = ot.start
 				self.chunk_size = ot.chunk_size
+				self.publish_set_id = ot.publish_set_id
+
+				logger.debug("###### UPDATING DF SLICING #########")
+				logger.debug([self.start, self.chunk_size, self.publish_set_id])
 
 			# raise error
 			else:

@@ -614,7 +614,6 @@ def published(request):
 ##################################
 # OAI Server
 ##################################
-@login_required
 def oai(request):
 
 	'''
