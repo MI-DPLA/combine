@@ -177,7 +177,7 @@ class RecordGroup(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128, null=True, default=None)
+	publish_set_id = models.CharField(max_length=128)
 
 
 	def __str__(self):
@@ -547,25 +547,35 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 		# loop through published symlinks
 		published_dir = os.path.join(settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'), 'published')
-		for f in os.listdir(published_dir):
+		try:
+			for f in os.listdir(published_dir):
 
-			# if hash is part of filename, remove
-			if job_output_filename_hash in f:
-				os.remove(os.path.join(published_dir, f))
+				# if hash is part of filename, remove
+				if job_output_filename_hash in f:
+					os.remove(os.path.join(published_dir, f))
+		except:
+			logger.debug('could not delete symlinks from /published directory')
 
 		# attempting to delete from ES
-		del_dsl = {
-			'query':{
-				'match':{
-					'publish_set_id':instance.record_group.publish_set_id
+		try:
+			del_dsl = {
+				'query':{
+					'match':{
+						'publish_set_id':instance.record_group.publish_set_id
+					}
 				}
 			}
-		}
-		r = es_handle.delete_by_query(
-			index='published',
-			doc_type='record',
-			body=del_dsl
-		)
+			if es_handle.indices.exists('published'):
+				r = es_handle.delete_by_query(
+					index='published',
+					doc_type='record',
+					body=del_dsl
+				)
+			else:
+				logger.debug('published index not found in ES, skipping removal of records')
+		except Exception as e:
+			logger.debug('could not remove published records from ES index')
+			logger.debug(str(e))
 
 
 	# remove avro files from disk
