@@ -123,8 +123,16 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
+		# prepare subset of dataframe
+		df_subset = self.published.df
+
+		# if set present, filter by this set
+		if self.publish_set_id:
+			logger.debug('applying publish_set_id filter')
+			df_subset = df_subset[df_subset['setIds'] == self.publish_set_id]
+
 		# loop through rows
-		for i, row in enumerate(self.published.df[self.start:(self.start+self.chunk_size)].sort_values('id').iterrows()):
+		for i, row in enumerate(df_subset[self.start:(self.start+self.chunk_size)].sort_values('id').iterrows()):
 			record = OAIRecord(args=self.args, record_id=row[1].id, document=row[1].document, timestamp=self.request_timestamp_string)
 
 			# include full metadata in record
@@ -139,21 +147,21 @@ class OAIProvider(object):
 			self.verb_node.append(oai_record_node)
 
 		# finally, set resumption token
-		self.set_resumption_token()
+		self.set_resumption_token(df_subset)
 
 		# report
 		etime = time.time()
 		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
 
-	def set_resumption_token(self):
+	def set_resumption_token(self, df_subset):
 
 		'''
 		resumption tokens are set in SQL under OAITransaction model
 		'''
 
 		# set resumption token
-		if self.start + self.chunk_size < self.published.df.document.count():
+		if self.start + self.chunk_size < df_subset.document.count():
 
 			logger.debug('more records determined, setting resumptionToken')
 
@@ -172,7 +180,7 @@ class OAIProvider(object):
 			# set resumption token node and attributes
 			self.resumptionToken_node = etree.Element('resumptionToken')
 			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
-			self.resumptionToken_node.attrib['completeListSize'] = str(self.published.df.document.count())
+			self.resumptionToken_node.attrib['completeListSize'] = str(df_subset.document.count())
 			self.resumptionToken_node.attrib['cursor'] = str(self.start)
 			self.resumptionToken_node.text = token
 			self.verb_node.append(self.resumptionToken_node)
@@ -289,62 +297,7 @@ class OAIProvider(object):
 		List all metadataformats, or optionally, available metadataformats for one item based on available metadata datastreams
 		'''
 
-		# identifier provided
-		if self.args['identifier']:
-			try:
-				logger.debug("identifier provided for ListMetadataFormats, confirming that identifier exists...")
-				search_results = solr_handle.search(**{'q':'rels_itemID:%s' % self.args['identifier'].replace(":","\:"),'fl':['id']})
-				if search_results.total_results > 0:
-					fedora_object = fedora_handle.get_object(search_results.documents[0]['id'])
-					if fedora_object.exists:
-						logger.debug("record found, returning allowed metadataPrefixs")
-						for ds in fedora_object.ds_list:
-							if ds in inv_metadataPrefix_hash.keys():
-
-								mf_node = etree.Element('metadataFormat')
-
-								# write metadataPrefix node
-								prefix = etree.SubElement(mf_node,'metadataPrefix')
-								prefix.text = inv_metadataPrefix_hash[ds]['prefix']
-
-								# write schema node
-								schema = etree.SubElement(mf_node,'schema')
-								schema.text = inv_metadataPrefix_hash[ds]['schema']
-
-								# write schema node
-								namespace = etree.SubElement(mf_node,'metadataNamespace')
-								namespace.text = inv_metadataPrefix_hash[ds]['namespace']
-
-								# append to verb_node and return
-								self.verb_node.append(mf_node)
-					else:
-						raise Exception('record could not be located')		
-				else:
-					raise Exception('record could not be located')
-			except:
-				return self.raise_error('idDoesNotExist','The identifier %s is not found.' % self.args['identifier'])
-			
-		# no identifier, return all available metadataPrefixes
-		else:
-			# iterate through available metadataFormats and return
-			for mf in metadataPrefix_hash.keys():
-
-				mf_node = etree.Element('metadataFormat')
-
-				# write metadataPrefix node
-				prefix = etree.SubElement(mf_node,'metadataPrefix')
-				prefix.text = mf
-
-				# write schema node
-				schema = etree.SubElement(mf_node,'schema')
-				schema.text = metadataPrefix_hash[mf]['schema']
-
-				# write schema node
-				namespace = etree.SubElement(mf_node,'metadataNamespace')
-				namespace.text = metadataPrefix_hash[mf]['namespace']
-
-				# append to verb_node and return
-				self.verb_node.append(mf_node)
+		return self.raise_error('generic','At this time, metadataPrefixes are not implemented for the Combine OAI server')
 
 
 	# ListRecords
@@ -361,22 +314,14 @@ class OAIProvider(object):
 		query for objects with OAI-PMH identifier, and belong to sets with rels_isMemberOfOAISet relationship,
 		then focus on rels_isMemberOfOAISet facet for list of sets
 		'''
-		# determine sets
-		search_results = solr_handle.search(**{
-				'q':'*:*',
-				'fq':['rels_itemID:*','rels_isMemberOfOAISet:*'],
-				'rows':0,
-				'facet':True,
-				'facet.field':'rels_isMemberOfOAISet'
-			})
-
+		
 		# generate response
-		for oai_set in [k for k in search_results.facets['facet_fields']['rels_isMemberOfOAISet'].keys() if k.startswith('wayne')]:
+		for publish_set_id in self.published.df.setIds.unique():
 			set_node = etree.Element('set')
 			setSpec = etree.SubElement(set_node,'setSpec')
-			setSpec.text = oai_set
+			setSpec.text = publish_set_id
 			setName = etree.SubElement(set_node,'setName')
-			setName.text = oai_set
+			setName.text = publish_set_id
 			self.verb_node.append(set_node)
 
 
