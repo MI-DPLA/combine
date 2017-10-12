@@ -866,6 +866,8 @@ class PublishedRecords(object):
 
 	def __init__(self):
 
+		self.record_group = 0
+
 		self.publish_links = JobPublish.objects.all()
 		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
 

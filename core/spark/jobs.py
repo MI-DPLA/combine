@@ -174,16 +174,6 @@ class PublishSpark(object):
 		docs = docs.withColumn('setIds', set_id(docs.id))
 		docs.write.format("com.databricks.spark.avro").save(kwargs['output_save_path'])
 
-		# index published records to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job_id = kwargs['job_id'],
-			job_output = kwargs['job_output'],
-			publish_set_id=kwargs['publish_set_id'],
-			index_results_save_path=kwargs['index_results_save_path'],
-			index_mapper=kwargs['index_mapper']
-		)
-
 		# write symlinks
 		# confirm directory exists
 		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
@@ -195,6 +185,16 @@ class PublishSpark(object):
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
+
+		# index published records to ElasticSearch
+		ESIndex.index_job_to_es_spark(
+			spark,
+			job_id = kwargs['job_id'],
+			job_output = kwargs['job_output'],
+			publish_set_id=kwargs['publish_set_id'],
+			index_results_save_path=kwargs['index_results_save_path'],
+			index_mapper=kwargs['index_mapper']
+		)
 
 		# index to ES /published
 		ESIndex.index_published_job(

@@ -131,9 +131,6 @@ class MODSMapper(BaseMapper):
 
 	def __init__(self):
 
-		# init parent BaseMapper
-		# super().__init__()
-
 		# set xslt transformer		
 		xslt_tree = etree.parse('/opt/combine/inc/xslt/MODS_extract.xsl')
 		self.xsl_transform = etree.XSLT(xslt_tree)
