@@ -35,4 +35,4 @@ ES_HOST = '192.168.45.10'
 
 
 # OAI Server
-COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/oai'
+COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'

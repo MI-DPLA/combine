@@ -605,7 +605,7 @@ def published(request):
 	'''
 	
 	# get instance of Published model
-	published = models.Published()
+	published = models.PublishedRecords()
 
 	return render(request, 'core/published.html', {'published':published})
 

@@ -46,14 +46,15 @@ class OAIProvider(object):
 		# debug
 		logger.debug("################ OAIPROVIDER INIT ################")
 		logger.debug(args)
-		logger.debug("################ OAIPROVIDER INIT ################")
+		logger.debug("################ /OAIPROVIDER INIT ################")
 
 		self.args = args
 		self.request_timestamp = datetime.datetime.now()
+		self.request_timestamp_string = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 		self.record_nodes = []
 
 		# get instance of Published model
-		self.published = models.Published()
+		self.published = models.PublishedRecords()
 
 		# begin scaffolding
 		self.scaffold()
@@ -98,13 +99,20 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
-		with ThreadPoolExecutor(max_workers=5) as executor:
-			for i, row in enumerate(self.published.df.iterrows()):
-				executor.submit(self.record_thread_worker, row, include_metadata)
+		# loop through rows
+		for i, row in enumerate(self.published.df.iterrows()):
+			record = OAIRecord(args=self.args, record_id=row[1].id, document=row[1].document, timestamp=self.request_timestamp_string)
+
+			# include full metadata in record
+			if include_metadata:
+				 record.include_metadata()
+
+			# append to record_nodes
+			self.record_nodes.append(record.oai_record_node)
 
 		# add to verb node
-		# for oai_record_node in self.record_nodes:
-		# 	self.verb_node.append(oai_record_node)
+		for oai_record_node in self.record_nodes:
+			self.verb_node.append(oai_record_node)
 
 		# finally, set resumption token
 		self.set_resumption_token()
@@ -112,23 +120,6 @@ class OAIProvider(object):
 		# report
 		etime = time.time()
 		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
-
-
-	def record_thread_worker(self, row, include_metadata):
-
-		'''
-		thread-based worker function for self.retrieve_records()
-		'''
-
-		logger.debug(row)
-
-		# record = OAIRecord(pid=doc['id'], itemID=doc['rels_itemID'][0], args=self.args)
-		# # include full metadata in record
-		# if include_metadata:
-		# 	 record.include_metadata()
-		# # append to record_nodes
-		# self.record_nodes.append(record.oai_record_node)
-		# return True
 
 
 	def set_resumption_token(self):
@@ -336,28 +327,16 @@ class OAIRecord(object):
 	Initialize OAIRecord with pid and args
 	'''
 
-	def __init__(self, pid=False, itemID=False, args=False):
+	def __init__(self, args=None, record_id=None, document=None, timestamp=None):
 
-		self.pid = pid
-		self.itemID = itemID
 		self.args = args
-		self.metadataPrefix = self.args['metadataPrefix']
-		self.target_datastream = metadataPrefix_hash[self.metadataPrefix]['ds_id']
+		self.record_id = record_id
+		self.document = document
+		self.timestamp = timestamp
 		self.oai_record_node = None
-
-		# get metadata
-		self.get_fedora_object()
 
 		# build record node
 		self.init_record_node()
-
-
-	def get_fedora_object(self):
-
-		# retrive metadata from Fedora
-		self.fedora_object = fedora_handle.get_object(self.pid)
-		self.metadata_datastream = self.fedora_object.getDatastreamObject(self.target_datastream)
-		self.metadata_xml = self.metadata_datastream.content
 
 
 	def init_record_node(self):
@@ -369,15 +348,17 @@ class OAIRecord(object):
 		# header node
 		header_node = etree.Element('header')
 		
+		# identifier 
 		identifier_node = etree.Element('identifier')
-		identifier_node.text = self.itemID
+		identifier_node.text = self.record_id
 		header_node.append(identifier_node)
 
+		# datestamp
 		datestamp_node = etree.Element('datestamp')
-		datestamp_node.text = self.metadata_datastream.last_modified().strftime('%Y-%m-%d')
+		datestamp_node.text = self.timestamp
 		header_node.append(datestamp_node)
 
-		if self.args['set']:
+		if 'set' in self.args.keys():
 			setSpec_node = etree.Element('setSpec')
 			setSpec_node.text = self.args['set']
 			header_node.append(setSpec_node)
@@ -389,7 +370,7 @@ class OAIRecord(object):
 
 		# metadate node
 		metadata_node = etree.Element('metadata')
-		metadata_node.append(self.metadata_xml.node)
+		metadata_node.append(etree.fromstring(self.document))
 		self.oai_record_node.append(metadata_node)
 
 

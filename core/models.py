@@ -444,6 +444,16 @@ class Transformation(models.Model):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
 
+class OAITransaction(models.Model):
+
+	verb = models.CharField(max_length=255)
+	args_json = models.CharField(max_length=1024)
+	resumption_token = models.CharField(max_length=255)
+	
+
+	def __str__(self):
+		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
+
 
 ##################################
 # Signals Handlers
@@ -527,10 +537,10 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 	try:
 		instance.refresh_from_livy()
 		if instance.status in ['waiting','running']:
-			
 			# attempt to stop job
 			livy_response = LivyClient().stop_job(instance.url)
 			logger.debug(livy_response)
+
 	except Exception as e:
 		logger.debug('could not stop job in livy')
 		logger.debug(str(e))
@@ -543,13 +553,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 		# open cjob
 		cjob = CombineJob.get_combine_job(instance.id)
-		job_output_filename_hash = cjob.get_job_output_filename_hash()
 
-		# loop through published symlinks
+		# loop through published symlinks and look for filename hash similarity
 		published_dir = os.path.join(settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'), 'published')
+		job_output_filename_hash = cjob.get_job_output_filename_hash()
 		try:
 			for f in os.listdir(published_dir):
-
 				# if hash is part of filename, remove
 				if job_output_filename_hash in f:
 					os.remove(os.path.join(published_dir, f))
@@ -846,7 +855,7 @@ class LivyClient(object):
 # Combine Models
 ##################################
 
-class Published(object):
+class PublishedRecords(object):
 
 	'''
 	Simple container for all jobs
