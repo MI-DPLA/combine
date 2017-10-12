@@ -53,6 +53,10 @@ class OAIProvider(object):
 		self.request_timestamp_string = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 		self.record_nodes = []
 
+		# DF slice parameters
+		self.start = 0
+		self.chunk_size = settings.OAI_RESPONSE_SIZE
+
 		# get instance of Published model
 		self.published = models.PublishedRecords()
 
@@ -100,7 +104,7 @@ class OAIProvider(object):
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
 		# loop through rows
-		for i, row in enumerate(self.published.df.iterrows()):
+		for i, row in enumerate(self.published.df[self.start:(self.start+self.chunk_size)].sort_values('id').iterrows()):
 			record = OAIRecord(args=self.args, record_id=row[1].id, document=row[1].document, timestamp=self.request_timestamp_string)
 
 			# include full metadata in record
@@ -123,6 +127,10 @@ class OAIProvider(object):
 
 
 	def set_resumption_token(self):
+
+		'''
+		resumption tokens are set in SQL under OAITransaction model
+		'''
 
 		# # set resumption token
 		# if self.search_params['start'] + self.search_params['rows'] < self.search_results.total_results:
