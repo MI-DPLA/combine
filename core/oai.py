@@ -200,8 +200,6 @@ class OAIProvider(object):
 		# check for resumption token
 		if 'resumptionToken' in self.args.keys():
 
-			logger.debug('following resumption token, altering search_params')
-
 			# retrieve token params and alter args and search_params
 			ot_query = models.OAITransaction.objects.filter(token=self.args['resumptionToken'])
 			if ot_query.count() == 1:				 
@@ -213,7 +211,7 @@ class OAIProvider(object):
 				self.chunk_size = ot.chunk_size
 				self.publish_set_id = ot.publish_set_id
 
-				logger.debug("###### UPDATING DF SLICING #########")
+				logger.debug('following resumption token, altering dataframe slice params:')
 				logger.debug([self.start, self.chunk_size, self.publish_set_id])
 
 			# raise error
