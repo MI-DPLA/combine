@@ -447,12 +447,15 @@ class Transformation(models.Model):
 class OAITransaction(models.Model):
 
 	verb = models.CharField(max_length=255)
-	args_json = models.CharField(max_length=1024)
-	resumption_token = models.CharField(max_length=255)
+	start = models.IntegerField(null=True, default=None)
+	chunk_size = models.IntegerField(null=True, default=None)
+	publish_set_id = models.CharField(max_length=255, null=True, default=None)
+	token = models.CharField(max_length=1024)
+	args = models.CharField(max_length=1024)
 	
 
 	def __str__(self):
-		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
+		return 'OAI Transaction: %s, resumption token: %s' % (self.id, self.token)
 
 
 ##################################

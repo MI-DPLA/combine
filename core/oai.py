@@ -43,19 +43,32 @@ class OAIProvider(object):
 
 	def __init__(self, args):
 
+		# read args, route verb to verb handler
+		self.verb_routes = {
+			'GetRecord':self._GetRecord,
+			'Identify':self._Identify,
+			'ListIdentifiers':self._ListIdentifiers,
+			'ListMetadataFormats':self._ListMetadataFormats,
+			'ListRecords':self._ListRecords,
+			'ListSets':self._ListSets
+		}
+
 		# debug
-		logger.debug("################ OAIPROVIDER INIT ################")
 		logger.debug(args)
-		logger.debug("################ /OAIPROVIDER INIT ################")
 
 		self.args = args
 		self.request_timestamp = datetime.datetime.now()
 		self.request_timestamp_string = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 		self.record_nodes = []
 
-		# DF slice parameters
+		# published dataframe slice parameters
 		self.start = 0
 		self.chunk_size = settings.OAI_RESPONSE_SIZE
+		self.publish_set_id = None
+		if 'set' in self.args.keys():
+			self.publish_set_id = self.args['set']
+		else:
+			self.publish_set_id = None
 
 		# get instance of Published model
 		self.published = models.PublishedRecords()
@@ -81,11 +94,18 @@ class OAIProvider(object):
 		
 		# set request node
 		self.request_node = etree.Element('request')
+
+		# set verb
 		self.request_node.attrib['verb'] = self.args['verb']
+
+		# capture set if present
 		if 'set' in self.args.keys():
 			self.request_node.attrib['set'] = self.args['set']
+
+		# metadataPrefix
 		if 'metadataPrefix' in self.args.keys():
 			self.request_node.attrib['metadataPrefix'] = self.args['metadataPrefix']
+
 		self.request_node.text = settings.COMBINE_OAI_ENDPOINT
 		self.root_node.append(self.request_node)
 
@@ -97,7 +117,7 @@ class OAIProvider(object):
 	def retrieve_records(self, include_metadata=False):
 
 		'''
-		asynchronous record retrieval from Fedora
+		record retrieval from published dataframe
 		'''
 
 		stime = time.time()
@@ -132,64 +152,70 @@ class OAIProvider(object):
 		resumption tokens are set in SQL under OAITransaction model
 		'''
 
-		# # set resumption token
-		# if self.search_params['start'] + self.search_params['rows'] < self.search_results.total_results:
+		# set resumption token
+		if self.start + self.chunk_size < self.published.df.document.count():
 
-		# 	# prepare token
-		# 	token = hashlib.md5(self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')).hexdigest()
-		# 	self.search_params['start'] = self.search_params['start'] + self.search_params['rows'] 
-		# 	redisHandles.r_oai.setex(token, 3600, json.dumps({'args':self.args,'search_params':self.search_params}))
+			logger.debug('more records determined, setting resumptionToken')
 
-		# 	# set resumption token node and attributes
-		# 	self.resumptionToken_node = etree.Element('resumptionToken')
-		# 	self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
-		# 	self.resumptionToken_node.attrib['completeListSize'] = str(self.search_results.total_results)
-		# 	self.resumptionToken_node.attrib['cursor'] = str(self.search_results.start)
-		# 	self.resumptionToken_node.text = token
-		# 	self.verb_node.append(self.resumptionToken_node)
+			# set token and slice parameters to DB
+			token = hashlib.md5(self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ').encode('utf-8')).hexdigest()
+			oai_trans = models.OAITransaction(
+				verb = self.args['verb'],
+				start = self.start + self.chunk_size,
+				chunk_size = self.chunk_size,
+				publish_set_id = self.publish_set_id,
+				token = token,
+				args = json.dumps(self.args)
+			)
+			oai_trans.save()
 
-		pass
+			# set resumption token node and attributes
+			self.resumptionToken_node = etree.Element('resumptionToken')
+			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
+			self.resumptionToken_node.attrib['completeListSize'] = str(self.published.df.document.count())
+			self.resumptionToken_node.attrib['cursor'] = str(self.start)
+			self.resumptionToken_node.text = token
+			self.verb_node.append(self.resumptionToken_node)
 
 
 	# convenience function to run all internal methods
 	def generate_response(self):
 
-		# read args, route verb to verb handler
-		verb_routes = {
-			'GetRecord':self._GetRecord,
-			'Identify':self._Identify,
-			'ListIdentifiers':self._ListIdentifiers,
-			'ListMetadataFormats':self._ListMetadataFormats,
-			'ListRecords':self._ListRecords,
-			'ListSets':self._ListSets
-		}
-
 		# check verb
-		if self.args['verb'] not in verb_routes.keys():
-			return self.raise_error('badVerb','The verb %s is not allowed, must be from: %s' % (self.args['verb'],str(verb_routes.keys())) )
+		if self.args['verb'] not in self.verb_routes.keys():
+			return self.raise_error('badVerb','The verb %s is not allowed, must be from: %s' % (self.args['verb'],str(self.verb_routes.keys())) )
 
 		# check for resumption token
 		if 'resumptionToken' in self.args.keys():
+
 			logger.debug('following resumption token, altering search_params')
+
 			# retrieve token params and alter args and search_params
-			resumption_params_raw = redisHandles.r_oai.get(self.args['resumptionToken'])
-			if resumption_params_raw is not None:
-				resumption_params = json.loads(resumption_params_raw)
-				self.args = resumption_params['args']
-				self.search_params = resumption_params['search_params']
+			ot_query = models.OAITransaction.objects.filter(token=self.args['resumptionToken'])
+			if ot_query.count() == 1:				 
+				ot = ot_query.first()
+
+				# set args and start and chunk_size
+				self.args = json.loads(ot.args)
+				self.start = ot.start
+				self.chunk_size = ot.chunk_size
+
 			# raise error
 			else:
 				return self.raise_error('badResumptionToken', 'The resumptionToken %s is not found' % self.args['resumptionToken'])
 
 		# fire verb reponse building
-		verb_routes[self.args['verb']]()
+		self.verb_routes[self.args['verb']]()
 		return self.serialize()
 
 
 	def raise_error(self, error_code, error_msg):
 
 		# remove verb node
-		self.root_node.remove(self.verb_node)
+		try:
+			self.root_node.remove(self.verb_node)
+		except:
+			logger.debug('verb_node not found')
 
 		# create error node and append
 		error_node = etree.SubElement(self.root_node, 'error')
@@ -207,9 +233,35 @@ class OAIProvider(object):
 
 	# GetRecord
 	def _GetRecord(self):
+
+		'''
+		Retrieve a single record from the published dataframe
+		'''
 		
-		self.search_params['q'] = 'rels_itemID:%s' % self.args['identifier'].replace(":","\:")
-		self.retrieve_records(include_metadata=True)
+		stime = time.time()
+		logger.debug("retrieving record: %s" % (self.args['identifier']))
+
+		# get single row
+		records = self.published.df.loc[self.published.df['id'] == self.args['identifier']]
+		if len(records) == 1:
+			row = records.iloc[0]
+
+		# loop through rows
+		record = OAIRecord(args=self.args, record_id=row.id, document=row.document, timestamp=self.request_timestamp_string)
+
+		# include metadata
+		record.include_metadata()
+
+		# append to record_nodes
+		self.record_nodes.append(record.oai_record_node)
+
+		# add to verb node
+		for oai_record_node in self.record_nodes:
+			self.verb_node.append(oai_record_node)
+
+		# report
+		etime = time.time()
+		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
 
 	# Identify
