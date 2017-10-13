@@ -285,7 +285,8 @@ class Job(models.Model):
 		# Filesystem
 		if self.job_output.startswith('file://'):
 			
-			output_dir = self.job_output.split('file://')[-1]
+			# get job output as filesystem path
+			output_dir = self.job_output_as_filesystem()
 
 			###########################################################################
 			# cyavro shim
@@ -335,7 +336,8 @@ class Job(models.Model):
 		# Filesystem
 		if indexing_dir.startswith('file://'):
 			
-			output_dir = indexing_dir.split('file://')[-1]
+			# get job output as filesystem path
+			output_dir = self.job_output_as_filesystem()
 
 			###########################################################################
 			# cyavro shim
@@ -390,6 +392,105 @@ class Job(models.Model):
 		except:
 			
 			logger.debug('could not load job output as dataframe')
+
+
+	def job_output_as_filesystem(self):
+
+		'''
+		Not entirely removing the possibility of storing jobs on HDFS, 
+		this method returns self.job_output as filesystem location
+		and strips any righthand slash
+		'''
+
+		return self.job_output.replace('file://','').rstrip('/')
+
+
+	def get_output_files(self):
+
+		'''
+		convenience method to return full path of all avro files in job output
+		'''
+
+		output_dir = self.job_output_as_filesystem()
+		return [ os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro') ]
+
+
+
+class JobOutput(object):
+
+	'''
+	Due to memory concerns, might make sense to more carefully read avro output from jobs
+	using cyavro's AvroReader, as opposed to loading the job ouput avro files as a single 
+	dataframe into memory
+	'''
+
+	def __init__(self, job):
+
+		self.job = job
+		self.chunk_size = 1000
+
+
+	def reader_gen(self):
+
+		'''
+		generator that returns AvroReader instance of job files
+		'''
+
+		for avro in self.job.get_output_files():
+
+			logger.debug('reading %s' % avro)
+
+			rd = cyavro.AvroReader()
+			rd.init_file(avro)
+			rd.init_reader()
+			rd.init_buffers(self.chunk_size)
+
+			yield rd
+
+
+	def count_records(self):
+
+		'''
+		Loop through avro files from job output and count rows
+		'''
+
+		stime = time.time()
+		count = 0
+
+		for rd in self.reader_gen():
+
+			while True:
+				chunk = rd.read_chunk()
+				docs = [ doc for doc in chunk['document'] if doc != '' ]
+				doc_count = len(docs)
+				if  doc_count > 0:
+					count += doc_count
+				else:
+					print('end of file')
+					rd.close()
+					break
+
+		logger.debug('count: %s, elapsed: %s' % (count, (time.time() - stime)))
+		return count
+
+
+	def get_record(self):
+
+		'''
+		return a single record from job output
+		'''
+
+		pass
+
+
+	def get_successes(self):
+
+		pass
+
+
+	def get_failures(self):
+
+		pass
 
 
 

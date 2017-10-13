@@ -14,12 +14,6 @@ from core.es import es_handle
 # import oai server
 from core.oai import OAIProvider
 
-# import cyavro
-import cyavro
-
-# elasticsearch-dsl
-from elasticsearch_dsl import Search, Q, A
-
 import json
 import logging
 import os
