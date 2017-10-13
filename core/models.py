@@ -12,6 +12,7 @@ import os
 import requests
 import shutil
 import subprocess
+from sqlalchemy import create_engine
 import re
 import textwrap
 import time
@@ -167,7 +168,6 @@ class Organization(models.Model):
 
 	def __str__(self):
 		return 'Organization: %s' % self.name
-models.BooleanField(default=0)
 
 
 
@@ -189,8 +189,6 @@ class RecordGroup(models.Model):
 		'''
 		Query DB for jobs published as sets for all record groups
 		'''
-
-
 
 
 
@@ -415,82 +413,121 @@ class Job(models.Model):
 		return [ os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro') ]
 
 
-
-class JobOutput(object):
-
-	'''
-	Due to memory concerns, might make sense to more carefully read avro output from jobs
-	using cyavro's AvroReader, as opposed to loading the job ouput avro files as a single 
-	dataframe into memory
-	'''
-
-	def __init__(self, job):
-
-		self.job = job
-		self.chunk_size = 1000
-
-
-	def reader_gen(self):
+	def index_records_to_db(self):
 
 		'''
-		generator that returns AvroReader instance of job files
-		'''
-
-		for avro in self.job.get_output_files():
-
-			logger.debug('reading %s' % avro)
-
-			rd = cyavro.AvroReader()
-			rd.init_file(avro)
-			rd.init_reader()
-			rd.init_buffers(self.chunk_size)
-
-			yield rd
-
-
-	def count_records(self):
-
-		'''
-		Loop through avro files from job output and count rows
+		method to index all records from job_output to DB
+		NOTE: may have to recreate in spark code
+		NOTE: look into using SQLAlchemy wrapper for Django connection
 		'''
 
 		stime = time.time()
-		count = 0
 
-		for rd in self.reader_gen():
+		# create mysql engine
+		engine = create_engine("mysql+mysqldb://combine:combine@localhost/combine?charset=utf8", encoding='utf-8')
 
-			while True:
-				chunk = rd.read_chunk()
-				docs = [ doc for doc in chunk['document'] if doc != '' ]
-				doc_count = len(docs)
-				if  doc_count > 0:
-					count += doc_count
-				else:
-					print('end of file')
-					rd.close()
-					break
+		# get dataframe
+		df = self.get_output_as_dataframe()
 
-		logger.debug('count: %s, elapsed: %s' % (count, (time.time() - stime)))
-		return count
+		# rename id column to record_id
+		def col_rename(col):
+			if col == 'id':
+				return 'record_id'
+			else:
+				return col
 
+		df = df.rename(columns=lambda col: col_rename(col))
 
-	def get_record(self):
+		# add job_id column
+		df['job_id'] = pd.Series(self.id, index=df.index)
 
-		'''
-		return a single record from job output
-		'''
+		# add job_type column
+		df['job_type'] = pd.Series(self.job_type, index=df.index)
 
-		pass
+		# index to DB
+		# NOTE: need to include setIDs, add if not present
+		df[['record_id','document','error','job_id','job_type']].to_sql('core_record', engine, if_exists='append')
 
-
-	def get_successes(self):
-
-		pass
+		# DEBUG
+		logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
 
 
-	def get_failures(self):
 
-		pass
+# class JobOutput(object):
+
+# 	'''
+# 	Due to memory concerns, might make sense to more carefully read avro output from jobs
+# 	using cyavro's AvroReader, as opposed to loading the job ouput avro files as a single 
+# 	dataframe into memory
+# 	'''
+
+# 	def __init__(self, job, chunk_size=250):
+
+# 		self.job = job
+# 		self.chunk_size = chunk_size
+
+
+# 	def reader_gen(self):
+
+# 		'''
+# 		generator that returns AvroReader instance of job files
+# 		'''
+
+# 		for avro in self.job.get_output_files():
+
+# 			logger.debug('reading %s' % avro)
+
+# 			rd = cyavro.AvroReader()
+# 			rd.init_file(avro)
+# 			rd.init_reader()
+# 			rd.init_buffers(self.chunk_size)
+
+# 			yield rd
+
+
+# 	def count_records(self):
+
+# 		'''
+# 		Loop through avro files from job output and count rows
+# 		'''
+
+# 		stime = time.time()
+# 		count = 0
+
+# 		for rd in self.reader_gen():
+
+# 			while True:
+# 				chunk = rd.read_chunk()
+# 				docs = [ doc for doc in chunk['document'] if doc != '' ]
+# 				doc_count = len(docs)
+# 				if  doc_count > 0:
+# 					count += doc_count
+# 				else:
+# 					print('end of file')
+# 					rd.close()
+# 					break
+
+# 		logger.debug('count: %s, elapsed: %s' % (count, (time.time() - stime)))
+# 		return count
+
+
+# 	def get_record(self):
+
+# 		'''
+# 		return a single record from job output
+# 		'''
+
+# 		pass
+
+
+# 	def get_successes(self):
+
+# 		pass
+
+
+# 	def get_failures(self):
+
+# 		pass
 
 
 
@@ -545,6 +582,7 @@ class Transformation(models.Model):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
 
+
 class OAITransaction(models.Model):
 
 	verb = models.CharField(max_length=255)
@@ -557,6 +595,29 @@ class OAITransaction(models.Model):
 
 	def __str__(self):
 		return 'OAI Transaction: %s, resumption token: %s' % (self.id, self.token)
+
+
+
+class Record(models.Model):
+
+	'''
+	DB model for individual records.
+	Note: These are written directly from Pandas DataFrame, not via Django ORM
+	'''
+
+	job_id = models.IntegerField(null=True, default=None)
+	job_type = models.CharField(max_length=128)
+	index = models.IntegerField(null=True, default=None)
+	record_id = models.CharField(max_length=1024)
+	document = models.TextField(null=True, default=None)
+	error = models.TextField(null=True, default=None)
+	setIds = models.CharField(max_length=1024, null=True, default=None)
+
+
+	def __str__(self):
+		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job_id, self.job_type)
+
+
 
 
 ##################################
