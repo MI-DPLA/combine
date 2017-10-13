@@ -445,8 +445,8 @@ class Job(models.Model):
 		df['job_type'] = pd.Series(self.job_type, index=df.index)
 
 		# index to DB
-		# NOTE: need to include setIDs, add if not present
-		df[['record_id','document','error','job_id','job_type']].to_sql('core_record', engine, if_exists='append')
+		# NOTE: Need to align columns for potential variety of job type columns
+		df[['record_id','document','job_id','job_type']].to_sql('core_record', engine, if_exists='append')
 
 		# DEBUG
 		logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
