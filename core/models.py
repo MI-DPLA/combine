@@ -452,6 +452,17 @@ class Job(models.Model):
 		logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
 
 
+	def index_results_save_path(self):
+
+		'''
+		return index save path
+		'''
+		
+		# index results save path
+		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+
+
+
 
 # class JobOutput(object):
 
@@ -619,6 +630,11 @@ class Record(models.Model):
 
 
 
+class CombineJob(models.Model):
+
+	pass
+
+
 
 ##################################
 # Signals Handlers
@@ -685,6 +701,18 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.status = response['state']
 		instance.session_timestamp = headers['Date']
 		instance.active = True
+
+
+
+@receiver(models.signals.post_save, sender=Job)
+def save_job(sender, instance, created, **kwargs):
+
+	# if the record was just created, then update job output (ensures this only runs once)
+	if created:
+		# set output based on job type
+		logger.debug('setting job output for job')
+		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.job_type, instance.id)
+		instance.save()
 
 
 
@@ -1134,7 +1162,6 @@ class CombineJob(object):
 		self.job.status = response['state']
 		self.job.url = headers['Location']
 		self.job.headers = headers
-		self.job.job_output = job_output
 		self.job.save()
 
 
@@ -1309,7 +1336,6 @@ class HarvestJob(CombineJob):
 		index_mapper=None):
 
 		'''
-		
 		Harvest from OAI-PMH endpoint.
 
 		Unlike other jobs, harvests do not require input from the output of another job
@@ -1326,7 +1352,6 @@ class HarvestJob(CombineJob):
 				- record
 				- error
 				- setIds
-
 		'''
 
 		# perform CombineJob initialization
@@ -1346,17 +1371,7 @@ class HarvestJob(CombineJob):
 			if not self.job_name:
 				self.job_name = self.default_job_name()
 
-			# create Job entry in DB
-			'''
-			record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
-			name = models.CharField(max_length=128)
-			spark_code = models.CharField(max_length=32000)
-			status = models.CharField(max_length=30, null=True)
-			url = models.CharField(max_length=255)
-			headers = models.CharField(max_length=255)
-			job_input = models.CharField(max_length=255)
-			job_output = models.CharField(max_length=255, null=True)
-			'''
+			# create Job entry in DB and save
 			self.job = Job(
 				record_group = self.record_group,
 				job_type = type(self).__name__,
@@ -1378,37 +1393,27 @@ class HarvestJob(CombineJob):
 		Construct python code that will be sent to Livy for harvest job
 		'''
 
-		# construct harvest path
-		output_save_path = '%s/organizations/%s/record_group/%s/jobs/harvest/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
-		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
 		# create shallow copy of oai_endpoint and mix in overrides
 		harvest_vars = self.oai_endpoint.__dict__.copy()
 		harvest_vars.update(self.overrides)
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", output_save_path="%(output_save_path)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
 				'metadataPrefix':harvest_vars['metadataPrefix'],
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
-				'output_save_path':output_save_path,
-				'publish_set_id':self.record_group.publish_set_id,
 				'job_id':self.job.id,
-				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path,
 				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, output_save_path)
+		self.submit_job(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1488,30 +1493,20 @@ class TransformJob(CombineJob):
 		Construct python code that will be sent to Livy for transform job
 		'''
 
-		# construct harvest path
-		output_save_path = '%s/organizations/%s/record_group/%s/jobs/transform/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
-		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, output_save_path="%(output_save_path)s", transform_filepath="%(transform_filepath)s", job_input="%(job_input)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'transform_filepath':self.transformation.filepath,
-				'output_save_path':output_save_path,
-				'publish_set_id':self.record_group.publish_set_id,
 				'job_input':self.input_job.job_output,
 				'job_id':self.job.id,
-				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path,
 				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, output_save_path)
+		self.submit_job(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1587,29 +1582,19 @@ class MergeJob(CombineJob):
 		Construct python code that will be sent to Livy for publish job
 		'''
 
-		# construct harvest path
-		output_save_path = '%s/organizations/%s/record_group/%s/jobs/merge/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
-		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, output_save_path="%(output_save_path)s", job_inputs="%(job_inputs)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, job_inputs="%(job_inputs)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
-				'output_save_path':output_save_path,
-				'publish_set_id':self.record_group.publish_set_id,
 				'job_id':self.job.id,
-				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path,
 				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, output_save_path)
+		self.submit_job(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1684,29 +1669,19 @@ class PublishJob(CombineJob):
 		Construct python code that will be sent to Livy for publish job
 		'''
 
-		# construct harvest path
-		output_save_path = '%s/organizations/%s/record_group/%s/jobs/publish/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
-		# index results save path
-		index_results_save_path = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.organization.id, self.record_group.id, self.job.id)
-
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, output_save_path="%(output_save_path)s", job_input="%(job_input)s", publish_set_id="%(publish_set_id)s", job_id="%(job_id)s", job_output="%(job_output)s", index_results_save_path="%(index_results_save_path)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'job_input':self.input_job.job_output,
-				'publish_set_id':self.record_group.publish_set_id,
-				'output_save_path':output_save_path,
 				'job_id':self.job.id,
-				'job_output':output_save_path,
-				'index_results_save_path':index_results_save_path,
 				'index_mapper':self.index_mapper
 			}
 		}
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, output_save_path)
+		self.submit_job(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
