@@ -170,7 +170,7 @@ class MODSMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'id':row.id,
+					'id':record_id,
 					'msg':str(e)
 				}
 			)
