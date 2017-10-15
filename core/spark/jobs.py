@@ -60,7 +60,6 @@ class HarvestSpark(object):
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# write records to DB
-		job = Job.objects.get(pk=int(kwargs['job_id']))
 		job.index_records_to_db()
 
 		# finally, index to ElasticSearch
@@ -122,6 +121,9 @@ class TransformSpark(object):
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
 
+		# write records to DB
+		job.index_records_to_db()
+
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
 			spark,
@@ -152,6 +154,9 @@ class MergeSpark(object):
 
 		# write agg to new avro files
 		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
+
+		# write records to DB
+		job.index_records_to_db()
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
@@ -193,6 +198,9 @@ class PublishSpark(object):
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
+
+		# write records to DB
+		job.index_records_to_db()
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(

@@ -269,20 +269,6 @@ class Job(models.Model):
 		method to use cyavro and return job_output as dataframe
 		'''
 
-		# confirm there is output to work with
-		if not self.job_output:
-			logger.debug('job does not have output, returning False')
-			return False
-
-		# confirm job is not actively running
-		self.refresh_from_livy()
-		if self.status == 'running':
-			# if _SUCCESS absent, possible still writing avro
-			if '_SUCCESS' not in self.get_output_files():
-				# else
-				logger.debug('avro files still getting written, aborting')
-				return False
-
 		# Filesystem
 		if self.job_output.startswith('file://'):
 			
