@@ -300,7 +300,7 @@ class Job(models.Model):
 			'''
 			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
 			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
+				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520, 562]:
 					logger.debug('detected empty avro and removing: %s' % f)
 					os.remove(os.path.join(output_dir,f))
 			###########################################################################
@@ -441,12 +441,12 @@ class Job(models.Model):
 		# add job_id column
 		df['job_id'] = pd.Series(self.id, index=df.index)
 
-		# add job_type column
-		df['job_type'] = pd.Series(self.job_type, index=df.index)
+		# # add job_type column
+		# df['job_type'] = pd.Series(self.job_type, index=df.index)
 
 		# index to DB
 		# NOTE: Need to align columns for potential variety of job type columns
-		df[['record_id','document','job_id','job_type']].to_sql('core_record', engine, if_exists='append')
+		df[['job_id','record_id','document','error']].to_sql('core_record', engine, if_exists='append')
 
 		# DEBUG
 		logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
@@ -616,17 +616,15 @@ class Record(models.Model):
 	Note: These are written directly from Pandas DataFrame, not via Django ORM
 	'''
 
-	job_id = models.IntegerField(null=True, default=None)
-	job_type = models.CharField(max_length=128)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
-	setIds = models.CharField(max_length=1024, null=True, default=None)
 
 
 	def __str__(self):
-		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job_id, self.job_type)
+		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
 
 
 

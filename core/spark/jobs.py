@@ -51,9 +51,16 @@ class HarvestSpark(object):
 		
 		# select records with content
 		records = df.select("record.*").where("record is not null")
+
+		# add blank error column
+		error = udf(lambda id: '', StringType())
+		records = records.withColumn('error', error(records.id))
 		
 		# write them to avro files
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
+
+		# write records to DB
+		job.index_records_to_db()
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
