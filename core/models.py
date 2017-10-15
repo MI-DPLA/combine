@@ -277,8 +277,11 @@ class Job(models.Model):
 		# confirm job is not actively running
 		self.refresh_from_livy()
 		if self.status == 'running':
-			logger.debug('job is found to be running, aborting record count')
-			return False
+			# if _SUCCESS absent, possible still writing avro
+			if '_SUCCESS' not in self.get_output_files():
+				# else
+				logger.debug('avro files still getting written, aborting')
+				return False
 
 		# Filesystem
 		if self.job_output.startswith('file://'):
@@ -417,7 +420,6 @@ class Job(models.Model):
 
 		'''
 		method to index all records from job_output to DB
-		NOTE: may have to recreate in spark code
 		NOTE: look into using SQLAlchemy wrapper for Django connection
 		'''
 

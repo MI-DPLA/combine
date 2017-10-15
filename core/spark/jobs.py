@@ -60,6 +60,7 @@ class HarvestSpark(object):
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# write records to DB
+		job = Job.objects.get(pk=int(kwargs['job_id']))
 		job.index_records_to_db()
 
 		# finally, index to ElasticSearch
