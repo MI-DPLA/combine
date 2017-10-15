@@ -29,18 +29,21 @@ class ESIndex(object):
 	@staticmethod
 	def index_job_to_es_spark(spark, **kwargs):
 
+		# get job
+		job = kwargs['job']
+
 		# get records from job output
-		records_df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_output'])
+		records_df = spark.read.format('com.databricks.spark.avro').load(job.job_output)
 
 		# create rdd from index mapper
 		index_mapper_handle = globals()[kwargs['index_mapper']]
-		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, kwargs['publish_set_id']))
+		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
 
 		# filter out faliures, write to avro file for reporting on index process
 		# if no errors are found, pass and interpret missing avro files in the positive during analysis
 		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
 		try:
-			failures_rdd.toDF().write.format("com.databricks.spark.avro").save(kwargs['index_results_save_path'])
+			failures_rdd.toDF().write.format("com.databricks.spark.avro").save(job.index_results_save_path())
 		except:
 			pass
 
@@ -49,7 +52,7 @@ class ESIndex(object):
 
 		# create index in advance
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		index_name = 'j%s' % kwargs['job_id']
+		index_name = 'j%s' % job.id
 		mapping = {'mappings':{'record':{'date_detection':False}}}
 		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 

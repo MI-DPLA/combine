@@ -58,10 +58,7 @@ class HarvestSpark(object):
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
 			spark,
-			job_id = job.id,
-			job_output = job.job_output,
-			publish_set_id=job.record_group.publish_set_id,
-			index_results_save_path=job.index_results_save_path(),
+			job=job,
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -120,10 +117,7 @@ class TransformSpark(object):
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
 			spark,
-			job_id = job.id,
-			job_output = job.job_output,
-			publish_set_id=job.record_group.publish_set_id,
-			index_results_save_path=job.index_results_save_path(),
+			job=job,
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -154,10 +148,7 @@ class MergeSpark(object):
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
 			spark,
-			job_id = job.id,
-			job_output = job.job_output,
-			publish_set_id=job.record_group.publish_set_id,
-			index_results_save_path=job.index_results_save_path(),
+			job=job,
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -198,10 +189,7 @@ class PublishSpark(object):
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
 			spark,
-			job_id = job.id,
-			job_output = job.job_output,
-			publish_set_id=job.record_group.publish_set_id,
-			index_results_save_path=job.index_results_save_path(),
+			job=job,
 			index_mapper=kwargs['index_mapper']
 		)
 
