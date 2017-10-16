@@ -1,3 +1,5 @@
+from django.conf import settings
+
 # Combine Install Location
 COMBINE_INSTALL_PATH = '/opt/combine'
 
@@ -37,3 +39,11 @@ ES_HOST = '192.168.45.10'
 # OAI Server
 COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'
 OAI_RESPONSE_SIZE = 250
+
+
+# Database configurations for use in Spark context
+COMBINE_DATABASE = {
+	'jdbc_url':'jdbc:mysql://localhost:3306/combine',
+	'user':settings.DATABASES['default']['USER'],
+	'password':settings.DATABASES['default']['PASSWORD']
+}

@@ -402,42 +402,43 @@ class Job(models.Model):
 		return [ os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro') ]
 
 
-	def index_records_to_db(self):
+	# REMOVING: performed in Spark via job code...
+	# def index_records_to_db(self):
 
-		'''
-		method to index all records from job_output to DB
-		NOTE: look into using SQLAlchemy wrapper for Django connection
-		'''
+	# 	'''
+	# 	method to index all records from job_output to DB
+	# 	NOTE: look into using SQLAlchemy wrapper for Django connection
+	# 	'''
 
-		stime = time.time()
+	# 	stime = time.time()
 
-		# create mysql engine
-		engine = create_engine("mysql+mysqldb://combine:combine@localhost/combine?charset=utf8", encoding='utf-8')
+	# 	# create mysql engine
+	# 	engine = create_engine("mysql+mysqldb://combine:combine@localhost/combine?charset=utf8", encoding='utf-8')
 
-		# get dataframe
-		df = self.get_output_as_dataframe()
+	# 	# get dataframe
+	# 	df = self.get_output_as_dataframe()
 
-		# rename id column to record_id
-		def col_rename(col):
-			if col == 'id':
-				return 'record_id'
-			else:
-				return col
+	# 	# rename id column to record_id
+	# 	def col_rename(col):
+	# 		if col == 'id':
+	# 			return 'record_id'
+	# 		else:
+	# 			return col
 
-		df = df.rename(columns=lambda col: col_rename(col))
+	# 	df = df.rename(columns=lambda col: col_rename(col))
 
-		# add job_id column
-		df['job_id'] = pd.Series(self.id, index=df.index)
+	# 	# add job_id column
+	# 	df['job_id'] = pd.Series(self.id, index=df.index)
 
-		# # add job_type column
-		# df['job_type'] = pd.Series(self.job_type, index=df.index)
+	# 	# # add job_type column
+	# 	# df['job_type'] = pd.Series(self.job_type, index=df.index)
 
-		# index to DB
-		# NOTE: Need to align columns for potential variety of job type columns
-		df[['job_id','record_id','document','error']].to_sql('core_record', engine, if_exists='append')
+	# 	# index to DB
+	# 	# NOTE: Need to align columns for potential variety of job type columns
+	# 	df[['job_id','record_id','document','error']].to_sql('core_record', engine, if_exists='append')
 
-		# DEBUG
-		logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
+	# 	# DEBUG
+	# 	logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
 
 
 	def index_results_save_path(self):
@@ -448,85 +449,6 @@ class Job(models.Model):
 		
 		# index results save path
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
-
-
-
-
-# class JobOutput(object):
-
-# 	'''
-# 	Due to memory concerns, might make sense to more carefully read avro output from jobs
-# 	using cyavro's AvroReader, as opposed to loading the job ouput avro files as a single 
-# 	dataframe into memory
-# 	'''
-
-# 	def __init__(self, job, chunk_size=250):
-
-# 		self.job = job
-# 		self.chunk_size = chunk_size
-
-
-# 	def reader_gen(self):
-
-# 		'''
-# 		generator that returns AvroReader instance of job files
-# 		'''
-
-# 		for avro in self.job.get_output_files():
-
-# 			logger.debug('reading %s' % avro)
-
-# 			rd = cyavro.AvroReader()
-# 			rd.init_file(avro)
-# 			rd.init_reader()
-# 			rd.init_buffers(self.chunk_size)
-
-# 			yield rd
-
-
-# 	def count_records(self):
-
-# 		'''
-# 		Loop through avro files from job output and count rows
-# 		'''
-
-# 		stime = time.time()
-# 		count = 0
-
-# 		for rd in self.reader_gen():
-
-# 			while True:
-# 				chunk = rd.read_chunk()
-# 				docs = [ doc for doc in chunk['document'] if doc != '' ]
-# 				doc_count = len(docs)
-# 				if  doc_count > 0:
-# 					count += doc_count
-# 				else:
-# 					print('end of file')
-# 					rd.close()
-# 					break
-
-# 		logger.debug('count: %s, elapsed: %s' % (count, (time.time() - stime)))
-# 		return count
-
-
-# 	def get_record(self):
-
-# 		'''
-# 		return a single record from job output
-# 		'''
-
-# 		pass
-
-
-# 	def get_successes(self):
-
-# 		pass
-
-
-# 	def get_failures(self):
-
-# 		pass
 
 
 
@@ -604,21 +526,15 @@ class Record(models.Model):
 	Note: These are written directly from Pandas DataFrame, not via Django ORM
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE, null=True, default=None)
 	index = models.IntegerField(null=True, default=None)
-	record_id = models.CharField(max_length=1024)
+	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
 
 	def __str__(self):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
-
-
-
-class CombineJob(models.Model):
-
-	pass
 
 
 
