@@ -1,0 +1,90 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Record Group: {{ record_group.name }}</h3>
+
+	<table border="1" cellpadding="10">
+		<tr>
+			<th>Description</th>
+			<td>{{ record_group.description }}</td>
+		</tr>
+		<tr>
+			<th>Published Records</th>
+			{% if record_group.jobpublish_set.all|length > 0 %}
+				<td class="{{ record_group.jobpublish_set.all.first.job.job_type }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+			{% else %}
+				<td style="color:red;">None</td>
+			{% endif %}
+		</tr>
+		<tr>
+			<th>Published Set ID</th>
+			<td>{{ record_group.publish_set_id }}</td>
+		</tr>
+	</table>
+
+	<h3>Jobs</h3>
+
+
+	<div>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>Job ID</th>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Livy Job ID</th>
+				<th>Status</th>
+				<th>Monitor</th>
+				<th>Finished</th>
+				<th>Input</th>
+				<th>Output</th>
+				<th>Record Count</th>
+				<th>actions</th>
+			</tr>
+			{% for job in record_group_jobs %}
+				<tr class="{{ job.job_type }}">
+					<td>{{ job.id }}</td>
+					<td>{{ job.name }}</td>
+					<td>{{ job.job_type }}</td>
+					<td>{{ job.job_id }}</td>
+					<td>{{ job.status }}</td>
+					<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
+					<td>{{ job.finished }}</td>
+					
+					{% if job.jobinput_set.all|length > 0 %}
+						<td>{% for input_job in job.jobinput_set.all %}
+							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+								<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+							</div>
+							{% endfor %}
+						</td>
+					{% else %}
+						<td>None</td>
+					{% endif %}
+
+					{% if 'hdfs://' in job.job_output %}
+						<td><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+					{% else %}
+						<td>{{ job.job_output }}</td>
+					{% endif %}
+					<td>{{ job.record_count }}</td>
+					<td><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=job.id %}">Details</a> / <a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<div>
+		<h3>Run new job</h3>
+		<p>
+			<ul>
+				<li><a href="{% url 'job_harvest' org_id=record_group.organization.id record_group_id=record_group.id %}">Harvest</a></li>
+				<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
+				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Merge</a></li>
+				<!-- <li><a href="#">Map Service Hub profile to DPLA profile</a></li> -->
+				<li><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}">Publish</a></li>
+			</ul>
+		</p>
+	</div>
+
+{% endblock %}

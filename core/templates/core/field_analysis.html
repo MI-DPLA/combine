@@ -1,0 +1,18 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Field Analysis: {{ field_name }}</h3>
+
+	<h4>Field values</h4>
+	<ul>
+		{% for value in field_analysis_results %}
+			{% if 'http://' in value.key or 'https://' in value.key %}		
+				<li><a href="{{ value.key }}" target="_blank">{{ value.key }}</a> ({{ value.doc_count }})</li>
+			{% else %}
+				<li>{{ value.key }} ({{ value.doc_count }})</li>
+			{% endif %}
+		{% endfor %}
+	</ul>
+
+{% endblock %}

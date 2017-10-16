@@ -1,0 +1,36 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Organizations</h3>
+
+	<div>
+		<table border="1" cellpadding="5">
+			<tr>
+				<th>Org ID</th>
+				<th>Name</th>
+				<th>Description</th>
+				<th>Publish ID</th>
+				<th>Actions</th>
+			</tr>
+			{% for org in orgs %}
+				<tr>
+					<td>{{ org.id }}</td>
+					<td>{{ org.name }}</td>
+					<td>{{ org.description }}</td>
+					<td>{{ org.publish_id }}</td>
+					<td><a href="{% url 'organization' org_id=org.id %}">Details</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<h4>Create new Organization</h4>
+
+	<form method="POST" action="{% url 'organizations' %}">
+    {% csrf_token %}
+	    {{ organization_form }}
+	    <input type="submit" value="Submit" />
+	</form>
+
+{% endblock %}

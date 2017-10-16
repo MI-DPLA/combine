@@ -1,0 +1,41 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Record Groups for Organization: {{ org.name }}</h3>
+
+	<div>
+		<table border="1" cellpadding="5">
+			<tr>
+				<th>Record Group ID</th>
+				<th>Name</th>
+				<th>Description</th>
+				<th>Publish Set ID</th>
+				<th>Created</th>
+				<th>Actions</th>
+			</tr>
+			{% for record_group in record_groups %}
+				<tr>
+					<td>{{ record_group.id }}</td>
+					<td>{{ record_group.name }}</td>
+					<td>{{ record_group.description }}</td>
+					<td>{{ record_group.publish_set_id }}</td>
+					<td>{{ record_group.timestamp }}</td>
+					<td>
+						<a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">Details</a>
+					</td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<h4>Create new Record Group</h4>
+
+	<form method="POST" action="{% url 'record_group_new' org_id=org.id %}">
+    {% csrf_token %}
+	    {{ record_group_form }}
+	    <input type='hidden' name='org_id' value='{{org.id}}'/>
+	    <input type="submit" value="Submit" />
+	</form>
+
+{% endblock %}

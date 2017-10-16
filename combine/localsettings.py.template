@@ -1,0 +1,49 @@
+from django.conf import settings
+
+# Combine Install Location
+COMBINE_INSTALL_PATH = '/opt/combine'
+
+
+# Combine Front-End
+APP_HOST = 'combine-vm'
+
+
+# Apache Livy settings
+'''
+Combine uses Livy to issue spark statements.
+Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
+'''
+LIVY_HOST = 'localhost'
+LIVY_PORT = 8998
+LIVY_DEFAULT_SESSION_CONFIG = {
+    'kind':'pyspark',
+    'jars':[],
+    'files':[
+    	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
+    	'file://%s/core/spark/jobs.py' % COMBINE_INSTALL_PATH.rstrip('/'),
+    ]
+}
+
+
+# Storage for avro files and other binary files
+'''
+Make sure to note file:// or hdfs:// prefix
+'''
+BINARY_STORAGE = 'file:///home/combine/data/combine'
+
+
+# ElasicSearch
+ES_HOST = '192.168.45.10'
+
+
+# OAI Server
+COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'
+OAI_RESPONSE_SIZE = 250
+
+
+# Database configurations for use in Spark context
+COMBINE_DATABASE = {
+	'jdbc_url':'jdbc:mysql://localhost:3306/combine',
+	'user':settings.DATABASES['default']['USER'],
+	'password':settings.DATABASES['default']['PASSWORD']
+}

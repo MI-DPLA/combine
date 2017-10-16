@@ -1,0 +1,56 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<div class="{{ cjob.job.job_type }}">
+		<h3>Job Details: {{ cjob.job.name }}</h3>
+	</div>
+
+	<h4>Record Count Breakdown</h4>
+
+	<table border="1" cellpadding="5">
+		<tr>
+			<th><em>Input</em> job(s) and record counts</th>
+			<td>
+				{% for input_job in cjob.job.jobinput_set.all %}
+				<div class="{{ input_job.input_job.job_type }}" style="padding:5x; clear:both;">
+					Job <a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">#{{ input_job.input_job.id }}</a>, {{ input_job.input_job.record_count }}
+				</div>
+				{% endfor %}
+			</td>
+			<td><strong>total:</strong> {{ cjob.get_total_input_job_record_count }}</td>
+		</tr>
+		<tr>
+			<th><em>This</em> job record count</th>
+			<td>{{ cjob.job.record_count }}</td>
+			<td><a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+		</tr>
+		<tr>
+			<th><em>Indexed</em> record count</th>
+			<td>{{ field_counts.total_docs }}</td>
+			<td><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+		</tr>
+	</table>	
+
+	<h4>Field Breakdown</h4>
+
+	<p><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse ElasticSearch index</a></p>
+
+	<table border="1" cellpadding="5">
+
+		<tr>
+			<th>Field Name</th>
+			<th>Count of Field in Indexed Records</th>
+			<th>Percentage of Indexed Records</th>
+		</tr>
+
+		{% for field in field_counts.fields %}
+			<tr>
+				<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}">{{ field.field_name }}</a></td>
+				<td>{{ field.count }}</td>
+				<td>{{ field.percentage }}</td>
+			</tr>
+		{% endfor %}
+	</table>
+
+{% endblock %}

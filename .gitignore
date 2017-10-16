@@ -99,3 +99,17 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+# django
+*.sqlite3
+
+# metastore_db
+metastore_db
+metastore_db/
+
+# settings
+combine/localsettings.py
+
+# Mac OS
+.DS_Store
+._.DS_Store
