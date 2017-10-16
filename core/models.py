@@ -263,122 +263,131 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 
 
-	def get_output_as_dataframe(self):
+	# def get_output_as_dataframe(self):
 
-		'''
-		method to use cyavro and return job_output as dataframe
-		'''
+	# 	'''
+	# 	method to use cyavro and return job_output as dataframe
+	# 	'''
 
-		# Filesystem
-		if self.job_output.startswith('file://'):
+	# 	# Filesystem
+	# 	if self.job_output.startswith('file://'):
 			
-			# get job output as filesystem path
-			output_dir = self.job_output_as_filesystem()
+	# 		# get job output as filesystem path
+	# 		output_dir = self.job_output_as_filesystem()
 
-			###########################################################################
-			# cyavro shim
-			###########################################################################
-			'''
-			cyavro currently will fail on avro files written by ingestion3:
-			https://github.com/maxpoint/cyavro/issues/27
+	# 		###########################################################################
+	# 		# cyavro shim
+	# 		###########################################################################
+	# 		'''
+	# 		cyavro currently will fail on avro files written by ingestion3:
+	# 		https://github.com/maxpoint/cyavro/issues/27
 
-			This shim removes any files of length identical to known values.
-			These files represent "empty" avro files, in that they only contain the schema.
-			The file length varies slightly depending on what subset of the dataframe we 
-			write to disk.
-			'''
-			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520, 562]:
-					logger.debug('detected empty avro and removing: %s' % f)
-					os.remove(os.path.join(output_dir,f))
-			###########################################################################
-			# end cyavro shim
-			###########################################################################
+	# 		This shim removes any files of length identical to known values.
+	# 		These files represent "empty" avro files, in that they only contain the schema.
+	# 		The file length varies slightly depending on what subset of the dataframe we 
+	# 		write to disk.
+	# 		'''
+	# 		files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+	# 		for f in files:
+	# 			if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520, 562]:
+	# 				logger.debug('detected empty avro and removing: %s' % f)
+	# 				os.remove(os.path.join(output_dir,f))
+	# 		###########################################################################
+	# 		# end cyavro shim
+	# 		###########################################################################
 
-			# open avro files as dataframe with cyavro and return
-			stime = time.time()
-			df = cyavro.read_avro_path_as_dataframe(output_dir)
-			logger.debug('cyavro read time: %s' % (time.time() - stime))
-			return df
+	# 		# open avro files as dataframe with cyavro and return
+	# 		stime = time.time()
+	# 		df = cyavro.read_avro_path_as_dataframe(output_dir)
+	# 		logger.debug('cyavro read time: %s' % (time.time() - stime))
+	# 		return df
 
-		# HDFS
-		elif self.job_output.startswith('hdfs://'):
-			logger.debug('HDFS record counting not yet implemented')
-			return False
+	# 	# HDFS
+	# 	elif self.job_output.startswith('hdfs://'):
+	# 		logger.debug('HDFS record counting not yet implemented')
+	# 		return False
 
-		else:
-			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+	# 	else:
+	# 		raise Exception('could not parse dataframe from job output: %s' % self.job_output)
 
 
-	def get_indexing_results_as_dataframe(self):
+	# def get_indexing_results_as_dataframe(self):
 
-		'''
-		method to use cyavro and return indexing results as dataframe
-		'''
+	# 	'''
+	# 	method to use cyavro and return indexing results as dataframe
+	# 	'''
 
-		# derive indexing 
-		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+	# 	# derive indexing 
+	# 	indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
-		# Filesystem
-		if indexing_dir.startswith('file://'):
+	# 	# Filesystem
+	# 	if indexing_dir.startswith('file://'):
 			
-			# get job output as filesystem path
-			output_dir = self.job_output_as_filesystem()
+	# 		# get job output as filesystem path
+	# 		output_dir = self.job_output_as_filesystem()
 
-			###########################################################################
-			# cyavro shim
-			###########################################################################
-			'''
-			cyavro currently will fail on avro files written by ingestion3:
-			https://github.com/maxpoint/cyavro/issues/27
+	# 		###########################################################################
+	# 		# cyavro shim
+	# 		###########################################################################
+	# 		'''
+	# 		cyavro currently will fail on avro files written by ingestion3:
+	# 		https://github.com/maxpoint/cyavro/issues/27
 
-			This shim removes any files of length identical to known values.
-			These files represent "empty" avro files, in that they only contain the schema.
-			The file length varies slightly depending on what subset of the dataframe we 
-			write to disk.
-			'''
-			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
-					logger.debug('detected empty avro and removing: %s' % f)
-					os.remove(os.path.join(output_dir,f))
-			###########################################################################
-			# end cyavro shim
-			###########################################################################
+	# 		This shim removes any files of length identical to known values.
+	# 		These files represent "empty" avro files, in that they only contain the schema.
+	# 		The file length varies slightly depending on what subset of the dataframe we 
+	# 		write to disk.
+	# 		'''
+	# 		files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
+	# 		for f in files:
+	# 			if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
+	# 				logger.debug('detected empty avro and removing: %s' % f)
+	# 				os.remove(os.path.join(output_dir,f))
+	# 		###########################################################################
+	# 		# end cyavro shim
+	# 		###########################################################################
 
-			# open avro files as dataframe with cyavro and return
-			stime = time.time()
-			df = cyavro.read_avro_path_as_dataframe(output_dir)
-			logger.debug('cyavro read time: %s' % (time.time() - stime))
-			return df
+	# 		# open avro files as dataframe with cyavro and return
+	# 		stime = time.time()
+	# 		df = cyavro.read_avro_path_as_dataframe(output_dir)
+	# 		logger.debug('cyavro read time: %s' % (time.time() - stime))
+	# 		return df
 
-		# HDFS
-		elif self.job_output.startswith('hdfs://'):
-			logger.debug('HDFS record counting not yet implemented')
-			return False
+	# 	# HDFS
+	# 	elif self.job_output.startswith('hdfs://'):
+	# 		logger.debug('HDFS record counting not yet implemented')
+	# 		return False
 
-		else:
-			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+	# 	else:
+	# 		raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+
+
+	def get_records(self):
+
+		'''
+		retrieve records for this job from DB
+		'''
+
+		return Record.objects.filter(job=self).exclude(document='').all()
+
+
+	def get_errors(self):
+
+		'''
+		retrieve errors for this job from DB
+		'''
+
+		return Record.objects.filter(job=self).exclude(error='').all()
 
 
 	def update_record_count(self):
 
 		'''
-		Count records from self.job_output, where document is not blank string, indicating error
+		Get record count from DB, save to Job
 		'''
 		
-		try:
-			
-			df = self.get_output_as_dataframe()
-
-			# count and save records to DB
-			self.record_count = df[df['document'] != '']['document'].count()
-			self.save()
-
-		except:
-			
-			logger.debug('could not load job output as dataframe')
+		self.record_count = self.get_records().count()
+		self.save()
 
 
 	def job_output_as_filesystem(self):
@@ -400,45 +409,6 @@ class Job(models.Model):
 
 		output_dir = self.job_output_as_filesystem()
 		return [ os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro') ]
-
-
-	# REMOVING: performed in Spark via job code...
-	# def index_records_to_db(self):
-
-	# 	'''
-	# 	method to index all records from job_output to DB
-	# 	NOTE: look into using SQLAlchemy wrapper for Django connection
-	# 	'''
-
-	# 	stime = time.time()
-
-	# 	# create mysql engine
-	# 	engine = create_engine("mysql+mysqldb://combine:combine@localhost/combine?charset=utf8", encoding='utf-8')
-
-	# 	# get dataframe
-	# 	df = self.get_output_as_dataframe()
-
-	# 	# rename id column to record_id
-	# 	def col_rename(col):
-	# 		if col == 'id':
-	# 			return 'record_id'
-	# 		else:
-	# 			return col
-
-	# 	df = df.rename(columns=lambda col: col_rename(col))
-
-	# 	# add job_id column
-	# 	df['job_id'] = pd.Series(self.id, index=df.index)
-
-	# 	# # add job_type column
-	# 	# df['job_type'] = pd.Series(self.job_type, index=df.index)
-
-	# 	# index to DB
-	# 	# NOTE: Need to align columns for potential variety of job type columns
-	# 	df[['job_id','record_id','document','error']].to_sql('core_record', engine, if_exists='append')
-
-	# 	# DEBUG
-	# 	logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
 
 
 	def index_results_save_path(self):
@@ -526,7 +496,7 @@ class Record(models.Model):
 	Note: These are written directly from Pandas DataFrame, not via Django ORM
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE, null=True, default=None)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
@@ -960,24 +930,18 @@ class PublishedRecords(object):
 
 		self.record_group = 0
 
+		# get published jobs
 		self.publish_links = JobPublish.objects.all()
+
+		# get set IDs from record group of published jobs
 		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
 
-		# if avro files present, load as dataframe
-		published_dir = '%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/')
-		
-		# if published links found
-		if self.publish_links.count() > 0 and len([ f for f in os.listdir(published_dir) if f.endswith('.avro') ]) > 0:
-				
-			self.df = cyavro.read_avro_path_as_dataframe(published_dir)
-			self.record_count = self.df[self.df['document'] != '']['document'].count()
+		# get iterable queryset of records
+		self.records = Record.objects.filter(job__job_type = 'PublishJob').all()
 
-		# no avro files found, 
-		else:
-			
-			logger.debug('no avro files found in /published')
-			self.df = False
-			self.record_count = None
+		# set record count
+		self.record_count = self.records.count()
+
 
 
 class CombineJob(object):
@@ -995,14 +959,6 @@ class CombineJob(object):
 
 			# retrieve job
 			self.get_job(self.job_id)
-
-			# parse output as dataframe
-			if parse_job_output:
-				try:
-					self.df = self.job.get_output_as_dataframe()
-				except:
-					logger.debug('could not parse job output as dataframe')
-					self.df = False
 
 
 	def default_job_name(self):
@@ -1085,10 +1041,7 @@ class CombineJob(object):
 		Use methods from models.Job
 		'''
 
-		if not self.df:
-			self.df = self.job.get_output_as_dataframe()
-
-		return self.df.count()
+		return self.job.get_records().count()
 
 
 	def get_record(self, id):
@@ -1097,15 +1050,15 @@ class CombineJob(object):
 		Convenience method to return single record from job
 		'''
 
-		records = self.df.loc[self.df['id'] == id]
+		record_query = Record.objects.filter(job=self.job).filter(record_id=id)
 
 		# if only one found
-		if len(records) == 1:
-			return records.iloc[0]
+		if record_query.count() == 1:
+			return record_query.first()
 
 		# else, return all results
 		else:
-			return records
+			return record_query
 
 
 	def count_indexed_fields(self):
@@ -1172,6 +1125,8 @@ class CombineJob(object):
 
 		'''
 		return failures for job indexing process
+
+		TODO: If storing indexing failures in DB, report differently here
 		'''
 
 		# attempt load of indexing avro results

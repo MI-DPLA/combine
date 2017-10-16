@@ -123,6 +123,8 @@ class OAIProvider(object):
 
 		'''
 		record retrieval from published dataframe
+
+		TODO: rework to use DB, not cyavro loaded dataframe
 		'''
 
 		stime = time.time()

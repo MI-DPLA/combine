@@ -259,7 +259,8 @@ def job_delete(request, org_id, record_group_id, job_id):
 	
 	logger.debug('deleting job by id: %s' % job_id)
 
-	job = models.Job.objects.filter(id=job_id).first()
+	# get job
+	job = models.Job.objects.get(pk=job_id)
 	
 	# remove from DB
 	job.delete()

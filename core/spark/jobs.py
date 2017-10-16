@@ -85,6 +85,7 @@ class HarvestSpark(object):
 		ESIndex.index_job_to_es_spark(
 			spark,
 			job=job,
+			records_df=records,
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -147,6 +148,7 @@ class TransformSpark(object):
 		ESIndex.index_job_to_es_spark(
 			spark,
 			job=job,
+			records_df=transformed.toDF(),
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -181,6 +183,7 @@ class MergeSpark(object):
 		ESIndex.index_job_to_es_spark(
 			spark,
 			job=job,
+			records_df=agg_rdd.toDF(),
 			index_mapper=kwargs['index_mapper']
 		)
 
@@ -225,6 +228,7 @@ class PublishSpark(object):
 		ESIndex.index_job_to_es_spark(
 			spark,
 			job=job,
+			records_df=docs,
 			index_mapper=kwargs['index_mapper']
 		)
 

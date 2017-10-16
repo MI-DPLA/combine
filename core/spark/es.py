@@ -27,16 +27,23 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, **kwargs):
+	def index_job_to_es_spark(spark, job, records_df, index_mapper):
 
-		# get job
-		job = kwargs['job']
+		'''
+		Method to index records dataframe into ElasticSearch (ES)
 
-		# get records from job output
-		records_df = spark.read.format('com.databricks.spark.avro').load(job.job_output)
+		Args:
+			job:
+			records_rdd: dataframe
+			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
+
+		TODO: Consider writing indexing failures to SQL DB as well
+		'''
+
+		# get index mapper
+		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		index_mapper_handle = globals()[kwargs['index_mapper']]
 		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
 
 		# filter out faliures, write to avro file for reporting on index process
