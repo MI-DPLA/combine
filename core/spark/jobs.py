@@ -11,7 +11,7 @@ from es import ESIndex, MODSMapper
 
 # import Row from pyspark
 from pyspark.sql import Row
-from pyspark.sql.types import StringType
+from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql.functions import udf
 
 
@@ -55,12 +55,20 @@ class HarvestSpark(object):
 		# add blank error column
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
-		
+
 		# write them to avro files
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
+		
+		# add job_id as column
+		job_id = job.id
+		job_id_udf = udf(lambda id: job_id, IntegerType())
+		records = records.withColumn('job_id', job_id_udf(records.id))
 
 		# write records to DB
-		job.index_records_to_db()
+		records.withColumn('record_id', records.id).select(['document','record_id','job_id']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
+
+		# # write records to DB
+		# job.index_records_to_db()
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(

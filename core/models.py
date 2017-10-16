@@ -604,9 +604,9 @@ class Record(models.Model):
 	Note: These are written directly from Pandas DataFrame, not via Django ORM
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE, null=True, default=None)
 	index = models.IntegerField(null=True, default=None)
-	record_id = models.CharField(max_length=1024)
+	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
