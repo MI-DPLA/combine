@@ -37,8 +37,10 @@ class HarvestSpark(object):
 		'''
 		Harvest records, select non-null, and write to avro files
 
-		expecting kwargs from self.start_job()
+		TODO
+			- rework DPLA Harvest DF to document | error structure
 		'''
+
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -58,7 +60,7 @@ class HarvestSpark(object):
 
 		# write them to avro files
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
-		
+
 		# add job_id as column
 		job_id = job.id
 		job_id_udf = udf(lambda id: job_id, IntegerType())
@@ -66,9 +68,6 @@ class HarvestSpark(object):
 
 		# write records to DB
 		records.withColumn('record_id', records.id).select(['document','record_id','job_id']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
-
-		# # write records to DB
-		# job.index_records_to_db()
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
