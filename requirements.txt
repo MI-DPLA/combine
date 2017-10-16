@@ -27,6 +27,7 @@ requests==2.18.4
 scandir==1.5
 simplegeneric==0.8.1
 six==1.10.0
+SQLAlchemy==1.1.13
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
