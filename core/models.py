@@ -198,7 +198,7 @@ class Job(models.Model):
 	job_type = models.CharField(max_length=128, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
-	spark_code = models.CharField(max_length=32000, null=True)
+	spark_code = models.TextField(null=True, default=None)
 	job_id = models.IntegerField(null=True, default=None)
 	status = models.CharField(max_length=30, null=True)
 	finished = models.BooleanField(default=0)
