@@ -25,6 +25,23 @@ from django.conf import settings
 from core.models import CombineJob, Job
 
 
+
+def index_records_to_db(job, records):
+
+	'''
+	function to index records to SQL DB
+	'''
+
+	# add job_id as column
+	job_id = job.id
+	job_id_udf = udf(lambda id: job_id, IntegerType())
+	records = records.withColumn('job_id', job_id_udf(records.id))
+
+	# write records to DB
+	records.withColumn('record_id', records.id).select(['record_id', 'job_id', 'document', 'error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
+
+
+
 class HarvestSpark(object):
 
 	'''
@@ -61,13 +78,8 @@ class HarvestSpark(object):
 		# write them to avro files
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
 
-		# add job_id as column
-		job_id = job.id
-		job_id_udf = udf(lambda id: job_id, IntegerType())
-		records = records.withColumn('job_id', job_id_udf(records.id))
-
-		# write records to DB
-		records.withColumn('record_id', records.id).select(['document','record_id','job_id']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
+		# index records to db
+		index_records_to_db(job, records)
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
@@ -128,8 +140,8 @@ class TransformSpark(object):
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
 
-		# write records to DB
-		job.index_records_to_db()
+		# index records to db
+		index_records_to_db(job, transformed.toDF())
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
@@ -162,8 +174,8 @@ class MergeSpark(object):
 		# write agg to new avro files
 		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
 
-		# write records to DB
-		job.index_records_to_db()
+		# index records to db
+		index_records_to_db(job, agg_rdd.toDF())
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
@@ -206,8 +218,8 @@ class PublishSpark(object):
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
-		# write records to DB
-		job.index_records_to_db()
+		# index records to db
+		index_records_to_db(job, docs)
 
 		# finally, index to ElasticSearch
 		ESIndex.index_job_to_es_spark(
