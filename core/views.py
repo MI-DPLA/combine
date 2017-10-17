@@ -257,6 +257,8 @@ def record_group(request, org_id, record_group_id):
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
 	
+	stime = time.time()
+
 	logger.debug('deleting job by id: %s' % job_id)
 
 	# get job
@@ -264,6 +266,8 @@ def job_delete(request, org_id, record_group_id, job_id):
 	
 	# remove from DB
 	job.delete()
+
+	logger.debug('job deleted in: %s' % (time.time()-stime))
 
 	# redirect
 	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)

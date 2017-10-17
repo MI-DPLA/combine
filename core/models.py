@@ -937,10 +937,26 @@ class PublishedRecords(object):
 		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
 
 		# get iterable queryset of records
-		self.records = Record.objects.filter(job__job_type = 'PublishJob').all()
+		self.records = Record.objects.filter(job__job_type = 'PublishJob')
 
 		# set record count
 		self.record_count = self.records.count()
+
+
+	def get_record(self, id):
+
+		'''
+		Return single, published record by id
+		'''
+
+		record_query = records.filter(record_id = id)
+
+		# if one, return
+		if record_query.count() == 1:
+			return record_query.first()
+
+		else:
+			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
 
 
 
