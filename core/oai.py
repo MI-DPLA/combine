@@ -119,48 +119,6 @@ class OAIProvider(object):
 		self.root_node.append(self.verb_node)
 
 
-	# def retrieve_records(self, include_metadata=False):
-
-	# 	'''
-	# 	record retrieval from published dataframe
-
-	# 	TODO: rework to use DB, not cyavro loaded dataframe
-	# 	'''
-
-	# 	stime = time.time()
-	# 	logger.debug("retrieving records for verb %s" % (self.args['verb']))
-
-	# 	# prepare subset of dataframe
-	# 	df_subset = self.published.df
-
-	# 	# if set present, filter by this set
-	# 	if self.publish_set_id:
-	# 		logger.debug('applying publish_set_id filter')
-	# 		df_subset = df_subset[df_subset['setIds'] == self.publish_set_id]
-
-	# 	# loop through rows
-	# 	for i, row in enumerate(df_subset[self.start:(self.start+self.chunk_size)].sort_values('id').iterrows()):
-	# 		record = OAIRecord(args=self.args, record_id=row[1].id, document=row[1].document, timestamp=self.request_timestamp_string)
-
-	# 		# include full metadata in record
-	# 		if include_metadata:
-	# 			 record.include_metadata()
-
-	# 		# append to record_nodes
-	# 		self.record_nodes.append(record.oai_record_node)
-
-	# 	# add to verb node
-	# 	for oai_record_node in self.record_nodes:
-	# 		self.verb_node.append(oai_record_node)
-
-	# 	# finally, set resumption token
-	# 	self.set_resumption_token(df_subset)
-
-	# 	# report
-	# 	etime = time.time()
-	# 	logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
-
-
 	def retrieve_records(self, include_metadata=False):
 
 		'''

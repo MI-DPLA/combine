@@ -58,6 +58,9 @@ class HarvestSpark(object):
 			- rework DPLA Harvest DF to document | error structure
 		'''
 
+		# get job
+		job = Job.objects.get(pk=int(kwargs['job_id']))
+
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -65,10 +68,7 @@ class HarvestSpark(object):
 		.option(kwargs['scope_type'], kwargs['scope_value'])\
 		.load()
 
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-		
-		# select records with content
+		# select records with content and write to avro
 		records = df.select("record.*").where("record is not null")
 
 		# add blank error column
@@ -78,16 +78,20 @@ class HarvestSpark(object):
 		# write them to avro files
 		records.write.format("com.databricks.spark.avro").save(job.job_output)
 
+		# reload from avro for future operations
+		avro_records = spark.read.format('com.databricks.spark.avro').load(job.job_output)
+
 		# index records to db
-		index_records_to_db(job, records)
+		index_records_to_db(job, avro_records)
 
 		# finally, index to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=records,
-			index_mapper=kwargs['index_mapper']
-		)
+		if settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=avro_records,
+				index_mapper=kwargs['index_mapper']
+			)
 
 
 
@@ -145,12 +149,13 @@ class TransformSpark(object):
 		index_records_to_db(job, transformed.toDF())
 
 		# finally, index to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=transformed.toDF(),
-			index_mapper=kwargs['index_mapper']
-		)
+		if settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=transformed.toDF(),
+				index_mapper=kwargs['index_mapper']
+			)
 
 
 
@@ -180,12 +185,13 @@ class MergeSpark(object):
 		index_records_to_db(job, agg_rdd.toDF())
 
 		# finally, index to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=agg_rdd.toDF(),
-			index_mapper=kwargs['index_mapper']
-		)
+		if settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=agg_rdd.toDF(),
+				index_mapper=kwargs['index_mapper']
+			)
 
 
 
@@ -225,18 +231,19 @@ class PublishSpark(object):
 		index_records_to_db(job, docs)
 
 		# finally, index to ElasticSearch
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=docs,
-			index_mapper=kwargs['index_mapper']
-		)
+		if settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=docs,
+				index_mapper=kwargs['index_mapper']
+			)
 
-		# index to ES /published
-		ESIndex.index_published_job(
-			job_id = job.id,
-			publish_set_id=job.record_group.publish_set_id
-		)
+			# index to ES /published
+			ESIndex.index_published_job(
+				job_id = job.id,
+				publish_set_id=job.record_group.publish_set_id
+			)
 
 
 

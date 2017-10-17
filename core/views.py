@@ -38,22 +38,22 @@ def breadcrumb_parser(path):
 	crumbs = []
 
 	# org
-	m = re.match(r'(.+?/organization/([0-9]+))',path)
-	if m:
-		org = models.Organization.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Organization)" % org.name,m.group(1)))
+	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
+	if org_m:
+		org = models.Organization.objects.get(pk=int(org_m.group(2)))
+		crumbs.append((org.name, org_m.group(1)))
 
 	# record_group
-	m = re.match(r'(.+?/record_group/([0-9]+))',path)
-	if m:
-		rg = models.RecordGroup.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Record Group)" % rg.name,m.group(1)))
+	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
+	if rg_m:
+		rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
+		crumbs.append(("%s" % rg.name, rg_m.group(1)))
 
 	# job
-	m = re.match(r'(.+?/job/([0-9]+))',path)
-	if m:
-		j = models.Job.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Job)" % j.name,m.group(1)))
+	j_m = re.match(r'(.+?/job/([0-9]+))', path)
+	if j_m:
+		j = models.Job.objects.get(pk=int(j_m.group(2)))
+		crumbs.append(("%s" % j.name, j_m.group(1)))
 
 	# return
 	logger.debug(crumbs)
