@@ -263,105 +263,6 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 
 
-	# def get_output_as_dataframe(self):
-
-	# 	'''
-	# 	method to use cyavro and return job_output as dataframe
-	# 	'''
-
-	# 	# Filesystem
-	# 	if self.job_output.startswith('file://'):
-			
-	# 		# get job output as filesystem path
-	# 		output_dir = self.job_output_as_filesystem()
-
-	# 		###########################################################################
-	# 		# cyavro shim
-	# 		###########################################################################
-	# 		'''
-	# 		cyavro currently will fail on avro files written by ingestion3:
-	# 		https://github.com/maxpoint/cyavro/issues/27
-
-	# 		This shim removes any files of length identical to known values.
-	# 		These files represent "empty" avro files, in that they only contain the schema.
-	# 		The file length varies slightly depending on what subset of the dataframe we 
-	# 		write to disk.
-	# 		'''
-	# 		files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-	# 		for f in files:
-	# 			if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520, 562]:
-	# 				logger.debug('detected empty avro and removing: %s' % f)
-	# 				os.remove(os.path.join(output_dir,f))
-	# 		###########################################################################
-	# 		# end cyavro shim
-	# 		###########################################################################
-
-	# 		# open avro files as dataframe with cyavro and return
-	# 		stime = time.time()
-	# 		df = cyavro.read_avro_path_as_dataframe(output_dir)
-	# 		logger.debug('cyavro read time: %s' % (time.time() - stime))
-	# 		return df
-
-	# 	# HDFS
-	# 	elif self.job_output.startswith('hdfs://'):
-	# 		logger.debug('HDFS record counting not yet implemented')
-	# 		return False
-
-	# 	else:
-	# 		raise Exception('could not parse dataframe from job output: %s' % self.job_output)
-
-
-	# def get_indexing_results_as_dataframe(self):
-
-	# 	'''
-	# 	method to use cyavro and return indexing results as dataframe
-	# 	'''
-
-	# 	# derive indexing 
-	# 	indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
-
-	# 	# Filesystem
-	# 	if indexing_dir.startswith('file://'):
-			
-	# 		# get job output as filesystem path
-	# 		output_dir = self.job_output_as_filesystem()
-
-	# 		###########################################################################
-	# 		# cyavro shim
-	# 		###########################################################################
-	# 		'''
-	# 		cyavro currently will fail on avro files written by ingestion3:
-	# 		https://github.com/maxpoint/cyavro/issues/27
-
-	# 		This shim removes any files of length identical to known values.
-	# 		These files represent "empty" avro files, in that they only contain the schema.
-	# 		The file length varies slightly depending on what subset of the dataframe we 
-	# 		write to disk.
-	# 		'''
-	# 		files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-	# 		for f in files:
-	# 			if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
-	# 				logger.debug('detected empty avro and removing: %s' % f)
-	# 				os.remove(os.path.join(output_dir,f))
-	# 		###########################################################################
-	# 		# end cyavro shim
-	# 		###########################################################################
-
-	# 		# open avro files as dataframe with cyavro and return
-	# 		stime = time.time()
-	# 		df = cyavro.read_avro_path_as_dataframe(output_dir)
-	# 		logger.debug('cyavro read time: %s' % (time.time() - stime))
-	# 		return df
-
-	# 	# HDFS
-	# 	elif self.job_output.startswith('hdfs://'):
-	# 		logger.debug('HDFS record counting not yet implemented')
-	# 		return False
-
-	# 	else:
-	# 		raise Exception('could not parse dataframe from job output: %s' % self.job_output)
-
-
 	def get_records(self):
 
 		'''
@@ -480,7 +381,7 @@ class OAITransaction(models.Model):
 	start = models.IntegerField(null=True, default=None)
 	chunk_size = models.IntegerField(null=True, default=None)
 	publish_set_id = models.CharField(max_length=255, null=True, default=None)
-	token = models.CharField(max_length=1024)
+	token = models.CharField(max_length=1024, db_index=True)
 	args = models.CharField(max_length=1024)
 	
 
@@ -493,7 +394,6 @@ class Record(models.Model):
 
 	'''
 	DB model for individual records.
-	Note: These are written directly from Pandas DataFrame, not via Django ORM
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -506,6 +406,20 @@ class Record(models.Model):
 	def __str__(self):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
 
+
+class IndexMappingFailure(models.Model):
+
+	'''
+	DB model for indexing failures
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	record_id = models.CharField(max_length=1024, null=True, default=None)
+	mapping_error = models.TextField(null=True, default=None)
+
+
+	def __str__(self):
+		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
 
 
 ##################################
@@ -1141,20 +1055,22 @@ class CombineJob(object):
 
 		'''
 		return failures for job indexing process
-
-		TODO: If storing indexing failures in DB, report differently here
 		'''
 
-		# attempt load of indexing avro results
-		try:
-			df = self.job.get_indexing_results_as_dataframe()
+		# # attempt load of indexing avro results
+		# try:
+		# 	df = self.job.get_indexing_results_as_dataframe()
 
-			# return
-			return df[df['error'] != ''][['id','error']].values.tolist()
+		# 	# return
+		# 	return df[df['error'] != ''][['id','error']].values.tolist()
 
-		except:
-			logger.debug('indexing failures could not be retrieved, perhaps there were none?')
-			return []
+		# except:
+		# 	logger.debug('indexing failures could not be retrieved, perhaps there were none?')
+		# 	return []
+
+		# load indexing failures for this job from DB
+		index_failures = IndexMappingFailure.objects.filter(job=self.job)
+		return index_failures
 
 
 	def get_total_input_job_record_count(self):
@@ -1388,7 +1304,7 @@ class TransformJob(CombineJob):
 		return transform job specific errors
 		'''
 
-		return self.df[self.df['error'] != '']
+		return self.job.get_errors()
 
 
 

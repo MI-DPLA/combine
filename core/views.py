@@ -569,10 +569,10 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get indexing failures
-	indexing_failures = cjob.get_indexing_failures()
+	index_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_indexing_failures.html', {'index_failures':index_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 
