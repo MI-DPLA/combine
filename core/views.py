@@ -597,6 +597,29 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 
 ##################################
+# Records
+##################################
+
+
+def record(request):
+
+	'''
+	Details for a single record.
+
+	Args:
+		record_id (GET): expecting record_id via GET parameters
+	'''
+
+	# get field name
+	record_id = request.GET.get('record_id')
+	logger.debug('retrieving details about record_id: %s' % (record_id))
+
+	# return
+	return render(request, 'core/record.html', {'record_id':record_id})
+
+
+
+##################################
 # Transformations
 ##################################
 @login_required
