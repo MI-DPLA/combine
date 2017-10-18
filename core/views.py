@@ -356,7 +356,7 @@ def job_harvest(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.HarvestJob(
+		cjob = models.HarvestJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -365,8 +365,13 @@ def job_harvest(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -418,7 +423,7 @@ def job_transform(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.TransformJob(
+		cjob = models.TransformJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -427,8 +432,13 @@ def job_transform(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -473,7 +483,7 @@ def job_merge(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.MergeJob(
+		cjob = models.MergeJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -481,8 +491,13 @@ def job_merge(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# # start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -527,7 +542,7 @@ def job_publish(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.PublishJob(
+		cjob = models.PublishJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -535,8 +550,13 @@ def job_publish(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 

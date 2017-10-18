@@ -927,7 +927,7 @@ class CombineJob(object):
 	def _get_active_livy_session(self):
 
 		'''
-		Method to determine active livy session if present, or create if does not exist
+		Method to retrieve active livy session
 		'''
 
 		# check for single, active livy session from LivyClient
@@ -950,8 +950,27 @@ class CombineJob(object):
 			except:
 				logger.debug('could not confirm session status')
 
+		elif livy_sessions.count() == 0:
+			logger.debug('no active livy sessions found')
+			return False
 
-	def submit_job(self, job_code, job_output):
+
+	def start_job(self):
+
+		'''
+		starts job, sends to prepare_job() for child classes
+		'''
+
+		# if active livy session
+		if self.livy_session:
+			self.prepare_job()
+
+		else:
+			logger.debug('could not submit livy job, not active livy session found')
+			return False
+
+
+	def submit_job_to_livy(self, job_code, job_output):
 
 		# submit job
 		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
@@ -1017,22 +1036,36 @@ class CombineJob(object):
 			es_r = es_handle.indices.get(index='j%s' % self.job_id)
 			index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
 
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
 			# init search
 			s = Search(using=es_handle, index='j%s' % self.job_id)
 
 			# return no results, only aggs
 			s = s[0]
 
-			# add agg buckets for each field to count number of instances
-			for field_name in index_mappings:
-				s.aggs.bucket(field_name, A('filter', Q('exists', field=field_name)))
+			# add agg buckets for each field to count total and unique instances
+			for field_name in field_names:
+				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
+				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
 
 			# execute search and capture as dictionary
 			sr = s.execute()
 			sr_dict = sr.to_dict()
 
 			# calc fields percentage and return as list
-			field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),4)} for field in sr_dict['aggregations'] ]
+			field_count = [ 
+				{
+					'field_name':field,
+					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
+					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] / sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
+					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] / sr_dict['hits']['total']), 4)
+				}
+				for field in field_names
+			]
 
 			# return
 			return {
@@ -1070,17 +1103,6 @@ class CombineJob(object):
 		'''
 		return failures for job indexing process
 		'''
-
-		# # attempt load of indexing avro results
-		# try:
-		# 	df = self.job.get_indexing_results_as_dataframe()
-
-		# 	# return
-		# 	return df[df['error'] != ''][['id','error']].values.tolist()
-
-		# except:
-		# 	logger.debug('indexing failures could not be retrieved, perhaps there were none?')
-		# 	return []
 
 		# load indexing failures for this job from DB
 		index_failures = IndexMappingFailure.objects.filter(job=self.job)
@@ -1190,7 +1212,7 @@ class HarvestJob(CombineJob):
 			self.job.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for harvest job
@@ -1216,7 +1238,7 @@ class HarvestJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1290,7 +1312,7 @@ class TransformJob(CombineJob):
 			job_input_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for transform job
@@ -1309,7 +1331,7 @@ class TransformJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1379,7 +1401,7 @@ class MergeJob(CombineJob):
 				job_input_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for publish job
@@ -1397,7 +1419,7 @@ class MergeJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1466,7 +1488,7 @@ class PublishJob(CombineJob):
 			job_publish_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for publish job
@@ -1484,7 +1506,7 @@ class PublishJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
