@@ -34,9 +34,6 @@ from livy.client import HttpClient
 # import cyavro
 import cyavro
 
-# impot pandas
-import pandas as pd
-
 # import elasticsearch and handles
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
@@ -362,6 +359,7 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
+
 class Transformation(models.Model):
 
 	name = models.CharField(max_length=255)
@@ -394,6 +392,7 @@ class Record(models.Model):
 
 	'''
 	DB model for individual records.
+	Note: This DB model is not managed by Django.
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -403,14 +402,21 @@ class Record(models.Model):
 	error = models.TextField(null=True, default=None)
 
 
+	# this model is managed outside of Django
+	class Meta:
+		managed = False
+
+
 	def __str__(self):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
+
 
 
 class IndexMappingFailure(models.Model):
 
 	'''
 	DB model for indexing failures
+	Note: This DB model is not managed by Django.
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -418,8 +424,14 @@ class IndexMappingFailure(models.Model):
 	mapping_error = models.TextField(null=True, default=None)
 
 
+	# this model is managed outside of Django
+	class Meta:
+		managed = False
+
+
 	def __str__(self):
 		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
+
 
 
 ##################################
@@ -505,7 +517,6 @@ def save_job(sender, instance, created, **kwargs):
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
-
 	'''
 	When jobs are removed, a fair amount of clean up is involved
 	'''
@@ -578,9 +589,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 
 	# remove ES index if exists
-	if es_handle.indices.exists('j%s' % instance.id):
-		logger.debug('removing ES index: j%s' % instance.id)
-		es_handle.indices.delete('j%s' % instance.id)
+	try:
+		if es_handle.indices.exists('j%s' % instance.id):
+			logger.debug('removing ES index: j%s' % instance.id)
+			es_handle.indices.delete('j%s' % instance.id)
+	except:
+		logger.debug('could not remove ES index: j%s' % instance.id)
 
 
 	# attempt to delete indexing results avro files

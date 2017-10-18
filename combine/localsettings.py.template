@@ -34,6 +34,7 @@ BINARY_STORAGE = 'file:///home/combine/data/combine'
 
 # ElasicSearch
 ES_HOST = '192.168.45.10'
+INDEX_TO_ES = True
 
 
 # OAI Server
