@@ -287,7 +287,8 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get records
 	record_query = models.Record.objects.filter(job=cjob.job).all()
 	record_table = models.RecordTable(record_query)
-	
+	record_table.paginate(page=request.GET.get('page', 1), per_page=5)
+
 	# return
 	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path), 'record_table':record_table})
 
