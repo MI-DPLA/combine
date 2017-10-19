@@ -283,9 +283,13 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
+
+	# get records
+	record_query = models.Record.objects.filter(job=cjob.job).all()
+	record_table = models.RecordTable(record_query)
 	
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path), 'record_table':record_table})
 
 
 @login_required

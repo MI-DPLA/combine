@@ -38,6 +38,9 @@ import cyavro
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
 
+# Django Datatables
+import django_tables2 as tables
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -432,6 +435,14 @@ class IndexMappingFailure(models.Model):
 	def __str__(self):
 		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
 
+
+##################################
+# Datatables Models
+##################################
+
+class RecordTable(tables.Table):
+	class Meta:
+		model = Record
 
 
 ##################################
