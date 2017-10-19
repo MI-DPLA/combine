@@ -27,6 +27,7 @@ from django.contrib.auth import signals
 from django.db import models
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.html import format_html
 
 # Livy
 from livy.client import HttpClient
@@ -441,8 +442,13 @@ class IndexMappingFailure(models.Model):
 ##################################
 
 class RecordTable(tables.Table):
+	
 	class Meta:
 		model = Record
+
+	def render_document(self, value):
+		return format_html('<a href="#">Record Document</a>')
+
 
 
 ##################################
