@@ -690,18 +690,23 @@ class DatatablesRecordsJson(BaseDatatableView):
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = ['id', 'record_id', 'job', 'document', 'error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
 		max_display_length = 25
 
 		def render_column(self, row, column):
-			# We want to render user as a custom column
+			
+			# handle document metadata
 			if column == 'document':
 				# return '{0} {1}'.format(row.customer_firstname, row.customer_lastname)
 				return 'DOCUMENT WILL GO HERE'
+			# handle associated job
+			if column == 'job':
+				return row.job.name
 			else:
-				return super(JobRecordsJson, self).render_column(row, column)
+				return super(DatatablesRecordsJson, self).render_column(row, column)
 
 		# def filter_queryset(self, qs):
 		# 	# use parameters passed in GET request to filter queryset
