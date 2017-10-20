@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 
@@ -16,6 +17,7 @@ from core.oai import OAIProvider
 
 import json
 import logging
+from lxml import etree
 import os
 import re
 import requests
@@ -706,12 +708,22 @@ class DatatablesRecordsJson(BaseDatatableView):
 		def render_column(self, row, column):
 			
 			# handle document metadata
+
+			if column == 'record_id':
+				return '<a href="%s?record_id=%s" target="_blank">%s</a>' % (reverse(record), row.record_id, row.record_id)
+
 			if column == 'document':
-				# return '{0} {1}'.format(row.customer_firstname, row.customer_lastname)
-				return 'DOCUMENT WILL GO HERE'
+				# attempt to parse as XML and return if valid or not
+				try:
+					xml = etree.fromstring(row.document)
+					return '<span style="color: green;">Valid XML</span>'
+				except:
+					return '<span style="color: red;">Invalid XML</span>'
+
 			# handle associated job
 			if column == 'job':
 				return row.job.name
+
 			else:
 				return super(DatatablesRecordsJson, self).render_column(row, column)
 
