@@ -77,7 +77,7 @@
 		    var oTable = $('#datatables_records').dataTable({
 		        "processing": true,
 		        "serverSide": true,
-		        "ajax": "{% url 'datatables_record_data' %}"
+		        "ajax": "{% url 'datatables_record_data' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"
 		    });
 		});
 	</script>

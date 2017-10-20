@@ -694,7 +694,7 @@ class DatatablesRecordsJson(BaseDatatableView):
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
-		max_display_length = 25
+		max_display_length = 1000
 
 		def render_column(self, row, column):
 			
@@ -708,25 +708,38 @@ class DatatablesRecordsJson(BaseDatatableView):
 			else:
 				return super(DatatablesRecordsJson, self).render_column(row, column)
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-		# 	# simple example:
-		# 	search = self.request.GET.get(u'search[value]', None)
-		# 	if search:
-		# 		qs = qs.filter(name__istartswith=search)
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
-		# 	# more advanced example using extra parameters
-		# 	filter_customer = self.request.GET.get(u'customer', None)
+			# filter to specific job
+			qs = qs.filter(job=job)
 
-		# 	if filter_customer:
-		# 		customer_parts = filter_customer.split(' ')
-		# 		qs_params = None
-		# 		for part in customer_parts:
-		# 			q = Q(customer_firstname__istartswith=part)|Q(customer_lastname__istartswith=part)
-		# 			qs_params = qs_params | q if qs_params else q
-		# 		qs = qs.filter(qs_params)
-		# 	return qs
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(record_id__contains=search)
+
+			return qs
+
+			# # simple example:
+			# search = self.request.GET.get(u'search[value]', None)
+			# if search:
+			# 	qs = qs.filter(name__istartswith=search)
+
+			# # more advanced example using extra parameters
+			# filter_customer = self.request.GET.get(u'customer', None)
+
+			# if filter_customer:
+			# 	customer_parts = filter_customer.split(' ')
+			# 	qs_params = None
+			# 	for part in customer_parts:
+			# 		q = Q(customer_firstname__istartswith=part)|Q(customer_lastname__istartswith=part)
+			# 		qs_params = qs_params | q if qs_params else q
+			# 	qs = qs.filter(qs_params)
+			# return qs
 
 
 

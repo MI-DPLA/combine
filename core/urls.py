@@ -49,7 +49,7 @@ urlpatterns = [
 	url(r'^oai$', views.oai, name='oai'),
 
 	# Datatables Endpoints
-	url(r'^datatables/records/data/$', views.DatatablesRecordsJson.as_view(), name='datatables_record_data'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/dt_json$', views.DatatablesRecordsJson.as_view(), name='datatables_record_data'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
