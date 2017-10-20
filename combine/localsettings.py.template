@@ -5,7 +5,7 @@ COMBINE_INSTALL_PATH = '/opt/combine'
 
 
 # Combine Front-End
-APP_HOST = 'combine-vm'
+APP_HOST = '192.168.45.10'
 
 
 # Apache Livy settings
@@ -34,6 +34,7 @@ BINARY_STORAGE = 'file:///home/combine/data/combine'
 
 # ElasicSearch
 ES_HOST = '192.168.45.10'
+INDEX_TO_ES = True
 
 
 # OAI Server

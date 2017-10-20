@@ -19,7 +19,7 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/new$', views.record_group_new, name='record_group_new'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 
-	# Record Group Jobs
+	# Jobs
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/details$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
@@ -36,6 +36,9 @@ urlpatterns = [
 	# Jobs General
 	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
 
+	# Records
+	url(r'^record', views.record, name='record'),
+
 	# Configuration
 	url(r'^configuration$', views.configuration, name='configuration'),
 
@@ -44,6 +47,9 @@ urlpatterns = [
 
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
+
+	# Datatables Endpoints
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/dt_json$', views.DatatablesRecordsJson.as_view(), name='datatables_record_data'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

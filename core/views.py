@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.urlresolvers import reverse
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 
@@ -16,11 +17,15 @@ from core.oai import OAIProvider
 
 import json
 import logging
+from lxml import etree
 import os
 import re
 import requests
 import textwrap
 import time
+
+# django-datatables-view
+from django_datatables_view.base_datatable_view import BaseDatatableView
 
 
 # Get an instance of a logger
@@ -38,22 +43,22 @@ def breadcrumb_parser(path):
 	crumbs = []
 
 	# org
-	m = re.match(r'(.+?/organization/([0-9]+))',path)
-	if m:
-		org = models.Organization.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Organization)" % org.name,m.group(1)))
+	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
+	if org_m:
+		org = models.Organization.objects.get(pk=int(org_m.group(2)))
+		crumbs.append((org.name, org_m.group(1)))
 
 	# record_group
-	m = re.match(r'(.+?/record_group/([0-9]+))',path)
-	if m:
-		rg = models.RecordGroup.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Record Group)" % rg.name,m.group(1)))
+	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
+	if rg_m:
+		rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
+		crumbs.append(("%s" % rg.name, rg_m.group(1)))
 
 	# job
-	m = re.match(r'(.+?/job/([0-9]+))',path)
-	if m:
-		j = models.Job.objects.get(pk=int(m.group(2)))
-		crumbs.append(("%s (Job)" % j.name,m.group(1)))
+	j_m = re.match(r'(.+?/job/([0-9]+))', path)
+	if j_m:
+		j = models.Job.objects.get(pk=int(j_m.group(2)))
+		crumbs.append(("%s" % j.name, j_m.group(1)))
 
 	# return
 	logger.debug(crumbs)
@@ -257,12 +262,17 @@ def record_group(request, org_id, record_group_id):
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
 	
+	stime = time.time()
+
 	logger.debug('deleting job by id: %s' % job_id)
 
-	job = models.Job.objects.filter(id=job_id).first()
+	# get job
+	job = models.Job.objects.get(pk=job_id)
 	
 	# remove from DB
 	job.delete()
+
+	logger.debug('job deleted in: %s' % (time.time()-stime))
 
 	# redirect
 	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
@@ -278,7 +288,7 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
-	
+
 	# return
 	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
 
@@ -351,7 +361,7 @@ def job_harvest(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.HarvestJob(
+		cjob = models.HarvestJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -360,8 +370,13 @@ def job_harvest(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -413,7 +428,7 @@ def job_transform(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.TransformJob(
+		cjob = models.TransformJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -422,8 +437,13 @@ def job_transform(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -468,7 +488,7 @@ def job_merge(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.MergeJob(
+		cjob = models.MergeJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -476,8 +496,13 @@ def job_merge(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# # start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -522,7 +547,7 @@ def job_publish(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		job = models.PublishJob(
+		cjob = models.PublishJob(
 			job_name=job_name,
 			user=request.user,
 			record_group=record_group,
@@ -530,8 +555,13 @@ def job_publish(request, org_id, record_group_id):
 			index_mapper=index_mapper
 		)
 		
-		# start job
-		job.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
@@ -564,10 +594,33 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get indexing failures
-	indexing_failures = cjob.get_indexing_failures()
+	index_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'indexing_failures':indexing_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_indexing_failures.html', {'index_failures':index_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
+
+
+
+##################################
+# Records
+##################################
+
+
+def record(request):
+
+	'''
+	Details for a single record.
+
+	Args:
+		record_id (GET): expecting record_id via GET parameters
+	'''
+
+	# get field name
+	record_id = request.GET.get('record_id')
+	logger.debug('retrieving details about record_id: %s' % (record_id))
+
+	# return
+	return render(request, 'core/record.html', {'record_id':record_id})
 
 
 
@@ -620,6 +673,76 @@ def oai(request):
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')
+
+
+
+##################################
+# Datatables Endpoints
+# https://bitbucket.org/pigletto/django-datatables-view/overview
+# https://bitbucket.org/pigletto/django-datatables-view-example/src/2c68a6e87269?at=master
+##################################
+class DatatablesRecordsJson(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records table in Job Details
+		'''
+
+		# The model we're going to show
+		model = models.Record
+
+		# define the columns that will be returned
+		columns = ['id', 'record_id', 'job', 'document', 'error']
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = ['id', 'record_id', 'job', 'document', 'error']
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def render_column(self, row, column):
+			
+			# handle document metadata
+
+			if column == 'record_id':
+				return '<a href="%s?record_id=%s" target="_blank">%s</a>' % (reverse(record), row.record_id, row.record_id)
+
+			if column == 'document':
+				# attempt to parse as XML and return if valid or not
+				try:
+					xml = etree.fromstring(row.document)
+					return '<span style="color: green;">Valid XML</span>'
+				except:
+					return '<span style="color: red;">Invalid XML</span>'
+
+			# handle associated job
+			if column == 'job':
+				return row.job.name
+
+			else:
+				return super(DatatablesRecordsJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# filter to specific job
+			qs = qs.filter(job=job)
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(record_id__contains=search)
+
+			return qs
 
 
 

@@ -13,10 +13,10 @@
 			<th>id</th>
 			<th>error</th>
 		</tr>
-		{% for error in job_errors.iterrows %}
+		{% for error in job_errors %}
 			<tr>
-				<td>{{ error.1.id }}</td>
-				<td>{{ error.1.error }}</td>
+				<td><a href="{% url 'record' %}?record_id={{ error.record_id }}">{{ error.record_id }}</a></td>
+				<td>{{ error.error }}</td>
 			</tr>
 		{% endfor %}
 	</table>

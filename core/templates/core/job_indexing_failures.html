@@ -13,10 +13,10 @@
 			<th>id</th>
 			<th>error</th>
 		</tr>
-		{% for failure in indexing_failures %}
+		{% for failure in index_failures %}
 			<tr>
-				<td>{{ failure.0 }}</td>
-				<td>{{ failure.1 }}</td>
+				<td><a href="{% url 'record' %}?record_id={{ failure.record_id }}">{{ failure.record_id }}</a></td>
+				<td>{{ failure.mapping_error }}</td>
 			</tr>
 		{% endfor %}
 	</table>

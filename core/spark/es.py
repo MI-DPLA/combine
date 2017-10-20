@@ -11,6 +11,8 @@ import xmltodict
 
 # import Row from pyspark
 from pyspark.sql import Row
+from pyspark.sql.types import StringType, IntegerType
+from pyspark.sql.functions import udf
 
 
 # init django settings file to retrieve settings
@@ -27,28 +29,43 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, **kwargs):
+	def index_job_to_es_spark(spark, job, records_df, index_mapper):
 
-		# get job
-		job = kwargs['job']
+		'''
+		Method to index records dataframe into ElasticSearch (ES)
 
-		# get records from job output
-		records_df = spark.read.format('com.databricks.spark.avro').load(job.job_output)
+		Args:
+			job:
+			records_rdd: dataframe
+			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
+
+		TODO: Consider writing indexing failures to SQL DB as well
+		'''
+
+		# get index mapper
+		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		index_mapper_handle = globals()[kwargs['index_mapper']]
-		records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
+		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
 
-		# filter out faliures, write to avro file for reporting on index process
-		# if no errors are found, pass and interpret missing avro files in the positive during analysis
-		failures_rdd = records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], error=row[1]['msg']))
+		# attempt to write index mapping failures to DB
 		try:
-			failures_rdd.toDF().write.format("com.databricks.spark.avro").save(job.index_results_save_path())
+			# filter out index mapping failures
+			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
+
+			# add job_id as column
+			job_id = job.id
+			job_id_udf = udf(lambda id: job_id, IntegerType())
+			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
+
+			# write mapping failures to DB
+			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_indexmappingfailure', properties=settings.COMBINE_DATABASE, mode='append')
+		
 		except:
 			pass
 
 		# retrieve successes to index
-		to_index_rdd = records_rdd.filter(lambda row: row[0] == 'success')
+		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
 
 		# create index in advance
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
@@ -171,7 +188,7 @@ class MODSMapper(BaseMapper):
 				'fail',
 				{
 					'id':record_id,
-					'msg':str(e)
+					'mapping_error':str(e)
 				}
 			)
 

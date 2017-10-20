@@ -27,15 +27,13 @@ from django.contrib.auth import signals
 from django.db import models
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
+from django.utils.html import format_html
 
 # Livy
 from livy.client import HttpClient
 
 # import cyavro
 import cyavro
-
-# impot pandas
-import pandas as pd
 
 # import elasticsearch and handles
 from core.es import es_handle
@@ -198,7 +196,7 @@ class Job(models.Model):
 	job_type = models.CharField(max_length=128, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
-	spark_code = models.CharField(max_length=32000, null=True)
+	spark_code = models.TextField(null=True, default=None)
 	job_id = models.IntegerField(null=True, default=None)
 	status = models.CharField(max_length=30, null=True)
 	finished = models.BooleanField(default=0)
@@ -263,122 +261,32 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 
 
-	def get_output_as_dataframe(self):
+	def get_records(self):
 
 		'''
-		method to use cyavro and return job_output as dataframe
+		retrieve records for this job from DB
 		'''
 
-		# Filesystem
-		if self.job_output.startswith('file://'):
-			
-			# get job output as filesystem path
-			output_dir = self.job_output_as_filesystem()
-
-			###########################################################################
-			# cyavro shim
-			###########################################################################
-			'''
-			cyavro currently will fail on avro files written by ingestion3:
-			https://github.com/maxpoint/cyavro/issues/27
-
-			This shim removes any files of length identical to known values.
-			These files represent "empty" avro files, in that they only contain the schema.
-			The file length varies slightly depending on what subset of the dataframe we 
-			write to disk.
-			'''
-			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520, 562]:
-					logger.debug('detected empty avro and removing: %s' % f)
-					os.remove(os.path.join(output_dir,f))
-			###########################################################################
-			# end cyavro shim
-			###########################################################################
-
-			# open avro files as dataframe with cyavro and return
-			stime = time.time()
-			df = cyavro.read_avro_path_as_dataframe(output_dir)
-			logger.debug('cyavro read time: %s' % (time.time() - stime))
-			return df
-
-		# HDFS
-		elif self.job_output.startswith('hdfs://'):
-			logger.debug('HDFS record counting not yet implemented')
-			return False
-
-		else:
-			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+		return Record.objects.filter(job=self).exclude(document='').all()
 
 
-	def get_indexing_results_as_dataframe(self):
+	def get_errors(self):
 
 		'''
-		method to use cyavro and return indexing results as dataframe
+		retrieve errors for this job from DB
 		'''
 
-		# derive indexing 
-		indexing_dir = '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
-
-		# Filesystem
-		if indexing_dir.startswith('file://'):
-			
-			# get job output as filesystem path
-			output_dir = self.job_output_as_filesystem()
-
-			###########################################################################
-			# cyavro shim
-			###########################################################################
-			'''
-			cyavro currently will fail on avro files written by ingestion3:
-			https://github.com/maxpoint/cyavro/issues/27
-
-			This shim removes any files of length identical to known values.
-			These files represent "empty" avro files, in that they only contain the schema.
-			The file length varies slightly depending on what subset of the dataframe we 
-			write to disk.
-			'''
-			files = [f for f in os.listdir(output_dir) if f.startswith('part-r')]
-			for f in files:
-				if os.path.getsize(os.path.join(output_dir,f)) in [1375, 520]:
-					logger.debug('detected empty avro and removing: %s' % f)
-					os.remove(os.path.join(output_dir,f))
-			###########################################################################
-			# end cyavro shim
-			###########################################################################
-
-			# open avro files as dataframe with cyavro and return
-			stime = time.time()
-			df = cyavro.read_avro_path_as_dataframe(output_dir)
-			logger.debug('cyavro read time: %s' % (time.time() - stime))
-			return df
-
-		# HDFS
-		elif self.job_output.startswith('hdfs://'):
-			logger.debug('HDFS record counting not yet implemented')
-			return False
-
-		else:
-			raise Exception('could not parse dataframe from job output: %s' % self.job_output)
+		return Record.objects.filter(job=self).exclude(error='').all()
 
 
 	def update_record_count(self):
 
 		'''
-		Count records from self.job_output, where document is not blank string, indicating error
+		Get record count from DB, save to Job
 		'''
 		
-		try:
-			
-			df = self.get_output_as_dataframe()
-
-			# count and save records to DB
-			self.record_count = df[df['document'] != '']['document'].count()
-			self.save()
-
-		except:
-			
-			logger.debug('could not load job output as dataframe')
+		self.record_count = self.get_records().count()
+		self.save()
 
 
 	def job_output_as_filesystem(self):
@@ -400,45 +308,6 @@ class Job(models.Model):
 
 		output_dir = self.job_output_as_filesystem()
 		return [ os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro') ]
-
-
-	# REMOVING: performed in Spark via job code...
-	# def index_records_to_db(self):
-
-	# 	'''
-	# 	method to index all records from job_output to DB
-	# 	NOTE: look into using SQLAlchemy wrapper for Django connection
-	# 	'''
-
-	# 	stime = time.time()
-
-	# 	# create mysql engine
-	# 	engine = create_engine("mysql+mysqldb://combine:combine@localhost/combine?charset=utf8", encoding='utf-8')
-
-	# 	# get dataframe
-	# 	df = self.get_output_as_dataframe()
-
-	# 	# rename id column to record_id
-	# 	def col_rename(col):
-	# 		if col == 'id':
-	# 			return 'record_id'
-	# 		else:
-	# 			return col
-
-	# 	df = df.rename(columns=lambda col: col_rename(col))
-
-	# 	# add job_id column
-	# 	df['job_id'] = pd.Series(self.id, index=df.index)
-
-	# 	# # add job_type column
-	# 	# df['job_type'] = pd.Series(self.job_type, index=df.index)
-
-	# 	# index to DB
-	# 	# NOTE: Need to align columns for potential variety of job type columns
-	# 	df[['job_id','record_id','document','error']].to_sql('core_record', engine, if_exists='append')
-
-	# 	# DEBUG
-	# 	logger.debug('records indexed: %s, elapsed: %s' % (df.record_id.count(), (time.time()-stime)))
 
 
 	def index_results_save_path(self):
@@ -491,6 +360,7 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
+
 class Transformation(models.Model):
 
 	name = models.CharField(max_length=255)
@@ -510,7 +380,7 @@ class OAITransaction(models.Model):
 	start = models.IntegerField(null=True, default=None)
 	chunk_size = models.IntegerField(null=True, default=None)
 	publish_set_id = models.CharField(max_length=255, null=True, default=None)
-	token = models.CharField(max_length=1024)
+	token = models.CharField(max_length=1024, db_index=True)
 	args = models.CharField(max_length=1024)
 	
 
@@ -523,18 +393,45 @@ class Record(models.Model):
 
 	'''
 	DB model for individual records.
-	Note: These are written directly from Pandas DataFrame, not via Django ORM
+	Note: This DB model is not managed by Django.
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE, null=True, default=None)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
 
+	# this model is managed outside of Django
+	class Meta:
+		managed = False
+
+
 	def __str__(self):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
+
+
+
+class IndexMappingFailure(models.Model):
+
+	'''
+	DB model for indexing failures
+	Note: This DB model is not managed by Django.
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	record_id = models.CharField(max_length=1024, null=True, default=None)
+	mapping_error = models.TextField(null=True, default=None)
+
+
+	# this model is managed outside of Django
+	class Meta:
+		managed = False
+
+
+	def __str__(self):
+		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
 
 
 
@@ -621,7 +518,6 @@ def save_job(sender, instance, created, **kwargs):
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
-
 	'''
 	When jobs are removed, a fair amount of clean up is involved
 	'''
@@ -694,9 +590,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 
 	# remove ES index if exists
-	if es_handle.indices.exists('j%s' % instance.id):
-		logger.debug('removing ES index: j%s' % instance.id)
-		es_handle.indices.delete('j%s' % instance.id)
+	try:
+		if es_handle.indices.exists('j%s' % instance.id):
+			logger.debug('removing ES index: j%s' % instance.id)
+			es_handle.indices.delete('j%s' % instance.id)
+	except:
+		logger.debug('could not remove ES index: j%s' % instance.id)
 
 
 	# attempt to delete indexing results avro files
@@ -960,24 +859,34 @@ class PublishedRecords(object):
 
 		self.record_group = 0
 
+		# get published jobs
 		self.publish_links = JobPublish.objects.all()
+
+		# get set IDs from record group of published jobs
 		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
 
-		# if avro files present, load as dataframe
-		published_dir = '%s/published' % settings.BINARY_STORAGE.split('file://')[-1].rstrip('/')
-		
-		# if published links found
-		if self.publish_links.count() > 0 and len([ f for f in os.listdir(published_dir) if f.endswith('.avro') ]) > 0:
-				
-			self.df = cyavro.read_avro_path_as_dataframe(published_dir)
-			self.record_count = self.df[self.df['document'] != '']['document'].count()
+		# get iterable queryset of records
+		self.records = Record.objects.filter(job__job_type = 'PublishJob')
 
-		# no avro files found, 
+		# set record count
+		self.record_count = self.records.count()
+
+
+	def get_record(self, id):
+
+		'''
+		Return single, published record by id
+		'''
+
+		record_query = records.filter(record_id = id)
+
+		# if one, return
+		if record_query.count() == 1:
+			return record_query.first()
+
 		else:
-			
-			logger.debug('no avro files found in /published')
-			self.df = False
-			self.record_count = None
+			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
+
 
 
 class CombineJob(object):
@@ -995,14 +904,6 @@ class CombineJob(object):
 
 			# retrieve job
 			self.get_job(self.job_id)
-
-			# parse output as dataframe
-			if parse_job_output:
-				try:
-					self.df = self.job.get_output_as_dataframe()
-				except:
-					logger.debug('could not parse job output as dataframe')
-					self.df = False
 
 
 	def default_job_name(self):
@@ -1027,7 +928,7 @@ class CombineJob(object):
 	def _get_active_livy_session(self):
 
 		'''
-		Method to determine active livy session if present, or create if does not exist
+		Method to retrieve active livy session
 		'''
 
 		# check for single, active livy session from LivyClient
@@ -1050,8 +951,27 @@ class CombineJob(object):
 			except:
 				logger.debug('could not confirm session status')
 
+		elif livy_sessions.count() == 0:
+			logger.debug('no active livy sessions found')
+			return False
 
-	def submit_job(self, job_code, job_output):
+
+	def start_job(self):
+
+		'''
+		starts job, sends to prepare_job() for child classes
+		'''
+
+		# if active livy session
+		if self.livy_session:
+			self.prepare_job()
+
+		else:
+			logger.debug('could not submit livy job, not active livy session found')
+			return False
+
+
+	def submit_job_to_livy(self, job_code, job_output):
 
 		# submit job
 		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
@@ -1085,10 +1005,7 @@ class CombineJob(object):
 		Use methods from models.Job
 		'''
 
-		if not self.df:
-			self.df = self.job.get_output_as_dataframe()
-
-		return self.df.count()
+		return self.job.get_records().count()
 
 
 	def get_record(self, id):
@@ -1097,15 +1014,15 @@ class CombineJob(object):
 		Convenience method to return single record from job
 		'''
 
-		records = self.df.loc[self.df['id'] == id]
+		record_query = Record.objects.filter(job=self.job).filter(record_id=id)
 
 		# if only one found
-		if len(records) == 1:
-			return records.iloc[0]
+		if record_query.count() == 1:
+			return record_query.first()
 
 		# else, return all results
 		else:
-			return records
+			return record_query
 
 
 	def count_indexed_fields(self):
@@ -1120,22 +1037,36 @@ class CombineJob(object):
 			es_r = es_handle.indices.get(index='j%s' % self.job_id)
 			index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
 
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
 			# init search
 			s = Search(using=es_handle, index='j%s' % self.job_id)
 
 			# return no results, only aggs
 			s = s[0]
 
-			# add agg buckets for each field to count number of instances
-			for field_name in index_mappings:
-				s.aggs.bucket(field_name, A('filter', Q('exists', field=field_name)))
+			# add agg buckets for each field to count total and unique instances
+			for field_name in field_names:
+				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
+				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
 
 			# execute search and capture as dictionary
 			sr = s.execute()
 			sr_dict = sr.to_dict()
 
 			# calc fields percentage and return as list
-			field_count = [ {'field_name':field, 'count':sr_dict['aggregations'][field]['doc_count'], 'percentage':round((sr_dict['aggregations'][field]['doc_count'] / sr_dict['hits']['total']),4)} for field in sr_dict['aggregations'] ]
+			field_count = [ 
+				{
+					'field_name':field,
+					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
+					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] / sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
+					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] / sr_dict['hits']['total']), 4)
+				}
+				for field in field_names
+			]
 
 			# return
 			return {
@@ -1174,16 +1105,9 @@ class CombineJob(object):
 		return failures for job indexing process
 		'''
 
-		# attempt load of indexing avro results
-		try:
-			df = self.job.get_indexing_results_as_dataframe()
-
-			# return
-			return df[df['error'] != ''][['id','error']].values.tolist()
-
-		except:
-			logger.debug('indexing failures could not be retrieved, perhaps there were none?')
-			return []
+		# load indexing failures for this job from DB
+		index_failures = IndexMappingFailure.objects.filter(job=self.job)
+		return index_failures
 
 
 	def get_total_input_job_record_count(self):
@@ -1289,7 +1213,7 @@ class HarvestJob(CombineJob):
 			self.job.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for harvest job
@@ -1315,7 +1239,7 @@ class HarvestJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1389,7 +1313,7 @@ class TransformJob(CombineJob):
 			job_input_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for transform job
@@ -1408,7 +1332,7 @@ class TransformJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1417,7 +1341,7 @@ class TransformJob(CombineJob):
 		return transform job specific errors
 		'''
 
-		return self.df[self.df['error'] != '']
+		return self.job.get_errors()
 
 
 
@@ -1478,7 +1402,7 @@ class MergeJob(CombineJob):
 				job_input_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for publish job
@@ -1496,7 +1420,7 @@ class MergeJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):
@@ -1565,7 +1489,7 @@ class PublishJob(CombineJob):
 			job_publish_link.save()
 
 
-	def start_job(self):
+	def prepare_job(self):
 
 		'''
 		Construct python code that will be sent to Livy for publish job
@@ -1583,7 +1507,7 @@ class PublishJob(CombineJob):
 		logger.debug(job_code)
 
 		# submit job
-		self.submit_job(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code, self.job.job_output)
 
 
 	def get_job_errors(self):

@@ -122,23 +122,21 @@ class OAIProvider(object):
 	def retrieve_records(self, include_metadata=False):
 
 		'''
-		record retrieval from published dataframe
+		retrieve records from DB
 		'''
 
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
-		# prepare subset of dataframe
-		df_subset = self.published.df
-
 		# if set present, filter by this set
 		if self.publish_set_id:
 			logger.debug('applying publish_set_id filter')
-			df_subset = df_subset[df_subset['setIds'] == self.publish_set_id]
+			self.published.records = self.published.records.filter(job__record_group__publish_set_id = self.publish_set_id)
 
-		# loop through rows
-		for i, row in enumerate(df_subset[self.start:(self.start+self.chunk_size)].sort_values('id').iterrows()):
-			record = OAIRecord(args=self.args, record_id=row[1].id, document=row[1].document, timestamp=self.request_timestamp_string)
+		# loop through rows, limited by current OAI transaction start / chunk
+		for record in self.published.records[self.start:(self.start+self.chunk_size)]:
+
+			record = OAIRecord(args=self.args, record_id=record.record_id, document=record.document, timestamp=self.request_timestamp_string)
 
 			# include full metadata in record
 			if include_metadata:
@@ -152,21 +150,21 @@ class OAIProvider(object):
 			self.verb_node.append(oai_record_node)
 
 		# finally, set resumption token
-		self.set_resumption_token(df_subset)
+		self.set_resumption_token()
 
 		# report
 		etime = time.time()
 		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
 
-	def set_resumption_token(self, df_subset):
+	def set_resumption_token(self):
 
 		'''
 		resumption tokens are set in SQL under OAITransaction model
 		'''
 
 		# set resumption token
-		if self.start + self.chunk_size < df_subset.document.count():
+		if self.start + self.chunk_size < self.published.records.count():
 
 			# set token and slice parameters to DB
 			token = str(uuid.uuid4())
@@ -184,7 +182,7 @@ class OAIProvider(object):
 			# set resumption token node and attributes
 			self.resumptionToken_node = etree.Element('resumptionToken')
 			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600)).strftime('%Y-%m-%dT%H:%M:%SZ')
-			self.resumptionToken_node.attrib['completeListSize'] = str(df_subset.document.count())
+			self.resumptionToken_node.attrib['completeListSize'] = str(self.published.records.count())
 			self.resumptionToken_node.attrib['cursor'] = str(self.start)
 			self.resumptionToken_node.text = token
 			self.verb_node.append(self.resumptionToken_node)
@@ -256,12 +254,10 @@ class OAIProvider(object):
 		logger.debug("retrieving record: %s" % (self.args['identifier']))
 
 		# get single row
-		records = self.published.df.loc[self.published.df['id'] == self.args['identifier']]
-		if len(records) == 1:
-			row = records.iloc[0]
+		single_record = self.published.get_record(self.args['identifier'])
 
-		# loop through rows
-		record = OAIRecord(args=self.args, record_id=row.id, document=row.document, timestamp=self.request_timestamp_string)
+		# open as OAIRecord 
+		record = OAIRecord(args=self.args, record_id=single_record.record_id, document=single_record.document, timestamp=self.request_timestamp_string)
 
 		# include metadata
 		record.include_metadata()
@@ -322,7 +318,7 @@ class OAIProvider(object):
 		'''
 		
 		# generate response
-		for publish_set_id in self.published.df.setIds.unique():
+		for publish_set_id in self.published.sets:
 			set_node = etree.Element('set')
 			setSpec = etree.SubElement(set_node,'setSpec')
 			setSpec.text = publish_set_id
