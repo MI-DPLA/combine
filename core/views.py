@@ -676,8 +676,14 @@ def oai(request):
 
 ##################################
 # Datatables Endpoints
+# https://bitbucket.org/pigletto/django-datatables-view/overview
+# https://bitbucket.org/pigletto/django-datatables-view-example/src/2c68a6e87269?at=master
 ##################################
 class DatatablesRecordsJson(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records table in Job Details
+		'''
 
 		# The model we're going to show
 		model = models.Record
@@ -696,6 +702,7 @@ class DatatablesRecordsJson(BaseDatatableView):
 		# and make it return huge amount of data
 		max_display_length = 1000
 
+
 		def render_column(self, row, column):
 			
 			# handle document metadata
@@ -707,6 +714,7 @@ class DatatablesRecordsJson(BaseDatatableView):
 				return row.job.name
 			else:
 				return super(DatatablesRecordsJson, self).render_column(row, column)
+
 
 		def filter_queryset(self, qs):
 			# use parameters passed in GET request to filter queryset
@@ -723,24 +731,6 @@ class DatatablesRecordsJson(BaseDatatableView):
 				qs = qs.filter(record_id__contains=search)
 
 			return qs
-
-			# # simple example:
-			# search = self.request.GET.get(u'search[value]', None)
-			# if search:
-			# 	qs = qs.filter(name__istartswith=search)
-
-			# # more advanced example using extra parameters
-			# filter_customer = self.request.GET.get(u'customer', None)
-
-			# if filter_customer:
-			# 	customer_parts = filter_customer.split(' ')
-			# 	qs_params = None
-			# 	for part in customer_parts:
-			# 		q = Q(customer_firstname__istartswith=part)|Q(customer_lastname__istartswith=part)
-			# 		qs_params = qs_params | q if qs_params else q
-			# 	qs = qs.filter(qs_params)
-			# return qs
-
 
 
 
