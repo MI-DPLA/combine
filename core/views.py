@@ -22,6 +22,9 @@ import requests
 import textwrap
 import time
 
+# django-datatables-view
+from django_datatables_view.base_datatable_view import BaseDatatableView
+
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -284,13 +287,8 @@ def job_details(request, org_id, record_group_id, job_id):
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
-	# get records
-	record_query = models.Record.objects.filter(job=cjob.job).all()
-	record_table = models.RecordTable(record_query)
-	record_table.paginate(page=request.GET.get('page', 1), per_page=100)
-
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path), 'record_table':record_table})
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -673,6 +671,58 @@ def oai(request):
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')
+
+
+
+##################################
+# Datatables Endpoints
+##################################
+class DatatablesRecordsJson(BaseDatatableView):
+
+		# The model we're going to show
+		model = models.Record
+
+		# define the columns that will be returned
+		columns = ['id', 'record_id', 'job', 'document', 'error']
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 25
+
+		def render_column(self, row, column):
+			# We want to render user as a custom column
+			if column == 'document':
+				# return '{0} {1}'.format(row.customer_firstname, row.customer_lastname)
+				return 'DOCUMENT WILL GO HERE'
+			else:
+				return super(JobRecordsJson, self).render_column(row, column)
+
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
+
+		# 	# simple example:
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		qs = qs.filter(name__istartswith=search)
+
+		# 	# more advanced example using extra parameters
+		# 	filter_customer = self.request.GET.get(u'customer', None)
+
+		# 	if filter_customer:
+		# 		customer_parts = filter_customer.split(' ')
+		# 		qs_params = None
+		# 		for part in customer_parts:
+		# 			q = Q(customer_firstname__istartswith=part)|Q(customer_lastname__istartswith=part)
+		# 			qs_params = qs_params | q if qs_params else q
+		# 		qs = qs.filter(qs_params)
+		# 	return qs
+
 
 
 
