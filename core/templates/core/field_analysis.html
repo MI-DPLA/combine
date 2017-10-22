@@ -8,9 +8,9 @@
 	<ul>
 		{% for value in field_analysis_results %}
 			{% if 'http://' in value.key or 'https://' in value.key %}		
-				<li><a href="{{ value.key }}" target="_blank">{{ value.key }}</a> ({{ value.doc_count }})</li>
+				<li><a href="{{ value.key }}" target="_blank">{{ value.key }}</a> <a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">({{ value.doc_count }})</a></li>
 			{% else %}
-				<li>{{ value.key }} ({{ value.doc_count }})</li>
+				<li>{{ value.key }} <a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">({{ value.doc_count }})</a></li>
 			{% endif %}
 		{% endfor %}
 	</ul>

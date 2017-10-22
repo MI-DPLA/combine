@@ -5,6 +5,7 @@ from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 
@@ -584,7 +585,7 @@ def field_analysis(request, org_id, record_group_id, job_id):
 	field_analysis_results = cjob.field_analysis(field_name)
 
 	# return
-	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/field_analysis.html', {'cjob':cjob, 'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -769,7 +770,8 @@ class DatatablesRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(record_id__contains=search)
+				# qs = qs.filter(record_id__contains=search)
+				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
 
 			return qs
 
