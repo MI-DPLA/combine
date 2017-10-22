@@ -14,6 +14,7 @@
 			<th>Job Type</th>
 			<th>Record Document</th>
 			<th>Record Error</th>
+			<th>ElasticSearch document</th>
 		</tr>
 		{% for record in record_versions %}
 			<tr class="{{ record.job.job_type }}">
@@ -22,15 +23,16 @@
 				<td>{{ record.job.name }}</td>
 				<td>{{ record.job.job_type }}</td>
 				{% if record.document != '' %}
-					<td><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}">See Document</a></td>
+					<td><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank">View</a></td>
 				{% else %}
 					<td>None</td>
 				{% endif %}
 				{% if record.error != ''%}
-					<td><a href="{% url 'record_error' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}">See Error</a></td>
+					<td><a href="{% url 'record_error' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank">View</a></td>
 				{% else %}
 					<td>None</td>
 				{% endif %}
+				<td><a href='http://{{ APP_HOST }}:9200/j{{ record.job.id }}/_search?q=_id:"{{ record.record_id }}"' target="_blank">View</a></td>
 			</tr>
 		{% endfor %}
 	</table>
