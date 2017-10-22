@@ -32,9 +32,6 @@ from django.utils.html import format_html
 # Livy
 from livy.client import HttpClient
 
-# import cyavro
-import cyavro
-
 # import elasticsearch and handles
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
