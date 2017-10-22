@@ -619,8 +619,37 @@ def record(request):
 	record_id = request.GET.get('record_id')
 	logger.debug('retrieving details about record_id: %s' % (record_id))
 
+	# get all records within this record group
+	record_versions = models.Record.objects.filter(record_id=record_id).all()
+
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id})
+	return render(request, 'core/record.html', {'record_id':record_id, 'record_versions':record_versions})
+
+
+def record_document(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return document as XML
+	return HttpResponse(record.document, content_type='text/xml')
+
+
+def record_error(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return document as XML
+	return HttpResponse("<pre>%s</pre>" % record.error)
 
 
 

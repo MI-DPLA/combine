@@ -2,6 +2,37 @@
 
 {% block content %}
 
-	<h3>Record: {{ record_id }}</h3>
+	<h2>Record: {{ record_id }}</h2>
+
+	<h3>Record Stages:</h3>
+
+	<table border="1" cellpadding="10">
+		<tr>
+			<th>DB ID</th>
+			<th>Job ID</th>
+			<th>Job Name</th>
+			<th>Job Type</th>
+			<th>Record Document</th>
+			<th>Record Error</th>
+		</tr>
+		{% for record in record_versions %}
+			<tr class="{{ record.job.job_type }}">
+				<td>{{ record.id }}</td>
+				<td>{{ record.job.id }}</td>
+				<td>{{ record.job.name }}</td>
+				<td>{{ record.job.job_type }}</td>
+				{% if record.document != '' %}
+					<td><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}">See Document</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				{% if record.error != ''%}
+					<td><a href="{% url 'record_error' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}">See Error</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+			</tr>
+		{% endfor %}
+	</table>
 
 {% endblock %}
