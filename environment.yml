@@ -6,7 +6,6 @@ dependencies:
 - avro=1.8.2=0
 - ca-certificates=2017.7.27.1=0
 - certifi=2017.7.27.1=py35_0
-#- cyavro=0.7.0=py35_0
 - filelock=2.0.6=py35_0
 - jansson=2.7=0
 - ncurses=5.9=10
