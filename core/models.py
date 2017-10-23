@@ -399,7 +399,6 @@ class Record(models.Model):
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
-
 	# this model is managed outside of Django
 	class Meta:
 		managed = False
@@ -407,6 +406,66 @@ class Record(models.Model):
 
 	def __str__(self):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
+
+
+	def get_record_stages(self):
+
+		'''
+		method to return all upstream and downstreams stages of this record
+		'''
+
+		record_stages = []
+
+		def get_upstream(record):
+
+			# check for upstream job
+			uj_query = record.job.jobinput_set
+
+			# if upstream jobs found, continue
+			if uj_query.count() > 0:
+
+				logger.debug('upstream jobs found, checking for record_id')
+
+				# loop through upstream jobs, look for record id
+				for uj in uj_query.all():
+					ur_query = Record.objects.filter(job=uj.input_job).filter(record_id=self.record_id)
+
+					# if count found, save record to record_stages and re-run
+					if ur_query.count() > 0:
+						ur = ur_query.first()
+						record_stages.insert(0, ur)
+						get_upstream(ur)
+
+
+		def get_downstream(record):
+
+			# check for downstream job
+			dj_query = JobInput.objects.filter(input_job=record.job)
+
+			# if downstream jobs found, continue
+			if dj_query.count() > 0:
+
+				logger.debug('downstream jobs found, checking for record_id')
+
+				# loop through downstream jobs
+				for dj in dj_query.all():
+
+					dr_query = Record.objects.filter(job=dj.job).filter(record_id=self.record_id)
+
+					# if count found, save record to record_stages and re-run
+					if dr_query.count() > 0:
+						dr = dr_query.first()
+						record_stages.append(dr)
+						get_downstream(dr)
+
+		# run
+		stime = time.time()
+		get_upstream(self)
+		record_stages.append(self)
+		get_downstream(self)
+		logger.debug('record ancestry calc, elapsed: %s' % (time.time()-stime))
+		
+		return record_stages
 
 
 

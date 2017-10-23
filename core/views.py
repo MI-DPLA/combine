@@ -607,24 +607,20 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 ##################################
 
 
-def record(request):
+def record(request, org_id, record_group_id, job_id, record_id):
 
 	'''
-	Details for a single record.
-
-	Args:
-		record_id (GET): expecting record_id via GET parameters
+	Single Record page
 	'''
-
-	# get field name
-	record_id = request.GET.get('record_id')
-	logger.debug('retrieving details about record_id: %s' % (record_id))
 
 	# get all records within this record group
-	record_versions = models.Record.objects.filter(record_id=record_id).all()
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# build ancestry in both directions
+	ancestry = False
 
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id, 'record_versions':record_versions})
+	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'ancestry':ancestry})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
@@ -740,7 +736,7 @@ class DatatablesRecordsJson(BaseDatatableView):
 			# handle document metadata
 
 			if column == 'record_id':
-				return '<a href="%s?record_id=%s" target="_blank">%s</a>' % (reverse(record), row.record_id, row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':row.job.record_group.organization.id, 'record_group_id':row.job.record_group.id, 'job_id':row.job.id, 'record_id':row.id}), row.record_id)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -770,7 +766,6 @@ class DatatablesRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				# qs = qs.filter(record_id__contains=search)
 				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
 
 			return qs

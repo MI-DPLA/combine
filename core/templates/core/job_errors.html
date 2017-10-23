@@ -15,7 +15,7 @@
 		</tr>
 		{% for error in job_errors %}
 			<tr>
-				<td><a href="{% url 'record' %}?record_id={{ error.record_id }}">{{ error.record_id }}</a></td>
+				<td><a href="{% url 'record' org_id=error.job.record_group.organization.id record_group_id=error.job.record_group.id job_id=error.job.id record_id=error.id %}">{{ error.record_id }}</a></td>
 				<td>{{ error.error }}</td>
 			</tr>
 		{% endfor %}

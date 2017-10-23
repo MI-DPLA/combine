@@ -29,7 +29,12 @@
 			<td>{{ field_counts.total_docs }}</td>
 			<td><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
 		</tr>
-	</table>	
+	</table>
+
+	<h4> Records for this Job</h4>
+    
+	<!-- Indexing Mapping Selection -->
+	{% include 'core/records_dt_table.html' %}
 
 	<h4>Field Breakdown</h4>
 
@@ -55,10 +60,5 @@
 			</tr>
 		{% endfor %}
 	</table>
-
-	<h4> Records for this Job</h4>
-    
-	<!-- Indexing Mapping Selection -->
-	{% include 'core/records_dt_table.html' %}
 
 {% endblock %}
