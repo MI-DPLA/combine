@@ -1,17 +1,23 @@
 {% load static %}
+<!doctype html>
 <html>
 	<head>
+		<meta charset="utf-8">
+	    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/jQuery-3.2.1/jquery-3.2.1.min.js' %}"></script>
 		<link rel="stylesheet" type="text/css" href="{% static 'core/datatables.min.css' %}">
 	    <script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
 		<style>
 			body {
-				padding:20px;
+				padding:0px 20px 20px 20px;
 				font-family: Arial, Helvetica, sans-serif;
 				font-size:90%;
 			}
 			table {
 				font-size: 90%;
+			}
+			.container {
+				max-width: 95%;
 			}
 			.HarvestJob {
 				background-color:#deffde;
@@ -32,9 +38,15 @@
 				font-weight: bold;
 			}
 		</style>
+
+		<!-- bootstrap -->
+		<!-- <link rel="stylesheet" href="{% static 'core/bootstrap/css/bootstrap.min.css' %}"> -->
+		<!-- <script src="{% static 'core/bootstrap/js/bootstrap.min.js' %}"></script> -->
+
 	</head>
 	<body>
-		<h2><a href="{% url 'combine_home' %}">Combine</a> &#128668;</h2>
+
+		<h2><a href="{% url 'combine_home' %}">&#128668; Combine</a></h2>
 		<ul>
 			<li><a href="{% url 'livy_sessions' %}">Livy Sessions</a></li>
 			<li><a href="{% url 'organizations' %}">Organizations</a></li>
@@ -54,6 +66,7 @@
 				{% endfor %}
 			{% endif %}
 		</div>
+
 
 		{% block content %}
 		{% endblock %}
