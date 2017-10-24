@@ -617,10 +617,10 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	record = models.Record.objects.get(pk=int(record_id))
 
 	# build ancestry in both directions
-	ancestry = False
+	record_stages = record.get_record_stages()
 
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'ancestry':ancestry})
+	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):

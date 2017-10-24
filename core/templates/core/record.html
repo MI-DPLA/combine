@@ -2,9 +2,46 @@
 
 {% block content %}
 
-	<h2>Record: {{ record.record_id }}</h2>
+	<h2>Record</h2>
 
-	<h3>Record Stages:</h3>
+	<ul>
+		<li><strong>DB ID:</strong> {{ record.id }}</li>
+		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
+		<li><strong>Job Type:</strong> {{ record.job.job_type }}</li>
+	</ul>
+
+	<h3>Record Stages</h3>
+
+	<table border="1" cellpadding="10">
+		<tr>
+			<th>DB ID</th>
+			<th>Job ID</th>
+			<th>Job Name</th>
+			<th>Job Type</th>
+			<th>Record Document</th>
+			<th>Record Error</th>
+			<th>ElasticSearch document</th>
+		</tr>
+		{% for record_stage in record_stages %}
+			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %}">
+				<td>{{ record_stage.id }}</td>
+				<td>{{ record_stage.job.id }}</td>
+				<td>{{ record_stage.job.name }}</td>
+				<td>{{ record_stage.job.job_type }}</td>
+				{% if record_stage.document != '' %}
+					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				{% if record_stage.error != ''%}
+					<td><a href="{% url 'record_error' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				<td><a href='http://{{ APP_HOST }}:9200/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.record_id }}"' target="_blank">View</a></td>
+			</tr>
+		{% endfor %}
+	</table>
 
 	
 
