@@ -619,8 +619,21 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	# build ancestry in both directions
 	record_stages = record.get_record_stages()
 
+	# get details depending on job type
+	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
+	job_details = json.loads(record.job.job_details)
+	logger.debug(job_details)
+
+	# TransformJob
+	if record.job.job_type == 'TransformJob':
+
+		# get transformation
+		transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
+		job_details['transformation'] = transformation
+
+
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages})
+	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages, 'job_details':job_details})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
@@ -665,6 +678,18 @@ def configuration(request):
 	# return
 	return render(request, 'core/configuration.html', {'transformations':transformations, 'oai_endpoints':oai_endpoints})
 
+
+def trans_scen_payload(request, trans_id):
+
+	'''
+	View payload for transformation scenario
+	'''
+
+	# get transformation
+	transformation = models.Transformation.objects.get(pk=int(trans_id))
+
+	# return document as XML
+	return HttpResponse(transformation.payload, content_type='text/xml')
 
 
 ##################################

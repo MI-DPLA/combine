@@ -24,7 +24,7 @@
 		</tr>
 		{% for record_stage in record_stages %}
 			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %}">
-				<td>{{ record_stage.id }}</td>
+				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
 				<td>{{ record_stage.job.id }}</td>
 				<td>{{ record_stage.job.name }}</td>
 				<td>{{ record_stage.job.job_type }}</td>
@@ -42,6 +42,31 @@
 			</tr>
 		{% endfor %}
 	</table>
+
+	<h2>{{ record.job.job_type }} Details</h2>
+
+	<!-- TransformJob -->
+	{% if record.job.job_type == 'TransformJob' %}
+		<h3>Transformation Used</h3>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Path on disk</th>
+				<th>Transformation Payload</th>
+			</tr>
+			<tr>
+				<td>{{job_details.transformation.id}}</td>
+				<td>{{job_details.transformation.name}}</td>
+				<td>{{job_details.transformation.transformation_type}}</td>
+				<td>{{job_details.transformation.filepath}}</td>
+				<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+			</tr>
+		</table>
+	{% endif %}
+
+	
 
 	
 

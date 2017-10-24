@@ -13,7 +13,7 @@
 				<th>Name</th>
 				<th>Type</th>
 				<th>Path on disk</th>
-				<th>Actions</th>
+				<th>Transformation Payload</th>
 			</tr>
 			{% for transformation in transformations %}
 				<tr>
@@ -21,7 +21,7 @@
 					<td>{{transformation.name}}</td>
 					<td>{{transformation.transformation_type}}</td>
 					<td>{{transformation.filepath}}</td>
-					<td><a href="#">Details</a></td>
+					<td><a href="{% url 'trans_scen_payload' trans_id=transformation.id %}">View XSL</a></td>
 				</tr>
 			{% endfor %}
 		</table>
@@ -50,7 +50,7 @@
 					<td>{{oai_endpoint.metadataPrefix}}</td>
 					<td>{{oai_endpoint.scope_type}}</td>
 					<td>{{oai_endpoint.scope_value}}</td>
-					<td><a href="#">Details</a></td>
+					<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 				</tr>
 			{% endfor %}
 		</table>
