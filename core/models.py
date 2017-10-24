@@ -463,7 +463,7 @@ class Record(models.Model):
 		get_upstream(self)
 		record_stages.append(self)
 		get_downstream(self)
-		logger.debug('record ancestry calc, elapsed: %s' % (time.time()-stime))
+		logger.debug('record stages retrieval elapsed: %s' % (time.time()-stime))
 		
 		return record_stages
 

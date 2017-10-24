@@ -621,16 +621,21 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# get details depending on job type
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
-	job_details = json.loads(record.job.job_details)
-	logger.debug(job_details)
+	try:
+		job_details = json.loads(record.job.job_details)
+		logger.debug(job_details)
 
-	# TransformJob
-	if record.job.job_type == 'TransformJob':
 
-		# get transformation
-		transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
-		job_details['transformation'] = transformation
+		# TransformJob
+		if record.job.job_type == 'TransformJob':
 
+			# get transformation
+			transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
+			job_details['transformation'] = transformation
+
+	except:
+		logger.debug('could not load job details')
+		job_details = {}
 
 	# return
 	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages, 'job_details':job_details})
