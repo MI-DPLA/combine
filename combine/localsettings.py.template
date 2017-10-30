@@ -39,7 +39,9 @@ INDEX_TO_ES = True
 
 # OAI Server
 COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'
-OAI_RESPONSE_SIZE = 250
+OAI_RESPONSE_SIZE = 500
+COMBINE_OAI_IDENTIFIER = 'oai:digital.library.wayne.edu'
+OAI_DYNAMIC_IDENTIFIER = True # if True, use core.models.Record.dynamic_oai_identifer() method
 
 
 # Database configurations for use in Spark context

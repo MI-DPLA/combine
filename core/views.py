@@ -46,6 +46,7 @@ def breadcrumb_parser(path):
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
+		crumbs.append(('Organizations', reverse('organizations')))
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
 		crumbs.append((org.name, org_m.group(1)))
 
@@ -745,9 +746,6 @@ class DTRecordsJson(BaseDatatableView):
 		Prepare and return Datatables JSON for Records table in Job Details
 		'''
 
-		# The model we're going to show
-		model = models.Record
-
 		# define the columns that will be returned
 		columns = ['id', 'record_id', 'job', 'document', 'error']
 
@@ -761,6 +759,17 @@ class DTRecordsJson(BaseDatatableView):
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
 		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# return filtered queryset
+			return models.Record.objects.filter(job=job)
 
 
 		def render_column(self, row, column):
@@ -789,12 +798,6 @@ class DTRecordsJson(BaseDatatableView):
 		def filter_queryset(self, qs):
 			# use parameters passed in GET request to filter queryset
 
-			# get job
-			job = models.Job.objects.get(pk=self.kwargs['job_id'])
-
-			# filter to specific job
-			qs = qs.filter(job=job)
-
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
@@ -809,9 +812,6 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		Databales JSON response for Indexing Failures
 		'''
 
-		# The model we're going to show
-		model = models.IndexMappingFailure
-
 		# define the columns that will be returned
 		columns = ['id', 'record_id', 'job', 'mapping_error']
 
@@ -825,6 +825,17 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
 		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# return filtered queryset
+			return models.IndexMappingFailure.objects.filter(job=job)
 
 
 		def render_column(self, row, column):
@@ -845,16 +856,10 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		def filter_queryset(self, qs):
 			# use parameters passed in GET request to filter queryset
 
-			# get job
-			job = models.Job.objects.get(pk=self.kwargs['job_id'])
-
-			# filter to specific job
-			qs = qs.filter(job=job)
-
 			# handle search
-			# search = self.request.GET.get(u'search[value]', None)
-			# if search:
-			# 	qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
 

@@ -399,6 +399,7 @@ class Record(models.Model):
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
+
 	# this model is managed outside of Django
 	class Meta:
 		managed = False
@@ -467,6 +468,29 @@ class Record(models.Model):
 		
 		# return		
 		return record_stages
+
+
+	@property
+	def oai_identifier(self):
+
+		'''
+		construct OAI identifier and return as string
+		'''
+		
+		if settings.OAI_DYNAMIC_IDENTIFIER:
+			return self.dynamic_oai_identifer()
+
+		else:
+			return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
+
+
+	def dynamic_oai_identifer(self):
+
+		'''
+		optional dynamic OAI identifier generator
+		'''
+
+		pass
 
 
 
