@@ -625,13 +625,15 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		job_details = json.loads(record.job.job_details)
 		logger.debug(job_details)
 
-
 		# TransformJob
 		if record.job.job_type == 'TransformJob':
 
 			# get transformation
 			transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
 			job_details['transformation'] = transformation
+
+			# get isolated input record
+			job_details['input_record'] = record.get_record_stages(input_record_only=True)[0]
 
 	except:
 		logger.debug('could not load job details')
@@ -698,7 +700,7 @@ def trans_scen_payload(request, trans_id):
 
 
 ##################################
-# Pbulished
+# Published
 ##################################
 @login_required
 def published(request):

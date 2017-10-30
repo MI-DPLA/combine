@@ -408,7 +408,7 @@ class Record(models.Model):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
 
 
-	def get_record_stages(self):
+	def get_record_stages(self, input_record_only=False):
 
 		'''
 		method to return all upstream and downstreams stages of this record
@@ -416,7 +416,7 @@ class Record(models.Model):
 
 		record_stages = []
 
-		def get_upstream(record):
+		def get_upstream(record, input_record_only):
 
 			# check for upstream job
 			uj_query = record.job.jobinput_set
@@ -434,7 +434,8 @@ class Record(models.Model):
 					if ur_query.count() > 0:
 						ur = ur_query.first()
 						record_stages.insert(0, ur)
-						get_upstream(ur)
+						if not input_record_only:
+							get_upstream(ur, input_record_only)
 
 
 		def get_downstream(record):
@@ -459,12 +460,12 @@ class Record(models.Model):
 						get_downstream(dr)
 
 		# run
-		stime = time.time()
-		get_upstream(self)
-		record_stages.append(self)
-		get_downstream(self)
-		logger.debug('record stages retrieval elapsed: %s' % (time.time()-stime))
+		get_upstream(self, input_record_only)
+		if not input_record_only:
+			record_stages.append(self)
+			get_downstream(self)
 		
+		# return		
 		return record_stages
 
 
