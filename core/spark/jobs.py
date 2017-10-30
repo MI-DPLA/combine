@@ -26,7 +26,7 @@ from core.models import CombineJob, Job
 
 
 
-def index_records_to_db(job, records):
+def index_records_to_db(job=None, publish_set_id=None, records=None):
 
 	'''
 	function to index records to SQL DB
@@ -37,8 +37,12 @@ def index_records_to_db(job, records):
 	job_id_udf = udf(lambda id: job_id, IntegerType())
 	records = records.withColumn('job_id', job_id_udf(records.id))
 
+	# add column
+	oai_id_udf = udf(lambda id: '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
+	records = records.withColumn('oai_id', oai_id_udf(records.id))
+
 	# write records to DB
-	records.withColumn('record_id', records.id).select(['record_id', 'job_id', 'document', 'error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
+	records.withColumn('record_id', records.id).select(['record_id', 'job_id', 'oai_id', 'document', 'error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
 
 
 
@@ -82,7 +86,11 @@ class HarvestSpark(object):
 		avro_records = spark.read.format('com.databricks.spark.avro').load(job.job_output)
 
 		# index records to db
-		index_records_to_db(job, avro_records)
+		index_records_to_db(
+			job=job,
+			publish_set_id=job.record_group.publish_set_id,
+			records=avro_records
+		)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
@@ -146,7 +154,11 @@ class TransformSpark(object):
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# index records to db
-		index_records_to_db(job, transformed.toDF())
+		index_records_to_db(
+			job=job,
+			publish_set_id=job.record_group.publish_set_id,
+			records=transformed.toDF()
+		)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
@@ -182,7 +194,11 @@ class MergeSpark(object):
 		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# index records to db
-		index_records_to_db(job, agg_rdd.toDF())
+		index_records_to_db(
+			job=job,
+			publish_set_id=job.record_group.publish_set_id,
+			records=agg_rdd.toDF()
+		)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
@@ -228,7 +244,11 @@ class PublishSpark(object):
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to db
-		index_records_to_db(job, docs)
+		index_records_to_db(
+			job=job,
+			publish_set_id=job.record_group.publish_set_id,
+			records=docs
+		)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:

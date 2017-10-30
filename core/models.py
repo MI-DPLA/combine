@@ -396,6 +396,7 @@ class Record(models.Model):
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
+	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
@@ -470,27 +471,28 @@ class Record(models.Model):
 		return record_stages
 
 
-	@property
-	def oai_identifier(self):
+	# @property
+	# def gen_oai_identifier(self):
 
-		'''
-		construct OAI identifier and return as string
-		'''
+	# 	'''
+	# 	construct OAI identifier and return as string
+	# 	'''
 		
-		if settings.OAI_DYNAMIC_IDENTIFIER:
-			return self.dynamic_oai_identifer()
+	# 	if settings.OAI_DYNAMIC_IDENTIFIER:
+	# 		return self.dynamic_oai_identifer()
 
-		else:
-			return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
+	# 	else:
+	# 		return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
 
 
-	def dynamic_oai_identifer(self):
+	# def dynamic_oai_identifer(self):
 
-		'''
-		optional dynamic OAI identifier generator
-		'''
+	# 	'''
+	# 	optional dynamic OAI identifier generator
+	# 	'''
 
-		pass
+	# 	# removes first colon between repository and set
+	# 	return '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
 
 
 
@@ -976,7 +978,7 @@ class PublishedRecords(object):
 		Return single, published record by id
 		'''
 
-		record_query = records.filter(record_id = id)
+		record_query = self.records.filter(oai_id = id)
 
 		# if one, return
 		if record_query.count() == 1:
