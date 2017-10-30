@@ -495,9 +495,16 @@ class IndexMappingFailure(models.Model):
 	def record(self):
 
 		'''
-		method to return record the indexing failure stemmed from
+		property for one-off access to record the indexing failure stemmed from
 		'''
+		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
+
+	def get_record(self):
+
+		'''
+		method to return target record, for performance purposes if accessed multiple times
+		'''
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 

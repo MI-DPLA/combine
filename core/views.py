@@ -829,10 +829,10 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 			
-			# handle document metadata
-
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':row.record.job.record_group.organization.id, 'record_group_id':row.record.job.record_group.id, 'job_id':row.record.job.id, 'record_id':row.record.id}), row.record_id)
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':target_record.job.record_group.organization.id, 'record_group_id':target_record.job.record_group.id, 'job_id':target_record.job.id, 'record_id':target_record.id}), row.record_id)
 
 			# handle associated job
 			if column == 'job':
