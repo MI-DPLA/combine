@@ -491,6 +491,16 @@ class IndexMappingFailure(models.Model):
 		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
 
 
+	@property
+	def record(self):
+
+		'''
+		method to return record the indexing failure stemmed from
+		'''
+
+		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
+
+
 
 ##################################
 # Signals Handlers

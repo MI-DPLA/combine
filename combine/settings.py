@@ -89,6 +89,7 @@ DATABASES = {
         'PORT': '3306',
     }
 }
+# SILENCED_SYSTEM_CHECKS = ['mysql.E001']
 
 
 # Password validation

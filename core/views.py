@@ -595,10 +595,10 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get indexing failures
-	index_failures = cjob.get_indexing_failures()
+	# index_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'index_failures':index_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_indexing_failures.html', {'cjob':cjob, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 
@@ -739,7 +739,7 @@ def oai(request):
 # https://bitbucket.org/pigletto/django-datatables-view/overview
 # https://bitbucket.org/pigletto/django-datatables-view-example/src/2c68a6e87269?at=master
 ##################################
-class DatatablesRecordsJson(BaseDatatableView):
+class DTRecordsJson(BaseDatatableView):
 
 		'''
 		Prepare and return Datatables JSON for Records table in Job Details
@@ -783,7 +783,7 @@ class DatatablesRecordsJson(BaseDatatableView):
 				return row.job.name
 
 			else:
-				return super(DatatablesRecordsJson, self).render_column(row, column)
+				return super(DTRecordsJson, self).render_column(row, column)
 
 
 		def filter_queryset(self, qs):
@@ -802,6 +802,61 @@ class DatatablesRecordsJson(BaseDatatableView):
 
 			return qs
 
+
+class DTIndexingFailuresJson(BaseDatatableView):
+
+		'''
+		Databales JSON response for Indexing Failures
+		'''
+
+		# The model we're going to show
+		model = models.IndexMappingFailure
+
+		# define the columns that will be returned
+		columns = ['id', 'record_id', 'job', 'mapping_error']
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = ['id', 'record_id', 'job', 'mapping_error']
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def render_column(self, row, column):
+			
+			# handle document metadata
+
+			if column == 'record_id':
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':row.record.job.record_group.organization.id, 'record_group_id':row.record.job.record_group.id, 'job_id':row.record.job.id, 'record_id':row.record.id}), row.record_id)
+
+			# handle associated job
+			if column == 'job':
+				return row.job.name
+
+			else:
+				return super(DTIndexingFailuresJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# filter to specific job
+			qs = qs.filter(job=job)
+
+			# handle search
+			# search = self.request.GET.get(u'search[value]', None)
+			# if search:
+			# 	qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+
+			return qs
 
 
 ##################################
