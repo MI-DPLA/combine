@@ -47,6 +47,10 @@ logger = logging.getLogger(__name__)
 
 class LivySession(models.Model):
 
+	'''
+	Model to manage Livy sessions.
+	'''
+
 	name = models.CharField(max_length=128)
 	session_id = models.IntegerField()
 	session_url = models.CharField(max_length=128)
@@ -66,7 +70,14 @@ class LivySession(models.Model):
 	def refresh_from_livy(self):
 
 		'''
-		ping Livy for session status and update DB
+		Method to ping Livy for session status and update DB
+
+		Args:
+			None
+
+		Returns:
+			None
+				- updates attributes of self
 		'''
 
 		logger.debug('querying Livy for session status')
@@ -118,9 +129,15 @@ class LivySession(models.Model):
 
 
 	def stop_session(self):
-
+		
 		'''
-		Stop Livy session with Livy HttpClient
+		Method to stop Livy session with Livy HttpClient
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 
 		# stop session
@@ -136,6 +153,12 @@ class LivySession(models.Model):
 		'''
 		Convenience method to return single active livy session,
 		or multiple if multiple exist
+
+		Args:
+			None
+
+		Returns:
+			(LivySession): active Livy session instance
 		'''
 
 		active_livy_sessions = LivySession.objects.filter(active=True)
@@ -155,6 +178,11 @@ class LivySession(models.Model):
 
 class Organization(models.Model):
 
+	'''
+	Model to manage Organizations in Combine.
+	Organizations contain Record Groups, and are the highest level of organization in Combine.
+	'''
+
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
 	publish_id = models.CharField(max_length=255)
@@ -168,6 +196,11 @@ class Organization(models.Model):
 
 class RecordGroup(models.Model):
 
+	'''
+	Model to manage Record Groups in Combine.
+	Record Groups are members of Organizations, and contain Jobs
+	'''
+
 	organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None)
@@ -179,15 +212,16 @@ class RecordGroup(models.Model):
 		return 'Record Group: %s' % self.name
 
 
-	def get_published_sets(self):
-
-		'''
-		Query DB for jobs published as sets for all record groups
-		'''
-
-
 
 class Job(models.Model):
+
+	'''
+	Model to manage jobs in Combine.
+	Jobs are members of Record Groups, and contain Records.
+
+	A Job can be considered a "stage" of records in Combine as they move through Harvest, Transformations, Merges, and 
+	eventually Publishing.
+	'''
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
 	job_type = models.CharField(max_length=128, null=True)
@@ -213,6 +247,17 @@ class Job(models.Model):
 
 
 	def refresh_from_livy(self):
+
+		'''
+		Update job status from Livy.
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets attriutes of self
+		'''
 
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
@@ -261,7 +306,13 @@ class Job(models.Model):
 	def get_records(self):
 
 		'''
-		retrieve records for this job from DB
+		Retrieve records associated with this job, if the document field is not blank.
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return Record.objects.filter(job=self).exclude(document='').all()
@@ -270,7 +321,13 @@ class Job(models.Model):
 	def get_errors(self):
 
 		'''
-		retrieve errors for this job from DB
+		Retrieve records associated with this job if the error field is not blank.
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return Record.objects.filter(job=self).exclude(error='').all()
@@ -279,7 +336,13 @@ class Job(models.Model):
 	def update_record_count(self):
 
 		'''
-		Get record count from DB, save to Job
+		Get record count from DB, save to self
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 		
 		self.record_count = self.get_records().count()
@@ -289,9 +352,14 @@ class Job(models.Model):
 	def job_output_as_filesystem(self):
 
 		'''
-		Not entirely removing the possibility of storing jobs on HDFS, 
-		this method returns self.job_output as filesystem location
-		and strips any righthand slash
+		Not entirely removing the possibility of storing jobs on HDFS, this method returns self.job_output as
+		filesystem location and strips any righthand slash
+
+		Args:
+			None
+
+		Returns:
+			(str): location of job output
 		'''
 
 		return self.job_output.replace('file://','').rstrip('/')
@@ -300,7 +368,13 @@ class Job(models.Model):
 	def get_output_files(self):
 
 		'''
-		convenience method to return full path of all avro files in job output
+		Convenience method to return full path of all avro files in job output
+
+		Args:
+			None
+
+		Returns:
+			(list): list of strings of avro files locations on disk
 		'''
 
 		output_dir = self.job_output_as_filesystem()
@@ -310,7 +384,13 @@ class Job(models.Model):
 	def index_results_save_path(self):
 
 		'''
-		return index save path
+		Return index save path
+
+		Args:
+			None
+
+		Returns:
+			(str): location of saved indexing results
 		'''
 		
 		# index results save path
@@ -321,6 +401,7 @@ class Job(models.Model):
 class JobInput(models.Model):
 
 	'''
+	Model to manage input jobs for other jobs.
 	Provides a one-to-many relationship for a job and potential multiple input jobs
 	'''
 
@@ -332,6 +413,7 @@ class JobInput(models.Model):
 class JobPublish(models.Model):
 
 	'''
+	Model to manage published jobs.
 	Provides a one-to-one relationship for a record group and published job
 	'''
 
@@ -344,6 +426,10 @@ class JobPublish(models.Model):
 
 
 class OAIEndpoint(models.Model):
+
+	'''
+	Model to manage user added OAI endpoints
+	'''
 
 	name = models.CharField(max_length=255)
 	endpoint = models.CharField(max_length=255)
@@ -360,6 +446,11 @@ class OAIEndpoint(models.Model):
 
 class Transformation(models.Model):
 
+	'''
+	Model to handle "transformation scenarios".  Envisioned to faciliate more than just XSL transformations, but
+	currently, only XSLT is handled downstream
+	'''
+
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
 	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
@@ -372,6 +463,12 @@ class Transformation(models.Model):
 
 
 class OAITransaction(models.Model):
+
+	'''
+	Model to manage transactions from OAI server, including all requests and resumption tokens when needed.
+
+	Improvement: expire resumption tokens after some time.
+	'''
 
 	verb = models.CharField(max_length=255)
 	start = models.IntegerField(null=True, default=None)
@@ -389,8 +486,11 @@ class OAITransaction(models.Model):
 class Record(models.Model):
 
 	'''
-	DB model for individual records.
-	Note: This DB model is not managed by Django.
+	Model to manage individual records.
+	Records are the lowest level of granularity in Combine.  They are members of Jobs.
+	
+	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	combine/core/inc/combine_tables.sql
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -413,7 +513,14 @@ class Record(models.Model):
 	def get_record_stages(self, input_record_only=False):
 
 		'''
-		method to return all upstream and downstreams stages of this record
+		Method to return all upstream and downstreams stages of this record
+
+		Args:
+			input_record_only (bool): If True, return only immediate record that served as input for this record.
+
+		Returns:
+			(list): ordered list of Record instances from first created (e.g. Harvest), to last (e.g. Publish).
+			This record is included in the list.
 		'''
 
 		record_stages = []
@@ -471,36 +578,14 @@ class Record(models.Model):
 		return record_stages
 
 
-	# @property
-	# def gen_oai_identifier(self):
-
-	# 	'''
-	# 	construct OAI identifier and return as string
-	# 	'''
-		
-	# 	if settings.OAI_DYNAMIC_IDENTIFIER:
-	# 		return self.dynamic_oai_identifer()
-
-	# 	else:
-	# 		return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
-
-
-	# def dynamic_oai_identifer(self):
-
-	# 	'''
-	# 	optional dynamic OAI identifier generator
-	# 	'''
-
-	# 	# removes first colon between repository and set
-	# 	return '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.job.record_group.publish_set_id, self.record_id)
-
-
 
 class IndexMappingFailure(models.Model):
 
 	'''
-	DB model for indexing failures
-	Note: This DB model is not managed by Django.
+	Model for accessing and updating indexing failures.
+	
+	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	combine/core/inc/combine_tables.sql
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)

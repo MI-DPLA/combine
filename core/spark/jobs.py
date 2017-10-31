@@ -47,7 +47,10 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 	# write records to DB
 	records.withColumn('record_id', records.id)\
 	.select(['record_id', 'job_id', 'oai_id', 'document', 'error'])\
-	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE, mode='append')
+	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
+		'core_record',
+		properties=settings.COMBINE_DATABASE,
+		mode='append')
 
 
 

@@ -47,12 +47,14 @@ class ESIndex(object):
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
+		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
+			row.id, row.document, job.record_group.publish_set_id))
 
 		# attempt to write index mapping failures to DB
 		try:
 			# filter out index mapping failures
-			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail')\
+			.map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
@@ -60,7 +62,13 @@ class ESIndex(object):
 			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_indexmappingfailure', properties=settings.COMBINE_DATABASE, mode='append')
+			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error'])\
+			.write.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'core_indexmappingfailure',
+					properties=settings.COMBINE_DATABASE,
+					mode='append'
+				)
 		
 		except:
 			pass
@@ -129,7 +137,10 @@ class ESIndex(object):
 				'index':index_name
 			}
 		}
-		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST, data=json.dumps(dupe_dict), headers={'Content-Type':'application/json'})
+		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
+				data=json.dumps(dupe_dict),
+				headers={'Content-Type':'application/json'}
+			)
 
 
 
