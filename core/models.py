@@ -41,9 +41,9 @@ logger = logging.getLogger(__name__)
 
 
 
-##################################
-# Django ORM
-##################################
+####################################################################
+# Django ORM                                                       #
+####################################################################
 
 class LivySession(models.Model):
 
@@ -606,29 +606,42 @@ class IndexMappingFailure(models.Model):
 	def record(self):
 
 		'''
-		property for one-off access to record the indexing failure stemmed from
+		Property for one-off access to record the indexing failure stemmed from
+
+		Returns:
+			(core.models.Record): Record instance that relates to this indexing failure
 		'''
+
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 
 	def get_record(self):
 
 		'''
-		method to return target record, for performance purposes if accessed multiple times
+		Method to return target record, for performance purposes if accessed multiple times
+
+		Returns:
+			(core.models.Record): Record instance that relates to this indexing failure
 		'''
+
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 
 
-##################################
-# Signals Handlers
-##################################
+####################################################################
+# Signals Handlers                                                 # 
+####################################################################
 
 @receiver(signals.user_logged_in)
 def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 	'''
 	When user logs in, handle check for pre-existing sessions or creating
+
+	Args:
+		sender (auth.models.User): class
+		user (auth.models.User): instance
+		kwargs: not used
 	'''
 
 	# if superuser, skip
@@ -657,7 +670,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-
 @receiver(models.signals.pre_save, sender=LivySession)
 def create_livy_session(sender, instance, **kwargs):
 
@@ -665,6 +677,11 @@ def create_livy_session(sender, instance, **kwargs):
 	Before saving a LivySession instance, check if brand new, or updating status
 		- if not self.id, assume new and create new session with POST
 		- if self.id, assume checking status, only issue GET and update fields
+
+	Args:
+		sender (auth.models.LivySession): class
+		user (auth.models.LivySession): instance
+		kwargs: not used
 	'''
 
 	# not instance.id, assume new
@@ -687,24 +704,46 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.active = True
 
 
-
 @receiver(models.signals.post_save, sender=Job)
 def save_job(sender, instance, created, **kwargs):
+
+	'''
+	After job is saved, update job output
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		created (bool): indicates if newly created, or just save/update
+		kwargs: not used
+	'''
 
 	# if the record was just created, then update job output (ensures this only runs once)
 	if created:
 		# set output based on job type
 		logger.debug('setting job output for job')
-		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.job_type, instance.id)
+		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.job_type,
+			instance.id)
 		instance.save()
-
 
 
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	'''
-	When jobs are removed, a fair amount of clean up is involved
+	When jobs are removed, some actions are performed:
+		- if job is queued or running, stop
+		- if Publish job, remove symlinks
+		- remove avro files from disk
+		- delete ES indexes (if present)
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		kwargs: not used
 	'''
 
 	logger.debug('removing job_output for job id %s' % instance.id)
@@ -785,11 +824,14 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	# attempt to delete indexing results avro files
 	try:
-		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id)).split('file://')[-1]
+		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.id)).split('file://')[-1]
 		shutil.rmtree(indexing_dir)
 	except:
 		logger.debug('could not remove indexing results')
-
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
@@ -797,6 +839,11 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 	'''
 	When users enter a payload for a transformation, write to disk for use in Spark context
+
+	Args:
+		sender (auth.models.Transformation): class
+		user (auth.models.Transformation): instance
+		kwargs: not used
 	'''
 
 	# check that transformation directory exists
