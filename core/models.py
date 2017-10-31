@@ -882,7 +882,7 @@ class LivyClient(object):
 
 	'''
 	Client used for HTTP requests made to Livy server.
-	On init, pull Livy information and credentials from localsettings.py.
+	On init, pull Livy information and credentials from settings.
 	
 	This Class uses a combination of raw HTTP requests to Livy server, and the built-in
 	python-api HttpClient.
@@ -898,7 +898,13 @@ class LivyClient(object):
 
 
 	@classmethod
-	def http_request(self, http_method, url, data=None, headers={'Content-Type':'application/json'}, files=None, stream=False):
+	def http_request(self,
+			http_method,
+			url, data=None,
+			headers={'Content-Type':'application/json'},
+			files=None,
+			stream=False
+		):
 
 		'''
 		Make HTTP request to Livy serer.
@@ -907,7 +913,8 @@ class LivyClient(object):
 			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
 			url (str): expecting path only, as host is provided by settings
 			data (str,file): payload of data to send for request
-			headers (dict): optional dictionary of headers passed directly to requests.request, defaults to JSON content-type request
+			headers (dict): optional dictionary of headers passed directly to requests.request,
+				defaults to JSON content-type request
 			files (dict): optional dictionary of files passed directly to requests.request
 			stream (bool): passed directly to requests.request for stream parameter
 		'''
@@ -918,7 +925,13 @@ class LivyClient(object):
 
 		# build request
 		session = requests.Session()
-		request = requests.Request(http_method, "http://%s:%s/%s" % (self.server_host, self.server_port, url.lstrip('/')), data=data, headers=headers, files=files)
+		request = requests.Request(http_method, "http://%s:%s/%s" % (
+			self.server_host,
+			self.server_port,
+			url.lstrip('/')),
+			data=data,
+			headers=headers,
+			files=files)
 		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
 		response = session.send(
 			prepped_request,
@@ -933,8 +946,11 @@ class LivyClient(object):
 		'''
 		Return current Livy sessions
 
+		Args:
+			None
+
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response 
 		'''
 
 		livy_sessions = self.http_request('GET','sessions')
@@ -951,7 +967,7 @@ class LivyClient(object):
 			config (dict): optional configuration for Livy session, defaults to settings.LIVY_DEFAULT_SESSION_CONFIG
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# if optional session config provided, use, otherwise use default session config from localsettings
@@ -974,7 +990,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		return self.http_request('GET','sessions/%s' % session_id)
@@ -992,7 +1008,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# remove session
@@ -1009,7 +1025,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -1027,7 +1043,7 @@ class LivyClient(object):
 			job_url (str/int): full URL for statement in Livy session
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -1046,7 +1062,7 @@ class LivyClient(object):
 			python_code (str): 
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		logger.debug(python_code)
@@ -1068,7 +1084,7 @@ class LivyClient(object):
 			job_url (str/int): full URL for statement in Livy session
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -1084,7 +1100,7 @@ class LivyClient(object):
 class PublishedRecords(object):
 
 	'''
-	Simple container for all jobs
+	Model to manage the aggregation and retrieval of published records.
 	'''
 
 	def __init__(self):
@@ -1107,7 +1123,13 @@ class PublishedRecords(object):
 	def get_record(self, id):
 
 		'''
-		Return single, published record by id
+		Return single, published record by record.oai_id
+
+		Args:
+			id (str): OAI identifier, not internal record_id (pre OAI identifier generation)
+
+		Returns:
+			(core.model.Record): single Record instance
 		'''
 
 		record_query = self.records.filter(oai_id = id)
@@ -1123,6 +1145,15 @@ class PublishedRecords(object):
 
 class CombineJob(object):
 
+	'''
+	Class to aggregate methods useful for managing and inspecting jobs.  
+
+	Additionally, some methods and workflows for loading a job, inspecting job.job_type, and loading as appropriate
+	Combine job.
+
+	Note: There is overlap with the core.models.Job class, but this not being a Django model, allows for a bit 
+	more flexibility with __init__.
+	'''
 
 	def __init__(self, user=None, job_id=None, parse_job_output=True):
 
@@ -1141,7 +1172,13 @@ class CombineJob(object):
 	def default_job_name(self):
 
 		'''
-		provide default job name based on class type and date
+		Method to provide default job name based on class type and date
+
+		Args:
+			None
+
+		Returns:
+			(str): formatted, default job name
 		'''
 
 		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().isoformat())
@@ -1149,6 +1186,21 @@ class CombineJob(object):
 
 	@staticmethod
 	def get_combine_job(job_id):
+
+		'''
+		Method to retrieve job, and load as appropriate Combine Job type.
+
+		Args:
+			job_id (int): Job ID in DB
+
+		Returns:
+			([
+				core.models.HarvestJob,
+				core.models.TransformJob,
+				core.models.MergeJob,
+				core.models.PublishJob
+			])
+		'''
 
 		# get job from db
 		j = Job.objects.get(pk=job_id)
@@ -1161,6 +1213,12 @@ class CombineJob(object):
 
 		'''
 		Method to retrieve active livy session
+
+		Args:
+			None
+
+		Returns:
+			(core.models.LivySession)
 		'''
 
 		# check for single, active livy session from LivyClient
@@ -1191,7 +1249,13 @@ class CombineJob(object):
 	def start_job(self):
 
 		'''
-		starts job, sends to prepare_job() for child classes
+		Starts job, sends to prepare_job() for child classes
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 
 		# if active livy session
@@ -1204,6 +1268,19 @@ class CombineJob(object):
 
 
 	def submit_job_to_livy(self, job_code, job_output):
+
+		'''
+		Using LivyClient, submit actual job code to Spark.  For the most part, Combine Jobs have the heavy lifting of 
+		their Spark code in core.models.spark.jobs, but this spark code is enough to fire those.
+
+		Args:
+			job_code (str): String of python code to submit to Spark
+			job_output (str): location for job output (NOTE: No longer used)
+
+		Returns:
+			None
+				- sets attributes to self
+		'''
 
 		# submit job
 		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
