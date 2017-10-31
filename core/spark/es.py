@@ -1,5 +1,4 @@
-
-# generic imports
+# imports
 import django
 from elasticsearch import Elasticsearch
 import json
@@ -13,7 +12,6 @@ import xmltodict
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql.functions import udf
-
 
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
