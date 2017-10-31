@@ -20,24 +20,27 @@ django.setup()
 from django.conf import settings
 
 
+
 class ESIndex(object):
 
 	'''
-	Class to organize methods for indexing flattened metadata into ElasticSearch
+	Class to organize methods for indexing mapped/flattened metadata into ElasticSearch (ES)
 	'''
 
 	@staticmethod
 	def index_job_to_es_spark(spark, job, records_df, index_mapper):
 
 		'''
-		Method to index records dataframe into ElasticSearch (ES)
+		Method to index records dataframe into ES
 
 		Args:
-			job:
-			records_rdd: dataframe
+			job (core.models.Job): Job for records
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
 			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
 
-		TODO: Consider writing indexing failures to SQL DB as well
+		Returns:
+			None
+				- indexes records to ES
 		'''
 
 		# get index mapper
@@ -89,6 +92,19 @@ class ESIndex(object):
 	@staticmethod
 	def index_published_job(**kwargs):
 
+		'''
+		Index published records to ES by copying documents from another index
+
+		Args:
+			kwargs
+				job_id (int): Job ID
+				publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			None
+				- submits POST request to trigger ES to copy documents
+		'''
+
 		# copy indexed documents from job to /published
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'published'
@@ -125,10 +141,6 @@ class BaseMapper(object):
 	Mappers expected to contain following methods:
 		- map_record():
 			- sets self.mapped_record, and returns instance of self
-		- as_dict():
-			- returns self.mapped_record as dictionary
-		- as_json():
-			- returns self.mapped_record as json
 	'''
 
 	def __init__(self):
@@ -155,6 +167,21 @@ class MODSMapper(BaseMapper):
 
 
 	def map_record(self, record_id, record_string, publish_set_id):
+
+		'''
+		Map record
+
+		Args:
+			record_id (str): record id
+			record_string (str): string of record document
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			(tuple):
+				0 (str): ['success','fail']
+				1 (dict): details from mapping process, success or failure
+
+		'''
 
 		try:
 			
