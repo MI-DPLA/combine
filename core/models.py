@@ -1299,10 +1299,13 @@ class CombineJob(object):
 	def get_job(self, job_id):
 
 		'''
-		Retrieve job information from DB to perform other tasks
+		Retrieve Job from DB
 
 		Args:
 			job_id (int): Job ID
+
+		Returns:
+			(core.models.Job)
 		'''
 
 		self.job = Job.objects.filter(id=job_id).first()
@@ -1311,19 +1314,32 @@ class CombineJob(object):
 	def count_records(self):
 
 		'''
-		Use methods from models.Job
+		Count records in job via DB query
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records for job
 		'''
 
 		return self.job.get_records().count()
 
 
-	def get_record(self, id):
+	def get_record(self, id, is_oai=False):
 
 		'''
-		Convenience method to return single record from job
+		Convenience method to return single record from job.
+
+		Args:
+			id (str): string of record ID
+			is_oai (bool): If True, use provided ID to search record.oai_id. Defaults to False
 		'''
 
-		record_query = Record.objects.filter(job=self.job).filter(record_id=id)
+		if is_oai:
+			record_query = Record.objects.filter(job=self.job).filter(oai_id=id)
+		else:
+			record_query = Record.objects.filter(job=self.job).filter(record_id=id)
 
 		# if only one found
 		if record_query.count() == 1:
@@ -1337,7 +1353,15 @@ class CombineJob(object):
 	def count_indexed_fields(self):
 
 		'''
-		Count instances of fields across all documents in a job's index, if exists
+		Count instances of fields across all documents in a job's index
+
+		Args:
+			None
+
+		Returns:
+			(dict):
+				total_docs: count of total docs
+				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
 		'''
 
 		if es_handle.indices.exists(index='j%s' % self.job_id):
@@ -1371,8 +1395,10 @@ class CombineJob(object):
 					'field_name':field,
 					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
 					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
-					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] / sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
-					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] / sr_dict['hits']['total']), 4)
+					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
+					 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
+					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
+					 sr_dict['hits']['total']), 4)
 				}
 				for field in field_names
 			]
@@ -1392,6 +1418,12 @@ class CombineJob(object):
 
 		'''
 		For a given field, return all values for that field across a job's index
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field
 		'''
 
 		# init search
@@ -1411,7 +1443,13 @@ class CombineJob(object):
 	def get_indexing_failures(self):
 
 		'''
-		return failures for job indexing process
+		Retrieve failures for job indexing process
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet): from IndexMappingFailure model
 		'''
 
 		# load indexing failures for this job from DB
@@ -1422,11 +1460,17 @@ class CombineJob(object):
 	def get_total_input_job_record_count(self):
 
 		'''
-		return record count sum from all input jobs
+		Calc record count sum from all input jobs
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records
 		'''
 
 		if self.job.jobinput_set.count() > 0:
-			total_input_record_count = sum([ input_job.input_job.record_count for input_job in self.job.jobinput_set.all() ])
+			total_input_record_count = sum([input_job.input_job.record_count for input_job in self.job.jobinput_set.all()])
 			return total_input_record_count
 		else:
 			return None
@@ -1435,7 +1479,14 @@ class CombineJob(object):
 	def get_job_output_filename_hash(self):
 
 		'''
-		return hash of avro filenames
+		When avro files are saved to disk from Spark, they are given a unique hash for the outputted filenames.
+		This method reads the avro files from a Job's output, and extracts this unique hash for use elsewhere.
+
+		Args:
+			None
+
+		Returns:
+			(str): hash shared by all avro files within a job's output
 		'''
 
 		# get list of avro files
