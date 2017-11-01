@@ -1,6 +1,15 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import json
+import logging
+from lxml import etree
+import os
+import re
+import requests
+import textwrap
+import time
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
@@ -16,29 +25,22 @@ from core.es import es_handle
 # import oai server
 from core.oai import OAIProvider
 
-import json
-import logging
-from lxml import etree
-import os
-import re
-import requests
-import textwrap
-import time
-
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
-
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
 
 
 # breadcrumb parser
 def breadcrumb_parser(path):
 	
 	'''
-	return parsed URL based on the pattern:
+	Return parsed URL based on the pattern:
 	organization / record_group / job 
+
+	NOTE: temporary, hacky solution for breadcrumbs, not meant to endure
 	'''
 
 	crumbs = []
@@ -67,9 +69,10 @@ def breadcrumb_parser(path):
 	return crumbs
 
 
-##################################
-# User Livy Sessions
-##################################
+
+####################################################################
+# User Livy Sessions 											   #
+####################################################################
 
 @login_required
 def livy_sessions(request):
@@ -137,9 +140,9 @@ def livy_session_stop(request, session_id):
 
 
 
-##################################
-# Organizations
-##################################
+####################################################################
+# Organizations 												   #
+####################################################################
 
 def organizations(request):
 
@@ -193,10 +196,9 @@ def organization(request, org_id):
 
 
 
-##################################
-# Record Groups
-##################################
-
+####################################################################
+# Record Groups 												   #
+####################################################################
 
 def record_group_new(request, org_id):
 
@@ -257,9 +259,9 @@ def record_group(request, org_id, record_group_id):
 
 
 
-##################################
-# Jobs
-##################################
+####################################################################
+# Jobs 															   #
+####################################################################
 
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
@@ -569,9 +571,10 @@ def job_publish(request, org_id, record_group_id):
 
 
 
-##################################
-# Jobs QA
-##################################
+####################################################################
+# Jobs QA	                   									   #
+####################################################################
+
 @login_required
 def field_analysis(request, org_id, record_group_id, job_id):
 
@@ -603,10 +606,9 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 
 
-##################################
-# Records
-##################################
-
+####################################################################
+# Records 														   #
+####################################################################
 
 def record(request, org_id, record_group_id, job_id, record_id):
 
@@ -671,9 +673,10 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 
 
 
-##################################
-# Transformations
-##################################
+####################################################################
+# Transformations 												   #
+####################################################################
+
 @login_required
 def configuration(request):
 
@@ -700,9 +703,10 @@ def trans_scen_payload(request, trans_id):
 	return HttpResponse(transformation.payload, content_type='text/xml')
 
 
-##################################
-# Published
-##################################
+####################################################################
+# Published 													   #
+####################################################################
+
 @login_required
 def published(request):
 
@@ -717,9 +721,10 @@ def published(request):
 
 
 
-##################################
-# OAI Server
-##################################
+####################################################################
+# OAI Server 													   #
+####################################################################
+
 def oai(request):
 
 	'''
@@ -735,11 +740,11 @@ def oai(request):
 
 
 
-##################################
-# Datatables Endpoints
-# https://bitbucket.org/pigletto/django-datatables-view/overview
-# https://bitbucket.org/pigletto/django-datatables-view-example/src/2c68a6e87269?at=master
-##################################
+####################################################################
+# Datatables endpoints 											   #
+# https://bitbucket.org/pigletto/django-datatables-view/overview   #
+####################################################################
+
 class DTRecordsJson(BaseDatatableView):
 
 		'''
@@ -864,9 +869,10 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			return qs
 
 
-##################################
-# Index
-##################################
+####################################################################
+# Index 														   #
+####################################################################
+
 @login_required
 def index(request):
 	username = request.user.username
