@@ -1511,6 +1511,10 @@ class CombineJob(object):
 
 class HarvestJob(CombineJob):
 
+	'''
+	Harvest records via OAI-PMH endpoint
+	Note: Unlike downstream jobs, Harvest does not require an input job
+	'''
 
 	def __init__(self,
 		job_name=None,
@@ -1522,22 +1526,19 @@ class HarvestJob(CombineJob):
 		index_mapper=None):
 
 		'''
-		Harvest from OAI-PMH endpoint.
-
-		Unlike other jobs, harvests do not require input from the output of another job
-
 		Args:
-			user (User or core.models.CombineUser): user that will issue job
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
 			overrides (dict): optional dictionary of overrides to OAI endpoint
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
 
 		Returns:
-
-			avro file set:
-				- record
-				- error
-				- setIds
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
 		'''
 
 		# perform CombineJob initialization
@@ -1576,7 +1577,14 @@ class HarvestJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for harvest job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# create shallow copy of oai_endpoint and mix in overrides
@@ -1606,7 +1614,7 @@ class HarvestJob(CombineJob):
 
 		'''
 		return harvest job specific errors
-		REVISIT: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
+		NOTE: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
 		'''
 
 		return None
@@ -1627,6 +1635,22 @@ class TransformJob(CombineJob):
 		transformation=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_job (core.models.Job): Job that provides input records for this job's work
+			transformation (core.models.Transformation): Transformation scenario to use for transforming records
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1676,7 +1700,14 @@ class TransformJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for transform job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1698,7 +1729,13 @@ class TransformJob(CombineJob):
 	def get_job_errors(self):
 
 		'''
-		return transform job specific errors
+		Return errors from Job
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return self.job.get_errors()
@@ -1718,6 +1755,21 @@ class MergeJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1765,7 +1817,14 @@ class MergeJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for publish job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1785,6 +1844,10 @@ class MergeJob(CombineJob):
 
 	def get_job_errors(self):
 
+		'''
+		Not current implemented from Merge jobs, as primarily just copying of successful records
+		'''
+
 		pass
 
 
@@ -1802,6 +1865,21 @@ class PublishJob(CombineJob):
 		input_job=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_job (core.models.Job): Job that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1852,7 +1930,14 @@ class PublishJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for publish job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1871,6 +1956,10 @@ class PublishJob(CombineJob):
 
 
 	def get_job_errors(self):
+
+		'''
+		Not implemented for Publish jobs, primarily just copying and indexing records
+		'''
 
 		pass
 
