@@ -32,9 +32,6 @@ from django.utils.html import format_html
 # Livy
 from livy.client import HttpClient
 
-# import cyavro
-import cyavro
-
 # import elasticsearch and handles
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
@@ -44,11 +41,15 @@ logger = logging.getLogger(__name__)
 
 
 
-##################################
-# Django ORM
-##################################
+####################################################################
+# Django ORM                                                       #
+####################################################################
 
 class LivySession(models.Model):
+
+	'''
+	Model to manage Livy sessions.
+	'''
 
 	name = models.CharField(max_length=128)
 	session_id = models.IntegerField()
@@ -69,7 +70,14 @@ class LivySession(models.Model):
 	def refresh_from_livy(self):
 
 		'''
-		ping Livy for session status and update DB
+		Method to ping Livy for session status and update DB
+
+		Args:
+			None
+
+		Returns:
+			None
+				- updates attributes of self
 		'''
 
 		logger.debug('querying Livy for session status')
@@ -121,9 +129,15 @@ class LivySession(models.Model):
 
 
 	def stop_session(self):
-
+		
 		'''
-		Stop Livy session with Livy HttpClient
+		Method to stop Livy session with Livy HttpClient
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 
 		# stop session
@@ -139,6 +153,12 @@ class LivySession(models.Model):
 		'''
 		Convenience method to return single active livy session,
 		or multiple if multiple exist
+
+		Args:
+			None
+
+		Returns:
+			(LivySession): active Livy session instance
 		'''
 
 		active_livy_sessions = LivySession.objects.filter(active=True)
@@ -158,6 +178,11 @@ class LivySession(models.Model):
 
 class Organization(models.Model):
 
+	'''
+	Model to manage Organizations in Combine.
+	Organizations contain Record Groups, and are the highest level of organization in Combine.
+	'''
+
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
 	publish_id = models.CharField(max_length=255)
@@ -171,6 +196,11 @@ class Organization(models.Model):
 
 class RecordGroup(models.Model):
 
+	'''
+	Model to manage Record Groups in Combine.
+	Record Groups are members of Organizations, and contain Jobs
+	'''
+
 	organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None)
@@ -182,15 +212,16 @@ class RecordGroup(models.Model):
 		return 'Record Group: %s' % self.name
 
 
-	def get_published_sets(self):
-
-		'''
-		Query DB for jobs published as sets for all record groups
-		'''
-
-
 
 class Job(models.Model):
+
+	'''
+	Model to manage jobs in Combine.
+	Jobs are members of Record Groups, and contain Records.
+
+	A Job can be considered a "stage" of records in Combine as they move through Harvest, Transformations, Merges, and 
+	eventually Publishing.
+	'''
 
 	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
 	job_type = models.CharField(max_length=128, null=True)
@@ -216,6 +247,17 @@ class Job(models.Model):
 
 
 	def refresh_from_livy(self):
+
+		'''
+		Update job status from Livy.
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets attriutes of self
+		'''
 
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
@@ -264,7 +306,13 @@ class Job(models.Model):
 	def get_records(self):
 
 		'''
-		retrieve records for this job from DB
+		Retrieve records associated with this job, if the document field is not blank.
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return Record.objects.filter(job=self).exclude(document='').all()
@@ -273,7 +321,13 @@ class Job(models.Model):
 	def get_errors(self):
 
 		'''
-		retrieve errors for this job from DB
+		Retrieve records associated with this job if the error field is not blank.
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return Record.objects.filter(job=self).exclude(error='').all()
@@ -282,7 +336,13 @@ class Job(models.Model):
 	def update_record_count(self):
 
 		'''
-		Get record count from DB, save to Job
+		Get record count from DB, save to self
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 		
 		self.record_count = self.get_records().count()
@@ -292,9 +352,14 @@ class Job(models.Model):
 	def job_output_as_filesystem(self):
 
 		'''
-		Not entirely removing the possibility of storing jobs on HDFS, 
-		this method returns self.job_output as filesystem location
-		and strips any righthand slash
+		Not entirely removing the possibility of storing jobs on HDFS, this method returns self.job_output as
+		filesystem location and strips any righthand slash
+
+		Args:
+			None
+
+		Returns:
+			(str): location of job output
 		'''
 
 		return self.job_output.replace('file://','').rstrip('/')
@@ -303,7 +368,13 @@ class Job(models.Model):
 	def get_output_files(self):
 
 		'''
-		convenience method to return full path of all avro files in job output
+		Convenience method to return full path of all avro files in job output
+
+		Args:
+			None
+
+		Returns:
+			(list): list of strings of avro files locations on disk
 		'''
 
 		output_dir = self.job_output_as_filesystem()
@@ -313,7 +384,13 @@ class Job(models.Model):
 	def index_results_save_path(self):
 
 		'''
-		return index save path
+		Return index save path
+
+		Args:
+			None
+
+		Returns:
+			(str): location of saved indexing results
 		'''
 		
 		# index results save path
@@ -324,6 +401,7 @@ class Job(models.Model):
 class JobInput(models.Model):
 
 	'''
+	Model to manage input jobs for other jobs.
 	Provides a one-to-many relationship for a job and potential multiple input jobs
 	'''
 
@@ -335,6 +413,7 @@ class JobInput(models.Model):
 class JobPublish(models.Model):
 
 	'''
+	Model to manage published jobs.
 	Provides a one-to-one relationship for a record group and published job
 	'''
 
@@ -347,6 +426,10 @@ class JobPublish(models.Model):
 
 
 class OAIEndpoint(models.Model):
+
+	'''
+	Model to manage user added OAI endpoints
+	'''
 
 	name = models.CharField(max_length=255)
 	endpoint = models.CharField(max_length=255)
@@ -363,6 +446,11 @@ class OAIEndpoint(models.Model):
 
 class Transformation(models.Model):
 
+	'''
+	Model to handle "transformation scenarios".  Envisioned to faciliate more than just XSL transformations, but
+	currently, only XSLT is handled downstream
+	'''
+
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
 	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
@@ -375,6 +463,12 @@ class Transformation(models.Model):
 
 
 class OAITransaction(models.Model):
+
+	'''
+	Model to manage transactions from OAI server, including all requests and resumption tokens when needed.
+
+	Improvement: expire resumption tokens after some time.
+	'''
 
 	verb = models.CharField(max_length=255)
 	start = models.IntegerField(null=True, default=None)
@@ -392,13 +486,17 @@ class OAITransaction(models.Model):
 class Record(models.Model):
 
 	'''
-	DB model for individual records.
-	Note: This DB model is not managed by Django.
+	Model to manage individual records.
+	Records are the lowest level of granularity in Combine.  They are members of Jobs.
+	
+	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	combine/core/inc/combine_tables.sql
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
+	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 
@@ -412,12 +510,82 @@ class Record(models.Model):
 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
 
 
+	def get_record_stages(self, input_record_only=False):
+
+		'''
+		Method to return all upstream and downstreams stages of this record
+
+		Args:
+			input_record_only (bool): If True, return only immediate record that served as input for this record.
+
+		Returns:
+			(list): ordered list of Record instances from first created (e.g. Harvest), to last (e.g. Publish).
+			This record is included in the list.
+		'''
+
+		record_stages = []
+
+		def get_upstream(record, input_record_only):
+
+			# check for upstream job
+			uj_query = record.job.jobinput_set
+
+			# if upstream jobs found, continue
+			if uj_query.count() > 0:
+
+				logger.debug('upstream jobs found, checking for record_id')
+
+				# loop through upstream jobs, look for record id
+				for uj in uj_query.all():
+					ur_query = Record.objects.filter(job=uj.input_job).filter(record_id=self.record_id)
+
+					# if count found, save record to record_stages and re-run
+					if ur_query.count() > 0:
+						ur = ur_query.first()
+						record_stages.insert(0, ur)
+						if not input_record_only:
+							get_upstream(ur, input_record_only)
+
+
+		def get_downstream(record):
+
+			# check for downstream job
+			dj_query = JobInput.objects.filter(input_job=record.job)
+
+			# if downstream jobs found, continue
+			if dj_query.count() > 0:
+
+				logger.debug('downstream jobs found, checking for record_id')
+
+				# loop through downstream jobs
+				for dj in dj_query.all():
+
+					dr_query = Record.objects.filter(job=dj.job).filter(record_id=self.record_id)
+
+					# if count found, save record to record_stages and re-run
+					if dr_query.count() > 0:
+						dr = dr_query.first()
+						record_stages.append(dr)
+						get_downstream(dr)
+
+		# run
+		get_upstream(self, input_record_only)
+		if not input_record_only:
+			record_stages.append(self)
+			get_downstream(self)
+		
+		# return		
+		return record_stages
+
+
 
 class IndexMappingFailure(models.Model):
 
 	'''
-	DB model for indexing failures
-	Note: This DB model is not managed by Django.
+	Model for accessing and updating indexing failures.
+	
+	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	combine/core/inc/combine_tables.sql
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
@@ -434,16 +602,46 @@ class IndexMappingFailure(models.Model):
 		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
 
 
+	@property
+	def record(self):
 
-##################################
-# Signals Handlers
-##################################
+		'''
+		Property for one-off access to record the indexing failure stemmed from
+
+		Returns:
+			(core.models.Record): Record instance that relates to this indexing failure
+		'''
+
+		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
+
+
+	def get_record(self):
+
+		'''
+		Method to return target record, for performance purposes if accessed multiple times
+
+		Returns:
+			(core.models.Record): Record instance that relates to this indexing failure
+		'''
+
+		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
+
+
+
+####################################################################
+# Signals Handlers                                                 # 
+####################################################################
 
 @receiver(signals.user_logged_in)
 def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 	'''
 	When user logs in, handle check for pre-existing sessions or creating
+
+	Args:
+		sender (auth.models.User): class
+		user (auth.models.User): instance
+		kwargs: not used
 	'''
 
 	# if superuser, skip
@@ -472,7 +670,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-
 @receiver(models.signals.pre_save, sender=LivySession)
 def create_livy_session(sender, instance, **kwargs):
 
@@ -480,6 +677,11 @@ def create_livy_session(sender, instance, **kwargs):
 	Before saving a LivySession instance, check if brand new, or updating status
 		- if not self.id, assume new and create new session with POST
 		- if self.id, assume checking status, only issue GET and update fields
+
+	Args:
+		sender (auth.models.LivySession): class
+		user (auth.models.LivySession): instance
+		kwargs: not used
 	'''
 
 	# not instance.id, assume new
@@ -502,24 +704,46 @@ def create_livy_session(sender, instance, **kwargs):
 		instance.active = True
 
 
-
 @receiver(models.signals.post_save, sender=Job)
 def save_job(sender, instance, created, **kwargs):
+
+	'''
+	After job is saved, update job output
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		created (bool): indicates if newly created, or just save/update
+		kwargs: not used
+	'''
 
 	# if the record was just created, then update job output (ensures this only runs once)
 	if created:
 		# set output based on job type
 		logger.debug('setting job output for job')
-		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.job_type, instance.id)
+		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.job_type,
+			instance.id)
 		instance.save()
-
 
 
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	'''
-	When jobs are removed, a fair amount of clean up is involved
+	When jobs are removed, some actions are performed:
+		- if job is queued or running, stop
+		- if Publish job, remove symlinks
+		- remove avro files from disk
+		- delete ES indexes (if present)
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		kwargs: not used
 	'''
 
 	logger.debug('removing job_output for job id %s' % instance.id)
@@ -600,11 +824,14 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 
 	# attempt to delete indexing results avro files
 	try:
-		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), instance.record_group.organization.id, instance.record_group.id, instance.id)).split('file://')[-1]
+		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.id)).split('file://')[-1]
 		shutil.rmtree(indexing_dir)
 	except:
 		logger.debug('could not remove indexing results')
-
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
@@ -612,6 +839,11 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 	'''
 	When users enter a payload for a transformation, write to disk for use in Spark context
+
+	Args:
+		sender (auth.models.Transformation): class
+		user (auth.models.Transformation): instance
+		kwargs: not used
 	'''
 
 	# check that transformation directory exists
@@ -642,15 +874,15 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 
 
-##################################
-# Apahce Livy
-##################################
+####################################################################
+# Apahce livy 													   #
+####################################################################
 
 class LivyClient(object):
 
 	'''
 	Client used for HTTP requests made to Livy server.
-	On init, pull Livy information and credentials from localsettings.py.
+	On init, pull Livy information and credentials from settings.
 	
 	This Class uses a combination of raw HTTP requests to Livy server, and the built-in
 	python-api HttpClient.
@@ -666,7 +898,13 @@ class LivyClient(object):
 
 
 	@classmethod
-	def http_request(self, http_method, url, data=None, headers={'Content-Type':'application/json'}, files=None, stream=False):
+	def http_request(self,
+			http_method,
+			url, data=None,
+			headers={'Content-Type':'application/json'},
+			files=None,
+			stream=False
+		):
 
 		'''
 		Make HTTP request to Livy serer.
@@ -675,7 +913,8 @@ class LivyClient(object):
 			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
 			url (str): expecting path only, as host is provided by settings
 			data (str,file): payload of data to send for request
-			headers (dict): optional dictionary of headers passed directly to requests.request, defaults to JSON content-type request
+			headers (dict): optional dictionary of headers passed directly to requests.request,
+				defaults to JSON content-type request
 			files (dict): optional dictionary of files passed directly to requests.request
 			stream (bool): passed directly to requests.request for stream parameter
 		'''
@@ -686,7 +925,13 @@ class LivyClient(object):
 
 		# build request
 		session = requests.Session()
-		request = requests.Request(http_method, "http://%s:%s/%s" % (self.server_host, self.server_port, url.lstrip('/')), data=data, headers=headers, files=files)
+		request = requests.Request(http_method, "http://%s:%s/%s" % (
+			self.server_host,
+			self.server_port,
+			url.lstrip('/')),
+			data=data,
+			headers=headers,
+			files=files)
 		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
 		response = session.send(
 			prepped_request,
@@ -701,8 +946,11 @@ class LivyClient(object):
 		'''
 		Return current Livy sessions
 
+		Args:
+			None
+
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response 
 		'''
 
 		livy_sessions = self.http_request('GET','sessions')
@@ -719,7 +967,7 @@ class LivyClient(object):
 			config (dict): optional configuration for Livy session, defaults to settings.LIVY_DEFAULT_SESSION_CONFIG
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# if optional session config provided, use, otherwise use default session config from localsettings
@@ -742,7 +990,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		return self.http_request('GET','sessions/%s' % session_id)
@@ -760,7 +1008,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# remove session
@@ -777,7 +1025,7 @@ class LivyClient(object):
 			session_id (str/int): Livy session id
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -795,7 +1043,7 @@ class LivyClient(object):
 			job_url (str/int): full URL for statement in Livy session
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -814,7 +1062,7 @@ class LivyClient(object):
 			python_code (str): 
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		logger.debug(python_code)
@@ -836,7 +1084,7 @@ class LivyClient(object):
 			job_url (str/int): full URL for statement in Livy session
 
 		Returns:
-			Livy server response (dict)
+			(dict): Livy server response
 		'''
 
 		# statement
@@ -845,14 +1093,14 @@ class LivyClient(object):
 		
 
 
-##################################
-# Combine Models
-##################################
+####################################################################
+# Combine Models 												   #
+####################################################################
 
 class PublishedRecords(object):
 
 	'''
-	Simple container for all jobs
+	Model to manage the aggregation and retrieval of published records.
 	'''
 
 	def __init__(self):
@@ -875,10 +1123,16 @@ class PublishedRecords(object):
 	def get_record(self, id):
 
 		'''
-		Return single, published record by id
+		Return single, published record by record.oai_id
+
+		Args:
+			id (str): OAI identifier, not internal record_id (pre OAI identifier generation)
+
+		Returns:
+			(core.model.Record): single Record instance
 		'''
 
-		record_query = records.filter(record_id = id)
+		record_query = self.records.filter(oai_id = id)
 
 		# if one, return
 		if record_query.count() == 1:
@@ -891,6 +1145,15 @@ class PublishedRecords(object):
 
 class CombineJob(object):
 
+	'''
+	Class to aggregate methods useful for managing and inspecting jobs.  
+
+	Additionally, some methods and workflows for loading a job, inspecting job.job_type, and loading as appropriate
+	Combine job.
+
+	Note: There is overlap with the core.models.Job class, but this not being a Django model, allows for a bit 
+	more flexibility with __init__.
+	'''
 
 	def __init__(self, user=None, job_id=None, parse_job_output=True):
 
@@ -909,7 +1172,13 @@ class CombineJob(object):
 	def default_job_name(self):
 
 		'''
-		provide default job name based on class type and date
+		Method to provide default job name based on class type and date
+
+		Args:
+			None
+
+		Returns:
+			(str): formatted, default job name
 		'''
 
 		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().isoformat())
@@ -917,6 +1186,21 @@ class CombineJob(object):
 
 	@staticmethod
 	def get_combine_job(job_id):
+
+		'''
+		Method to retrieve job, and load as appropriate Combine Job type.
+
+		Args:
+			job_id (int): Job ID in DB
+
+		Returns:
+			([
+				core.models.HarvestJob,
+				core.models.TransformJob,
+				core.models.MergeJob,
+				core.models.PublishJob
+			])
+		'''
 
 		# get job from db
 		j = Job.objects.get(pk=job_id)
@@ -929,6 +1213,12 @@ class CombineJob(object):
 
 		'''
 		Method to retrieve active livy session
+
+		Args:
+			None
+
+		Returns:
+			(core.models.LivySession)
 		'''
 
 		# check for single, active livy session from LivyClient
@@ -959,7 +1249,13 @@ class CombineJob(object):
 	def start_job(self):
 
 		'''
-		starts job, sends to prepare_job() for child classes
+		Starts job, sends to prepare_job() for child classes
+
+		Args:
+			None
+
+		Returns:
+			None
 		'''
 
 		# if active livy session
@@ -972,6 +1268,19 @@ class CombineJob(object):
 
 
 	def submit_job_to_livy(self, job_code, job_output):
+
+		'''
+		Using LivyClient, submit actual job code to Spark.  For the most part, Combine Jobs have the heavy lifting of 
+		their Spark code in core.models.spark.jobs, but this spark code is enough to fire those.
+
+		Args:
+			job_code (str): String of python code to submit to Spark
+			job_output (str): location for job output (NOTE: No longer used)
+
+		Returns:
+			None
+				- sets attributes to self
+		'''
 
 		# submit job
 		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
@@ -990,10 +1299,13 @@ class CombineJob(object):
 	def get_job(self, job_id):
 
 		'''
-		Retrieve job information from DB to perform other tasks
+		Retrieve Job from DB
 
 		Args:
 			job_id (int): Job ID
+
+		Returns:
+			(core.models.Job)
 		'''
 
 		self.job = Job.objects.filter(id=job_id).first()
@@ -1002,19 +1314,32 @@ class CombineJob(object):
 	def count_records(self):
 
 		'''
-		Use methods from models.Job
+		Count records in job via DB query
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records for job
 		'''
 
 		return self.job.get_records().count()
 
 
-	def get_record(self, id):
+	def get_record(self, id, is_oai=False):
 
 		'''
-		Convenience method to return single record from job
+		Convenience method to return single record from job.
+
+		Args:
+			id (str): string of record ID
+			is_oai (bool): If True, use provided ID to search record.oai_id. Defaults to False
 		'''
 
-		record_query = Record.objects.filter(job=self.job).filter(record_id=id)
+		if is_oai:
+			record_query = Record.objects.filter(job=self.job).filter(oai_id=id)
+		else:
+			record_query = Record.objects.filter(job=self.job).filter(record_id=id)
 
 		# if only one found
 		if record_query.count() == 1:
@@ -1028,7 +1353,15 @@ class CombineJob(object):
 	def count_indexed_fields(self):
 
 		'''
-		Count instances of fields across all documents in a job's index, if exists
+		Count instances of fields across all documents in a job's index
+
+		Args:
+			None
+
+		Returns:
+			(dict):
+				total_docs: count of total docs
+				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
 		'''
 
 		if es_handle.indices.exists(index='j%s' % self.job_id):
@@ -1062,8 +1395,10 @@ class CombineJob(object):
 					'field_name':field,
 					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
 					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
-					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] / sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
-					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] / sr_dict['hits']['total']), 4)
+					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
+					 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
+					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
+					 sr_dict['hits']['total']), 4)
 				}
 				for field in field_names
 			]
@@ -1083,6 +1418,12 @@ class CombineJob(object):
 
 		'''
 		For a given field, return all values for that field across a job's index
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field
 		'''
 
 		# init search
@@ -1102,7 +1443,13 @@ class CombineJob(object):
 	def get_indexing_failures(self):
 
 		'''
-		return failures for job indexing process
+		Retrieve failures for job indexing process
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet): from IndexMappingFailure model
 		'''
 
 		# load indexing failures for this job from DB
@@ -1113,11 +1460,17 @@ class CombineJob(object):
 	def get_total_input_job_record_count(self):
 
 		'''
-		return record count sum from all input jobs
+		Calc record count sum from all input jobs
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records
 		'''
 
 		if self.job.jobinput_set.count() > 0:
-			total_input_record_count = sum([ input_job.input_job.record_count for input_job in self.job.jobinput_set.all() ])
+			total_input_record_count = sum([input_job.input_job.record_count for input_job in self.job.jobinput_set.all()])
 			return total_input_record_count
 		else:
 			return None
@@ -1126,7 +1479,14 @@ class CombineJob(object):
 	def get_job_output_filename_hash(self):
 
 		'''
-		return hash of avro filenames
+		When avro files are saved to disk from Spark, they are given a unique hash for the outputted filenames.
+		This method reads the avro files from a Job's output, and extracts this unique hash for use elsewhere.
+
+		Args:
+			None
+
+		Returns:
+			(str): hash shared by all avro files within a job's output
 		'''
 
 		# get list of avro files
@@ -1151,6 +1511,10 @@ class CombineJob(object):
 
 class HarvestJob(CombineJob):
 
+	'''
+	Harvest records via OAI-PMH endpoint
+	Note: Unlike downstream jobs, Harvest does not require an input job
+	'''
 
 	def __init__(self,
 		job_name=None,
@@ -1162,22 +1526,19 @@ class HarvestJob(CombineJob):
 		index_mapper=None):
 
 		'''
-		Harvest from OAI-PMH endpoint.
-
-		Unlike other jobs, harvests do not require input from the output of another job
-
 		Args:
-			user (User or core.models.CombineUser): user that will issue job
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
 			overrides (dict): optional dictionary of overrides to OAI endpoint
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
 
 		Returns:
-
-			avro file set:
-				- record
-				- error
-				- setIds
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
 		'''
 
 		# perform CombineJob initialization
@@ -1216,7 +1577,14 @@ class HarvestJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for harvest job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# create shallow copy of oai_endpoint and mix in overrides
@@ -1246,7 +1614,7 @@ class HarvestJob(CombineJob):
 
 		'''
 		return harvest job specific errors
-		REVISIT: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
+		NOTE: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
 		'''
 
 		return None
@@ -1267,6 +1635,22 @@ class TransformJob(CombineJob):
 		transformation=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_job (core.models.Job): Job that provides input records for this job's work
+			transformation (core.models.Transformation): Transformation scenario to use for transforming records
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1316,7 +1700,14 @@ class TransformJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for transform job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1338,7 +1729,13 @@ class TransformJob(CombineJob):
 	def get_job_errors(self):
 
 		'''
-		return transform job specific errors
+		Return errors from Job
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet)
 		'''
 
 		return self.job.get_errors()
@@ -1358,6 +1755,21 @@ class MergeJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1405,7 +1817,14 @@ class MergeJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for publish job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1425,6 +1844,10 @@ class MergeJob(CombineJob):
 
 	def get_job_errors(self):
 
+		'''
+		Not current implemented from Merge jobs, as primarily just copying of successful records
+		'''
+
 		pass
 
 
@@ -1442,6 +1865,21 @@ class PublishJob(CombineJob):
 		input_job=None,
 		job_id=None,
 		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			input_job (core.models.Job): Job that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
 
 		# perform CombineJob initialization
 		super().__init__(user=user, job_id=job_id)
@@ -1492,7 +1930,14 @@ class PublishJob(CombineJob):
 	def prepare_job(self):
 
 		'''
-		Construct python code that will be sent to Livy for publish job
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
 		'''
 
 		# prepare job code
@@ -1511,6 +1956,10 @@ class PublishJob(CombineJob):
 
 
 	def get_job_errors(self):
+
+		'''
+		Not implemented for Publish jobs, primarily just copying and indexing records
+		'''
 
 		pass
 

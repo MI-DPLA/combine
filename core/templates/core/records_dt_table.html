@@ -1,11 +1,11 @@
 {% block content %}	
 <table id='datatables_records'>
 	<thead>
-		<th>id</th>
-		<th>record_id</th>
-		<th>job</th>
-		<th>document</th>
-		<th>error</th>
+		<th>ID</th>
+		<th>Record ID</th>
+		<th>Job</th>
+		<th>Document</th>
+		<th>Error</th>
 	</thead>
 	<tbody>
 	</tbody>
@@ -16,7 +16,8 @@
 	    var oTable = $('#datatables_records').dataTable({
 	        "processing": true,
 	        "serverSide": true,
-	        "ajax": "{% url 'datatables_record_data' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"
+	        "ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+	        searchDelay: 1000
 	    });
 	});
 </script>

@@ -4,21 +4,27 @@
 
 	<h3>Indexing Failures: {{ cjob.job.name }}</h3>
 
-	<ul>
-		<li><strong>Total Failures:</strong> {{ indexing_failures|length }}</li>
-	</ul>
-
-	<table border="1" cellpadding="5">
-		<tr>
-			<th>id</th>
-			<th>error</th>
-		</tr>
-		{% for failure in index_failures %}
-			<tr>
-				<td><a href="{% url 'record' %}?record_id={{ failure.record_id }}">{{ failure.record_id }}</a></td>
-				<td>{{ failure.mapping_error }}</td>
-			</tr>
-		{% endfor %}
+	<table id='datatables_records'>
+		<thead>
+			<th>ID</th>
+			<th>Record ID</th>
+			<th>Job</th>
+			<th>Mapping Error</th>
+		</thead>
+		<tbody>
+		</tbody>
 	</table>
+
+	<script>
+		$(document).ready(function() {
+		    var oTable = $('#datatables_records').dataTable({
+		        "processing": true,
+		        "serverSide": true,
+		        "ajax": "{% url 'indexing_failures_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+		        searchDelay: 1000,
+		        "lengthMenu": [ 10, 25 ]		        
+		    });
+		});
+	</script>
 
 {% endblock %}

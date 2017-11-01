@@ -1,10 +1,20 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import json
+import logging
+from lxml import etree
+import os
+import re
+import requests
+import textwrap
+import time
+
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 
@@ -15,29 +25,22 @@ from core.es import es_handle
 # import oai server
 from core.oai import OAIProvider
 
-import json
-import logging
-from lxml import etree
-import os
-import re
-import requests
-import textwrap
-import time
-
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
-
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
 
 
 # breadcrumb parser
 def breadcrumb_parser(path):
 	
 	'''
-	return parsed URL based on the pattern:
+	Return parsed URL based on the pattern:
 	organization / record_group / job 
+
+	NOTE: temporary, hacky solution for breadcrumbs, not meant to endure
 	'''
 
 	crumbs = []
@@ -45,6 +48,7 @@ def breadcrumb_parser(path):
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
+		crumbs.append(('Organizations', reverse('organizations')))
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
 		crumbs.append((org.name, org_m.group(1)))
 
@@ -65,9 +69,10 @@ def breadcrumb_parser(path):
 	return crumbs
 
 
-##################################
-# User Livy Sessions
-##################################
+
+####################################################################
+# User Livy Sessions 											   #
+####################################################################
 
 @login_required
 def livy_sessions(request):
@@ -135,9 +140,9 @@ def livy_session_stop(request, session_id):
 
 
 
-##################################
-# Organizations
-##################################
+####################################################################
+# Organizations 												   #
+####################################################################
 
 def organizations(request):
 
@@ -191,10 +196,9 @@ def organization(request, org_id):
 
 
 
-##################################
-# Record Groups
-##################################
-
+####################################################################
+# Record Groups 												   #
+####################################################################
 
 def record_group_new(request, org_id):
 
@@ -255,9 +259,9 @@ def record_group(request, org_id, record_group_id):
 
 
 
-##################################
-# Jobs
-##################################
+####################################################################
+# Jobs 															   #
+####################################################################
 
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
@@ -567,9 +571,10 @@ def job_publish(request, org_id, record_group_id):
 
 
 
-##################################
-# Jobs QA
-##################################
+####################################################################
+# Jobs QA	                   									   #
+####################################################################
+
 @login_required
 def field_analysis(request, org_id, record_group_id, job_id):
 
@@ -584,7 +589,7 @@ def field_analysis(request, org_id, record_group_id, job_id):
 	field_analysis_results = cjob.field_analysis(field_name)
 
 	# return
-	return render(request, 'core/field_analysis.html', {'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/field_analysis.html', {'cjob':cjob, 'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -594,39 +599,84 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get indexing failures
-	index_failures = cjob.get_indexing_failures()
+	# index_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'index_failures':index_failures, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_indexing_failures.html', {'cjob':cjob, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 
-##################################
-# Records
-##################################
+####################################################################
+# Records 														   #
+####################################################################
 
-
-def record(request):
+def record(request, org_id, record_group_id, job_id, record_id):
 
 	'''
-	Details for a single record.
-
-	Args:
-		record_id (GET): expecting record_id via GET parameters
+	Single Record page
 	'''
 
-	# get field name
-	record_id = request.GET.get('record_id')
-	logger.debug('retrieving details about record_id: %s' % (record_id))
+	# get all records within this record group
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# build ancestry in both directions
+	record_stages = record.get_record_stages()
+
+	# get details depending on job type
+	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
+	try:
+		job_details = json.loads(record.job.job_details)
+		logger.debug(job_details)
+
+		# TransformJob
+		if record.job.job_type == 'TransformJob':
+
+			# get transformation
+			transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
+			job_details['transformation'] = transformation
+
+			# get isolated input record
+			job_details['input_record'] = record.get_record_stages(input_record_only=True)[0]
+
+	except:
+		logger.debug('could not load job details')
+		job_details = {}
 
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id})
+	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages, 'job_details':job_details})
+
+
+def record_document(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return document as XML
+	return HttpResponse(record.document, content_type='text/xml')
+
+
+def record_error(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return document as XML
+	return HttpResponse("<pre>%s</pre>" % record.error)
 
 
 
-##################################
-# Transformations
-##################################
+####################################################################
+# Transformations 												   #
+####################################################################
+
 @login_required
 def configuration(request):
 
@@ -640,10 +690,23 @@ def configuration(request):
 	return render(request, 'core/configuration.html', {'transformations':transformations, 'oai_endpoints':oai_endpoints})
 
 
+def trans_scen_payload(request, trans_id):
 
-##################################
-# Pbulished
-##################################
+	'''
+	View payload for transformation scenario
+	'''
+
+	# get transformation
+	transformation = models.Transformation.objects.get(pk=int(trans_id))
+
+	# return document as XML
+	return HttpResponse(transformation.payload, content_type='text/xml')
+
+
+####################################################################
+# Published 													   #
+####################################################################
+
 @login_required
 def published(request):
 
@@ -658,9 +721,10 @@ def published(request):
 
 
 
-##################################
-# OAI Server
-##################################
+####################################################################
+# OAI Server 													   #
+####################################################################
+
 def oai(request):
 
 	'''
@@ -676,19 +740,16 @@ def oai(request):
 
 
 
-##################################
-# Datatables Endpoints
-# https://bitbucket.org/pigletto/django-datatables-view/overview
-# https://bitbucket.org/pigletto/django-datatables-view-example/src/2c68a6e87269?at=master
-##################################
-class DatatablesRecordsJson(BaseDatatableView):
+####################################################################
+# Datatables endpoints 											   #
+# https://bitbucket.org/pigletto/django-datatables-view/overview   #
+####################################################################
+
+class DTRecordsJson(BaseDatatableView):
 
 		'''
 		Prepare and return Datatables JSON for Records table in Job Details
 		'''
-
-		# The model we're going to show
-		model = models.Record
 
 		# define the columns that will be returned
 		columns = ['id', 'record_id', 'job', 'document', 'error']
@@ -705,12 +766,23 @@ class DatatablesRecordsJson(BaseDatatableView):
 		max_display_length = 1000
 
 
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# return filtered queryset
+			return models.Record.objects.filter(job=job)
+
+
 		def render_column(self, row, column):
 			
 			# handle document metadata
 
 			if column == 'record_id':
-				return '<a href="%s?record_id=%s" target="_blank">%s</a>' % (reverse(record), row.record_id, row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':row.job.record_group.organization.id, 'record_group_id':row.job.record_group.id, 'job_id':row.job.id, 'record_id':row.id}), row.record_id)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -725,30 +797,82 @@ class DatatablesRecordsJson(BaseDatatableView):
 				return row.job.name
 
 			else:
-				return super(DatatablesRecordsJson, self).render_column(row, column)
+				return super(DTRecordsJson, self).render_column(row, column)
 
 
 		def filter_queryset(self, qs):
 			# use parameters passed in GET request to filter queryset
 
-			# get job
-			job = models.Job.objects.get(pk=self.kwargs['job_id'])
-
-			# filter to specific job
-			qs = qs.filter(job=job)
-
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(record_id__contains=search)
+				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
 
 			return qs
 
 
+class DTIndexingFailuresJson(BaseDatatableView):
 
-##################################
-# Index
-##################################
+		'''
+		Databales JSON response for Indexing Failures
+		'''
+
+		# define the columns that will be returned
+		columns = ['id', 'record_id', 'job', 'mapping_error']
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = ['id', 'record_id', 'job', 'mapping_error']
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# return filtered queryset
+			return models.IndexMappingFailure.objects.filter(job=job)
+
+
+		def render_column(self, row, column):
+			
+			if column == 'record_id':
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':target_record.job.record_group.organization.id, 'record_group_id':target_record.job.record_group.id, 'job_id':target_record.job.id, 'record_id':target_record.id}), row.record_id)
+
+			# handle associated job
+			if column == 'job':
+				return row.job.name
+
+			else:
+				return super(DTIndexingFailuresJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(record_id__contains=search))
+
+			return qs
+
+
+####################################################################
+# Index 														   #
+####################################################################
+
 @login_required
 def index(request):
 	username = request.user.username

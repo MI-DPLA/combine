@@ -2,6 +2,74 @@
 
 {% block content %}
 
-	<h3>Record: {{ record_id }}</h3>
+	<h2>Record</h2>
+
+	<ul>
+		<li><strong>DB ID:</strong> {{ record.id }}</li>
+		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
+		<li><strong>Job Type:</strong> {{ record.job.job_type }}</li>
+	</ul>
+
+	<h3>Record Stages</h3>
+
+	<table border="1" cellpadding="10">
+		<tr>
+			<th>DB ID</th>
+			<th>Job ID</th>
+			<th>Job Name</th>
+			<th>Job Type</th>
+			<th>Record Document</th>
+			<th>Record Error</th>
+			<th>ElasticSearch document</th>
+		</tr>
+		{% for record_stage in record_stages %}
+			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
+				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
+				<td>{{ record_stage.job.id }}</td>
+				<td>{{ record_stage.job.name }}</td>
+				<td>{{ record_stage.job.job_type }}</td>
+				{% if record_stage.document != '' %}
+					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				{% if record_stage.error != ''%}
+					<td><a href="{% url 'record_error' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+				{% else %}
+					<td>None</td>
+				{% endif %}
+				<td><a href='http://{{ APP_HOST }}:9200/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.record_id }}"' target="_blank">View</a></td>
+			</tr>
+		{% endfor %}
+	</table>
+
+	<h2>{{ record.job.job_type }} Details</h2>
+
+	<!-- TransformJob -->
+	{% if record.job.job_type == 'TransformJob' %}
+		<h3>Transformation Used</h3>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Path on disk</th>
+				<th>Transformation Payload</th>
+				<th>Input Document</th>
+			</tr>
+			<tr>
+				<td>{{job_details.transformation.id}}</td>
+				<td>{{job_details.transformation.name}}</td>
+				<td>{{job_details.transformation.transformation_type}}</td>
+				<td>{{job_details.transformation.filepath}}</td>
+				<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+				<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+			</tr>
+		</table>
+	{% endif %}
+
+	
+
+	
 
 {% endblock %}

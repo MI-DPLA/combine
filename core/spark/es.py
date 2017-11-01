@@ -1,5 +1,4 @@
-
-# generic imports
+# imports
 import django
 from elasticsearch import Elasticsearch
 import json
@@ -14,7 +13,6 @@ from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql.functions import udf
 
-
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
@@ -22,36 +20,41 @@ django.setup()
 from django.conf import settings
 
 
+
 class ESIndex(object):
 
 	'''
-	Class to organize methods for indexing flattened metadata into ElasticSearch
+	Class to organize methods for indexing mapped/flattened metadata into ElasticSearch (ES)
 	'''
 
 	@staticmethod
 	def index_job_to_es_spark(spark, job, records_df, index_mapper):
 
 		'''
-		Method to index records dataframe into ElasticSearch (ES)
+		Method to index records dataframe into ES
 
 		Args:
-			job:
-			records_rdd: dataframe
+			job (core.models.Job): Job for records
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
 			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
 
-		TODO: Consider writing indexing failures to SQL DB as well
+		Returns:
+			None
+				- indexes records to ES
 		'''
 
 		# get index mapper
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(row.id, row.document, job.record_group.publish_set_id))
+		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
+			row.id, row.document, job.record_group.publish_set_id))
 
 		# attempt to write index mapping failures to DB
 		try:
 			# filter out index mapping failures
-			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail').map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail')\
+			.map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
@@ -59,7 +62,13 @@ class ESIndex(object):
 			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error']).write.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_indexmappingfailure', properties=settings.COMBINE_DATABASE, mode='append')
+			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error'])\
+			.write.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'core_indexmappingfailure',
+					properties=settings.COMBINE_DATABASE,
+					mode='append'
+				)
 		
 		except:
 			pass
@@ -91,6 +100,19 @@ class ESIndex(object):
 	@staticmethod
 	def index_published_job(**kwargs):
 
+		'''
+		Index published records to ES by copying documents from another index
+
+		Args:
+			kwargs
+				job_id (int): Job ID
+				publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			None
+				- submits POST request to trigger ES to copy documents
+		'''
+
 		# copy indexed documents from job to /published
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'published'
@@ -115,7 +137,10 @@ class ESIndex(object):
 				'index':index_name
 			}
 		}
-		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST, data=json.dumps(dupe_dict), headers={'Content-Type':'application/json'})
+		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
+				data=json.dumps(dupe_dict),
+				headers={'Content-Type':'application/json'}
+			)
 
 
 
@@ -127,10 +152,6 @@ class BaseMapper(object):
 	Mappers expected to contain following methods:
 		- map_record():
 			- sets self.mapped_record, and returns instance of self
-		- as_dict():
-			- returns self.mapped_record as dictionary
-		- as_json():
-			- returns self.mapped_record as json
 	'''
 
 	def __init__(self):
@@ -157,6 +178,21 @@ class MODSMapper(BaseMapper):
 
 
 	def map_record(self, record_id, record_string, publish_set_id):
+
+		'''
+		Map record
+
+		Args:
+			record_id (str): record id
+			record_string (str): string of record document
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			(tuple):
+				0 (str): ['success','fail']
+				1 (dict): details from mapping process, success or failure
+
+		'''
 
 		try:
 			
