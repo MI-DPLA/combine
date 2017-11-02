@@ -5,11 +5,10 @@
 		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>
 	</div>
 
-	<h4>Input Jobs:</h4>
 	<p>The following jobs were used as input for this {{ cjob.job.job_type }}.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
 	<table border="1" cellpadding="5">
 		<tr>
-			<th>Name</th>
+			<th>Input Job Name</th>
 			<th>Record Count</th>
 		</tr>
 		{% for input_job in cjob.job.jobinput_set.all %}
@@ -24,11 +23,10 @@
 		</tr>
 	</table>
 
-	<h4>This Job:</h4>
 	<p>Given the input jobs and records outlined above, the following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
 	<table border="1" cellpadding="5">
 		<tr>
-			<th>Name</th>
+			<th>This Job Name</th>
 			<th>Total Input Records</th>
 			<th>Sucesssful Records</th>
 			<th>Errors</th>
