@@ -68,10 +68,13 @@
 
 	<!-- Details specific to Job Type -->
 
-	<h2>{{ record.job.job_type }} Details</h2>
+	<!-- HarvestJob -->
+	{% if record.job.job_type == 'HarvestJob' %}
+	{% endif %}
 
 	<!-- TransformJob -->
 	{% if record.job.job_type == 'TransformJob' %}
+		<h2>{{ record.job.job_type }} Details</h2>
 		<h3>Transformation Used</h3>
 		<table border="1" cellpadding="10">
 			<tr>
@@ -93,8 +96,13 @@
 		</table>
 	{% endif %}
 
-	
+	<!-- MergeJob -->
+	{% if record.job.job_type == 'MergeJob' %}
+	{% endif %}
 
-	
+	<!-- PublishJob -->
+	{% if record.job.job_type == 'PublishJob' %}
+	{% endif %}
+
 
 {% endblock %}
