@@ -1,8 +1,8 @@
 {% extends 'core/base.html' %}
 {% block content %}
 
-	<div class="{{ cjob.job.job_type }}">
-		<h3>Job Details: {{ cjob.job.name }}</h3>
+	<div>
+		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>
 	</div>
 
 	<h4>Input Jobs:</h4>
