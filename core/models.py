@@ -235,7 +235,6 @@ class Job(models.Model):
 	headers = models.CharField(max_length=255, null=True)
 	response = models.TextField(null=True, default=None)
 	job_output = models.TextField(null=True, default=None)
-	# job_output_filename_hash = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
@@ -1478,19 +1477,20 @@ class CombineJob(object):
 		# get counts
 		r_count_dict['records'] = self.job.get_records().count()
 		r_count_dict['errors'] = self.job.get_errors().count()
+
+		# include input jobs
+		total_input_records = self.get_total_input_job_record_count()
+		r_count_dict['input_jobs'] = {
+			'total_input_records': total_input_records,
+			'jobs':self.job.jobinput_set.all()
+		}
 		
-		# calc error percentage
+		# calc error percentags
 		if r_count_dict['errors'] != 0:
-			r_count_dict['error_percentage'] = float(r_count_dict['errors']) / float(r_count_dict['records'])
+			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(total_input_records)), 4)
 		else:
 			r_count_dict['error_percentage'] = 0.0
 		
-		# include input jobs
-		r_count_dict['input_jobs'] = {
-			'total_input_records':self.get_total_input_job_record_count(),
-			'jobs':self.job.jobinput_set.all()
-		}
-
 		# return
 		return r_count_dict
 
@@ -1765,6 +1765,7 @@ class MergeJob(CombineJob):
 	
 	'''
 	Merge multiple jobs into a single job
+	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
 	def __init__(self,

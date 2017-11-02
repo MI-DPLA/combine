@@ -215,6 +215,7 @@ class MergeSpark(object):
 
 	'''
 	Spark code for Merging records from previously run jobs
+	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
 	@staticmethod
@@ -244,7 +245,11 @@ class MergeSpark(object):
 		input_jobs = ast.literal_eval(kwargs['job_inputs'])
 
 		# get list of RDDs from input jobs
-		input_jobs_rdds = [ spark.read.format('com.databricks.spark.avro').load(job).rdd for job in input_jobs ]
+		input_jobs_rdds = []
+		for input_job in input_jobs:
+			job_df = spark.read.format('com.databricks.spark.avro').load(input_job)
+			job_df = job_df[job_df['document'] != '']
+			input_jobs_rdds.append(job_df.rdd)
 
 		# create aggregate rdd of frames
 		agg_rdd = sc.union(input_jobs_rdds)
