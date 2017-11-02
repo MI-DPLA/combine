@@ -290,11 +290,14 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
+	# detailed record count
+	record_count_details = cjob.get_detailed_job_record_count()
+
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'record_count_details':record_count_details, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required

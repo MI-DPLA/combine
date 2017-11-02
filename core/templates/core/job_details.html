@@ -5,11 +5,9 @@
 		<h3>Job Details: {{ cjob.job.name }}</h3>
 	</div>
 
-	<h4>Records</h4>
-
-	<table border="1" cellpadding="5">
+	<!-- <table border="1" cellpadding="5">
 		<tr>
-			<th><em>Input</em> job(s) and record counts</th>
+			<th>Input job(s) and record counts</th>
 			<td>
 				{% for input_job in cjob.job.jobinput_set.all %}
 				<div class="{{ input_job.input_job.job_type }}" style="padding:5x; clear:both;">
@@ -28,6 +26,42 @@
 			<th><em>Indexed</em> record count</th>
 			<td>{{ field_counts.total_docs }}</td>
 			<td><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+		</tr>
+	</table> -->
+
+	<h4>Input Jobs:</h4>
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>Name</th>
+			<th>Record Count</th>
+		</tr>
+		{% for input_job in cjob.job.jobinput_set.all %}
+		<tr class="{{ input_job.input_job.job_type }}">
+			<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+			<td>{{ input_job.input_job.record_count }}</td>
+		</tr>
+		{% endfor %}
+		<tr>
+			<td></td>
+			<td><strong>Total:</strong> {{ record_count_details.input_jobs.total_input_records }}</td>
+		</tr>
+	</table>
+
+	<h4>This Job:</h4>
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>Name</th>
+			<th>Total Input</th>
+			<th>Sucesssful Records</th>
+			<th>Errors</th>
+			<th>Error Percentage</th>
+		</tr>
+		<tr class="{{ cjob.job.job_type }}">
+			<td>{{ cjob.job.name }}</td>
+			<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+			<td>{{ record_count_details.records }}</td>
+			<td>{{ record_count_details.errors }}</td>
+			<td>{{ record_count_details.error_percentage }}</td>
 		</tr>
 	</table>
 

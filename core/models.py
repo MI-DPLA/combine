@@ -1311,21 +1311,6 @@ class CombineJob(object):
 		self.job = Job.objects.filter(id=job_id).first()
 
 
-	def count_records(self):
-
-		'''
-		Count records in job via DB query
-
-		Args:
-			None
-
-		Returns:
-			(int): count of records for job
-		'''
-
-		return self.job.get_records().count()
-
-
 	def get_record(self, id, is_oai=False):
 
 		'''
@@ -1474,6 +1459,40 @@ class CombineJob(object):
 			return total_input_record_count
 		else:
 			return None
+
+
+	def get_detailed_job_record_count(self):
+
+		'''
+		Return details of record counts for input jobs, successes, and errors
+
+		Args:
+			None
+
+		Returns:
+			(dict): Dictionary of record counts
+		'''
+
+		r_count_dict = {}
+
+		# get counts
+		r_count_dict['records'] = self.job.get_records().count()
+		r_count_dict['errors'] = self.job.get_errors().count()
+		
+		# calc error percentage
+		if r_count_dict['errors'] != 0:
+			r_count_dict['error_percentage'] = float(r_count_dict['errors']) / float(r_count_dict['records'])
+		else:
+			r_count_dict['error_percentage'] = 0.0
+		
+		# include input jobs
+		r_count_dict['input_jobs'] = {
+			'total_input_records':self.get_total_input_job_record_count(),
+			'jobs':self.job.jobinput_set.all()
+		}
+
+		# return
+		return r_count_dict
 
 
 	def get_job_output_filename_hash(self):
