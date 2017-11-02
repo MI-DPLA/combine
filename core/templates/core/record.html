@@ -8,6 +8,8 @@
 		<li><strong>DB ID:</strong> {{ record.id }}</li>
 		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
 		<li><strong>Job Type:</strong> {{ record.job.job_type }}</li>
+		<li><strong>published OAI ID:</strong> {{ record.oai_id }}</li>
+		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
 	</ul>
 
 	<h3>Record Stages</h3>
@@ -42,6 +44,29 @@
 			</tr>
 		{% endfor %}
 	</table>
+
+	<h3>Indexed Fields</h3>
+
+	<div style="width:75%;">
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>Field Name</th>
+				<th>Value</th>
+			<tr>
+			{% for key, value in record.get_es_doc.items %}
+			<tr>
+				<td><strong>{{ key }}</strong></td>
+				{% if 'http://' in value or 'https://' in value %}
+					<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
+				{% else %}
+					<td>{{ value }}</td>
+				{% endif %}
+			</tr>
+			{% endfor %}
+		</table>
+	</div>
+
+	<!-- Details specific to Job Type -->
 
 	<h2>{{ record.job.job_type }} Details</h2>
 

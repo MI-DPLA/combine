@@ -37,11 +37,14 @@ ES_HOST = '192.168.45.10'
 INDEX_TO_ES = True
 
 
+# Service Hub
+SERVICE_HUB_PREFIX = 'mi--'
+
+
 # OAI Server
 COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'
 OAI_RESPONSE_SIZE = 500
 COMBINE_OAI_IDENTIFIER = 'oai:digital.library.wayne.edu'
-OAI_DYNAMIC_IDENTIFIER = True # if True, use core.models.Record.dynamic_oai_identifer() method
 METADATA_PREFIXES = {
 	'mods':{
 			'schema':'http://www.loc.gov/standards/mods/v3/mods.xsd',
@@ -56,6 +59,7 @@ METADATA_PREFIXES = {
 			'namespace':'http://purl.org/dc/elements/1.1/'
 		},
 }
+
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {

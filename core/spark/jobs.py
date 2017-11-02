@@ -41,7 +41,7 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 	records = records.withColumn('job_id', job_id_udf(records.id))
 
 	# add column
-	oai_id_udf = udf(lambda id: '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
+	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
 	records = records.withColumn('oai_id', oai_id_udf(records.id))
 
 	# write records to DB

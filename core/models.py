@@ -577,6 +577,47 @@ class Record(models.Model):
 		return record_stages
 
 
+	def derive_dpla_identifier(self):
+
+		'''
+		Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
+		identifier.  Experiemental.
+
+		Args:
+			None
+
+		Returns:
+			(str): Derived DPLA identifier
+		'''
+
+		pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
+		return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
+
+
+	def get_es_doc(self):
+
+		'''
+		Return indexed ElasticSearch document as dictionary
+
+		Args:
+			None
+
+		Returns:
+			(dict): ES document
+		'''
+
+		# init search
+		s = Search(using=es_handle, index='j%s' % self.job_id)
+		s = s.query('match', _id=self.record_id)
+
+		# execute search and capture as dictionary
+		sr = s.execute()
+		sr_dict = sr.to_dict()
+
+		# return
+		return sr_dict['hits']['hits'][0]['_source']
+
+
 
 class IndexMappingFailure(models.Model):
 
