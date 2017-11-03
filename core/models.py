@@ -615,7 +615,10 @@ class Record(models.Model):
 		sr_dict = sr.to_dict()
 
 		# return
-		return sr_dict['hits']['hits'][0]['_source']
+		try:
+			return sr_dict['hits']['hits'][0]['_source']
+		except:
+			return {}
 
 
 

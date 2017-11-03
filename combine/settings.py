@@ -25,10 +25,8 @@ SECRET_KEY = '$)1(piv72**m&3bmb)j!=f-h4=of6_knu=c8lj31n7k=y36oi%'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    '192.168.45.10', # vagrant build
-    'combine-vm' # vagrant build
-]
+
+ALLOWED_HOSTS = ['*'] # for dev, allowing all hosts
 
 
 # Application definition
