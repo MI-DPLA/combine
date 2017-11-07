@@ -159,15 +159,16 @@ class TransformSpark(object):
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
 		# get string of xslt
-		with open(kwargs['transform_filepath'],'r') as f:
-			xslt = f.read().encode('utf-8')
+		# with open(kwargs['transform_filepath'],'r') as f:
+		# 	xslt = f.read().encode('utf-8')
 
 		# define function for transformation
 		def transform_xml(record_id, xml, xslt):
 
 			# attempt transformation and save out put to 'document'
 			try:
-				xslt_root = etree.fromstring(xslt)
+				# xslt_root = etree.fromstring(xslt)
+				xslt_root = etree.parse(xslt)
 				transform = etree.XSLT(xslt_root)
 				xml_root = etree.fromstring(xml)
 				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
@@ -188,7 +189,8 @@ class TransformSpark(object):
 				)
 
 		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
+		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
+		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, kwargs['transform_filepath']))
 
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)

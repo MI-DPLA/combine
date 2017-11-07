@@ -1392,7 +1392,7 @@ class CombineJob(object):
 				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
 		'''
 
-		if es_handle.indices.exists(index='j%s' % self.job_id):
+		if es_handle.indices.exists(index='j%s' % self.job_id) and es_handle.search(index='j%s' % self.job_id)['hits']['total'] > 0:
 
 			# get mappings for job index
 			es_r = es_handle.indices.get(index='j%s' % self.job_id)
