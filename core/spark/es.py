@@ -155,9 +155,9 @@ class BaseMapper(object):
 			- sets self.mapped_record, and returns instance of self
 	'''
 
-	def __init__(self):
+	# def __init__(self):
 
-		logger.debug('init BaseMapper')
+	# 	logger.debug('init BaseMapper')
 
 
 
@@ -222,11 +222,14 @@ class GenericMapper(BaseMapper):
 				- sets self.flat_elems
 		'''
 
+		# pre-compile checker for blank spaces
+		blank_check = re.compile(r"[^ \t\n]")
+
 		# walk descendants of root
 		for elem in self.xml_root.iterdescendants():
 
 			# if text value present for element, save to list
-			if elem.text:
+			if elem.text and re.search(blank_check, elem.text) is not None:
 
 				# get xpath
 				xpath = self.xml_tree.getpath(elem)
@@ -236,9 +239,9 @@ class GenericMapper(BaseMapper):
 
 				# append
 				self.flat_elems.append({
-					'text':elem.text,
-					'xpath':xpath,
-					'attributes':elem.attrib
+						'text':elem.text,
+						'xpath':xpath,
+						'attributes':elem.attrib
 					})
 
 
@@ -263,30 +266,35 @@ class GenericMapper(BaseMapper):
 			# split on slashes
 			xpath_comps = elem['xpath'].lstrip('/').split('/')
 
-			# remove namespaces if present
-			for i,comp in enumerate(xpath_comps):
-				if ':' in comp:
-					xpath_comps[i] = comp.split(':')[-1]
+			# proceed if not entirely asterisks
+			if set(xpath_comps) != set('*'):
 
+				# remove namespaces if present
+				for i,comp in enumerate(xpath_comps):
+					if ':' in comp:
+						xpath_comps[i] = comp.split(':')[-1]
 
-			# if include attributes
-			if include_attributes:
-				for k,v in elem['attributes'].items():
-					xpath_comps.append('%s_%s' % (k,v))
+				# remove asterisks from xpath_comps, as they are unhelpful
+				xpath_comps = [ c for c in xpath_comps if c != '*' ]
 
-			# self.formatted_elems.append(('_'.join(xpath_comps), elem['text']))
+				# if include attributes
+				if include_attributes:
+					for k,v in elem['attributes'].items():
+						xpath_comps.append('%s_%s' % (k,v))
 
-			# derive flat field name
-			flat_field = '_'.join(xpath_comps)
-			
-			# # if not yet seen, add as list to dictionary
-			# if flat_field not in self.formatted_elems.keys():
-			# 	self.formatted_elems[flat_field] = []
+				# self.formatted_elems.append(('_'.join(xpath_comps), elem['text']))
 
-			# # append value to dictionary
-			# self.formatted_elems[flat_field].append(elem['text'])
+				# derive flat field name
+				flat_field = '_'.join(xpath_comps)
+				
+				# # if not yet seen, add as list to dictionary
+				# if flat_field not in self.formatted_elems.keys():
+				# 	self.formatted_elems[flat_field] = []
 
-			self.formatted_elems[flat_field] = elem['text']
+				# # append value to dictionary
+				# self.formatted_elems[flat_field].append(elem['text'])
+
+				self.formatted_elems[flat_field] = elem['text']
 
 
 	def map_record(self, record_id, record_string, publish_set_id):
