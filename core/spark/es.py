@@ -4,6 +4,7 @@ from elasticsearch import Elasticsearch
 import json
 from lxml import etree
 import os
+import re
 import requests
 import sys
 import xmltodict
@@ -157,6 +158,164 @@ class BaseMapper(object):
 	def __init__(self):
 
 		logger.debug('init BaseMapper')
+
+
+
+class GenericMapper(BaseMapper):
+
+	'''
+	Generic flattener of nested, or flat, XML, suitable for indexing in ElasticSearch
+
+	Looping through all elements in an XML tree, the xpath for each element, in combination with attributes is used
+	to generate a flattened version of the field into a single string.
+
+	e.g.
+	<foo>
+		<bar type="geographic">Seattle</bar>
+		<bar type="topic">city</bar>
+	</foo>
+	<foo>
+		<baz>Cats Cradle</baz>
+		<baz>Breakfast of Champions</baz>
+	</foo>
+
+
+	becomes...
+
+	[
+		('foo_bar_type_geographic', ['Seattle']),
+		('foo_bar_type_topic', ['city']),
+		('foo_bar', ['Cats Cradle','Breakfast of Champions'])
+	]
+
+	Args:
+		record_id (str): record id
+		record_string (str): string of record document
+		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+	Returns:
+		(tuple):
+			0 (str): ['success','fail']
+			1 (dict): details from mapping process, success or failure
+	'''
+
+	def __init__(self):
+
+		# empty elems list
+		self.flat_elems = []
+
+		# empty formatted elems dict, grouping by flat, formatted element
+		self.formatted_elems = {}
+
+
+	def flatten_record(self):
+
+		'''
+		Walk XML tree, writing each element with some basic information
+		of xpath, attributes, and text to self.flat_elems()
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets self.flat_elems
+		'''
+
+		# walk descendants of root
+		for elem in self.xml_root.iterdescendants():
+
+			# if text value present for element, save to list
+			if elem.text:
+
+				# get xpath
+				xpath = self.xml_tree.getpath(elem)
+
+				# strip index if repeating
+				xpath = re.sub(r'\[[0-9]+\]','',xpath)
+
+				# append
+				self.flat_elems.append({
+					'text':elem.text,
+					'xpath':xpath,
+					'attributes':elem.attrib
+					})
+
+
+	def format_record(self, include_attributes=True):
+
+		'''
+		After elements have been flattened, with text, xpath, and attributes, 
+		derive single string for flattened field, and append potentially repeating
+		values to self.formatted_elems
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets self.formatted_elems
+		'''
+
+		# loop through flattened elements
+		for elem in self.flat_elems:
+
+			# split on slashes
+			xpath_comps = elem['xpath'].lstrip('/').split('/')
+
+			# remove namespaces if present
+			for i,comp in enumerate(xpath_comps):
+				if ':' in comp:
+					xpath_comps[i] = comp.split(':')[-1]
+
+
+			# if include attributes
+			if include_attributes:
+				for k,v in elem['attributes'].items():
+					xpath_comps.append('%s_%s' % (k,v))
+
+			# self.formatted_elems.append(('_'.join(xpath_comps), elem['text']))
+
+			# derive flat field name
+			flat_field = '_'.join(xpath_comps)
+			
+			# # if not yet seen, add as list to dictionary
+			# if flat_field not in self.formatted_elems.keys():
+			# 	self.formatted_elems[flat_field] = []
+
+			# # append value to dictionary
+			# self.formatted_elems[flat_field].append(elem['text'])
+
+			self.formatted_elems[flat_field] = elem['text']
+
+
+	def map_record(self, record_id, record_string, publish_set_id):
+
+		# set record string
+		self.xml_string = record_string
+
+		# parse from string
+		self.xml_root = etree.fromstring(self.xml_string)
+
+		# get tree
+		self.xml_tree = self.xml_root.getroottree()
+
+		# flatten record
+		self.flatten_record()
+
+		# format for return
+		self.format_record()
+
+		# add temporary id field
+		self.formatted_elems['temp_id'] = record_id
+
+		# add publish set id
+		self.formatted_elems['publish_set_id'] = publish_set_id
+
+		return (
+				'success',
+				self.formatted_elems
+			)
 
 
 
