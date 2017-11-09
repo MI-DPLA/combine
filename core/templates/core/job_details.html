@@ -93,25 +93,48 @@
 	</p>
 
 	<p>
-		<table border="1" cellpadding="5">
+		<table id="index_analysis" border="1" cellpadding="5">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					<th>Instances of Field</th>
+					<th>Count of Distinct Values of Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Name</th>
+					<th>Instances of Field</th>
+					<th>Count of Distinct Values of Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</tfoot>
 
-			<tr>
-				<th>Field Name</th>
-				<th>Instances of Field</th>
-				<th>Count of Distinct Values of Field</th>
-				<th>Percentage of Field Values that are Unique</th>
-				<th>Instance of Field in Total Indexed Records</th>
-			</tr>
-
+			<tbody>
 			{% for field in field_counts.fields %}
 				<tr>
-					<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}">{{ field.field_name }}</a></td>
+					<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 					<td>{{ field.instances }}</td>
 					<td>{{ field.distinct }}</td>
 					<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
 					<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
 				</tr>
 			{% endfor %}
+			</tbody>
+
 		</table>
+		<script>
+			$(document).ready(function() {
+			    $('#index_analysis').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ]
+			    });
+			} );
+		</script>
 	</p>
 {% endblock %}
+
+
