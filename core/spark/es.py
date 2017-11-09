@@ -21,7 +21,6 @@ django.setup()
 from django.conf import settings
 
 
-
 class ESIndex(object):
 
 	'''
@@ -80,7 +79,13 @@ class ESIndex(object):
 		# create index in advance
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'j%s' % job.id
-		mapping = {'mappings':{'record':{'date_detection':False}}}
+		mapping = {
+			'mappings':{
+				'record':{
+					'date_detection':False
+				}
+			}
+		}
 		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
@@ -93,7 +98,7 @@ class ESIndex(object):
 					"es.resource":"%s/record" % index_name,
 					"es.nodes":"192.168.45.10:9200",
 					"es.mapping.exclude":"temp_id",
-					"es.mapping.id":"temp_id"
+					"es.mapping.id":"temp_id",
 				}
 		)
 
@@ -235,7 +240,7 @@ class GenericMapper(BaseMapper):
 				xpath = self.xml_tree.getpath(elem)
 
 				# strip index if repeating
-				xpath = re.sub(r'\[[0-9]+\]','',xpath)
+				xpath = re.sub(r'\[[0-9]+\]','', xpath)
 
 				# append
 				self.flat_elems.append({
@@ -245,7 +250,7 @@ class GenericMapper(BaseMapper):
 					})
 
 
-	def format_record(self, include_attributes=True):
+	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
 
 		'''
 		After elements have been flattened, with text, xpath, and attributes, 
@@ -280,49 +285,88 @@ class GenericMapper(BaseMapper):
 				# if include attributes
 				if include_attributes:
 					for k,v in elem['attributes'].items():
-						xpath_comps.append('%s_%s' % (k,v))
 
-				# self.formatted_elems.append(('_'.join(xpath_comps), elem['text']))
+						# replace whitespace with _
+						k = k.replace(' ','_')
+
+						# append to xpath_comps
+						xpath_comps.append('@%s_%s' % (k,v))
 
 				# derive flat field name
 				flat_field = '_'.join(xpath_comps)
 				
-				# # if not yet seen, add as list to dictionary
-				# if flat_field not in self.formatted_elems.keys():
-				# 	self.formatted_elems[flat_field] = []
+				# if not yet seen, add to dictionary as single element
+				if flat_field not in self.formatted_elems.keys():
+					self.formatted_elems[flat_field] = elem['text']
 
-				# # append value to dictionary
-				# self.formatted_elems[flat_field].append(elem['text'])
+				# elif, field exists, but not yet list, convert to list and append value
+				elif flat_field in self.formatted_elems.keys() and type(self.formatted_elems[flat_field]) != list:
+					temp_val = self.formatted_elems[flat_field]
+					self.formatted_elems[flat_field] = [temp_val, elem['text']]
 
-				self.formatted_elems[flat_field] = elem['text']
+				# else, append to already present list
+				else:
+					self.formatted_elems[flat_field].append(elem['text'])
+
+		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
+		for k,v in self.formatted_elems.items():
+			if type(v) == list:
+				self.formatted_elems[k] = tuple(v)
 
 
 	def map_record(self, record_id, record_string, publish_set_id):
 
+		'''
+		Map record
+
+		Args:
+			record_id (str): record id
+			record_string (str): string of record document
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			(tuple):
+				0 (str): ['success','fail']
+				1 (dict): details from mapping process, success or failure
+
+		'''
+
 		# set record string
 		self.xml_string = record_string
 
-		# parse from string
-		self.xml_root = etree.fromstring(self.xml_string)
+		try:
 
-		# get tree
-		self.xml_tree = self.xml_root.getroottree()
+			# parse from string
+			self.xml_root = etree.fromstring(self.xml_string)
 
-		# flatten record
-		self.flatten_record()
+			# get tree
+			self.xml_tree = self.xml_root.getroottree()
 
-		# format for return
-		self.format_record()
+			# flatten record
+			self.flatten_record()
 
-		# add temporary id field
-		self.formatted_elems['temp_id'] = record_id
+			# format for return
+			self.format_record()
 
-		# add publish set id
-		self.formatted_elems['publish_set_id'] = publish_set_id
+			# add temporary id field
+			self.formatted_elems['temp_id'] = record_id
 
-		return (
-				'success',
-				self.formatted_elems
+			# add publish set id
+			self.formatted_elems['publish_set_id'] = publish_set_id
+
+			return (
+					'success',
+					self.formatted_elems
+				)
+
+		except Exception as e:
+			
+			return (
+				'fail',
+				{
+					'id':record_id,
+					'mapping_error':str(e)
+				}
 			)
 
 

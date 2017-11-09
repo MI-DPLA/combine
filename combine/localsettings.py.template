@@ -37,6 +37,10 @@ ES_HOST = '192.168.45.10'
 INDEX_TO_ES = True
 
 
+# ElasticSearch Indexing
+INCLUDE_ATTRIBUTES_GENERIC_MAPPER = True
+
+
 # Service Hub
 SERVICE_HUB_PREFIX = 'mi--'
 

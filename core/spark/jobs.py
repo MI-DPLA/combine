@@ -158,10 +158,6 @@ class TransformSpark(object):
 		# read output from input_job
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
-		# get string of xslt
-		# with open(kwargs['transform_filepath'],'r') as f:
-		# 	xslt = f.read().encode('utf-8')
-
 		# define function for transformation
 		def transform_xml(record_id, xml, xslt):
 
@@ -189,7 +185,6 @@ class TransformSpark(object):
 				)
 
 		# transform via rdd.map
-		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
 		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, kwargs['transform_filepath']))
 
 		# write them to avro files
