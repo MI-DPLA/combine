@@ -396,6 +396,23 @@ class Job(models.Model):
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
+	def get_duplicates(self):
+
+		'''
+		Check if record_id is duplicated in job's records
+
+		Args:
+			None
+
+		Returns:
+			(): True if duplicates exists
+		'''
+
+		# dupes = self.get_records().values_list('record_id', flat=True).distinct()
+
+
+
+
 
 class JobInput(models.Model):
 
@@ -498,6 +515,7 @@ class Record(models.Model):
 	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
+	unique = models.BooleanField(default=1)
 
 
 	# this model is managed outside of Django

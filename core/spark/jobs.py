@@ -24,36 +24,6 @@ from core.models import CombineJob, Job
 
 
 
-def index_records_to_db(job=None, publish_set_id=None, records=None):
-
-	'''
-	Function to index records to DB
-
-	Args:
-		job (core.models.Job): Job for records
-		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
-		records (pyspark.sql.DataFrame): records as pyspark DataFrame 
-	'''
-
-	# add job_id as column
-	job_id = job.id
-	job_id_udf = udf(lambda id: job_id, IntegerType())
-	records = records.withColumn('job_id', job_id_udf(records.id))
-
-	# add column
-	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
-	records = records.withColumn('oai_id', oai_id_udf(records.id))
-
-	# write records to DB
-	records.withColumn('record_id', records.id)\
-	.select(['record_id', 'job_id', 'oai_id', 'document', 'error'])\
-	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
-		'core_record',
-		properties=settings.COMBINE_DATABASE,
-		mode='append')
-
-
-
 class HarvestSpark(object):
 
 	'''
@@ -242,25 +212,24 @@ class MergeSpark(object):
 		input_jobs = ast.literal_eval(kwargs['job_inputs'])
 
 		# get list of RDDs from input jobs
-		input_jobs_rdds = []
+		input_jobs_dfs = []		
 		for input_job in input_jobs:
 			job_df = spark.read.format('com.databricks.spark.avro').load(input_job)
 			job_df = job_df[job_df['document'] != '']
-			input_jobs_rdds.append(job_df.rdd)
+			input_jobs_dfs.append(job_df)
 
 		# create aggregate rdd of frames
-		agg_rdd = sc.union(input_jobs_rdds)
-
-		# TODO: report duplicate IDs as errors in result
+		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
+		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
 		# write agg to new avro files
-		agg_rdd.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
+		agg_df.write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# index records to db
 		index_records_to_db(
 			job=job,
 			publish_set_id=job.record_group.publish_set_id,
-			records=agg_rdd.toDF()
+			records=agg_df
 		)
 
 		# finally, index to ElasticSearch
@@ -268,7 +237,7 @@ class MergeSpark(object):
 			ESIndex.index_job_to_es_spark(
 				spark,
 				job=job,
-				records_df=agg_rdd.toDF(),
+				records_df=agg_df,
 				index_mapper=kwargs['index_mapper']
 			)
 
@@ -346,4 +315,37 @@ class PublishSpark(object):
 			)
 
 
+
+def index_records_to_db(job=None, publish_set_id=None, records=None):
+
+	'''
+	Function to index records to DB.
+	Additionally, generates and writes oai_id column to DB.
+
+	Args:
+		job (core.models.Job): Job for records
+		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+		records (pyspark.sql.DataFrame): records as pyspark DataFrame 
+	'''
+
+	# add job_id as column
+	job_id = job.id
+	job_id_udf = udf(lambda id: job_id, IntegerType())
+	records = records.withColumn('job_id', job_id_udf(records.id))
+
+	# add oai_id column
+	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
+	records = records.withColumn('oai_id', oai_id_udf(records.id))
+
+	# add unique column
+	unique_udf = udf(lambda id: 1, IntegerType())
+	records = records.withColumn('unique', unique_udf(records.id))
+
+	# write records to DB
+	records.withColumn('record_id', records.id)\
+	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique'])\
+	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
+		'core_record',
+		properties=settings.COMBINE_DATABASE,
+		mode='append')
 

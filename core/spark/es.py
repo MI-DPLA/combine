@@ -48,7 +48,10 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-			row.id, row.document, job.record_group.publish_set_id))
+				row.id,
+				row.document,
+				job.record_group.publish_set_id
+			))
 
 		# attempt to write index mapping failures to DB
 		try:
@@ -175,23 +178,22 @@ class GenericMapper(BaseMapper):
 	to generate a flattened version of the field into a single string.
 
 	e.g.
-	<foo>
-		<bar type="geographic">Seattle</bar>
-		<bar type="topic">city</bar>
-	</foo>
-	<foo>
-		<baz>Cats Cradle</baz>
-		<baz>Breakfast of Champions</baz>
-	</foo>
-
+		<foo>
+			<bar type="geographic">Seattle</bar>
+			<bar type="topic">city</bar>
+		</foo>
+		<foo>
+			<baz>Cats Cradle</baz>
+			<baz>Breakfast of Champions</baz>
+		</foo>
 
 	becomes...
-
-	[
-		('foo_bar_type_geographic', ['Seattle']),
-		('foo_bar_type_topic', ['city']),
-		('foo_bar', ['Cats Cradle','Breakfast of Champions'])
-	]
+		[
+			('foo_bar_type_geographic', 'Seattle'),
+			('foo_bar_type_@topic', 'city'),
+			('foo_bar', ('Cats Cradle','Breakfast of Champions'))
+				# note tuple for multiple values, not list here, as saveAsNewAPIHadoopFile requires
+		]
 
 	Args:
 		record_id (str): record id

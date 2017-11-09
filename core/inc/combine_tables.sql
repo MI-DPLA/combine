@@ -15,6 +15,7 @@ CREATE TABLE `core_record` (
   `oai_id` varchar(1024) DEFAULT NULL,
   `document` longtext,
   `error` longtext,
+  `unique` tinyint(1) NOT NULL,
   `job_id` int(11) NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `core_record_job_id_idx` (`job_id`),
