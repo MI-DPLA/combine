@@ -48,22 +48,40 @@
 	<h3>Indexed Fields</h3>
 
 	<div style="width:75%;">
-		<table border="1" cellpadding="10">
-			<tr>
-				<th>Field Name</th>
-				<th>Value</th>
-			<tr>
-			{% for key, value in record.get_es_doc.items %}
-			<tr>
-				<td><strong>{{ key }}</strong></td>
-				{% if 'http://' in value or 'https://' in value %}
-					<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
-				{% else %}
-					<td>{{ value }}</td>
-				{% endif %}
-			</tr>
-			{% endfor %}
+		<table id="record_fields" border="1">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					<th>Field Value</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Name</th>
+					<th>Field Value</th>
+				</tr>
+			</tfoot>
+			<tbody>
+				{% for key, value in record.get_es_doc.items %}
+				<tr>
+					<td><strong>{{ key }}</strong></td>
+					{% if 'http://' in value or 'https://' in value %}
+						<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
+					{% else %}
+						<td>{{ value }}</td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			</tbody>
 		</table>
+		<script>
+			$(document).ready(function() {
+			    $('#record_fields').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ]
+			    });
+			} );
+		</script>
 	</div>
 
 	<!-- Details specific to Job Type -->

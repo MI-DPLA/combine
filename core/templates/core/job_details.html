@@ -114,15 +114,15 @@
 			</tfoot>
 
 			<tbody>
-			{% for field in field_counts.fields %}
-				<tr>
-					<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-					<td>{{ field.instances }}</td>
-					<td>{{ field.distinct }}</td>
-					<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-					<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
-				</tr>
-			{% endfor %}
+				{% for field in field_counts.fields %}
+					<tr>
+						<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+						<td>{{ field.instances }}</td>
+						<td>{{ field.distinct }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+					</tr>
+				{% endfor %}
 			</tbody>
 
 		</table>
