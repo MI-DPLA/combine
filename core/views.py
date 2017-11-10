@@ -804,7 +804,7 @@ class DTRecordsJson(BaseDatatableView):
 				if row.unique:
 					return '<span style="color:green;">Unique</span>'
 				else:
-					return '<span style="color:red;">Has Duplicate</span>'
+					return '<span style="color:red;">Duplicate</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
