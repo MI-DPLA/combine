@@ -755,14 +755,14 @@ class DTRecordsJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'document', 'error']
+		columns = ['id', 'record_id', 'job', 'unique', 'document', 'error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'document', 'error']
+		order_columns = ['id', 'record_id', 'job', 'unique', 'document', 'error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -798,6 +798,13 @@ class DTRecordsJson(BaseDatatableView):
 			# handle associated job
 			if column == 'job':
 				return row.job.name
+
+			# handle associated job
+			if column == 'unique':
+				if row.unique:
+					return '<span style="color:green;">Unique</span>'
+				else:
+					return '<span style="color:red;">Has Duplicate</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)

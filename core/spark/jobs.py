@@ -11,7 +11,9 @@ from es import ESIndex, MODSMapper
 # import Row from pyspark
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
+import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
+from pyspark.sql.window import Window
 
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
@@ -338,8 +340,14 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 	records = records.withColumn('oai_id', oai_id_udf(records.id))
 
 	# add unique column
-	unique_udf = udf(lambda id: 1, IntegerType())
-	records = records.withColumn('unique', unique_udf(records.id))
+	# unique_udf = udf(lambda id: 1, IntegerType())
+	# records = records.withColumn('unique', unique_udf(records.id))
+
+	# check uniqueness
+	records = records.withColumn("unique", (
+		pyspark_sql_functions.count("id")\
+		.over(Window.partitionBy("id")) == 1)\
+		.cast('integer'))
 
 	# write records to DB
 	records.withColumn('record_id', records.id)\
