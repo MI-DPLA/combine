@@ -790,7 +790,7 @@ class DTRecordsJson(BaseDatatableView):
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
-					xml = etree.fromstring(row.document)
+					xml = etree.fromstring(row.document.encode('utf-8'))
 					return '<span style="color: green;">Valid XML</span>'
 				except:
 					return '<span style="color: red;">Invalid XML</span>'

@@ -206,19 +206,24 @@ class TransformSpark(object):
 		#####################################################################################
 		# pyjxslt
 		#####################################################################################
-		with open(kwargs['transform_filepath'],'r') as f:
-			xslt = f.read()
-
-		# define function for transformation
-		def transform_xml(record_id, xml, xslt):
+		
+		# define udf function for transformation
+		def transform_xml(record_id, xml, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
-				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('wsu', xslt)
+				
+				# isolate MODS (will change when introducting more transforms)
 				xml_root = etree.fromstring(xml)
 				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				result = gw.transform('wsu', etree.tostring(mods_root).decode('utf-8'))
+				mods_string = etree.tostring(mods_root).decode('utf-8')
+				
+				# transform with pyjxslt gateway
+				gw = pyjxslt.Gateway(6767)
+				gw.add_transform('wsu', xslt_string)
+				result = gw.transform('wsu', mods_string)
+
+				# return as Row
 				return Row(
 					id=record_id,
 					document=result,
@@ -233,8 +238,12 @@ class TransformSpark(object):
 					error=str(e)
 				)
 
+		# open XSLT transformation, pass to map as string
+		with open(kwargs['transform_filepath'],'r') as f:
+			xslt_string = f.read()
+
 		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
+		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt_string))
 		#####################################################################################
 
 		# write them to avro files

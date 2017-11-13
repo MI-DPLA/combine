@@ -333,8 +333,8 @@ class GenericMapper(BaseMapper):
 
 		'''
 
-		# set record string
-		self.xml_string = record_string
+		# set record string, encoded as utf8
+		self.xml_string = record_string.encode('utf-8')
 
 		try:
 
