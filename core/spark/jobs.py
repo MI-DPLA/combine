@@ -5,6 +5,9 @@ from lxml import etree
 import os
 import sys
 
+# pyjxslt
+import pyjxslt
+
 # load elasticsearch spark code
 from es import ESIndex, MODSMapper
 
@@ -134,38 +137,35 @@ class TransformSpark(object):
 		#####################################################################################
 		# lxml / etree
 		#####################################################################################
-		# define function for transformation
-		def transform_xml(record_id, xml, xslt):
+		# # define function for transformation
+		# def transform_xml(record_id, xml, xslt):
 
-			# attempt transformation and save out put to 'document'
-			try:
-				# xslt_root = etree.fromstring(xslt)
-				xslt_root = etree.parse(xslt)
-				transform = etree.XSLT(xslt_root)
-				xml_root = etree.fromstring(xml)
-				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				result_tree = transform(mods_root)
-				result = etree.tostring(result_tree)
-				return Row(
-					id=record_id,
-					document=result.decode('utf-8'),
-					error=''
-				)
+		# 	# attempt transformation and save out put to 'document'
+		# 	try:
+		# 		# xslt_root = etree.fromstring(xslt)
+		# 		xslt_root = etree.parse(xslt)
+		# 		transform = etree.XSLT(xslt_root)
+		# 		xml_root = etree.fromstring(xml)
+		# 		mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
+		# 		result_tree = transform(mods_root)
+		# 		result = etree.tostring(result_tree)
+		# 		return Row(
+		# 			id=record_id,
+		# 			document=result.decode('utf-8'),
+		# 			error=''
+		# 		)
 
-			# catch transformation exception and save exception to 'error'
-			except Exception as e:
-				return Row(
-					id=record_id,
-					document='',
-					error=str(e)
-				)
+		# 	# catch transformation exception and save exception to 'error'
+		# 	except Exception as e:
+		# 		return Row(
+		# 			id=record_id,
+		# 			document='',
+		# 			error=str(e)
+		# 		)
 
-		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, kwargs['transform_filepath']))
+		# # transform via rdd.map
+		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, kwargs['transform_filepath']))
 		#####################################################################################
-		# lxml / etree
-		#####################################################################################
-
 		
 		#####################################################################################
 		# elsevier spark-xml-utils
@@ -202,9 +202,40 @@ class TransformSpark(object):
 
 		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, proc))
 		#####################################################################################
-		# elsevier spark-xml-utils
-		#####################################################################################		
 
+		#####################################################################################
+		# pyjxslt
+		#####################################################################################
+		with open(kwargs['transform_filepath'],'r') as f:
+			xslt = f.read()
+
+		# define function for transformation
+		def transform_xml(record_id, xml, xslt):
+
+			# attempt transformation and save out put to 'document'
+			try:
+				gw = pyjxslt.Gateway(6767)
+				gw.add_transform('wsu', xslt)
+				xml_root = etree.fromstring(xml)
+				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
+				result = gw.transform('wsu', etree.tostring(mods_root).decode('utf-8'))
+				return Row(
+					id=record_id,
+					document=result,
+					error=''
+				)
+
+			# catch transformation exception and save exception to 'error'
+			except Exception as e:
+				return Row(
+					id=record_id,
+					document='',
+					error=str(e)
+				)
+
+		# transform via rdd.map
+		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt))
+		#####################################################################################
 
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
