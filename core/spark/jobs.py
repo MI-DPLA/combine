@@ -208,20 +208,20 @@ class TransformSpark(object):
 		#####################################################################################
 		
 		# define udf function for transformation
-		def transform_xml(record_id, xml, xslt_string):
+		def transform_xml(record_id, xml_string, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
 				
 				# isolate MODS (will change when introducting more transforms)
-				xml_root = etree.fromstring(xml)
+				xml_root = etree.fromstring(xml_string)
 				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				mods_string = etree.tostring(mods_root).decode('utf-8')
+				xml_string = etree.tostring(mods_root).decode('utf-8')
 				
 				# transform with pyjxslt gateway
 				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('wsu', xslt_string)
-				result = gw.transform('wsu', mods_string)
+				gw.add_transform('xslt_transform', xslt_string)
+				result = gw.transform('xslt_transform', xml_string)
 
 				# return as Row
 				return Row(
