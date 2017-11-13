@@ -133,80 +133,6 @@ class TransformSpark(object):
 		# read output from input_job
 		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
 
-		
-		#####################################################################################
-		# lxml / etree
-		#####################################################################################
-		# # define function for transformation
-		# def transform_xml(record_id, xml, xslt):
-
-		# 	# attempt transformation and save out put to 'document'
-		# 	try:
-		# 		# xslt_root = etree.fromstring(xslt)
-		# 		xslt_root = etree.parse(xslt)
-		# 		transform = etree.XSLT(xslt_root)
-		# 		xml_root = etree.fromstring(xml)
-		# 		mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-		# 		result_tree = transform(mods_root)
-		# 		result = etree.tostring(result_tree)
-		# 		return Row(
-		# 			id=record_id,
-		# 			document=result.decode('utf-8'),
-		# 			error=''
-		# 		)
-
-		# 	# catch transformation exception and save exception to 'error'
-		# 	except Exception as e:
-		# 		return Row(
-		# 			id=record_id,
-		# 			document='',
-		# 			error=str(e)
-		# 		)
-
-		# # transform via rdd.map
-		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, kwargs['transform_filepath']))
-		#####################################################################################
-		
-		#####################################################################################
-		# elsevier spark-xml-utils
-		#####################################################################################
-		# with open('/home/combine/data/combine/transformations/fcd7eff0e13840919fc3e89bfbf271fd.xsl', 'r') as f:
-		#     xslt = f.read()
-		# proc = spark._jvm.com.elsevier.spark_xml_utils.xslt.XSLTProcessor.getInstance(xslt)
-
-		# def transform_xml(record_id, xml, proc):
-
-		# 	# attempt transformation and save out put to 'document'
-		# 	try:
-
-		# 		# retrieve MODS record
-		# 		xml_root = etree.fromstring(xml)
-		# 		mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				
-		# 		# transform with spark-xml-utils
-		# 		transformed = proc.transform(etree.tostring(mods_root).decode('utf-8'))
-
-		# 		return Row(
-		# 			id=record_id,
-		# 			document=transformed.encode('utf-8'),
-		# 			error=''
-		# 		)
-
-		# 	# catch transformation exception and save exception to 'error'
-		# 	except Exception as e:
-		# 		return Row(
-		# 			id=record_id,
-		# 			document='',
-		# 			error=str(e)
-		# 		)
-
-		# transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, proc))
-		#####################################################################################
-
-		#####################################################################################
-		# pyjxslt
-		#####################################################################################
-		
 		# define udf function for transformation
 		def transform_xml(record_id, xml_string, xslt_string):
 
@@ -244,7 +170,6 @@ class TransformSpark(object):
 
 		# transform via rdd.map
 		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt_string))
-		#####################################################################################
 
 		# write them to avro files
 		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
