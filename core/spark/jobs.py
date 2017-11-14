@@ -60,7 +60,15 @@ class HarvestSpark(object):
 	def spark_function(spark, **kwargs):
 
 		'''
-		Harvest records, select non-null, and write to avro files
+		Harvest records via OAI.
+
+		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
+			- record_id 
+			- job_id
+			- oai_id
+			- oai_set
+			- publish_set_id
+			- unique (TBD)
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
@@ -94,6 +102,14 @@ class HarvestSpark(object):
 		records = df.select("record.*").where("record is not null")
 
 		# check if record contains metadata, else filter
+		'''
+		rework this: 
+			- have first map look for <metadata> element, and return only that a la etree
+				- if not exist, return None
+			- second map, filters on None generated from above
+
+		In this way, only parse XML once
+		'''
 		def check_oai_record(document):
 			if type(document) == str:
 				xml_root = etree.fromstring(document)
@@ -107,29 +123,38 @@ class HarvestSpark(object):
 		filter_udf = udf(check_oai_record, BooleanType())
 		records = records.filter(filter_udf(records.document))
 
+		# copy 'id' from OAI harvest to 'record_id' column
+		records = records.withColumn('record_id', records.id)
+
+		# add job_id as column
+		job_id = job.id
+		job_id_udf = udf(lambda id: job_id, IntegerType())
+		records = records.withColumn('job_id', job_id_udf(records.id))
+
+		# add oai_id column
+		publish_set_id = job.record_group.publish_set_id
+		oai_id_udf = udf(lambda id: '%s%s:%s' % (
+			settings.COMBINE_OAI_IDENTIFIER,
+			publish_set_id,
+			id), StringType())
+		records = records.withColumn('oai_id', oai_id_udf(records.id))
+
+		# add oai_set
+		records = records.withColumn('oai_set', records.setIds[0])
+
 		# add blank error column
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
 
-		# write them to avro files
-		records.write.format("com.databricks.spark.avro").save(job.job_output)
-
-		# reload from avro for future operations
-		avro_records = spark.read.format('com.databricks.spark.avro').load(job.job_output)
-
 		# index records to db
-		index_records_to_db(
-			job=job,
-			publish_set_id=job.record_group.publish_set_id,
-			records=avro_records
-		)
+		index_records_to_db(job=job, records_df=records)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
 				job=job,
-				records_df=avro_records,
+				records_df=records,
 				index_mapper=kwargs['index_mapper']
 			)
 
@@ -379,43 +404,39 @@ class PublishSpark(object):
 
 
 
-def index_records_to_db(job=None, publish_set_id=None, records=None):
+def index_records_to_db(job=None, records_df=None):
 
 	'''
 	Function to index records to DB.
 	Additionally, generates and writes oai_id column to DB.
 
 	Args:
-		job (core.models.Job): Job for records
-		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
 		records (pyspark.sql.DataFrame): records as pyspark DataFrame 
 	'''
 
-	# add job_id as column
-	job_id = job.id
-	job_id_udf = udf(lambda id: job_id, IntegerType())
-	records = records.withColumn('job_id', job_id_udf(records.id))
-
-	# add oai_id column
-	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
-	records = records.withColumn('oai_id', oai_id_udf(records.id))
-
-	# # isolate oai set and add
-	# '''
-	# Flattening setIds for now, but could alter this to stringify the array if multiple are present
-	# ''' 
-	# records = records.withColumn('oai_set', records.setIds[0])
-
-	# check uniqueness
-	records = records.withColumn("unique", (
+	# check uniqueness (overwrites if column already exists)
+	records_df = records_df.withColumn("unique", (
 		pyspark_sql_functions.count("id")\
 		.over(Window.partitionBy("id")) == 1)\
 		.cast('integer'))
+	
+	# select columns to avro and DB
+	records_df_combine_cols = records_df.select([
+			'record_id',
+			'job_id',
+			'oai_id',
+			'document',
+			'error',
+			'unique',
+			'oai_set'
+		])
+
+	# write avro
+	records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
 
 	# write records to DB
-	records.withColumn('record_id', records.id)\
-	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique'])\
-	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
+	records_df_combine_cols.write.jdbc(
+		settings.COMBINE_DATABASE['jdbc_url'],
 		'core_record',
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
