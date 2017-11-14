@@ -180,7 +180,7 @@ class TransformSpark(object):
 
 				# if metadata root not present, raise exception
 				if m_root is None:
-						raise Exception('could not find metadata element')
+					raise Exception('could not find metadata element')
 
 				# else, continue with metadata element
 				else:
