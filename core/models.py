@@ -622,6 +622,21 @@ class Record(models.Model):
 			return {}
 
 
+	def parse_document_xml(self):
+
+		'''
+		Parse self.document as XML node with etree
+
+		Args:
+			None
+
+		Returns:
+			(lxml.etree._Element)
+		'''
+
+		return etree.fromstring(self.document.encode('utf-8'))
+
+
 
 class IndexMappingFailure(models.Model):
 

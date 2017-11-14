@@ -139,22 +139,29 @@ class TransformSpark(object):
 			# attempt transformation and save out put to 'document'
 			try:
 				
-				# isolate MODS (will change when introducting more transforms)
+				# parse string and grab <metadata> element
 				xml_root = etree.fromstring(xml_string)
-				mods_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata/{http://www.loc.gov/mods/v3}mods')
-				xml_string = etree.tostring(mods_root).decode('utf-8')
-				
-				# transform with pyjxslt gateway
-				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('xslt_transform', xslt_string)
-				result = gw.transform('xslt_transform', xml_string)
+				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
 
-				# return as Row
-				return Row(
-					id=record_id,
-					document=result,
-					error=''
-				)
+				# get metadata children, should be one element, use this
+				m_children = m_root.getchildren()
+				if len(m_children) == 1:
+					m_child = m_children[0]
+					m_string = etree.tostring(m_child).decode('utf-8')
+				
+					# transform with pyjxslt gateway
+					gw = pyjxslt.Gateway(6767)
+					gw.add_transform('xslt_transform', xslt_string)
+					result = gw.transform('xslt_transform', m_string)
+
+					# return as Row
+					return Row(
+						id=record_id,
+						document=result,
+						error=''
+					)
+				else:
+					raise Exception('multiple children nodes to OAI metadata element')
 
 			# catch transformation exception and save exception to 'error'
 			except Exception as e:
