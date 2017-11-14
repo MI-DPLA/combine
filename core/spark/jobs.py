@@ -190,7 +190,15 @@ class TransformSpark(object):
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
 		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+		# df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+
+		# read output from input job
+		sqldf = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE
+			)
+		df = sqldf.filter(sqldf.job_id = int(kwargs['job_id']))
 
 		# define udf function for transformation
 		def transform_xml(record_id, xml_string, xslt_string):

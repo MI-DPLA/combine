@@ -10,7 +10,6 @@
 
 CREATE TABLE `core_record` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `index` int(11) DEFAULT NULL,
   `record_id` varchar(1024) DEFAULT NULL,
   `oai_id` varchar(1024) DEFAULT NULL,
   `document` longtext,

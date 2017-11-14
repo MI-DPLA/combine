@@ -493,7 +493,6 @@ class Record(models.Model):
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
