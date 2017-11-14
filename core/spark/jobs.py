@@ -9,7 +9,10 @@ import sys
 import pyjxslt
 
 # load elasticsearch spark code
-from es import ESIndex, MODSMapper
+try:
+	from es import ESIndex, MODSMapper
+except:
+	from core.spark.es import ESIndex, MODSMapper
 
 # import Row from pyspark
 from pyspark.sql import Row
@@ -201,11 +204,11 @@ class TransformSpark(object):
 				properties=settings.COMBINE_DATABASE
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
-		# records = records.select(CombineRecordSchema().field_names)
+		records = records.select(CombineRecordSchema().field_names)
 
 		##############################################################################################################
 		# define udf function for transformation
-		def transform_xml(row, xslt_string):
+		def transform_xml(job_id, row, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
@@ -229,7 +232,7 @@ class TransformSpark(object):
 					document = trans[0],
 					error = trans[1],
 					unique = row.unique,
-					job_id = row.job_id,
+					job_id = job_id,
 					oai_set = row.oai_set
 				)
 
@@ -238,11 +241,11 @@ class TransformSpark(object):
 			xslt_string = f.read()
 
 		# transform via rdd.map
-		records = records.rdd.map(lambda row: transform_xml(row, xslt_string))
+		job_id = job.job_id
+		records = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
-		# records = records.toDF(schema=CombineRecordSchema().schema)
-		records = records.toDF()
+		records = records.toDF(schema=CombineRecordSchema().schema)
 		##############################################################################################################
 
 		# index records to db
@@ -412,7 +415,7 @@ def save_records(job=None, records_df=None):
 		pyspark_sql_functions.count('record_id')\
 		.over(Window.partitionBy('record_id')) == 1)\
 		.cast('integer'))
-	
+
 	# ensure columns to avro and DB
 	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
