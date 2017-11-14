@@ -29,25 +29,30 @@ from core.models import CombineJob, Job
 
 
 
-class CombineSparkSchemas(object):
+class CombineRecordSchema(object):
 
 	'''
 	Class to organize spark dataframe schemas
 	'''
 
-	# schema for Combine records
-	record = StructType([
-			StructField('id', IntegerType(), False),
-			StructField('index', IntegerType(), True),
-			StructField('record_id', StringType(), True),
-			StructField('oai_id', StringType(), True),
-			StructField('document', StringType(), True),
-			StructField('error', StringType(), True),
-			StructField('unique', BooleanType(), False),
-			StructField('job_id', IntegerType(), False),
-			StructField('oai_set', StringType(), True)
-		]
-	)
+	def __init__(self):
+
+		# schema for Combine records
+		self.schema = StructType([
+				StructField('record_id', StringType(), True),
+				StructField('oai_id', StringType(), True),
+				StructField('document', StringType(), True),
+				StructField('error', StringType(), True),
+				StructField('unique', BooleanType(), False),
+				StructField('job_id', IntegerType(), False),
+				StructField('oai_set', StringType(), True)
+			]
+		)
+
+		# fields
+		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
+
+
 
 
 class HarvestSpark(object):
@@ -146,7 +151,7 @@ class HarvestSpark(object):
 		records = records.withColumn('error', error(records.id))
 
 		# index records to db
-		index_records_to_db(job=job, records_df=records)
+		save_records(job=job, records_df=records)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
@@ -189,60 +194,43 @@ class TransformSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# read output from input_job
-		# df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
-
-		# read output from input job
+		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE
 			)
-		df = sqldf.filter(sqldf.job_id = int(kwargs['job_id']))
+		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		# records = records.select(CombineRecordSchema().field_names)
 
+		##############################################################################################################
 		# define udf function for transformation
-		def transform_xml(record_id, xml_string, xslt_string):
+		def transform_xml(row, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
 				
-				# parse string and grab <metadata> element
-				xml_root = etree.fromstring(xml_string)
-				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
-
-				# if metadata root not present, raise exception
-				if m_root is None:
-					raise Exception('could not find metadata element')
-
-				# else, continue with metadata element
-				else:
-
-					# get metadata children, should be one element, use this
-					m_children = m_root.getchildren()
-					if len(m_children) == 1:
-						m_child = m_children[0]
-						m_string = etree.tostring(m_child).decode('utf-8')
-					
-						# transform with pyjxslt gateway
-						gw = pyjxslt.Gateway(6767)
-						gw.add_transform('xslt_transform', xslt_string)
-						result = gw.transform('xslt_transform', m_string)
-
-						# return as Row
-						return Row(
-							id=record_id,
-							document=result,
-							error=''
-						)
-					else:
-						raise Exception('multiple children nodes to OAI metadata element')
+				# transform with pyjxslt gateway
+				gw = pyjxslt.Gateway(6767)
+				gw.add_transform('xslt_transform', xslt_string)
+				result = gw.transform('xslt_transform', row.document)
+				# set trans tuple
+				trans = (result,'')
 
 			# catch transformation exception and save exception to 'error'
 			except Exception as e:
-				return Row(
-					id=record_id,
-					document='',
-					error=str(e)
+				# set trans tuple
+				trans = ('',str(e))
+
+			# return Row
+			return Row(
+					record_id = row.record_id,
+					oai_id = row.oai_id,
+					document = trans[0],
+					error = trans[1],
+					unique = row.unique,
+					job_id = row.job_id,
+					oai_set = row.oai_set
 				)
 
 		# open XSLT transformation, pass to map as string
@@ -250,26 +238,24 @@ class TransformSpark(object):
 			xslt_string = f.read()
 
 		# transform via rdd.map
-		transformed = df.rdd.map(lambda row: transform_xml(row.id, row.document, xslt_string))
+		records = records.rdd.map(lambda row: transform_xml(row, xslt_string))
 
-		# write them to avro files
-		transformed.toDF().write.format("com.databricks.spark.avro").save(job.job_output)
+		# back to DataFrame
+		# records = records.toDF(schema=CombineRecordSchema().schema)
+		records = records.toDF()
+		##############################################################################################################
 
 		# index records to db
-		index_records_to_db(
-			job=job,
-			publish_set_id=job.record_group.publish_set_id,
-			records=transformed.toDF()
-		)
+		save_records(job=job, records_df=records)
 
 		# finally, index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=transformed.toDF(),
-				index_mapper=kwargs['index_mapper']
-			)
+		# if settings.INDEX_TO_ES:
+		# 	ESIndex.index_job_to_es_spark(
+		# 		spark,
+		# 		job=job,
+		# 		records_df=records,
+		# 		index_mapper=kwargs['index_mapper']
+		# 	)
 
 
 
@@ -321,7 +307,7 @@ class MergeSpark(object):
 		agg_df.write.format("com.databricks.spark.avro").save(job.job_output)
 
 		# index records to db
-		index_records_to_db(
+		save_records(
 			job=job,
 			publish_set_id=job.record_group.publish_set_id,
 			records=agg_df
@@ -388,7 +374,7 @@ class PublishSpark(object):
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to db
-		index_records_to_db(
+		save_records(
 			job=job,
 			publish_set_id=job.record_group.publish_set_id,
 			records=docs
@@ -411,7 +397,7 @@ class PublishSpark(object):
 
 
 
-def index_records_to_db(job=None, records_df=None):
+def save_records(job=None, records_df=None):
 
 	'''
 	Function to index records to DB.
@@ -423,23 +409,12 @@ def index_records_to_db(job=None, records_df=None):
 
 	# check uniqueness (overwrites if column already exists)
 	records_df = records_df.withColumn("unique", (
-		pyspark_sql_functions.count("id")\
-		.over(Window.partitionBy("id")) == 1)\
+		pyspark_sql_functions.count('record_id')\
+		.over(Window.partitionBy('record_id')) == 1)\
 		.cast('integer'))
 	
-	# select columns to avro and DB
-	records_df_combine_cols = records_df.select([
-			'record_id',
-			'job_id',
-			'oai_id',
-			'document',
-			'error',
-			'unique',
-			'oai_set'
-		])
-
-	# write avro
-	records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
+	# ensure columns to avro and DB
+	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
@@ -447,4 +422,9 @@ def index_records_to_db(job=None, records_df=None):
 		'core_record',
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
+
+	# write avro
+	records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
+
+	
 
