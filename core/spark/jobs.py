@@ -13,7 +13,7 @@ from es import ESIndex, MODSMapper
 
 # import Row from pyspark
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, IntegerType
+from pyspark.sql.types import StringType, IntegerType, BooleanType
 import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
 from pyspark.sql.window import Window
@@ -72,12 +72,19 @@ class HarvestSpark(object):
 		# select records with content
 		records = df.select("record.*").where("record is not null")
 
-		########################################################################################################
-		# # check integrity of OAI record
-		# def check_oai_record():
-			# pass
-		# records = records.rdd.map(lambda row: check_oai_record(row.record.id, row.record.document))	
-		########################################################################################################
+		# check if record contains metadata, else filter
+		def check_oai_record(document):
+			if type(document) == str:
+				xml_root = etree.fromstring(document)
+				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
+				if m_root is not None:
+					return True
+				else:
+					return False
+			else:
+				return False
+		filter_udf = udf(check_oai_record, BooleanType())
+		records = records.filter(filter_udf(records.document))
 
 		# add blank error column
 		error = udf(lambda id: '', StringType())
