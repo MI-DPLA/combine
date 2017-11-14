@@ -13,7 +13,7 @@ from es import ESIndex, MODSMapper
 
 # import Row from pyspark
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, IntegerType, BooleanType
+from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
 from pyspark.sql.window import Window
@@ -27,6 +27,27 @@ from django.conf import settings
 # import select models from Core
 from core.models import CombineJob, Job
 
+
+
+class CombineSparkSchemas(object):
+
+	'''
+	Class to organize spark dataframe schemas
+	'''
+
+	# schema for Combine records
+	record = StructType([
+			StructField('id', IntegerType(), False),
+			StructField('index', IntegerType(), True),
+			StructField('record_id', StringType(), True),
+			StructField('oai_id', StringType(), True),
+			StructField('document', StringType(), True),
+			StructField('error', StringType(), True),
+			StructField('unique', BooleanType(), False),
+			StructField('job_id', IntegerType(), False),
+			StructField('oai_set', StringType(), True)
+		]
+	)
 
 
 class HarvestSpark(object):
@@ -157,26 +178,8 @@ class TransformSpark(object):
 				xml_root = etree.fromstring(xml_string)
 				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
 
-				# if metadata root not present
+				# if metadata root not present, raise exception
 				if m_root is None:
-
-					# check header for OAI tombstone status
-					header = xml_root.find('{http://www.openarchives.org/OAI/2.0/}header')
-					if header is not None:
-						if 'status' in header.attrib.keys() and header.attrib['status'] == 'deleted':
-
-							# return error as deleted record
-							return Row(
-								id=record_id,
-								document='',
-								error='deleted, OAI tombstone'
-							)
-
-						else:
-							raise Exception('header found, but not reporting deleted, OAI tombstone')
-
-					# else, raise general exception that metadata element not found
-					else:
 						raise Exception('could not find metadata element')
 
 				# else, continue with metadata element
@@ -397,11 +400,11 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
 	records = records.withColumn('oai_id', oai_id_udf(records.id))
 
-	# isolate oai set and add
-	'''
-	Flattening setIds for now, but could alter this to stringify the array if multiple are present
-	''' 
-	records = records.withColumn('oai_set', records.setIds[0])
+	# # isolate oai set and add
+	# '''
+	# Flattening setIds for now, but could alter this to stringify the array if multiple are present
+	# ''' 
+	# records = records.withColumn('oai_set', records.setIds[0])
 
 	# check uniqueness
 	records = records.withColumn("unique", (
@@ -411,7 +414,7 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 
 	# write records to DB
 	records.withColumn('record_id', records.id)\
-	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique', 'oai_set'])\
+	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique'])\
 	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
 		'core_record',
 		properties=settings.COMBINE_DATABASE,
