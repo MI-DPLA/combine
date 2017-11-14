@@ -499,6 +499,7 @@ class Record(models.Model):
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
+	oai_set = models.CharField(max_length=255, null=True, default=None)
 
 
 	# this model is managed outside of Django

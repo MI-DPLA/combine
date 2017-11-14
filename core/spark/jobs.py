@@ -69,8 +69,15 @@ class HarvestSpark(object):
 		.option(kwargs['scope_type'], kwargs['scope_value'])\
 		.load()
 
-		# select records with content and write to avro
+		# select records with content
 		records = df.select("record.*").where("record is not null")
+
+		########################################################################################################
+		# # check integrity of OAI record
+		# def check_oai_record():
+			# pass
+		# records = records.rdd.map(lambda row: check_oai_record(row.record.id, row.record.document))	
+		########################################################################################################
 
 		# add blank error column
 		error = udf(lambda id: '', StringType())
@@ -143,25 +150,50 @@ class TransformSpark(object):
 				xml_root = etree.fromstring(xml_string)
 				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
 
-				# get metadata children, should be one element, use this
-				m_children = m_root.getchildren()
-				if len(m_children) == 1:
-					m_child = m_children[0]
-					m_string = etree.tostring(m_child).decode('utf-8')
-				
-					# transform with pyjxslt gateway
-					gw = pyjxslt.Gateway(6767)
-					gw.add_transform('xslt_transform', xslt_string)
-					result = gw.transform('xslt_transform', m_string)
+				# if metadata root not present
+				if m_root is None:
 
-					# return as Row
-					return Row(
-						id=record_id,
-						document=result,
-						error=''
-					)
+					# check header for OAI tombstone status
+					header = xml_root.find('{http://www.openarchives.org/OAI/2.0/}header')
+					if header is not None:
+						if 'status' in header.attrib.keys() and header.attrib['status'] == 'deleted':
+
+							# return error as deleted record
+							return Row(
+								id=record_id,
+								document='',
+								error='deleted, OAI tombstone'
+							)
+
+						else:
+							raise Exception('header found, but not reporting deleted, OAI tombstone')
+
+					# else, raise general exception that metadata element not found
+					else:
+						raise Exception('could not find metadata element')
+
+				# else, continue with metadata element
 				else:
-					raise Exception('multiple children nodes to OAI metadata element')
+
+					# get metadata children, should be one element, use this
+					m_children = m_root.getchildren()
+					if len(m_children) == 1:
+						m_child = m_children[0]
+						m_string = etree.tostring(m_child).decode('utf-8')
+					
+						# transform with pyjxslt gateway
+						gw = pyjxslt.Gateway(6767)
+						gw.add_transform('xslt_transform', xslt_string)
+						result = gw.transform('xslt_transform', m_string)
+
+						# return as Row
+						return Row(
+							id=record_id,
+							document=result,
+							error=''
+						)
+					else:
+						raise Exception('multiple children nodes to OAI metadata element')
 
 			# catch transformation exception and save exception to 'error'
 			except Exception as e:
@@ -358,9 +390,11 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 	oai_id_udf = udf(lambda id: '%s%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, publish_set_id, id), StringType())
 	records = records.withColumn('oai_id', oai_id_udf(records.id))
 
-	# add unique column
-	# unique_udf = udf(lambda id: 1, IntegerType())
-	# records = records.withColumn('unique', unique_udf(records.id))
+	# isolate oai set and add
+	'''
+	Flattening setIds for now, but could alter this to stringify the array if multiple are present
+	''' 
+	records = records.withColumn('oai_set', records.setIds[0])
 
 	# check uniqueness
 	records = records.withColumn("unique", (
@@ -370,7 +404,7 @@ def index_records_to_db(job=None, publish_set_id=None, records=None):
 
 	# write records to DB
 	records.withColumn('record_id', records.id)\
-	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique'])\
+	.select(['record_id', 'job_id', 'oai_id', 'document', 'error', 'unique', 'oai_set'])\
 	.write.jdbc(settings.COMBINE_DATABASE['jdbc_url'],
 		'core_record',
 		properties=settings.COMBINE_DATABASE,

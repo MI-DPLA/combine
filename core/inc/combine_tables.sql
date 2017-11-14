@@ -17,6 +17,7 @@ CREATE TABLE `core_record` (
   `error` longtext,
   `unique` tinyint(1) NOT NULL,
   `job_id` int(11) NOT NULL,
+  `oai_set` varchar(255) DEFAULT NULL,
   PRIMARY KEY (`id`),
   INDEX `core_record_job_id_idx` (`job_id`),
   FOREIGN KEY (job_id) REFERENCES core_job(id) ON DELETE CASCADE
