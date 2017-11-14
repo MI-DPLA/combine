@@ -101,27 +101,26 @@ class HarvestSpark(object):
 		# select records with content
 		records = df.select("record.*").where("record is not null")
 
-		# check if record contains metadata, else filter
-		'''
-		rework this: 
-			- have first map look for <metadata> element, and return only that a la etree
-				- if not exist, return None
-			- second map, filters on None generated from above
-
-		In this way, only parse XML once
-		'''
-		def check_oai_record(document):
+		# attempt to find and select <metadata> element from OAI record, else filter out
+		def find_metadata(document):
 			if type(document) == str:
 				xml_root = etree.fromstring(document)
 				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
 				if m_root is not None:
-					return True
+					# expecting only one child to <metadata> element
+					m_children = m_root.getchildren()
+					if len(m_children) == 1:
+						m_child = m_children[0]
+						m_string = etree.tostring(m_child).decode('utf-8')
+						return m_string
 				else:
-					return False
+					return 'none'
 			else:
-				return False
-		filter_udf = udf(check_oai_record, BooleanType())
-		records = records.filter(filter_udf(records.document))
+				return 'none'
+
+		metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
+		records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
+		records = records.filter(records.document != 'none')
 
 		# copy 'id' from OAI harvest to 'record_id' column
 		records = records.withColumn('record_id', records.id)
