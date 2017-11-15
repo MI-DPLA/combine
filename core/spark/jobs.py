@@ -406,6 +406,12 @@ def save_records(job=None, records_df=None):
 
 	Args:
 		records (pyspark.sql.DataFrame): records as pyspark DataFrame 
+
+	Returns:
+		None
+			- determines if record_id unique among records DataFrame
+			- selects only columns that match CombineRecordSchema
+			- writes to DB, writes to avro files
 	'''
 
 	# check uniqueness (overwrites if column already exists)
@@ -415,8 +421,7 @@ def save_records(job=None, records_df=None):
 		.cast('integer'))
 
 	# ensure columns to avro and DB
-	# records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
-	records_df_combine_cols = records_df
+	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
