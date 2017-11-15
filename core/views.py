@@ -162,7 +162,10 @@ def organizations(request):
 		organization_form = forms.OrganizationForm()
 
 		# render page
-		return render(request, 'core/organizations.html', {'orgs':orgs, 'organization_form':organization_form})
+		return render(request, 'core/organizations.html', {
+				'orgs':orgs,
+				'organization_form':organization_form
+			})
 
 
 	# create new organization
@@ -192,7 +195,12 @@ def organization(request, org_id):
 	record_group_form = forms.RecordGroupForm()
 	
 	# render page
-	return render(request, 'core/organization.html', {'org':org, 'record_groups':record_groups, 'record_group_form':record_group_form, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/organization.html', {
+			'org':org,
+			'record_groups':record_groups,
+			'record_group_form':record_group_form,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 
@@ -237,10 +245,10 @@ def record_group(request, org_id, record_group_id):
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
 	# get all jobs associated with record group
-	record_group_jobs = models.Job.objects.filter(record_group=record_group_id)
+	jobs = models.Job.objects.filter(record_group=record_group_id)
 
 	# loop through jobs and update status
-	for job in record_group_jobs:
+	for job in jobs:
 
 		# if job is pending, starting, or running, attempt to update status
 		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
@@ -255,13 +263,46 @@ def record_group(request, org_id, record_group_id):
 				job.update_record_count()
 
 	# render page 
-	return render(request, 'core/record_group.html', {'livy_session':livy_session, 'record_group':record_group, 'record_group_jobs':record_group_jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/record_group.html', {
+			'livy_session':livy_session,
+			'record_group':record_group,
+			'jobs':jobs,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 
 ####################################################################
 # Jobs 															   #
 ####################################################################
+
+@login_required
+def all_jobs(request):
+	
+	# get all jobs associated with record group
+	jobs = models.Job.objects.all()
+
+	# loop through jobs and update status
+	for job in jobs:
+
+		# if job is pending, starting, or running, attempt to update status
+		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
+			job.refresh_from_livy()
+
+		# udpate record count if not already calculated
+		if job.record_count == 0:
+
+			# if finished, count
+			if job.finished:
+				logger.debug('updating record count for job #%s' % job.id)
+				job.update_record_count()
+
+	# render page 
+	return render(request, 'core/all_jobs.html', {
+			'jobs':jobs,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
 
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
@@ -297,7 +338,12 @@ def job_details(request, org_id, record_group_id, job_id):
 	field_counts = cjob.count_indexed_fields()
 
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'record_count_details':record_count_details, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_details.html', {
+			'cjob':cjob,
+			'record_count_details':record_count_details,
+			'field_counts':field_counts,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 @login_required
@@ -311,7 +357,11 @@ def job_errors(request, org_id, record_group_id, job_id):
 	job_errors = cjob.get_job_errors()
 	
 	# return
-	return render(request, 'core/job_errors.html', {'cjob':cjob, 'job_errors':job_errors, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_errors.html', {
+			'cjob':cjob,
+			'job_errors':job_errors,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 @login_required
@@ -363,7 +413,11 @@ def job_harvest(request, org_id, record_group_id):
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
 		# render page
-		return render(request, 'core/job_harvest.html', {'record_group':record_group, 'oai_endpoints':oai_endpoints, 'breadcrumbs':breadcrumb_parser(request.path)})
+		return render(request, 'core/job_harvest.html', {
+				'record_group':record_group,
+				'oai_endpoints':oai_endpoints,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -387,7 +441,8 @@ def job_harvest(request, org_id, record_group_id):
 		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
 
 		# add overrides if set
-		overrides = { override:request.POST[override] for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
+		overrides = { override:request.POST[override] 
+			for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
 		# get preferred metadata index mapper
@@ -435,7 +490,13 @@ def job_transform(request, org_id, record_group_id):
 		transformations = models.Transformation.objects.all()	
 
 		# render page
-		return render(request, 'core/job_transform.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs, 'transformations':transformations, 'breadcrumbs':breadcrumb_parser(request.path)})
+		return render(request, 'core/job_transform.html', {
+				'job_select_type':'single',
+				'record_group':record_group,
+				'jobs':jobs,
+				'transformations':transformations,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -501,11 +562,16 @@ def job_merge(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs for this record group
+		# retrieve all jobs
 		jobs = models.Job.objects.all()
 
 		# render page
-		return render(request, 'core/job_merge.html', {'job_select_type':'multiple', 'record_group':record_group, 'jobs':jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
+		return render(request, 'core/job_merge.html', {
+				'job_select_type':'multiple',
+				'record_group':record_group,
+				'jobs':jobs,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -567,10 +633,16 @@ def job_publish(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs for this record group
-		jobs = record_group.job_set.all()
+		# jobs = record_group.job_set.all()
+		jobs = models.Job.objects.all()
 
 		# render page
-		return render(request, 'core/job_publish.html', {'job_select_type':'single', 'record_group':record_group, 'jobs':jobs, 'breadcrumbs':breadcrumb_parser(request.path)})
+		return render(request, 'core/job_publish.html', {
+				'job_select_type':'single',
+				'record_group':record_group,
+				'jobs':jobs,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
 
 	# if POST, submit job
 	if request.method == 'POST':
@@ -637,7 +709,12 @@ def field_analysis(request, org_id, record_group_id, job_id):
 	field_analysis_results = cjob.field_analysis(field_name)
 
 	# return
-	return render(request, 'core/field_analysis.html', {'cjob':cjob, 'field_name':field_name,'field_analysis_results':field_analysis_results, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/field_analysis.html', {
+			'cjob':cjob,
+			'field_name':field_name,
+			'field_analysis_results':field_analysis_results,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 @login_required
@@ -691,7 +768,12 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		job_details = {}
 
 	# return
-	return render(request, 'core/record.html', {'record_id':record_id, 'record':record, 'record_stages':record_stages, 'job_details':job_details})
+	return render(request, 'core/record.html', {
+			'record_id':record_id,
+			'record':record,
+			'record_stages':record_stages,
+			'job_details':job_details
+		})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
@@ -756,7 +838,10 @@ def configuration(request):
 	oai_endpoints = models.OAIEndpoint.objects.all()
 
 	# return
-	return render(request, 'core/configuration.html', {'transformations':transformations, 'oai_endpoints':oai_endpoints})
+	return render(request, 'core/configuration.html', {
+			'transformations':transformations,
+			'oai_endpoints':oai_endpoints
+		})
 
 
 def trans_scen_payload(request, trans_id):
@@ -851,7 +936,11 @@ class DTRecordsJson(BaseDatatableView):
 			# handle document metadata
 
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':row.job.record_group.organization.id, 'record_group_id':row.job.record_group.id, 'job_id':row.job.id, 'record_id':row.id}), row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.record_id)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -924,7 +1013,12 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			if column == 'record_id':
 				# get target record from row
 				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={'org_id':target_record.job.record_group.organization.id, 'record_group_id':target_record.job.record_group.id, 'job_id':target_record.job.id, 'record_id':target_record.id}), row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), row.record_id)
 
 			# handle associated job
 			if column == 'job':
