@@ -197,20 +197,20 @@ class TransformSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# # read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		# sqldf = spark.read.jdbc(
-		# 		settings.COMBINE_DATABASE['jdbc_url'],
-		# 		'core_record',
-		# 		properties=settings.COMBINE_DATABASE
-		# 	)
-		# records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		sqldf = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE
+			)
+		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 		# records = records.select(CombineRecordSchema().field_names)
 
 		# DEBUG
-		avrodf = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
-		job_id = job.id
-		job_id_udf = udf(lambda id: job_id, IntegerType())
-		records = avrodf.withColumn('job_id', job_id_udf(avrodf.record_id))
+		# avrodf = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+		# job_id = job.id
+		# job_id_udf = udf(lambda id: job_id, IntegerType())
+		# records = avrodf.withColumn('job_id', job_id_udf(avrodf.record_id))
 
 		##############################################################################################################
 		# define udf function for transformation
@@ -224,12 +224,12 @@ class TransformSpark(object):
 				gw.add_transform('xslt_transform', xslt_string)
 				result = gw.transform('xslt_transform', row.document)
 				# set trans tuple
-				trans = (result,'')
+				trans = (result, '')
 
 			# catch transformation exception and save exception to 'error'
 			except Exception as e:
 				# set trans tuple
-				trans = ('',str(e))
+				trans = ('', str(e))
 
 			# return Row
 			return Row(
@@ -247,16 +247,16 @@ class TransformSpark(object):
 			xslt_string = f.read()
 
 		# transform via rdd.map
-		job_id = job.job_id
-		records = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
+		job_id = job.id
+		records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
 		# records = records.toDF(schema=CombineRecordSchema().schema)
-		records = records.toDF()
+		records_trans = records_trans.toDF()
 		##############################################################################################################
 
 		# index records to db
-		save_records(job=job, records_df=records)
+		save_records(job=job, records_df=records_trans)
 
 		# finally, index to ElasticSearch
 		# if settings.INDEX_TO_ES:
@@ -425,7 +425,7 @@ def save_records(job=None, records_df=None):
 
 	# ensure columns to avro and DB
 	# records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
-	records_df_combine_cols = records_df.toDF()
+	records_df_combine_cols = records_df
 
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
