@@ -5,6 +5,7 @@
 	<h3>Field Analysis: {{ field_name }}</h3>
 
 	<div style="width:75%;">
+		<p><strong>Note:</strong> Default sorting is by count, but can be reordered in table.</p>
 		<table id="field_analysis" border="1">
 			<thead>
 				<tr>
@@ -37,7 +38,8 @@
 		$(document).ready(function() {
 		    $('#field_analysis').DataTable({
 		    	"pageLength": 25,
-		    	"lengthMenu": [ 10, 25, 100, 500 ]
+		    	"lengthMenu": [ 10, 25, 100, 500 ],
+		    	"order": [[ 1, "desc" ]]
 		    });
 		} );
 	</script>
