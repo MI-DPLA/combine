@@ -326,6 +326,27 @@ def job_input_select(request):
 
 
 @login_required
+def job_update_note(request, org_id, record_group_id, job_id):
+	
+	if request.method == 'POST':
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
+		# update job note
+		cjob.job.note = job_note
+		cjob.job.save()
+
+		# redirect 		
+		return redirect('job_details', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
+
+
+@login_required
 def job_harvest(request, org_id, record_group_id):
 
 	'''
