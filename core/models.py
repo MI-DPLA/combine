@@ -1502,6 +1502,39 @@ class CombineJob(object):
 		return sr.aggs[field_name]['buckets']
 
 
+	def field_analysis_dt(self, field_name):
+
+		'''
+		Helper method to return field analysis as expected for DataTables Ajax data source
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field in DT format
+			{
+				data: [
+					[
+						field_name,
+						count
+					],
+					...
+				]
+			}
+		'''
+
+		# get buckets
+		buckets = self.field_analysis(field_name)
+
+		# prepare as DT data
+		dt_dict = {
+			'data': [ [f['key'],f['doc_count']] for f in buckets ]
+		}
+
+		# return
+		return dt_dict
+
+
 	def get_indexing_failures(self):
 
 		'''

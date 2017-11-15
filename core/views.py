@@ -700,13 +700,12 @@ def field_analysis(request, org_id, record_group_id, job_id):
 
 	# get field name
 	field_name = request.GET.get('field_name')
-	logger.debug('field analysis for field "%s", job id: %s' % (field_name, job_id))
 	
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# get analysis for field
-	field_analysis_results = cjob.field_analysis(field_name)
+	field_analysis_results = cjob.field_analysis_dt(field_name)
 
 	# return
 	return render(request, 'core/field_analysis.html', {
@@ -727,7 +726,10 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# index_failures = cjob.get_indexing_failures()
 
 	# return
-	return render(request, 'core/job_indexing_failures.html', {'cjob':cjob, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_indexing_failures.html', {
+			'cjob':cjob,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 
