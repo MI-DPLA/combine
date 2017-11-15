@@ -48,7 +48,7 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-				row.id,
+				row.record_id,
 				row.document,
 				job.record_group.publish_set_id
 			))
@@ -57,7 +57,7 @@ class ESIndex(object):
 		try:
 			# filter out index mapping failures
 			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail')\
-			.map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
+			.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
@@ -65,7 +65,7 @@ class ESIndex(object):
 			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error'])\
+			failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
 			.write.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',

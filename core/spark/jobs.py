@@ -206,13 +206,6 @@ class TransformSpark(object):
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 		# records = records.select(CombineRecordSchema().field_names)
 
-		# DEBUG
-		# avrodf = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
-		# job_id = job.id
-		# job_id_udf = udf(lambda id: job_id, IntegerType())
-		# records = avrodf.withColumn('job_id', job_id_udf(avrodf.record_id))
-
-		##############################################################################################################
 		# define udf function for transformation
 		def transform_xml(job_id, row, xslt_string):
 
@@ -237,7 +230,6 @@ class TransformSpark(object):
 					oai_id = row.oai_id,
 					document = trans[0],
 					error = trans[1],
-					# unique = 1,
 					job_id = int(job_id),
 					oai_set = row.oai_set
 				)
@@ -253,19 +245,18 @@ class TransformSpark(object):
 		# back to DataFrame
 		# records = records.toDF(schema=CombineRecordSchema().schema)
 		records_trans = records_trans.toDF()
-		##############################################################################################################
 
 		# index records to db
 		save_records(job=job, records_df=records_trans)
 
 		# finally, index to ElasticSearch
-		# if settings.INDEX_TO_ES:
-		# 	ESIndex.index_job_to_es_spark(
-		# 		spark,
-		# 		job=job,
-		# 		records_df=records,
-		# 		index_mapper=kwargs['index_mapper']
-		# 	)
+		if settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=records_trans,
+				index_mapper=kwargs['index_mapper']
+			)
 
 
 
