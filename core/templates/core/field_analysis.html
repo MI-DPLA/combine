@@ -4,15 +4,43 @@
 
 	<h3>Field Analysis: {{ field_name }}</h3>
 
-	<h4>Field values</h4>
-	<ul>
-		{% for value in field_analysis_results %}
-			{% if 'http://' in value.key or 'https://' in value.key %}		
-				<li><a href="{{ value.key }}" target="_blank">{{ value.key }}</a> <a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">({{ value.doc_count }})</a></li>
-			{% else %}
-				<li>{{ value.key }} <a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">({{ value.doc_count }})</a></li>
-			{% endif %}
-		{% endfor %}
-	</ul>
+	<div style="width:75%;">
+		<table id="field_analysis" border="1">
+			<thead>
+				<tr>
+					<th>Field Value</th>
+					<th>Count</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Value</th>
+					<th>Count</th>
+				</tr>
+			</tfoot>
+			<tbody>
+				{% for value in field_analysis_results %}
+				<tr>
+					{% if 'http://' in value.key or 'https://' in value.key %}		
+						<td><a href="{{ value.key }}" target="_blank">{{ value.key }}</a></td>
+						<td><a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">{{ value.doc_count }}</a></td>
+					{% else %}
+						<td>{{ value.key }}</a></td>
+						<td><a href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:"{{ value.key }}"' target="_blank">{{ value.doc_count }}</a></td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+	</div>
+	<script>
+		$(document).ready(function() {
+		    $('#field_analysis').DataTable({
+		    	"pageLength": 25,
+		    	"lengthMenu": [ 10, 25, 100, 500 ]
+		    });
+		} );
+	</script>
+
 
 {% endblock %}
