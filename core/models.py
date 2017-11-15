@@ -235,11 +235,11 @@ class Job(models.Model):
 	headers = models.CharField(max_length=255, null=True)
 	response = models.TextField(null=True, default=None)
 	job_output = models.TextField(null=True, default=None)
-	# job_output_filename_hash = models.CharField(max_length=255, null=True)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	note = models.TextField(null=True, default=None)
 
 
 	def __str__(self):
@@ -443,6 +443,23 @@ class OAIEndpoint(models.Model):
 		return 'OAI endpoint: %s' % self.name
 
 
+	def as_dict(self):
+
+		'''
+		Return model attributes as dictionary
+
+		Args:
+			None
+
+		Returns:
+			(dict): attributes for model instance
+		'''
+
+		d = self.__dict__
+		d.pop('_state', None)
+		return d
+
+
 
 class Transformation(models.Model):
 
@@ -494,11 +511,12 @@ class Record(models.Model):
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	index = models.IntegerField(null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
+	unique = models.BooleanField(default=1)
+	oai_set = models.CharField(max_length=255, null=True, default=None)
 
 
 	# this model is managed outside of Django
@@ -576,6 +594,65 @@ class Record(models.Model):
 		
 		# return		
 		return record_stages
+
+
+	def derive_dpla_identifier(self):
+
+		'''
+		Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
+		identifier.  Experiemental.
+
+		Args:
+			None
+
+		Returns:
+			(str): Derived DPLA identifier
+		'''
+
+		pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
+		return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
+
+
+	def get_es_doc(self):
+
+		'''
+		Return indexed ElasticSearch document as dictionary
+
+		Args:
+			None
+
+		Returns:
+			(dict): ES document
+		'''
+
+		# init search
+		s = Search(using=es_handle, index='j%s' % self.job_id)
+		s = s.query('match', _id=self.record_id)
+
+		# execute search and capture as dictionary
+		sr = s.execute()
+		sr_dict = sr.to_dict()
+
+		# return
+		try:
+			return sr_dict['hits']['hits'][0]['_source']
+		except:
+			return {}
+
+
+	def parse_document_xml(self):
+
+		'''
+		Parse self.document as XML node with etree
+
+		Args:
+			None
+
+		Returns:
+			(lxml.etree._Element)
+		'''
+
+		return etree.fromstring(self.document.encode('utf-8'))
 
 
 
@@ -1311,21 +1388,6 @@ class CombineJob(object):
 		self.job = Job.objects.filter(id=job_id).first()
 
 
-	def count_records(self):
-
-		'''
-		Count records in job via DB query
-
-		Args:
-			None
-
-		Returns:
-			(int): count of records for job
-		'''
-
-		return self.job.get_records().count()
-
-
 	def get_record(self, id, is_oai=False):
 
 		'''
@@ -1364,7 +1426,7 @@ class CombineJob(object):
 				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
 		'''
 
-		if es_handle.indices.exists(index='j%s' % self.job_id):
+		if es_handle.indices.exists(index='j%s' % self.job_id) and es_handle.search(index='j%s' % self.job_id)['hits']['total'] > 0:
 
 			# get mappings for job index
 			es_r = es_handle.indices.get(index='j%s' % self.job_id)
@@ -1476,6 +1538,41 @@ class CombineJob(object):
 			return None
 
 
+	def get_detailed_job_record_count(self):
+
+		'''
+		Return details of record counts for input jobs, successes, and errors
+
+		Args:
+			None
+
+		Returns:
+			(dict): Dictionary of record counts
+		'''
+
+		r_count_dict = {}
+
+		# get counts
+		r_count_dict['records'] = self.job.get_records().count()
+		r_count_dict['errors'] = self.job.get_errors().count()
+
+		# include input jobs
+		total_input_records = self.get_total_input_job_record_count()
+		r_count_dict['input_jobs'] = {
+			'total_input_records': total_input_records,
+			'jobs':self.job.jobinput_set.all()
+		}
+		
+		# calc error percentags
+		if r_count_dict['errors'] != 0:
+			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(total_input_records)), 4)
+		else:
+			r_count_dict['error_percentage'] = 0.0
+		
+		# return
+		return r_count_dict
+
+
 	def get_job_output_filename_hash(self):
 
 		'''
@@ -1518,6 +1615,7 @@ class HarvestJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		oai_endpoint=None,
@@ -1548,6 +1646,7 @@ class HarvestJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group		
 			self.organization = self.record_group.organization
 			self.oai_endpoint = oai_endpoint
@@ -1564,6 +1663,7 @@ class HarvestJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1629,6 +1729,7 @@ class TransformJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_job=None,
@@ -1659,6 +1760,7 @@ class TransformJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
@@ -1675,6 +1777,7 @@ class TransformJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1712,10 +1815,10 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'transform_filepath':self.transformation.filepath,
-				'job_input':self.input_job.job_output,
+				'transform_filepath':self.transformation.filepath,				
+				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}
@@ -1746,10 +1849,12 @@ class MergeJob(CombineJob):
 	
 	'''
 	Merge multiple jobs into a single job
+	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_jobs=None,
@@ -1778,6 +1883,7 @@ class MergeJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
@@ -1793,6 +1899,7 @@ class MergeJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1829,9 +1936,9 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, job_inputs="%(job_inputs)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'job_inputs':str([ input_job.job_output for input_job in self.input_jobs ]),
+				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}
@@ -1860,6 +1967,7 @@ class PublishJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_job=None,
@@ -1888,6 +1996,7 @@ class PublishJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
@@ -1903,6 +2012,7 @@ class PublishJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1942,9 +2052,9 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'job_input':self.input_job.job_output,
+				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}

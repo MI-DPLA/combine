@@ -1,33 +1,54 @@
 {% extends 'core/base.html' %}
 {% block content %}
 
-	<div class="{{ cjob.job.job_type }}">
-		<h3>Job Details: {{ cjob.job.name }}</h3>
+	<div>
+		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>		
 	</div>
 
-	<h4>Records</h4>
+	<div style="background-color:#E4E4E3; width:50%; padding:5px 10px 10px 10px; border-radius:10px;">
+		<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+			{% csrf_token %}
+			<h4>Notes</h4>			
+			<p><textarea rows="5" cols="120" name="job_note" placeholder="No job notes found...">{{ cjob.job.note }}</textarea></p>
+			<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
+			<input type="hidden" name="next" value="{{ request.path }}">
+			<input type="submit" value="update notes">
+		</form>
+	</div>
 
+	<p>The following jobs were used as input for this {{ cjob.job.job_type }}.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
 	<table border="1" cellpadding="5">
 		<tr>
-			<th><em>Input</em> job(s) and record counts</th>
-			<td>
-				{% for input_job in cjob.job.jobinput_set.all %}
-				<div class="{{ input_job.input_job.job_type }}" style="padding:5x; clear:both;">
-					Job <a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">#{{ input_job.input_job.id }}</a>, {{ input_job.input_job.record_count }}
-				</div>
-				{% endfor %}
-			</td>
-			<td><strong>total:</strong> {{ cjob.get_total_input_job_record_count }}</td>
+			<th>Input Job Name</th>
+			<th>Record Count</th>
 		</tr>
-		<tr>
-			<th><em>This</em> job record count</th>
-			<td>{{ cjob.job.record_count }}</td>
-			<td><a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+		{% for input_job in cjob.job.jobinput_set.all %}
+		<tr class="{{ input_job.input_job.job_type }}">
+			<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+			<td>{{ input_job.input_job.record_count }}</td>
 		</tr>
+		{% endfor %}
 		<tr>
-			<th><em>Indexed</em> record count</th>
-			<td>{{ field_counts.total_docs }}</td>
-			<td><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">see failures</a></td>
+			<td></td>
+			<td><strong>Total:</strong> {{ record_count_details.input_jobs.total_input_records }}</td>
+		</tr>
+	</table>
+
+	<p>Given the input jobs and records outlined above, the following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
+	<table border="1" cellpadding="5">
+		<tr>
+			<th>This Job Name</th>
+			<th>Total Input Records</th>
+			<th>Sucesssful Records</th>
+			<th>Errors</th>
+			<th>Error Percentage</th>
+		</tr>
+		<tr class="{{ cjob.job.job_type }}">
+			<td>{{ cjob.job.name }}</td>
+			<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+			<td>{{ record_count_details.records }}</td>
+			<td>{{ record_count_details.errors }}</td>
+			<td>{{ record_count_details.error_percentage }}</td>
 		</tr>
 	</table>
 
@@ -36,29 +57,95 @@
 	<!-- Indexing Mapping Selection -->
 	{% include 'core/records_dt_table.html' %}
 
-	<h4>Field Breakdown</h4>
+	<h4>Indexed Field Breakdown</h4>
 
-	<p><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse ElasticSearch index</a></p>
+	<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
 
-	<table border="1" cellpadding="5">
+	<p>
+		<div style="width:50%;">
+			<table border="1" cellpadding="5">
+				<tr>
+					<th>Column</th>
+					<th>Explanation</th>
+				<tr>
+				<tr>
+					<td><strong>Instances of Field</strong></td>
+					<td>How many times this particular field is used across all records.  Note, this may be <em>more</em> than the total number of records.</td>
+				</tr>
+				<tr>
+					<td><strong>Count of Distinct Values of Field</strong></td>
+					<td>How many unique values are present for a given field.  As such, this can/should not exceed the total instances of this field.</td>
+				</tr>
+				<tr>
+					<td><strong>Percentage of Field Values that are Unique</strong></td>
+					<td>Given these two numbers, percentage of total instances of this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 would be 10% unique (lighter green).</td>
+				</tr>
+				<tr>
+					<td><strong>Instance of Field in Total Indexed Records</strong></td>
+					<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) suggests all records have this field, 0.10% (lighter green) means only 10% have this field.  Note: Though you might have 10,000 instances of a subject field, from 5,000 records, it's possible that only 2,500 records (1/2 the total records) actually have 4 subjects a piece.  In this scenario, this number would be 0.5, indicating that while there are <em>many</em> subject fields, only 50% of your records contain them.  This can be useful for QAing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
+				</tr>
+			</table>
+		</div>
+	</p>
 
-		<tr>
-			<th>Field Name</th>
-			<th>Instances of Field</th>
-			<th>Count of Distinct Values of Field</th>
-			<th>Percentage of Field Values that are Unique</th>
-			<th>Instance of Field in Total Indexed Records</th>
-		</tr>
-
-		{% for field in field_counts.fields %}
+	<p>
+		<table border="1" cellpadding="5">
 			<tr>
-				<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}">{{ field.field_name }}</a></td>
-				<td>{{ field.instances }}</td>
-				<td>{{ field.distinct }}</td>
-				<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-				<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+				<th>Total records for indexing</th>
+				<th>Indexed</th>
+				<th>Actions</th>
 			</tr>
-		{% endfor %}
-	</table>
+			<tr>
+				<td>{{ record_count_details.records }}</td>
+				<td>{{ field_counts.total_docs }}</td>
+				<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
+			</tr>
+		</table>
+	</p>
 
+	<p>
+		<table id="index_analysis" border="1">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					<th>Instances of Field</th>
+					<th>Count of Distinct Values of Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Name</th>
+					<th>Instances of Field</th>
+					<th>Count of Distinct Values of Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</tfoot>
+
+			<tbody>
+				{% for field in field_counts.fields %}
+					<tr>
+						<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+						<td>{{ field.instances }}</td>
+						<td>{{ field.distinct }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+
+		</table>
+		<script>
+			$(document).ready(function() {
+			    $('#index_analysis').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ]
+			    });
+			} );
+		</script>
+	</p>
 {% endblock %}
+
+

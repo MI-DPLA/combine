@@ -290,11 +290,14 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
+	# detailed record count
+	record_count_details = cjob.get_detailed_job_record_count()
+
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
 	# return
-	return render(request, 'core/job_details.html', {'cjob':cjob, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
+	return render(request, 'core/job_details.html', {'cjob':cjob, 'record_count_details':record_count_details, 'field_counts':field_counts, 'breadcrumbs':breadcrumb_parser(request.path)})
 
 
 @login_required
@@ -320,6 +323,27 @@ def job_input_select(request):
 	
 	# return
 	return render(request, 'core/job_input_select.html', {'jobs':jobs})
+
+
+@login_required
+def job_update_note(request, org_id, record_group_id, job_id):
+	
+	if request.method == 'POST':
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
+		# update job note
+		cjob.job.note = job_note
+		cjob.job.save()
+
+		# redirect 		
+		return redirect('job_details', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
 
 
 @login_required
@@ -354,6 +378,11 @@ def job_harvest(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve OAIEndpoint
 		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
 
@@ -367,6 +396,7 @@ def job_harvest(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.HarvestJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
@@ -420,6 +450,11 @@ def job_transform(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('using job as input: %s' % input_job)
@@ -434,6 +469,7 @@ def job_transform(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
@@ -484,6 +520,11 @@ def job_merge(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve jobs to merge
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('merging jobs: %s' % input_jobs)
@@ -494,6 +535,7 @@ def job_merge(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
@@ -543,6 +585,11 @@ def job_publish(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
@@ -553,6 +600,7 @@ def job_publish(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
@@ -672,6 +720,27 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 	return HttpResponse("<pre>%s</pre>" % record.error)
 
 
+####################################################################
+# Configuration 												   #
+####################################################################
+
+@login_required
+def oai_endpoint_payload(request, oai_endpoint_id):
+
+	'''
+	Return JSON of saved OAI endpoint information
+	'''
+
+	# retrieve OAIEndpoint
+	oai_endpoint = models.OAIEndpoint.objects.get(pk=oai_endpoint_id)
+
+	# pop state
+	oai_endpoint.__dict__.pop('_state')
+
+	# return as json
+	return JsonResponse(oai_endpoint.__dict__)
+
+
 
 ####################################################################
 # Transformations 												   #
@@ -752,14 +821,14 @@ class DTRecordsJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'document', 'error']
+		columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'document', 'error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'document', 'error']
+		order_columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'document', 'error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -787,7 +856,7 @@ class DTRecordsJson(BaseDatatableView):
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
-					xml = etree.fromstring(row.document)
+					xml = etree.fromstring(row.document.encode('utf-8'))
 					return '<span style="color: green;">Valid XML</span>'
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
@@ -795,6 +864,13 @@ class DTRecordsJson(BaseDatatableView):
 			# handle associated job
 			if column == 'job':
 				return row.job.name
+
+			# handle associated job
+			if column == 'unique':
+				if row.unique:
+					return '<span style="color:green;">Unique</span>'
+				else:
+					return '<span style="color:red;">Duplicate</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)

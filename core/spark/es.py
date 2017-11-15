@@ -4,6 +4,7 @@ from elasticsearch import Elasticsearch
 import json
 from lxml import etree
 import os
+import re
 import requests
 import sys
 import xmltodict
@@ -18,7 +19,6 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 from django.conf import settings
-
 
 
 class ESIndex(object):
@@ -48,13 +48,16 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-			row.id, row.document, job.record_group.publish_set_id))
+				row.record_id,
+				row.document,
+				job.record_group.publish_set_id
+			))
 
 		# attempt to write index mapping failures to DB
 		try:
 			# filter out index mapping failures
 			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail')\
-			.map(lambda row: Row(id=row[1]['id'], mapping_error=row[1]['mapping_error'])).toDF()
+			.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
@@ -62,7 +65,7 @@ class ESIndex(object):
 			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.id).select(['record_id', 'job_id', 'mapping_error'])\
+			failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
 			.write.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',
@@ -79,7 +82,13 @@ class ESIndex(object):
 		# create index in advance
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'j%s' % job.id
-		mapping = {'mappings':{'record':{'date_detection':False}}}
+		mapping = {
+			'mappings':{
+				'record':{
+					'date_detection':False
+				}
+			}
+		}
 		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
@@ -92,7 +101,7 @@ class ESIndex(object):
 					"es.resource":"%s/record" % index_name,
 					"es.nodes":"192.168.45.10:9200",
 					"es.mapping.exclude":"temp_id",
-					"es.mapping.id":"temp_id"
+					"es.mapping.id":"temp_id",
 				}
 		)
 
@@ -154,9 +163,213 @@ class BaseMapper(object):
 			- sets self.mapped_record, and returns instance of self
 	'''
 
+	# def __init__(self):
+
+	# 	logger.debug('init BaseMapper')
+
+
+
+class GenericMapper(BaseMapper):
+
+	'''
+	Generic flattener of nested, or flat, XML, suitable for indexing in ElasticSearch
+
+	Looping through all elements in an XML tree, the xpath for each element, in combination with attributes is used
+	to generate a flattened version of the field into a single string.
+
+	e.g.
+		<foo>
+			<bar type="geographic">Seattle</bar>
+			<bar type="topic">city</bar>
+		</foo>
+		<foo>
+			<baz>Cats Cradle</baz>
+			<baz>Breakfast of Champions</baz>
+		</foo>
+
+	becomes...
+		[
+			('foo_bar_type_geographic', 'Seattle'),
+			('foo_bar_type_@topic', 'city'),
+			('foo_bar', ('Cats Cradle','Breakfast of Champions'))
+				# note tuple for multiple values, not list here, as saveAsNewAPIHadoopFile requires
+		]
+
+	Args:
+		record_id (str): record id
+		record_string (str): string of record document
+		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+	Returns:
+		(tuple):
+			0 (str): ['success','fail']
+			1 (dict): details from mapping process, success or failure
+	'''
+
 	def __init__(self):
 
-		logger.debug('init BaseMapper')
+		# empty elems list
+		self.flat_elems = []
+
+		# empty formatted elems dict, grouping by flat, formatted element
+		self.formatted_elems = {}
+
+
+	def flatten_record(self):
+
+		'''
+		Walk XML tree, writing each element with some basic information
+		of xpath, attributes, and text to self.flat_elems()
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets self.flat_elems
+		'''
+
+		# pre-compile checker for blank spaces
+		blank_check = re.compile(r"[^ \t\n]")
+
+		# walk descendants of root
+		for elem in self.xml_root.iterdescendants():
+
+			# if text value present for element, save to list
+			if elem.text and re.search(blank_check, elem.text) is not None:
+
+				# get xpath
+				xpath = self.xml_tree.getpath(elem)
+
+				# strip index if repeating
+				xpath = re.sub(r'\[[0-9]+\]','', xpath)
+
+				# append
+				self.flat_elems.append({
+						'text':elem.text,
+						'xpath':xpath,
+						'attributes':elem.attrib
+					})
+
+
+	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
+
+		'''
+		After elements have been flattened, with text, xpath, and attributes, 
+		derive single string for flattened field, and append potentially repeating
+		values to self.formatted_elems
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets self.formatted_elems
+		'''
+
+		# loop through flattened elements
+		for elem in self.flat_elems:
+
+			# split on slashes
+			xpath_comps = elem['xpath'].lstrip('/').split('/')
+
+			# proceed if not entirely asterisks
+			if set(xpath_comps) != set('*'):
+
+				# remove namespaces if present
+				for i,comp in enumerate(xpath_comps):
+					if ':' in comp:
+						xpath_comps[i] = comp.split(':')[-1]
+
+				# remove asterisks from xpath_comps, as they are unhelpful
+				xpath_comps = [ c for c in xpath_comps if c != '*' ]
+
+				# if include attributes
+				if include_attributes:
+					for k,v in elem['attributes'].items():
+
+						# replace whitespace with _
+						k = k.replace(' ','_')
+
+						# append to xpath_comps
+						xpath_comps.append('@%s_%s' % (k,v))
+
+				# derive flat field name
+				flat_field = '_'.join(xpath_comps)
+				
+				# if not yet seen, add to dictionary as single element
+				if flat_field not in self.formatted_elems.keys():
+					self.formatted_elems[flat_field] = elem['text']
+
+				# elif, field exists, but not yet list, convert to list and append value
+				elif flat_field in self.formatted_elems.keys() and type(self.formatted_elems[flat_field]) != list:
+					temp_val = self.formatted_elems[flat_field]
+					self.formatted_elems[flat_field] = [temp_val, elem['text']]
+
+				# else, append to already present list
+				else:
+					self.formatted_elems[flat_field].append(elem['text'])
+
+		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
+		for k,v in self.formatted_elems.items():
+			if type(v) == list:
+				self.formatted_elems[k] = tuple(v)
+
+
+	def map_record(self, record_id, record_string, publish_set_id):
+
+		'''
+		Map record
+
+		Args:
+			record_id (str): record id
+			record_string (str): string of record document
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			(tuple):
+				0 (str): ['success','fail']
+				1 (dict): details from mapping process, success or failure
+
+		'''
+
+		# set record string, encoded as utf8
+		self.xml_string = record_string.encode('utf-8')
+
+		try:
+
+			# parse from string
+			self.xml_root = etree.fromstring(self.xml_string)
+
+			# get tree
+			self.xml_tree = self.xml_root.getroottree()
+
+			# flatten record
+			self.flatten_record()
+
+			# format for return
+			self.format_record()
+
+			# add temporary id field
+			self.formatted_elems['temp_id'] = record_id
+
+			# add publish set id
+			self.formatted_elems['publish_set_id'] = publish_set_id
+
+			return (
+					'success',
+					self.formatted_elems
+				)
+
+		except Exception as e:
+			
+			return (
+				'fail',
+				{
+					'id':record_id,
+					'mapping_error':str(e)
+				}
+			)
 
 
 

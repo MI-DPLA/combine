@@ -5,9 +5,11 @@
 	<h2>Record</h2>
 
 	<ul>
-		<li><strong>DB ID:</strong> {{ record.id }}</li>
+		<li><strong>Combine DB ID:</strong> {{ record.id }}</li>
+		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type }}">{{ record.job.job_type }}</span></li>
 		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
-		<li><strong>Job Type:</strong> {{ record.job.job_type }}</li>
+		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
+		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
 	</ul>
 
 	<h3>Record Stages</h3>
@@ -43,10 +45,54 @@
 		{% endfor %}
 	</table>
 
-	<h2>{{ record.job.job_type }} Details</h2>
+	<h3>Indexed Fields</h3>
+
+	<div style="width:75%;">
+		<table id="record_fields" border="1">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					<th>Field Value</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Name</th>
+					<th>Field Value</th>
+				</tr>
+			</tfoot>
+			<tbody>
+				{% for key, value in record.get_es_doc.items %}
+				<tr>
+					<td><strong>{{ key }}</strong></td>
+					{% if 'http://' in value or 'https://' in value %}
+						<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
+					{% else %}
+						<td>{{ value }}</td>
+					{% endif %}
+				</tr>
+				{% endfor %}
+			</tbody>
+		</table>
+		<script>
+			$(document).ready(function() {
+			    $('#record_fields').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ]
+			    });
+			} );
+		</script>
+	</div>
+
+	<!-- Details specific to Job Type -->
+
+	<!-- HarvestJob -->
+	{% if record.job.job_type == 'HarvestJob' %}
+	{% endif %}
 
 	<!-- TransformJob -->
 	{% if record.job.job_type == 'TransformJob' %}
+		<h2>{{ record.job.job_type }} Details</h2>
 		<h3>Transformation Used</h3>
 		<table border="1" cellpadding="10">
 			<tr>
@@ -68,8 +114,13 @@
 		</table>
 	{% endif %}
 
-	
+	<!-- MergeJob -->
+	{% if record.job.job_type == 'MergeJob' %}
+	{% endif %}
 
-	
+	<!-- PublishJob -->
+	{% if record.job.job_type == 'PublishJob' %}
+	{% endif %}
+
 
 {% endblock %}

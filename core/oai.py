@@ -528,7 +528,7 @@ class OAIRecord(object):
 
 		# metadate node
 		metadata_node = etree.Element('metadata')
-		metadata_node.append(etree.fromstring(self.document))
+		metadata_node.append(etree.fromstring(self.document.encode('utf-8')))
 		self.oai_record_node.append(metadata_node)
 
 

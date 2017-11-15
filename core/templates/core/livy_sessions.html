@@ -40,7 +40,7 @@
 				{% else %}
 					<td>None</td>
 				{% endif %}
-				<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}">Stop</a></td>
+				<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}">{% if livy_session.status == 'idle' %}Stop{% else %}Remove{% endif %}</a></td>
 			</tr>
 		{% endfor %}
 	</table>
