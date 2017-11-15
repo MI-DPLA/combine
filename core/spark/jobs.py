@@ -291,28 +291,32 @@ class MergeSpark(object):
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
 		# rehydrate list of input jobs
-		input_jobs = ast.literal_eval(kwargs['job_inputs'])
+		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
 
 		# get list of RDDs from input jobs
+		sqldf = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE
+			)		
 		input_jobs_dfs = []		
-		for input_job in input_jobs:
-			job_df = spark.read.format('com.databricks.spark.avro').load(input_job)
-			job_df = job_df[job_df['document'] != '']
+		for input_job_id in input_jobs_ids:
+
+			# db
+			job_df = sqldf.filter(sqldf.job_id == int(input_job_id))
 			input_jobs_dfs.append(job_df)
 
 		# create aggregate rdd of frames
 		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
-		# write agg to new avro files
-		agg_df.write.format("com.databricks.spark.avro").save(job.job_output)
+		# update job column, overwriting job_id from input jobs in merge
+		job_id = job.id
+		job_id_udf = udf(lambda record_id: job_id, IntegerType())
+		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
 		# index records to db
-		save_records(
-			job=job,
-			publish_set_id=job.record_group.publish_set_id,
-			records=agg_df
-		)
+		save_records(job=job, records_df=agg_df)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
