@@ -13,7 +13,7 @@
 		<p>
 		
 		<p>Select OAI endpoint to use:
-			<select name="oai_endpoint_id">
+			<select id="oai_endpoint_id" name="oai_endpoint_id">
 				<option value="">Select an oai endpoint...</option>
 				{% for oai_endpoint in oai_endpoints %}
 					<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>	
@@ -21,29 +21,36 @@
 			</select>
 		<p>
 
-		<p style="color:red;">Below are optional Overrides to OAI endpoint defaults (each is applied separately, if completed):</p>
-		<p>OAI Verb:
-			<select name="verb">
-				<option value="">Select OAI verb...</option>
-				<option value="ListRecords">ListRecords</option>
-				<option value="ListSets">ListSets</option>
-			</select>
-		<p>
-		<p>OAI metadata prefix:
-			<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
-		<p>
-		<p>Scope type:
-			<select name="scope_type">
-				<option value="">Select scope type...</option>
-				<option value="setList">setList</option>
-				<option value="whiteList">whiteList</option>
-				<option value="blackList">blackList</option>
-				<option value="harvestAllSets">harvestAllSets</option>
-			</select>
-		<p>
-		<p>Scope value:
-			<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
-		<p>
+		<div id="oai_endpoint_defaults">
+			<p>OAI endpoint default values:</p>
+			<pre id="defaults"></pre>
+		</div>
+
+		<div style="background-color:#E4E4E3; width:50%; padding:10px; border-radius:10px;">
+			<p style="color:red;">Optional overrides for defaults shown above (each is applied separately, if completed):</p>
+			<p>OAI Verb:
+				<select name="verb">
+					<option value="">Select OAI verb...</option>
+					<option value="ListRecords">ListRecords</option>
+					<option value="ListSets">ListSets</option>
+				</select>
+			<p>
+			<p>OAI metadata prefix:
+				<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
+			<p>
+			<p>Scope type:
+				<select name="scope_type">
+					<option value="">Select scope type...</option>
+					<option value="setList">setList</option>
+					<option value="whiteList">whiteList</option>
+					<option value="blackList">blackList</option>
+					<option value="harvestAllSets">harvestAllSets</option>
+				</select>
+			<p>
+			<p>Scope value:
+				<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
+			<p>
+		</div>
 
 		<!-- Indexing Mapping Selection -->
 		{% include 'core/index_mapping_select.html' %}
@@ -53,5 +60,22 @@
 		</p>
 
 	</form>
+
+	<script>
+
+	// save all oai endpoints as parsed javascript values for previewing
+	oes = {}
+	{% for oai_endpoint in oai_endpoints %}
+		oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
+	{% endfor %}
+
+	$(function() {
+	    $("#oai_endpoint_id").change(function() {
+	        oe_id = $('option:selected', this).val()
+	        $("#defaults").html(JSON.stringify(oes[oe_id]));
+	    });
+	});
+
+	</script>
 
 {% endblock %}

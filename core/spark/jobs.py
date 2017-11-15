@@ -354,19 +354,34 @@ class PublishSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# read output from input_job
-		df = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		sqldf = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE
+			)
+		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		# records = records.select(CombineRecordSchema().field_names)
 		
 		# get rows with document content
-		docs = df[df['document'] != '']
+		records = records[records['document'] != '']
+
+		# update job column, overwriting job_id from input jobs in merge
+		job_id = job.id
+		job_id_udf = udf(lambda record_id: job_id, IntegerType())
+		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# rewrite with publish_set_id from RecordGroup
-		publish_set_id = job.record_group.publish_set_id
-		set_id = udf(lambda row_id: publish_set_id, StringType())
-		docs = docs.withColumn('setIds', set_id(docs.id))
-		docs.write.format("com.databricks.spark.avro").save(job.job_output)
+		# publish_set_id = job.record_group.publish_set_id
+		# set_id = udf(lambda row_id: publish_set_id, StringType())
+		# records = records.withColumn('setIds', set_id(records.id))
 
+		##################################################################################################
 		# write symlinks
+		##################################################################################################
+		# write job output to avro
+		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
+
 		# confirm directory exists
 		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
 		if not os.path.exists(published_dir):
@@ -377,20 +392,17 @@ class PublishSpark(object):
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
+		##################################################################################################
 
 		# index records to db
-		save_records(
-			job=job,
-			publish_set_id=job.record_group.publish_set_id,
-			records=docs
-		)
+		save_records(job=job, records_df=records, write_avro=False)
 
 		# finally, index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
 				job=job,
-				records_df=docs,
+				records_df=records,
 				index_mapper=kwargs['index_mapper']
 			)
 
@@ -402,14 +414,16 @@ class PublishSpark(object):
 
 
 
-def save_records(job=None, records_df=None):
+def save_records(job=None, records_df=None, write_avro=True):
 
 	'''
 	Function to index records to DB.
 	Additionally, generates and writes oai_id column to DB.
 
 	Args:
-		records (pyspark.sql.DataFrame): records as pyspark DataFrame 
+		job (core.models.Job): Job instance		
+		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+		write_avro (bool): boolean to write avro files to disk after DB indexing 
 
 	Returns:
 		None
@@ -435,7 +449,8 @@ def save_records(job=None, records_df=None):
 		mode='append')
 
 	# write avro
-	records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
+	if write_avro:
+		records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
 
 	
 

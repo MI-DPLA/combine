@@ -44,6 +44,7 @@ urlpatterns = [
 	# Configuration
 	url(r'^configurations$', views.configuration, name='configuration'),
 	url(r'^configurations/transformation/(?P<trans_id>[0-9]+)/payload$', views.trans_scen_payload, name='trans_scen_payload'),
+	url(r'^configurations/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
 
 	# Publish
 	url(r'^published$', views.published, name='published'),

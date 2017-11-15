@@ -239,6 +239,7 @@ class Job(models.Model):
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	# notes = models.TextField(null=True, default=None)
 
 
 	def __str__(self):
@@ -440,6 +441,23 @@ class OAIEndpoint(models.Model):
 
 	def __str__(self):
 		return 'OAI endpoint: %s' % self.name
+
+
+	def as_dict(self):
+
+		'''
+		Return model attributes as dictionary
+
+		Args:
+			None
+
+		Returns:
+			(dict): attributes for model instance
+		'''
+
+		d = self.__dict__
+		d.pop('_state', None)
+		return d
 
 
 
@@ -2022,9 +2040,9 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'job_input':self.input_job.job_output,
+				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}
