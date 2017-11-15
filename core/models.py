@@ -1791,9 +1791,10 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", input_job_id="%(input_job_id)s", job_input="%(job_input)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'transform_filepath':self.transformation.filepath,
+				'job_input':self.input_job.job_output,
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper

@@ -197,14 +197,20 @@ class TransformSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		sqldf = spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE
-			)
-		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
-		records = records.select(CombineRecordSchema().field_names)
+		# # read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		# sqldf = spark.read.jdbc(
+		# 		settings.COMBINE_DATABASE['jdbc_url'],
+		# 		'core_record',
+		# 		properties=settings.COMBINE_DATABASE
+		# 	)
+		# records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		# records = records.select(CombineRecordSchema().field_names)
+
+		# DEBUG
+		avrodf = spark.read.format('com.databricks.spark.avro').load(kwargs['job_input'])
+		job_id = job.id
+		job_id_udf = udf(lambda id: job_id, IntegerType())
+		records = avrodf.withColumn('job_id', job_id_udf(avrodf.record_id))
 
 		##############################################################################################################
 		# define udf function for transformation
@@ -231,8 +237,8 @@ class TransformSpark(object):
 					oai_id = row.oai_id,
 					document = trans[0],
 					error = trans[1],
-					unique = row.unique,
-					job_id = job_id,
+					# unique = 1,
+					job_id = int(job_id),
 					oai_set = row.oai_set
 				)
 
@@ -245,7 +251,8 @@ class TransformSpark(object):
 		records = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
-		records = records.toDF(schema=CombineRecordSchema().schema)
+		# records = records.toDF(schema=CombineRecordSchema().schema)
+		records = records.toDF()
 		##############################################################################################################
 
 		# index records to db
@@ -417,7 +424,8 @@ def save_records(job=None, records_df=None):
 		.cast('integer'))
 
 	# ensure columns to avro and DB
-	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
+	# records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
+	records_df_combine_cols = records_df.toDF()
 
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
