@@ -11,6 +11,9 @@
 		<p>Harvest Job Name (optional):
 			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
 		<p>
+
+		<!-- optional job note -->
+		{% include 'core/job_note.html' %}
 		
 		<p>Select OAI endpoint to use:
 			<select id="oai_endpoint_id" name="oai_endpoint_id">

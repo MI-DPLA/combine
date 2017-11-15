@@ -239,7 +239,7 @@ class Job(models.Model):
 	published = models.BooleanField(default=0)
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	# notes = models.TextField(null=True, default=None)
+	note = models.TextField(null=True, default=None)
 
 
 	def __str__(self):
@@ -1615,6 +1615,7 @@ class HarvestJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		oai_endpoint=None,
@@ -1645,6 +1646,7 @@ class HarvestJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group		
 			self.organization = self.record_group.organization
 			self.oai_endpoint = oai_endpoint
@@ -1661,6 +1663,7 @@ class HarvestJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1726,6 +1729,7 @@ class TransformJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_job=None,
@@ -1756,6 +1760,7 @@ class TransformJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
@@ -1772,6 +1777,7 @@ class TransformJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1848,6 +1854,7 @@ class MergeJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_jobs=None,
@@ -1876,6 +1883,7 @@ class MergeJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
@@ -1891,6 +1899,7 @@ class MergeJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
@@ -1958,6 +1967,7 @@ class PublishJob(CombineJob):
 
 	def __init__(self,
 		job_name=None,
+		job_note=None,
 		user=None,
 		record_group=None,
 		input_job=None,
@@ -1986,6 +1996,7 @@ class PublishJob(CombineJob):
 		if not job_id:
 
 			self.job_name = job_name
+			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
@@ -2001,6 +2012,7 @@ class PublishJob(CombineJob):
 				job_type = type(self).__name__,
 				user = self.user,
 				name = self.job_name,
+				note = self.job_note,
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',

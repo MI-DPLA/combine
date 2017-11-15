@@ -2,7 +2,12 @@
 {% block content %}
 
 	<div>
-		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>
+		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>		
+	</div>
+
+	<div style="background-color:#E4E4E3; width:50%; padding:5px; border-radius:10px;">
+		<h4>Job Notes:</h4>
+		<p>{{ cjob.job.note }}</p>
 	</div>
 
 	<p>The following jobs were used as input for this {{ cjob.job.job_type }}.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>

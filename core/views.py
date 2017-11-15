@@ -357,6 +357,11 @@ def job_harvest(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve OAIEndpoint
 		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
 
@@ -370,6 +375,7 @@ def job_harvest(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.HarvestJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
@@ -423,6 +429,11 @@ def job_transform(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('using job as input: %s' % input_job)
@@ -437,6 +448,7 @@ def job_transform(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
@@ -487,6 +499,11 @@ def job_merge(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve jobs to merge
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('merging jobs: %s' % input_jobs)
@@ -497,6 +514,7 @@ def job_merge(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
@@ -546,6 +564,11 @@ def job_publish(request, org_id, record_group_id):
 		if job_name == '':
 			job_name = None
 
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
@@ -556,6 +579,7 @@ def job_publish(request, org_id, record_group_id):
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
+			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
