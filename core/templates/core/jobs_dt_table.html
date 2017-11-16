@@ -11,6 +11,7 @@
 				<th>Status</th>
 				<th>Monitor</th>
 				<th>Finished</th>
+				<th>Elapsed</th>
 				<th>Input</th>
 				<th>Notes</th>
 				<th>Record Count</th>
@@ -25,9 +26,10 @@
 				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
 				<td>{{ job.job_type }}</td>
 				<td>{{ job.job_id }}</td>
-				<td>{{ job.status }}</td>
+				<td><strong>{{ job.status }}</strong></td>
 				<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
 				<td>{{ job.finished }}</td>
+				<td>{{ job.elapsed_as_string }}</td>
 				
 				{% if job.jobinput_set.all|length > 0 %}
 					<td>{% for input_job in job.jobinput_set.all %}

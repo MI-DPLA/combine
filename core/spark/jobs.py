@@ -1,5 +1,6 @@
 # imports
 import ast
+import datetime
 import django
 from lxml import etree
 import os
@@ -35,7 +36,7 @@ from core.models import CombineJob, Job
 class CombineRecordSchema(object):
 
 	'''
-	Class to organize spark dataframe schemas
+	Class to organize Combine specific spark dataframe schemas
 	'''
 
 	def __init__(self):
@@ -99,6 +100,10 @@ class HarvestSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
+		# update timestamp to now
+		job.timestamp = datetime.datetime.now()
+		job.save()
+
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -156,7 +161,7 @@ class HarvestSpark(object):
 		# index records to db
 		save_records(job=job, records_df=records)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -164,6 +169,10 @@ class HarvestSpark(object):
 				records_df=records,
 				index_mapper=kwargs['index_mapper']
 			)
+
+		# # finally, get job again and update job status
+		# job = Job.objects.get(pk=int(kwargs['job_id']))
+		# job.update_status()
 
 
 
@@ -249,7 +258,7 @@ class TransformSpark(object):
 		# index records to db
 		save_records(job=job, records_df=records_trans)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -257,6 +266,10 @@ class TransformSpark(object):
 				records_df=records_trans,
 				index_mapper=kwargs['index_mapper']
 			)
+
+		# # finally, get job again and update job status
+		# job = Job.objects.get(pk=int(kwargs['job_id']))
+		# job.update_status()
 
 
 
@@ -318,7 +331,7 @@ class MergeSpark(object):
 		# index records to db
 		save_records(job=job, records_df=agg_df)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -326,6 +339,10 @@ class MergeSpark(object):
 				records_df=agg_df,
 				index_mapper=kwargs['index_mapper']
 			)
+
+		# # finally, get job again and update job status
+		# job = Job.objects.get(pk=int(kwargs['job_id']))
+		# job.update_status()
 
 
 
@@ -397,7 +414,7 @@ class PublishSpark(object):
 		# index records to db
 		save_records(job=job, records_df=records, write_avro=False)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -411,6 +428,10 @@ class PublishSpark(object):
 				job_id = job.id,
 				publish_set_id=job.record_group.publish_set_id
 			)
+
+		# # finally, get job again and update job status
+		# job = Job.objects.get(pk=int(kwargs['job_id']))
+		# job.update_status()
 
 
 

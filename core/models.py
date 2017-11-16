@@ -240,6 +240,7 @@ class Job(models.Model):
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
+	elapsed = models.IntegerField(null=True, default=0)
 
 
 	def __str__(self):
@@ -260,18 +261,50 @@ class Job(models.Model):
 		'''
 
 		if self.status in ['init','waiting','pending','starting','running','available'] and self.url != None:
-			self.refresh_from_livy()
+			self.refresh_from_livy(save=False)
 
 		# udpate record count if not already calculated
 		if self.record_count == 0:
 
 			# if finished, count
 			if self.finished:
-				logger.debug('updating record count for job #%s' % self.id)
-				self.update_record_count()
+				self.update_record_count(save=False)
+
+		# update elapsed
+		if not self.finished and self.status in ['starting','running']:
+			self.elapsed = self.calc_elapsed()
+
+		# finally, save
+		self.save()
 
 
-	def refresh_from_livy(self):
+	def calc_elapsed(self):
+
+		'''
+		Method to calculate how long a job has elapsed based on time since timestamp.
+
+		Args:
+			None
+
+		Returns:
+			(int): elapsed time in seconds
+		'''
+
+		return (datetime.datetime.now() - self.timestamp.replace(tzinfo=None)).seconds
+
+
+	def elapsed_as_string(self):
+
+		'''
+		Method to return elapsed as string for Django templates
+		'''
+
+		m, s = divmod(self.elapsed, 60)
+		h, m = divmod(m, 60)
+		return "%d:%02d:%02d" % (h, m, s)
+
+
+	def refresh_from_livy(self, save=True):
 
 		'''
 		Update job status from Livy.
@@ -293,16 +326,20 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 			logger.debug('Livy session likely not active, setting status to gone')
 			self.status = 'gone'
+			
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
 			
 			logger.debug('job/statement not found, setting status to gone')
 			self.status = 'gone'
+			
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		elif livy_response.status_code == 200:
 
@@ -311,15 +348,16 @@ class Job(models.Model):
 			headers = livy_response.headers
 			
 			# update Livy information
-			logger.debug('job/statement found, updating status')
 			self.status = response['state']
+			logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
 				self.finished = True
 
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		else:
 			
@@ -358,7 +396,7 @@ class Job(models.Model):
 		return Record.objects.filter(job=self).exclude(error='').all()
 
 
-	def update_record_count(self):
+	def update_record_count(self, save=True):
 
 		'''
 		Get record count from DB, save to self
@@ -371,7 +409,10 @@ class Job(models.Model):
 		'''
 		
 		self.record_count = self.get_records().count()
-		self.save()
+		
+		# if save, save
+		if save:
+			self.save()
 
 
 	def job_output_as_filesystem(self):
