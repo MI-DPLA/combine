@@ -29,7 +29,7 @@
 				<td><strong>{{ job.status }}</strong></td>
 				<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
 				<td>{{ job.finished }}</td>
-				<td>{{ job.elapsed_as_string }}</td>
+				<td>{{ job.elapsed_as_string }} (<em>{{ job.calc_records_per_second }} r/s</em>)</td>
 				
 				{% if job.jobinput_set.all|length > 0 %}
 					<td>{% for input_job in job.jobinput_set.all %}

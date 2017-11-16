@@ -247,8 +247,10 @@ def record_group(request, org_id, record_group_id):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
-	# loop through jobs and update status
+	# loop through jobs
 	for job in jobs:
+
+		# update status
 		job.update_status()
 
 	# render page 

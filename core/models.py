@@ -304,6 +304,31 @@ class Job(models.Model):
 		return "%d:%02d:%02d" % (h, m, s)
 
 
+	def calc_records_per_second(self):
+
+		'''
+		Method to calculcate records per second, if total known.
+		If running, use current elapsed, if finished, use total elapsed.
+
+		Args:
+			None
+
+		Returns:
+			(float): records per second, rounded to one dec.
+		'''
+
+		if self.record_count > 0:
+
+			if not self.finished:
+				elapsed = self.calc_elapsed()
+			else:
+				elapsed = self.elapsed
+			return round((float(self.record_count) / float(elapsed)),1)
+
+		else:
+			return None
+
+
 	def refresh_from_livy(self, save=True):
 
 		'''
