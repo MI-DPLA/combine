@@ -171,8 +171,7 @@ class HarvestSpark(object):
 			)
 
 		# # finally, get job again and update job status
-		# job = Job.objects.get(pk=int(kwargs['job_id']))
-		# job.update_status()
+		job.update_status()
 
 
 
@@ -205,6 +204,10 @@ class TransformSpark(object):
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
+
+		# update timestamp to now
+		job.timestamp = datetime.datetime.now()
+		job.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
@@ -268,8 +271,7 @@ class TransformSpark(object):
 			)
 
 		# # finally, get job again and update job status
-		# job = Job.objects.get(pk=int(kwargs['job_id']))
-		# job.update_status()
+		job.update_status()
 
 
 
@@ -302,6 +304,10 @@ class MergeSpark(object):
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
+
+		# update timestamp to now
+		job.timestamp = datetime.datetime.now()
+		job.save()
 
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
@@ -341,8 +347,7 @@ class MergeSpark(object):
 			)
 
 		# # finally, get job again and update job status
-		# job = Job.objects.get(pk=int(kwargs['job_id']))
-		# job.update_status()
+		job.update_status()
 
 
 
@@ -371,6 +376,10 @@ class PublishSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
+		# update timestamp to now
+		job.timestamp = datetime.datetime.now()
+		job.save()
+
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
@@ -388,14 +397,15 @@ class PublishSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
+		############################################################################################################
+		# Predates data model rework, unknown if needed, keeping commented out for now...
+		############################################################################################################
 		# rewrite with publish_set_id from RecordGroup
 		# publish_set_id = job.record_group.publish_set_id
 		# set_id = udf(lambda row_id: publish_set_id, StringType())
 		# records = records.withColumn('setIds', set_id(records.id))
+		############################################################################################################
 
-		##################################################################################################
-		# write symlinks
-		##################################################################################################
 		# write job output to avro
 		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
 
@@ -409,7 +419,6 @@ class PublishSpark(object):
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
-		##################################################################################################
 
 		# index records to db
 		save_records(job=job, records_df=records, write_avro=False)
@@ -430,8 +439,7 @@ class PublishSpark(object):
 			)
 
 		# # finally, get job again and update job status
-		# job = Job.objects.get(pk=int(kwargs['job_id']))
-		# job.update_status()
+		job.update_status()
 
 
 
