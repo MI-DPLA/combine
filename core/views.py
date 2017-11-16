@@ -298,7 +298,7 @@ def job_delete(request, org_id, record_group_id, job_id):
 	logger.debug('job deleted in: %s' % (time.time()-stime))
 
 	# redirect
-	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
+	return redirect(request.META.get('HTTP_REFERER'))
 
 
 @login_required
@@ -371,7 +371,7 @@ def job_update_note(request, org_id, record_group_id, job_id):
 		cjob.job.save()
 
 		# redirect 		
-		return redirect('job_details', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
+		return redirect(request.META.get('HTTP_REFERER'))
 
 
 @login_required
