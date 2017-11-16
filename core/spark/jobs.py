@@ -32,7 +32,6 @@ from django.conf import settings
 from core.models import CombineJob, Job
 
 
-
 class CombineRecordSchema(object):
 
 	'''
