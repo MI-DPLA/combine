@@ -246,6 +246,31 @@ class Job(models.Model):
 		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
 
 
+	def update_status(self):
+
+		'''
+		Method to udpate job information based on status from Livy
+
+		Args:
+			None
+
+		Returns:
+			None
+				- updates status, record_count, elapsed (soon)
+		'''
+
+		if self.status in ['init','waiting','pending','starting','running','available'] and self.url != None:
+			self.refresh_from_livy()
+
+		# udpate record count if not already calculated
+		if self.record_count == 0:
+
+			# if finished, count
+			if self.finished:
+				logger.debug('updating record count for job #%s' % self.id)
+				self.update_record_count()
+
+
 	def refresh_from_livy(self):
 
 		'''
@@ -546,45 +571,47 @@ class Record(models.Model):
 		def get_upstream(record, input_record_only):
 
 			# check for upstream job
-			uj_query = record.job.jobinput_set
+			upstream_job_query = record.job.jobinput_set
 
 			# if upstream jobs found, continue
-			if uj_query.count() > 0:
+			if upstream_job_query.count() > 0:
 
 				logger.debug('upstream jobs found, checking for record_id')
 
 				# loop through upstream jobs, look for record id
-				for uj in uj_query.all():
-					ur_query = Record.objects.filter(job=uj.input_job).filter(record_id=self.record_id)
+				for upstream_job in upstream_job_query.all():
+					upstream_record_query = Record.objects.filter(
+						job=upstream_job.input_job).filter(record_id=self.record_id)
 
 					# if count found, save record to record_stages and re-run
-					if ur_query.count() > 0:
-						ur = ur_query.first()
-						record_stages.insert(0, ur)
+					if upstream_record_query.count() > 0:
+						upstream_record = upstream_record_query.first()
+						record_stages.insert(0, upstream_record)
 						if not input_record_only:
-							get_upstream(ur, input_record_only)
+							get_upstream(upstream_record, input_record_only)
 
 
 		def get_downstream(record):
 
 			# check for downstream job
-			dj_query = JobInput.objects.filter(input_job=record.job)
+			downstream_job_query = JobInput.objects.filter(input_job=record.job)
 
 			# if downstream jobs found, continue
-			if dj_query.count() > 0:
+			if downstream_job_query.count() > 0:
 
 				logger.debug('downstream jobs found, checking for record_id')
 
 				# loop through downstream jobs
-				for dj in dj_query.all():
+				for downstream_job in downstream_job_query.all():
 
-					dr_query = Record.objects.filter(job=dj.job).filter(record_id=self.record_id)
+					downstream_record_query = Record.objects.filter(
+						job=downstream_job.job).filter(record_id=self.record_id)
 
 					# if count found, save record to record_stages and re-run
-					if dr_query.count() > 0:
-						dr = dr_query.first()
-						record_stages.append(dr)
-						get_downstream(dr)
+					if downstream_record_query.count() > 0:
+						downstream_record = downstream_record_query.first()
+						record_stages.append(downstream_record)
+						get_downstream(downstream_record)
 
 		# run
 		get_upstream(self, input_record_only)

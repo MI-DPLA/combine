@@ -65,7 +65,7 @@ def breadcrumb_parser(path):
 		crumbs.append(("%s" % j.name, j_m.group(1)))
 
 	# return
-	logger.debug(crumbs)
+	# logger.debug(crumbs)
 	return crumbs
 
 
@@ -249,18 +249,7 @@ def record_group(request, org_id, record_group_id):
 
 	# loop through jobs and update status
 	for job in jobs:
-
-		# if job is pending, starting, or running, attempt to update status
-		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
-			job.refresh_from_livy()
-
-		# udpate record count if not already calculated
-		if job.record_count == 0:
-
-			# if finished, count
-			if job.finished:
-				logger.debug('updating record count for job #%s' % job.id)
-				job.update_record_count()
+		job.update_status()
 
 	# render page 
 	return render(request, 'core/record_group.html', {
@@ -284,18 +273,7 @@ def all_jobs(request):
 
 	# loop through jobs and update status
 	for job in jobs:
-
-		# if job is pending, starting, or running, attempt to update status
-		if job.status in ['init','waiting','pending','starting','running','available'] and job.url != None:
-			job.refresh_from_livy()
-
-		# udpate record count if not already calculated
-		if job.record_count == 0:
-
-			# if finished, count
-			if job.finished:
-				logger.debug('updating record count for job #%s' % job.id)
-				job.update_record_count()
+		job.update_status()
 
 	# render page 
 	return render(request, 'core/all_jobs.html', {

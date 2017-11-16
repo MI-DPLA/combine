@@ -91,36 +91,49 @@
 	{% endif %}
 
 	<!-- TransformJob -->
-	{% if record.job.job_type == 'TransformJob' %}
-		<h2>{{ record.job.job_type }} Details</h2>
-		<h3>Transformation Used</h3>
-		<table border="1" cellpadding="10">
-			<tr>
-				<th>ID</th>
-				<th>Name</th>
-				<th>Type</th>
-				<th>Path on disk</th>
-				<th>Transformation Payload</th>
-				<th>Input Document</th>
-			</tr>
-			<tr>
-				<td>{{job_details.transformation.id}}</td>
-				<td>{{job_details.transformation.name}}</td>
-				<td>{{job_details.transformation.transformation_type}}</td>
-				<td>{{job_details.transformation.filepath}}</td>
-				<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
-				<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
-			</tr>
-		</table>
-	{% endif %}
+	<div id="job_type_specific">
+		{% if record.job.job_type == 'TransformJob' %}
+			<h2>{{ record.job.job_type }} Details</h2>
+			<h3>Transformation Used</h3>
+			<table border="1" cellpadding="10">
+				<tr>
+					<th>ID</th>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Path on disk</th>
+					<th>Transformation Payload</th>
+					<th>Input Document</th>
+				</tr>
+				<tr>
+					<td>{{job_details.transformation.id}}</td>
+					<td>{{job_details.transformation.name}}</td>
+					<td>{{job_details.transformation.transformation_type}}</td>
+					<td>{{job_details.transformation.filepath}}</td>
+					<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+					<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+				</tr>
+			</table>
+		{% endif %}
 
-	<!-- MergeJob -->
-	{% if record.job.job_type == 'MergeJob' %}
-	{% endif %}
+		<!-- MergeJob -->
+		{% if record.job.job_type == 'MergeJob' %}
+		{% endif %}
 
-	<!-- PublishJob -->
-	{% if record.job.job_type == 'PublishJob' %}
-	{% endif %}
+		<!-- PublishJob -->
+		{% if record.job.job_type == 'PublishJob' %}
+		{% endif %}
+	</div>
+
+	<div id="record_document">
+		<h3>Record Document</h3>
+		{% if record.document != '' %}
+			<div style="width:75%;">
+				<pre><code style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
+			</div>
+		{% else %}
+			<p>None</p>
+		{% endif %}
+	</div>
 
 
 {% endblock %}
