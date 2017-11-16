@@ -24,7 +24,7 @@
 
 	<script>
 
-		// load JSON straight to page
+		// load JSON straight to DOM
 		var dataSet = {{field_analysis_results.data|safe}}
 
 		// fire table
@@ -43,7 +43,12 @@
 		                    }
 		                }
 	            	},
-		            { title: "Count" }
+		            { 
+		            	title: "Count",
+		            	"render": function ( data, type, row ) {
+	                    	return "<a target='_blank' href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}:\""+row[0]+"\"'>"+row[1]+"</a>";
+		                }
+		            }
 		        ],		        
 		    	"pageLength": 25,
 		    	"lengthMenu": [ 10, 25, 100, 500 ],
