@@ -479,7 +479,8 @@ def save_records(job=None, records_df=None, write_avro=True):
 
 	# write avro, coalescing default 200 partitions to 4 for output
 	if write_avro:
-		records_df_combine_cols.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
+		records_df_combine_cols.write.format("com.databricks.spark.avro").save(job.job_output)
+		# records_df_combine_cols.coalesce(4, shuffle=true).write.format("com.databricks.spark.avro").save(job.job_output)
 
 	
 

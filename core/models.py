@@ -260,7 +260,7 @@ class Job(models.Model):
 				- updates status, record_count, elapsed (soon)
 		'''
 
-		if self.status in ['init','waiting','pending','starting','running','available'] and self.url != None:
+		if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
 			self.refresh_from_livy(save=False)
 
 		# udpate record count if not already calculated
