@@ -322,6 +322,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
+			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -676,20 +677,20 @@ def job_publish(request, org_id, record_group_id):
 ####################################################################
 
 @login_required
-def field_analysis(request, org_id, record_group_id, job_id):
+def field_analysis(request, es_index):
 
 	# get field name
 	field_name = request.GET.get('field_name')
 	
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(job_id)
+	# get ESIndex
+	esi = models.ESIndex(es_index)
 
 	# get analysis for field
-	field_analysis_results = cjob.field_analysis_dt(field_name)
+	field_analysis_results = esi.field_analysis_dt(field_name)
 
 	# return
 	return render(request, 'core/field_analysis.html', {
-			'cjob':cjob,
+			'esi':esi,
 			'field_name':field_name,
 			'field_analysis_results':field_analysis_results,
 			'breadcrumbs':breadcrumb_parser(request.path)
@@ -853,7 +854,14 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
-	return render(request, 'core/published.html', {'published':published})
+	# isolate field_counts for templated tabled
+	field_counts = published.count_indexed_fields()
+
+	return render(request, 'core/published.html', {
+			'published':published,
+			'field_counts':field_counts,
+			'es_index':published.esi.es_index,
+		})
 
 
 
@@ -928,7 +936,11 @@ class DTRecordsJson(BaseDatatableView):
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
-					return '<span style="color: green;">Valid XML</span>'
+					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 
@@ -1019,7 +1031,11 @@ class DTPublishedJson(BaseDatatableView):
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
-					return '<span style="color: green;">Valid XML</span>'
+					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 

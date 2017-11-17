@@ -18,7 +18,7 @@
 			<tr>
 				<td>"{{ set }}"</td>
 				<td>{{ job.record_group.name }}</td>
-				<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
+				<td class="{{ job.job_type }}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 				<td>{{ job.record_count }}</td>
 			</tr>
 		{% endfor %}
@@ -78,47 +78,8 @@
 
 <p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
 
-<table id="index_analysis" border="1">
-	<thead>
-		<tr>
-			<th>Field Name</th>
-			<th>Instances of Field</th>
-			<th>Count of Distinct Values of Field</th>
-			<th>Percentage of Field Values that are Unique</th>
-			<th>Instance of Field in Total Indexed Records</th>
-		</tr>
-	</thead>
-	<tfoot>
-		<tr>
-			<th>Field Name</th>
-			<th>Instances of Field</th>
-			<th>Count of Distinct Values of Field</th>
-			<th>Percentage of Field Values that are Unique</th>
-			<th>Instance of Field in Total Indexed Records</th>
-		</tr>
-	</tfoot>
-
-	<tbody>
-		{% for field in published.count_indexed_fields.fields %}
-			<tr>
-				<td><a href="#" target="_blank">{{ field.field_name }}</a></td>
-				<td>{{ field.instances }}</td>
-				<td>{{ field.distinct }}</td>
-				<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-				<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
-			</tr>
-		{% endfor %}
-	</tbody>
-
-</table>
-<script>
-	$(document).ready(function() {
-	    $('#index_analysis').DataTable({
-	    	"pageLength": 100,
-	    	"lengthMenu": [ 10, 25, 100, 500 ]
-	    });
-	} );
-</script>
+<!-- Indexed Fields Analysis DT Table -->
+{% include 'core/indexed_fields_dt_table.html' %}
 
 <h2>OAI Endpoint</h2>
 

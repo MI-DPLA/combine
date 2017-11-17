@@ -54,39 +54,12 @@
 
 	<div style="margin-top:20px;"/>
 	
-	<!-- Indexing Mapping Selection -->
+	<!-- Indexing Records DT Table -->
 	{% include 'core/records_dt_table.html' %}
 
 	<h4>Indexed Field Breakdown</h4>
 
 	<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
-
-	<p>
-		<div style="width:50%;">
-			<table border="1" cellpadding="5">
-				<tr>
-					<th>Column</th>
-					<th>Explanation</th>
-				<tr>
-				<tr>
-					<td><strong>Instances of Field</strong></td>
-					<td>How many times this particular field is used across all records.  Note, this may be <em>more</em> than the total number of records.</td>
-				</tr>
-				<tr>
-					<td><strong>Count of Distinct Values of Field</strong></td>
-					<td>How many unique values are present for a given field.  As such, this can/should not exceed the total instances of this field.</td>
-				</tr>
-				<tr>
-					<td><strong>Percentage of Field Values that are Unique</strong></td>
-					<td>Given these two numbers, percentage of total instances of this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 would be 10% unique (lighter green).</td>
-				</tr>
-				<tr>
-					<td><strong>Instance of Field in Total Indexed Records</strong></td>
-					<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) suggests all records have this field, 0.10% (lighter green) means only 10% have this field.  Note: Though you might have 10,000 instances of a subject field, from 5,000 records, it's possible that only 2,500 records (1/2 the total records) actually have 4 subjects a piece.  In this scenario, this number would be 0.5, indicating that while there are <em>many</em> subject fields, only 50% of your records contain them.  This can be useful for QAing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
-				</tr>
-			</table>
-		</div>
-	</p>
 
 	<p>
 		<table border="1" cellpadding="5">
@@ -103,49 +76,9 @@
 		</table>
 	</p>
 
-	<p>
-		<table id="index_analysis" border="1">
-			<thead>
-				<tr>
-					<th>Field Name</th>
-					<th>Instances of Field</th>
-					<th>Count of Distinct Values of Field</th>
-					<th>Percentage of Field Values that are Unique</th>
-					<th>Instance of Field in Total Indexed Records</th>
-				</tr>
-			</thead>
-			<tfoot>
-				<tr>
-					<th>Field Name</th>
-					<th>Instances of Field</th>
-					<th>Count of Distinct Values of Field</th>
-					<th>Percentage of Field Values that are Unique</th>
-					<th>Instance of Field in Total Indexed Records</th>
-				</tr>
-			</tfoot>
+	<!-- Indexed Fields Analysis DT Table -->
+	{% include 'core/indexed_fields_dt_table.html' %}
 
-			<tbody>
-				{% for field in field_counts.fields %}
-					<tr>
-						<td><a href="{% url 'field_analysis' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-						<td>{{ field.instances }}</td>
-						<td>{{ field.distinct }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
-					</tr>
-				{% endfor %}
-			</tbody>
-
-		</table>
-		<script>
-			$(document).ready(function() {
-			    $('#index_analysis').DataTable({
-			    	"pageLength": 100,
-			    	"lengthMenu": [ 10, 25, 100, 500 ]
-			    });
-			} );
-		</script>
-	</p>
 {% endblock %}
 
 
