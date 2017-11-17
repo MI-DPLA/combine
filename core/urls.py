@@ -50,6 +50,7 @@ urlpatterns = [
 
 	# Publish
 	url(r'^published$', views.published, name='published'),
+	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
 
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),

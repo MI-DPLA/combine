@@ -958,6 +958,103 @@ class DTRecordsJson(BaseDatatableView):
 			return qs
 
 
+class DTPublishedJson(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Published records
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id',
+			'job__record_group__publish_set_id', # note syntax for Django FKs
+			'oai_set',
+			'unique',
+			'document',
+			'error'
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'record_id',
+			'job__record_group__publish_set_id', # note syntax for Django FKs
+			'oai_set',
+			'unique',
+			'document',
+			'error'
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+
+			# get PublishedRecords instance
+			pr = models.PublishedRecords()
+			
+			# return filtered queryset
+			return pr.records
+
+
+		def render_column(self, row, column):
+			
+			# handle document metadata
+
+			if column == 'record_id':
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.record_id)
+
+			if column == 'document':
+				# attempt to parse as XML and return if valid or not
+				try:
+					xml = etree.fromstring(row.document.encode('utf-8'))
+					return '<span style="color: green;">Valid XML</span>'
+				except:
+					return '<span style="color: red;">Invalid XML</span>'
+
+			# handle associated job
+			if column == 'job__record_group__publish_set_id':
+				return row.job.record_group.publish_set_id
+
+			# handle associated job
+			if column == 'unique':
+				if row.unique:
+					return '<span style="color:green;">Unique</span>'
+				else:
+					return '<span style="color:red;">Duplicate</span>'
+
+			else:
+				return super(DTPublishedJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(
+					Q(record_id__contains=search) | 
+					Q(document__contains=search) | 
+					Q(job__record_group__publish_set_id=search)
+				)
+
+			return qs
+
+
 class DTIndexingFailuresJson(BaseDatatableView):
 
 		'''

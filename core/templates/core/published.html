@@ -31,6 +31,43 @@
 
 </table>
 
+<h2>Records</h2>
+
+<table id='published_records'>
+	<thead>
+		<th>ID</th>
+		<th>Record ID</th>
+		<th>Publish Set ID</th>
+		<th>Harvested OAI set</th>
+		<th>Unique</th>
+		<th>Document</th>
+		<th>Error</th>
+	</thead>
+	<tfoot>
+		<th>ID</th>
+		<th>Record ID</th>
+		<th>Publish Set ID</th>
+		<th>Harvested OAI set</th>
+		<th>Unique</th>
+		<th>Document</th>
+		<th>Error</th>
+	</tfoot>
+	<tbody>
+	</tbody>
+</table>
+
+<script>
+	$(document).ready(function() {
+	    var oTable = $('#published_records').dataTable({
+	        "processing": true,
+	        "serverSide": true,
+	        "ajax": "{% url 'published_dt_json' %}",
+	        "searchDelay": 1000,
+	        "pageLength": 25
+	    });
+	});
+</script>
+
 <p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
 
 <h2>OAI Endpoint</h2>
