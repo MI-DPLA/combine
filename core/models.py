@@ -289,16 +289,23 @@ class Job(models.Model):
 			(int): elapsed time in seconds
 		'''
 
-		# get start time
-		job_track = self.jobtrack_set.first()
+		# if job_track exists, calc elapsed
+		if self.jobtrack_set.count() > 0: 
 
-		# if not finished, determined elapsed until now
-		if not self.finished:
-			return (datetime.datetime.now() - job_track.start_timestamp.replace(tzinfo=None)).seconds
+			# get start time
+			job_track = self.jobtrack_set.first()
 
-		# else, if finished, calc time between job_track start and finish
+			# if not finished, determined elapsed until now
+			if not self.finished:
+				return (datetime.datetime.now() - job_track.start_timestamp.replace(tzinfo=None)).seconds
+
+			# else, if finished, calc time between job_track start and finish
+			else:
+				return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+
+		# else, return zero
 		else:
-			return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+			return 0
 
 
 	def elapsed_as_string(self):
