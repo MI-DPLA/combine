@@ -51,8 +51,20 @@
 		            {
 		            	title: "Actions",
 		            	"render": function (data, type, row) {
-		            		search_term = row[0].replace(/;/g, '%3B');
-		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>view</a>";
+
+		            		// get search term
+		            		search_term = row[0]
+
+		            		// search term escapes
+		            		escapes = [
+		            			[/;/g, '%3B'], // semicolons
+		            			[/"/g, '\\"'], // double quote
+		            			[/'/g, "\\'"] // single quote
+		            		];
+		            		for (var i = escapes.length - 1; i >= 0; i--) {
+		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
+		            		};
+		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>view</a>";
 		            	}
 		            }
 		        ],		        

@@ -676,20 +676,20 @@ def job_publish(request, org_id, record_group_id):
 ####################################################################
 
 @login_required
-def field_analysis(request, org_id, record_group_id, job_id):
+def field_analysis(request, es_index):
 
 	# get field name
 	field_name = request.GET.get('field_name')
 	
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(job_id)
+	# get ESIndex
+	esi = models.ESIndex(es_index)
 
 	# get analysis for field
-	field_analysis_results = cjob.field_analysis_dt(field_name)
+	field_analysis_results = esi.field_analysis_dt(field_name)
 
 	# return
 	return render(request, 'core/field_analysis.html', {
-			'cjob':cjob,
+			'esi':esi,
 			'field_name':field_name,
 			'field_analysis_results':field_analysis_results,
 			'breadcrumbs':breadcrumb_parser(request.path)

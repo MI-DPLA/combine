@@ -164,11 +164,6 @@ class BaseMapper(object):
 			- sets self.mapped_record, and returns instance of self
 	'''
 
-	# def __init__(self):
-
-	# 	logger.debug('init BaseMapper')
-
-
 
 class GenericMapper(BaseMapper):
 
@@ -230,6 +225,9 @@ class GenericMapper(BaseMapper):
 				- sets self.flat_elems
 		'''
 
+		# reset flat_elems
+		self.flat_elems = []
+
 		# pre-compile checker for blank spaces
 		blank_check = re.compile(r"[^ \t\n]")
 
@@ -268,6 +266,9 @@ class GenericMapper(BaseMapper):
 				- sets self.formatted_elems
 		'''
 
+		# reset formatted elems
+		self.formatted_elems = {}
+
 		# loop through flattened elements
 		for elem in self.flat_elems:
 
@@ -289,8 +290,11 @@ class GenericMapper(BaseMapper):
 				if include_attributes:
 					for k,v in elem['attributes'].items():
 
-						# replace whitespace with _
+						print(type(k))
+
+						# replace whitespace in attribute or value with underscore
 						k = k.replace(' ','_')
+						v = v.replace(' ','_')						
 
 						# append to xpath_comps
 						xpath_comps.append('@%s_%s' % (k,v))

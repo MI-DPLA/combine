@@ -101,7 +101,7 @@
 	<tbody>
 		{% for field in published.count_indexed_fields.fields %}
 			<tr>
-				<td><a href="#" target="_blank">{{ field.field_name }}</a></td>
+				<td><a href="{% url 'field_analysis' es_index=published.esi.es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 				<td>{{ field.instances }}</td>
 				<td>{{ field.distinct }}</td>
 				<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
