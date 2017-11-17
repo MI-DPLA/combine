@@ -54,15 +54,19 @@ class ESIndex(object):
 			))
 
 		# attempt to write index mapping failures to DB
-		try:
-			# filter out index mapping failures
-			failures_df = mapped_records_rdd.filter(lambda row: row[0] == 'fail')\
-			.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
+
+		# filter our failures
+		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
+
+		# if not empty
+		if not failures_rdd.isEmpty():
+
+			failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
 			job_id_udf = udf(lambda id: job_id, IntegerType())
-			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.id))
+			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.record_id))
 
 			# write mapping failures to DB
 			failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
@@ -73,9 +77,6 @@ class ESIndex(object):
 					mode='append'
 				)
 		
-		except:
-			pass
-
 		# retrieve successes to index
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
 
@@ -366,7 +367,7 @@ class GenericMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'id':record_id,
+					'record_id':record_id,
 					'mapping_error':str(e)
 				}
 			)
@@ -410,7 +411,7 @@ class MODSMapper(BaseMapper):
 		try:
 			
 			# flatten file with XSLT transformation
-			xml_root = etree.fromstring(record_string)
+			xml_root = etree.fromstring(record_string.encode('utf-8'))
 			flat_xml = self.xsl_transform(xml_root)
 
 			# convert to dictionary
@@ -436,7 +437,7 @@ class MODSMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'id':record_id,
+					'record_id':record_id,
 					'mapping_error':str(e)
 				}
 			)

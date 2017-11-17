@@ -1,5 +1,6 @@
 # imports
 import ast
+import datetime
 import django
 from lxml import etree
 import os
@@ -28,14 +29,13 @@ django.setup()
 from django.conf import settings
 
 # import select models from Core
-from core.models import CombineJob, Job
-
+from core.models import CombineJob, Job, JobTrack
 
 
 class CombineRecordSchema(object):
 
 	'''
-	Class to organize spark dataframe schemas
+	Class to organize Combine specific spark dataframe schemas
 	'''
 
 	def __init__(self):
@@ -99,6 +99,12 @@ class HarvestSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
+
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -156,7 +162,7 @@ class HarvestSpark(object):
 		# index records to db
 		save_records(job=job, records_df=records)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -165,6 +171,10 @@ class HarvestSpark(object):
 				index_mapper=kwargs['index_mapper']
 			)
 
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
+		
 
 
 class TransformSpark(object):
@@ -196,6 +206,12 @@ class TransformSpark(object):
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
+
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
@@ -249,7 +265,7 @@ class TransformSpark(object):
 		# index records to db
 		save_records(job=job, records_df=records_trans)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -257,6 +273,10 @@ class TransformSpark(object):
 				records_df=records_trans,
 				index_mapper=kwargs['index_mapper']
 			)
+
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 
@@ -290,6 +310,12 @@ class MergeSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
+
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
 
@@ -318,7 +344,7 @@ class MergeSpark(object):
 		# index records to db
 		save_records(job=job, records_df=agg_df)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -326,6 +352,10 @@ class MergeSpark(object):
 				records_df=agg_df,
 				index_mapper=kwargs['index_mapper']
 			)
+
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 
@@ -354,6 +384,12 @@ class PublishSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
+
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
@@ -371,14 +407,15 @@ class PublishSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
+		############################################################################################################
+		# Predates data model rework, unknown if needed, keeping commented out for now...
+		############################################################################################################
 		# rewrite with publish_set_id from RecordGroup
 		# publish_set_id = job.record_group.publish_set_id
 		# set_id = udf(lambda row_id: publish_set_id, StringType())
 		# records = records.withColumn('setIds', set_id(records.id))
+		############################################################################################################
 
-		##################################################################################################
-		# write symlinks
-		##################################################################################################
 		# write job output to avro
 		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
 
@@ -392,12 +429,11 @@ class PublishSpark(object):
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
-		##################################################################################################
 
 		# index records to db
 		save_records(job=job, records_df=records, write_avro=False)
 
-		# finally, index to ElasticSearch
+		# index to ElasticSearch
 		if settings.INDEX_TO_ES:
 			ESIndex.index_job_to_es_spark(
 				spark,
@@ -411,6 +447,10 @@ class PublishSpark(object):
 				job_id = job.id,
 				publish_set_id=job.record_group.publish_set_id
 			)
+
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 

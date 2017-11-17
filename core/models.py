@@ -240,13 +240,111 @@ class Job(models.Model):
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
+	elapsed = models.IntegerField(null=True, default=0)
 
 
 	def __str__(self):
 		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
 
 
-	def refresh_from_livy(self):
+	def update_status(self):
+
+		'''
+		Method to udpate job information based on status from Livy
+
+		Args:
+			None
+
+		Returns:
+			None
+				- updates status, record_count, elapsed (soon)
+		'''
+
+		if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
+			self.refresh_from_livy(save=False)
+
+		# udpate record count if not already calculated
+		if self.record_count == 0:
+
+			# if finished, count
+			if self.finished:
+				self.update_record_count(save=False)
+
+		# update elapsed		
+		self.elapsed = self.calc_elapsed()
+
+		# finally, save
+		self.save()
+
+
+	def calc_elapsed(self):
+
+		'''
+		Method to calculate how long a job has been running/ran.
+
+		Args:
+			None
+
+		Returns:
+			(int): elapsed time in seconds
+		'''
+
+		# if job_track exists, calc elapsed
+		if self.jobtrack_set.count() > 0: 
+
+			# get start time
+			job_track = self.jobtrack_set.first()
+
+			# if not finished, determined elapsed until now
+			if not self.finished:
+				return (datetime.datetime.now() - job_track.start_timestamp.replace(tzinfo=None)).seconds
+
+			# else, if finished, calc time between job_track start and finish
+			else:
+				return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+
+		# else, return zero
+		else:
+			return 0
+
+
+	def elapsed_as_string(self):
+
+		'''
+		Method to return elapsed as string for Django templates
+		'''
+
+		m, s = divmod(self.elapsed, 60)
+		h, m = divmod(m, 60)
+		return "%d:%02d:%02d" % (h, m, s)
+
+
+	def calc_records_per_second(self):
+
+		'''
+		Method to calculcate records per second, if total known.
+		If running, use current elapsed, if finished, use total elapsed.
+
+		Args:
+			None
+
+		Returns:
+			(float): records per second, rounded to one dec.
+		'''
+
+		if self.record_count > 0:
+
+			if not self.finished:
+				elapsed = self.calc_elapsed()
+			else:
+				elapsed = self.elapsed
+			return round((float(self.record_count) / float(elapsed)),1)
+
+		else:
+			return None
+
+
+	def refresh_from_livy(self, save=True):
 
 		'''
 		Update job status from Livy.
@@ -268,16 +366,20 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 			logger.debug('Livy session likely not active, setting status to gone')
 			self.status = 'gone'
+			
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
 			
 			logger.debug('job/statement not found, setting status to gone')
 			self.status = 'gone'
+			
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		elif livy_response.status_code == 200:
 
@@ -286,15 +388,16 @@ class Job(models.Model):
 			headers = livy_response.headers
 			
 			# update Livy information
-			logger.debug('job/statement found, updating status')
 			self.status = response['state']
+			logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
 				self.finished = True
 
 			# update
-			self.save()
+			if save:
+				self.save()
 
 		else:
 			
@@ -333,7 +436,7 @@ class Job(models.Model):
 		return Record.objects.filter(job=self).exclude(error='').all()
 
 
-	def update_record_count(self):
+	def update_record_count(self, save=True):
 
 		'''
 		Get record count from DB, save to self
@@ -346,7 +449,10 @@ class Job(models.Model):
 		'''
 		
 		self.record_count = self.get_records().count()
-		self.save()
+		
+		# if save, save
+		if save:
+			self.save()
 
 
 	def job_output_as_filesystem(self):
@@ -396,6 +502,20 @@ class Job(models.Model):
 		# index results save path
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
+
+class JobTrack(models.Model):
+
+	'''
+	Model to record information about jobs from Spark context, as not to interfere with model `Job` transactions
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	finish_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+
+
+	def __str__(self):
+		return 'JobTrack: job_id #%s' % self.job_id
 
 
 class JobInput(models.Model):
@@ -546,45 +666,47 @@ class Record(models.Model):
 		def get_upstream(record, input_record_only):
 
 			# check for upstream job
-			uj_query = record.job.jobinput_set
+			upstream_job_query = record.job.jobinput_set
 
 			# if upstream jobs found, continue
-			if uj_query.count() > 0:
+			if upstream_job_query.count() > 0:
 
 				logger.debug('upstream jobs found, checking for record_id')
 
 				# loop through upstream jobs, look for record id
-				for uj in uj_query.all():
-					ur_query = Record.objects.filter(job=uj.input_job).filter(record_id=self.record_id)
+				for upstream_job in upstream_job_query.all():
+					upstream_record_query = Record.objects.filter(
+						job=upstream_job.input_job).filter(record_id=self.record_id)
 
 					# if count found, save record to record_stages and re-run
-					if ur_query.count() > 0:
-						ur = ur_query.first()
-						record_stages.insert(0, ur)
+					if upstream_record_query.count() > 0:
+						upstream_record = upstream_record_query.first()
+						record_stages.insert(0, upstream_record)
 						if not input_record_only:
-							get_upstream(ur, input_record_only)
+							get_upstream(upstream_record, input_record_only)
 
 
 		def get_downstream(record):
 
 			# check for downstream job
-			dj_query = JobInput.objects.filter(input_job=record.job)
+			downstream_job_query = JobInput.objects.filter(input_job=record.job)
 
 			# if downstream jobs found, continue
-			if dj_query.count() > 0:
+			if downstream_job_query.count() > 0:
 
 				logger.debug('downstream jobs found, checking for record_id')
 
 				# loop through downstream jobs
-				for dj in dj_query.all():
+				for downstream_job in downstream_job_query.all():
 
-					dr_query = Record.objects.filter(job=dj.job).filter(record_id=self.record_id)
+					downstream_record_query = Record.objects.filter(
+						job=downstream_job.job).filter(record_id=self.record_id)
 
 					# if count found, save record to record_stages and re-run
-					if dr_query.count() > 0:
-						dr = dr_query.first()
-						record_stages.append(dr)
-						get_downstream(dr)
+					if downstream_record_query.count() > 0:
+						downstream_record = downstream_record_query.first()
+						record_stages.append(downstream_record)
+						get_downstream(downstream_record)
 
 		# run
 		get_upstream(self, input_record_only)
@@ -1174,6 +1296,156 @@ class LivyClient(object):
 # Combine Models 												   #
 ####################################################################
 
+
+class ESIndex(object):
+
+	'''
+	Model to aggregate methods useful for accessing and analyzing ElasticSearch indices
+	'''
+
+	def __init__(self, es_index):
+
+		self.es_index = es_index
+
+
+	def count_indexed_fields(self):
+
+		'''
+		Count instances of fields across all documents in a job's index
+
+		Args:
+			None
+
+		Returns:
+			(dict):
+				total_docs: count of total docs
+				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
+		'''
+
+		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+
+			# get mappings for job index
+			es_r = es_handle.indices.get(index=self.es_index)
+			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
+			# init search
+			s = Search(using=es_handle, index=self.es_index)
+
+			# return no results, only aggs
+			s = s[0]
+
+			# add agg buckets for each field to count total and unique instances
+			for field_name in field_names:
+				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
+				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
+
+			# execute search and capture as dictionary
+			sr = s.execute()
+			sr_dict = sr.to_dict()
+
+			# calc field percentages and return as list
+			'''
+			Because this also acts on the `published` ES index, which might contain mappings for fields that no longer
+			exist, filter out fields with zero instances.
+			'''
+			field_count = []
+			for field in field_names:
+
+				if sr_dict['aggregations']['%s_instances' % field]['doc_count'] > 0:
+				
+					# add that don't require calculation
+					field_dict = {
+						'field_name':field,
+						'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+						'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
+					}
+
+					# distinct ratio
+					if field_dict['instances'] > 0:
+						field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['instances']), 4)
+					else:
+						field_dict['distinct_ratio'] = 0.0
+
+					# percentage of total
+					field_dict['percentage_of_total_records'] = round((field_dict['instances'] / sr_dict['hits']['total']), 4)
+
+					# append
+					field_count.append(field_dict)
+
+			# return
+			return {
+				'total_docs':sr_dict['hits']['total'],
+				'fields':field_count
+			}
+
+		else:
+			return False
+
+
+	def field_analysis(self, field_name):
+
+		'''
+		For a given field, return all values for that field across a job's index
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field
+		'''
+
+		# init search
+		s = Search(using=es_handle, index=self.es_index)
+
+		# add agg bucket for field values
+		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+
+		# return zero
+		s = s[0]
+
+		# execute and return aggs
+		sr = s.execute()
+		return sr.aggs[field_name]['buckets']
+
+
+	def field_analysis_dt(self, field_name):
+
+		'''
+		Helper method to return field analysis as expected for DataTables Ajax data source
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field in DT format
+			{
+				data: [
+					[
+						field_name,
+						count
+					],
+					...
+				]
+			}
+		'''
+
+		# get buckets
+		buckets = self.field_analysis(field_name)
+
+		# prepare as DT data
+		dt_dict = {
+			'data': [ [f['key'],f['doc_count']] for f in buckets ]
+		}
+
+		# return
+		return dt_dict
+
+
+
 class PublishedRecords(object):
 
 	'''
@@ -1188,13 +1460,27 @@ class PublishedRecords(object):
 		self.publish_links = JobPublish.objects.all()
 
 		# get set IDs from record group of published jobs
-		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		# self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		sets = {}
+		for publish_link in self.publish_links:
+			publish_set_id = publish_link.record_group.publish_set_id
+			
+			# if set not seen, add as list
+			if publish_set_id not in sets.keys():
+				sets[publish_set_id] = []
+
+			# add publish job
+			sets[publish_set_id].append(publish_link.job)	
+		self.sets = sets
 
 		# get iterable queryset of records
 		self.records = Record.objects.filter(job__job_type = 'PublishJob')
 
 		# set record count
 		self.record_count = self.records.count()
+
+		# setup ESIndex instance
+		self.esi = ESIndex('published')
 
 
 	def get_record(self, id):
@@ -1219,6 +1505,36 @@ class PublishedRecords(object):
 			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
 
 
+	def count_indexed_fields(self):
+
+		'''
+		Wrapper for ESIndex.count_indexed_fields
+		'''
+
+		# return count
+		return self.esi.count_indexed_fields()
+
+
+	def field_analysis(self, field_name):
+
+		'''
+		Wrapper for ESIndex.field_analysis
+		'''
+
+		# return field analysis
+		return self.esi.field_analysis(field_name)
+
+
+	def field_analysis_dt(self, field_name):
+
+		'''
+		Wrapper for ESIndex.field_analysis_dt
+		'''
+
+		# return field analysis
+		return self.esi.field_analysis_dt(field_name)
+
+
 
 class CombineJob(object):
 
@@ -1238,6 +1554,9 @@ class CombineJob(object):
 		self.livy_session = self._get_active_livy_session()
 		self.df = None
 		self.job_id = job_id
+
+		# setup ESIndex instance
+		self.esi = ESIndex('j%s' % self.job_id)
 
 		# if job_id provided, attempt to retrieve and parse output
 		if self.job_id:
@@ -1415,91 +1734,31 @@ class CombineJob(object):
 	def count_indexed_fields(self):
 
 		'''
-		Count instances of fields across all documents in a job's index
-
-		Args:
-			None
-
-		Returns:
-			(dict):
-				total_docs: count of total docs
-				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
+		Wrapper for ESIndex.count_indexed_fields
 		'''
 
-		if es_handle.indices.exists(index='j%s' % self.job_id) and es_handle.search(index='j%s' % self.job_id)['hits']['total'] > 0:
-
-			# get mappings for job index
-			es_r = es_handle.indices.get(index='j%s' % self.job_id)
-			index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
-
-			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
-			field_names.sort()
-
-			# init search
-			s = Search(using=es_handle, index='j%s' % self.job_id)
-
-			# return no results, only aggs
-			s = s[0]
-
-			# add agg buckets for each field to count total and unique instances
-			for field_name in field_names:
-				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
-				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
-
-			# execute search and capture as dictionary
-			sr = s.execute()
-			sr_dict = sr.to_dict()
-
-			# calc fields percentage and return as list
-			field_count = [ 
-				{
-					'field_name':field,
-					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
-					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
-					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
-					 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
-					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
-					 sr_dict['hits']['total']), 4)
-				}
-				for field in field_names
-			]
-
-			# return
-			return {
-				'total_docs':sr_dict['hits']['total'],
-				'fields':field_count
-			}
-
-		else:
-
-			return False
+		# return count
+		return self.esi.count_indexed_fields()
 
 
 	def field_analysis(self, field_name):
 
 		'''
-		For a given field, return all values for that field across a job's index
-
-		Args:
-			field_name (str): field name
-
-		Returns:
-			(dict): dictionary of values for a field
+		Wrapper for ESIndex.field_analysis
 		'''
 
-		# init search
-		s = Search(using=es_handle, index='j%s' % self.job_id)
+		# return field analysis
+		return self.esi.field_analysis(field_name)
 
-		# add agg bucket for field values
-		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
 
-		# return zero
-		s = s[0]
+	def field_analysis_dt(self, field_name):
 
-		# execute and return aggs
-		sr = s.execute()
-		return sr.aggs[field_name]['buckets']
+		'''
+		Wrapper for ESIndex.field_analysis_dt
+		'''
+
+		# return field analysis
+		return self.esi.field_analysis_dt(field_name)
 
 
 	def get_indexing_failures(self):

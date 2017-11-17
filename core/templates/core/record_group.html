@@ -2,7 +2,7 @@
 
 {% block content %}
 
-	<h3>Record Group: {{ record_group.name }}</h3>
+	<h3>Jobs for Record Group: {{ record_group.name }}</h3>
 
 	<table border="1" cellpadding="10">
 		<tr>
@@ -25,64 +25,8 @@
 
 	<h3>Jobs</h3>
 
-
-	<div>
-		<table id="jobs_table" border="1">
-			<thead>
-				<tr>
-					<th>Job ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Livy Job ID</th>
-					<th>Status</th>
-					<th>Monitor</th>
-					<th>Finished</th>
-					<th>Input</th>
-					<th>Notes</th>
-					<th>Record Count</th>
-					<th>actions</th>
-				</tr>
-			</thead>
-			<tbody>
-			{% for job in record_group_jobs %}
-				<tr class="{{ job.job_type }}">
-					<td>{{ job.id }}</td>
-					<td><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=job.id %}">{{ job.name }}</a></td>
-					<td>{{ job.job_type }}</td>
-					<td>{{ job.job_id }}</td>
-					<td>{{ job.status }}</td>
-					<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
-					<td>{{ job.finished }}</td>
-					
-					{% if job.jobinput_set.all|length > 0 %}
-						<td>{% for input_job in job.jobinput_set.all %}
-							<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-								<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
-							</div>
-							{% endfor %}
-						</td>
-					{% else %}
-						<td>None</td>
-					{% endif %}
-					<td>{{ job.note }}</td>
-					<td>{{ job.record_count }}</td>
-					<td><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=job.id %}">Details</a> / <a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=job.id %}">Delete</a></td>
-				</tr>
-			{% endfor %}
-			</tbody>
-		</table>
-		<script>
-			$(document).ready(function() {
-			    $('#jobs_table').DataTable({
-			    	"pageLength": 100,
-			    	"lengthMenu": [ 10, 25, 100, 500 ],
-			    	"createdRow": function( row, data, dataIndex){
-	                    $('td', row).addClass(data[2]);
-		            }
-			    });
-			} );
-		</script>
-	</div>
+	<!-- optional job note -->
+	{% include 'core/jobs_dt_table.html' %}
 
 	<div>
 		<h3>Run new job</h3>
