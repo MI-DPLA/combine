@@ -1296,6 +1296,164 @@ class LivyClient(object):
 # Combine Models 												   #
 ####################################################################
 
+
+class ESIndex(object):
+
+	'''
+	Model to aggregate methods useful for accessing and analyzing ElasticSearch indices
+	'''
+
+	def __init__(self, es_index):
+
+		self.es_index = es_index
+
+
+	def count_indexed_fields(self):
+
+		'''
+		Count instances of fields across all documents in a job's index
+
+		Args:
+			None
+
+		Returns:
+			(dict):
+				total_docs: count of total docs
+				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
+		'''
+
+		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+
+			# get mappings for job index
+			es_r = es_handle.indices.get(index=self.es_index)
+			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
+			# init search
+			s = Search(using=es_handle, index=self.es_index)
+
+			# return no results, only aggs
+			s = s[0]
+
+			# add agg buckets for each field to count total and unique instances
+			for field_name in field_names:
+				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
+				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
+
+			# execute search and capture as dictionary
+			sr = s.execute()
+			sr_dict = sr.to_dict()
+
+			# # calc fields percentage and return as list
+			# field_count = [ 
+			# 	{
+			# 		'field_name':field,
+			# 		'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+			# 		'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
+			# 		'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
+			# 		 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
+			# 		'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
+			# 		 sr_dict['hits']['total']), 4)
+			# 	}
+			# 	for field in field_names
+			# ]
+
+			# calc field percentages and return as list			
+			field_count = []
+			for field in field_names:
+				
+				# add that don't require calculation
+				field_dict = {
+					'field_name':field,
+					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
+				}
+
+				# distinct ratio
+				if field_dict['instances'] > 0:
+					field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['instances']), 4)
+				else:
+					field_dict['distinct_ratio'] = 0.0
+
+				# percentage of total
+				field_dict['percentage_of_total_records'] = round((field_dict['instances'] / sr_dict['hits']['total']), 4)
+
+				# append
+				field_count.append(field_dict)
+
+			# return
+			return {
+				'total_docs':sr_dict['hits']['total'],
+				'fields':field_count
+			}
+
+		else:
+			return False
+
+
+	def field_analysis(self, field_name):
+
+		'''
+		For a given field, return all values for that field across a job's index
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field
+		'''
+
+		# init search
+		s = Search(using=es_handle, index=self.es_index)
+
+		# add agg bucket for field values
+		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+
+		# return zero
+		s = s[0]
+
+		# execute and return aggs
+		sr = s.execute()
+		return sr.aggs[field_name]['buckets']
+
+
+	def field_analysis_dt(self, field_name):
+
+		'''
+		Helper method to return field analysis as expected for DataTables Ajax data source
+
+		Args:
+			field_name (str): field name
+
+		Returns:
+			(dict): dictionary of values for a field in DT format
+			{
+				data: [
+					[
+						field_name,
+						count
+					],
+					...
+				]
+			}
+		'''
+
+		# get buckets
+		buckets = self.field_analysis(field_name)
+
+		# prepare as DT data
+		dt_dict = {
+			'data': [ [f['key'],f['doc_count']] for f in buckets ]
+		}
+
+		# return
+		return dt_dict
+
+
+
 class PublishedRecords(object):
 
 	'''
@@ -1317,6 +1475,9 @@ class PublishedRecords(object):
 
 		# set record count
 		self.record_count = self.records.count()
+
+		# setup ESIndex instance
+		self.esi = ESIndex('published')
 
 
 	def get_record(self, id):
@@ -1341,6 +1502,36 @@ class PublishedRecords(object):
 			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
 
 
+	def count_indexed_fields(self):
+
+		'''
+		Wrapper for ESIndex.count_indexed_fields
+		'''
+
+		# return count
+		return self.esi.count_indexed_fields()
+
+
+	def field_analysis(self, field_name):
+
+		'''
+		Wrapper for ESIndex.field_analysis
+		'''
+
+		# return field analysis
+		return self.esi.field_analysis(field_name)
+
+
+	def field_analysis_dt(self, field_name):
+
+		'''
+		Wrapper for ESIndex.field_analysis_dt
+		'''
+
+		# return field analysis
+		return self.esi.field_analysis_dt(field_name)
+
+
 
 class CombineJob(object):
 
@@ -1360,6 +1551,9 @@ class CombineJob(object):
 		self.livy_session = self._get_active_livy_session()
 		self.df = None
 		self.job_id = job_id
+
+		# setup ESIndex instance
+		self.esi = ESIndex('j%s' % self.job_id)
 
 		# if job_id provided, attempt to retrieve and parse output
 		if self.job_id:
@@ -1537,124 +1731,31 @@ class CombineJob(object):
 	def count_indexed_fields(self):
 
 		'''
-		Count instances of fields across all documents in a job's index
-
-		Args:
-			None
-
-		Returns:
-			(dict):
-				total_docs: count of total docs
-				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
+		Wrapper for ESIndex.count_indexed_fields
 		'''
 
-		if es_handle.indices.exists(index='j%s' % self.job_id) and es_handle.search(index='j%s' % self.job_id)['hits']['total'] > 0:
-
-			# get mappings for job index
-			es_r = es_handle.indices.get(index='j%s' % self.job_id)
-			index_mappings = es_r['j%s' % self.job_id]['mappings']['record']['properties']
-
-			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
-			field_names.sort()
-
-			# init search
-			s = Search(using=es_handle, index='j%s' % self.job_id)
-
-			# return no results, only aggs
-			s = s[0]
-
-			# add agg buckets for each field to count total and unique instances
-			for field_name in field_names:
-				s.aggs.bucket('%s_instances' % field_name, A('filter', Q('exists', field=field_name)))
-				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
-
-			# execute search and capture as dictionary
-			sr = s.execute()
-			sr_dict = sr.to_dict()
-
-			# calc fields percentage and return as list
-			field_count = [ 
-				{
-					'field_name':field,
-					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
-					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
-					'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
-					 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
-					'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
-					 sr_dict['hits']['total']), 4)
-				}
-				for field in field_names
-			]
-
-			# return
-			return {
-				'total_docs':sr_dict['hits']['total'],
-				'fields':field_count
-			}
-
-		else:
-
-			return False
+		# return count
+		return self.esi.count_indexed_fields()
 
 
 	def field_analysis(self, field_name):
 
 		'''
-		For a given field, return all values for that field across a job's index
-
-		Args:
-			field_name (str): field name
-
-		Returns:
-			(dict): dictionary of values for a field
+		Wrapper for ESIndex.field_analysis
 		'''
 
-		# init search
-		s = Search(using=es_handle, index='j%s' % self.job_id)
-
-		# add agg bucket for field values
-		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
-
-		# return zero
-		s = s[0]
-
-		# execute and return aggs
-		sr = s.execute()
-		return sr.aggs[field_name]['buckets']
+		# return field analysis
+		return self.esi.field_analysis(field_name)
 
 
 	def field_analysis_dt(self, field_name):
 
 		'''
-		Helper method to return field analysis as expected for DataTables Ajax data source
-
-		Args:
-			field_name (str): field name
-
-		Returns:
-			(dict): dictionary of values for a field in DT format
-			{
-				data: [
-					[
-						field_name,
-						count
-					],
-					...
-				]
-			}
+		Wrapper for ESIndex.field_analysis_dt
 		'''
 
-		# get buckets
-		buckets = self.field_analysis(field_name)
-
-		# prepare as DT data
-		dt_dict = {
-			'data': [ [f['key'],f['doc_count']] for f in buckets ]
-		}
-
-		# return
-		return dt_dict
+		# return field analysis
+		return self.esi.field_analysis_dt(field_name)
 
 
 	def get_indexing_failures(self):
