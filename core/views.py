@@ -936,7 +936,11 @@ class DTRecordsJson(BaseDatatableView):
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
-					return '<span style="color: green;">Valid XML</span>'
+					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 
@@ -1027,7 +1031,11 @@ class DTPublishedJson(BaseDatatableView):
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
-					return '<span style="color: green;">Valid XML</span>'
+					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 
