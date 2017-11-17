@@ -971,8 +971,7 @@ class DTPublishedJson(BaseDatatableView):
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique',
-			'document',
-			'error'
+			'document'
 		]
 
 		# define column names that will be used in sorting
@@ -986,8 +985,7 @@ class DTPublishedJson(BaseDatatableView):
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique',
-			'document',
-			'error'
+			'document'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site

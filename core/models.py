@@ -1347,42 +1347,34 @@ class ESIndex(object):
 			sr = s.execute()
 			sr_dict = sr.to_dict()
 
-			# # calc fields percentage and return as list
-			# field_count = [ 
-			# 	{
-			# 		'field_name':field,
-			# 		'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
-			# 		'distinct':sr_dict['aggregations']['%s_distinct' % field]['value'],
-			# 		'distinct_ratio':round((sr_dict['aggregations']['%s_distinct' % field]['value'] /\
-			# 		 sr_dict['aggregations']['%s_instances' % field]['doc_count']), 4),
-			# 		'percentage_of_total_records':round((sr_dict['aggregations']['%s_instances' % field]['doc_count'] /\
-			# 		 sr_dict['hits']['total']), 4)
-			# 	}
-			# 	for field in field_names
-			# ]
-
-			# calc field percentages and return as list			
+			# calc field percentages and return as list
+			'''
+			Because this also acts on the `published` ES index, which might contain mappings for fields that no longer
+			exist, filter out fields with zero instances.
+			'''
 			field_count = []
 			for field in field_names:
+
+				if sr_dict['aggregations']['%s_instances' % field]['doc_count'] > 0:
 				
-				# add that don't require calculation
-				field_dict = {
-					'field_name':field,
-					'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
-					'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
-				}
+					# add that don't require calculation
+					field_dict = {
+						'field_name':field,
+						'instances':sr_dict['aggregations']['%s_instances' % field]['doc_count'],
+						'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
+					}
 
-				# distinct ratio
-				if field_dict['instances'] > 0:
-					field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['instances']), 4)
-				else:
-					field_dict['distinct_ratio'] = 0.0
+					# distinct ratio
+					if field_dict['instances'] > 0:
+						field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['instances']), 4)
+					else:
+						field_dict['distinct_ratio'] = 0.0
 
-				# percentage of total
-				field_dict['percentage_of_total_records'] = round((field_dict['instances'] / sr_dict['hits']['total']), 4)
+					# percentage of total
+					field_dict['percentage_of_total_records'] = round((field_dict['instances'] / sr_dict['hits']['total']), 4)
 
-				# append
-				field_count.append(field_dict)
+					# append
+					field_count.append(field_dict)
 
 			# return
 			return {
@@ -1468,7 +1460,18 @@ class PublishedRecords(object):
 		self.publish_links = JobPublish.objects.all()
 
 		# get set IDs from record group of published jobs
-		self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		# self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		sets = {}
+		for publish_link in self.publish_links:
+			publish_set_id = publish_link.record_group.publish_set_id
+			
+			# if set not seen, add as list
+			if publish_set_id not in sets.keys():
+				sets[publish_set_id] = []
+
+			# add publish job
+			sets[publish_set_id].append(publish_link.job)	
+		self.sets = sets
 
 		# get iterable queryset of records
 		self.records = Record.objects.filter(job__job_type = 'PublishJob')
