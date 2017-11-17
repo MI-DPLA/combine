@@ -270,9 +270,8 @@ class Job(models.Model):
 			if self.finished:
 				self.update_record_count(save=False)
 
-		# update elapsed
-		if not self.finished and self.status in ['starting','running']:
-			self.elapsed = self.calc_elapsed()
+		# update elapsed		
+		self.elapsed = self.calc_elapsed()
 
 		# finally, save
 		self.save()
@@ -281,7 +280,7 @@ class Job(models.Model):
 	def calc_elapsed(self):
 
 		'''
-		Method to calculate how long a job has elapsed based on time since timestamp.
+		Method to calculate how long a job has been running/ran.
 
 		Args:
 			None
@@ -290,7 +289,16 @@ class Job(models.Model):
 			(int): elapsed time in seconds
 		'''
 
-		return (datetime.datetime.now() - self.timestamp.replace(tzinfo=None)).seconds
+		# get start time
+		job_track = self.jobtrack_set.first()
+
+		# if not finished, determined elapsed until now
+		if not self.finished:
+			return (datetime.datetime.now() - job_track.start_timestamp.replace(tzinfo=None)).seconds
+
+		# else, if finished, calc time between job_track start and finish
+		else:
+			return (job_track.finish_timestamp - job_track.start_timestamp).seconds
 
 
 	def elapsed_as_string(self):
@@ -487,6 +495,20 @@ class Job(models.Model):
 		# index results save path
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
+
+class JobTrack(models.Model):
+
+	'''
+	Model to record information about jobs from Spark context, as not to interfere with model `Job` transactions
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	finish_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+
+
+	def __str__(self):
+		return 'JobTrack: job_id #%s' % self.job_id
 
 
 class JobInput(models.Model):

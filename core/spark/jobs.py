@@ -29,7 +29,7 @@ django.setup()
 from django.conf import settings
 
 # import select models from Core
-from core.models import CombineJob, Job
+from core.models import CombineJob, Job, JobTrack
 
 
 class CombineRecordSchema(object):
@@ -99,9 +99,11 @@ class HarvestSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# update timestamp to now
-		job.timestamp = datetime.datetime.now()
-		job.save()
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
 
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
@@ -169,9 +171,10 @@ class HarvestSpark(object):
 				index_mapper=kwargs['index_mapper']
 			)
 
-		# # finally, get job again and update job status
-		job.update_status()
-
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
+		
 
 
 class TransformSpark(object):
@@ -204,9 +207,11 @@ class TransformSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# update timestamp to now
-		job.timestamp = datetime.datetime.now()
-		job.save()
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
@@ -269,8 +274,9 @@ class TransformSpark(object):
 				index_mapper=kwargs['index_mapper']
 			)
 
-		# # finally, get job again and update job status
-		job.update_status()
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 
@@ -304,9 +310,11 @@ class MergeSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# update timestamp to now
-		job.timestamp = datetime.datetime.now()
-		job.save()
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
 
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
@@ -345,8 +353,9 @@ class MergeSpark(object):
 				index_mapper=kwargs['index_mapper']
 			)
 
-		# # finally, get job again and update job status
-		job.update_status()
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 
@@ -375,9 +384,11 @@ class PublishSpark(object):
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
-		# update timestamp to now
-		job.timestamp = datetime.datetime.now()
-		job.save()
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		sqldf = spark.read.jdbc(
@@ -437,8 +448,9 @@ class PublishSpark(object):
 				publish_set_id=job.record_group.publish_set_id
 			)
 
-		# # finally, get job again and update job status
-		job.update_status()
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
 
 
 
