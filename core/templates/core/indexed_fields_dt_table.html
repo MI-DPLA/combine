@@ -1,0 +1,76 @@
+{% block content %}	
+
+<div id="index_analysis_block">
+	<p>
+		<div style="width:50%;">
+			<table border="1" cellpadding="5">
+				<tr>
+					<th>Column</th>
+					<th>Explanation</th>
+				<tr>
+				<tr>
+					<td><strong>Documents with Field</strong></td>
+					<td>Count of documents with instance of this field.</td>
+				</tr>
+				<tr>
+					<td><strong>Count of Distinct Values for Field</strong></td>
+					<td>How many unique values are present for a given field.  This may exceed the column 'Documents with Field', which counts only documents with the field present, but does not factor in whether that field instance has multiple values or not.</td>
+				</tr>
+				<tr>
+					<td><strong>Percentage of Field Values that are Unique</strong></td>
+					<td>Given these two numbers, percentage of total instances of this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 would be 10% unique (lighter green).</td>
+				</tr>
+				<tr>
+					<td><strong>Instance of Field in Total Indexed Records</strong></td>
+					<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) suggests all records have this field, 0.10% (lighter green) means only 10% have this field.  Note: Though you might have 10,000 instances of a subject field, from 5,000 records, it's possible that only 2,500 records (1/2 the total records) actually have 4 subjects a piece.  In this scenario, this number would be 0.5, indicating that while there are <em>many</em> subject fields, only 50% of your records contain them.  This can be useful for QAing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
+				</tr>
+			</table>
+		</div>
+	</p>
+
+	<p>
+		<table id="index_analysis" border="1">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Count of Distinct Values for Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</thead>
+			<tfoot>
+				<tr>
+					<th>Field Name</th>
+					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Count of Distinct Values for Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</tfoot>
+
+			<tbody>
+				{% for field in field_counts.fields %}
+					<tr>
+						<td><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+						<td>{{ field.instances }}</td>
+						<td>{{ field.distinct }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+
+		</table>
+		<script>
+			$(document).ready(function() {
+			    $('#index_analysis').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ]
+			    });
+			} );
+		</script>
+	</p>
+</div>
+
+{% endblock %}

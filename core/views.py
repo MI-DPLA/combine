@@ -322,6 +322,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
+			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -853,7 +854,14 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
-	return render(request, 'core/published.html', {'published':published})
+	# isolate field_counts for templated tabled
+	field_counts = published.count_indexed_fields()
+
+	return render(request, 'core/published.html', {
+			'published':published,
+			'field_counts':field_counts,
+			'es_index':published.esi.es_index,
+		})
 
 
 
