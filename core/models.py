@@ -332,15 +332,18 @@ class Job(models.Model):
 			(float): records per second, rounded to one dec.
 		'''
 
-		if self.record_count > 0:
+		try:
+			if self.record_count > 0:
 
-			if not self.finished:
-				elapsed = self.calc_elapsed()
+				if not self.finished:
+					elapsed = self.calc_elapsed()
+				else:
+					elapsed = self.elapsed
+				return round((float(self.record_count) / float(elapsed)),1)
+
 			else:
-				elapsed = self.elapsed
-			return round((float(self.record_count) / float(elapsed)),1)
-
-		else:
+				return None
+		except:
 			return None
 
 
@@ -738,7 +741,8 @@ class Record(models.Model):
 	def get_es_doc(self):
 
 		'''
-		Return indexed ElasticSearch document as dictionary
+		Return indexed ElasticSearch document as dictionary.
+		Search is limited by ES index (Job associated) and record_id
 
 		Args:
 			None
@@ -1308,13 +1312,17 @@ class ESIndex(object):
 		self.es_index = es_index
 
 
-	def count_indexed_fields(self):
+	def count_indexed_fields(self, cardinality_precision_threshold=9000):
 
 		'''
 		Calculate metrics of fields across all document in a job's index:
 			- *_doc_instances = how many documents the field exists for
 			- *_val_instances = count of total values for that field, across all documents
 			- *_distinct = count of distinct values for that field, across all documents
+
+		Note: distinct counts rely on cardinality aggregations from ElasticSearch, but these are not 100 percent
+		accurate according to ES documentation:
+		https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html
 
 		Args:
 			None
@@ -1345,7 +1353,11 @@ class ESIndex(object):
 			for field_name in field_names:
 				s.aggs.bucket('%s_doc_instances' % field_name, A('filter', Q('exists', field=field_name)))
 				s.aggs.bucket('%s_val_instances' % field_name, A('value_count', field='%s.keyword' % field_name))
-				s.aggs.bucket('%s_distinct' % field_name, A('cardinality', field='%s.keyword' % field_name))
+				s.aggs.bucket('%s_distinct' % field_name, A(
+						'cardinality',
+						field='%s.keyword' % field_name,
+						precision_threshold = cardinality_precision_threshold
+					))
 
 			# execute search and capture as dictionary
 			sr = s.execute()
@@ -1380,8 +1392,8 @@ class ESIndex(object):
 						(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
 
 					# one, distinct value for this field, for this document
-					if field_dict['percentage_of_total_records'] == 1.0	and len(set(
-						[field_dict['doc_instances'], field_dict['val_instances'], field_dict['distinct']])) == 1:
+					if field_dict['percentage_of_total_records'] > 0.99 and field_dict['percentage_of_total_records'] < 1.01 and len(set(
+						[field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
 							field_dict['one_distinct_per_doc'] = True
 					else:
 						field_dict['one_distinct_per_doc'] = False
@@ -2087,9 +2099,9 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transform_filepath="%(transform_filepath)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'transform_filepath':self.transformation.filepath,				
+				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper

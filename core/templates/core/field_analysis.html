@@ -64,7 +64,7 @@
 		            		for (var i = escapes.length - 1; i >= 0; i--) {
 		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
 		            		};
-		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>view</a>";
+		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>ElasticSearch</a>";
 		            	}
 		            }
 		        ],		        

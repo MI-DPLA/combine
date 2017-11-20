@@ -29,7 +29,7 @@ django.setup()
 from django.conf import settings
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack
+from core.models import CombineJob, Job, JobTrack, Transformation
 
 
 class CombineRecordSchema(object):
@@ -160,16 +160,12 @@ class HarvestSpark(object):
 		records = records.withColumn('error', error(records.id))
 
 		# index records to db
-		save_records(job=job, records_df=records)
-
-		# index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=records,
-				index_mapper=kwargs['index_mapper']
-			)
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=records
+		)
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -220,59 +216,61 @@ class TransformSpark(object):
 				properties=settings.COMBINE_DATABASE
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
-		# records = records.select(CombineRecordSchema().field_names)
 
-		# define udf function for transformation
-		def transform_xml(job_id, row, xslt_string):
+		# get transformation
+		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
 
-			# attempt transformation and save out put to 'document'
-			try:
-				
-				# transform with pyjxslt gateway
-				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('xslt_transform', xslt_string)
-				result = gw.transform('xslt_transform', row.document)
-				# set trans tuple
-				trans = (result, '')
+		# if xslt type transformation
+		if transformation.transformation_type == 'xslt':
 
-			# catch transformation exception and save exception to 'error'
-			except Exception as e:
-				# set trans tuple
-				trans = ('', str(e))
+			# define udf function for transformation
+			def transform_xml(job_id, row, xslt_string):
 
-			# return Row
-			return Row(
-					record_id = row.record_id,
-					oai_id = row.oai_id,
-					document = trans[0],
-					error = trans[1],
-					job_id = int(job_id),
-					oai_set = row.oai_set
-				)
+				# attempt transformation and save out put to 'document'
+				try:
+					
+					# transform with pyjxslt gateway
+					gw = pyjxslt.Gateway(6767)
+					gw.add_transform('xslt_transform', xslt_string)
+					result = gw.transform('xslt_transform', row.document)
+					gw.drop_transform('xslt_transform')
 
-		# open XSLT transformation, pass to map as string
-		with open(kwargs['transform_filepath'],'r') as f:
-			xslt_string = f.read()
+					# set trans_result tuple
+					trans_result = (result, '')
 
-		# transform via rdd.map
-		job_id = job.id
-		records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
+				# catch transformation exception and save exception to 'error'
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e))
+
+				# return Row
+				return Row(
+						record_id = row.record_id,
+						oai_id = row.oai_id,
+						document = trans_result[0],
+						error = trans_result[1],
+						job_id = int(job_id),
+						oai_set = row.oai_set
+					)
+
+			# open XSLT transformation, pass to map as string
+			with open(transformation.filepath,'r') as f:
+				xslt_string = f.read()
+
+			# transform via rdd.map
+			job_id = job.id
+			records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
-		# records = records.toDF(schema=CombineRecordSchema().schema)
 		records_trans = records_trans.toDF()
 
 		# index records to db
-		save_records(job=job, records_df=records_trans)
-
-		# index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=records_trans,
-				index_mapper=kwargs['index_mapper']
-			)
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=records_trans
+		)
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -342,16 +340,12 @@ class MergeSpark(object):
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
 		# index records to db
-		save_records(job=job, records_df=agg_df)
-
-		# index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=agg_df,
-				index_mapper=kwargs['index_mapper']
-			)
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=agg_df
+		)
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -431,22 +425,19 @@ class PublishSpark(object):
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to db
-		save_records(job=job, records_df=records, write_avro=False)
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=records,
+			write_avro=False
+		)
 
-		# index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=records,
-				index_mapper=kwargs['index_mapper']
-			)
-
-			# index to ES /published
-			ESIndex.index_published_job(
-				job_id = job.id,
-				publish_set_id=job.record_group.publish_set_id
-			)
+		# index to ES /published
+		ESIndex.index_published_job(
+			job_id = job.id,
+			publish_set_id=job.record_group.publish_set_id
+		)
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -454,13 +445,15 @@ class PublishSpark(object):
 
 
 
-def save_records(job=None, records_df=None, write_avro=True):
+def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True):
 
 	'''
 	Function to index records to DB.
 	Additionally, generates and writes oai_id column to DB.
 
 	Args:
+		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+		kwargs (dict): dictionary of args sent to Job spark method
 		job (core.models.Job): Job instance		
 		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
 		write_avro (bool): boolean to write avro files to disk after DB indexing 
@@ -488,9 +481,44 @@ def save_records(job=None, records_df=None, write_avro=True):
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
 
+	# # index to ElasticSearch
+	# if settings.INDEX_TO_ES:
+	# 	ESIndex.index_job_to_es_spark(
+	# 		spark,
+	# 		job=job,
+	# 		records_df=records_df_combine_cols,
+	# 		index_mapper=kwargs['index_mapper']
+	# 	)
+
+	# # write avro, coalescing default 200 partitions to 4 for output
+	# if write_avro:
+	# 	records_df_combine_cols.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
+
+	###################################
+
+	# read rows from DB for indexing to ES and writing avro
+	sqldf = spark.read.jdbc(
+			settings.COMBINE_DATABASE['jdbc_url'],
+			'core_record',
+			properties=settings.COMBINE_DATABASE
+		)
+	job_id = job.id
+	db_records = sqldf.filter(sqldf.job_id == job_id)
+
+	# index to ElasticSearch
+	if settings.INDEX_TO_ES:
+		ESIndex.index_job_to_es_spark(
+			spark,
+			job=job,
+			records_df=db_records,
+			index_mapper=kwargs['index_mapper']
+		)
+
 	# write avro, coalescing default 200 partitions to 4 for output
 	if write_avro:
-		records_df_combine_cols.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
+		db_records.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
+
+
 
 	
 
