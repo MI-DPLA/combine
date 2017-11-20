@@ -13,12 +13,16 @@
 					<td>Count of documents with instance of this field.</td>
 				</tr>
 				<tr>
+					<td><strong>Count of Total Values for Field</strong></td>
+					<td>Count of total values for this field, across all documents.</td>
+				</tr>
+				<tr>
 					<td><strong>Count of Distinct Values for Field</strong></td>
-					<td>How many unique values are present for a given field.  This may exceed the column 'Documents with Field', which counts only documents with the field present, but does not factor in whether that field instance has multiple values or not.</td>
+					<td>How many unique values are present for a given field.</td>
 				</tr>
 				<tr>
 					<td><strong>Percentage of Field Values that are Unique</strong></td>
-					<td>Given these two numbers, percentage of total instances of this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 would be 10% unique (lighter green).</td>
+					<td>Percentage of values for this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 would be 10% unique (lighter green).</td>
 				</tr>
 				<tr>
 					<td><strong>Instance of Field in Total Indexed Records</strong></td>
@@ -34,6 +38,7 @@
 				<tr>
 					<th>Field Name</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
 					<th>Percentage of Field Values that are Unique</th>
 					<th>Instance of Field in Total Indexed Records</th>
@@ -43,6 +48,7 @@
 				<tr>
 					<th>Field Name</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
 					<th>Percentage of Field Values that are Unique</th>
 					<th>Instance of Field in Total Indexed Records</th>
@@ -53,7 +59,8 @@
 				{% for field in field_counts.fields %}
 					<tr>
 						<td><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-						<td>{{ field.instances }}</td>
+						<td>{{ field.doc_instances }}</td>
+						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>
 						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
 						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
