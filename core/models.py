@@ -1312,7 +1312,10 @@ class ESIndex(object):
 		self.es_index = es_index
 
 
-	def count_indexed_fields(self, cardinality_precision_threshold=9000):
+	def count_indexed_fields(self,
+			cardinality_precision_threshold=100,
+			one_per_doc_offset=0.05
+		):
 
 		'''
 		Calculate metrics of fields across all document in a job's index:
@@ -1325,7 +1328,8 @@ class ESIndex(object):
 		https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html
 
 		Args:
-			None
+			cardinality_precision_threshold (int, 0:40-000): Cardinality precision threshold (see note above)
+			one_per_doc_offset (float): Offset from 1.0 that is used to guess if field is unique for all documents
 
 		Returns:
 			(dict):
@@ -1392,9 +1396,10 @@ class ESIndex(object):
 						(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
 
 					# one, distinct value for this field, for this document
-					if field_dict['percentage_of_total_records'] > 0.99 and field_dict['percentage_of_total_records'] < 1.01 and len(set(
-						[field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
-							field_dict['one_distinct_per_doc'] = True
+					if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
+					 and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
+					 and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
+						field_dict['one_distinct_per_doc'] = True
 					else:
 						field_dict['one_distinct_per_doc'] = False
 
