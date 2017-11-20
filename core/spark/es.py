@@ -34,6 +34,7 @@ class ESIndex(object):
 		Method to index records dataframe into ES
 
 		Args:
+		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job for records
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
 			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
@@ -61,7 +62,7 @@ class ESIndex(object):
 		# if not empty
 		if not failures_rdd.isEmpty():
 
-			failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
