@@ -1376,7 +1376,15 @@ class ESIndex(object):
 						field_dict['distinct_ratio'] = 0.0
 
 					# percentage of total documents with instance of this field
-					field_dict['percentage_of_total_records'] = round((field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
+					field_dict['percentage_of_total_records'] = round(
+						(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
+
+					# one, distinct value for this field, for this document
+					if field_dict['percentage_of_total_records'] == 1.0	and len(set(
+						[field_dict['doc_instances'], field_dict['val_instances'], field_dict['distinct']])) == 1:
+							field_dict['one_distinct_per_doc'] = True
+					else:
+						field_dict['one_distinct_per_doc'] = False
 
 					# append
 					field_count.append(field_dict)
