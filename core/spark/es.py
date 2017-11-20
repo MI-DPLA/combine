@@ -34,7 +34,7 @@ class ESIndex(object):
 		Method to index records dataframe into ES
 
 		Args:
-		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+			spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job for records
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
 			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
