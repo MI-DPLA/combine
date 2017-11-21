@@ -830,6 +830,51 @@ class IndexMappingFailure(models.Model):
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 
+class DPLAJobMap(models.Model):
+
+	'''
+	#Experiemental#
+
+	Model to map parsed fields from ES index to DPLA record fields.  Values for each DPLA field correspond to an ES
+	field name for the associated Job.
+
+	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
+	to the DPLA JSON model.
+
+	Inspiration for DPLA fields are taken from here:
+	https://github.com/dpla/ingestion3/blob/develop/src/main/scala/dpla/ingestion3/model/DplaMapData.scala
+	'''
+
+	# associate mapping with Job
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+
+	# DPLA fields
+	isShownAt = models.CharField(max_length=255, null=True, default=None)
+	contributor = models.CharField(max_length=255, null=True, default=None)
+	creator = models.CharField(max_length=255, null=True, default=None)
+	date = models.CharField(max_length=255, null=True, default=None)
+	description = models.CharField(max_length=255, null=True, default=None)
+	extent = models.CharField(max_length=255, null=True, default=None)
+	format = models.CharField(max_length=255, null=True, default=None)
+	genre = models.CharField(max_length=255, null=True, default=None)
+	identifier = models.CharField(max_length=255, null=True, default=None)
+	language = models.CharField(max_length=255, null=True, default=None)
+	place = models.CharField(max_length=255, null=True, default=None)
+	publisher = models.CharField(max_length=255, null=True, default=None)
+	relation = models.CharField(max_length=255, null=True, default=None)
+	rights = models.CharField(max_length=255, null=True, default=None)
+	subject = models.CharField(max_length=255, null=True, default=None)
+	temporal = models.CharField(max_length=255, null=True, default=None)
+	title = models.CharField(max_length=255, null=True, default=None)
+
+
+	def __str__(self):
+
+		# determine how many fields are mapped
+		mapped_fields = 999
+		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, mapped_fields)
+
+
 
 ####################################################################
 # Signals Handlers                                                 # 

@@ -4,8 +4,9 @@
 
 	<h2>Record</h2>
 
+	<h3>Combine Attributes</h3>
 	<ul>
-		<li><strong>Combine DB ID:</strong> {{ record.id }}</li>
+		<li><strong>Combine ID:</strong> {{ record.id }}</li>
 		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type }}">{{ record.job.job_type }}</span></li>
 		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
 		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
@@ -16,7 +17,7 @@
 
 	<table border="1" cellpadding="10">
 		<tr>
-			<th>DB ID</th>
+			<th>ID</th>
 			<th>Job ID</th>
 			<th>Job Name</th>
 			<th>Job Type</th>
@@ -27,8 +28,8 @@
 		{% for record_stage in record_stages %}
 			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
 				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
-				<td>{{ record_stage.job.id }}</td>
-				<td>{{ record_stage.job.name }}</td>
+				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
+				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
 				<td>{{ record_stage.job.job_type }}</td>
 				{% if record_stage.document != '' %}
 					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
