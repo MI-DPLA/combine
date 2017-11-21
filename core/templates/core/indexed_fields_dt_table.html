@@ -1,4 +1,5 @@
 {% block content %}	
+{% load getattribute %}
 
 <div id="index_analysis_block">
 	<p>
@@ -11,6 +12,10 @@
 				<tr>
 					<td><strong>Field Name</strong></td>
 					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.  <strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
+				</tr>
+				<tr>
+					<td><strong>DPLA Mapped Field</strong></td>
+					<td>Mapped DPLA field.  <strong>Note:</strong> These are primarily for preview/QA, they do not represent a final mapping.</td>
 				</tr>
 				<tr>
 					<td><strong>Documents with Field</strong></td>
@@ -41,6 +46,7 @@
 			<thead>
 				<tr>
 					<th>Field Name</th>
+					<th>DPLA Mapped Field</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
@@ -51,6 +57,7 @@
 			<tfoot>
 				<tr>
 					<th>Field Name</th>
+					<th>DPLA Mapped Field</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
@@ -63,6 +70,15 @@
 				{% for field in field_counts.fields %}
 					<tr>
 						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+						{% if cjob.job.dpla_mapping %}
+							{% if cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name %}
+								<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
+							{% else %}
+								<td></td>
+							{% endif %}
+						{% else %}
+							<td></td>
+						{% endif %}
 						<td>{{ field.doc_instances }}</td>
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>

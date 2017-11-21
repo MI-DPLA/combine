@@ -506,6 +506,24 @@ class Job(models.Model):
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
+	def dpla_mapping(self):
+
+		'''
+		Method to return DPLA mapping for this job
+
+		Args:
+			None
+
+		Returns:
+			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
+		'''
+
+		if self.dplajobmap_set.count() == 1:
+			return self.dplajobmap_set.first()
+		else:
+			return False
+
+
 class JobTrack(models.Model):
 
 	'''
