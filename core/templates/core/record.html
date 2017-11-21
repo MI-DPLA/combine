@@ -8,7 +8,7 @@
 	<!-- Show DPLA Mapped Fields if present -->
 	{% if record.job.dpla_mapping %}
 
-		<div style="background-color:#E4E4E3; width:50%; padding:5px 10px 10px 10px; border-radius:10px;">
+		<div style="background-color:#E4E4E3; width:50%; padding:10px 10px 10px 10px; border-radius:10px;">
 			<h3>DPLA Mapped Fields</h3>
 
 		<!-- show thumbnail if mapped -->
@@ -18,7 +18,9 @@
 
 		<!-- show metadata fields if present -->
 		{% for field, value in record.job.dpla_mapping.mapped_fields.items  %}
-			<p><strong>{{ field }}</strong> : {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
+			{% if record.get_es_doc|get_dict_value:value %}
+				<p><strong>{{ field }}</strong> : {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
+			{% endif %}
 		{% endfor %}
 
 		</div> <!-- close DPLA mapped div -->
@@ -79,13 +81,6 @@
 					<th>Field Value</th>
 				</tr>
 			</thead>
-			<tfoot>
-				<tr>
-					<th>Field Name</th>
-					<th>DPLA Mapped Field</th>
-					<th>Field Value</th>
-				</tr>
-			</tfoot>
 			<tbody>
 				{% for field_name, field_value in record.get_es_doc.items %}
 				<tr>

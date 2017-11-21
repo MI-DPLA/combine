@@ -524,6 +524,7 @@ class Job(models.Model):
 			return False
 
 
+
 class JobTrack(models.Model):
 
 	'''
@@ -898,10 +899,27 @@ class DPLAJobMap(models.Model):
 		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
 
 
+	def all_fields(self):
+
+		'''
+		Return list of all potential field mappings
+		'''
+
+		all_fields = [ field.name for field in self._meta.get_fields() if field.name not in ['id','job'] ]
+		all_fields.sort()
+		return all_fields
+
+
 	def mapped_fields(self):
 
 		'''
 		Return dictionary of fields with associated mapping
+
+		Args:
+			None
+
+		Returns:
+			(dict): dictionary of instance mappings
 		'''
 
 		mapped_fields = { 
@@ -1022,6 +1040,7 @@ def save_job(sender, instance, created, **kwargs):
 
 	# if the record was just created, then update job output (ensures this only runs once)
 	if created:
+
 		# set output based on job type
 		logger.debug('setting job output for job')
 		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
@@ -1031,6 +1050,12 @@ def save_job(sender, instance, created, **kwargs):
 			instance.job_type,
 			instance.id)
 		instance.save()
+
+		# create DPLAJobMap instance and save
+		djm = DPLAJobMap(
+			job = instance
+		)
+		djm.save()
 
 
 @receiver(models.signals.pre_delete, sender=Job)

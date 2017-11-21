@@ -47,6 +47,7 @@
 				<tr>
 					<th>Field Name</th>
 					<th>DPLA Mapped Field</th>
+					<th>Map DPLA Field</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
@@ -54,22 +55,12 @@
 					<th>Instance of Field in Total Indexed Records</th>
 				</tr>
 			</thead>
-			<tfoot>
-				<tr>
-					<th>Field Name</th>
-					<th>DPLA Mapped Field</th>
-					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
-					<th>Count of Total Values for Field</th>
-					<th>Count of Distinct Values for Field</th>
-					<th>Percentage of Field Values that are Unique</th>
-					<th>Instance of Field in Total Indexed Records</th>
-				</tr>
-			</tfoot>
-
 			<tbody>
 				{% for field in field_counts.fields %}
 					<tr>
 						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+
+						<!-- show mapped DPLA field if exists -->
 						{% if cjob.job.dpla_mapping %}
 							{% if cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name %}
 								<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
@@ -79,6 +70,22 @@
 						{% else %}
 							<td></td>
 						{% endif %}
+
+						<!-- provide in-place form for mapping field -->
+						<td>
+							<form method="POST" action="{% url 'job_dpla_field_map' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+								{% csrf_token %}
+								<select name='dpla_field' onchange="this.form.submit()">
+									<option value="">Select DPLA field</option>
+									<option value="">None</option>
+									{% for field_name in cjob.job.dpla_mapping.all_fields %}									
+										<option value="{{ field_name }}">{{ field_name }}</option>
+									{% endfor %}
+								</select>
+								<input type="hidden" name="es_field" value="{{ field.field_name }}"></input>
+							</form>
+						</td>
+
 						<td>{{ field.doc_instances }}</td>
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>

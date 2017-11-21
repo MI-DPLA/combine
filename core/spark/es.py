@@ -291,8 +291,6 @@ class GenericMapper(BaseMapper):
 				if include_attributes:
 					for k,v in elem['attributes'].items():
 
-						print(type(k))
-
 						# replace whitespace in attribute or value with underscore
 						k = k.replace(' ','_')
 						v = v.replace(' ','_')						
