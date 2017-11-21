@@ -8,10 +8,21 @@
 	<!-- Show DPLA Mapped Fields if present -->
 	{% if record.job.dpla_mapping %}
 
+		<div style="background-color:#E4E4E3; width:50%; padding:5px 10px 10px 10px; border-radius:10px;">
+			<h3>DPLA Mapped Fields</h3>
+
 		<!-- show thumbnail if mapped -->
 		{% if record.job.dpla_mapping.preview %}
-			<img src="{{ record.get_es_doc|get_dict_value:record.job.dpla_mapping.preview }}"/>
+			<a target="_blank" href="{{record.get_es_doc|get_dict_value:record.job.dpla_mapping.isShownAt}}"><img src="{{ record.get_es_doc|get_dict_value:record.job.dpla_mapping.preview }}"/></a>
 		{% endif %}
+
+		<!-- show metadata fields if present -->
+		{% for field, value in record.job.dpla_mapping.mapped_fields.items  %}
+			<p><strong>{{ field }}</strong> : {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
+		{% endfor %}
+
+		</div> <!-- close DPLA mapped div -->
+
 
 	{% endif %}
 
