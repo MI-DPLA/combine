@@ -849,7 +849,11 @@ class DPLAJobMap(models.Model):
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 
 	# DPLA fields
+	# thumbnails and access
 	isShownAt = models.CharField(max_length=255, null=True, default=None)
+	preview = models.CharField(max_length=255, null=True, default=None)
+
+	# descriptive metadata
 	contributor = models.CharField(max_length=255, null=True, default=None)
 	creator = models.CharField(max_length=255, null=True, default=None)
 	date = models.CharField(max_length=255, null=True, default=None)
@@ -870,9 +874,42 @@ class DPLAJobMap(models.Model):
 
 	def __str__(self):
 
-		# determine how many fields are mapped
-		mapped_fields = 999
-		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, mapped_fields)
+		# count mapped fields
+		mapped_fields = self.mapped_fields()
+		
+		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
+
+
+	def mapped_fields(self):
+
+		'''
+		Return dictionary of fields with associated mapping
+		'''
+
+		mapped_fields = { 
+				field.name: getattr(self, field.name) for field in self._meta.get_fields() 
+				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
+			}
+		return mapped_fields
+
+
+	def inverted_mapped_fields(self):
+
+		'''
+		Convenience method to invert mapping, using ES field name as key for DPLA field
+
+		Args:
+			None
+
+		Returns:
+			(dict): dictionary of inverted model instance mapping
+		'''
+		
+		# get mapped fields as dict
+		mapped_fields = self.mapped_fields()
+
+		# invert and return
+		return {v: k for k, v in mapped_fields.items()}
 
 
 

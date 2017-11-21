@@ -33,7 +33,7 @@ class CoreConfig(AppConfig):
 			None
 		'''
 
-		logger.debug('Core application ready method preperations firing')
+		# logger.debug('Core application ready method preperations firing')
 
 		# load pyjxslt transformations
 		# load_pyjxslt_transformations()
