@@ -391,13 +391,18 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 		# get fields 
 		dpla_field = request.POST.get('dpla_field')
 		es_field = request.POST.get('es_field')
+		logger.debug("###############################")
+		logger.debug(dpla_field)
+		logger.debug(es_field)
+		logger.debug("###############################")
 
 		# if dpla none, get current dpla field for this es field, then set to None
 		if dpla_field == '':
-			current_dpla_field = djm.inverted_mapped_fields()[es_field]
-			logger.debug('unsetting %s' % current_dpla_field)			
-			dpla_field = current_dpla_field
-			es_field = None
+			if es_field in djm.inverted_mapped_fields().keys():
+				current_dpla_field = djm.inverted_mapped_fields()[es_field]
+				logger.debug('unsetting %s' % current_dpla_field)			
+				dpla_field = current_dpla_field
+				es_field = None
 		
 		# update DPLAJobMap and redirect
 		setattr(djm, dpla_field, es_field)

@@ -78,6 +78,7 @@
 				<tr>
 					<th>Field Name</th>
 					<th>DPLA Mapped Field</th>
+					<th>Map DPLA Field</th>
 					<th>Field Value</th>
 				</tr>
 			</thead>
@@ -86,6 +87,7 @@
 				<tr>
 					<td><strong>{{ field_name }}</strong></td>
 
+					<!-- show mapped DPLA field if exists -->
 					{% if record.job.dpla_mapping %}
 						{% if record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name %}
 							<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
@@ -95,6 +97,21 @@
 					{% else %}
 						<td></td>
 					{% endif %}
+
+					<!-- provide in-place form for mapping field -->
+					<td>
+						<form method="POST" action="{% url 'job_dpla_field_map' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id %}">
+							{% csrf_token %}
+							<select name='dpla_field' onchange="this.form.submit()">
+								<option value="">Select DPLA field</option>
+								<option value="">None</option>
+								{% for field_name in record.job.dpla_mapping.all_fields %}									
+									<option value="{{ field_name }}">{{ field_name }}</option>
+								{% endfor %}
+							</select>
+							<input type="hidden" name="es_field" value="{{ field_name }}"></input>
+						</form>
+					</td>
 
 					{% if 'http://' in field_value or 'https://' in field_value %}
 						<td><a href="{{ field_value }}" target="_blank">{{ field_value }}</a></td>
