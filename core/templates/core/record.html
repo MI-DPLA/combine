@@ -1,8 +1,19 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
+{% load core_template_filters %}
 
 	<h2>Record</h2>
+
+	<!-- Show DPLA Mapped Fields if present -->
+	{% if record.job.dpla_mapping %}
+
+		<!-- show thumbnail if mapped -->
+		{% if record.job.dpla_mapping.preview %}
+			<img src="{{ record.get_es_doc|get_dict_value:record.job.dpla_mapping.preview }}"/>
+		{% endif %}
+
+	{% endif %}
 
 	<h3>Combine Attributes</h3>
 	<ul>
