@@ -64,23 +64,36 @@
 			<thead>
 				<tr>
 					<th>Field Name</th>
+					<th>DPLA Mapped Field</th>
 					<th>Field Value</th>
 				</tr>
 			</thead>
 			<tfoot>
 				<tr>
 					<th>Field Name</th>
+					<th>DPLA Mapped Field</th>
 					<th>Field Value</th>
 				</tr>
 			</tfoot>
 			<tbody>
-				{% for key, value in record.get_es_doc.items %}
+				{% for field_name, field_value in record.get_es_doc.items %}
 				<tr>
-					<td><strong>{{ key }}</strong></td>
-					{% if 'http://' in value or 'https://' in value %}
-						<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
+					<td><strong>{{ field_name }}</strong></td>
+
+					{% if record.job.dpla_mapping %}
+						{% if record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name %}
+							<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
+						{% else %}
+							<td></td>
+						{% endif %}
 					{% else %}
-						<td>{{ value }}</td>
+						<td></td>
+					{% endif %}
+
+					{% if 'http://' in field_value or 'https://' in field_value %}
+						<td><a href="{{ field_value }}" target="_blank">{{ field_value }}</a></td>
+					{% else %}
+						<td>{{ field_value }}</td>
 					{% endif %}
 				</tr>
 				{% endfor %}
