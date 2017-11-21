@@ -8,6 +8,7 @@
 		<th>Unique</th>
 		<th>Document</th>
 		<th>Error</th>
+		<!-- <th>Thumbnail</th> -->
 	</thead>
 	<tbody>
 	</tbody>
@@ -20,7 +21,14 @@
 	        "serverSide": true,
 	        "ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
 	        "searchDelay": 1000,
-	        "pageLength": 25
+	        "pageLength": 25,
+	  //       "columnDefs": [ 
+	  //       	{
+	  //       		// disable sorting for thumbnail
+			// 		"targets": 7,
+			// 		"orderable": false
+			// 	}
+			// ]
 	    });
 	});
 </script>

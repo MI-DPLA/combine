@@ -923,8 +923,7 @@ class DTRecordsJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 			
-			# handle document metadata
-
+			# handle record_id
 			if column == 'record_id':
 				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
@@ -932,6 +931,7 @@ class DTRecordsJson(BaseDatatableView):
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
 
+			# handle document
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
@@ -948,12 +948,31 @@ class DTRecordsJson(BaseDatatableView):
 			if column == 'job':
 				return row.job.name
 
-			# handle associated job
+			# handle unique
 			if column == 'unique':
 				if row.unique:
 					return '<span style="color:green;">Unique</span>'
 				else:
 					return '<span style="color:red;">Duplicate</span>'
+
+			# # thumbnail
+			# if column == 'thumbnail':
+
+			# 	# get dpla mapping
+			# 	dpla_mapping = row.job.dpla_mapping()
+
+			# 	# if DPLA mapping
+			# 	if dpla_mapping:
+			# 		# if preview is defined
+			# 		if dpla_mapping.preview:
+
+			# 			# get thumbnail url from ES doc
+			# 			thumb_url = row.get_es_doc()[dpla_mapping.preview]						
+			# 			return '<img height="50" src="%s"/>' % thumb_url
+			# 		else:
+			# 			return '<img scr="#"/>';
+			# 	else:
+			# 		return '<img scr="#"/>';
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
