@@ -2755,7 +2755,6 @@ class DTElasticSearch(View):
 			self.field = field_names[0]
 		else:
 			self.field = self.fields[0] # expects only one for this search type, take first
-		logger.debug('get aggregations for %s' % self.field)
 
 		# initiate es query
 		self.query = Search(using=es_handle, index=self.es_index)
