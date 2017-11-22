@@ -52,6 +52,7 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
+				row.id,
 				row.record_id,
 				row.document,
 				job.record_group.publish_set_id
@@ -62,7 +63,7 @@ class ESIndex(object):
 		# filter our failures
 		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
 
-		# if not empty
+		# if failures, write
 		if not failures_rdd.isEmpty():
 
 			failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
@@ -323,7 +324,7 @@ class GenericMapper(BaseMapper):
 				self.formatted_elems[k] = tuple(v)
 
 
-	def map_record(self, record_id, record_string, publish_set_id):
+	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
 
 		'''
 		Map record
@@ -362,6 +363,9 @@ class GenericMapper(BaseMapper):
 
 			# add publish set id
 			self.formatted_elems['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			self.formatted_elems['combine_db_id'] = combine_db_id
 
 			return (
 					'success',
@@ -418,7 +422,7 @@ class MODSMapper(BaseMapper):
 				self.gw.add_transform('xslt_transform', f.read())
 
 
-	def map_record(self, record_id, record_string, publish_set_id):
+	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
 
 		'''
 		Map record.
@@ -460,6 +464,9 @@ class MODSMapper(BaseMapper):
 
 			# add publish set id
 			mapped_dict['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			self.formatted_elems['combine_db_id'] = combine_db_id
 
 			return (
 				'success',

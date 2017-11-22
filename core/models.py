@@ -1437,6 +1437,31 @@ class ESIndex(object):
 		self.es_index = es_index
 
 
+	def get_index_fields(self):
+
+		'''
+		Get list of all fields for index
+
+		Args:
+			None
+
+		Returns:
+			(list): list of field names
+		'''
+
+		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+
+			# get mappings for job index
+			es_r = es_handle.indices.get(index=self.es_index)
+			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
+			return field_names
+
+
 	def count_indexed_fields(self,
 			cardinality_precision_threshold=100,
 			one_per_doc_offset=0.05
@@ -1464,13 +1489,8 @@ class ESIndex(object):
 
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
-			# get mappings for job index
-			es_r = es_handle.indices.get(index=self.es_index)
-			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
-
-			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
-			field_names.sort()
+			# get field mappings for index
+			field_names = self.get_index_fields()
 
 			# init search
 			s = Search(using=es_handle, index=self.es_index)
