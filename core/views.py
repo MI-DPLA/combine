@@ -17,6 +17,7 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
+from django.views import View
 
 # import models
 from core import models, forms
@@ -1191,6 +1192,28 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
+
+
+@login_required
+def records_es_dt_json(request, es_index):
+
+	'''
+	Route for ElasticSearch DataTables connector core.models.DTElasticSearch 
+	Note: Consider making Django Class-based View
+	'''
+
+	# retrieve GET params
+	logger.debug(request.GET)
+
+	# init DTElasticSearch
+	dtes = models.DTElasticSearch(
+			fields = request.GET.getlist('fields'),
+			es_index = es_index,
+			DTinput = request.GET
+		) 
+
+	return JsonResponse(dtes.DToutput)
+
 
 
 ####################################################################

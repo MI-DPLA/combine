@@ -65,6 +65,7 @@ urlpatterns = [
 	# Datatables Endpoints
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/records_dt_json$', views.DTRecordsJson.as_view(), name='records_dt_json'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/indexing_failures_dt_json$', views.DTIndexingFailuresJson.as_view(), name='indexing_failures_dt_json'),
+	url(r'^es/index/(?P<es_index>.+)/records_es_dt_json$', views.records_es_dt_json, name='records_es_dt_json'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

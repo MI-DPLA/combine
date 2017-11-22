@@ -2513,20 +2513,6 @@ class PublishJob(CombineJob):
 ####################################################################
 
 
-class DTResponse(object):
-
-	'''
-	Scaffolding for DT response
-	'''
-
-	def __init__(self):
-
-		self.draw = None,
-		self.recordsTotal = None,
-		self.recordsFiltered = None,
-		self.data = []
-
-
 class DTElasticSearch(object):
 
 	'''
@@ -2538,12 +2524,19 @@ class DTElasticSearch(object):
 		- return json
 	'''
 
-	def __init__(self, fields, es_index, DTinput):
+	def __init__(self,
+			fields=None,
+			es_index=None,
+			DTinput={
+				'draw':None,
+				'start':0,
+				'length':10
+			}):
 
 		# fields to retrieve from index
 		self.fields = fields
 
-		# peewee model
+		# ES index
 		self.es_index = es_index
 
 		# dictionary INPUT DataTables ajax
@@ -2551,10 +2544,16 @@ class DTElasticSearch(object):
 		logger.debug(self.DTinput)
 
 		# placeholder for query to build
-		self.query = False
+		self.query = None
 
 		# dictionary OUTPUT to DataTables
-		self.DToutput = DTResponse().__dict__
+		# self.DToutput = DTResponse().__dict__
+		self.DToutput = {
+			'draw': None,
+			'recordsTotal': None,
+			'recordsFiltered': None,
+			'data': []
+		}
 		self.DToutput['draw'] = DTinput['draw']
 
 		# query and build response
@@ -2597,12 +2596,14 @@ class DTElasticSearch(object):
 			
 
 
-	# def paginate(self):
+	def paginate(self):
 
-	# 	logger.debug('paginating...')
+		logger.debug('paginating...')
 
-	# 	# using offset (start) and limit (length)
-	# 	self.query_slice = self.query.offset(self.DTinput['start']).limit(self.DTinput['length'])
+		# using offset (start) and limit (length)
+		start = int(self.DTinput['start'])
+		length = int(self.DTinput['length'])
+		self.query = self.query[start : (start + length)]
 
 
 	def build_response(self):
@@ -2618,7 +2619,7 @@ class DTElasticSearch(object):
 		# apply filtering
 		# self.filter()
 		# self.sort()
-		# self.paginate()
+		self.paginate()
 
 		# get document count, post-filtering
 		self.DToutput['recordsFiltered'] = self.query.count()
