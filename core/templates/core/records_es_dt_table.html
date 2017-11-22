@@ -1,21 +1,31 @@
-{% extends 'core/base.html' %}
 {% block content %}	
-{% load static %}
 
-
-<table id='records_es_table'>
+<table id='datatables_es_records'>
 	<thead>
-		<th>Record ID</th>
-		<th>Combine DB ID</th>
+		<th>combine_db_id</th>
+		<th>mods_subject_topic</th>
 	</thead>
 	<tbody></tbody>
 </table>
 
 
 <script>
-
-	
-
+	$(document).ready(function() {
+	    var oTable = $('#datatables_es_records').dataTable({
+	        "processing": true,
+	        "serverSide": true,
+	        "ajax": "{% url 'records_es_dt_json' es_index=cjob.esi.es_index %}?fields=combine_db_id&fields=mods_subject_topic",
+	        "searchDelay": 1000,
+	        "pageLength": 10,
+	  //       "columnDefs": [ 
+	  //       	{
+	  //       		// disable sorting for thumbnail
+			// 		"targets": 7,
+			// 		"orderable": false
+			// 	}
+			// ]
+	    });
+	});
 </script>
 
 {% endblock %}
