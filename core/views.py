@@ -704,6 +704,15 @@ def job_publish(request, org_id, record_group_id):
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
+@login_required
+def job_es_docs(request, org_id, record_group_id, job_id):
+	
+	# render page 
+	return render(request, 'core/records_es_dt_table.html', {
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
+
 
 ####################################################################
 # Jobs QA	                   									   #

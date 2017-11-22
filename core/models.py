@@ -2508,5 +2508,139 @@ class PublishJob(CombineJob):
 		pass
 
 
+####################################################################
+# ElasticSearch DataTables connector 							   #
+####################################################################
 
+
+class DTResponse(object):
+
+	'''
+	Scaffolding for DT response
+	'''
+
+	def __init__(self):
+
+		self.draw = None,
+		self.recordsTotal = None,
+		self.recordsFiltered = None,
+		self.data = []
+
+
+class DTElasticSearch(object):
+
+	'''
+	Order of operations:
+		- init 
+		- query
+		- filter / slice / order / etc.
+		- build response
+		- return json
+	'''
+
+	def __init__(self, fields, es_index, DTinput):
+
+		# fields to retrieve from index
+		self.fields = fields
+
+		# peewee model
+		self.es_index = es_index
+
+		# dictionary INPUT DataTables ajax
+		self.DTinput = DTinput
+		logger.debug(self.DTinput)
+
+		# placeholder for query to build
+		self.query = False
+
+		# dictionary OUTPUT to DataTables
+		self.DToutput = DTResponse().__dict__
+		self.DToutput['draw'] = DTinput['draw']
+
+		# query and build response
+		self.build_response()
+
+
+	# def filter(self):
+	# 	logger.debug('applying filters...')
+
+	# 	'''
+	# 	searching title, abstract, and identifier columns
+	# 	'''
+
+	# 	search_string = self.DTinput['search']['value']
+	# 	if search_string != '':
+	# 		self.query = self.query.where(
+	# 			(self.peewee_model.title.contains(search_string)) |
+	# 			(self.peewee_model.abstract.contains(search_string)) |
+	# 			(self.peewee_model.identifier.contains(search_string))
+	# 		)
+
+
+	# def sort(self):
+		
+	# 	'''
+	# 	Iterate through order_by columns
+	# 	'''
+		
+	# 	logger.debug('sorting...')
+
+	# 	# get sort column
+	# 	for order in self.DTinput['order']:
+	# 		order_by_column = getattr(self.peewee_model,self.columns[order['column']])
+	# 		order_by_dir = order['dir']
+	# 		logger.debug('ordering by %s, %s' % (order_by_column, order_by_dir))
+	# 		if order_by_dir == 'asc':
+	# 			self.query = self.query.order_by(order_by_column.asc())
+	# 		if order_by_dir == 'desc':
+	# 			self.query = self.query.order_by(order_by_column.desc())
+			
+
+
+	# def paginate(self):
+
+	# 	logger.debug('paginating...')
+
+	# 	# using offset (start) and limit (length)
+	# 	self.query_slice = self.query.offset(self.DTinput['start']).limit(self.DTinput['length'])
+
+
+	def build_response(self):
+
+		logger.debug('building query...')
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = self.query.count()
+
+		# apply filtering
+		# self.filter()
+		# self.sort()
+		# self.paginate()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = self.query.count()
+
+		# execute and retrieve search
+		self.query_results = self.query.execute()
+
+		logger.debug(self.DToutput)
+
+		# loop through hits
+		for hit in self.query_results.hits:
+
+			logger.debug(hit)
+
+			# iterate through columns and place in list
+			row_data = [ str(getattr(hit, field, None)) for field in self.fields ]
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+
+
+	def to_json(self):
+
+		return json.dumps(self.DToutput)
 
