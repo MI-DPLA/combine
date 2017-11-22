@@ -39,6 +39,9 @@ from elasticsearch_dsl import Search, A, Q
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 
 ####################################################################
@@ -2541,7 +2544,7 @@ class DTElasticSearch(object):
 
 		# dictionary INPUT DataTables ajax
 		self.DTinput = DTinput
-		logger.debug(self.DTinput)
+		# logger.debug(self.DTinput)
 
 		# placeholder for query to build
 		self.query = None
@@ -2598,8 +2601,6 @@ class DTElasticSearch(object):
 
 	def paginate(self):
 
-		logger.debug('paginating...')
-
 		# using offset (start) and limit (length)
 		start = int(self.DTinput['start'])
 		length = int(self.DTinput['length'])
@@ -2607,8 +2608,6 @@ class DTElasticSearch(object):
 
 
 	def build_response(self):
-
-		logger.debug('building query...')
 
 		# initiate es query
 		self.query = Search(using=es_handle, index=self.es_index)
@@ -2627,15 +2626,13 @@ class DTElasticSearch(object):
 		# execute and retrieve search
 		self.query_results = self.query.execute()
 
-		logger.debug(self.DToutput)
-
 		# loop through hits
 		for hit in self.query_results.hits:
 
-			logger.debug(hit)
+			# logger.debug(hit)
 
 			# iterate through columns and place in list
-			row_data = [ str(getattr(hit, field, None)) for field in self.fields ]
+			row_data = [ str(getattr(hit, field, None))[:10] for field in self.fields ]
 
 			# add list to object
 			self.DToutput['data'].append(row_data)

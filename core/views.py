@@ -32,6 +32,9 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 
 # breadcrumb parser
@@ -705,15 +708,6 @@ def job_publish(request, org_id, record_group_id):
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
-# @login_required
-# def job_es_docs(request, org_id, record_group_id, job_id):
-	
-# 	# render page 
-# 	return render(request, 'core/records_es_dt_table.html', {
-# 			'breadcrumbs':breadcrumb_parser(request.path)
-# 		})
-
-
 
 ####################################################################
 # Jobs QA	                   									   #
@@ -1203,11 +1197,19 @@ def records_es_dt_json(request, es_index):
 	'''
 
 	# retrieve GET params
-	logger.debug(request.GET)
+	# logger.debug(request.GET)
+
+	# retrieve and reverse field_names
+	'''
+	When using Django's getlist() method, the order in which the fields were appended to the GET parameters in the URL
+	is reversed.  Undo that here.
+	'''
+	field_names = request.GET.getlist('fields')
+	field_names.reverse()
 
 	# init DTElasticSearch
 	dtes = models.DTElasticSearch(
-			fields = request.GET.getlist('fields'),
+			fields = field_names,
 			es_index = es_index,
 			DTinput = request.GET
 		) 
