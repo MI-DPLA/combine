@@ -19,6 +19,9 @@ import time
 import uuid
 import xmltodict
 
+# pandas
+import pandas as pd
+
 # django imports
 from django.apps import AppConfig
 from django.conf import settings
@@ -2523,6 +2526,8 @@ class DTElasticSearch(View):
 	Model to query ElasticSearch and return DataTables ready JSON.
 	This model is a Django Class-based view.
 	This model is located in core.models, as it still may function seperate from a Django view.
+
+	NOTE: Consider breaking aggregation search to own class, very different approach
 	'''
 
 	def __init__(self,
@@ -2635,11 +2640,16 @@ class DTElasticSearch(View):
 			None
 				- modifies self.query
 		'''
-
+		
 		# using offset (start) and limit (length)
 		start = int(self.DTinput['start'])
 		length = int(self.DTinput['length'])
-		self.query = self.query[start : (start + length)]
+
+		if self.search_type == 'fields_per_doc':
+			self.query = self.query[start : (start + length)]
+
+		if self.search_type == 'values_per_field':
+			self.query_results = self.query_results[start : (start + length)]
 
 
 	def to_json(self):
@@ -2686,13 +2696,20 @@ class DTElasticSearch(View):
 
 		'''
 		Perform search to get all fields, for all docs
+
+		Note: can be used outside of Django context, but must set self.fields first
 		'''
-			
-		# When using Django's getlist() method, the order in which the fields were appended
-		# to the GET parameters in the URL is reversed.  Undo that here.
-		field_names = self.request.GET.getlist('field_names')
-		field_names.reverse()
-		self.fields = field_names
+
+		# set search type
+		self.search_type = 'fields_per_doc'
+
+		# get field names
+		if self.request:
+			# When using Django's getlist() method, the order in which the fields were appended
+			# to the GET parameters in the URL is reversed.  Undo that here.
+			field_names = self.request.GET.getlist('field_names')
+			field_names.reverse()
+			self.fields = field_names
 
 		# initiate es query
 		self.query = Search(using=es_handle, index=self.es_index)
@@ -2700,7 +2717,7 @@ class DTElasticSearch(View):
 		# get total document count, pre-filtering
 		self.DToutput['recordsTotal'] = self.query.count()
 
-		# apply filtering
+		# apply filtering to ES query
 		# self.filter()
 		# self.sort()
 		self.paginate()
@@ -2725,14 +2742,59 @@ class DTElasticSearch(View):
 
 		'''
 		Perform aggregation-based search to get count of values for single field
+
+		Note: can be used outside of Django context, but must set self.fields first
 		'''
 
+		# set search type
+		self.search_type = 'values_per_field'
+
 		# get single field
-		field_name = self.request.GET.get('field_name')
-		logger.debug('get aggregations for %s' % field_name)
+		if self.request:
+			field_names = self.request.GET.getlist('field_names')
+			self.field = field_names[0]
+		else:
+			self.field = self.fields[0] # expects only one for this search type, take first
+		logger.debug('get aggregations for %s' % self.field)
 
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
 
+		# add agg bucket for field values
+		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=1000000))
 
+		# return zero
+		self.query = self.query[0]
+
+		# execute search and convert to dataframe
+		sr = self.query.execute()
+		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = len(self.query_results)
+
+		# apply filtering to DataFrame
+		# self.filter()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = len(self.query_results)
+
+		# self.sort()
+		self.paginate()
+
+		# loop through field values
+		'''
+		example row from ES:
+		{'doc_count': 3, 'key': 'Frock Coats'}
+		'''
+		for index, row in self.query_results.iterrows():
+
+			# iterate through columns and place in list
+			row_data = [row.key, row.doc_count]
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+		
 
 
 
