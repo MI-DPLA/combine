@@ -9,6 +9,9 @@ import requests
 import sys
 import xmltodict
 
+# pyjxslt
+import pyjxslt
+
 # import Row from pyspark
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
@@ -387,17 +390,38 @@ class MODSMapper(BaseMapper):
 		- convert to dictionary with xmltodict
 	'''
 
-	def __init__(self):
+	def __init__(self, xslt_processor='lxml'):
 
-		# set xslt transformer		
-		xslt_tree = etree.parse('/opt/combine/inc/xslt/MODS_extract.xsl')
-		self.xsl_transform = etree.XSLT(xslt_tree)
+		'''
+		Initiates MODSMapper, with option of what XSLT processor to use.
+			- lxml: faster, but does not provide XSLT 2.0 support (though the included stylesheet does not require)
+			- pyjxslt: slower, but offers XSLT 2.0 support
+
+		Args:
+			xslt_processor (str)['lxml','pyjxslt']: Selects which XSLT processor to use.
+		'''
+
+		self.xslt_processor = xslt_processor
+		self.xslt_filepath = '/opt/combine/inc/xslt/MODS_extract.xsl'
+
+		if self.xslt_processor == 'lxml':
+
+			# set xslt transformer
+			xslt_tree = etree.parse(self.xslt_filepath)
+			self.xsl_transform = etree.XSLT(xslt_tree)
+
+		elif self.xslt_processor == 'pyjxslt':
+
+			# prepare pyjxslt gateway
+			self.gw = pyjxslt.Gateway(6767)
+			with open(self.xslt_filepath,'r') as f:
+				self.gw.add_transform('xslt_transform', f.read())
 
 
 	def map_record(self, record_id, record_string, publish_set_id):
 
 		'''
-		Map record
+		Map record.
 
 		Args:
 			record_id (str): record id
@@ -413,9 +437,16 @@ class MODSMapper(BaseMapper):
 
 		try:
 			
-			# flatten file with XSLT transformation
-			xml_root = etree.fromstring(record_string.encode('utf-8'))
-			flat_xml = self.xsl_transform(xml_root)
+			if self.xslt_processor == 'lxml':
+				
+				# flatten file with XSLT transformation
+				xml_root = etree.fromstring(record_string.encode('utf-8'))
+				flat_xml = self.xsl_transform(xml_root)
+
+			elif self.xslt_processor == 'pyjxslt':
+
+				# flatten file with XSLT transformation
+				flat_xml = self.gw.transform('xslt_transform', record_string)
 
 			# convert to dictionary
 			flat_dict = xmltodict.parse(flat_xml)
