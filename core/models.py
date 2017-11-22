@@ -2550,7 +2550,7 @@ class DTElasticSearch(View):
 				- sets parameters
 		'''
 
-		logger.debug('initiating DTElasticSearch query')
+		logger.debug('initiating DTElasticSearch connector')
 
 		# fields to retrieve from index
 		self.fields = fields
@@ -2680,6 +2680,9 @@ class DTElasticSearch(View):
 		self.es_index = es_index
 		self.DTinput = self.request.GET
 
+		# time respond build
+		stime = time.time()
+
 		# return fields per document
 		if search_type == 'fields_per_doc':
 			self.fields_per_doc()
@@ -2687,6 +2690,9 @@ class DTElasticSearch(View):
 		# aggregate-based search, count of values per field
 		if search_type == 'values_per_field':
 			self.values_per_field()
+
+		# end time
+		logger.debug('DTElasticSearch calc time: %s' % (time.time()-stime))
 
 		# for all search types, build and return response
 		return JsonResponse(self.DToutput)
