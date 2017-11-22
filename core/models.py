@@ -2555,10 +2555,12 @@ class DTElasticSearch(View):
 
 		# dictionary INPUT DataTables ajax
 		self.DTinput = DTinput
-		# logger.debug(self.DTinput)
 
 		# placeholder for query to build
 		self.query = None
+
+		# request
+		self.request = None
 
 		# dictionary OUTPUT to DataTables
 		# self.DToutput = DTResponse().__dict__
@@ -2640,18 +2642,57 @@ class DTElasticSearch(View):
 		self.query = self.query[start : (start + length)]
 
 
-	def build_response(self):
+	def to_json(self):
 
 		'''
-		Create, filter, and submit ES query.
-
-		Args:
-			None
+		Return DToutput as JSON
 
 		Returns:
-			None
-				- sets self.DToutput
+			(json)
 		'''
+
+		return json.dumps(self.DToutput)
+
+
+	def get(self, request, es_index, search_type):
+
+		'''
+		Django Class-based view, GET request.
+		Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
+
+		Args:
+			request (django.request): request object
+			es_index (str): ES index
+		'''
+
+		# save parameters to self
+		self.request = request
+		self.es_index = es_index
+		self.DTinput = self.request.GET
+
+		# return fields per document
+		if search_type == 'fields_per_doc':
+			self.fields_per_doc()
+
+		# aggregate-based search, count of values per field
+		if search_type == 'values_per_field':
+			self.values_per_field()
+
+		# for all search types, build and return response
+		return JsonResponse(self.DToutput)
+
+
+	def fields_per_doc(self):
+
+		'''
+		Perform search to get all fields, for all docs
+		'''
+			
+		# When using Django's getlist() method, the order in which the fields were appended
+		# to the GET parameters in the URL is reversed.  Undo that here.
+		field_names = self.request.GET.getlist('field_names')
+		field_names.reverse()
+		self.fields = field_names
 
 		# initiate es query
 		self.query = Search(using=es_handle, index=self.es_index)
@@ -2673,52 +2714,45 @@ class DTElasticSearch(View):
 		# loop through hits
 		for hit in self.query_results.hits:
 
-			# logger.debug(hit)
-
 			# iterate through columns and place in list
-			row_data = [ str(getattr(hit, field, None))[:10] for field in self.fields ]
+			row_data = [ str(getattr(hit, field, None)) for field in self.fields ]
 
 			# add list to object
 			self.DToutput['data'].append(row_data)
 
 
-	def to_json(self):
+	def values_per_field(self):
 
 		'''
-		Return DToutput as JSON
-
-		Returns:
-			(json)
+		Perform aggregation-based search to get count of values for single field
 		'''
 
-		return json.dumps(self.DToutput)
+		# get single field
+		field_name = self.request.GET.get('field_name')
+		logger.debug('get aggregations for %s' % field_name)
 
 
-	def get(self, request, es_index):
 
-		'''
-		Django Class-based view, GET request
 
-		Args:
-			request (django.request): request object
-			es_index (str): ES index
-		'''
 
-		# overwrite self defaults with GET params
-		
-		# When using Django's getlist() method, the order in which the fields were appended
-		# to the GET parameters in the URL is reversed.  Undo that here.
-		field_names = request.GET.getlist('fields')
-		field_names.reverse()
-		self.fields = field_names
 
-		# set ES index
-		self.es_index = es_index
 
-		# set DataTables input
-		self.DTinput = request.GET
 
-		# build and return response
-		self.build_response()
-		return JsonResponse(self.DToutput)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

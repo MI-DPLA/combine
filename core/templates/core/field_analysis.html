@@ -4,75 +4,27 @@
 
 	<h3>Field Analysis: {{ field_name }}</h3>
 
-	<div style="width:75%;">
-		<p><strong>Note:</strong> Default sorting is by count, but can be reordered in table.</p>
-		<table id="field_analysis" border="1">
-			<thead>
-				<tr>
-					<th>Field Value</th>
-					<th>Count</th>
-					<th>Actions</th>
-				</tr>
-			</thead>
-			<tfoot>
-				<tr>
-					<th>Field Value</th>
-					<th>Count</th>
-					<th>Actions</th>
-				</tr>
-			</tfoot>
-		</table>
-	</div>
+	<table id='dt_field_analysis' border="1" cellpadding="5">
+		<thead>
+			<th>Field Value</th>
+			<th>Count</th>
+			<th>Actions</th>		
+		</thead>
+		<tbody></tbody>
+	</table>
+
 
 	<script>
 
-		// load JSON straight to DOM
-		var dataSet = {{field_analysis_results.data|safe}}
-
-		// fire table
 		$(document).ready(function() {
-		    $('#field_analysis').DataTable({
-		    	"data": dataSet,
-		    	"columns": [
-		            { 
-		            	title: "Field Name",
-		            	"render": function ( data, type, row ) {
-		                    if (data.indexOf('http') !== -1) {
-		                    	return "<a target='_blank' href='"+data+"'>"+data+"</a>";
-		                    }
-		                    else {
-		                    	return data;
-		                    }
-		                }
-	            	},
-		            { 
-		            	title: "Count"		            	
-		            },
-		            {
-		            	title: "Actions",
-		            	"render": function (data, type, row) {
-
-		            		// get search term
-		            		search_term = row[0]
-
-		            		// search term escapes
-		            		escapes = [
-		            			[/;/g, '%3B'], // semicolons
-		            			[/"/g, '\\"'], // double quote
-		            			[/'/g, "\\'"] // single quote
-		            		];
-		            		for (var i = escapes.length - 1; i >= 0; i--) {
-		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
-		            		};
-		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>Docs with Field</a> / <a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q=!{{ field_name }}.keyword:\""+search_term+"\"'>Docs without Field</a>";
-		            	}
-		            }
-		        ],		        
-		    	"pageLength": 25,
-		    	"lengthMenu": [ 10, 25, 100, 500 ],
-		    	"order": [[ 1, "desc" ]]
+		    var oTable = $('#dt_field_analysis').DataTable({
+		        "processing": true,
+		        "serverSide": true,
+		        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_name={{ field_name }}",
+		        "searchDelay": 1000,
+		        "pageLength": 10
 		    });
-		} );
+		});
 
 	</script>
 
