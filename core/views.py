@@ -19,6 +19,10 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
+# import elasticsearch and handles
+from core.es import es_handle
+from elasticsearch_dsl import Search, A, Q
+
 # import models
 from core import models, forms
 from core.es import es_handle
@@ -1186,35 +1190,6 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
-
-
-@login_required
-def records_es_dt_json(request, es_index):
-
-	'''
-	Route for ElasticSearch DataTables connector core.models.DTElasticSearch 
-	Note: Consider making Django Class-based View
-	'''
-
-	# retrieve GET params
-	# logger.debug(request.GET)
-
-	# retrieve and reverse field_names
-	'''
-	When using Django's getlist() method, the order in which the fields were appended to the GET parameters in the URL
-	is reversed.  Undo that here.
-	'''
-	field_names = request.GET.getlist('fields')
-	field_names.reverse()
-
-	# init DTElasticSearch
-	dtes = models.DTElasticSearch(
-			fields = field_names,
-			es_index = es_index,
-			DTinput = request.GET
-		) 
-
-	return JsonResponse(dtes.DToutput)
 
 
 

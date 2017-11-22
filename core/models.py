@@ -25,9 +25,11 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.db import models
+from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
+from django.views import View
 
 # Livy
 from livy.client import HttpClient
@@ -2515,16 +2517,12 @@ class PublishJob(CombineJob):
 # ElasticSearch DataTables connector 							   #
 ####################################################################
 
-
-class DTElasticSearch(object):
+class DTElasticSearch(View):
 
 	'''
-	Order of operations:
-		- init 
-		- query
-		- filter / slice / order / etc.
-		- build response
-		- return json
+	Model to query ElasticSearch and return DataTables ready JSON.
+	This model is a Django Class-based view.
+	This model is located in core.models, as it still may function seperate from a Django view.
 	'''
 
 	def __init__(self,
@@ -2535,6 +2533,19 @@ class DTElasticSearch(object):
 				'start':0,
 				'length':10
 			}):
+
+		'''
+		Args:
+			fields (list): list of fields to return from ES index
+			es_index (str): ES index
+			DTinput (dict): DataTables formatted GET parameters as dictionary
+
+		Returns:
+			None
+				- sets parameters
+		'''
+
+		logger.debug('initiating DTElasticSearch query')
 
 		# fields to retrieve from index
 		self.fields = fields
@@ -2559,15 +2570,19 @@ class DTElasticSearch(object):
 		}
 		self.DToutput['draw'] = DTinput['draw']
 
-		# query and build response
-		self.build_response()
-
 
 	# def filter(self):
 	# 	logger.debug('applying filters...')
 
 	# 	'''
-	# 	searching title, abstract, and identifier columns
+	# 	Filter based on DTinput paramters
+
+	# 	Args:
+	# 		None
+
+	# 	Returns:
+	# 		None
+	# 			- modifies self.query
 	# 	'''
 
 	# 	search_string = self.DTinput['search']['value']
@@ -2582,7 +2597,14 @@ class DTElasticSearch(object):
 	# def sort(self):
 		
 	# 	'''
-	# 	Iterate through order_by columns
+	# 	Sort based on DTinput paramters
+
+	# 	Args:
+	# 		None
+
+	# 	Returns:
+	# 		None
+	# 			- modifies self.query
 	# 	'''
 		
 	# 	logger.debug('sorting...')
@@ -2601,6 +2623,17 @@ class DTElasticSearch(object):
 
 	def paginate(self):
 
+		'''
+		Paginate based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''
+
 		# using offset (start) and limit (length)
 		start = int(self.DTinput['start'])
 		length = int(self.DTinput['length'])
@@ -2608,6 +2641,17 @@ class DTElasticSearch(object):
 
 
 	def build_response(self):
+
+		'''
+		Create, filter, and submit ES query.
+
+		Args:
+			None
+
+		Returns:
+			None
+				- sets self.DToutput
+		'''
 
 		# initiate es query
 		self.query = Search(using=es_handle, index=self.es_index)
@@ -2640,5 +2684,41 @@ class DTElasticSearch(object):
 
 	def to_json(self):
 
+		'''
+		Return DToutput as JSON
+
+		Returns:
+			(json)
+		'''
+
 		return json.dumps(self.DToutput)
+
+
+	def get(self, request, es_index):
+
+		'''
+		Django Class-based view, GET request
+
+		Args:
+			request (django.request): request object
+			es_index (str): ES index
+		'''
+
+		# overwrite self defaults with GET params
+		
+		# When using Django's getlist() method, the order in which the fields were appended
+		# to the GET parameters in the URL is reversed.  Undo that here.
+		field_names = request.GET.getlist('fields')
+		field_names.reverse()
+		self.fields = field_names
+
+		# set ES index
+		self.es_index = es_index
+
+		# set DataTables input
+		self.DTinput = request.GET
+
+		# build and return response
+		self.build_response()
+		return JsonResponse(self.DToutput)
 
