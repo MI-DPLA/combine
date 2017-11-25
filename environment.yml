@@ -66,7 +66,6 @@ dependencies:
   - pyjxslt==0.7.0
   - pykerberos==1.1.14
   - pyparsing==2.2.0
-  - pysaxon==0.0.1a0
   - requests==2.18.4
   - requests-kerberos==0.11.0
   - responses==0.8.1

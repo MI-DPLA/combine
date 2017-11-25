@@ -39,7 +39,6 @@ Pygments==2.2.0
 pyjxslt==0.7.0
 pykerberos==1.1.14
 pyparsing==2.2.0
-PySaxon==0.0.1a0
 pytest==3.2.1
 python-dateutil==2.6.1
 pytz==2017.2
