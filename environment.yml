@@ -6,7 +6,6 @@ dependencies:
 - avro=1.8.2=0
 - ca-certificates=2017.7.27.1=0
 - certifi=2017.7.27.1=py35_0
-- cyavro=0.7.0=py35_0
 - filelock=2.0.6=py35_0
 - jansson=2.7=0
 - ncurses=5.9=10
@@ -26,7 +25,6 @@ dependencies:
 - wheel=0.30.0=py_1
 - xz=5.2.3=0
 - zlib=1.2.11=0
-- cython=0.26=py35_0
 - mkl=2017.0.3=0
 - numpy=1.13.1=py35_0
 - py=1.4.34=py35_0
