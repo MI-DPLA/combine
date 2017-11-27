@@ -727,13 +727,13 @@ def field_analysis(request, es_index):
 	esi = models.ESIndex(es_index)
 
 	# get analysis for field
-	field_analysis_results = esi.field_analysis_dt(field_name)
+	field_metrics = esi.field_analysis(field_name, metrics_only=True)
 
 	# return
 	return render(request, 'core/field_analysis.html', {
 			'esi':esi,
 			'field_name':field_name,
-			'field_analysis_results':field_analysis_results,
+			'field_metrics':field_metrics,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 

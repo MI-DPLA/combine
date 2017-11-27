@@ -32,13 +32,18 @@ Make sure to note file:// or hdfs:// prefix
 BINARY_STORAGE = 'file:///home/combine/data/combine'
 
 
-# ElasicSearch
+# ElasicSearch server
 ES_HOST = '192.168.45.10'
 INDEX_TO_ES = True
 
 
-# ElasticSearch Indexing
+# ElasticSearch indexing
 INCLUDE_ATTRIBUTES_GENERIC_MAPPER = True
+
+
+# ElasticSearch analysis
+CARDINALITY_PRECISION_THRESHOLD = 100
+ONE_PER_DOC_OFFSET = 0.05
 
 
 # Service Hub

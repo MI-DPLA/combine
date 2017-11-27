@@ -1470,9 +1470,62 @@ class ESIndex(object):
 			return field_names
 
 
+	def calc_field_metrics(self,
+			sr_dict,
+			field_name,
+			one_per_doc_offset=settings.ONE_PER_DOC_OFFSET
+		):
+
+		'''
+		Calculate metrics for a given field.
+
+		Args:
+			sr_dict (dict): ElasticSearch search results dictionary
+			field_name (str): Field name to analyze metrics for
+			one_per_doc_offset (float): Offset from 1.0 that is used to guess if field is unique for all documents
+
+		Returns:
+			(dict): Dictionary of metrics for given field
+		'''
+		
+		if sr_dict['aggregations']['%s_doc_instances' % field_name]['doc_count'] > 0:
+				
+			# add that don't require calculation
+			field_dict = {
+				'field_name':field_name,
+				'doc_instances':sr_dict['aggregations']['%s_doc_instances' % field_name]['doc_count'],
+				'val_instances':sr_dict['aggregations']['%s_val_instances' % field_name]['value'],
+				'distinct':sr_dict['aggregations']['%s_distinct' % field_name]['value']
+			}
+
+			# distinct ratio
+			if field_dict['val_instances'] > 0:
+				field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['val_instances']), 4)
+			else:
+				field_dict['distinct_ratio'] = 0.0
+
+			# percentage of total documents with instance of this field
+			field_dict['percentage_of_total_records'] = round(
+				(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
+
+			# one, distinct value for this field, for this document
+			if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
+			 and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
+			 and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
+				field_dict['one_distinct_per_doc'] = True
+			else:
+				field_dict['one_distinct_per_doc'] = False
+
+			# return 
+			return field_dict
+
+		# if no instances of field in results, return False
+		else:
+			return False
+
+
 	def count_indexed_fields(self,
-			cardinality_precision_threshold=100,
-			one_per_doc_offset=0.05
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD
 		):
 
 		'''
@@ -1487,7 +1540,6 @@ class ESIndex(object):
 
 		Args:
 			cardinality_precision_threshold (int, 0:40-000): Cardinality precision threshold (see note above)
-			one_per_doc_offset (float): Offset from 1.0 that is used to guess if field is unique for all documents
 
 		Returns:
 			(dict):
@@ -1526,38 +1578,12 @@ class ESIndex(object):
 			exist, filter out fields with zero instances.
 			'''
 			field_count = []
-			for field in field_names:
+			for field_name in field_names:
 
-				if sr_dict['aggregations']['%s_doc_instances' % field]['doc_count'] > 0:
-				
-					# add that don't require calculation
-					field_dict = {
-						'field_name':field,
-						'doc_instances':sr_dict['aggregations']['%s_doc_instances' % field]['doc_count'],
-						'val_instances':sr_dict['aggregations']['%s_val_instances' % field]['value'],
-						'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
-					}
-
-					# distinct ratio
-					if field_dict['val_instances'] > 0:
-						field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['val_instances']), 4)
-					else:
-						field_dict['distinct_ratio'] = 0.0
-
-					# percentage of total documents with instance of this field
-					field_dict['percentage_of_total_records'] = round(
-						(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
-
-					# one, distinct value for this field, for this document
-					if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
-					 and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
-					 and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
-						field_dict['one_distinct_per_doc'] = True
-					else:
-						field_dict['one_distinct_per_doc'] = False
-
-					# append
-					field_count.append(field_dict)
+					# get metrics and append if field metrics found
+					field_metrics = self.calc_field_metrics(sr_dict, field_name)
+					if field_metrics:
+						field_count.append(field_metrics)
 
 			# return
 			return {
@@ -1569,13 +1595,23 @@ class ESIndex(object):
 			return False
 
 
-	def field_analysis(self, field_name):
+	def field_analysis(self,
+			field_name,
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
+			metrics_only=False
+		):
 
 		'''
 		For a given field, return all values for that field across a job's index
 
+		Note: distinct counts rely on cardinality aggregations from ElasticSearch, but these are not 100 percent
+		accurate according to ES documentation:
+		https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html
+
 		Args:
 			field_name (str): field name
+			cardinality_precision_threshold (int, 0:40,000): Cardinality precision threshold (see note above)
+			metrics_only (bool): If True, return only field metrics and not values
 
 		Returns:
 			(dict): dictionary of values for a field
@@ -1584,48 +1620,71 @@ class ESIndex(object):
 		# init search
 		s = Search(using=es_handle, index=self.es_index)
 
+		# add aggs buckets for field metrics
+		s.aggs.bucket('%s_doc_instances' % field_name, A('filter', Q('exists', field=field_name)))
+		s.aggs.bucket('%s_val_instances' % field_name, A('value_count', field='%s.keyword' % field_name))
+		s.aggs.bucket('%s_distinct' % field_name, A(
+				'cardinality',
+				field='%s.keyword' % field_name,
+				precision_threshold = cardinality_precision_threshold
+			))
+
 		# add agg bucket for field values
-		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+		if not metrics_only:
+			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
 
 		# return zero
 		s = s[0]
 
 		# execute and return aggs
 		sr = s.execute()
-		return sr.aggs[field_name]['buckets']
 
+		# get metrics
+		field_metrics = self.calc_field_metrics(sr.to_dict(), field_name)
 
-	def field_analysis_dt(self, field_name):
+		# prepare and return
+		if not metrics_only:
+			values = sr.aggs[field_name]['buckets']
+		else:
+			values = None
 
-		'''
-		Helper method to return field analysis as expected for DataTables Ajax data source
-
-		Args:
-			field_name (str): field name
-
-		Returns:
-			(dict): dictionary of values for a field in DT format
-			{
-				data: [
-					[
-						field_name,
-						count
-					],
-					...
-				]
-			}
-		'''
-
-		# get buckets
-		buckets = self.field_analysis(field_name)
-
-		# prepare as DT data
-		dt_dict = {
-			'data': [ [f['key'],f['doc_count']] for f in buckets ]
+		return {
+			'metrics':field_metrics,
+			'values':values
 		}
 
-		# return
-		return dt_dict
+
+	# def field_analysis_dt(self, field_name):
+
+	# 	'''
+	# 	Helper method to return field analysis as expected for DataTables Ajax data source
+
+	# 	Args:
+	# 		field_name (str): field name
+
+	# 	Returns:
+	# 		(dict): dictionary of values for a field in DT format
+	# 		{
+	# 			data: [
+	# 				[
+	# 					field_name,
+	# 					count
+	# 				],
+	# 				...
+	# 			]
+	# 		}
+	# 	'''
+
+	# 	# get buckets
+	# 	buckets = self.field_analysis(field_name)
+
+	# 	# prepare as DT data
+	# 	dt_dict = {
+	# 		'data': [ [f['key'],f['doc_count']] for f in buckets ]
+	# 	}
+
+	# 	# return
+	# 	return dt_dict
 
 
 
@@ -1708,14 +1767,14 @@ class PublishedRecords(object):
 		return self.esi.field_analysis(field_name)
 
 
-	def field_analysis_dt(self, field_name):
+	# def field_analysis_dt(self, field_name):
 
-		'''
-		Wrapper for ESIndex.field_analysis_dt
-		'''
+	# 	'''
+	# 	Wrapper for ESIndex.field_analysis_dt
+	# 	'''
 
-		# return field analysis
-		return self.esi.field_analysis_dt(field_name)
+	# 	# return field analysis
+	# 	return self.esi.field_analysis_dt(field_name)
 
 
 
@@ -1934,14 +1993,14 @@ class CombineJob(object):
 		return self.esi.field_analysis(field_name)
 
 
-	def field_analysis_dt(self, field_name):
+	# def field_analysis_dt(self, field_name):
 
-		'''
-		Wrapper for ESIndex.field_analysis_dt
-		'''
+	# 	'''
+	# 	Wrapper for ESIndex.field_analysis_dt
+	# 	'''
 
-		# return field analysis
-		return self.esi.field_analysis_dt(field_name)
+	# 	# return field analysis
+	# 	return self.esi.field_analysis_dt(field_name)
 
 
 	def get_indexing_failures(self):
@@ -2701,7 +2760,9 @@ class DTElasticSearch(View):
 	def fields_per_doc(self):
 
 		'''
-		Perform search to get all fields, for all docs
+		Perform search to get all fields, for all docs.
+		Loops through self.fields, returns rows per ES document with values (or None) for those fields.
+		Helpful for high-level understanding of documents for a given query.
 
 		Note: can be used outside of Django context, but must set self.fields first
 		'''
@@ -2747,7 +2808,8 @@ class DTElasticSearch(View):
 	def values_per_field(self):
 
 		'''
-		Perform aggregation-based search to get count of values for single field
+		Perform aggregation-based search to get count of values for single field.
+		Helpful for understanding breakdown of a particular field's values and usage across documents.
 
 		Note: can be used outside of Django context, but must set self.fields first
 		'''

@@ -2,12 +2,49 @@
 
 {% block content %}
 
-	<h3>Field Analysis: {{ field_name }}</h3>
+	<h3>Field Analysis: <code>{{ field_name }}</code></h3>
 
+	<h4>Metrics</h4>
+
+	<table border="1" cellpadding="5">
+		<thead>
+			<tr>
+				<th>Documents with Field</th>
+				<th>Count of Total Values for Field</th>
+				<th>Count of Distinct Values for Field</th>
+				<th>Percentage of Field Values that are Unique</th>
+				<th>Instance of Field in Total Indexed Records</th>
+			</tr>
+		</thead>
+		<tbody>
+			<tr>
+				<td>{{ field_metrics.metrics.doc_instances }}</td>
+				<td>{{ field_metrics.metrics.val_instances }}</td>
+				<td>{{ field_metrics.metrics.distinct }}</td>
+				<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.distinct_ratio }});">{{ field_metrics.metrics.distinct_ratio }}</td>
+				<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.percentage_of_total_records }});">{{ field_metrics.metrics.percentage_of_total_records }}</td>
+			</tr>
+		</tbody>
+
+	</table>
+	
+
+	<p>Browse what documents do, or do not have, have values for this field:
+		<ul>
+			<li><a target="_blank" href="http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:*">See documents <strong>with</strong> this <strong>field</strong></a></li>
+			<li><a target="_blank" href="http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q=!{{ field_name }}.keyword:*">See documents <strong>without</strong> this <strong>field</strong></a></li>
+		</ul>
+	</p>
+
+	<h4>Values</h4>
+
+	<p>The following table shows values for the field <code>{{ field_name }}</code> across all documents for this job's ElasticSearch index, with a count for how many times that value occurs.</p>
+	
 	<table id='dt_field_analysis' border="1" cellpadding="5">
 		<thead>
 			<th>Field Value</th>
 			<th>Count</th>
+			<th>Actions</th>
 		</thead>
 		<tbody></tbody>
 	</table>
@@ -21,7 +58,42 @@
 		        "serverSide": true,
 		        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_names={{ field_name }}",
 		        "searchDelay": 1000,
-		        "pageLength": 10
+		        "pageLength": 10,
+		        "columns": [
+		            { 
+		            	title: "Field Value",
+		            	"render": function ( data, type, row ) {
+		                    if (data.indexOf('http') !== -1) {
+		                    	return "<a target='_blank' href='"+data+"'>"+data+"</a>";
+		                    }
+		                    else {
+		                    	return data;
+		                    }
+		                }
+	            	},
+		            { 
+		            	title: "Count"		            	
+		            },
+		            {
+		            	title: "Actions",
+		            	"render": function (data, type, row) {
+
+		            		// get search term
+		            		search_term = row[0]
+
+		            		// search term escapes
+		            		escapes = [
+		            			[/;/g, '%3B'], // semicolons
+		            			[/"/g, '\\"'], // double quote
+		            			[/'/g, "\\'"] // single quote
+		            		];
+		            		for (var i = escapes.length - 1; i >= 0; i--) {
+		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
+		            		};
+		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>Docs <strong>with</strong> this <strong>value</strong></a> / <a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q=!{{ field_name }}.keyword:\""+search_term+"\"'>Docs <strong>without</strong> this <strong>value</strong></a>";
+		            	}
+		            }
+		        ],
 		    });
 		});
 

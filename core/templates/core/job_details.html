@@ -91,11 +91,10 @@
 
 
 	<script>
-
 		// prepare list of fields
 		var fields = {{ cjob.esi.get_index_fields|safe }};
 
-		// prepare fields list
+		// prepare fields list as GET repeating parameters
 		fields_get_params = '';
 		for (var i = fields.length - 1; i >= 0; i--) {
 			fields_get_params += ('field_names='+fields[i]+'&');
