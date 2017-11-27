@@ -17,6 +17,11 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
+from django.views import View
+
+# import elasticsearch and handles
+from core.es import es_handle
+from elasticsearch_dsl import Search, A, Q
 
 # import models
 from core import models, forms
@@ -30,6 +35,9 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 
@@ -1182,6 +1190,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
+
 
 
 ####################################################################

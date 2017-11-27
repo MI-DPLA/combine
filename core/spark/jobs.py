@@ -481,21 +481,6 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
 
-	# # index to ElasticSearch
-	# if settings.INDEX_TO_ES:
-	# 	ESIndex.index_job_to_es_spark(
-	# 		spark,
-	# 		job=job,
-	# 		records_df=records_df_combine_cols,
-	# 		index_mapper=kwargs['index_mapper']
-	# 	)
-
-	# # write avro, coalescing default 200 partitions to 4 for output
-	# if write_avro:
-	# 	records_df_combine_cols.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
-
-	###################################
-
 	# read rows from DB for indexing to ES and writing avro
 	sqldf = spark.read.jdbc(
 			settings.COMBINE_DATABASE['jdbc_url'],

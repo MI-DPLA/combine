@@ -19,15 +19,20 @@ import time
 import uuid
 import xmltodict
 
+# pandas
+import pandas as pd
+
 # django imports
 from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.db import models
+from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
+from django.views import View
 
 # Livy
 from livy.client import HttpClient
@@ -38,6 +43,9 @@ from elasticsearch_dsl import Search, A, Q
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 
@@ -1437,6 +1445,31 @@ class ESIndex(object):
 		self.es_index = es_index
 
 
+	def get_index_fields(self):
+
+		'''
+		Get list of all fields for index
+
+		Args:
+			None
+
+		Returns:
+			(list): list of field names
+		'''
+
+		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+
+			# get mappings for job index
+			es_r = es_handle.indices.get(index=self.es_index)
+			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+
+			# sort alphabetically that influences results list
+			field_names = list(index_mappings.keys())
+			field_names.sort()
+
+			return field_names
+
+
 	def count_indexed_fields(self,
 			cardinality_precision_threshold=100,
 			one_per_doc_offset=0.05
@@ -1464,13 +1497,8 @@ class ESIndex(object):
 
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
-			# get mappings for job index
-			es_r = es_handle.indices.get(index=self.es_index)
-			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
-
-			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
-			field_names.sort()
+			# get field mappings for index
+			field_names = self.get_index_fields()
 
 			# init search
 			s = Search(using=es_handle, index=self.es_index)
@@ -2486,6 +2514,311 @@ class PublishJob(CombineJob):
 		'''
 
 		pass
+
+
+####################################################################
+# ElasticSearch DataTables connector 							   #
+####################################################################
+
+class DTElasticSearch(View):
+
+	'''
+	Model to query ElasticSearch and return DataTables ready JSON.
+	This model is a Django Class-based view.
+	This model is located in core.models, as it still may function seperate from a Django view.
+
+	NOTE: Consider breaking aggregation search to own class, very different approach
+	'''
+
+	def __init__(self,
+			fields=None,
+			es_index=None,
+			DTinput={
+				'draw':None,
+				'start':0,
+				'length':10
+			}):
+
+		'''
+		Args:
+			fields (list): list of fields to return from ES index
+			es_index (str): ES index
+			DTinput (dict): DataTables formatted GET parameters as dictionary
+
+		Returns:
+			None
+				- sets parameters
+		'''
+
+		logger.debug('initiating DTElasticSearch connector')
+
+		# fields to retrieve from index
+		self.fields = fields
+
+		# ES index
+		self.es_index = es_index
+
+		# dictionary INPUT DataTables ajax
+		self.DTinput = DTinput
+
+		# placeholder for query to build
+		self.query = None
+
+		# request
+		self.request = None
+
+		# dictionary OUTPUT to DataTables
+		# self.DToutput = DTResponse().__dict__
+		self.DToutput = {
+			'draw': None,
+			'recordsTotal': None,
+			'recordsFiltered': None,
+			'data': []
+		}
+		self.DToutput['draw'] = DTinput['draw']
+
+
+	# def filter(self):
+	# 	logger.debug('applying filters...')
+
+	# 	'''
+	# 	Filter based on DTinput paramters
+
+	# 	Args:
+	# 		None
+
+	# 	Returns:
+	# 		None
+	# 			- modifies self.query
+	# 	'''
+
+	# 	search_string = self.DTinput['search']['value']
+	# 	if search_string != '':
+	# 		self.query = self.query.where(
+	# 			(self.peewee_model.title.contains(search_string)) |
+	# 			(self.peewee_model.abstract.contains(search_string)) |
+	# 			(self.peewee_model.identifier.contains(search_string))
+	# 		)
+
+
+	# def sort(self):
+		
+	# 	'''
+	# 	Sort based on DTinput paramters
+
+	# 	Args:
+	# 		None
+
+	# 	Returns:
+	# 		None
+	# 			- modifies self.query
+	# 	'''
+		
+	# 	logger.debug('sorting...')
+
+	# 	# get sort column
+	# 	for order in self.DTinput['order']:
+	# 		order_by_column = getattr(self.peewee_model,self.columns[order['column']])
+	# 		order_by_dir = order['dir']
+	# 		logger.debug('ordering by %s, %s' % (order_by_column, order_by_dir))
+	# 		if order_by_dir == 'asc':
+	# 			self.query = self.query.order_by(order_by_column.asc())
+	# 		if order_by_dir == 'desc':
+	# 			self.query = self.query.order_by(order_by_column.desc())
+			
+
+
+	def paginate(self):
+
+		'''
+		Paginate based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''
+		
+		# using offset (start) and limit (length)
+		start = int(self.DTinput['start'])
+		length = int(self.DTinput['length'])
+
+		if self.search_type == 'fields_per_doc':
+			self.query = self.query[start : (start + length)]
+
+		if self.search_type == 'values_per_field':
+			self.query_results = self.query_results[start : (start + length)]
+
+
+	def to_json(self):
+
+		'''
+		Return DToutput as JSON
+
+		Returns:
+			(json)
+		'''
+
+		return json.dumps(self.DToutput)
+
+
+	def get(self, request, es_index, search_type):
+
+		'''
+		Django Class-based view, GET request.
+		Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
+
+		Args:
+			request (django.request): request object
+			es_index (str): ES index
+		'''
+
+		# save parameters to self
+		self.request = request
+		self.es_index = es_index
+		self.DTinput = self.request.GET
+
+		# time respond build
+		stime = time.time()
+
+		# return fields per document
+		if search_type == 'fields_per_doc':
+			self.fields_per_doc()
+
+		# aggregate-based search, count of values per field
+		if search_type == 'values_per_field':
+			self.values_per_field()
+
+		# end time
+		logger.debug('DTElasticSearch calc time: %s' % (time.time()-stime))
+
+		# for all search types, build and return response
+		return JsonResponse(self.DToutput)
+
+
+	def fields_per_doc(self):
+
+		'''
+		Perform search to get all fields, for all docs
+
+		Note: can be used outside of Django context, but must set self.fields first
+		'''
+
+		# set search type
+		self.search_type = 'fields_per_doc'
+
+		# get field names
+		if self.request:
+			# When using Django's getlist() method, the order in which the fields were appended
+			# to the GET parameters in the URL is reversed.  Undo that here.
+			field_names = self.request.GET.getlist('field_names')
+			field_names.reverse()
+			self.fields = field_names
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = self.query.count()
+
+		# apply filtering to ES query
+		# self.filter()
+		# self.sort()
+		self.paginate()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = self.query.count()
+
+		# execute and retrieve search
+		self.query_results = self.query.execute()
+
+		# loop through hits
+		for hit in self.query_results.hits:
+
+			# iterate through columns and place in list
+			row_data = [ str(getattr(hit, field, None)) for field in self.fields ]
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+
+
+	def values_per_field(self):
+
+		'''
+		Perform aggregation-based search to get count of values for single field
+
+		Note: can be used outside of Django context, but must set self.fields first
+		'''
+
+		# set search type
+		self.search_type = 'values_per_field'
+
+		# get single field
+		if self.request:
+			field_names = self.request.GET.getlist('field_names')
+			self.field = field_names[0]
+		else:
+			self.field = self.fields[0] # expects only one for this search type, take first
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# add agg bucket for field values
+		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=1000000))
+
+		# return zero
+		self.query = self.query[0]
+
+		# execute search and convert to dataframe
+		sr = self.query.execute()
+		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = len(self.query_results)
+
+		# apply filtering to DataFrame
+		# self.filter()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = len(self.query_results)
+
+		# self.sort()
+		self.paginate()
+
+		# loop through field values
+		'''
+		example row from ES:
+		{'doc_count': 3, 'key': 'Frock Coats'}
+		'''
+		for index, row in self.query_results.iterrows():
+
+			# iterate through columns and place in list
+			row_data = [row.key, row.doc_count]
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
