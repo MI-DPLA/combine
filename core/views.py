@@ -759,6 +759,9 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 def field_analysis_docs(request, es_index, filter_type):
 
 	'''
+
+	Table of documents that match a filtered ES query.
+
 	Args:
 		es_index (str): string ES index name
 		filter_type (str): what kind of filtering to impose on documents returned
@@ -772,7 +775,8 @@ def field_analysis_docs(request, es_index, filter_type):
 
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
-		('field_names', field_name),
+		('field_names', 'record_id'), # get ID from ES index document		
+		('field_names', field_name), # add field to returned fields
 		('filter_field', field_name),
 		('filter_type', filter_type)
 	]
@@ -798,7 +802,9 @@ def field_analysis_docs(request, es_index, filter_type):
 
 	# construct DT Ajax GET parameters string from tuples
 	dt_get_params_string = urlencode(dt_get_params)
+	logger.debug("############################")
 	logger.debug(dt_get_params_string)
+	logger.debug("############################")
 
 	# return
 	return render(request, 'core/field_analysis_docs.html', {

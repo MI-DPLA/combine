@@ -1498,6 +1498,9 @@ class ESIndex(object):
 				'distinct':sr_dict['aggregations']['%s_distinct' % field_name]['value']
 			}
 
+			# documents without
+			field_dict['doc_missing'] = sr_dict['hits']['total'] - field_dict['doc_instances']
+
 			# distinct ratio
 			if field_dict['val_instances'] > 0:
 				field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['val_instances']), 4)
@@ -2653,9 +2656,7 @@ class DTElasticSearch(View):
 		##################################################################################
 		# filtering applied before DataTables input
 		##################################################################################
-		logger.debug(self.request.GET)
 		filter_type = self.request.GET.get('filter_type', None)
-		
 
 		# equals filtering
 		if filter_type == 'equals':
@@ -2681,7 +2682,6 @@ class DTElasticSearch(View):
 				logger.debug('filtering to non-matches')
 				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
 
-
 		# exists filtering
 		elif filter_type == 'exists':
 			logger.debug('exists type filtering')
@@ -2705,9 +2705,6 @@ class DTElasticSearch(View):
 				self.query = self.query.exclude(Q('exists', field=filter_field))
 
 
-		else:
-			logger.debug('no filtering')
-
 		##################################################################################
 		# filtering applied by DataTables input
 		##################################################################################
@@ -2721,31 +2718,61 @@ class DTElasticSearch(View):
 		##################################################################################
 
 
-	# def sort(self):
+	def sort(self):
 		
-	# 	'''
-	# 	Sort based on DTinput paramters
+		'''
+		Sort based on DTinput parameters.
 
-	# 	Args:
-	# 		None
+		Note: Sorting is different for the different types of requests made to DTElasticSearch.
 
-	# 	Returns:
-	# 		None
-	# 			- modifies self.query
-	# 	'''
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query_results
+		'''
+
+		# get sort params from DTinput
+		# https://bitbucket.org/pigletto/django-datatables-view/src/216fd0db6044d2eef43034f5e905ceff68bdfeaa/django_datatables_view/base_datatable_view.py?at=master&fileviewer=file-view-default#base_datatable_view.py-68:114
+		sorting_cols = 0
+		sort_key = 'order[{0}][column]'.format(sorting_cols)
+		while sort_key in self.DTinput:
+			sorting_cols += 1
+			sort_key = 'order[{0}][column]'.format(sorting_cols)
+
+		for i in range(sorting_cols):
+			# sorting column
+			sort_dir = 'asc'
+			sort_col = int(self.DTinput.get('order[{0}][column]'.format(i)))
+			# sorting order
+			sort_dir = self.DTinput.get('order[{0}][dir]'.format(i))
+
+			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
 		
-	# 	logger.debug('sorting...')
-
-	# 	# get sort column
-	# 	for order in self.DTinput['order']:
-	# 		order_by_column = getattr(self.peewee_model,self.columns[order['column']])
-	# 		order_by_dir = order['dir']
-	# 		logger.debug('ordering by %s, %s' % (order_by_column, order_by_dir))
-	# 		if order_by_dir == 'asc':
-	# 			self.query = self.query.order_by(order_by_column.asc())
-	# 		if order_by_dir == 'desc':
-	# 			self.query = self.query.order_by(order_by_column.desc())
+		# field per doc (ES Search Results)
+		if self.search_type == 'fields_per_doc':
 			
+			# determine if field is sortable
+			if sort_col < len(self.fields):
+				sort_field_string = "%s.keyword" % self.fields[sort_col]
+				if sort_dir == 'desc':
+					sort_field_string = "-%s" % sort_field_string
+				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
+			else:
+				logger.debug("cannot sort by column %s" % sort_col)
+
+			# apply sorting to query
+			self.query = self.query.sort(sort_field_string)
+
+		# value per field (DataFrame)
+		if self.search_type == 'values_per_field':
+
+			if sort_col < len(self.query_results.columns):
+				asc = True
+				if sort_dir == 'desc':
+					asc = False
+				self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
 
 
 	def paginate(self):
@@ -2833,10 +2860,7 @@ class DTElasticSearch(View):
 
 		# get field names
 		if self.request:
-			# When using Django's getlist() method, the order in which the fields were appended
-			# to the GET parameters in the URL is reversed.  Undo that here.
 			field_names = self.request.GET.getlist('field_names')
-			field_names.reverse()
 			self.fields = field_names
 
 		# initiate es query
@@ -2847,6 +2871,9 @@ class DTElasticSearch(View):
 
 		# apply filtering to ES query
 		self.filter()
+
+		# apply sorting to ES query
+		self.sort()
 
 		# self.sort()
 		self.paginate()
@@ -2881,8 +2908,8 @@ class DTElasticSearch(View):
 
 		# get single field
 		if self.request:
-			field_names = self.request.GET.getlist('field_names')
-			self.field = field_names[0]
+			self.fields = self.request.GET.getlist('field_names')
+			self.field = self.fields[0]
 		else:
 			self.field = self.fields[0] # expects only one for this search type, take first
 
@@ -2902,13 +2929,26 @@ class DTElasticSearch(View):
 		sr = self.query.execute()
 		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
 
+		# rearrange columns
+		cols = self.query_results.columns.tolist()
+		cols = cols[-1:] + cols[:-1]
+		self.query_results = self.query_results[cols]
+
 		# get total document count, pre-filtering
 		self.DToutput['recordsTotal'] = len(self.query_results)
 
 		# get document count, post-filtering
 		self.DToutput['recordsFiltered'] = len(self.query_results)
 
-		# self.sort()
+		# apply sorting to DataFrame
+		'''
+		Think through if sorting on ES query or resulting Dataframe is better option.
+		Might have to be DataFrame, as sorting is not allowed for aggregations in ES when they are string type:
+		https://discuss.elastic.co/t/ordering-terms-aggregation-based-on-pipeline-metric/31839/2
+		'''
+		self.sort()
+
+		# paginate
 		self.paginate()
 
 		# loop through field values

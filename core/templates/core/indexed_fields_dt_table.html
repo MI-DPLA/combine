@@ -49,6 +49,7 @@
 					<th>DPLA Mapped Field</th>
 					<th>Map DPLA Field</th>
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Documents without</th>
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
 					<th>Percentage of Field Values that are Unique</th>
@@ -86,7 +87,8 @@
 							</form>
 						</td>
 
-						<td>{{ field.doc_instances }}</td>
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>
 						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
