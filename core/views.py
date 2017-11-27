@@ -777,12 +777,6 @@ def field_analysis_docs(request, es_index, filter_type):
 	]
 
 
-	logger.debug("###########################################################")
-	logger.debug('es field docs, filter type %s' % filter_type)
-	logger.debug(request.GET)
-	logger.debug("###########################################################")
-
-
 	# # field existence
 	# if filter_type == 'exists':
 

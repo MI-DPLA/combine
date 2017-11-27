@@ -2655,12 +2655,17 @@ class DTElasticSearch(View):
 		##################################################################################
 		filter_field = self.request.GET.get('filter_field', False)
 		filter_value = self.request.GET.get('filter_value', False)
+		matches = self.request.GET.get('matches', False)
 
 		# if filter field and value provided, add filter to query
 		if filter_field and filter_value:
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
-			self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-
+			if matches and matches == 'true':
+				logger.debug('including matches to filter')
+				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+			elif matches and matches == 'false':
+				logger.debug('excluding matches to filter')
+				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
 
 		##################################################################################
 		# filtering applied by DataTables input

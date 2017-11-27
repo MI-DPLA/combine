@@ -90,7 +90,7 @@
 		            		for (var i = escapes.length - 1; i >= 0; i--) {
 		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
 		            		};
-		            		return "<a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&exists=true&matches=true&value="+search_term+"'>Docs <strong>with</strong> this <strong>value</strong></a> / <a target=\"_blank\" href=\"\">Docs <strong>without</strong> this <strong>value</strong></a>";
+		            		return "<a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Docs <strong>with</strong> this <strong>value</strong></a> / <a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Docs <strong>without</strong> this <strong>value</strong></a>";
 		            	}
 		            }
 		        ],
