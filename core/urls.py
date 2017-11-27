@@ -38,6 +38,7 @@ urlpatterns = [
 
 	# ElasticSearch Analysis
 	url(r'^analysis/es/index/(?P<es_index>.+)/field_analysis$', views.field_analysis, name='field_analysis'),
+	url(r'^analysis/es/index/(?P<es_index>.+)/field_analysis/docs/(?P<filter_type>.+)$', views.field_analysis_docs, name='field_analysis_docs'),
 
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),

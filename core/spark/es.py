@@ -361,6 +361,9 @@ class GenericMapper(BaseMapper):
 			# add temporary id field
 			self.formatted_elems['temp_id'] = record_id
 
+			# add record_id field
+			self.formatted_elems['record_id'] = record_id
+
 			# add publish set id
 			self.formatted_elems['publish_set_id'] = publish_set_id
 

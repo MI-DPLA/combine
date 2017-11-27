@@ -1,0 +1,38 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Documents related to Field: <code>{{ field_name }}</code></h3>
+
+	<!-- DataTable of Fields per ES document -->
+	<table id='datatables_es_records' border="1" cellpadding="5">
+		<thead>
+			<th>{{ field_name }}</th>
+		</thead>
+		<tbody></tbody>
+	</table>
+
+
+	<script>
+		// prepare list of fields
+		var fields = {{ esi.get_index_fields|safe }};
+
+		// prepare fields list as GET repeating parameters
+		fields_get_params = '';
+		for (var i = fields.length - 1; i >= 0; i--) {
+			fields_get_params += ('field_names='+fields[i]+'&');
+		};
+
+		$(document).ready(function() {
+		    var oTable = $('#datatables_es_records').dataTable({
+		        "processing": true,
+		        "serverSide": true,
+		        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='fields_per_doc' %}?{{ dt_get_params_string }}",
+		        "searchDelay": 1000,
+		        "pageLength": 10
+		    });
+		});
+	</script>
+
+
+{% endblock %}

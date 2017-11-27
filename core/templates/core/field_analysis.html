@@ -31,8 +31,8 @@
 
 	<p>Browse what documents do, or do not have, have values for this field:
 		<ul>
-			<li><a target="_blank" href="http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:*">See documents <strong>with</strong> this <strong>field</strong></a></li>
-			<li><a target="_blank" href="http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q=!{{ field_name }}.keyword:*">See documents <strong>without</strong> this <strong>field</strong></a></li>
+			<li><a target="_blank" href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=true">See documents <strong>with</strong> this <strong>field</strong></a></li>
+			<li><a target="_blank" href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">See documents <strong>without</strong> this <strong>field</strong></a></li>
 		</ul>
 	</p>
 
@@ -90,7 +90,7 @@
 		            		for (var i = escapes.length - 1; i >= 0; i--) {
 		            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
 		            		};
-		            		return "<a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q={{ field_name }}.keyword:\""+search_term+"\"'>Docs <strong>with</strong> this <strong>value</strong></a> / <a target='_blank' href='http://{{ APP_HOST }}:9200/{{ esi.es_index }}/_search?q=!{{ field_name }}.keyword:\""+search_term+"\"'>Docs <strong>without</strong> this <strong>value</strong></a>";
+		            		return "<a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&exists=true&matches=true&value="+search_term+"'>Docs <strong>with</strong> this <strong>value</strong></a> / <a target=\"_blank\" href=\"\">Docs <strong>without</strong> this <strong>value</strong></a>";
 		            	}
 		            }
 		        ],

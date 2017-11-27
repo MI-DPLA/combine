@@ -2637,27 +2637,42 @@ class DTElasticSearch(View):
 		self.DToutput['draw'] = DTinput['draw']
 
 
-	# def filter(self):
-	# 	logger.debug('applying filters...')
+	def filter(self):
 
-	# 	'''
-	# 	Filter based on DTinput paramters
+		'''
+		Filter based on DTinput paramters
 
-	# 	Args:
-	# 		None
+		Args:
+			None
 
-	# 	Returns:
-	# 		None
-	# 			- modifies self.query
-	# 	'''
+		Returns:
+			None
+				- modifies self.query
+		'''
 
-	# 	search_string = self.DTinput['search']['value']
-	# 	if search_string != '':
-	# 		self.query = self.query.where(
-	# 			(self.peewee_model.title.contains(search_string)) |
-	# 			(self.peewee_model.abstract.contains(search_string)) |
-	# 			(self.peewee_model.identifier.contains(search_string))
-	# 		)
+		##################################################################################
+		# filtering applied before DataTables input
+		##################################################################################
+		filter_field = self.request.GET.get('filter_field', False)
+		filter_value = self.request.GET.get('filter_value', False)
+
+		# if filter field and value provided, add filter to query
+		if filter_field and filter_value:
+			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
+			self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+
+
+		##################################################################################
+		# filtering applied by DataTables input
+		##################################################################################
+		# search_string = self.DTinput['search']['value']
+		# if search_string != '':
+		# 	self.query = self.query.where(
+		# 		(self.peewee_model.title.contains(search_string)) |
+		# 		(self.peewee_model.abstract.contains(search_string)) |
+		# 		(self.peewee_model.identifier.contains(search_string))
+		# 	)
+		##################################################################################
 
 
 	# def sort(self):
@@ -2785,7 +2800,8 @@ class DTElasticSearch(View):
 		self.DToutput['recordsTotal'] = self.query.count()
 
 		# apply filtering to ES query
-		# self.filter()
+		self.filter()
+
 		# self.sort()
 		self.paginate()
 
@@ -2833,15 +2849,15 @@ class DTElasticSearch(View):
 		# return zero
 		self.query = self.query[0]
 
+		# apply filtering to ES query
+		self.filter()
+
 		# execute search and convert to dataframe
 		sr = self.query.execute()
 		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
 
 		# get total document count, pre-filtering
 		self.DToutput['recordsTotal'] = len(self.query_results)
-
-		# apply filtering to DataFrame
-		# self.filter()
 
 		# get document count, post-filtering
 		self.DToutput['recordsFiltered'] = len(self.query_results)

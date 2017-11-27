@@ -9,6 +9,7 @@ import re
 import requests
 import textwrap
 import time
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -750,6 +751,68 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# return
 	return render(request, 'core/job_indexing_failures.html', {
 			'cjob':cjob,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
+
+@login_required
+def field_analysis_docs(request, es_index, filter_type):
+
+	'''
+	Args:
+		es_index (str): string ES index name
+		filter_type (str): what kind of filtering to impose on documents returned
+	'''
+
+	# regardless of filtering type, get field name
+	field_name = request.GET.get('field_name')
+
+	# get ESIndex
+	esi = models.ESIndex(es_index)
+
+	# begin construction of DT GET params with 'fields_names'
+	dt_get_params = [
+		('field_names', field_name),
+		('filter_field', field_name)
+	]
+
+
+	logger.debug("###########################################################")
+	logger.debug('es field docs, filter type %s' % filter_type)
+	logger.debug(request.GET)
+	logger.debug("###########################################################")
+
+
+	# # field existence
+	# if filter_type == 'exists':
+
+	# 	# if check exists, get expected GET params
+	# 	exists = request.GET.get('exists')
+
+
+	# field equals
+	if filter_type == 'equals':
+
+		# if check equals, get expected GET params
+		matches = request.GET.get('matches')
+		dt_get_params.append(('matches', matches))
+
+		value = request.GET.get('value', None) # default None if checking non-matches to value
+		if value:
+			dt_get_params.append(('filter_value', value))
+
+
+	# construct DT Ajax GET parameters string from tuples
+	dt_get_params_string = urlencode(dt_get_params)
+	logger.debug(dt_get_params_string)
+
+	# return
+	return render(request, 'core/field_analysis_docs.html', {
+			'esi':esi,
+			'field_name':field_name,
+			'filter_type':filter_type,
+			'msg':None,
+			'dt_get_params_string':dt_get_params_string,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
