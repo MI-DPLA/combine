@@ -213,7 +213,8 @@ class TransformSpark(object):
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
+				properties=settings.COMBINE_DATABASE,
+				numPartitions=10
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 
@@ -258,8 +259,8 @@ class TransformSpark(object):
 				xslt_string = f.read()
 
 			# transform via rdd.map
-			job_id = job.id
-			records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
+			job_id = job.id			
+			records_trans = records.repartition(2).rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
 		records_trans = records_trans.toDF()
