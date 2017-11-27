@@ -2653,19 +2653,60 @@ class DTElasticSearch(View):
 		##################################################################################
 		# filtering applied before DataTables input
 		##################################################################################
-		filter_field = self.request.GET.get('filter_field', False)
-		filter_value = self.request.GET.get('filter_value', False)
-		matches = self.request.GET.get('matches', False)
+		logger.debug(self.request.GET)
+		filter_type = self.request.GET.get('filter_type', None)
+		
 
-		# if filter field and value provided, add filter to query
-		if filter_field and filter_value:
+		# equals filtering
+		if filter_type == 'equals':
+			logger.debug('equals type filtering')
+
+			# get fields for filtering
+			filter_field = self.request.GET.get('filter_field', None)
+			filter_value = self.request.GET.get('filter_value', None)
+			
+			# determine if including or excluding
+			matches = self.request.GET.get('matches', None)
+			if matches and matches.lower() == 'true':
+				matches = True
+			else:
+				matches = False
+
+			# filter query
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
-			if matches and matches == 'true':
-				logger.debug('including matches to filter')
+			if matches:
+				logger.debug('filtering to matches')
 				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-			elif matches and matches == 'false':
-				logger.debug('excluding matches to filter')
+			else:
+				logger.debug('filtering to non-matches')
 				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+
+
+		# exists filtering
+		elif filter_type == 'exists':
+			logger.debug('exists type filtering')
+
+			# get field for filtering
+			filter_field = self.request.GET.get('filter_field', None)
+
+			# determine if including or excluding
+			exists = self.request.GET.get('exists', None)
+			if exists and exists.lower() == 'true':
+				exists = True
+			else:
+				exists = False
+
+			# filter query
+			if exists:
+				logger.debug('filtering to exists')
+				self.query = self.query.filter(Q('exists', field=filter_field))
+			else:
+				logger.debug('filtering to non-exists')
+				self.query = self.query.exclude(Q('exists', field=filter_field))
+
+
+		else:
+			logger.debug('no filtering')
 
 		##################################################################################
 		# filtering applied by DataTables input

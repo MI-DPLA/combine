@@ -773,16 +773,16 @@ def field_analysis_docs(request, es_index, filter_type):
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
 		('field_names', field_name),
-		('filter_field', field_name)
+		('filter_field', field_name),
+		('filter_type', filter_type)
 	]
 
+	# field existence
+	if filter_type == 'exists':
 
-	# # field existence
-	# if filter_type == 'exists':
-
-	# 	# if check exists, get expected GET params
-	# 	exists = request.GET.get('exists')
-
+		# if check exists, get expected GET params
+		exists = request.GET.get('exists')
+		dt_get_params.append(('exists', exists))
 
 	# field equals
 	if filter_type == 'equals':
