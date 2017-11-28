@@ -20,10 +20,6 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
-# import elasticsearch and handles
-from core.es import es_handle
-from elasticsearch_dsl import Search, A, Q
-
 # import models
 from core import models, forms
 from core.es import es_handle
@@ -1065,17 +1061,11 @@ class DTRecordsJson(BaseDatatableView):
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
-			logger.debug("################################")
-			logger.debug(search)
-
 			if search:
-				logger.debug(type(qs))
-				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
-				return qs
-			
-			else:
-				logger.debug(type(qs))
-				return qs
+				qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
+
+			# return
+			return qs
 
 
 class DTPublishedJson(BaseDatatableView):
