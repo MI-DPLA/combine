@@ -802,9 +802,6 @@ def field_analysis_docs(request, es_index, filter_type):
 
 	# construct DT Ajax GET parameters string from tuples
 	dt_get_params_string = urlencode(dt_get_params)
-	logger.debug("############################")
-	logger.debug(dt_get_params_string)
-	logger.debug("############################")
 
 	# return
 	return render(request, 'core/field_analysis_docs.html', {

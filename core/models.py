@@ -2675,12 +2675,16 @@ class DTElasticSearch(View):
 
 			# filter query
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
+
 			if matches:
+				# filter where filter_field == filter_value
 				logger.debug('filtering to matches')
 				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
 			else:
+				# filter where filter_field == filter_value AND filter_field exists
 				logger.debug('filtering to non-matches')
 				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+				self.query = self.query.filter(Q('exists', field=filter_field))
 
 		# exists filtering
 		elif filter_type == 'exists':
