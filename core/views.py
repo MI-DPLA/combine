@@ -1056,25 +1056,6 @@ class DTRecordsJson(BaseDatatableView):
 				else:
 					return '<span style="color:red;">Duplicate</span>'
 
-			# # thumbnail
-			# if column == 'thumbnail':
-
-			# 	# get dpla mapping
-			# 	dpla_mapping = row.job.dpla_mapping()
-
-			# 	# if DPLA mapping
-			# 	if dpla_mapping:
-			# 		# if preview is defined
-			# 		if dpla_mapping.preview:
-
-			# 			# get thumbnail url from ES doc
-			# 			thumb_url = row.get_es_doc()[dpla_mapping.preview]						
-			# 			return '<img height="50" src="%s"/>' % thumb_url
-			# 		else:
-			# 			return '<img scr="#"/>';
-			# 	else:
-			# 		return '<img scr="#"/>';
-
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
 
@@ -1084,10 +1065,17 @@ class DTRecordsJson(BaseDatatableView):
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
-			if search:
-				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+			logger.debug("################################")
+			logger.debug(search)
 
-			return qs
+			if search:
+				logger.debug(type(qs))
+				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+				return qs
+			
+			else:
+				logger.debug(type(qs))
+				return qs
 
 
 class DTPublishedJson(BaseDatatableView):
