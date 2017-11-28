@@ -51,7 +51,7 @@ class ESIndex(object):
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
+		mapped_records_rdd = records_df.repartition(settings.JDBC_NUMPARTITIONS).rdd.map(lambda row: index_mapper_handle().map_record(
 				row.id,
 				row.record_id,
 				row.document,

@@ -115,6 +115,9 @@ class HarvestSpark(object):
 		# select records with content
 		records = df.select("record.*").where("record is not null")
 
+		# repartition
+		records = records.repartition(settings.JDBC_NUMPARTITIONS)
+
 		# attempt to find and select <metadata> element from OAI record, else filter out
 		def find_metadata(document):
 			if type(document) == str:
@@ -213,8 +216,7 @@ class TransformSpark(object):
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				numPartitions=10
+				properties=settings.COMBINE_DATABASE
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 
@@ -260,7 +262,7 @@ class TransformSpark(object):
 
 			# transform via rdd.map
 			job_id = job.id			
-			records_trans = records.repartition(2).rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
+			records_trans = records.repartition(settings.SPARK_REPARTITION).rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
 		records_trans = records_trans.toDF()

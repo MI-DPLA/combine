@@ -8,6 +8,12 @@ COMBINE_INSTALL_PATH = '/opt/combine'
 APP_HOST = '192.168.45.10'
 
 
+# Spark / YARN tuning
+SPARK_MAX_WORKERS = 2
+JDBC_NUMPARTITIONS = 10
+SPARK_REPARTITION = (SPARK_MAX_WORKERS * 4)
+
+
 # Apache Livy settings
 '''
 Combine uses Livy to issue spark statements.
