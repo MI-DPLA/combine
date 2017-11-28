@@ -51,7 +51,7 @@ class ESIndex(object):
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.repartition(settings.JDBC_NUMPARTITIONS).rdd.map(lambda row: index_mapper_handle().map_record(
+		mapped_records_rdd = records_df.repartition(settings.SPARK_REPARTITION).rdd.map(lambda row: index_mapper_handle().map_record(
 				row.id,
 				row.record_id,
 				row.document,
@@ -79,7 +79,8 @@ class ESIndex(object):
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',
 					properties=settings.COMBINE_DATABASE,
-					mode='append'
+					mode='append',
+					numPartitions=settings.JDBC_NUMPARTITIONS
 				)
 		
 		# retrieve successes to index
@@ -98,7 +99,7 @@ class ESIndex(object):
 		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
-		to_index_rdd.saveAsNewAPIHadoopFile(
+		to_index_rdd.repartition(settings.SPARK_REPARTITION).saveAsNewAPIHadoopFile(
 			path='-',
 			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
 			keyClass="org.apache.hadoop.io.NullWritable",

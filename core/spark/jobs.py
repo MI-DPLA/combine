@@ -116,7 +116,7 @@ class HarvestSpark(object):
 		records = df.select("record.*").where("record is not null")
 
 		# repartition
-		records = records.repartition(settings.JDBC_NUMPARTITIONS)
+		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# attempt to find and select <metadata> element from OAI record, else filter out
 		def find_metadata(document):
@@ -216,7 +216,8 @@ class TransformSpark(object):
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
+				properties=settings.COMBINE_DATABASE,
+				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 
@@ -324,8 +325,13 @@ class MergeSpark(object):
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
-			)		
+				properties=settings.COMBINE_DATABASE,
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			)
+
+		# repartition
+		sqldf = sqldf.repartition(settings.SPARK_REPARTITION)
+
 		input_jobs_dfs = []		
 		for input_job_id in input_jobs_ids:
 
@@ -336,6 +342,9 @@ class MergeSpark(object):
 		# create aggregate rdd of frames
 		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+
+		# repartition
+		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = job.id
@@ -391,10 +400,14 @@ class PublishSpark(object):
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
+				properties=settings.COMBINE_DATABASE,
+				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 		# records = records.select(CombineRecordSchema().field_names)
+
+		# repartition
+		records = records.repartition(settings.SPARK_REPARTITION)
 		
 		# get rows with document content
 		records = records[records['document'] != '']
@@ -403,15 +416,6 @@ class PublishSpark(object):
 		job_id = job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
-
-		############################################################################################################
-		# Predates data model rework, unknown if needed, keeping commented out for now...
-		############################################################################################################
-		# rewrite with publish_set_id from RecordGroup
-		# publish_set_id = job.record_group.publish_set_id
-		# set_id = udf(lambda row_id: publish_set_id, StringType())
-		# records = records.withColumn('setIds', set_id(records.id))
-		############################################################################################################
 
 		# write job output to avro
 		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
@@ -488,7 +492,8 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	sqldf = spark.read.jdbc(
 			settings.COMBINE_DATABASE['jdbc_url'],
 			'core_record',
-			properties=settings.COMBINE_DATABASE
+			properties=settings.COMBINE_DATABASE,
+			numPartitions=settings.JDBC_NUMPARTITIONS
 		)
 	job_id = job.id
 	db_records = sqldf.filter(sqldf.job_id == job_id)
