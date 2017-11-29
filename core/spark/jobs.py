@@ -498,6 +498,9 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	job_id = job.id
 	db_records = sqldf.filter(sqldf.job_id == job_id)
 
+	# explicitly repartition before sending to ES indexing
+	db_records = db_records.repartition(settings.SPARK_REPARTITION)
+
 	# index to ElasticSearch
 	if settings.INDEX_TO_ES:
 		ESIndex.index_job_to_es_spark(

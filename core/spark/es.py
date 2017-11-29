@@ -51,7 +51,7 @@ class ESIndex(object):
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.repartition(settings.SPARK_REPARTITION).rdd.map(lambda row: index_mapper_handle().map_record(
+		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
 				row.id,
 				row.record_id,
 				row.document,
@@ -60,28 +60,28 @@ class ESIndex(object):
 
 		# attempt to write index mapping failures to DB
 
-		# filter our failures
-		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
+		# # filter our failures
+		# failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
 
-		# if failures, write
-		if not failures_rdd.isEmpty():
+		# # if failures, write
+		# if not failures_rdd.isEmpty():
 
-			failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
+		# 	failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
-			# add job_id as column
-			job_id = job.id
-			job_id_udf = udf(lambda id: job_id, IntegerType())
-			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.record_id))
+		# 	# add job_id as column
+		# 	job_id = job.id
+		# 	job_id_udf = udf(lambda id: job_id, IntegerType())
+		# 	failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.record_id))
 
-			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
-			.write.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_indexmappingfailure',
-					properties=settings.COMBINE_DATABASE,
-					mode='append',
-					numPartitions=settings.JDBC_NUMPARTITIONS
-				)
+		# 	# write mapping failures to DB
+		# 	failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
+		# 	.write.jdbc(
+		# 			settings.COMBINE_DATABASE['jdbc_url'],
+		# 			'core_indexmappingfailure',
+		# 			properties=settings.COMBINE_DATABASE,
+		# 			mode='append',
+		# 			numPartitions=settings.JDBC_NUMPARTITIONS
+		# 		)
 		
 		# retrieve successes to index
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
@@ -99,7 +99,7 @@ class ESIndex(object):
 		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
-		to_index_rdd.repartition(settings.SPARK_REPARTITION).saveAsNewAPIHadoopFile(
+		to_index_rdd.saveAsNewAPIHadoopFile(
 			path='-',
 			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
 			keyClass="org.apache.hadoop.io.NullWritable",
