@@ -501,53 +501,17 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	# explicitly repartition before sending to ES indexing
 	db_records = db_records.repartition(settings.SPARK_REPARTITION)
 
-	# get subset of records, loop through and index
-	db_records_subsets = rdd_subset(db_records.rdd, chunk_size_limit=20000)
-	for rdd_sub in db_records_subsets:
-
-		# index to ElasticSearch
-		if settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=rdd_sub.toDF(),
-				index_mapper=kwargs['index_mapper']
-			)
+	# index to ElasticSearch
+	if settings.INDEX_TO_ES:
+		ESIndex.index_job_to_es_spark(
+			spark,
+			job=job,
+			records_df=db_records,
+			index_mapper=kwargs['index_mapper']
+		)
 
 	# write avro, coalescing default 200 partitions to 4 for output
 	if write_avro:
 		db_records.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
 
 
-def rdd_subset(rdd, chunk_size_limit=10000):
-
-	# empty list for subsets
-	subsets = []
-
-	# zip with index
-	zrdd = rdd.zipWithIndex()
-
-	# get count
-	count = zrdd.count()
-
-	# determine number of chunks
-	steps = count / chunk_size_limit
-	if steps % 1 != 0:
-			steps = int(steps) + 1
-
-	# evenly distribute chunks, while not exceeding chunk_limit
-	dist_chunk_size = int(count / steps) + 1
-
-	# loop through steps, appending subset to list for return
-	for step in range(0, steps):
-
-		# determine bounds
-		lower_bound = step * dist_chunk_size
-		upper_bound = (step + 1) * dist_chunk_size
-		
-		# select subset
-		rdd_subset = zrdd.filter(lambda x: x[1] >= lower_bound and x[1] < upper_bound).map(lambda x: x[0])
-		subsets.append(rdd_subset)
-
-	# return 
-	return subsets
