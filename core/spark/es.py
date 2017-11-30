@@ -87,16 +87,21 @@ class ESIndex(object):
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
 
 		# create index in advance
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'j%s' % job.id
-		mapping = {
-			'mappings':{
-				'record':{
-					'date_detection':False
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		if not es_handle_temp.indices.exists(index_name):
+			
+			# prepare mapping
+			mapping = {
+				'mappings':{
+					'record':{
+						'date_detection':False
+					}
 				}
-			}
-		}
-		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+			}		
+
+			# create index
+			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
 		to_index_rdd.saveAsNewAPIHadoopFile(
