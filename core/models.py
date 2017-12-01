@@ -460,7 +460,8 @@ class Job(models.Model):
 			None
 		'''
 		
-		self.record_count = self.get_records().count()
+		# self.record_count = self.get_records().count()
+		self.record_count = self.record_set.count() # considerably faster
 		
 		# if save, save
 		if save:
