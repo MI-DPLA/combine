@@ -9,6 +9,9 @@ import requests
 import sys
 import xmltodict
 
+# pyjxslt
+import pyjxslt
+
 # import Row from pyspark
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
@@ -34,7 +37,7 @@ class ESIndex(object):
 		Method to index records dataframe into ES
 
 		Args:
-		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+			spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job for records
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
 			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
@@ -49,6 +52,7 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
+				row.id,
 				row.record_id,
 				row.document,
 				job.record_group.publish_set_id
@@ -59,7 +63,7 @@ class ESIndex(object):
 		# filter our failures
 		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
 
-		# if not empty
+		# if failures, write
 		if not failures_rdd.isEmpty():
 
 			failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
@@ -75,23 +79,32 @@ class ESIndex(object):
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',
 					properties=settings.COMBINE_DATABASE,
-					mode='append'
+					mode='append',
+					numPartitions=settings.SPARK_REPARTITION
 				)
 		
 		# retrieve successes to index
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
 
 		# create index in advance
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'j%s' % job.id
-		mapping = {
-			'mappings':{
-				'record':{
-					'date_detection':False
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		if not es_handle_temp.indices.exists(index_name):
+			
+			# prepare mapping
+			mapping = {
+				'mappings':{
+					'record':{
+						'date_detection':False,
+						'properties':{
+							'combine_db_id':{'type':'integer'}
+						}
+					}
 				}
 			}
-		}
-		es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+			
+			# create index
+			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
 		to_index_rdd.saveAsNewAPIHadoopFile(
@@ -291,8 +304,6 @@ class GenericMapper(BaseMapper):
 				if include_attributes:
 					for k,v in elem['attributes'].items():
 
-						print(type(k))
-
 						# replace whitespace in attribute or value with underscore
 						k = k.replace(' ','_')
 						v = v.replace(' ','_')						
@@ -322,7 +333,7 @@ class GenericMapper(BaseMapper):
 				self.formatted_elems[k] = tuple(v)
 
 
-	def map_record(self, record_id, record_string, publish_set_id):
+	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
 
 		'''
 		Map record
@@ -359,8 +370,14 @@ class GenericMapper(BaseMapper):
 			# add temporary id field
 			self.formatted_elems['temp_id'] = record_id
 
+			# add record_id field
+			self.formatted_elems['record_id'] = record_id
+
 			# add publish set id
 			self.formatted_elems['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			self.formatted_elems['combine_db_id'] = combine_db_id
 
 			return (
 					'success',
@@ -389,17 +406,38 @@ class MODSMapper(BaseMapper):
 		- convert to dictionary with xmltodict
 	'''
 
-	def __init__(self):
-
-		# set xslt transformer		
-		xslt_tree = etree.parse('/opt/combine/inc/xslt/MODS_extract.xsl')
-		self.xsl_transform = etree.XSLT(xslt_tree)
-
-
-	def map_record(self, record_id, record_string, publish_set_id):
+	def __init__(self, xslt_processor='lxml'):
 
 		'''
-		Map record
+		Initiates MODSMapper, with option of what XSLT processor to use.
+			- lxml: faster, but does not provide XSLT 2.0 support (though the included stylesheet does not require)
+			- pyjxslt: slower, but offers XSLT 2.0 support
+
+		Args:
+			xslt_processor (str)['lxml','pyjxslt']: Selects which XSLT processor to use.
+		'''
+
+		self.xslt_processor = xslt_processor
+		self.xslt_filepath = '/opt/combine/inc/xslt/MODS_extract.xsl'
+
+		if self.xslt_processor == 'lxml':
+
+			# set xslt transformer
+			xslt_tree = etree.parse(self.xslt_filepath)
+			self.xsl_transform = etree.XSLT(xslt_tree)
+
+		elif self.xslt_processor == 'pyjxslt':
+
+			# prepare pyjxslt gateway
+			self.gw = pyjxslt.Gateway(6767)
+			with open(self.xslt_filepath,'r') as f:
+				self.gw.add_transform('xslt_transform', f.read())
+
+
+	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
+
+		'''
+		Map record.
 
 		Args:
 			record_id (str): record id
@@ -415,9 +453,16 @@ class MODSMapper(BaseMapper):
 
 		try:
 			
-			# flatten file with XSLT transformation
-			xml_root = etree.fromstring(record_string.encode('utf-8'))
-			flat_xml = self.xsl_transform(xml_root)
+			if self.xslt_processor == 'lxml':
+				
+				# flatten file with XSLT transformation
+				xml_root = etree.fromstring(record_string.encode('utf-8'))
+				flat_xml = self.xsl_transform(xml_root)
+
+			elif self.xslt_processor == 'pyjxslt':
+
+				# flatten file with XSLT transformation
+				flat_xml = self.gw.transform('xslt_transform', record_string)
 
 			# convert to dictionary
 			flat_dict = xmltodict.parse(flat_xml)
@@ -431,6 +476,9 @@ class MODSMapper(BaseMapper):
 
 			# add publish set id
 			mapped_dict['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			self.formatted_elems['combine_db_id'] = combine_db_id
 
 			return (
 				'success',

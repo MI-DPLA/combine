@@ -9,6 +9,7 @@ import re
 import requests
 import textwrap
 import time
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -17,6 +18,7 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
+from django.views import View
 
 # import models
 from core import models, forms
@@ -30,6 +32,9 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 
@@ -378,6 +383,35 @@ def job_update_note(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def job_dpla_field_map(request, org_id, record_group_id, job_id):
+	
+	if request.method == 'POST':
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get DPLAJobMap
+		djm = cjob.job.dpla_mapping()
+
+		# get fields 
+		dpla_field = request.POST.get('dpla_field')
+		es_field = request.POST.get('es_field')
+
+		# if dpla none, get current dpla field for this es field, then set to None
+		if dpla_field == '':
+			if es_field in djm.inverted_mapped_fields().keys():
+				current_dpla_field = djm.inverted_mapped_fields()[es_field]
+				logger.debug('unsetting %s' % current_dpla_field)			
+				dpla_field = current_dpla_field
+				es_field = None
+		
+		# update DPLAJobMap and redirect
+		setattr(djm, dpla_field, es_field)
+		djm.save()
+		return redirect(request.META.get('HTTP_REFERER'))
+
+
+@login_required
 def job_harvest(request, org_id, record_group_id):
 
 	'''
@@ -686,13 +720,13 @@ def field_analysis(request, es_index):
 	esi = models.ESIndex(es_index)
 
 	# get analysis for field
-	field_analysis_results = esi.field_analysis_dt(field_name)
+	field_metrics = esi.field_analysis(field_name, metrics_only=True)
 
 	# return
 	return render(request, 'core/field_analysis.html', {
 			'esi':esi,
 			'field_name':field_name,
-			'field_analysis_results':field_analysis_results,
+			'field_metrics':field_metrics,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -709,6 +743,66 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# return
 	return render(request, 'core/job_indexing_failures.html', {
 			'cjob':cjob,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
+
+@login_required
+def field_analysis_docs(request, es_index, filter_type):
+
+	'''
+
+	Table of documents that match a filtered ES query.
+
+	Args:
+		es_index (str): string ES index name
+		filter_type (str): what kind of filtering to impose on documents returned
+	'''
+
+	# regardless of filtering type, get field name
+	field_name = request.GET.get('field_name')
+
+	# get ESIndex
+	esi = models.ESIndex(es_index)
+
+	# begin construction of DT GET params with 'fields_names'
+	dt_get_params = [
+		('field_names', 'combine_db_id'), # get Combine DB ID
+		('field_names', 'record_id'), # get ID from ES index document
+		('field_names', field_name), # add field to returned fields
+		('filter_field', field_name),
+		('filter_type', filter_type)
+	]
+
+	# field existence
+	if filter_type == 'exists':
+
+		# if check exists, get expected GET params
+		exists = request.GET.get('exists')
+		dt_get_params.append(('exists', exists))
+
+	# field equals
+	if filter_type == 'equals':
+
+		# if check equals, get expected GET params
+		matches = request.GET.get('matches')
+		dt_get_params.append(('matches', matches))
+
+		value = request.GET.get('value', None) # default None if checking non-matches to value
+		if value:
+			dt_get_params.append(('filter_value', value))
+
+
+	# construct DT Ajax GET parameters string from tuples
+	dt_get_params_string = urlencode(dt_get_params)
+
+	# return
+	return render(request, 'core/field_analysis_docs.html', {
+			'esi':esi,
+			'field_name':field_name,
+			'filter_type':filter_type,
+			'msg':None,
+			'dt_get_params_string':dt_get_params_string,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -923,8 +1017,7 @@ class DTRecordsJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 			
-			# handle document metadata
-
+			# handle record_id
 			if column == 'record_id':
 				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
@@ -932,6 +1025,7 @@ class DTRecordsJson(BaseDatatableView):
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
 
+			# handle document
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
@@ -948,7 +1042,7 @@ class DTRecordsJson(BaseDatatableView):
 			if column == 'job':
 				return row.job.name
 
-			# handle associated job
+			# handle unique
 			if column == 'unique':
 				if row.unique:
 					return '<span style="color:green;">Unique</span>'
@@ -965,8 +1059,9 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+				qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
 
+			# return
 			return qs
 
 
@@ -1130,6 +1225,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
+
 
 
 ####################################################################

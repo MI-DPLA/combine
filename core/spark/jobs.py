@@ -56,8 +56,6 @@ class CombineRecordSchema(object):
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
 
 
-
-
 class HarvestSpark(object):
 
 	'''
@@ -114,6 +112,9 @@ class HarvestSpark(object):
 
 		# select records with content
 		records = df.select("record.*").where("record is not null")
+
+		# repartition
+		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# attempt to find and select <metadata> element from OAI record, else filter out
 		def find_metadata(document):
@@ -210,12 +211,21 @@ class TransformSpark(object):
 		job_track.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
+		bounds = get_job_db_bounds(input_job)
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+
+		# repartition
+		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
@@ -258,7 +268,7 @@ class TransformSpark(object):
 				xslt_string = f.read()
 
 			# transform via rdd.map
-			job_id = job.id
+			job_id = job.id			
 			records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
 
 		# back to DataFrame
@@ -317,12 +327,27 @@ class MergeSpark(object):
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
 
+		# get total range of id's from input jobs to help partition jdbc reader
+		records_ids = []
+		for input_job_id in input_jobs_ids:
+			input_job_temp = Job.objects.get(pk=int(input_job_id))
+			records = input_job_temp.get_records().order_by('id')
+			start_id = records.first().id
+			end_id = records.last().id
+			records_ids += [start_id, end_id]
+		records_ids.sort()		
+
 		# get list of RDDs from input jobs
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
-			)		
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=records_ids[0],
+				upperBound=records_ids[-1],
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			)
+
 		input_jobs_dfs = []		
 		for input_job_id in input_jobs_ids:
 
@@ -333,6 +358,9 @@ class MergeSpark(object):
 		# create aggregate rdd of frames
 		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+
+		# repartition
+		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = job.id
@@ -385,14 +413,23 @@ class PublishSpark(object):
 		job_track.save()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
+		bounds = get_job_db_bounds(input_job)
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
-				properties=settings.COMBINE_DATABASE
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 		# records = records.select(CombineRecordSchema().field_names)
-		
+
+		# repartition
+		records = records.repartition(settings.SPARK_REPARTITION)
+
 		# get rows with document content
 		records = records[records['document'] != '']
 
@@ -400,15 +437,6 @@ class PublishSpark(object):
 		job_id = job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
-
-		############################################################################################################
-		# Predates data model rework, unknown if needed, keeping commented out for now...
-		############################################################################################################
-		# rewrite with publish_set_id from RecordGroup
-		# publish_set_id = job.record_group.publish_set_id
-		# set_id = udf(lambda row_id: publish_set_id, StringType())
-		# records = records.withColumn('setIds', set_id(records.id))
-		############################################################################################################
 
 		# write job output to avro
 		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
@@ -481,26 +509,16 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
 
-	# # index to ElasticSearch
-	# if settings.INDEX_TO_ES:
-	# 	ESIndex.index_job_to_es_spark(
-	# 		spark,
-	# 		job=job,
-	# 		records_df=records_df_combine_cols,
-	# 		index_mapper=kwargs['index_mapper']
-	# 	)
-
-	# # write avro, coalescing default 200 partitions to 4 for output
-	# if write_avro:
-	# 	records_df_combine_cols.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
-
-	###################################
-
 	# read rows from DB for indexing to ES and writing avro
+	bounds = get_job_db_bounds(job)
 	sqldf = spark.read.jdbc(
 			settings.COMBINE_DATABASE['jdbc_url'],
 			'core_record',
-			properties=settings.COMBINE_DATABASE
+			properties=settings.COMBINE_DATABASE,
+			column='id',
+			lowerBound=bounds['lowerBound'],
+			upperBound=bounds['upperBound'],
+			numPartitions=settings.SPARK_REPARTITION
 		)
 	job_id = job.id
 	db_records = sqldf.filter(sqldf.job_id == job_id)
@@ -519,6 +537,19 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		db_records.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
 
 
+def get_job_db_bounds(job):
 
-	
+	'''
+	Function to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
+	'''	
+
+	records = job.get_records()
+	records = records.order_by('id')
+	start_id = records.first().id
+	end_id = records.last().id
+
+	return {
+		'lowerBound':start_id,
+		'upperBound':end_id
+	}
 

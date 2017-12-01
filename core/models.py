@@ -19,15 +19,20 @@ import time
 import uuid
 import xmltodict
 
+# pandas
+import pandas as pd
+
 # django imports
 from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.db import models
+from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
+from django.views import View
 
 # Livy
 from livy.client import HttpClient
@@ -35,9 +40,13 @@ from livy.client import HttpClient
 # import elasticsearch and handles
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
+from elasticsearch_dsl.utils import AttrList
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 
@@ -451,7 +460,8 @@ class Job(models.Model):
 			None
 		'''
 		
-		self.record_count = self.get_records().count()
+		# self.record_count = self.get_records().count()
+		self.record_count = self.record_set.count() # considerably faster
 		
 		# if save, save
 		if save:
@@ -504,6 +514,25 @@ class Job(models.Model):
 		
 		# index results save path
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+
+
+	def dpla_mapping(self):
+
+		'''
+		Method to return DPLA mapping for this job
+
+		Args:
+			None
+
+		Returns:
+			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
+		'''
+
+		if self.dplajobmap_set.count() == 1:
+			return self.dplajobmap_set.first()
+		else:
+			return False
+
 
 
 class JobTrack(models.Model):
@@ -830,6 +859,105 @@ class IndexMappingFailure(models.Model):
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 
+class DPLAJobMap(models.Model):
+
+	'''
+	#Experiemental#
+
+	Model to map parsed fields from ES index to DPLA record fields.  Values for each DPLA field correspond to an ES
+	field name for the associated Job.
+
+	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
+	to the DPLA JSON model.
+
+	Inspiration for DPLA fields are taken from here:
+	https://github.com/dpla/ingestion3/blob/develop/src/main/scala/dpla/ingestion3/model/DplaMapData.scala
+	'''
+
+	# associate mapping with Job
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+
+	# DPLA fields
+	# thumbnails and access
+	isShownAt = models.CharField(max_length=255, null=True, default=None)
+	preview = models.CharField(max_length=255, null=True, default=None)
+
+	# descriptive metadata
+	contributor = models.CharField(max_length=255, null=True, default=None)
+	creator = models.CharField(max_length=255, null=True, default=None)
+	date = models.CharField(max_length=255, null=True, default=None)
+	description = models.CharField(max_length=255, null=True, default=None)
+	extent = models.CharField(max_length=255, null=True, default=None)
+	format = models.CharField(max_length=255, null=True, default=None)
+	genre = models.CharField(max_length=255, null=True, default=None)
+	identifier = models.CharField(max_length=255, null=True, default=None)
+	language = models.CharField(max_length=255, null=True, default=None)
+	place = models.CharField(max_length=255, null=True, default=None)
+	publisher = models.CharField(max_length=255, null=True, default=None)
+	relation = models.CharField(max_length=255, null=True, default=None)
+	rights = models.CharField(max_length=255, null=True, default=None)
+	subject = models.CharField(max_length=255, null=True, default=None)
+	temporal = models.CharField(max_length=255, null=True, default=None)
+	title = models.CharField(max_length=255, null=True, default=None)
+
+
+	def __str__(self):
+
+		# count mapped fields
+		mapped_fields = self.mapped_fields()
+		
+		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
+
+
+	def all_fields(self):
+
+		'''
+		Return list of all potential field mappings
+		'''
+
+		all_fields = [ field.name for field in self._meta.get_fields() if field.name not in ['id','job'] ]
+		all_fields.sort()
+		return all_fields
+
+
+	def mapped_fields(self):
+
+		'''
+		Return dictionary of fields with associated mapping
+
+		Args:
+			None
+
+		Returns:
+			(dict): dictionary of instance mappings
+		'''
+
+		mapped_fields = { 
+				field.name: getattr(self, field.name) for field in self._meta.get_fields() 
+				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
+			}
+		return mapped_fields
+
+
+	def inverted_mapped_fields(self):
+
+		'''
+		Convenience method to invert mapping, using ES field name as key for DPLA field
+
+		Args:
+			None
+
+		Returns:
+			(dict): dictionary of inverted model instance mapping
+		'''
+		
+		# get mapped fields as dict
+		mapped_fields = self.mapped_fields()
+
+		# invert and return
+		return {v: k for k, v in mapped_fields.items()}
+
+
 
 ####################################################################
 # Signals Handlers                                                 # 
@@ -922,6 +1050,7 @@ def save_job(sender, instance, created, **kwargs):
 
 	# if the record was just created, then update job output (ensures this only runs once)
 	if created:
+
 		# set output based on job type
 		logger.debug('setting job output for job')
 		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
@@ -931,6 +1060,12 @@ def save_job(sender, instance, created, **kwargs):
 			instance.job_type,
 			instance.id)
 		instance.save()
+
+		# create DPLAJobMap instance and save
+		djm = DPLAJobMap(
+			job = instance
+		)
+		djm.save()
 
 
 @receiver(models.signals.pre_delete, sender=Job)
@@ -1312,9 +1447,90 @@ class ESIndex(object):
 		self.es_index = es_index
 
 
+	def get_index_fields(self):
+
+		'''
+		Get list of all fields for index
+
+		Args:
+			None
+
+		Returns:
+			(list): list of field names
+		'''
+
+		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+
+			# get mappings for job index
+			es_r = es_handle.indices.get(index=self.es_index)
+			self.index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+
+			# sort alphabetically that influences results list
+			field_names = list(self.index_mappings.keys())
+			field_names.sort()
+
+			return field_names
+
+
+	def calc_field_metrics(self,
+			sr_dict,
+			field_name,
+			one_per_doc_offset=settings.ONE_PER_DOC_OFFSET
+		):
+
+		'''
+		Calculate metrics for a given field.
+
+		Args:
+			sr_dict (dict): ElasticSearch search results dictionary
+			field_name (str): Field name to analyze metrics for
+			one_per_doc_offset (float): Offset from 1.0 that is used to guess if field is unique for all documents
+
+		Returns:
+			(dict): Dictionary of metrics for given field
+		'''
+		
+		if sr_dict['aggregations']['%s_doc_instances' % field_name]['doc_count'] > 0:
+				
+			# add that don't require calculation
+			field_dict = {
+				'field_name':field_name,
+				'doc_instances':sr_dict['aggregations']['%s_doc_instances' % field_name]['doc_count'],
+				'val_instances':sr_dict['aggregations']['%s_val_instances' % field_name]['value'],
+				'distinct':sr_dict['aggregations']['%s_distinct' % field_name]['value']
+			}
+
+			# documents without
+			field_dict['doc_missing'] = sr_dict['hits']['total'] - field_dict['doc_instances']
+
+			# distinct ratio
+			if field_dict['val_instances'] > 0:
+				field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['val_instances']), 4)
+			else:
+				field_dict['distinct_ratio'] = 0.0
+
+			# percentage of total documents with instance of this field
+			field_dict['percentage_of_total_records'] = round(
+				(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
+
+			# one, distinct value for this field, for this document
+			if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
+			 and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
+			 and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
+				field_dict['one_distinct_per_doc'] = True
+			else:
+				field_dict['one_distinct_per_doc'] = False
+
+			# return 
+			return field_dict
+
+		# if no instances of field in results, return False
+		else:
+			return False
+
+
 	def count_indexed_fields(self,
-			cardinality_precision_threshold=100,
-			one_per_doc_offset=0.05
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD
 		):
 
 		'''
@@ -1329,7 +1545,6 @@ class ESIndex(object):
 
 		Args:
 			cardinality_precision_threshold (int, 0:40-000): Cardinality precision threshold (see note above)
-			one_per_doc_offset (float): Offset from 1.0 that is used to guess if field is unique for all documents
 
 		Returns:
 			(dict):
@@ -1339,13 +1554,8 @@ class ESIndex(object):
 
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
-			# get mappings for job index
-			es_r = es_handle.indices.get(index=self.es_index)
-			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
-
-			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
-			field_names.sort()
+			# get field mappings for index
+			field_names = self.get_index_fields()
 
 			# init search
 			s = Search(using=es_handle, index=self.es_index)
@@ -1373,38 +1583,12 @@ class ESIndex(object):
 			exist, filter out fields with zero instances.
 			'''
 			field_count = []
-			for field in field_names:
+			for field_name in field_names:
 
-				if sr_dict['aggregations']['%s_doc_instances' % field]['doc_count'] > 0:
-				
-					# add that don't require calculation
-					field_dict = {
-						'field_name':field,
-						'doc_instances':sr_dict['aggregations']['%s_doc_instances' % field]['doc_count'],
-						'val_instances':sr_dict['aggregations']['%s_val_instances' % field]['value'],
-						'distinct':sr_dict['aggregations']['%s_distinct' % field]['value']
-					}
-
-					# distinct ratio
-					if field_dict['val_instances'] > 0:
-						field_dict['distinct_ratio'] = round((field_dict['distinct'] / field_dict['val_instances']), 4)
-					else:
-						field_dict['distinct_ratio'] = 0.0
-
-					# percentage of total documents with instance of this field
-					field_dict['percentage_of_total_records'] = round(
-						(field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
-
-					# one, distinct value for this field, for this document
-					if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
-					 and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
-					 and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
-						field_dict['one_distinct_per_doc'] = True
-					else:
-						field_dict['one_distinct_per_doc'] = False
-
-					# append
-					field_count.append(field_dict)
+					# get metrics and append if field metrics found
+					field_metrics = self.calc_field_metrics(sr_dict, field_name)
+					if field_metrics:
+						field_count.append(field_metrics)
 
 			# return
 			return {
@@ -1416,13 +1600,23 @@ class ESIndex(object):
 			return False
 
 
-	def field_analysis(self, field_name):
+	def field_analysis(self,
+			field_name,
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
+			metrics_only=False
+		):
 
 		'''
 		For a given field, return all values for that field across a job's index
 
+		Note: distinct counts rely on cardinality aggregations from ElasticSearch, but these are not 100 percent
+		accurate according to ES documentation:
+		https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html
+
 		Args:
 			field_name (str): field name
+			cardinality_precision_threshold (int, 0:40,000): Cardinality precision threshold (see note above)
+			metrics_only (bool): If True, return only field metrics and not values
 
 		Returns:
 			(dict): dictionary of values for a field
@@ -1431,48 +1625,71 @@ class ESIndex(object):
 		# init search
 		s = Search(using=es_handle, index=self.es_index)
 
+		# add aggs buckets for field metrics
+		s.aggs.bucket('%s_doc_instances' % field_name, A('filter', Q('exists', field=field_name)))
+		s.aggs.bucket('%s_val_instances' % field_name, A('value_count', field='%s.keyword' % field_name))
+		s.aggs.bucket('%s_distinct' % field_name, A(
+				'cardinality',
+				field='%s.keyword' % field_name,
+				precision_threshold = cardinality_precision_threshold
+			))
+
 		# add agg bucket for field values
-		s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+		if not metrics_only:
+			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
 
 		# return zero
 		s = s[0]
 
 		# execute and return aggs
 		sr = s.execute()
-		return sr.aggs[field_name]['buckets']
 
+		# get metrics
+		field_metrics = self.calc_field_metrics(sr.to_dict(), field_name)
 
-	def field_analysis_dt(self, field_name):
+		# prepare and return
+		if not metrics_only:
+			values = sr.aggs[field_name]['buckets']
+		else:
+			values = None
 
-		'''
-		Helper method to return field analysis as expected for DataTables Ajax data source
-
-		Args:
-			field_name (str): field name
-
-		Returns:
-			(dict): dictionary of values for a field in DT format
-			{
-				data: [
-					[
-						field_name,
-						count
-					],
-					...
-				]
-			}
-		'''
-
-		# get buckets
-		buckets = self.field_analysis(field_name)
-
-		# prepare as DT data
-		dt_dict = {
-			'data': [ [f['key'],f['doc_count']] for f in buckets ]
+		return {
+			'metrics':field_metrics,
+			'values':values
 		}
 
-		# return
-		return dt_dict
+
+	# def field_analysis_dt(self, field_name):
+
+	# 	'''
+	# 	Helper method to return field analysis as expected for DataTables Ajax data source
+
+	# 	Args:
+	# 		field_name (str): field name
+
+	# 	Returns:
+	# 		(dict): dictionary of values for a field in DT format
+	# 		{
+	# 			data: [
+	# 				[
+	# 					field_name,
+	# 					count
+	# 				],
+	# 				...
+	# 			]
+	# 		}
+	# 	'''
+
+	# 	# get buckets
+	# 	buckets = self.field_analysis(field_name)
+
+	# 	# prepare as DT data
+	# 	dt_dict = {
+	# 		'data': [ [f['key'],f['doc_count']] for f in buckets ]
+	# 	}
+
+	# 	# return
+	# 	return dt_dict
 
 
 
@@ -1555,14 +1772,14 @@ class PublishedRecords(object):
 		return self.esi.field_analysis(field_name)
 
 
-	def field_analysis_dt(self, field_name):
+	# def field_analysis_dt(self, field_name):
 
-		'''
-		Wrapper for ESIndex.field_analysis_dt
-		'''
+	# 	'''
+	# 	Wrapper for ESIndex.field_analysis_dt
+	# 	'''
 
-		# return field analysis
-		return self.esi.field_analysis_dt(field_name)
+	# 	# return field analysis
+	# 	return self.esi.field_analysis_dt(field_name)
 
 
 
@@ -1781,14 +1998,14 @@ class CombineJob(object):
 		return self.esi.field_analysis(field_name)
 
 
-	def field_analysis_dt(self, field_name):
+	# def field_analysis_dt(self, field_name):
 
-		'''
-		Wrapper for ESIndex.field_analysis_dt
-		'''
+	# 	'''
+	# 	Wrapper for ESIndex.field_analysis_dt
+	# 	'''
 
-		# return field analysis
-		return self.esi.field_analysis_dt(field_name)
+	# 	# return field analysis
+	# 	return self.esi.field_analysis_dt(field_name)
 
 
 	def get_indexing_failures(self):
@@ -2361,6 +2578,444 @@ class PublishJob(CombineJob):
 		'''
 
 		pass
+
+
+####################################################################
+# ElasticSearch DataTables connector 							   #
+####################################################################
+
+class DTElasticSearch(View):
+
+	'''
+	Model to query ElasticSearch and return DataTables ready JSON.
+	This model is a Django Class-based view.
+	This model is located in core.models, as it still may function seperate from a Django view.
+
+	NOTE: Consider breaking aggregation search to own class, very different approach
+	'''
+
+	def __init__(self,
+			fields=None,
+			es_index=None,
+			DTinput={
+				'draw':None,
+				'start':0,
+				'length':10
+			}):
+
+		'''
+		Args:
+			fields (list): list of fields to return from ES index
+			es_index (str): ES index
+			DTinput (dict): DataTables formatted GET parameters as dictionary
+
+		Returns:
+			None
+				- sets parameters
+		'''
+
+		logger.debug('initiating DTElasticSearch connector')
+
+		# fields to retrieve from index
+		self.fields = fields
+
+		# ES index
+		self.es_index = es_index
+
+		# dictionary INPUT DataTables ajax
+		self.DTinput = DTinput
+
+		# placeholder for query to build
+		self.query = None
+
+		# request
+		self.request = None
+
+		# dictionary OUTPUT to DataTables
+		# self.DToutput = DTResponse().__dict__
+		self.DToutput = {
+			'draw': None,
+			'recordsTotal': None,
+			'recordsFiltered': None,
+			'data': []
+		}
+		self.DToutput['draw'] = DTinput['draw']
+
+
+	def filter(self):
+
+		'''
+		Filter based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''
+
+		##################################################################################
+		# filtering applied before DataTables input
+		##################################################################################
+		filter_type = self.request.GET.get('filter_type', None)
+
+		# equals filtering
+		if filter_type == 'equals':
+			logger.debug('equals type filtering')
+
+			# get fields for filtering
+			filter_field = self.request.GET.get('filter_field', None)
+			filter_value = self.request.GET.get('filter_value', None)
+			
+			# determine if including or excluding
+			matches = self.request.GET.get('matches', None)
+			if matches and matches.lower() == 'true':
+				matches = True
+			else:
+				matches = False
+
+			# filter query
+			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
+
+			if matches:
+				# filter where filter_field == filter_value
+				logger.debug('filtering to matches')
+				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+			else:
+				# filter where filter_field == filter_value AND filter_field exists
+				logger.debug('filtering to non-matches')
+				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+				self.query = self.query.filter(Q('exists', field=filter_field))
+
+		# exists filtering
+		elif filter_type == 'exists':
+			logger.debug('exists type filtering')
+
+			# get field for filtering
+			filter_field = self.request.GET.get('filter_field', None)
+
+			# determine if including or excluding
+			exists = self.request.GET.get('exists', None)
+			if exists and exists.lower() == 'true':
+				exists = True
+			else:
+				exists = False
+
+			# filter query
+			if exists:
+				logger.debug('filtering to exists')
+				self.query = self.query.filter(Q('exists', field=filter_field))
+			else:
+				logger.debug('filtering to non-exists')
+				self.query = self.query.exclude(Q('exists', field=filter_field))
+
+
+		##################################################################################
+		# filtering applied by DataTables input
+		##################################################################################
+		# search_string = self.DTinput['search']['value']
+		# if search_string != '':
+		# 	self.query = self.query.where(
+		# 		(self.peewee_model.title.contains(search_string)) |
+		# 		(self.peewee_model.abstract.contains(search_string)) |
+		# 		(self.peewee_model.identifier.contains(search_string))
+		# 	)
+		##################################################################################
+
+
+	def sort(self):
+		
+		'''
+		Sort based on DTinput parameters.
+
+		Note: Sorting is different for the different types of requests made to DTElasticSearch.
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query_results
+		'''
+
+		# get sort params from DTinput
+		# https://bitbucket.org/pigletto/django-datatables-view/src/216fd0db6044d2eef43034f5e905ceff68bdfeaa/django_datatables_view/base_datatable_view.py?at=master&fileviewer=file-view-default#base_datatable_view.py-68:114
+		sorting_cols = 0
+		sort_key = 'order[{0}][column]'.format(sorting_cols)
+		while sort_key in self.DTinput:
+			sorting_cols += 1
+			sort_key = 'order[{0}][column]'.format(sorting_cols)
+
+		for i in range(sorting_cols):
+			# sorting column
+			sort_dir = 'asc'
+			sort_col = int(self.DTinput.get('order[{0}][column]'.format(i)))
+			# sorting order
+			sort_dir = self.DTinput.get('order[{0}][dir]'.format(i))
+
+			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
+		
+		# field per doc (ES Search Results)
+		if self.search_type == 'fields_per_doc':
+			
+			# determine if field is sortable
+			if sort_col < len(self.fields):
+
+				# if combine_db_id, do not add keyword
+				if self.fields[sort_col] == 'combine_db_id':
+					sort_field_string = self.fields[sort_col]
+				# else, add .keyword
+				else:
+					sort_field_string = "%s.keyword" % self.fields[sort_col]
+
+				if sort_dir == 'desc':
+					sort_field_string = "-%s" % sort_field_string
+				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
+			else:
+				logger.debug("cannot sort by column %s" % sort_col)
+
+			# apply sorting to query
+			self.query = self.query.sort(sort_field_string)
+
+		# value per field (DataFrame)
+		if self.search_type == 'values_per_field':
+
+			if sort_col < len(self.query_results.columns):
+				asc = True
+				if sort_dir == 'desc':
+					asc = False
+				self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
+
+
+	def paginate(self):
+
+		'''
+		Paginate based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''
+		
+		# using offset (start) and limit (length)
+		start = int(self.DTinput['start'])
+		length = int(self.DTinput['length'])
+
+		if self.search_type == 'fields_per_doc':
+			self.query = self.query[start : (start + length)]
+
+		if self.search_type == 'values_per_field':
+			self.query_results = self.query_results[start : (start + length)]
+
+
+	def to_json(self):
+
+		'''
+		Return DToutput as JSON
+
+		Returns:
+			(json)
+		'''
+
+		return json.dumps(self.DToutput)
+
+
+	def get(self, request, es_index, search_type):
+
+		'''
+		Django Class-based view, GET request.
+		Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
+
+		Args:
+			request (django.request): request object
+			es_index (str): ES index
+		'''
+
+		# save parameters to self
+		self.request = request
+		self.es_index = es_index
+		self.DTinput = self.request.GET
+
+		# time respond build
+		stime = time.time()
+
+		# return fields per document
+		if search_type == 'fields_per_doc':
+			self.fields_per_doc()
+
+		# aggregate-based search, count of values per field
+		if search_type == 'values_per_field':
+			self.values_per_field()
+
+		# end time
+		logger.debug('DTElasticSearch calc time: %s' % (time.time()-stime))
+
+		# for all search types, build and return response
+		return JsonResponse(self.DToutput)
+
+
+	def fields_per_doc(self):
+
+		'''
+		Perform search to get all fields, for all docs.
+		Loops through self.fields, returns rows per ES document with values (or None) for those fields.
+		Helpful for high-level understanding of documents for a given query.
+
+		Note: can be used outside of Django context, but must set self.fields first
+		'''
+
+		# set search type
+		self.search_type = 'fields_per_doc'
+
+		# get field names
+		if self.request:
+			field_names = self.request.GET.getlist('field_names')
+			self.fields = field_names
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = self.query.count()
+
+		# apply filtering to ES query
+		self.filter()
+
+		# apply sorting to ES query
+		self.sort()
+
+		# self.sort()
+		self.paginate()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = self.query.count()
+
+		# execute and retrieve search
+		self.query_results = self.query.execute()
+
+		# loop through hits
+		for hit in self.query_results.hits:
+
+			# get combine record
+			record = Record.objects.get(pk=int(hit.combine_db_id))
+
+			# loop through rows, add to list while handling data types
+			row_data = []
+			for field in self.fields:
+				field_value = getattr(hit, field, None)
+
+				# handle ES lists
+				if type(field_value) == AttrList:
+					row_data.append(str(field_value))
+
+				# all else, append
+				else:
+					row_data.append(field_value)
+
+			# place record's org_id, record_group_id, and job_id in front
+			row_data = [
+					record.job.record_group.organization.id,
+					record.job.record_group.id,
+					record.job.id
+					] + row_data
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+
+
+	def values_per_field(self):
+
+		'''
+		Perform aggregation-based search to get count of values for single field.
+		Helpful for understanding breakdown of a particular field's values and usage across documents.
+
+		Note: can be used outside of Django context, but must set self.fields first
+		'''
+
+		# set search type
+		self.search_type = 'values_per_field'
+
+		# get single field
+		if self.request:
+			self.fields = self.request.GET.getlist('field_names')
+			self.field = self.fields[0]
+		else:
+			self.field = self.fields[0] # expects only one for this search type, take first
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# add agg bucket for field values
+		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=1000000))
+
+		# return zero
+		self.query = self.query[0]
+
+		# apply filtering to ES query
+		self.filter()
+
+		# execute search and convert to dataframe
+		sr = self.query.execute()
+		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
+
+		# rearrange columns
+		cols = self.query_results.columns.tolist()
+		cols = cols[-1:] + cols[:-1]
+		self.query_results = self.query_results[cols]
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = len(self.query_results)
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = len(self.query_results)
+
+		# apply sorting to DataFrame
+		'''
+		Think through if sorting on ES query or resulting Dataframe is better option.
+		Might have to be DataFrame, as sorting is not allowed for aggregations in ES when they are string type:
+		https://discuss.elastic.co/t/ordering-terms-aggregation-based-on-pipeline-metric/31839/2
+		'''
+		self.sort()
+
+		# paginate
+		self.paginate()
+
+		# loop through field values
+		'''
+		example row from ES:
+		{'doc_count': 3, 'key': 'Frock Coats'}
+		'''
+		for index, row in self.query_results.iterrows():
+
+			# iterate through columns and place in list
+			row_data = [row.key, row.doc_count]
+
+			# add list to object
+			self.DToutput['data'].append(row_data)
+		
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

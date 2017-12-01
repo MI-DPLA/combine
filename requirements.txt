@@ -6,8 +6,6 @@ chardet==3.0.4
 cloudpickle==0.4.0
 configparser==3.5.0
 cookies==2.2.1
-cyavro==0.7.0
-Cython==0.26
 decorator==4.1.2
 Django==1.11.4
 django-datatables-view==1.14.0
@@ -41,7 +39,6 @@ Pygments==2.2.0
 pyjxslt==0.7.0
 pykerberos==1.1.14
 pyparsing==2.2.0
-PySaxon==0.0.1a0
 pytest==3.2.1
 python-dateutil==2.6.1
 pytz==2017.2
