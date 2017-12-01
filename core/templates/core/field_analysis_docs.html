@@ -7,6 +7,7 @@
 	<!-- DataTable of Fields per ES document -->
 	<table id='datatables_es_records' border="1" cellpadding="5">
 		<thead>
+			<th>Combine ID</th>
 			<th>Record ID</th>
 			<th><code>{{ field_name }}</code> Value</th>
 		</thead>
@@ -30,7 +31,34 @@
 		        "serverSide": true,
 		        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}",
 		        "searchDelay": 1000,
-		        "pageLength": 10
+		        "pageLength": 10,
+		        "order": [[ 1, "desc" ]],
+		        "columns": [
+		            { 
+		            	title: "Combine ID",
+		            	"render": function ( data, type, row ) {
+		                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
+		                }
+	            	},
+		            { 
+		            	title: "Record ID",
+		            	"render": function ( data, type, row ) {
+		                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
+		                }
+		            },
+		            {
+		            	title: "<code>{{ field_name }}</code> Value",
+		            	"render": function ( data, type, row ) {
+		                    if (!row[5]){
+		                    	return "<span style='color:red;'>None</span>";
+		                    }
+		                    else {
+		                    	return row[5];
+		                    }
+		                }
+		            	
+		            }
+		        ],
 		    });
 		});
 	</script>

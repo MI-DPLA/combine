@@ -95,11 +95,14 @@ class ESIndex(object):
 			mapping = {
 				'mappings':{
 					'record':{
-						'date_detection':False
+						'date_detection':False,
+						'properties':{
+							'combine_db_id':{'type':'integer'}
+						}
 					}
 				}
-			}		
-
+			}
+			
 			# create index
 			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 

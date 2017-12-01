@@ -40,6 +40,7 @@ from livy.client import HttpClient
 # import elasticsearch and handles
 from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
+from elasticsearch_dsl.utils import AttrList
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -1461,10 +1462,10 @@ class ESIndex(object):
 
 			# get mappings for job index
 			es_r = es_handle.indices.get(index=self.es_index)
-			index_mappings = es_r[self.es_index]['mappings']['record']['properties']
+			self.index_mappings = es_r[self.es_index]['mappings']['record']['properties']
 
 			# sort alphabetically that influences results list
-			field_names = list(index_mappings.keys())
+			field_names = list(self.index_mappings.keys())
 			field_names.sort()
 
 			return field_names
@@ -2759,7 +2760,14 @@ class DTElasticSearch(View):
 			
 			# determine if field is sortable
 			if sort_col < len(self.fields):
-				sort_field_string = "%s.keyword" % self.fields[sort_col]
+
+				# if combine_db_id, do not add keyword
+				if self.fields[sort_col] == 'combine_db_id':
+					sort_field_string = self.fields[sort_col]
+				# else, add .keyword
+				else:
+					sort_field_string = "%s.keyword" % self.fields[sort_col]
+
 				if sort_dir == 'desc':
 					sort_field_string = "-%s" % sort_field_string
 				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
@@ -2891,8 +2899,28 @@ class DTElasticSearch(View):
 		# loop through hits
 		for hit in self.query_results.hits:
 
-			# iterate through columns and place in list
-			row_data = [ str(getattr(hit, field, None)) for field in self.fields ]
+			# get combine record
+			record = Record.objects.get(pk=int(hit.combine_db_id))
+
+			# loop through rows, add to list while handling data types
+			row_data = []
+			for field in self.fields:
+				field_value = getattr(hit, field, None)
+
+				# handle ES lists
+				if type(field_value) == AttrList:
+					row_data.append(str(field_value))
+
+				# all else, append
+				else:
+					row_data.append(field_value)
+
+			# place record's org_id, record_group_id, and job_id in front
+			row_data = [
+					record.job.record_group.organization.id,
+					record.job.record_group.id,
+					record.job.id
+					] + row_data
 
 			# add list to object
 			self.DToutput['data'].append(row_data)

@@ -396,10 +396,6 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 		# get fields 
 		dpla_field = request.POST.get('dpla_field')
 		es_field = request.POST.get('es_field')
-		logger.debug("###############################")
-		logger.debug(dpla_field)
-		logger.debug(es_field)
-		logger.debug("###############################")
 
 		# if dpla none, get current dpla field for this es field, then set to None
 		if dpla_field == '':
@@ -771,7 +767,8 @@ def field_analysis_docs(request, es_index, filter_type):
 
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
-		('field_names', 'record_id'), # get ID from ES index document		
+		('field_names', 'combine_db_id'), # get Combine DB ID
+		('field_names', 'record_id'), # get ID from ES index document
 		('field_names', field_name), # add field to returned fields
 		('filter_field', field_name),
 		('filter_type', filter_type)
