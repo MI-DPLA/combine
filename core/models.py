@@ -1567,6 +1567,9 @@ class ESIndex(object):
 
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
+			# DEBUG
+			stime = time.time()
+
 			# get field mappings for index
 			field_names = self.get_index_fields()
 
@@ -1602,6 +1605,9 @@ class ESIndex(object):
 					field_metrics = self.calc_field_metrics(sr_dict, field_name)
 					if field_metrics:
 						field_count.append(field_metrics)
+
+			# DEBUG
+			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))
 
 			# return
 			return {
