@@ -430,8 +430,14 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		return Record.objects.filter(job=self).exclude(document='').all()
+		stime = time.time()
 
+		records = self.record_set.filter(success=1)
+
+		logger.debug('get_records elapsed: %s' % (time.time() - stime))
+
+		# return
+		return records
 
 	def get_errors(self):
 
@@ -445,7 +451,14 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		return Record.objects.filter(job=self).exclude(error='').all()
+		stime = time.time()
+
+		errors = self.record_set.filter(success=0)
+
+		logger.debug('get_errors elapsed: %s' % (time.time() - stime))
+
+		# return
+		return errors
 
 
 	def update_record_count(self, save=True):
@@ -460,8 +473,7 @@ class Job(models.Model):
 			None
 		'''
 		
-		# self.record_count = self.get_records().count()
-		self.record_count = self.record_set.count() # considerably faster
+		self.record_count = self.record_set.count()
 		
 		# if save, save
 		if save:
@@ -669,6 +681,7 @@ class Record(models.Model):
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
 	oai_set = models.CharField(max_length=255, null=True, default=None)
+	success = models.BooleanField(default=1)
 
 
 	# this model is managed outside of Django
@@ -2056,6 +2069,9 @@ class CombineJob(object):
 			(dict): Dictionary of record counts
 		'''
 
+		# DEBUG
+		stime = time.time()
+
 		r_count_dict = {}
 
 		# get counts
@@ -2074,6 +2090,9 @@ class CombineJob(object):
 			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(total_input_records)), 4)
 		else:
 			r_count_dict['error_percentage'] = 0.0
+
+		# DEBUG
+		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
 		
 		# return
 		return r_count_dict

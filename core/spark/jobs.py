@@ -48,7 +48,8 @@ class CombineRecordSchema(object):
 				StructField('error', StringType(), True),
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
-				StructField('oai_set', StringType(), True)
+				StructField('oai_set', StringType(), True),
+				StructField('success', BooleanType(), False)
 			]
 		)
 
@@ -136,6 +137,9 @@ class HarvestSpark(object):
 		metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
 		records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
 		records = records.filter(records.document != 'none')
+
+		# establish 'success' column, setting all success for Harvest
+		records = records.withColumn('success', pyspark_sql_functions.lit(1))
 
 		# copy 'id' from OAI harvest to 'record_id' column
 		records = records.withColumn('record_id', records.id)
@@ -246,12 +250,12 @@ class TransformSpark(object):
 					gw.drop_transform('xslt_transform')
 
 					# set trans_result tuple
-					trans_result = (result, '')
+					trans_result = (result, '', 1)
 
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e))
+					trans_result = ('', str(e), 0)
 
 				# return Row
 				return Row(
@@ -260,7 +264,8 @@ class TransformSpark(object):
 						document = trans_result[0],
 						error = trans_result[1],
 						job_id = int(job_id),
-						oai_set = row.oai_set
+						oai_set = row.oai_set,
+						success = trans_result[2]
 					)
 
 			# open XSLT transformation, pass to map as string
