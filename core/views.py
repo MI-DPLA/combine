@@ -524,12 +524,10 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		if request.POST.get('static_filepath') != '':
 			payload_dict['type'] = 'location'
 			payload_dict['payload_dir'] = request.POST.get('static_filepath')
-			logger.debug('using user supplied %s for static payload' % payload_dict['type'])
 
 		# use upload
 		else:
 			payload_dict['type'] = 'upload'
-			logger.debug('using user supplied %s for static payload' % payload_dict['type'])
 
 			# get static file payload
 			payload_file = request.FILES['static_payload']
