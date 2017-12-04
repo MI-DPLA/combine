@@ -16,35 +16,41 @@
 		</form>
 	</div>
 
-	<p>The following jobs were used as input for this {{ cjob.job.job_type }}.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
-	<table border="1" cellpadding="5">
-		<tr>
-			<th>Input Job Name</th>
-			<th>Record Count</th>
-		</tr>
-		{% for input_job in cjob.job.jobinput_set.all %}
-		<tr class="{{ input_job.input_job.job_type }}">
-			<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
-			<td>{{ input_job.input_job.record_count }}</td>
-		</tr>
-		{% endfor %}
-		<tr>
-			<td></td>
-			<td><strong>Total:</strong> {{ record_count_details.input_jobs.total_input_records }}</td>
-		</tr>
-	</table>
+	{% if cjob.job.job_type_family != 'HarvestJob' %}
+		<p>The following jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong> type.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
+		<table border="1" cellpadding="5">
+			<tr>
+				<th>Input Job Name</th>
+				<th>Record Count</th>
+			</tr>
+			{% for input_job in cjob.job.jobinput_set.all %}
+			<tr class="{{ input_job.input_job.job_type_family }}">
+				<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+				<td>{{ input_job.input_job.record_count }}</td>
+			</tr>
+			{% endfor %}
+			<tr>
+				<td></td>
+				<td><strong>Total:</strong> {{ record_count_details.input_jobs.total_input_records }}</td>
+			</tr>
+		</table>
+	{% endif %}
 
-	<p>Given the input jobs and records outlined above, the following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
+	<p>The following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
 	<table border="1" cellpadding="5">
 		<tr>
-			<th>This Job Name</th>
+			<th>Job Name</th>
+			<th>Job Type Family</th>
+			<th>Job Type</th>
 			<th>Total Input Records</th>
 			<th>Sucesssful Records</th>
 			<th>Errors</th>
 			<th>Error Percentage</th>
 		</tr>
-		<tr class="{{ cjob.job.job_type }}">
+		<tr class="{{ cjob.job.job_type_family }}">
 			<td>{{ cjob.job.name }}</td>
+			<td>{{ cjob.job.job_type_family }}</td>
+			<td>{{ cjob.job.job_type }}</td>
 			<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 			<td>{{ record_count_details.records }}</td>
 			<td>{{ record_count_details.errors }}</td>

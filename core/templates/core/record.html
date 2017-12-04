@@ -31,7 +31,7 @@
 	<h3>Combine Attributes</h3>
 	<ul>
 		<li><strong>Combine ID:</strong> {{ record.id }}</li>
-		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type }}">{{ record.job.job_type }}</span></li>
+		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
 		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
 		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
 		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
@@ -50,11 +50,11 @@
 			<th>ElasticSearch document</th>
 		</tr>
 		{% for record_stage in record_stages %}
-			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
+			<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
 				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
 				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
 				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
-				<td>{{ record_stage.job.job_type }}</td>
+				<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>
 				{% if record_stage.document != '' %}
 					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
 				{% else %}
@@ -135,13 +135,13 @@
 	<!-- Details specific to Job Type -->
 
 	<!-- HarvestJob -->
-	{% if record.job.job_type == 'HarvestJob' %}
+	{% if record.job.job_type_family == 'HarvestJob' %}
 	{% endif %}
 
 	<!-- TransformJob -->
 	<div id="job_type_specific">
-		{% if record.job.job_type == 'TransformJob' %}
-			<h2>{{ record.job.job_type }} Details</h2>
+		{% if record.job.job_type_family == 'TransformJob' %}
+			<h2>{{ record.job.job_type_family }} Details</h2>
 			<h3>Transformation Used</h3>
 			<table border="1" cellpadding="10">
 				<tr>
@@ -164,11 +164,11 @@
 		{% endif %}
 
 		<!-- MergeJob -->
-		{% if record.job.job_type == 'MergeJob' %}
+		{% if record.job.job_type_family == 'MergeJob' %}
 		{% endif %}
 
 		<!-- PublishJob -->
-		{% if record.job.job_type == 'PublishJob' %}
+		{% if record.job.job_type_family == 'PublishJob' %}
 		{% endif %}
 	</div>
 

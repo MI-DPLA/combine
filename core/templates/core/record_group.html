@@ -12,7 +12,7 @@
 		<tr>
 			<th>Published Records</th>
 			{% if record_group.jobpublish_set.all|length > 0 %}
-				<td class="{{ record_group.jobpublish_set.all.first.job.job_type }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+				<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
 			{% else %}
 				<td style="color:red;">None</td>
 			{% endif %}

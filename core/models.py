@@ -256,6 +256,31 @@ class Job(models.Model):
 		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
 
 
+	def job_type_family(self):
+
+		'''
+		Method to return high-level job type from Harvest, Transform, Merge, Publish
+
+		Args:
+			None
+
+		Returns:
+			(str, ['HarvestJob', 'TransformJob', 'MergeJob', 'PublishJob']): String of high-level job type
+		'''
+
+		# get class hierarchy of job
+		class_tree = inspect.getmro(globals()[self.job_type])
+
+		# handle Harvest determination
+		if HarvestJob in class_tree:
+			logger.debug('Harvest Job type detected, getting specific subtype')
+			return class_tree[-3].__name__
+
+		# else, return job_type untouched
+		else:
+			return self.job_type
+
+
 	def update_status(self):
 
 		'''
@@ -2152,7 +2177,8 @@ class HarvestJob(CombineJob):
 			# create Job entry in DB and save
 			self.job = Job(
 				record_group = self.record_group,
-				job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
+				# job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
+				job_type = type(self).__name__, # selects this level of class inheritance hierarchy
 				user = self.user,
 				name = self.job_name,
 				note = self.job_note,
