@@ -510,10 +510,6 @@ def job_harvest_static_xml(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		'''
-		When determining between user supplied file, and location on disk, favor location
-		'''
-
 		logger.debug('beginning static xml harvest for Record Group: %s' % record_group.name)
 
 		# debug
@@ -521,59 +517,65 @@ def job_harvest_static_xml(request, org_id, record_group_id):
 		logger.debug(request.POST)
 		logger.debug("###############################################")
 
+		'''
+		When determining between user supplied file, and location on disk, favor location
+		'''
 		# use location on disk
 		if request.POST.get('static_filepath') != '':
-			static_type = 'location'
-			logger.debug('using user supplied %s for statick payload' % static_type)
+			static_payload_type = 'location'
+			logger.debug('using user supplied %s for statick payload' % static_payload_type)
 
 		# use upload
 		else:
-			static_type = 'upload'
-			logger.debug('using user supplied %s for statick payload' % static_type)
+			static_payload_type = 'upload'
+			logger.debug('using user supplied %s for statick payload' % static_payload_type)
 
 			# get static file payload
-			static_payload = request.FILES['static_payload']
+			payload_file = request.FILES['static_payload']
 
 			# DEBUG
-			logger.debug(type(static_payload))
-			logger.debug(static_payload.name)
-			logger.debug(static_payload.content_type)		
+			logger.debug(type(payload_file))
+			logger.debug(payload_file.name)
+			logger.debug(payload_file.content_type)		
 
 			# save payload to disk
-			with open('/tmp/combine/%s' % static_payload.name, 'wb') as f:
-				f.write(static_payload.read())
-				static_payload.close()
+			static_payload = '/tmp/combine/%s' % payload_file.name
+			with open(static_payload, 'wb') as f:
+				f.write(payload_file.read())
+				payload_file.close()
 
-		# # get job name
-		# job_name = request.POST.get('job_name')
-		# if job_name == '':
-		# 	job_name = None
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
 
-		# # get job note
-		# job_note = request.POST.get('job_note')
-		# if job_note == '':
-		# 	job_note = None
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
 
-		# # get preferred metadata index mapper
-		# index_mapper = request.POST.get('index_mapper')
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
 
-		# # initiate job
-		# cjob = models.HarvestStaticXMLJob(			
-		# 	job_name=job_name,
-		# 	job_note=job_note,
-		# 	user=request.user,
-		# 	record_group=record_group,
-		# 	index_mapper=index_mapper,
-		# 	static_payload=static_payload.name
-		# )
+		# initiate job
+		cjob = models.HarvestStaticXMLJob(			
+			job_name=job_name,
+			job_note=job_note,
+			user=request.user,
+			record_group=record_group,
+			index_mapper=index_mapper,
+			static_payload=static_payload,
+			static_payload_type=static_payload_type,
+			xpath_query=request.POST.get('xpath', None)
+		)
 		
-		# # start job and update status
-		# job_status = cjob.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
 
-		# # if job_status is absent, report job status as failed
-		# if job_status == False:
-		# 	cjob.job.status = 'failed'
-		# 	cjob.job.save()
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 

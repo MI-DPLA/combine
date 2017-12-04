@@ -10,14 +10,14 @@
 
 		{% csrf_token %}
 
-		<p>Job Name (optional):
+		<p><strong>Job Name (optional):</strong>
 			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
 		<p>
 
 		<!-- optional job note -->
 		{% include 'core/job_note.html' %}
 		
-		<p>Select OAI endpoint to use:
+		<p><strong>Select OAI endpoint to use:</strong>
 			<select id="oai_endpoint_id" name="oai_endpoint_id">
 				<option value="">Select an oai endpoint...</option>
 				{% for oai_endpoint in oai_endpoints %}
@@ -33,17 +33,17 @@
 
 		<div style="background-color:#E4E4E3; width:50%; padding:10px; border-radius:10px;">
 			<p style="color:red;">Optional overrides for defaults shown above (each is applied separately, if completed):</p>
-			<p>OAI Verb:
+			<p><strong>OAI Verb:</strong>
 				<select name="verb">
 					<option value="">Select OAI verb...</option>
 					<option value="ListRecords">ListRecords</option>
 					<option value="ListSets">ListSets</option>
 				</select>
 			<p>
-			<p>OAI metadata prefix:
+			<p><strong>OAI metadata prefix:</strong>
 				<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
 			<p>
-			<p>Scope type:
+			<p><strong>Scope type:</strong>
 				<select name="scope_type">
 					<option value="">Select scope type...</option>
 					<option value="setList">setList</option>
@@ -52,7 +52,7 @@
 					<option value="harvestAllSets">harvestAllSets</option>
 				</select>
 			<p>
-			<p>Scope value:
+			<p><strong>Scope value:</strong>
 				<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
 			<p>
 		</div>

@@ -10,18 +10,20 @@
 
 		{% csrf_token %}
 
-		<p>Job Name (optional):
+		<p><strong>Job Name (optional):</strong>
 			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
 		<p>
 
 		<!-- optional job note -->
 		{% include 'core/job_note.html' %}
 
-		<p>Uplaod XML:
+		<!-- payload -->
+		<p>Provide either a file upload or location on disk for static XML files.</p>
+		<p><strong>Uplaod XML:</strong>
 			<input type="file" name="static_payload">
 		</p>
 
-		<p>Location of XML files on disk:
+		<p><strong>Location of XML files on disk:</strong>
 			<input type="text" name="static_filepath" size=120 placeholder="e.g. /foo/bar/baz"/>
 		<p>
 
@@ -45,7 +47,7 @@
 				</tr>
 			</table>
 		</p>		
-		<p>XPath query:
+		<p><strong>XPath query:</strong>
 			<input type="text" name="xpath_query" size=120 placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']"/>
 		<p>
 		

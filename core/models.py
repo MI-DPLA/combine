@@ -2303,7 +2303,9 @@ class HarvestStaticXMLJob(HarvestJob):
 		record_group=None,
 		job_id=None,
 		index_mapper=None,
-		static_payload=None):
+		static_payload=None,
+		static_payload_type=None,
+		xpath_query=None):
 
 		'''
 		Args:
@@ -2332,8 +2334,33 @@ class HarvestStaticXMLJob(HarvestJob):
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
-			# capture OAI specific args
+			# capture static XML specific args
 			self.static_payload = static_payload
+			self.static_payload_type = static_payload_type
+			self.xpath_query = xpath_query
+
+			# prepare static files
+			self.prepare_static_files()
+
+
+	def prepare_static_files(self):
+
+		'''
+		Method to prepare static files for spark processing
+
+		Expected final structure:
+			/foo/bar <-- self.static_payload
+				baz1.xml <-- record at self.xpath_query within file
+				baz2.xml
+				baz3.xml
+
+		Accepts three scenarios:
+			- zip / tar file with discrete files, one record per file
+			- aggregate XML file, containing multiple records
+			- location of directory on disk, with files pre-arranged to match structure above
+		'''
+
+		pass
 
 
 	def prepare_job(self):
