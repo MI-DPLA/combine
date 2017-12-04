@@ -539,7 +539,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 			# create payload dir
 			payload_dict['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
-			os.mkdir(payload_dict['payload_dir'])
+			os.makedirs(payload_dict['payload_dir'])
 
 			# establish payload filename
 			if hash_payload_filename:
