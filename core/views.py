@@ -14,6 +14,7 @@ from urllib.parse import urlencode
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -415,7 +416,7 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
-	Create a new Harvest Job
+	Create a new OAI Harvest Job
 	'''
 
 	# retrieve record group
@@ -437,7 +438,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beginning harvest for Record Group: %s' % record_group.name)
+		logger.debug('beginning oai harvest for Record Group: %s' % record_group.name)
 
 		# debug form
 		logger.debug(request.POST)
@@ -481,6 +482,98 @@ def job_harvest_oai(request, org_id, record_group_id):
 		if job_status == False:
 			cjob.job.status = 'failed'
 			cjob.job.save()
+
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+
+
+@login_required
+def job_harvest_static_xml(request, org_id, record_group_id):
+
+	'''
+	Create a new static XML Harvest Job
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	
+	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# render page
+		return render(request, 'core/job_harvest_static_xml.html', {
+				'record_group':record_group,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
+
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		'''
+		When determining between user supplied file, and location on disk, favor location
+		'''
+
+		logger.debug('beginning static xml harvest for Record Group: %s' % record_group.name)
+
+		# debug
+		logger.debug("###############################################")
+		logger.debug(request.POST)
+		logger.debug("###############################################")
+
+		# use location on disk
+		if request.POST.get('static_filepath') != '':
+			static_type = 'location'
+			logger.debug('using user supplied %s for statick payload' % static_type)
+
+		# use upload
+		else:
+			static_type = 'upload'
+			logger.debug('using user supplied %s for statick payload' % static_type)
+
+			# get static file payload
+			static_payload = request.FILES['static_payload']
+
+			# DEBUG
+			logger.debug(type(static_payload))
+			logger.debug(static_payload.name)
+			logger.debug(static_payload.content_type)		
+
+			# save payload to disk
+			with open('/tmp/combine/%s' % static_payload.name, 'wb') as f:
+				f.write(static_payload.read())
+				static_payload.close()
+
+		# # get job name
+		# job_name = request.POST.get('job_name')
+		# if job_name == '':
+		# 	job_name = None
+
+		# # get job note
+		# job_note = request.POST.get('job_note')
+		# if job_note == '':
+		# 	job_note = None
+
+		# # get preferred metadata index mapper
+		# index_mapper = request.POST.get('index_mapper')
+
+		# # initiate job
+		# cjob = models.HarvestStaticXMLJob(			
+		# 	job_name=job_name,
+		# 	job_note=job_note,
+		# 	user=request.user,
+		# 	record_group=record_group,
+		# 	index_mapper=index_mapper,
+		# 	static_payload=static_payload.name
+		# )
+		
+		# # start job and update status
+		# job_status = cjob.start_job()
+
+		# # if job_status is absent, report job status as failed
+		# if job_status == False:
+		# 	cjob.job.status = 'failed'
+		# 	cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 

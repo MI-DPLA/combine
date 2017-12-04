@@ -57,10 +57,10 @@ class CombineRecordSchema(object):
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
 
 
-class HarvestSpark(object):
+class HarvestOAISpark(object):
 
 	'''
-	Spark code for harvesting records
+	Spark code for harvesting OAI records
 	'''
 
 	@staticmethod
@@ -104,6 +104,7 @@ class HarvestSpark(object):
 		)
 		job_track.save()
 
+		# harvest OAI records via Ingestion3
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -176,6 +177,110 @@ class HarvestSpark(object):
 		job_track.finish_timestamp = datetime.datetime.now()
 		job_track.save()
 		
+
+
+class HarvestStaticXMLSpark(object):
+
+	'''
+	Spark code for harvesting static xml records
+	'''
+
+	@staticmethod
+	def spark_function(spark, **kwargs):
+
+		'''
+		Harvest records via OAI.
+
+		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
+			- record_id 
+			- job_id
+			- oai_id
+			- oai_set
+			- publish_set_id
+			- unique (TBD)
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs:
+				job_id (int): Job ID
+				static_payload (str): path of static payload on disk
+				index_mapper (str): class name from core.spark.es, extending BaseMapper
+
+		Returns:
+			None:
+			- opens and parses static files from payload
+			- indexes records into DB
+			- map / flatten records and indexes to ES
+		'''
+
+		# get job
+		job = Job.objects.get(pk=int(kwargs['job_id']))
+
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()		
+
+		# # attempt to find and select <metadata> element from OAI record, else filter out
+		# def find_metadata(document):
+		# 	if type(document) == str:
+		# 		xml_root = etree.fromstring(document)
+		# 		m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
+		# 		if m_root is not None:
+		# 			# expecting only one child to <metadata> element
+		# 			m_children = m_root.getchildren()
+		# 			if len(m_children) == 1:
+		# 				m_child = m_children[0]
+		# 				m_string = etree.tostring(m_child).decode('utf-8')
+		# 				return m_string
+		# 		else:
+		# 			return 'none'
+		# 	else:
+		# 		return 'none'
+
+		# metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
+		# records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
+		# records = records.filter(records.document != 'none')
+
+		# establish 'success' column, setting all success for Harvest
+		records = records.withColumn('success', pyspark_sql_functions.lit(1))
+
+		# copy 'id' from OAI harvest to 'record_id' column
+		records = records.withColumn('record_id', records.id)
+
+		# add job_id as column
+		job_id = job.id
+		job_id_udf = udf(lambda id: job_id, IntegerType())
+		records = records.withColumn('job_id', job_id_udf(records.id))
+
+		# add oai_id column
+		publish_set_id = job.record_group.publish_set_id
+		oai_id_udf = udf(lambda id: '%s%s:%s' % (
+			settings.COMBINE_OAI_IDENTIFIER,
+			publish_set_id,
+			id), StringType())
+		records = records.withColumn('oai_id', oai_id_udf(records.id))
+
+		# add oai_set
+		records = records.withColumn('oai_set', records.setIds[0])
+
+		# add blank error column
+		error = udf(lambda id: '', StringType())
+		records = records.withColumn('error', error(records.id))
+
+		# index records to db
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=records
+		)
+
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
+
 
 
 class TransformSpark(object):
@@ -557,4 +662,5 @@ def get_job_db_bounds(job):
 		'lowerBound':start_id,
 		'upperBound':end_id
 	}
+
 

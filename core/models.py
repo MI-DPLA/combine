@@ -273,7 +273,6 @@ class Job(models.Model):
 
 		# handle Harvest determination
 		if HarvestJob in class_tree:
-			logger.debug('Harvest Job type detected, getting specific subtype')
 			return class_tree[-3].__name__
 
 		# else, return job_type untouched
@@ -2204,22 +2203,20 @@ class HarvestOAIJob(HarvestJob):
 		job_name=None,
 		job_note=None,
 		user=None,
-		record_group=None,
-		oai_endpoint=None,
-		overrides=None,
+		record_group=None,		
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		oai_endpoint=None,
+		overrides=None):
 
 		'''
 		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
-			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
-			overrides (dict): optional dictionary of overrides to OAI endpoint
-			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			HarvestJob args
+				see: core.models.HarvestJob
+			
+			HarvestOAIJob args
+				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
+				overrides (dict): optional dictionary of overrides to OAI endpoint
 
 		Returns:
 			None
@@ -2264,7 +2261,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -2286,6 +2283,92 @@ class HarvestOAIJob(HarvestJob):
 		'''
 		return harvest job specific errors
 		NOTE: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
+		'''
+
+		return None
+
+
+
+class HarvestStaticXMLJob(HarvestJob):
+
+	'''
+	Harvest records from static XML files
+	Extends core.models.HarvestJob
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		record_group=None,
+		job_id=None,
+		index_mapper=None,
+		static_payload=None):
+
+		'''
+		Args:
+			HarvestJob args
+				see: core.models.HarvestJob
+			
+			HarvestOAIJob args
+				static_payload (str): filepath of static payload on disk
+
+		Returns:
+			None
+				- fires parent HarvestJob init
+				- captures args specific to OAI harvesting
+		'''
+
+		# perform HarvestJob initialization
+		super().__init__(
+				user=user,
+				job_id=job_id,
+				job_name=job_name,
+				job_note=job_note,
+				record_group=record_group,
+				index_mapper=index_mapper
+			)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			# capture OAI specific args
+			self.static_payload = static_payload
+
+
+	def prepare_job(self):
+
+		'''
+		Prepare static payload for HarvestStaticXMLSpark.
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
+		'''
+
+		# prepare job code
+		job_code = {
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			{
+				'static_payload':self.static_payload,
+				'job_id':self.job.id,
+				'index_mapper':self.index_mapper
+			}
+		}
+		logger.debug(job_code)
+
+		# submit job
+		self.submit_job_to_livy(job_code, self.job.job_output)
+
+
+	def get_job_errors(self):
+
+		'''
+		Currently not implemented for HarvestStaticXMLJob
 		'''
 
 		return None
