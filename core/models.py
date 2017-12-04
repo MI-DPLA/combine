@@ -1678,39 +1678,6 @@ class ESIndex(object):
 		}
 
 
-	# def field_analysis_dt(self, field_name):
-
-	# 	'''
-	# 	Helper method to return field analysis as expected for DataTables Ajax data source
-
-	# 	Args:
-	# 		field_name (str): field name
-
-	# 	Returns:
-	# 		(dict): dictionary of values for a field in DT format
-	# 		{
-	# 			data: [
-	# 				[
-	# 					field_name,
-	# 					count
-	# 				],
-	# 				...
-	# 			]
-	# 		}
-	# 	'''
-
-	# 	# get buckets
-	# 	buckets = self.field_analysis(field_name)
-
-	# 	# prepare as DT data
-	# 	dt_dict = {
-	# 		'data': [ [f['key'],f['doc_count']] for f in buckets ]
-	# 	}
-
-	# 	# return
-	# 	return dt_dict
-
-
 
 class PublishedRecords(object):
 
@@ -1829,6 +1796,10 @@ class CombineJob(object):
 
 			# retrieve job
 			self.get_job(self.job_id)
+
+
+	def __repr__(self):
+		return '<Combine Job: #%s, %s, status %s>' % (self.job.id, self.job.job_type, self.job.status)
 
 
 	def default_job_name(self):
@@ -2017,16 +1988,6 @@ class CombineJob(object):
 		return self.esi.field_analysis(field_name)
 
 
-	# def field_analysis_dt(self, field_name):
-
-	# 	'''
-	# 	Wrapper for ESIndex.field_analysis_dt
-	# 	'''
-
-	# 	# return field analysis
-	# 	return self.esi.field_analysis_dt(field_name)
-
-
 	def get_indexing_failures(self):
 
 		'''
@@ -2134,14 +2095,83 @@ class CombineJob(object):
 		except:
 			logger.debug('could not load job output to determine filename hash')
 			return False
-		
+
 
 
 class HarvestJob(CombineJob):
 
 	'''
-	Harvest records via OAI-PMH endpoint
+	Harvest records to Combine.
+
+	This class represents a high-level "Harvest" job type, with more specific harvest types extending this class.
+	In saved and associated core.models.Job instance, job_type will be "HarvestJob".
+
 	Note: Unlike downstream jobs, Harvest does not require an input job
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		record_group=None,
+		job_id=None,
+		index_mapper=None):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			job_note (str): Free text note about job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+
+		Returns:
+			None
+				- fires parent CombineJob init
+				- captures args specific to Harvest jobs
+		'''
+
+		# perform CombineJob initialization
+		super().__init__(user=user, job_id=job_id)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			# catch attributes common to all Harvest job types
+			self.job_name = job_name
+			self.job_note = job_note
+			self.record_group = record_group
+			self.organization = self.record_group.organization
+			self.index_mapper = index_mapper
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
+
+			# create Job entry in DB and save
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
+				user = self.user,
+				name = self.job_name,
+				note = self.job_note,
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None
+			)
+			self.job.save()
+
+
+
+class HarvestOAIJob(HarvestJob):
+
+	'''
+	Harvest records from OAI-PMH endpoint
+	Extends core.models.HarvestJob
 	'''
 
 	def __init__(self,
@@ -2157,6 +2187,7 @@ class HarvestJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
@@ -2166,43 +2197,26 @@ class HarvestJob(CombineJob):
 
 		Returns:
 			None
-				- sets multiple attributes for self.job
-				- sets in motion the output of spark jobs from core.spark.jobs
+				- fires parent HarvestJob init
+				- captures args specific to OAI harvesting
 		'''
 
-		# perform CombineJob initialization
-		super().__init__(user=user, job_id=job_id)
+		# perform HarvestJob initialization
+		super().__init__(
+				user=user,
+				job_id=job_id,
+				job_name=job_name,
+				job_note=job_note,
+				record_group=record_group,
+				index_mapper=index_mapper
+			)
 
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
-			self.job_name = job_name
-			self.job_note = job_note
-			self.record_group = record_group		
-			self.organization = self.record_group.organization
+			# capture OAI specific args
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
-			self.index_mapper = index_mapper
-
-			# if job name not provided, provide default
-			if not self.job_name:
-				self.job_name = self.default_job_name()
-
-			# create Job entry in DB and save
-			self.job = Job(
-				record_group = self.record_group,
-				job_type = type(self).__name__,
-				user = self.user,
-				name = self.job_name,
-				note = self.job_note,
-				spark_code = None,
-				job_id = None,
-				status = 'initializing',
-				url = None,
-				headers = None,
-				job_output = None
-			)
-			self.job.save()
 
 
 	def prepare_job(self):
@@ -2271,6 +2285,7 @@ class TransformJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work
@@ -2395,6 +2410,7 @@ class MergeJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
@@ -2508,6 +2524,7 @@ class PublishJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work

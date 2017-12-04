@@ -412,7 +412,7 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_harvest(request, org_id, record_group_id):
+def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
 	Create a new Harvest Job
@@ -428,7 +428,7 @@ def job_harvest(request, org_id, record_group_id):
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
 		# render page
-		return render(request, 'core/job_harvest.html', {
+		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
 				'breadcrumbs':breadcrumb_parser(request.path)
@@ -464,7 +464,7 @@ def job_harvest(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		cjob = models.HarvestJob(
+		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
 			job_note=job_note,
 			user=request.user,

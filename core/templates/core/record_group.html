@@ -32,10 +32,14 @@
 		<h3>Run new job</h3>
 		<p>
 			<ul>
-				<li><a href="{% url 'job_harvest' org_id=record_group.organization.id record_group_id=record_group.id %}">Harvest</a></li>
+				<li>Harvest:
+					<ul>
+						<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">OAI-PMH</a></li>
+						<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">Static files</a></li>
+					</ul>
+				</li>
 				<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
 				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Merge</a></li>
-				<!-- <li><a href="#">Map Service Hub profile to DPLA profile</a></li> -->
 				<li><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}">Publish</a></li>
 			</ul>
 		</p>
