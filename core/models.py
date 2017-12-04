@@ -18,6 +18,7 @@ import textwrap
 import time
 import uuid
 import xmltodict
+import zipfile
 
 # pandas
 import pandas as pd
@@ -2303,9 +2304,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		record_group=None,
 		job_id=None,
 		index_mapper=None,
-		static_payload=None,
-		static_payload_type=None,
-		xpath_query=None):
+		payload_dict=None):
 
 		'''
 		Args:
@@ -2335,9 +2334,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		if not job_id:
 
 			# capture static XML specific args
-			self.static_payload = static_payload
-			self.static_payload_type = static_payload_type
-			self.xpath_query = xpath_query
+			logger.debug(payload_dict)			
+			self.payload_dict = payload_dict
 
 			# prepare static files
 			self.prepare_static_files()
@@ -2348,7 +2346,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		'''
 		Method to prepare static files for spark processing
 
-		Expected final structure:
+		Target final structure:
 			/foo/bar <-- self.static_payload
 				baz1.xml <-- record at self.xpath_query within file
 				baz2.xml
@@ -2358,15 +2356,47 @@ class HarvestStaticXMLJob(HarvestJob):
 			- zip / tar file with discrete files, one record per file
 			- aggregate XML file, containing multiple records
 			- location of directory on disk, with files pre-arranged to match structure above
+
+		########################################################################################################
+		QUESTION: Should this be in Spark?  What if 500k, 1m records provided?
+		Job will not start until this is finished...
+		########################################################################################################
 		'''
 
-		pass
+		# payload dictionary handle
+		p = self.payload_dict
+
+		# handle uploads
+		if p['type'] == 'upload':
+			logger.debug('static harvest, processing upload type')
+
+			# handle archive type (zip or tar)
+			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
+				logger.debug('processing archive-type file: %s' % p['content_type'])
+
+				# full file path
+				fpath = os.path.join(p['payload_dir'], p['payload_filename'])
+
+				# handle zip
+				if p['content_type'] in ['application/zip']:
+					logger.debug('unzipping file')
+					
+					# unzip
+					zip_ref = zipfile.ZipFile(fpath, 'r')
+					zip_ref.extractall(p['payload_dir'])
+					zip_ref.close()
+
+					# remove original zip
+					os.remove(fpath)
+
+		# handle disk locations
+		if p['type'] == 'location':
+			logger.debug('static harvest, processing location type')
 
 
 	def prepare_job(self):
 
 		'''
-		Prepare static payload for HarvestStaticXMLSpark.
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
 
 		Args:
@@ -2379,9 +2409,10 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", xpath_query="%(xpath_query)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'static_payload':self.static_payload,
+				'static_payload':self.payload_dict['payload_dir'],
+				'xpath_query':self.payload_dict['xpath_query'],
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}

@@ -189,7 +189,13 @@ class HarvestStaticXMLSpark(object):
 	def spark_function(spark, **kwargs):
 
 		'''
-		Harvest records via OAI.
+		Harvest static XML records provided by user.
+
+		Expected input structure:
+			/foo/bar <-- self.static_payload
+				baz1.xml <-- record at self.xpath_query within file
+				baz2.xml
+				baz3.xml
 
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
 			- record_id 

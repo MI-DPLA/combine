@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import hashlib
 import json
 import logging
 from lxml import etree
@@ -10,6 +11,7 @@ import requests
 import textwrap
 import time
 from urllib.parse import urlencode
+import uuid
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
@@ -487,7 +489,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 
 
 @login_required
-def job_harvest_static_xml(request, org_id, record_group_id):
+def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filename=False):
 
 	'''
 	Create a new static XML Harvest Job
@@ -512,37 +514,45 @@ def job_harvest_static_xml(request, org_id, record_group_id):
 
 		logger.debug('beginning static xml harvest for Record Group: %s' % record_group.name)
 
-		# debug
-		logger.debug("###############################################")
-		logger.debug(request.POST)
-		logger.debug("###############################################")
-
 		'''
 		When determining between user supplied file, and location on disk, favor location
 		'''
+		# establish payload dictionary
+		payload_dict = {}
+
 		# use location on disk
 		if request.POST.get('static_filepath') != '':
-			static_payload_type = 'location'
-			logger.debug('using user supplied %s for statick payload' % static_payload_type)
+			payload_dict['type'] = 'location'
+			payload_dict['payload_dir'] = request.POST.get('static_filepath')
+			logger.debug('using user supplied %s for static payload' % payload_dict['type'])
 
 		# use upload
 		else:
-			static_payload_type = 'upload'
-			logger.debug('using user supplied %s for statick payload' % static_payload_type)
+			payload_dict['type'] = 'upload'
+			logger.debug('using user supplied %s for static payload' % payload_dict['type'])
 
 			# get static file payload
 			payload_file = request.FILES['static_payload']
 
-			# DEBUG
-			logger.debug(type(payload_file))
-			logger.debug(payload_file.name)
-			logger.debug(payload_file.content_type)		
+			# grab content type
+			payload_dict['content_type'] = payload_file.content_type
 
-			# save payload to disk
-			static_payload = '/tmp/combine/%s' % payload_file.name
-			with open(static_payload, 'wb') as f:
+			# create payload dir
+			payload_dict['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
+			os.mkdir(payload_dict['payload_dir'])
+
+			# establish payload filename
+			if hash_payload_filename:
+				payload_dict['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
+			else:
+				payload_dict['payload_filename'] = payload_file.name
+			
+			with open(os.path.join(payload_dict['payload_dir'], payload_dict['payload_filename']), 'wb') as f:
 				f.write(payload_file.read())
 				payload_file.close()
+
+		# include xpath query
+		payload_dict['xpath_query'] = request.POST.get('xpath_query', None)
 
 		# get job name
 		job_name = request.POST.get('job_name')
@@ -564,9 +574,7 @@ def job_harvest_static_xml(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			index_mapper=index_mapper,
-			static_payload=static_payload,
-			static_payload_type=static_payload_type,
-			xpath_query=request.POST.get('xpath', None)
+			payload_dict=payload_dict
 		)
 		
 		# start job and update status
