@@ -230,7 +230,7 @@ class HarvestStaticXMLSpark(object):
 
 		###################################################################################################
 		# read directory of static files
-		static_rdd = sc.wholeTextFiles(kwargs['static_payload'])
+		static_rdd = spark.sparkContext.wholeTextFiles(kwargs['static_payload'])
 
 		def get_metadata(job_id, row, kwargs):
 
@@ -261,7 +261,6 @@ class HarvestStaticXMLSpark(object):
 				success = 1
 			)
 
-
 		# transform via rdd.map
 		job_id = job.id
 		records = static_rdd.map(lambda row: get_metadata(job_id, row, kwargs))
@@ -272,7 +271,7 @@ class HarvestStaticXMLSpark(object):
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=records
+			records_df=records.toDF()
 		)
 
 		# finally, update finish_timestamp of job_track instance
