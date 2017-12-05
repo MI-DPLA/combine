@@ -2411,7 +2411,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		job_code = {
 			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'static_payload':'file://%s' % self.payload_dict['payload_dir'],
+				'static_payload':self.payload_dict['payload_dir'],
 				'xpath_document_root':self.payload_dict['xpath_document_root'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,

@@ -5,6 +5,7 @@ import django
 import hashlib
 from lxml import etree
 import os
+import shutil
 import sys
 
 # pyjxslt
@@ -231,7 +232,7 @@ class HarvestStaticXMLSpark(object):
 
 		# read directory of static files
 		static_rdd = spark.sparkContext.wholeTextFiles(
-				kwargs['static_payload'],
+				'file://%s' % kwargs['static_payload'],
 				minPartitions=settings.SPARK_REPARTITION
 			)
 
@@ -307,6 +308,9 @@ class HarvestStaticXMLSpark(object):
 			job=job,
 			records_df=records.toDF()
 		)
+
+		# remove temporary payload directory
+		shutil.rmtree(kwargs['static_payload'])
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
