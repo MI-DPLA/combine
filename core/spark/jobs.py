@@ -2,6 +2,7 @@
 import ast
 import datetime
 import django
+import hashlib
 from lxml import etree
 import os
 import sys
@@ -228,43 +229,76 @@ class HarvestStaticXMLSpark(object):
 		)
 		job_track.save()
 
-		###################################################################################################
 		# read directory of static files
-		static_rdd = spark.sparkContext.wholeTextFiles(kwargs['static_payload'])
+		static_rdd = spark.sparkContext.wholeTextFiles(
+				kwargs['static_payload'],
+				minPartitions=settings.SPARK_REPARTITION
+			)
 
 		def get_metadata(job_id, row, kwargs):
 
 			# get doc string
 			doc_string = row[1]
 
-			# parse with lxml
-			xml_root = etree.fromstring(doc_string.encode('utf-8'))
+			try:
 
-			# get metadata root
-			meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=xml_root.nsmap)
-			if len(meta_root) == 1:
-				meta_root = meta_root[0]
+				# parse with lxml
+				xml_root = etree.fromstring(doc_string.encode('utf-8'))
 
-			# get unique identifier
-			record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=meta_root.nsmap)
-			if len(record_id) == 1:
-				record_id = record_id[0].text
+				# get metadata root
+				if kwargs['xpath_document_root'] != '':
+					meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=xml_root.nsmap)
+				else:
+					meta_root = xml_root.xpath('/*', namespaces=xml_root.nsmap)
+				if len(meta_root) == 1:
+					meta_root = meta_root[0]
+				elif len(meta_root) > 1:
+					raise Exception('multiple elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
+				elif len(meta_root) == 0:
+					raise Exception('no elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
 
-			# return Row
-			return Row(
-				record_id = record_id,
-				oai_id = record_id,
-				document = etree.tostring(meta_root).decode('utf-8'),
-				error = '',
-				job_id = int(job_id),
-				oai_set = '',
-				success = 1
-			)
+				# get unique identifier
+				if kwargs['xpath_record_id'] != '':
+					record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=meta_root.nsmap)
+					if len(record_id) == 1:
+						record_id = record_id[0].text
+					elif len(meta_root) > 1:
+						raise Exception('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+					elif len(meta_root) == 0:
+						raise Exception('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+				else:
+					record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
+
+				# return success Row
+				return Row(
+					record_id = record_id,
+					oai_id = record_id,
+					document = etree.tostring(meta_root).decode('utf-8'),
+					error = '',
+					job_id = int(job_id),
+					oai_set = '',
+					success = 1
+				)
+
+			except Exception as e:
+
+				# hash record string to produce a unique id
+				record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
+
+				# return error Row
+				return Row(
+					record_id = record_id,
+					oai_id = record_id,
+					document = '',
+					error = str(e),
+					job_id = int(job_id),
+					oai_set = '',
+					success = 0
+				)
 
 		# transform via rdd.map
 		job_id = job.id
 		records = static_rdd.map(lambda row: get_metadata(job_id, row, kwargs))
-		###################################################################################################
 
 		# index records to db
 		save_records(

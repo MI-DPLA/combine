@@ -2076,10 +2076,10 @@ class CombineJob(object):
 			'total_input_records': total_input_records,
 			'jobs':self.job.jobinput_set.all()
 		}
-		
-		# calc error percentags
+
+		# calc error percentages, based on error ratio to job record count (which includes both success and error)
 		if r_count_dict['errors'] != 0:
-			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(total_input_records)), 4)
+			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(self.job.record_count)), 4)		
 		else:
 			r_count_dict['error_percentage'] = 0.0
 
