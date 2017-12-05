@@ -309,8 +309,9 @@ class HarvestStaticXMLSpark(object):
 			records_df=records.toDF()
 		)
 
-		# remove temporary payload directory
-		shutil.rmtree(kwargs['static_payload'])
+		# remove temporary payload directory if static job was upload based, not location on disk
+		if kwargs['static_type'] == 'upload':
+			shutil.rmtree(kwargs['static_payload'])
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()

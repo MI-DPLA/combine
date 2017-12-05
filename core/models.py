@@ -14,6 +14,7 @@ import shutil
 import subprocess
 from sqlalchemy import create_engine
 import re
+import tarfile
 import textwrap
 import time
 import uuid
@@ -2372,6 +2373,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# handle archive type (zip or tar)
 			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
+
 				logger.debug('processing archive-type file: %s' % p['content_type'])
 
 				# full file path
@@ -2388,6 +2390,33 @@ class HarvestStaticXMLJob(HarvestJob):
 
 					# remove original zip
 					os.remove(fpath)
+
+
+				# handle uncompressed tar
+				if p['content_type'] in ['application/x-tar']:
+					logger.debug('untarring file')		
+
+					# untar
+					tar = tarfile.open(fpath)
+					tar.extractall(path=p['payload_dir'])
+					tar.close()
+
+					# remove original zip
+					os.remove(fpath)
+
+
+				# handle uncompressed tar
+				if p['content_type'] in ['application/x-gzip']:
+					logger.debug('decompressing gzip')					
+
+					# untar
+					tar = tarfile.open(fpath, 'r:gz')
+					tar.extractall(path=p['payload_dir'])
+					tar.close()
+
+					# remove original zip
+					os.remove(fpath)
+
 
 		# handle disk locations
 		if p['type'] == 'location':
@@ -2409,8 +2438,9 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
+				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
 				'xpath_document_root':self.payload_dict['xpath_document_root'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
