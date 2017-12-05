@@ -2358,7 +2358,7 @@ class HarvestStaticXMLJob(HarvestJob):
 			- location of directory on disk, with files pre-arranged to match structure above
 
 		########################################################################################################
-		QUESTION: Should this be in Spark?  What if 500k, 1m records provided?
+		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
 		Job will not start until this is finished...
 		########################################################################################################
 		'''
@@ -2409,10 +2409,11 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", xpath_query="%(xpath_query)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
-				'static_payload':self.payload_dict['payload_dir'],
-				'xpath_query':self.payload_dict['xpath_query'],
+				'static_payload':'file://%s' % self.payload_dict['payload_dir'],
+				'xpath_document_root':self.payload_dict['xpath_document_root'],
+				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper
 			}

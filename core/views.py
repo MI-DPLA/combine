@@ -549,8 +549,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				f.write(payload_file.read())
 				payload_file.close()
 
-		# include xpath query
-		payload_dict['xpath_query'] = request.POST.get('xpath_query', None)
+		# include xpath queries
+		payload_dict['xpath_document_root'] = request.POST.get('xpath_document_root', None)
+		payload_dict['xpath_record_id'] = request.POST.get('xpath_record_id', None)
 
 		# get job name
 		job_name = request.POST.get('job_name')

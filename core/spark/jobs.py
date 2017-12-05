@@ -226,54 +226,46 @@ class HarvestStaticXMLSpark(object):
 		job_track = JobTrack(
 			job_id = job.id
 		)
-		job_track.save()		
+		job_track.save()
 
-		# # attempt to find and select <metadata> element from OAI record, else filter out
-		# def find_metadata(document):
-		# 	if type(document) == str:
-		# 		xml_root = etree.fromstring(document)
-		# 		m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
-		# 		if m_root is not None:
-		# 			# expecting only one child to <metadata> element
-		# 			m_children = m_root.getchildren()
-		# 			if len(m_children) == 1:
-		# 				m_child = m_children[0]
-		# 				m_string = etree.tostring(m_child).decode('utf-8')
-		# 				return m_string
-		# 		else:
-		# 			return 'none'
-		# 	else:
-		# 		return 'none'
+		###################################################################################################
+		# read directory of static files
+		static_rdd = sc.wholeTextFiles(kwargs['static_payload'])
 
-		# metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
-		# records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
-		# records = records.filter(records.document != 'none')
+		def get_metadata(job_id, row, kwargs):
 
-		# establish 'success' column, setting all success for Harvest
-		records = records.withColumn('success', pyspark_sql_functions.lit(1))
+			# get doc string
+			doc_string = row[1]
 
-		# copy 'id' from OAI harvest to 'record_id' column
-		records = records.withColumn('record_id', records.id)
+			# parse with lxml
+			xml_root = etree.fromstring(doc_string.encode('utf-8'))
 
-		# add job_id as column
+			# get metadata root
+			meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=xml_root.nsmap)
+			if len(meta_root) == 1:
+				meta_root = meta_root[0]
+
+			# get unique identifier
+			record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=meta_root.nsmap)
+			if len(record_id) == 1:
+				record_id = record_id[0].text
+
+			# return Row
+			return Row(
+				record_id = record_id,
+				oai_id = record_id,
+				document = etree.tostring(meta_root).decode('utf-8'),
+				error = '',
+				job_id = int(job_id),
+				oai_set = '',
+				success = 1
+			)
+
+
+		# transform via rdd.map
 		job_id = job.id
-		job_id_udf = udf(lambda id: job_id, IntegerType())
-		records = records.withColumn('job_id', job_id_udf(records.id))
-
-		# add oai_id column
-		publish_set_id = job.record_group.publish_set_id
-		oai_id_udf = udf(lambda id: '%s%s:%s' % (
-			settings.COMBINE_OAI_IDENTIFIER,
-			publish_set_id,
-			id), StringType())
-		records = records.withColumn('oai_id', oai_id_udf(records.id))
-
-		# add oai_set
-		records = records.withColumn('oai_set', records.setIds[0])
-
-		# add blank error column
-		error = udf(lambda id: '', StringType())
-		records = records.withColumn('error', error(records.id))
+		records = static_rdd.map(lambda row: get_metadata(job_id, row, kwargs))
+		###################################################################################################
 
 		# index records to db
 		save_records(

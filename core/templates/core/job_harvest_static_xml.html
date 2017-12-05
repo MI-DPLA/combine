@@ -48,7 +48,14 @@
 			</table>
 		</p>		
 		<p><strong>XPath query:</strong>
-			<input type="text" name="xpath_query" size=120 placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']"/>
+			<input type="text" name="xpath_document_root" size=120 placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']"/>
+		<p>
+
+		<!-- xpath -->
+		<p>Finally, need an xpath expression for identifying a unique string to serve as the record ID for each record:			
+		</p>		
+		<p><strong>XPath for unique record identifier:</strong>
+			<input type="text" name="xpath_record_id" size=120 placeholder="e.g. //mods:mods/mods:location/mods:url[@access]"/>
 		<p>
 		
 		<!-- Indexing Mapping Selection -->
