@@ -14,10 +14,12 @@ import shutil
 import subprocess
 from sqlalchemy import create_engine
 import re
+import tarfile
 import textwrap
 import time
 import uuid
 import xmltodict
+import zipfile
 
 # pandas
 import pandas as pd
@@ -256,6 +258,30 @@ class Job(models.Model):
 		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
 
 
+	def job_type_family(self):
+
+		'''
+		Method to return high-level job type from Harvest, Transform, Merge, Publish
+
+		Args:
+			None
+
+		Returns:
+			(str, ['HarvestJob', 'TransformJob', 'MergeJob', 'PublishJob']): String of high-level job type
+		'''
+
+		# get class hierarchy of job
+		class_tree = inspect.getmro(globals()[self.job_type])
+
+		# handle Harvest determination
+		if HarvestJob in class_tree:
+			return class_tree[-3].__name__
+
+		# else, return job_type untouched
+		else:
+			return self.job_type
+
+
 	def update_status(self):
 
 		'''
@@ -430,8 +456,14 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		return Record.objects.filter(job=self).exclude(document='').all()
+		stime = time.time()
 
+		records = self.record_set.filter(success=1)
+
+		logger.debug('get_records elapsed: %s' % (time.time() - stime))
+
+		# return
+		return records
 
 	def get_errors(self):
 
@@ -445,7 +477,14 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		return Record.objects.filter(job=self).exclude(error='').all()
+		stime = time.time()
+
+		errors = self.record_set.filter(success=0)
+
+		logger.debug('get_errors elapsed: %s' % (time.time() - stime))
+
+		# return
+		return errors
 
 
 	def update_record_count(self, save=True):
@@ -460,8 +499,7 @@ class Job(models.Model):
 			None
 		'''
 		
-		# self.record_count = self.get_records().count()
-		self.record_count = self.record_set.count() # considerably faster
+		self.record_count = self.record_set.count()
 		
 		# if save, save
 		if save:
@@ -669,6 +707,7 @@ class Record(models.Model):
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
 	oai_set = models.CharField(max_length=255, null=True, default=None)
+	success = models.BooleanField(default=1)
 
 
 	# this model is managed outside of Django
@@ -1554,6 +1593,9 @@ class ESIndex(object):
 
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
+			# DEBUG
+			stime = time.time()
+
 			# get field mappings for index
 			field_names = self.get_index_fields()
 
@@ -1589,6 +1631,9 @@ class ESIndex(object):
 					field_metrics = self.calc_field_metrics(sr_dict, field_name)
 					if field_metrics:
 						field_count.append(field_metrics)
+
+			# DEBUG
+			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))
 
 			# return
 			return {
@@ -1657,39 +1702,6 @@ class ESIndex(object):
 			'metrics':field_metrics,
 			'values':values
 		}
-
-
-	# def field_analysis_dt(self, field_name):
-
-	# 	'''
-	# 	Helper method to return field analysis as expected for DataTables Ajax data source
-
-	# 	Args:
-	# 		field_name (str): field name
-
-	# 	Returns:
-	# 		(dict): dictionary of values for a field in DT format
-	# 		{
-	# 			data: [
-	# 				[
-	# 					field_name,
-	# 					count
-	# 				],
-	# 				...
-	# 			]
-	# 		}
-	# 	'''
-
-	# 	# get buckets
-	# 	buckets = self.field_analysis(field_name)
-
-	# 	# prepare as DT data
-	# 	dt_dict = {
-	# 		'data': [ [f['key'],f['doc_count']] for f in buckets ]
-	# 	}
-
-	# 	# return
-	# 	return dt_dict
 
 
 
@@ -1810,6 +1822,10 @@ class CombineJob(object):
 
 			# retrieve job
 			self.get_job(self.job_id)
+
+
+	def __repr__(self):
+		return '<Combine Job: #%s, %s, status %s>' % (self.job.id, self.job.job_type, self.job.status)
 
 
 	def default_job_name(self):
@@ -1998,16 +2014,6 @@ class CombineJob(object):
 		return self.esi.field_analysis(field_name)
 
 
-	# def field_analysis_dt(self, field_name):
-
-	# 	'''
-	# 	Wrapper for ESIndex.field_analysis_dt
-	# 	'''
-
-	# 	# return field analysis
-	# 	return self.esi.field_analysis_dt(field_name)
-
-
 	def get_indexing_failures(self):
 
 		'''
@@ -2056,6 +2062,9 @@ class CombineJob(object):
 			(dict): Dictionary of record counts
 		'''
 
+		# DEBUG
+		stime = time.time()
+
 		r_count_dict = {}
 
 		# get counts
@@ -2068,12 +2077,15 @@ class CombineJob(object):
 			'total_input_records': total_input_records,
 			'jobs':self.job.jobinput_set.all()
 		}
-		
-		# calc error percentags
+
+		# calc error percentages, based on error ratio to job record count (which includes both success and error)
 		if r_count_dict['errors'] != 0:
-			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(total_input_records)), 4)
+			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(self.job.record_count)), 4)		
 		else:
 			r_count_dict['error_percentage'] = 0.0
+
+		# DEBUG
+		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
 		
 		# return
 		return r_count_dict
@@ -2109,13 +2121,17 @@ class CombineJob(object):
 		except:
 			logger.debug('could not load job output to determine filename hash')
 			return False
-		
+
 
 
 class HarvestJob(CombineJob):
 
 	'''
-	Harvest records via OAI-PMH endpoint
+	Harvest records to Combine.
+
+	This class represents a high-level "Harvest" job type, with more specific harvest types extending this class.
+	In saved and associated core.models.Job instance, job_type will be "HarvestJob".
+
 	Note: Unlike downstream jobs, Harvest does not require an input job
 	'''
 
@@ -2124,25 +2140,22 @@ class HarvestJob(CombineJob):
 		job_note=None,
 		user=None,
 		record_group=None,
-		oai_endpoint=None,
-		overrides=None,
 		job_id=None,
 		index_mapper=None):
 
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
-			oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
-			overrides (dict): optional dictionary of overrides to OAI endpoint
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
 
 		Returns:
 			None
-				- sets multiple attributes for self.job
-				- sets in motion the output of spark jobs from core.spark.jobs
+				- fires parent CombineJob init
+				- captures args specific to Harvest jobs
 		'''
 
 		# perform CombineJob initialization
@@ -2151,12 +2164,11 @@ class HarvestJob(CombineJob):
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
+			# catch attributes common to all Harvest job types
 			self.job_name = job_name
 			self.job_note = job_note
-			self.record_group = record_group		
+			self.record_group = record_group
 			self.organization = self.record_group.organization
-			self.oai_endpoint = oai_endpoint
-			self.overrides = overrides
 			self.index_mapper = index_mapper
 
 			# if job name not provided, provide default
@@ -2166,7 +2178,8 @@ class HarvestJob(CombineJob):
 			# create Job entry in DB and save
 			self.job = Job(
 				record_group = self.record_group,
-				job_type = type(self).__name__,
+				# job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
+				job_type = type(self).__name__, # selects this level of class inheritance hierarchy
 				user = self.user,
 				name = self.job_name,
 				note = self.job_note,
@@ -2178,6 +2191,57 @@ class HarvestJob(CombineJob):
 				job_output = None
 			)
 			self.job.save()
+
+
+
+class HarvestOAIJob(HarvestJob):
+
+	'''
+	Harvest records from OAI-PMH endpoint
+	Extends core.models.HarvestJob
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		record_group=None,		
+		job_id=None,
+		index_mapper=None,
+		oai_endpoint=None,
+		overrides=None):
+
+		'''
+		Args:
+			HarvestJob args
+				see: core.models.HarvestJob
+			
+			HarvestOAIJob args
+				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
+				overrides (dict): optional dictionary of overrides to OAI endpoint
+
+		Returns:
+			None
+				- fires parent HarvestJob init
+				- captures args specific to OAI harvesting
+		'''
+
+		# perform HarvestJob initialization
+		super().__init__(
+				user=user,
+				job_id=job_id,
+				job_name=job_name,
+				job_note=job_note,
+				record_group=record_group,
+				index_mapper=index_mapper
+			)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			# capture OAI specific args
+			self.oai_endpoint = oai_endpoint
+			self.overrides = overrides
 
 
 	def prepare_job(self):
@@ -2199,7 +2263,7 @@ class HarvestJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestSpark\nHarvestSpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -2227,6 +2291,232 @@ class HarvestJob(CombineJob):
 
 
 
+class HarvestStaticXMLJob(HarvestJob):
+
+	'''
+	Harvest records from static XML files
+	Extends core.models.HarvestJob
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		record_group=None,
+		job_id=None,
+		index_mapper=None,
+		payload_dict=None):
+
+		'''
+		Args:
+			HarvestJob args
+				see: core.models.HarvestJob
+			
+			HarvestOAIJob args
+				static_payload (str): filepath of static payload on disk
+
+		Returns:
+			None
+				- fires parent HarvestJob init
+				- captures args specific to OAI harvesting
+		'''
+
+		# perform HarvestJob initialization
+		super().__init__(
+				user=user,
+				job_id=job_id,
+				job_name=job_name,
+				job_note=job_note,
+				record_group=record_group,
+				index_mapper=index_mapper
+			)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			# capture static XML specific args
+			logger.debug(payload_dict)			
+			self.payload_dict = payload_dict
+
+			# prepare static files
+			self.prepare_static_files()
+
+
+	def prepare_static_files(self):
+
+		'''
+		Method to prepare static files for spark processing
+
+		Target final structure:
+			/foo/bar <-- self.static_payload
+				baz1.xml <-- record at self.xpath_query within file
+				baz2.xml
+				baz3.xml
+
+		Accepts three scenarios:
+			- zip / tar file with discrete files, one record per file
+			- aggregate XML file, containing multiple records
+			- location of directory on disk, with files pre-arranged to match structure above
+
+		########################################################################################################
+		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
+		Job will not start until this is finished...
+		########################################################################################################
+		'''
+
+		# payload dictionary handle
+		p = self.payload_dict
+
+		# handle uploads
+		if p['type'] == 'upload':
+			logger.debug('static harvest, processing upload type')
+
+			# full file path
+			fpath = os.path.join(p['payload_dir'], p['payload_filename'])
+
+			# handle archive type (zip or tar)
+			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
+				self._handle_archive_upload(p, fpath)
+				
+			# handle XML aggregate files
+			if p['content_type'] in ['text/xml', 'application/xml']:
+				self._handle_xml_upload(p, fpath)
+
+		# handle disk locations
+		if p['type'] == 'location':
+			logger.debug('static harvest, processing location type')
+
+
+	def _handle_archive_upload(self, p, fpath):
+
+		'''
+		Handle uploads of archive files.
+		Decompress to pre-made payload location, and remove archive file
+
+		Args:
+			p (dict): payload dictionary 
+
+		Returns:
+			None
+		'''
+
+		logger.debug('processing archive file: %s' % p['content_type'])
+
+		# handle zip
+		if p['content_type'] in ['application/zip']:
+			logger.debug('unzipping file')
+			
+			# unzip
+			zip_ref = zipfile.ZipFile(fpath, 'r')
+			zip_ref.extractall(p['payload_dir'])
+			zip_ref.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+		# handle uncompressed tar
+		if p['content_type'] in ['application/x-tar']:
+			logger.debug('untarring file')		
+
+			# untar
+			tar = tarfile.open(fpath)
+			tar.extractall(path=p['payload_dir'])
+			tar.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+		# handle uncompressed tar
+		if p['content_type'] in ['application/x-gzip']:
+			logger.debug('decompressing gzip')					
+
+			# untar
+			tar = tarfile.open(fpath, 'r:gz')
+			tar.extractall(path=p['payload_dir'])
+			tar.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+
+	def _handle_xml_upload(self, p, fpath):
+
+		'''
+		Handle uploads of XML files with group of discrete records.
+		Using xpath_document_root query from user, parse records and write to discrete files on disk,
+		then delete the aggregate file.
+
+		Args:
+			p (dict): payload dictionary 
+
+		Returns:
+			None
+		'''
+
+		logger.debug('handling aggregate XML file')
+
+		# parse file
+		tree = etree.parse(fpath)
+
+		# get xml root 
+		xml_root = tree.getroot()
+
+		# get list of documents as elements
+		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=xml_root.nsmap)
+
+		# if docs founds, loop through and write to disk as discrete XML files
+		if len(doc_search) > 0:
+			for doc_ele in doc_search:
+				record_string = etree.tostring(doc_ele)
+				filename = hashlib.md5(record_string).hexdigest()
+				with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
+					f.write(record_string.decode('utf-8'))
+
+		# remove original zip
+		os.remove(fpath)
+
+
+	def prepare_job(self):
+
+		'''
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
+		'''
+
+		# prepare job code
+		job_code = {
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			{
+				'static_type':self.payload_dict['type'],
+				'static_payload':self.payload_dict['payload_dir'],
+				'xpath_document_root':self.payload_dict['xpath_document_root'],
+				'xpath_record_id':self.payload_dict['xpath_record_id'],
+				'job_id':self.job.id,
+				'index_mapper':self.index_mapper
+			}
+		}
+		logger.debug(job_code)
+
+		# submit job
+		self.submit_job_to_livy(job_code, self.job.job_output)
+
+
+	def get_job_errors(self):
+
+		'''
+		Currently not implemented for HarvestStaticXMLJob
+		'''
+
+		return None
+
+
+
 class TransformJob(CombineJob):
 	
 	'''
@@ -2246,6 +2536,7 @@ class TransformJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work
@@ -2370,6 +2661,7 @@ class MergeJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
@@ -2483,6 +2775,7 @@ class PublishJob(CombineJob):
 		'''
 		Args:
 			job_name (str): Name for job
+			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work

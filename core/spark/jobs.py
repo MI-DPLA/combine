@@ -2,8 +2,10 @@
 import ast
 import datetime
 import django
+import hashlib
 from lxml import etree
 import os
+import shutil
 import sys
 
 # pyjxslt
@@ -48,7 +50,8 @@ class CombineRecordSchema(object):
 				StructField('error', StringType(), True),
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
-				StructField('oai_set', StringType(), True)
+				StructField('oai_set', StringType(), True),
+				StructField('success', BooleanType(), False)
 			]
 		)
 
@@ -56,10 +59,10 @@ class CombineRecordSchema(object):
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
 
 
-class HarvestSpark(object):
+class HarvestOAISpark(object):
 
 	'''
-	Spark code for harvesting records
+	Spark code for harvesting OAI records
 	'''
 
 	@staticmethod
@@ -103,6 +106,7 @@ class HarvestSpark(object):
 		)
 		job_track.save()
 
+		# harvest OAI records via Ingestion3
 		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", kwargs['endpoint'])\
 		.option("verb", kwargs['verb'])\
@@ -136,6 +140,9 @@ class HarvestSpark(object):
 		metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
 		records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
 		records = records.filter(records.document != 'none')
+
+		# establish 'success' column, setting all success for Harvest
+		records = records.withColumn('success', pyspark_sql_functions.lit(1))
 
 		# copy 'id' from OAI harvest to 'record_id' column
 		records = records.withColumn('record_id', records.id)
@@ -172,6 +179,144 @@ class HarvestSpark(object):
 		job_track.finish_timestamp = datetime.datetime.now()
 		job_track.save()
 		
+
+
+class HarvestStaticXMLSpark(object):
+
+	'''
+	Spark code for harvesting static xml records
+	'''
+
+	@staticmethod
+	def spark_function(spark, **kwargs):
+
+		'''
+		Harvest static XML records provided by user.
+
+		Expected input structure:
+			/foo/bar <-- self.static_payload
+				baz1.xml <-- record at self.xpath_query within file
+				baz2.xml
+				baz3.xml
+
+		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
+			- record_id 
+			- job_id
+			- oai_id
+			- oai_set
+			- publish_set_id
+			- unique (TBD)
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs:
+				job_id (int): Job ID
+				static_payload (str): path of static payload on disk
+				index_mapper (str): class name from core.spark.es, extending BaseMapper
+
+		Returns:
+			None:
+			- opens and parses static files from payload
+			- indexes records into DB
+			- map / flatten records and indexes to ES
+		'''
+
+		# get job
+		job = Job.objects.get(pk=int(kwargs['job_id']))
+
+		# start job_track instance, marking job start
+		job_track = JobTrack(
+			job_id = job.id
+		)
+		job_track.save()
+
+		# read directory of static files
+		static_rdd = spark.sparkContext.wholeTextFiles(
+				'file://%s' % kwargs['static_payload'],
+				minPartitions=settings.SPARK_REPARTITION
+			)
+
+		def get_metadata(job_id, row, kwargs):
+
+			# get doc string
+			doc_string = row[1]
+
+			try:
+
+				# parse with lxml
+				xml_root = etree.fromstring(doc_string.encode('utf-8'))
+
+				# get metadata root
+				if kwargs['xpath_document_root'] != '':
+					meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=xml_root.nsmap)
+				else:
+					meta_root = xml_root.xpath('/*', namespaces=xml_root.nsmap)
+				if len(meta_root) == 1:
+					meta_root = meta_root[0]
+				elif len(meta_root) > 1:
+					raise Exception('multiple elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
+				elif len(meta_root) == 0:
+					raise Exception('no elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
+
+				# get unique identifier
+				if kwargs['xpath_record_id'] != '':
+					record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=meta_root.nsmap)
+					if len(record_id) == 1:
+						record_id = record_id[0].text
+					elif len(meta_root) > 1:
+						raise Exception('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+					elif len(meta_root) == 0:
+						raise Exception('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+				else:
+					record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
+
+				# return success Row
+				return Row(
+					record_id = record_id,
+					oai_id = record_id,
+					document = etree.tostring(meta_root).decode('utf-8'),
+					error = '',
+					job_id = int(job_id),
+					oai_set = '',
+					success = 1
+				)
+
+			except Exception as e:
+
+				# hash record string to produce a unique id
+				record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
+
+				# return error Row
+				return Row(
+					record_id = record_id,
+					oai_id = record_id,
+					document = '',
+					error = str(e),
+					job_id = int(job_id),
+					oai_set = '',
+					success = 0
+				)
+
+		# transform via rdd.map
+		job_id = job.id
+		records = static_rdd.map(lambda row: get_metadata(job_id, row, kwargs))
+
+		# index records to db
+		save_records(
+			spark=spark,
+			kwargs=kwargs,
+			job=job,
+			records_df=records.toDF()
+		)
+
+		# remove temporary payload directory if static job was upload based, not location on disk
+		if kwargs['static_type'] == 'upload':
+			shutil.rmtree(kwargs['static_payload'])
+
+		# finally, update finish_timestamp of job_track instance
+		job_track.finish_timestamp = datetime.datetime.now()
+		job_track.save()
+
 
 
 class TransformSpark(object):
@@ -246,12 +391,12 @@ class TransformSpark(object):
 					gw.drop_transform('xslt_transform')
 
 					# set trans_result tuple
-					trans_result = (result, '')
+					trans_result = (result, '', 1)
 
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e))
+					trans_result = ('', str(e), 0)
 
 				# return Row
 				return Row(
@@ -260,7 +405,8 @@ class TransformSpark(object):
 						document = trans_result[0],
 						error = trans_result[1],
 						job_id = int(job_id),
-						oai_set = row.oai_set
+						oai_set = row.oai_set,
+						success = trans_result[2]
 					)
 
 			# open XSLT transformation, pass to map as string
@@ -552,4 +698,5 @@ def get_job_db_bounds(job):
 		'lowerBound':start_id,
 		'upperBound':end_id
 	}
+
 

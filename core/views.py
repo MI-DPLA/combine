@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+import hashlib
 import json
 import logging
 from lxml import etree
@@ -10,10 +11,12 @@ import requests
 import textwrap
 import time
 from urllib.parse import urlencode
+import uuid
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
+from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.http import HttpResponse, JsonResponse
@@ -412,10 +415,10 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_harvest(request, org_id, record_group_id):
+def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
-	Create a new Harvest Job
+	Create a new OAI Harvest Job
 	'''
 
 	# retrieve record group
@@ -428,7 +431,7 @@ def job_harvest(request, org_id, record_group_id):
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
 		# render page
-		return render(request, 'core/job_harvest.html', {
+		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
 				'breadcrumbs':breadcrumb_parser(request.path)
@@ -437,7 +440,7 @@ def job_harvest(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beginning harvest for Record Group: %s' % record_group.name)
+		logger.debug('beginning oai harvest for Record Group: %s' % record_group.name)
 
 		# debug form
 		logger.debug(request.POST)
@@ -464,7 +467,7 @@ def job_harvest(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# initiate job
-		cjob = models.HarvestJob(
+		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
 			job_note=job_note,
 			user=request.user,
@@ -472,6 +475,105 @@ def job_harvest(request, org_id, record_group_id):
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
 			index_mapper=index_mapper
+		)
+		
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
+
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+
+
+@login_required
+def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filename=False):
+
+	'''
+	Create a new static XML Harvest Job
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	
+	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# render page
+		return render(request, 'core/job_harvest_static_xml.html', {
+				'record_group':record_group,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
+
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('beginning static xml harvest for Record Group: %s' % record_group.name)
+
+		'''
+		When determining between user supplied file, and location on disk, favor location
+		'''
+		# establish payload dictionary
+		payload_dict = {}
+
+		# use location on disk
+		if request.POST.get('static_filepath') != '':
+			payload_dict['type'] = 'location'
+			payload_dict['payload_dir'] = request.POST.get('static_filepath')
+
+		# use upload
+		else:
+			payload_dict['type'] = 'upload'
+
+			# get static file payload
+			payload_file = request.FILES['static_payload']
+
+			# grab content type
+			payload_dict['content_type'] = payload_file.content_type
+
+			# create payload dir
+			payload_dict['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
+			os.makedirs(payload_dict['payload_dir'])
+
+			# establish payload filename
+			if hash_payload_filename:
+				payload_dict['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
+			else:
+				payload_dict['payload_filename'] = payload_file.name
+			
+			with open(os.path.join(payload_dict['payload_dir'], payload_dict['payload_filename']), 'wb') as f:
+				f.write(payload_file.read())
+				payload_file.close()
+
+		# include xpath queries
+		payload_dict['xpath_document_root'] = request.POST.get('xpath_document_root', None)
+		payload_dict['xpath_record_id'] = request.POST.get('xpath_record_id', None)
+
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
+		# initiate job
+		cjob = models.HarvestStaticXMLJob(			
+			job_name=job_name,
+			job_note=job_note,
+			user=request.user,
+			record_group=record_group,
+			index_mapper=index_mapper,
+			payload_dict=payload_dict
 		)
 		
 		# start job and update status

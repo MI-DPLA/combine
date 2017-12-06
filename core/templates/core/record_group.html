@@ -12,7 +12,7 @@
 		<tr>
 			<th>Published Records</th>
 			{% if record_group.jobpublish_set.all|length > 0 %}
-				<td class="{{ record_group.jobpublish_set.all.first.job.job_type }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+				<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
 			{% else %}
 				<td style="color:red;">None</td>
 			{% endif %}
@@ -32,10 +32,14 @@
 		<h3>Run new job</h3>
 		<p>
 			<ul>
-				<li><a href="{% url 'job_harvest' org_id=record_group.organization.id record_group_id=record_group.id %}">Harvest</a></li>
+				<li>Harvest:
+					<ul>
+						<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">OAI-PMH</a></li>
+						<li><a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}">Static XML</a></li>
+					</ul>
+				</li>
 				<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
 				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Merge</a></li>
-				<!-- <li><a href="#">Map Service Hub profile to DPLA profile</a></li> -->
 				<li><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}">Publish</a></li>
 			</ul>
 		</p>
