@@ -2373,54 +2373,87 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# handle archive type (zip or tar)
 			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
-
-				logger.debug('processing archive-type file: %s' % p['content_type'])
-
-				# full file path
-				fpath = os.path.join(p['payload_dir'], p['payload_filename'])
-
-				# handle zip
-				if p['content_type'] in ['application/zip']:
-					logger.debug('unzipping file')
-					
-					# unzip
-					zip_ref = zipfile.ZipFile(fpath, 'r')
-					zip_ref.extractall(p['payload_dir'])
-					zip_ref.close()
-
-					# remove original zip
-					os.remove(fpath)
-
-
-				# handle uncompressed tar
-				if p['content_type'] in ['application/x-tar']:
-					logger.debug('untarring file')		
-
-					# untar
-					tar = tarfile.open(fpath)
-					tar.extractall(path=p['payload_dir'])
-					tar.close()
-
-					# remove original zip
-					os.remove(fpath)
-
-
-				# handle uncompressed tar
-				if p['content_type'] in ['application/x-gzip']:
-					logger.debug('decompressing gzip')					
-
-					# untar
-					tar = tarfile.open(fpath, 'r:gz')
-					tar.extractall(path=p['payload_dir'])
-					tar.close()
-
-					# remove original zip
-					os.remove(fpath)
-
+				self._handle_archive_upload(p)
+				
+			# handle XML aggregate files
+			if p['content_type'] in ['text/xml', 'application/xml']:
+				self._handle_xml_upload(p)
 
 		# handle disk locations
 		if p['type'] == 'location':
 			logger.debug('static harvest, processing location type')
+
+
+	def _handle_archive_upload(self, p):
+
+		'''
+		Handle uploads of archive files.
+		Decompress to pre-made payload location, and remove archive file
+
+		Args:
+			p (dict): payload dictionary 
+
+		Returns:
+			None
+		'''
+
+		logger.debug('processing archive file: %s' % p['content_type'])
+
+		# full file path
+		fpath = os.path.join(p['payload_dir'], p['payload_filename'])
+
+		# handle zip
+		if p['content_type'] in ['application/zip']:
+			logger.debug('unzipping file')
+			
+			# unzip
+			zip_ref = zipfile.ZipFile(fpath, 'r')
+			zip_ref.extractall(p['payload_dir'])
+			zip_ref.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+		# handle uncompressed tar
+		if p['content_type'] in ['application/x-tar']:
+			logger.debug('untarring file')		
+
+			# untar
+			tar = tarfile.open(fpath)
+			tar.extractall(path=p['payload_dir'])
+			tar.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+		# handle uncompressed tar
+		if p['content_type'] in ['application/x-gzip']:
+			logger.debug('decompressing gzip')					
+
+			# untar
+			tar = tarfile.open(fpath, 'r:gz')
+			tar.extractall(path=p['payload_dir'])
+			tar.close()
+
+			# remove original zip
+			os.remove(fpath)
+
+
+	def _handle_xml_upload(self, p):
+
+		'''
+		Handle uploads of XML files with group of discrete records.
+		Using xpath_document_root query from user, parse records and write to discrete files on disk,
+		then delete the aggregate file.
+
+		Args:
+			p (dict): payload dictionary 
+
+		Returns:
+			None
+		'''
+
+		logger.debug('handling aggregate XML file')
 
 
 	def prepare_job(self):
