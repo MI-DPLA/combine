@@ -2371,20 +2371,23 @@ class HarvestStaticXMLJob(HarvestJob):
 		if p['type'] == 'upload':
 			logger.debug('static harvest, processing upload type')
 
+			# full file path
+			fpath = os.path.join(p['payload_dir'], p['payload_filename'])
+
 			# handle archive type (zip or tar)
 			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
-				self._handle_archive_upload(p)
+				self._handle_archive_upload(p, fpath)
 				
 			# handle XML aggregate files
 			if p['content_type'] in ['text/xml', 'application/xml']:
-				self._handle_xml_upload(p)
+				self._handle_xml_upload(p, fpath)
 
 		# handle disk locations
 		if p['type'] == 'location':
 			logger.debug('static harvest, processing location type')
 
 
-	def _handle_archive_upload(self, p):
+	def _handle_archive_upload(self, p, fpath):
 
 		'''
 		Handle uploads of archive files.
@@ -2398,9 +2401,6 @@ class HarvestStaticXMLJob(HarvestJob):
 		'''
 
 		logger.debug('processing archive file: %s' % p['content_type'])
-
-		# full file path
-		fpath = os.path.join(p['payload_dir'], p['payload_filename'])
 
 		# handle zip
 		if p['content_type'] in ['application/zip']:
@@ -2439,7 +2439,7 @@ class HarvestStaticXMLJob(HarvestJob):
 			os.remove(fpath)
 
 
-	def _handle_xml_upload(self, p):
+	def _handle_xml_upload(self, p, fpath):
 
 		'''
 		Handle uploads of XML files with group of discrete records.
@@ -2454,6 +2454,26 @@ class HarvestStaticXMLJob(HarvestJob):
 		'''
 
 		logger.debug('handling aggregate XML file')
+
+		# parse file
+		tree = etree.parse(fpath)
+
+		# get xml root 
+		xml_root = tree.getroot()
+
+		# get list of documents as elements
+		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=xml_root.nsmap)
+
+		# if docs founds, loop through and write to disk as discrete XML files
+		if len(doc_search) > 0:
+			for doc_ele in doc_search:
+				record_string = etree.tostring(doc_ele)
+				filename = hashlib.md5(record_string).hexdigest()
+				with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
+					f.write(record_string.decode('utf-8'))
+
+		# remove original zip
+		os.remove(fpath)
 
 
 	def prepare_job(self):
