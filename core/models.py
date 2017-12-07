@@ -139,6 +139,36 @@ class LivySession(models.Model):
 			logger.debug('error retrieving information about Livy session')
 
 
+	def start_session(self):
+
+		'''
+		Method to start Livy session with Livy HttpClient
+
+		Args:
+			None
+
+		Returns:
+			None
+		'''
+
+		# create livy session, get response
+		livy_response = LivyClient().create_session()
+
+		# parse response and set instance values
+		response = livy_response.json()
+		headers = livy_response.headers
+
+		self.name = 'Livy Session, sessionId %s' % (response['id'])
+		self.session_id = int(response['id'])
+		self.session_url = headers['Location']
+		self.status = response['state']
+		self.session_timestamp = headers['Date']
+		self.active = True
+
+		# update db
+		self.save()
+
+
 	def stop_session(self):
 		
 		'''
@@ -1021,7 +1051,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 	# else, continune with user sessions
 	else:
-		logger.debug('Checking for pre-existing user sessions')
+		logger.debug('Checking for pre-existing livy sessions')
 
 		# get "active" user sessions
 		livy_sessions = LivySession.objects.filter(status__in=['starting','running','idle'])
@@ -1030,7 +1060,8 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 		# none found
 		if livy_sessions.count() == 0:
 			logger.debug('no Livy sessions found, creating')
-			livy_session = LivySession().save()
+			livy_session = models.LivySession()
+			livy_session.start_session()
 
 		# if sessions present
 		elif livy_sessions.count() == 1:
@@ -1040,38 +1071,38 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-@receiver(models.signals.pre_save, sender=LivySession)
-def create_livy_session(sender, instance, **kwargs):
+# @receiver(models.signals.pre_save, sender=LivySession)
+# def create_livy_session(sender, instance, **kwargs):
 
-	'''
-	Before saving a LivySession instance, check if brand new, or updating status
-		- if not self.id, assume new and create new session with POST
-		- if self.id, assume checking status, only issue GET and update fields
+# 	'''
+# 	Before saving a LivySession instance, check if brand new, or updating status
+# 		- if not self.id, assume new and create new session with POST
+# 		- if self.id, assume checking status, only issue GET and update fields
 
-	Args:
-		sender (auth.models.LivySession): class
-		user (auth.models.LivySession): instance
-		kwargs: not used
-	'''
+# 	Args:
+# 		sender (auth.models.LivySession): class
+# 		user (auth.models.LivySession): instance
+# 		kwargs: not used
+# 	'''
 
-	# not instance.id, assume new
-	if not instance.id:
+# 	# not instance.id, assume new
+# 	if not instance.id:
 
-		logger.debug('creating new Livy session')
+# 		logger.debug('creating new Livy session')
 
-		# create livy session, get response
-		livy_response = LivyClient().create_session()
+# 		# # create livy session, get response
+# 		# livy_response = LivyClient().create_session()
 
-		# parse response and set instance values
-		response = livy_response.json()
-		headers = livy_response.headers
+# 		# # parse response and set instance values
+# 		# response = livy_response.json()
+# 		# headers = livy_response.headers
 
-		instance.name = 'Livy Session, sessionId %s' % (response['id'])
-		instance.session_id = int(response['id'])
-		instance.session_url = headers['Location']
-		instance.status = response['state']
-		instance.session_timestamp = headers['Date']
-		instance.active = True
+# 		# instance.name = 'Livy Session, sessionId %s' % (response['id'])
+# 		# instance.session_id = int(response['id'])
+# 		# instance.session_url = headers['Location']
+# 		# instance.status = response['state']
+# 		# instance.session_timestamp = headers['Date']
+# 		# instance.active = True
 
 
 @receiver(models.signals.post_save, sender=Job)

@@ -108,16 +108,17 @@ def livy_sessions(request):
 @login_required
 def livy_session_start(request):
 	
-	logger.debug('Checking for pre-existing user sessions')
+	logger.debug('Checking for pre-existing livy sessions')
 
-	# get "active" user sessions
+	# get "active" livy sessions
 	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
 	logger.debug(livy_sessions)
 
 	# none found
 	if livy_sessions.count() == 0:
 		logger.debug('no Livy sessions found, creating')
-		livy_session = models.LivySession().save()
+		livy_session = models.LivySession()
+		livy_session.start_session()
 
 	# if sessions present
 	elif livy_sessions.count() == 1:
