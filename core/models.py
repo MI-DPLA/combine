@@ -1071,40 +1071,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-# @receiver(models.signals.pre_save, sender=LivySession)
-# def create_livy_session(sender, instance, **kwargs):
-
-# 	'''
-# 	Before saving a LivySession instance, check if brand new, or updating status
-# 		- if not self.id, assume new and create new session with POST
-# 		- if self.id, assume checking status, only issue GET and update fields
-
-# 	Args:
-# 		sender (auth.models.LivySession): class
-# 		user (auth.models.LivySession): instance
-# 		kwargs: not used
-# 	'''
-
-# 	# not instance.id, assume new
-# 	if not instance.id:
-
-# 		logger.debug('creating new Livy session')
-
-# 		# # create livy session, get response
-# 		# livy_response = LivyClient().create_session()
-
-# 		# # parse response and set instance values
-# 		# response = livy_response.json()
-# 		# headers = livy_response.headers
-
-# 		# instance.name = 'Livy Session, sessionId %s' % (response['id'])
-# 		# instance.session_id = int(response['id'])
-# 		# instance.session_url = headers['Location']
-# 		# instance.status = response['state']
-# 		# instance.session_timestamp = headers['Date']
-# 		# instance.active = True
-
-
 @receiver(models.signals.post_save, sender=Job)
 def save_job(sender, instance, created, **kwargs):
 
