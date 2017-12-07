@@ -136,7 +136,7 @@ def test_static_harvest():
 		'type':'location',
 		'payload_dir':'/home/combine/test/feeding_america_cookbooks',
 		'xpath_document_root':'/mods:mods',
-		'xpath_record_id':None
+		'xpath_record_id':''
 	}
 
 	# initiate job
