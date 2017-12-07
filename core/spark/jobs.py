@@ -34,6 +34,18 @@ from django.conf import settings
 from core.models import CombineJob, Job, JobTrack, Transformation
 
 
+####################################################################
+# Custom Exceptions 											   #
+####################################################################
+
+class AmbiguousIdentifier(Exception):
+	pass
+
+
+####################################################################
+# Combine Record Schema											   #
+####################################################################
+
 class CombineRecordSchema(object):
 
 	'''
@@ -57,6 +69,11 @@ class CombineRecordSchema(object):
 
 		# fields
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
+
+
+####################################################################
+# Spark Jobs           											   #
+####################################################################
 
 
 class HarvestOAISpark(object):
@@ -277,9 +294,9 @@ class HarvestStaticXMLSpark(object):
 					if len(record_id) == 1:
 						record_id = record_id[0].text
 					elif len(meta_root) > 1:
-						raise Exception('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+						raise AmbiguousIdentifier('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
 					elif len(meta_root) == 0:
-						raise Exception('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+						raise AmbiguousIdentifier('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
 				else:
 					record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
 
@@ -294,6 +311,24 @@ class HarvestStaticXMLSpark(object):
 					success = 1
 				)
 
+			# catch missing or ambiguous identifiers
+			except AmbiguousIdentifier as e:
+
+				# hash record string to produce a unique id
+				record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
+
+				# return error Row
+				return Row(
+					record_id = record_id,
+					oai_id = record_id,
+					document = etree.tostring(meta_root).decode('utf-8'),
+					error = str(e),
+					job_id = int(job_id),
+					oai_set = '',
+					success = 0
+				)
+
+			# handle all other exceptions
 			except Exception as e:
 
 				# hash record string to produce a unique id

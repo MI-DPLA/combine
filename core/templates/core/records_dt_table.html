@@ -6,9 +6,9 @@
 		<th>Job</th>
 		<th>Harvested OAI set</th>
 		<th>Unique</th>
+		<th>Success</th>
 		<th>Document</th>
 		<th>Error</th>
-		<!-- <th>Thumbnail</th> -->
 	</thead>
 	<tbody>
 	</tbody>
@@ -21,7 +21,13 @@
 			"serverSide": true,
 			"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
 			"searchDelay": 1000,
-			"pageLength": 10
+			"pageLength": 10,
+			"createdRow": function( row, data, dataIndex){
+                if( data[5] ==  false){
+                    // $(row).addClass('error_record_row');
+                    $(row).css('background-color','rgb(255, 241, 241)');
+                }
+            }
 		});
 	});
 </script>

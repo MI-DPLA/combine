@@ -1569,7 +1569,8 @@ class ESIndex(object):
 
 
 	def count_indexed_fields(self,
-			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
+			job_record_count=None
 		):
 
 		'''
@@ -1635,11 +1636,19 @@ class ESIndex(object):
 			# DEBUG
 			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))
 
-			# return
-			return {
+			# prepare dictionary for return
+			return_dict = {
 				'total_docs':sr_dict['hits']['total'],
 				'fields':field_count
 			}
+
+			# if job record count provided, include percentage of indexed records to that count
+			if job_record_count:
+				indexed_percentage = round((float(return_dict['total_docs']) / float(job_record_count)), 4)
+				return_dict['indexed_percentage'] = indexed_percentage
+			
+			# return
+			return return_dict
 
 		else:
 			return False
@@ -2001,7 +2010,7 @@ class CombineJob(object):
 		'''
 
 		# return count
-		return self.esi.count_indexed_fields()
+		return self.esi.count_indexed_fields(job_record_count=self.job.record_count)
 
 
 	def field_analysis(self, field_name):
@@ -2078,11 +2087,11 @@ class CombineJob(object):
 			'jobs':self.job.jobinput_set.all()
 		}
 
-		# calc error percentages, based on error ratio to job record count (which includes both success and error)
-		if r_count_dict['errors'] != 0:
-			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(self.job.record_count)), 4)		
+		# calc success percentages, based on records ratio to job record count (which includes both success and error)
+		if r_count_dict['records'] != 0:
+			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(self.job.record_count)), 4)		
 		else:
-			r_count_dict['error_percentage'] = 0.0
+			r_count_dict['success_percentage'] = 0.0
 
 		# DEBUG
 		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
