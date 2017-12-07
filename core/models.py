@@ -2461,8 +2461,14 @@ class HarvestStaticXMLJob(HarvestJob):
 		# get xml root 
 		xml_root = tree.getroot()
 
+		# programattically extract namespaces
+		nsmap = {}
+		for ns in xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+
 		# get list of documents as elements
-		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=xml_root.nsmap)
+		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
 
 		# if docs founds, loop through and write to disk as discrete XML files
 		if len(doc_search) > 0:
@@ -2471,6 +2477,9 @@ class HarvestStaticXMLJob(HarvestJob):
 				filename = hashlib.md5(record_string).hexdigest()
 				with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
 					f.write(record_string.decode('utf-8'))
+
+		# after parsing file, set xpath_document_root --> '/*'
+		p['xpath_document_root'] = '/*'
 
 		# remove original zip
 		os.remove(fpath)

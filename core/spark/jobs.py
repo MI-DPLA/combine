@@ -236,6 +236,16 @@ class HarvestStaticXMLSpark(object):
 				minPartitions=settings.SPARK_REPARTITION
 			)
 
+
+		# parse namespaces
+		def get_namespaces(xml_node):
+			nsmap = {}
+			for ns in xml_node.xpath('//namespace::*'):
+				if ns[0]:
+					nsmap[ns[0]] = ns[1]
+			return nsmap
+
+
 		def get_metadata(job_id, row, kwargs):
 
 			# get doc string
@@ -246,11 +256,14 @@ class HarvestStaticXMLSpark(object):
 				# parse with lxml
 				xml_root = etree.fromstring(doc_string.encode('utf-8'))
 
+				# get namespaces
+				nsmap = get_namespaces(xml_root)
+
 				# get metadata root
 				if kwargs['xpath_document_root'] != '':
-					meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=xml_root.nsmap)
+					meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=nsmap)
 				else:
-					meta_root = xml_root.xpath('/*', namespaces=xml_root.nsmap)
+					meta_root = xml_root.xpath('/*', namespaces=nsmap)
 				if len(meta_root) == 1:
 					meta_root = meta_root[0]
 				elif len(meta_root) > 1:
@@ -260,7 +273,7 @@ class HarvestStaticXMLSpark(object):
 
 				# get unique identifier
 				if kwargs['xpath_record_id'] != '':
-					record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=meta_root.nsmap)
+					record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=nsmap)
 					if len(record_id) == 1:
 						record_id = record_id[0].text
 					elif len(meta_root) > 1:
