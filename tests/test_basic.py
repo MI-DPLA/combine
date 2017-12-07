@@ -179,10 +179,65 @@ def test_static_harvest():
 	assert VO.static_harvest_cjob.job.status == 'available'
 
 
+
+#############################################################################
+# Test Transform
+#############################################################################
+def test_static_transform():
+
+	'''
+	Test static harvest of XML records from disk
+	'''
+
+	# get vars
+	global VO
+
+	# initiate job
+	cjob = TransformJob(
+		job_name='test_static_transform_job',
+		job_note='',
+		user=VO.user,
+		record_group=VO.rg,
+		input_job=VO.static_harvest_cjob.job,
+		transformation=Transformation.objects.get(pk=1),
+		index_mapper='GenericMapper'
+	)
+	
+	# start job and update status
+	job_status = cjob.start_job()
+
+	# if job_status is absent, report job status as failed
+	if job_status == False:
+		cjob.job.status = 'failed'
+		cjob.job.save()
+
+	# poll until complete
+	for x in range(0,120):
+
+		# pause
+		time.sleep(1)
+		
+		# refresh session
+		cjob.job.update_status()
+		
+		# check status
+		if cjob.job.status != 'available':
+			continue
+		else:
+			break
+
+	# save static harvest job to VO
+	VO.static_transform_cjob = cjob
+
+	# assert
+	assert VO.static_transform_cjob.job.status == 'available'
+
+
+
 #############################################################################
 # Tests Setup
 #############################################################################
-def test_org_delete():
+def test_org_delete(keep_records):
 
 	'''
 	Test removal of organization with cascading deletes
@@ -192,7 +247,10 @@ def test_org_delete():
 	global VO
 
 	# assert delete of org and children
-	assert VO.org.delete()[0] > 0
+	if not keep_records:
+		assert VO.org.delete()[0] > 0
+	else:
+		assert True
 
 
 def test_livy_stop_session(use_active_livy):
