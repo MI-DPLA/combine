@@ -79,8 +79,7 @@ class ESIndex(object):
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',
 					properties=settings.COMBINE_DATABASE,
-					mode='append',
-					numPartitions=settings.SPARK_REPARTITION
+					mode='append'
 				)
 		
 		# retrieve successes to index

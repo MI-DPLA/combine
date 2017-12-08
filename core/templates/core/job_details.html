@@ -53,7 +53,7 @@
 			<th>Total Input Records</th>
 			<th>Sucesssful Records</th>
 			<th>Errors</th>
-			<th>Error Percentage</th>
+			<th>Success Percentage</th>
 		</tr>
 		<tr class="{{ cjob.job.job_type_family }}">
 			<td>{{ cjob.job.name }}</td>
@@ -62,7 +62,7 @@
 			<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 			<td>{{ record_count_details.records }}</td>
 			<td>{{ record_count_details.errors }}</td>
-			<td>{{ record_count_details.error_percentage }}</td>
+			<td>{{ record_count_details.success_percentage }}</td>
 		</tr>
 	</table>
 
@@ -71,7 +71,7 @@
 	<!-- Indexing Records DT Table -->
 	{% include 'core/records_dt_table.html' %}
 
-	<h4>Indexed Field Breakdown</h4>
+	<h3>Indexed Field Analysis</h3>
 
 	<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
 
@@ -80,11 +80,13 @@
 			<tr>
 				<th>Total records for indexing</th>
 				<th>Indexed</th>
+				<th>Percentage of total records</th>
 				<th>Actions</th>
 			</tr>
 			<tr>
 				<td>{{ record_count_details.records }}</td>
 				<td>{{ field_counts.total_docs }}</td>
+				<td>{{ field_counts.indexed_percentage }}</td>
 				<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
 			</tr>
 		</table>

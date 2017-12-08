@@ -108,16 +108,17 @@ def livy_sessions(request):
 @login_required
 def livy_session_start(request):
 	
-	logger.debug('Checking for pre-existing user sessions')
+	logger.debug('Checking for pre-existing livy sessions')
 
-	# get "active" user sessions
+	# get "active" livy sessions
 	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
 	logger.debug(livy_sessions)
 
 	# none found
 	if livy_sessions.count() == 0:
 		logger.debug('no Livy sessions found, creating')
-		livy_session = models.LivySession().save()
+		livy_session = models.LivySession()
+		livy_session.start_session()
 
 	# if sessions present
 	elif livy_sessions.count() == 1:
@@ -211,6 +212,25 @@ def organization(request, org_id):
 		})
 
 
+def organization_delete(request, org_id):
+
+	'''
+	Delete Organization
+	Note: Through cascade deletes, would remove:
+		- RecordGroup
+			- Job
+				- Record
+	'''
+
+	# get organization
+	org = models.Organization.objects.get(pk=org_id)
+
+	# delete org
+	org.delete()
+
+	return redirect('organizations')
+
+
 
 ####################################################################
 # Record Groups 												   #
@@ -232,6 +252,23 @@ def record_group_new(request, org_id):
 
 		# redirect to organization page
 		return redirect('organization', org_id=org_id)
+
+
+
+def record_group_delete(request, org_id, record_group_id):
+
+	'''
+	Create new Record Group
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.get(pk=record_group_id)
+
+	# delete
+	record_group.delete()
+
+	# redirect to organization page
+	return redirect('organization', org_id=org_id)
 
 
 
@@ -1092,14 +1129,14 @@ class DTRecordsJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'document', 'error']
+		columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'document', 'error']
+		order_columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data

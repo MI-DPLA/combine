@@ -139,6 +139,36 @@ class LivySession(models.Model):
 			logger.debug('error retrieving information about Livy session')
 
 
+	def start_session(self):
+
+		'''
+		Method to start Livy session with Livy HttpClient
+
+		Args:
+			None
+
+		Returns:
+			None
+		'''
+
+		# create livy session, get response
+		livy_response = LivyClient().create_session()
+
+		# parse response and set instance values
+		response = livy_response.json()
+		headers = livy_response.headers
+
+		self.name = 'Livy Session, sessionId %s' % (response['id'])
+		self.session_id = int(response['id'])
+		self.session_url = headers['Location']
+		self.status = response['state']
+		self.session_timestamp = headers['Date']
+		self.active = True
+
+		# update db
+		self.save()
+
+
 	def stop_session(self):
 		
 		'''
@@ -1021,7 +1051,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 	# else, continune with user sessions
 	else:
-		logger.debug('Checking for pre-existing user sessions')
+		logger.debug('Checking for pre-existing livy sessions')
 
 		# get "active" user sessions
 		livy_sessions = LivySession.objects.filter(status__in=['starting','running','idle'])
@@ -1030,7 +1060,8 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 		# none found
 		if livy_sessions.count() == 0:
 			logger.debug('no Livy sessions found, creating')
-			livy_session = LivySession().save()
+			livy_session = models.LivySession()
+			livy_session.start_session()
 
 		# if sessions present
 		elif livy_sessions.count() == 1:
@@ -1038,40 +1069,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 		elif livy_sessions.count() > 1:
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
-
-
-@receiver(models.signals.pre_save, sender=LivySession)
-def create_livy_session(sender, instance, **kwargs):
-
-	'''
-	Before saving a LivySession instance, check if brand new, or updating status
-		- if not self.id, assume new and create new session with POST
-		- if self.id, assume checking status, only issue GET and update fields
-
-	Args:
-		sender (auth.models.LivySession): class
-		user (auth.models.LivySession): instance
-		kwargs: not used
-	'''
-
-	# not instance.id, assume new
-	if not instance.id:
-
-		logger.debug('creating new Livy session')
-
-		# create livy session, get response
-		livy_response = LivyClient().create_session()
-
-		# parse response and set instance values
-		response = livy_response.json()
-		headers = livy_response.headers
-
-		instance.name = 'Livy Session, sessionId %s' % (response['id'])
-		instance.session_id = int(response['id'])
-		instance.session_url = headers['Location']
-		instance.status = response['state']
-		instance.session_timestamp = headers['Date']
-		instance.active = True
 
 
 @receiver(models.signals.post_save, sender=Job)
@@ -1197,18 +1194,6 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			es_handle.indices.delete('j%s' % instance.id)
 	except:
 		logger.debug('could not remove ES index: j%s' % instance.id)
-
-
-	# attempt to delete indexing results avro files
-	try:
-		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
-			settings.BINARY_STORAGE.rstrip('/'),
-			instance.record_group.organization.id,
-			instance.record_group.id,
-			instance.id)).split('file://')[-1]
-		shutil.rmtree(indexing_dir)
-	except:
-		logger.debug('could not remove indexing results')
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
@@ -1511,7 +1496,7 @@ class ESIndex(object):
 			return field_names
 
 
-	def calc_field_metrics(self,
+	def _calc_field_metrics(self,
 			sr_dict,
 			field_name,
 			one_per_doc_offset=settings.ONE_PER_DOC_OFFSET
@@ -1569,7 +1554,8 @@ class ESIndex(object):
 
 
 	def count_indexed_fields(self,
-			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD
+			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
+			job_record_count=None
 		):
 
 		'''
@@ -1628,18 +1614,26 @@ class ESIndex(object):
 			for field_name in field_names:
 
 					# get metrics and append if field metrics found
-					field_metrics = self.calc_field_metrics(sr_dict, field_name)
+					field_metrics = self._calc_field_metrics(sr_dict, field_name)
 					if field_metrics:
 						field_count.append(field_metrics)
 
 			# DEBUG
 			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))
 
-			# return
-			return {
+			# prepare dictionary for return
+			return_dict = {
 				'total_docs':sr_dict['hits']['total'],
 				'fields':field_count
 			}
+
+			# if job record count provided, include percentage of indexed records to that count
+			if job_record_count:
+				indexed_percentage = round((float(return_dict['total_docs']) / float(job_record_count)), 4)
+				return_dict['indexed_percentage'] = indexed_percentage
+			
+			# return
+			return return_dict
 
 		else:
 			return False
@@ -1690,7 +1684,7 @@ class ESIndex(object):
 		sr = s.execute()
 
 		# get metrics
-		field_metrics = self.calc_field_metrics(sr.to_dict(), field_name)
+		field_metrics = self._calc_field_metrics(sr.to_dict(), field_name)
 
 		# prepare and return
 		if not metrics_only:
@@ -2001,7 +1995,7 @@ class CombineJob(object):
 		'''
 
 		# return count
-		return self.esi.count_indexed_fields()
+		return self.esi.count_indexed_fields(job_record_count=self.job.record_count)
 
 
 	def field_analysis(self, field_name):
@@ -2078,11 +2072,11 @@ class CombineJob(object):
 			'jobs':self.job.jobinput_set.all()
 		}
 
-		# calc error percentages, based on error ratio to job record count (which includes both success and error)
-		if r_count_dict['errors'] != 0:
-			r_count_dict['error_percentage'] = round((float(r_count_dict['errors']) / float(self.job.record_count)), 4)		
+		# calc success percentages, based on records ratio to job record count (which includes both success and error)
+		if r_count_dict['records'] != 0:
+			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(self.job.record_count)), 4)		
 		else:
-			r_count_dict['error_percentage'] = 0.0
+			r_count_dict['success_percentage'] = 0.0
 
 		# DEBUG
 		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
@@ -2461,8 +2455,14 @@ class HarvestStaticXMLJob(HarvestJob):
 		# get xml root 
 		xml_root = tree.getroot()
 
+		# programattically extract namespaces
+		nsmap = {}
+		for ns in xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+
 		# get list of documents as elements
-		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=xml_root.nsmap)
+		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
 
 		# if docs founds, loop through and write to disk as discrete XML files
 		if len(doc_search) > 0:
@@ -2471,6 +2471,9 @@ class HarvestStaticXMLJob(HarvestJob):
 				filename = hashlib.md5(record_string).hexdigest()
 				with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
 					f.write(record_string.decode('utf-8'))
+
+		# after parsing file, set xpath_document_root --> '/*'
+		p['xpath_document_root'] = '/*'
 
 		# remove original zip
 		os.remove(fpath)
