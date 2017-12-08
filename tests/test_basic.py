@@ -197,7 +197,7 @@ def test_static_harvest():
 		cjob.job.save()
 
 	# poll until complete
-	for x in range(0,120):
+	for x in range(0,240):
 
 		# pause
 		time.sleep(1)
@@ -277,7 +277,7 @@ def test_static_transform():
 		cjob.job.save()
 
 	# poll until complete
-	for x in range(0,120):
+	for x in range(0,240):
 
 		# pause
 		time.sleep(1)
