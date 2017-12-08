@@ -1496,7 +1496,7 @@ class ESIndex(object):
 			return field_names
 
 
-	def calc_field_metrics(self,
+	def _calc_field_metrics(self,
 			sr_dict,
 			field_name,
 			one_per_doc_offset=settings.ONE_PER_DOC_OFFSET
@@ -1614,7 +1614,7 @@ class ESIndex(object):
 			for field_name in field_names:
 
 					# get metrics and append if field metrics found
-					field_metrics = self.calc_field_metrics(sr_dict, field_name)
+					field_metrics = self._calc_field_metrics(sr_dict, field_name)
 					if field_metrics:
 						field_count.append(field_metrics)
 
@@ -1684,7 +1684,7 @@ class ESIndex(object):
 		sr = s.execute()
 
 		# get metrics
-		field_metrics = self.calc_field_metrics(sr.to_dict(), field_name)
+		field_metrics = self._calc_field_metrics(sr.to_dict(), field_name)
 
 		# prepare and return
 		if not metrics_only:

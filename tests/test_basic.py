@@ -214,11 +214,19 @@ def test_static_harvest():
 	# save static harvest job to VO
 	VO.static_harvest_cjob = cjob
 
-	# assert
-	assert VO.static_harvest_cjob.job.status == 'available'
-
 	# remove payload_dir
 	shutil.rmtree(payload_dir)
+
+	# assert job is done and available via livy
+	assert VO.static_harvest_cjob.job.status == 'available'
+
+	# assert record count is 250
+	dcount = VO.static_harvest_cjob.get_detailed_job_record_count()
+	assert dcount['records'] == 250
+	assert dcount['errors'] == 0
+
+	# assert no indexing failures
+	assert len(VO.static_harvest_cjob.get_indexing_failures()) == 0
 
 
 
@@ -294,8 +302,16 @@ def test_static_transform():
 	# save static harvest job to VO
 	VO.static_transform_cjob = cjob
 
-	# assert
+	# assert job is done and available via livy
 	assert VO.static_transform_cjob.job.status == 'available'
+
+	# assert record count is 250
+	dcount = VO.static_transform_cjob.get_detailed_job_record_count()
+	assert dcount['records'] == 250
+	assert dcount['errors'] == 0
+
+	# assert no indexing failures
+	assert len(VO.static_transform_cjob.get_indexing_failures()) == 0
 
 	# remove transformation
 	assert VO.transformation_scenario.delete()[0] > 0
