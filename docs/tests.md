@@ -2,7 +2,7 @@
 
 Though Combine is by and large a Django application, it has characteristics that do not lend themselves towards using the built-in Django unit tests.  Namely, DB tables that are not managed by Django, and as such, would not be created in the test DB scaffolding that Django tests usually use.
 
-Instead, using out of the box `pytest` for some preliminary unit tests.
+Instead, using out of the box [`pytest`](https://docs.pytest.org/en/latest/) for some preliminary unit tests.
 
 ## Demo data
 
