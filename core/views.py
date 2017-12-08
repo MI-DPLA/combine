@@ -212,6 +212,25 @@ def organization(request, org_id):
 		})
 
 
+def organization_delete(request, org_id):
+
+	'''
+	Delete Organization
+	Note: Through cascade deletes, would remove:
+		- RecordGroup
+			- Job
+				- Record
+	'''
+
+	# get organization
+	org = models.Organization.objects.get(pk=org_id)
+
+	# delete org
+	org.delete()
+
+	return redirect('organizations')
+
+
 
 ####################################################################
 # Record Groups 												   #
@@ -233,6 +252,23 @@ def record_group_new(request, org_id):
 
 		# redirect to organization page
 		return redirect('organization', org_id=org_id)
+
+
+
+def record_group_delete(request, org_id, record_group_id):
+
+	'''
+	Create new Record Group
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.get(pk=record_group_id)
+
+	# delete
+	record_group.delete()
+
+	# redirect to organization page
+	return redirect('organization', org_id=org_id)
 
 
 
