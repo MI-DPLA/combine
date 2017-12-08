@@ -1196,18 +1196,6 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not remove ES index: j%s' % instance.id)
 
 
-	# attempt to delete indexing results avro files
-	try:
-		indexing_dir = ('%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
-			settings.BINARY_STORAGE.rstrip('/'),
-			instance.record_group.organization.id,
-			instance.record_group.id,
-			instance.id)).split('file://')[-1]
-		shutil.rmtree(indexing_dir)
-	except:
-		logger.debug('could not remove indexing results')
-
-
 @receiver(models.signals.pre_save, sender=Transformation)
 def save_transformation_to_disk(sender, instance, **kwargs):
 
