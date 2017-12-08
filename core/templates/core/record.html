@@ -5,10 +5,21 @@
 
 	<h2>Record</h2>
 
+	<h3>Combine Attributes</h3>
+	<ul>
+		<li><strong>Combine ID:</strong> {{ record.id }}</li>
+		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
+		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
+		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
+		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
+	</ul>
+
+	<h3>DPLA Mappings</h3>
+
 	<!-- Show DPLA Mapped Fields if present -->
 	{% if record.job.dpla_mapping %}
 
-		<div style="background-color:#E4E4E3; width:50%; padding:10px 10px 10px 10px; border-radius:10px;">
+		<div style="background-color:#E4E4E3; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
 			<h3>DPLA Mapped Fields</h3>
 
 		<!-- show thumbnail if mapped -->
@@ -19,23 +30,27 @@
 		<!-- show metadata fields if present -->
 		{% for field, value in record.job.dpla_mapping.mapped_fields.items  %}
 			{% if record.get_es_doc|get_dict_value:value %}
-				<p><strong>{{ field }}</strong> : {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
+				<p><strong>{{ field }}</strong>: {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
 			{% endif %}
 		{% endfor %}
 
 		</div> <!-- close DPLA mapped div -->
 
-
 	{% endif %}
 
-	<h3>Combine Attributes</h3>
-	<ul>
-		<li><strong>Combine ID:</strong> {{ record.id }}</li>
-		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
-		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
-		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
-		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
-	</ul>
+	<!-- DPLA API hit -->
+	{% if dpla_api_doc %}
+
+		<div style="margin-top: 20px; background-color:#f7deae; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
+			<h3>DPLA API match</h3>
+			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
+			<p><strong>title</strong>: {{ dpla_api_doc.sourceResource.title }}</p>
+			<ul>
+				<li><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">DPLA item record</a></li>
+			</ul>
+		</div>
+
+	{% endif %}
 
 	<h3>Record Stages</h3>
 
@@ -184,6 +199,5 @@
 			<p>None</p>
 		{% endif %}
 	</div>
-
 
 {% endblock %}

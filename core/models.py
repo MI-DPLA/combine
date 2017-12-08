@@ -879,6 +879,59 @@ class Record(models.Model):
 		return etree.fromstring(self.document.encode('utf-8'))
 
 
+	def dpla_api_record_match(self):
+
+		'''
+		Method to attempt a match against the DPLA's API
+		'''
+
+		# attempt search if API key defined
+		if settings.DPLA_API_KEY:
+
+			'''
+			Exploratory testing of DPLA API matching
+			'''
+
+			# get es document
+			es_doc = self.get_es_doc()
+
+			# get DPLA mappings
+			dpla_mapping = self.job.dpla_mapping()
+
+			# look for mapped title
+			if dpla_mapping.title:
+				logger.debug('title mapping found, using')
+				search_string = es_doc[dpla_mapping.title]
+
+			elif dpla_mapping.description:
+				logger.debug('description mapping found, using')
+				search_string = es_doc[dpla_mapping.description]
+
+			# query based on title
+			api_r = requests.get(
+				'https://api.dp.la/v2/items?q="%s"&api_key=%s' % (search_string, settings.DPLA_API_KEY)).json()
+
+			# response
+			if api_r['count'] == 1:
+				dpla_api_doc = api_r['docs'][0]		
+				logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+			elif api_r['count'] > 1:
+				logger.debug('multiple hits for DPLA API query')
+				dpla_api_doc = None
+			else:
+				logger.debug('no matches found')
+				dpla_api_doc = None
+
+			# save to record instance and return
+			self.dpla_api_doc = dpla_api_doc
+			return dpla_api_doc
+
+		# return None is API key is not defined
+		else:
+			self.dpla_api_doc = None
+			return None
+
+
 
 class IndexMappingFailure(models.Model):
 
