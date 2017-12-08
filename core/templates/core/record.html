@@ -141,26 +141,28 @@
 	<!-- TransformJob -->
 	<div id="job_type_specific">
 		{% if record.job.job_type_family == 'TransformJob' %}
-			<h2>{{ record.job.job_type_family }} Details</h2>
-			<h3>Transformation Used</h3>
-			<table border="1" cellpadding="10">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Path on disk</th>
-					<th>Transformation Payload</th>
-					<th>Input Document</th>
-				</tr>
-				<tr>
-					<td>{{job_details.transformation.id}}</td>
-					<td>{{job_details.transformation.name}}</td>
-					<td>{{job_details.transformation.transformation_type}}</td>
-					<td>{{job_details.transformation.filepath}}</td>
-					<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
-					<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
-				</tr>
-			</table>
+			{% if job_details.transformation.id %}
+				<h2>{{ record.job.job_type_family }} Details</h2>
+				<h3>Transformation Used</h3>
+				<table border="1" cellpadding="10">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Transformation Payload</th>
+						<th>Input Document</th>
+					</tr>
+					<tr>
+						<td>{{job_details.transformation.id}}</td>
+						<td>{{job_details.transformation.name}}</td>
+						<td>{{job_details.transformation.transformation_type}}</td>
+						<td>{{job_details.transformation.filepath}}</td>
+						<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+						<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+					</tr>
+				</table>
+			{% endif %}
 		{% endif %}
 
 		<!-- MergeJob -->
