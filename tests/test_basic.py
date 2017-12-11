@@ -64,7 +64,7 @@ def test_livy_start_session(use_active_livy):
 		VO.livy_session.start_session()
 
 		# poll until session idle, limit to 60 seconds
-		for x in range(0,60):
+		for x in range(0,240):
 
 			# pause
 			time.sleep(1)
@@ -355,7 +355,7 @@ def test_livy_stop_session(use_active_livy):
 		VO.livy_session.stop_session()
 
 		# poll until session idle, limit to 60 seconds
-		for x in range(0,60):
+		for x in range(0,240):
 
 			# pause
 			time.sleep(1)
