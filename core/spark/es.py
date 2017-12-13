@@ -113,7 +113,7 @@ class ESIndex(object):
 			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 			conf={
 					"es.resource":"%s/record" % index_name,
-					"es.nodes":"192.168.45.10:9200",
+					"es.nodes":"%s:9200" % settings.ES_HOST,
 					"es.mapping.exclude":"temp_id",
 					"es.mapping.id":"temp_id",
 				}
