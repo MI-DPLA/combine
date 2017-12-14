@@ -102,7 +102,7 @@
 					<td><strong>{{ field_name }}</strong></td>
 
 					<!-- show mapped DPLA field if exists -->
-					{% if record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name %}
+					{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
 						<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
 					{% else %}
 						<td></td>
