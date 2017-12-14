@@ -690,7 +690,10 @@ class Transformation(models.Model):
 
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
-	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
+	transformation_type = models.CharField(
+		max_length=255,
+		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+	)
 	filepath = models.CharField(max_length=1024, null=True, default=None)
 	
 
@@ -1025,6 +1028,22 @@ class DPLAJobMap(models.Model):
 
 		# invert and return
 		return {v: k for k, v in mapped_fields.items()}
+
+
+class RecordValidation(models.Model):
+
+	'''
+	Model to manage validation tests associated with a Record	
+	'''
+
+	name = models.CharField(max_length=255)
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	valid = models.BooleanField(default=1)
+	payload = models.TextField(null=True, default=None)
+	fail_count = models.IntegerField(null=True, default=None)
+
+	def __str__(self):
+		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
 
 
 
