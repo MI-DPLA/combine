@@ -431,7 +431,7 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 		cjob = models.CombineJob.get_combine_job(job_id)
 
 		# get DPLAJobMap
-		djm = cjob.job.dpla_mapping()
+		djm = cjob.job.dpla_mapping
 
 		# get fields 
 		dpla_field = request.POST.get('dpla_field')
