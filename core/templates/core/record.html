@@ -17,21 +17,19 @@
 	<h3>DPLA Mappings</h3>
 
 	<!-- Show DPLA Mapped Fields if present -->
-	{% if record.job.dpla_mapping %}
+	{% if record.dpla_mapped_field_values %}
 
 		<div style="background-color:#E4E4E3; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
-			<h3>DPLA Mapped Fields</h3>
+			<h3>Combine --> DPLA Mapped Fields</h3>
 
 		<!-- show thumbnail if mapped -->
 		{% if record.job.dpla_mapping.preview %}
-			<a target="_blank" href="{{record.get_es_doc|get_dict_value:record.job.dpla_mapping.isShownAt}}"><img src="{{ record.get_es_doc|get_dict_value:record.job.dpla_mapping.preview }}"/></a>
+			<a target="_blank" href="{{record.dpla_mapped_field_values.isShownAt}}"><img src="{{ record.dpla_mapped_field_values.preview }}"/></a>
 		{% endif %}
 
 		<!-- show metadata fields if present -->
-		{% for field, value in record.job.dpla_mapping.mapped_fields.items  %}
-			{% if record.get_es_doc|get_dict_value:value %}
-				<p><strong>{{ field }}</strong>: {% if field == 'isShownAt' %}<a href="{{ record.get_es_doc|get_dict_value:value }}">{{ record.get_es_doc|get_dict_value:value }}</a>{% else %}{{ record.get_es_doc|get_dict_value:value }}{% endif %}</p>
-			{% endif %}
+		{% for field, value in record.dpla_mapped_field_values.items  %}
+			<p><strong>{{ field }}</strong>: {% if field == 'isShownAt' %}<a href="{{ value }}" target="_blank">{{ value }}</a>{% else %}{{ value }}{% endif %}</p>
 		{% endfor %}
 
 		</div> <!-- close DPLA mapped div -->
@@ -42,13 +40,13 @@
 	{% if dpla_api_doc %}
 
 		<div style="margin-top: 20px; background-color:#f7deae; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
-			<h3>DPLA API match</h3>
+			<h3>DPLA API Item match</h3>
 			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
-			<p><strong>title</strong>: {{ dpla_api_doc.sourceResource.title }}</p>
-			<p><strong>description</strong>: {{ dpla_api_doc.sourceResource.description }}</p>
-			<ul>
-				<li><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">DPLA item record</a></li>
-			</ul>
+			{% for field, value in dpla_api_doc.sourceResource.items %}
+				<p><strong>{{field}}</strong>: {{value}}</p>
+			{% endfor %}
+			<p><strong>description</strong>: {{ dpla_api_doc.sourceResource.description }}</p> -->
+			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">DPLA item record</a></p>
 		</div>
 
 	{% endif %}
@@ -104,12 +102,8 @@
 					<td><strong>{{ field_name }}</strong></td>
 
 					<!-- show mapped DPLA field if exists -->
-					{% if record.job.dpla_mapping %}
-						{% if record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name %}
-							<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
-						{% else %}
-							<td></td>
-						{% endif %}
+					{% if record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name %}
+						<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
 					{% else %}
 						<td></td>
 					{% endif %}

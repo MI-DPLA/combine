@@ -584,6 +584,7 @@ class Job(models.Model):
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
+	@property
 	def dpla_mapping(self):
 
 		'''
@@ -596,10 +597,14 @@ class Job(models.Model):
 			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
 		'''
 
-		if self.dplajobmap_set.count() == 1:
-			return self.dplajobmap_set.first()
-		else:
-			return False
+		if not hasattr(self, '_dpla_mapping'):
+			if self.dplajobmap_set.count() == 1:
+				self._dpla_mapping = self.dplajobmap_set.first()
+			else:
+				self._dpla_mapping = None
+
+		# return
+		return self._dpla_mapping
 
 
 
@@ -879,12 +884,30 @@ class Record(models.Model):
 		return etree.fromstring(self.document.encode('utf-8'))
 
 
+	def dpla_mapped_field_values(self):
+
+		'''
+		Using self.dpla_mapped_fields, loop through and insert values from ES document
+		'''
+
+		# get mapped fields
+		mapped_fields = self.job.dpla_mapping.mapped_fields()
+
+		if mapped_fields:
+			# get elasticsearch doc
+			es_doc = self.get_es_doc()
+			# loop through and use mapped key for es doc
+			return { k:str(es_doc[v]) for k,v in mapped_fields.items() }
+		else:
+			return None
+
+
 	def dpla_api_record_match(self, search_string=None):
 
 		'''
 		Method to attempt a match against the DPLA's API
 
-		NOTE: Exploratory at this point, needs considerable work and refinement
+		NOTE: Still exploratory.  Queries DPLA API for match against some known mappings.
 		'''
 
 		# attempt search if API key defined
@@ -898,24 +921,48 @@ class Record(models.Model):
 			es_doc = self.get_es_doc()
 
 			# get DPLA mappings
-			dpla_mapping = self.job.dpla_mapping()
+			dpla_mapping = self.job.dpla_mapping
 
 			if not search_string:
-				# look for mapped title			
-				if dpla_mapping.title:
-					logger.debug('title mapping found, using')
-					search_string = es_doc[dpla_mapping.title]
 
+				'''
+				Loop through mapped fields in opinionated order
+				'''
+
+				# isShownAt
+				if dpla_mapping.isShownAt:
+					logger.debug('isShownAt mapping found, using')
+					search_string = 'isShownAt="%s"' % es_doc[dpla_mapping.isShownAt]
+
+				# title
+				elif dpla_mapping.title:
+					logger.debug('title mapping found, using')
+					search_string = 'sourceRecord.title="%s"' % es_doc[dpla_mapping.title]
+
+				# description
 				elif dpla_mapping.description:
 					logger.debug('description mapping found, using')
-					search_string = es_doc[dpla_mapping.description]
+					search_string = 'sourceRecord.description="%s"' % es_doc[dpla_mapping.description]
+
+				else:
+					logger.debug('DPLA mapping not found')
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
 
 			# check for search string at this point
 			if search_string:
 
 				# query based on title
-				api_r = requests.get(
-					'https://api.dp.la/v2/items?q="%s"&api_key=%s' % (search_string, settings.DPLA_API_KEY)).json()
+				api_q = requests.get(
+					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+
+				# attempt to parse as JSON
+				try:
+					api_r = api_q.json()
+				except:
+					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
 
 				# response
 				if api_r['count'] == 1:
@@ -930,11 +977,11 @@ class Record(models.Model):
 
 				# save to record instance and return
 				self.dpla_api_doc = dpla_api_doc
-				return dpla_api_doc
+				return self.dpla_api_doc
 
 		# return None by default
 		self.dpla_api_doc = None
-		return None
+		return self.dpla_api_doc
 
 
 
