@@ -82,3 +82,6 @@ COMBINE_DATABASE = {
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
+
+# DPLA API
+DPLA_API_KEY = None

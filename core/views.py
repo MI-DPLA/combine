@@ -983,12 +983,18 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		logger.debug('could not load job details')
 		job_details = {}
 
+	##############################################################################################################
+	# DPLA API testing
+	dpla_api_doc = record.dpla_api_record_match()
+	##############################################################################################################
+
 	# return
 	return render(request, 'core/record.html', {
 			'record_id':record_id,
 			'record':record,
 			'record_stages':record_stages,
-			'job_details':job_details
+			'job_details':job_details,
+			'dpla_api_doc':dpla_api_doc
 		})
 
 
