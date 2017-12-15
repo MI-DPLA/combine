@@ -67,9 +67,28 @@
 	</table>
 
 	<div style="margin-top:20px;"/>
-	
+
 	<!-- Indexing Records DT Table -->
 	{% include 'core/records_dt_table.html' %}
+
+	{% if cjob.job.jobvalidation_set.count > 0 %}
+		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ffe7f4;">
+			<h3>Validation Scenarios</h3>
+			<p>The following validation scenarios were run for this job:</p>
+			<table border="1" cellpadding="5">
+				<tr>
+					<th>Validation Name</th>
+					<th>Validation Type</th>
+				<tr>
+				{% for vs in cjob.job.jobvalidation_set.all %}			
+					<tr>
+						<td>{{ vs.validation_scenario.name }}</td>
+						<td>{{ vs.validation_scenario.validation_type }}</td>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+	{% endif %}
 
 	<h3>Indexed Field Analysis</h3>
 
