@@ -1173,14 +1173,34 @@ class DTRecordsJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
+		columns = [
+			'id',
+			'record_id',
+			'job',
+			'oai_set',
+			'unique',
+			'success',
+			'document',
+			'error',
+			'validation_results'
+		]
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
+		order_columns = [
+			'id',
+			'record_id',
+			'job',
+			'oai_set',
+			'unique',
+			'success',
+			'document',
+			'error',
+			'validation_results'
+		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -1199,7 +1219,7 @@ class DTRecordsJson(BaseDatatableView):
 
 
 		def render_column(self, row, column):
-			
+
 			# handle record_id
 			if column == 'record_id':
 				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
@@ -1209,7 +1229,7 @@ class DTRecordsJson(BaseDatatableView):
 					}), row.record_id)
 
 			# handle document
-			if column == 'document':
+			elif column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
@@ -1222,15 +1242,24 @@ class DTRecordsJson(BaseDatatableView):
 					return '<span style="color: red;">Invalid XML</span>'
 
 			# handle associated job
-			if column == 'job':
+			elif column == 'job':
 				return row.job.name
 
 			# handle unique
-			if column == 'unique':
+			elif column == 'unique':
 				if row.unique:
 					return '<span style="color:green;">Unique</span>'
 				else:
 					return '<span style="color:red;">Duplicate</span>'
+
+			# handle validation_results
+			elif column == 'validation_results':
+				# get validation failures
+				vfs = row.get_validation_errors()
+				if vfs.count() > 0:
+					return '<span style="color:red;">Failed</span>'
+				else:
+					return '<span style="color:green;">Passed</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
@@ -1246,6 +1275,7 @@ class DTRecordsJson(BaseDatatableView):
 
 			# return
 			return qs
+
 
 
 class DTPublishedJson(BaseDatatableView):

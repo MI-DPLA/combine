@@ -9,6 +9,7 @@
 		<th>Success</th>
 		<th>Document</th>
 		<th>Error</th>
+		<th>Validation Results</th>
 	</thead>
 	<tbody>
 	</tbody>
@@ -24,10 +25,15 @@
 			"pageLength": 10,
 			"createdRow": function( row, data, dataIndex){
                 if( data[5] ==  false){
-                    // $(row).addClass('error_record_row');
                     $(row).css('background-color','rgb(255, 241, 241)');
                 }
-            }
+            },
+            "columnDefs": [
+	            {
+					"targets": 8,
+					"orderable": false
+				}
+			]
 		});
 	});
 </script>

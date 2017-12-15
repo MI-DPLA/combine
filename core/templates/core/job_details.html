@@ -80,12 +80,14 @@
 					<th>Validation Name</th>
 					<th>Validation Type</th>
 					<th>Record Validation Failure Count</th>
+					<th>Actions</th>
 				<tr>
 				{% for jv in cjob.job.jobvalidation_set.all %}			
 					<tr>
 						<td>{{ jv.validation_scenario.name }}</td>
 						<td>{{ jv.validation_scenario.validation_type }}</td>
-						<td style="">{{ jv.validation_failure_count() }}</td>
+						<td>{{ jv.validation_failure_count }}</td>
+						<td><a target="_blank" href="#">See Failures</a>
 					</tr>
 				{% endfor %}
 			</table>

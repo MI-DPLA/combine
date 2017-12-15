@@ -987,6 +987,16 @@ class Record(models.Model):
 		return self.dpla_api_doc
 
 
+	def get_validation_errors(self):
+
+		'''
+		Return validation errors associated with this record
+		'''
+
+		vfs = RecordValidation.objects.filter(record=self)
+		return vfs
+
+
 
 class IndexMappingFailure(models.Model):
 
@@ -1203,7 +1213,8 @@ class JobValidation(models.Model):
 			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
 		'''
 
-		if not self.failure_count:
+		if self.failure_count is None:
+			logger.debug("failure count not found for %s, calculating" % self)
 			rvs = self.get_record_validation_failures()
 			self.failure_count = rvs.count()
 			self.save()
@@ -2521,7 +2532,6 @@ class HarvestOAIJob(HarvestJob):
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2772,7 +2782,6 @@ class HarvestStaticXMLJob(HarvestJob):
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2904,7 +2913,6 @@ class TransformJob(CombineJob):
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -3038,7 +3046,6 @@ class MergeJob(CombineJob):
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -3168,7 +3175,6 @@ class PublishJob(CombineJob):
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
