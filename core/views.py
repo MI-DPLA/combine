@@ -508,7 +508,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario', [])
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# initiate job
 		cjob = models.HarvestOAIJob(			
@@ -615,7 +615,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario', [])
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
@@ -701,7 +701,7 @@ def job_transform(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario', [])
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# initiate job
 		cjob = models.TransformJob(
@@ -780,7 +780,7 @@ def job_merge(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario', [])
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# initiate job
 		cjob = models.MergeJob(
@@ -858,7 +858,7 @@ def job_publish(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario', [])
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# initiate job
 		cjob = models.PublishJob(
