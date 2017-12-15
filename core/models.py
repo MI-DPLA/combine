@@ -1157,20 +1157,20 @@ class ValidationScenario(models.Model):
 
 
 
-# class RecordValidation(models.Model):
+class RecordValidation(models.Model):
 
-# 	'''
-# 	Model to manage validation tests associated with a Record	
-# 	'''
+	'''
+	Model to manage validation tests associated with a Record	
+	'''
 
-# 	name = models.CharField(max_length=255)
-# 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-# 	valid = models.BooleanField(default=1)
-# 	payload = models.TextField(null=True, default=None)
-# 	fail_count = models.IntegerField(null=True, default=None)
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL) # what kind of performance hit is this FK?
+	valid = models.BooleanField(default=1)
+	results_payload = models.TextField(null=True, default=None)
+	fail_count = models.IntegerField(null=True, default=None)
 
-# 	def __str__(self):
-# 		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
+	def __str__(self):
+		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
 
 
 
@@ -2328,7 +2328,7 @@ class HarvestJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			index_mapper (str): String of index mapper clsas from core.spark.es			
 
 		Returns:
 			None
@@ -2387,16 +2387,18 @@ class HarvestOAIJob(HarvestJob):
 		job_id=None,
 		index_mapper=None,
 		oai_endpoint=None,
-		overrides=None):
+		overrides=None,
+		validation_scenarios=None):
 
 		'''
 		Args:
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
 				overrides (dict): optional dictionary of overrides to OAI endpoint
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2420,6 +2422,7 @@ class HarvestOAIJob(HarvestJob):
 			# capture OAI specific args
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
+			self.validation_scenarios = validation_scenarios
 
 
 	def prepare_job(self):
@@ -2441,7 +2444,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -2449,7 +2452,8 @@ class HarvestOAIJob(HarvestJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
 		logger.debug(job_code)
@@ -2490,7 +2494,7 @@ class HarvestStaticXMLJob(HarvestJob):
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				static_payload (str): filepath of static payload on disk
 
 		Returns:

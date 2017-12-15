@@ -507,6 +507,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.get('validation_scenario')
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -515,7 +518,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
