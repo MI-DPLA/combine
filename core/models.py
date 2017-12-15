@@ -2497,6 +2497,7 @@ class HarvestStaticXMLJob(HarvestJob):
 			
 			HarvestOAIJob args (extending HarvestJob args)
 				static_payload (str): filepath of static payload on disk
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2740,6 +2741,7 @@ class TransformJob(CombineJob):
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2867,6 +2869,7 @@ class MergeJob(CombineJob):
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2984,6 +2987,7 @@ class PublishJob(CombineJob):
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None

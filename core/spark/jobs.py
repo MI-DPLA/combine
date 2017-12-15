@@ -44,7 +44,7 @@ class AmbiguousIdentifier(Exception):
 
 
 ####################################################################
-# Combine Record Schema											   #
+# Dataframe Schemas 											   #
 ####################################################################
 
 class CombineRecordSchema(object):
@@ -65,6 +65,29 @@ class CombineRecordSchema(object):
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False)
+			]
+		)
+
+		# fields
+		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
+
+
+
+class CombineRecordValidationSchema(object):
+
+	'''
+	Class to organize Combine specific spark dataframe schemas
+	'''
+
+	def __init__(self):
+
+		# schema for Combine records
+		self.schema = StructType([
+				StructField('validation_scenario_id', IntegerType(), False),
+				StructField('record_id', IntegerType(), False),
+				StructField('valid', BooleanType(), False),
+				StructField('results_payload', StringType(), True),
+				StructField('fail_count', IntegerType(), False),
 			]
 		)
 
@@ -845,14 +868,15 @@ def run_record_validation_scenarios(spark=None, job=None, records_df=None, valid
 		# run udf map
 		vs_id = vs.id
 		vs_filepath = vs.filepath
-		validation_fails_df = records_df.rdd.map(lambda row: validate_udf(vs_id, vs_filepath, row))
+		validation_fails_rdd = records_df.rdd.map(lambda row: validate_udf(vs_id, vs_filepath, row)).filter(lambda row: row is not None)
 
-		# write to DB
-		validation_fails_df.toDF().write.jdbc(
-			settings.COMBINE_DATABASE['jdbc_url'],
-			'core_recordvalidation',
-			properties=settings.COMBINE_DATABASE,
-			mode='append')
+		# write to DB if validation failures
+		if not validation_fails_rdd.isEmpty():
+			validation_fails_rdd.toDF().write.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_recordvalidation',
+				properties=settings.COMBINE_DATABASE,
+				mode='append')
 
 
 def get_job_db_bounds(job):
