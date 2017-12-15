@@ -1165,16 +1165,51 @@ class JobValidation(models.Model):
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	validation_scenario = models.ForeignKey(ValidationScenario, on_delete=models.CASCADE)
-	failure_count = models.IntegerField(null=True, default=0)
+	failure_count = models.IntegerField(null=True, default=None)
+
+	def __str__(self):
+		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (self.id, self.job.id, self.validation_scenario.id, self.failure_count)
 
 
 	def get_record_validation_failures(self):
 
 		'''
 		Method to return records, for this job, with validation errors
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
+		'''
+		stime = time.time()
+		rvs = RecordValidation.objects\
+			.filter(validation_scenario=self.validation_scenario)\
+			.filter(record__job=self.job)
+		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
+		return rvs
+
+
+	def validation_failure_count(self):
+
+		'''
+		Method to count, set, and return failure count for this job validation
+			- set self.failure_count if not set
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
 		'''
 
-		return RecordValidation.objects.filter(validation_scenario=self.validation_scenario).filter(record__job=self.job)
+		if not self.failure_count:
+			rvs = self.get_record_validation_failures()
+			self.failure_count = rvs.count()
+			self.save()
+
+		# return count
+		return self.failure_count
 
 
 

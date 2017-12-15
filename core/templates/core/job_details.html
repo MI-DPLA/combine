@@ -75,15 +75,17 @@
 		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ffe7f4;">
 			<h3>Validation Scenarios</h3>
 			<p>The following validation scenarios were run for this job:</p>
-			<table border="1" cellpadding="5">
+			<table border="1" cellpadding="5" style="background-color:white;">
 				<tr>
 					<th>Validation Name</th>
 					<th>Validation Type</th>
+					<th>Record Validation Failure Count</th>
 				<tr>
-				{% for vs in cjob.job.jobvalidation_set.all %}			
+				{% for jv in cjob.job.jobvalidation_set.all %}			
 					<tr>
-						<td>{{ vs.validation_scenario.name }}</td>
-						<td>{{ vs.validation_scenario.validation_type }}</td>
+						<td>{{ jv.validation_scenario.name }}</td>
+						<td>{{ jv.validation_scenario.validation_type }}</td>
+						<td style="">{{ jv.validation_failure_count() }}</td>
 					</tr>
 				{% endfor %}
 			</table>
