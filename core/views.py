@@ -614,6 +614,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.get('validation_scenario', [])
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -621,7 +624,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			user=request.user,
 			record_group=record_group,
 			index_mapper=index_mapper,
-			payload_dict=payload_dict
+			payload_dict=payload_dict,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -696,6 +700,9 @@ def job_transform(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.get('validation_scenario', [])
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -704,7 +711,8 @@ def job_transform(request, org_id, record_group_id):
 			record_group=record_group,
 			input_job=input_job,
 			transformation=transformation,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -771,6 +779,9 @@ def job_merge(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.get('validation_scenario', [])
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -778,7 +789,8 @@ def job_merge(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -845,6 +857,9 @@ def job_publish(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.get('validation_scenario', [])
+
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
@@ -852,7 +867,8 @@ def job_publish(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
