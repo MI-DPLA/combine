@@ -467,10 +467,14 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# retrieve all OAI endoints
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
 		# render page
 		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -535,6 +539,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 	
+	# get validation scenarios
+	validation_scenarios = models.ValidationScenario.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -542,6 +548,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# render page
 		return render(request, 'core/job_harvest_static_xml.html', {
 				'record_group':record_group,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -641,7 +648,10 @@ def job_transform(request, org_id, record_group_id):
 		jobs = record_group.job_set.all()	
 
 		# get all transformation scenarios
-		transformations = models.Transformation.objects.all()	
+		transformations = models.Transformation.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# render page
 		return render(request, 'core/job_transform.html', {
@@ -649,6 +659,7 @@ def job_transform(request, org_id, record_group_id):
 				'record_group':record_group,
 				'jobs':jobs,
 				'transformations':transformations,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -719,11 +730,15 @@ def job_merge(request, org_id, record_group_id):
 		# retrieve all jobs
 		jobs = models.Job.objects.all()
 
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
 				'record_group':record_group,
 				'jobs':jobs,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -786,15 +801,18 @@ def job_publish(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs for this record group
-		# jobs = record_group.job_set.all()
+		# retrieve all jobs for this record group		
 		jobs = models.Job.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
 				'jobs':jobs,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 

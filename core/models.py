@@ -1135,20 +1135,42 @@ class DPLAJobMap(models.Model):
 		return {v: k for k, v in mapped_fields.items()}
 
 
-class RecordValidation(models.Model):
+
+class ValidationScenario(models.Model):
 
 	'''
-	Model to manage validation tests associated with a Record	
+	Model to handle validation scenarios used to validate records.
 	'''
 
 	name = models.CharField(max_length=255)
-	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	valid = models.BooleanField(default=1)
-	payload = models.TextField(null=True, default=None)
-	fail_count = models.IntegerField(null=True, default=None)
+	payload = models.TextField()
+	validation_type = models.CharField(
+		max_length=255,
+		choices=[('sch','Schematron'),('python','Python Code Snippet')]
+	)
+	filepath = models.CharField(max_length=1024, null=True, default=None)
+	default_run = models.BooleanField(default=1)
+	
 
 	def __str__(self):
-		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
+		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+
+
+
+# class RecordValidation(models.Model):
+
+# 	'''
+# 	Model to manage validation tests associated with a Record	
+# 	'''
+
+# 	name = models.CharField(max_length=255)
+# 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+# 	valid = models.BooleanField(default=1)
+# 	payload = models.TextField(null=True, default=None)
+# 	fail_count = models.IntegerField(null=True, default=None)
+
+# 	def __str__(self):
+# 		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
 
 
 
@@ -1358,6 +1380,44 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 	else:
 		logger.debug('currently only xslt style transformations accepted')
 
+
+@receiver(models.signals.pre_save, sender=ValidationScenario)
+def save_validation_scenario_to_disk(sender, instance, **kwargs):
+
+	'''
+	When users enter a payload for a validation scenario, write to disk for use in Spark context
+
+	Args:
+		sender (auth.models.ValidationScenario): class
+		user (auth.models.ValidationScenario): instance
+		kwargs: not used
+	'''
+
+	# check that transformation directory exists
+	validations_dir = '%s/validation' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+	if not os.path.exists(validations_dir):
+		os.mkdir(validations_dir)
+
+	# if previously written to disk, remove
+	if instance.filepath:
+		try:
+			os.remove(instance.filepath)
+		except:
+			logger.debug('could not remove validation scenario file: %s' % instance.filepath)
+
+	# write Schematron type validation to disk
+	if instance.validation_type == 'sch':
+		filename = uuid.uuid4().hex
+
+		filepath = '%s/%s.sch' % (validations_dir, filename)
+		with open(filepath, 'w') as f:
+			f.write(instance.payload)
+
+		# update filepath
+		instance.filepath = filepath
+
+	else:
+		logger.debug('currently only schematron style validations accepted')
 
 
 ####################################################################
