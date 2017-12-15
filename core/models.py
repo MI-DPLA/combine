@@ -1157,6 +1157,17 @@ class ValidationScenario(models.Model):
 
 
 
+class JobValidation(models.Model):
+
+	'''
+	Model to record one-to-many relationship between jobs and validation scenarios run against its records
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, on_delete=models.CASCADE)
+
+
+
 class RecordValidation(models.Model):
 
 	'''
@@ -1170,7 +1181,7 @@ class RecordValidation(models.Model):
 	fail_count = models.IntegerField(null=True, default=None)
 
 	def __str__(self):
-		return '%s, RecordValidation #%s, for Record #: %s' % (self.name, self.id, self.record.id)
+		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
 
 
 
@@ -2424,6 +2435,15 @@ class HarvestOAIJob(HarvestJob):
 			self.overrides = overrides
 			self.validation_scenarios = validation_scenarios
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2527,6 +2547,15 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# get validation scenarios
 			self.validation_scenarios = validation_scenarios
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_static_files(self):
@@ -2796,6 +2825,15 @@ class TransformJob(CombineJob):
 			job_input_link = JobInput(job=self.job, input_job=self.input_job)
 			job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2922,6 +2960,15 @@ class MergeJob(CombineJob):
 				job_input_link = JobInput(job=self.job, input_job=input_job)
 				job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -3042,6 +3089,15 @@ class PublishJob(CombineJob):
 			# save publishing link from job to record_group
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_job(self):
