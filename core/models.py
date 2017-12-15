@@ -1165,6 +1165,16 @@ class JobValidation(models.Model):
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	validation_scenario = models.ForeignKey(ValidationScenario, on_delete=models.CASCADE)
+	failure_count = models.IntegerField(null=True, default=0)
+
+
+	def get_record_validation_failures(self):
+
+		'''
+		Method to return records, for this job, with validation errors
+		'''
+
+		return RecordValidation.objects.filter(validation_scenario=self.validation_scenario).filter(record__job=self.job)
 
 
 
