@@ -816,6 +816,11 @@ def run_record_validation_scenarios(spark=None, job=None, records_df=None, valid
 		validation_fails_df = records_df.rdd.map(lambda row: validate_udf(vs_id, vs_filepath, row))
 
 		# write to DB
+		validation_fails_df.toDF().write.jdbc(
+			settings.COMBINE_DATABASE['jdbc_url'],
+			'core_recordvalidation',
+			properties=settings.COMBINE_DATABASE,
+			mode='append')
 
 
 def get_job_db_bounds(job):

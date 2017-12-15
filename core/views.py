@@ -508,7 +508,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 		index_mapper = request.POST.get('index_mapper')
 
 		# get requested validation scenarios
-		validation_scenarios = request.POST.get('validation_scenario')
+		validation_scenarios = request.POST.get('validation_scenario', [])
 
 		# initiate job
 		cjob = models.HarvestOAIJob(			
