@@ -359,11 +359,19 @@ class HarvestStaticXMLSpark(object):
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records.toDF()
+		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		run_record_validation_scenarios(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
 
 		# remove temporary payload directory if static job was upload based, not location on disk
@@ -478,11 +486,19 @@ class TransformSpark(object):
 		records_trans = records_trans.toDF()
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records_trans
+		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		run_record_validation_scenarios(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
 
 		# finally, update finish_timestamp of job_track instance
@@ -571,11 +587,19 @@ class MergeSpark(object):
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=agg_df
+		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		run_record_validation_scenarios(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
 
 		# finally, update finish_timestamp of job_track instance
@@ -656,12 +680,20 @@ class PublishSpark(object):
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records,
 			write_avro=False
+		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		run_record_validation_scenarios(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
 
 		# index to ES /published
