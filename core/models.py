@@ -1236,8 +1236,22 @@ class RecordValidation(models.Model):
 	results_payload = models.TextField(null=True, default=None)
 	fail_count = models.IntegerField(null=True, default=None)
 
+
 	def __str__(self):
 		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
+
+
+	@property
+	def failures(self):
+
+		# if not set, set
+		if not hasattr(self, '_failures'):
+			self._failures = json.loads(self.results_payload)['failures']
+
+		# return
+		return self._failures
+
+
 
 
 

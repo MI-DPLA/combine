@@ -984,6 +984,22 @@ def field_analysis_docs(request, es_index, filter_type):
 		})
 
 
+@login_required
+def job_validation_scenario_failures(request, org_id, record_group_id, job_id, job_validation_id):
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# get job validation instance
+	jv = models.JobValidation.objects.get(pk=int(job_validation_id))
+
+	# return
+	return render(request, 'core/job_validation_scenario_failures.html', {
+			'cjob':cjob,
+			'jv':jv,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
 
 ####################################################################
 # Records 														   #
@@ -1438,6 +1454,69 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				qs = qs.filter(Q(record_id__contains=search))
 
 			return qs
+
+
+class DTJobValidationScenarioFailuresJson(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'record',
+			'results_payload',
+			'fail_count'
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'record',
+			'results_payload',
+			'fail_count'
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			jv = models.JobValidation.objects.get(pk=self.kwargs['job_validation_id'])
+
+			# return filtered queryset
+			return jv.get_record_validation_failures()
+
+
+		def render_column(self, row, column):
+
+			# handle record
+			if column == 'record':
+				return 'record!'
+
+			# handle all else
+			else:
+				return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
+
+
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
+
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
+
+		# 	# return
+		# 	return qs
 
 
 
