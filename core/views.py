@@ -1464,7 +1464,8 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 		# define the columns that will be returned
 		columns = [
-			'record',
+			'id',
+			'record_id',
 			'results_payload',
 			'fail_count'
 		]
@@ -1475,7 +1476,8 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
-			'record',
+			'id',
+			'record_id',
 			'results_payload',
 			'fail_count'
 		]
@@ -1498,9 +1500,32 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle record
-			if column == 'record':
-				return 'record!'
+			# handle record id
+			if column == 'id':
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.id)
+
+			# handle record record_id
+			elif column == 'record_id':
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.record_id)
+
+			# handle results_payload
+			elif column == 'results_payload':
+				rp = json.loads(row.results_payload)['failures']
+				return ', '.join(rp)
 
 			# handle all else
 			else:
