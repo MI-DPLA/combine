@@ -2455,7 +2455,7 @@ class HarvestOAIJob(HarvestJob):
 		index_mapper=None,
 		oai_endpoint=None,
 		overrides=None,
-		validation_scenarios=None):
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2563,7 +2563,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		job_id=None,
 		index_mapper=None,
 		payload_dict=None,
-		validation_scenarios=None):
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2812,7 +2812,7 @@ class TransformJob(CombineJob):
 		transformation=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=None):
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2949,7 +2949,7 @@ class MergeJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=None):
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -3075,7 +3075,7 @@ class PublishJob(CombineJob):
 		input_job=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=None):
+		validation_scenarios=[]):
 
 		'''
 		Args:
