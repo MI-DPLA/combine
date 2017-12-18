@@ -1,0 +1,74 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Job Validation Scenario Failures: <code>{{ jv.validation_scenario.name }}</code></h3>
+
+	<p>The following records had failures for the Validation Scenario, "{{ jv.validation_scenario.name }}".  Click a record to see record details, including breakdown of each validation failure.</p> 
+
+	<!-- DataTable of Record Failures for this Job, for this Validation Scenario -->
+	<table id='datatables_job_validation_scenario_failures' border="1" cellpadding="5">
+		<thead>
+			<th>Combine ID</th>
+			<th>Record ID</th>
+			<th>Failed Tests</th>
+			<th>Failure Count</th>
+		</thead>
+		<tbody></tbody>
+	</table>
+
+
+	<script>
+
+		$(document).ready(function() {
+		    var oTable = $('#datatables_job_validation_scenario_failures').dataTable({
+		        "processing": true,
+		        "serverSide": true,
+		        "ajax": "{% url 'job_validation_scenario_failures_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}",
+		        "searchDelay": 1000,
+		        "pageLength": 10,
+		        "order": [[ 1, "desc" ]],
+		        "columns": [
+		            { 
+		            	title: "Combine ID",
+		            	// "render": function ( data, type, row ) {
+		             //        return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
+		             //    }
+	            	},
+		            { 
+		            	title: "Record ID",
+		            	// "render": function ( data, type, row ) {
+		             //        return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
+		             //    }
+		            },
+		            {
+		            	title: "Validation Results Payload",
+		            	// "render": function ( data, type, row ) {
+		             //        if (!row[5]){
+		             //        	return "<span style='color:red;'>None</span>";
+		             //        }
+		             //        else {
+		             //        	return row[5];
+		             //        }
+		             //    }
+		            	
+		            },
+		            {
+		            	title: "Failure Count",
+		            	// "render": function ( data, type, row ) {
+		             //        if (!row[5]){
+		             //        	return "<span style='color:red;'>None</span>";
+		             //        }
+		             //        else {
+		             //        	return row[5];
+		             //        }
+		             //    }
+		            	
+		            }
+		        ],
+		    });
+		});
+	</script>
+
+
+{% endblock %}

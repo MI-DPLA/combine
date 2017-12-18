@@ -1,0 +1,11 @@
+{% block content %}
+
+	<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ffe7f4;">
+		<p><strong>Select Record Validations</strong></p>
+		<p>When running jobs, optionally select validation scenarios to run against each record in the job.  The results from these validations will be saved and associated with each record.</p>
+		{% for vs in validation_scenarios %}
+			<input type="checkbox" name="validation_scenario" value="{{ vs.id }}" {% if vs.default_run %}checked{% endif %}>{{ vs.name }}</input>
+		{% endfor %}
+	</div>
+
+{% endblock %}

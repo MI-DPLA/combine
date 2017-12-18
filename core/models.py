@@ -695,7 +695,10 @@ class Transformation(models.Model):
 
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
-	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
+	transformation_type = models.CharField(
+		max_length=255,
+		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+	)
 	filepath = models.CharField(max_length=1024, null=True, default=None)
 	
 
@@ -984,6 +987,16 @@ class Record(models.Model):
 		return self.dpla_api_doc
 
 
+	def get_validation_errors(self):
+
+		'''
+		Return validation errors associated with this record
+		'''
+
+		vfs = RecordValidation.objects.filter(record=self)
+		return vfs
+
+
 
 class IndexMappingFailure(models.Model):
 
@@ -1130,6 +1143,115 @@ class DPLAJobMap(models.Model):
 
 		# invert and return
 		return {v: k for k, v in mapped_fields.items()}
+
+
+
+class ValidationScenario(models.Model):
+
+	'''
+	Model to handle validation scenarios used to validate records.
+	'''
+
+	name = models.CharField(max_length=255)
+	payload = models.TextField()
+	validation_type = models.CharField(
+		max_length=255,
+		choices=[('sch','Schematron'),('python','Python Code Snippet')]
+	)
+	filepath = models.CharField(max_length=1024, null=True, default=None)
+	default_run = models.BooleanField(default=1)
+	
+
+	def __str__(self):
+		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+
+
+
+class JobValidation(models.Model):
+
+	'''
+	Model to record one-to-many relationship between jobs and validation scenarios run against its records
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, on_delete=models.CASCADE)
+	failure_count = models.IntegerField(null=True, default=None)
+
+	def __str__(self):
+		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (self.id, self.job.id, self.validation_scenario.id, self.failure_count)
+
+
+	def get_record_validation_failures(self):
+
+		'''
+		Method to return records, for this job, with validation errors
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
+		'''
+		stime = time.time()
+		rvs = RecordValidation.objects\
+			.filter(validation_scenario=self.validation_scenario)\
+			.filter(record__job=self.job)
+		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
+		return rvs
+
+
+	def validation_failure_count(self):
+
+		'''
+		Method to count, set, and return failure count for this job validation
+			- set self.failure_count if not set
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
+		'''
+
+		if self.failure_count is None:
+			logger.debug("failure count not found for %s, calculating" % self)
+			rvs = self.get_record_validation_failures()
+			self.failure_count = rvs.count()
+			self.save()
+
+		# return count
+		return self.failure_count
+
+
+
+class RecordValidation(models.Model):
+
+	'''
+	Model to manage validation tests associated with a Record	
+	'''
+
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL) # what kind of performance hit is this FK?
+	valid = models.BooleanField(default=1)
+	results_payload = models.TextField(null=True, default=None)
+	fail_count = models.IntegerField(null=True, default=None)
+
+
+	def __str__(self):
+		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
+
+
+	@property
+	def failures(self):
+
+		# if not set, set
+		if not hasattr(self, '_failures'):
+			self._failures = json.loads(self.results_payload)['failures']
+
+		# return
+		return self._failures
+
+
 
 
 
@@ -1339,6 +1461,44 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 	else:
 		logger.debug('currently only xslt style transformations accepted')
 
+
+@receiver(models.signals.pre_save, sender=ValidationScenario)
+def save_validation_scenario_to_disk(sender, instance, **kwargs):
+
+	'''
+	When users enter a payload for a validation scenario, write to disk for use in Spark context
+
+	Args:
+		sender (auth.models.ValidationScenario): class
+		user (auth.models.ValidationScenario): instance
+		kwargs: not used
+	'''
+
+	# check that transformation directory exists
+	validations_dir = '%s/validation' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+	if not os.path.exists(validations_dir):
+		os.mkdir(validations_dir)
+
+	# if previously written to disk, remove
+	if instance.filepath:
+		try:
+			os.remove(instance.filepath)
+		except:
+			logger.debug('could not remove validation scenario file: %s' % instance.filepath)
+
+	# write Schematron type validation to disk
+	if instance.validation_type == 'sch':
+		filename = uuid.uuid4().hex
+
+		filepath = '%s/%s.sch' % (validations_dir, filename)
+		with open(filepath, 'w') as f:
+			f.write(instance.payload)
+
+		# update filepath
+		instance.filepath = filepath
+
+	else:
+		logger.debug('currently only schematron style validations accepted')
 
 
 ####################################################################
@@ -2249,7 +2409,7 @@ class HarvestJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			index_mapper (str): String of index mapper clsas from core.spark.es			
 
 		Returns:
 			None
@@ -2308,16 +2468,18 @@ class HarvestOAIJob(HarvestJob):
 		job_id=None,
 		index_mapper=None,
 		oai_endpoint=None,
-		overrides=None):
+		overrides=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
 				overrides (dict): optional dictionary of overrides to OAI endpoint
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2341,6 +2503,16 @@ class HarvestOAIJob(HarvestJob):
 			# capture OAI specific args
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
+			self.validation_scenarios = validation_scenarios
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_job(self):
@@ -2362,7 +2534,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -2370,10 +2542,10 @@ class HarvestOAIJob(HarvestJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2404,15 +2576,17 @@ class HarvestStaticXMLJob(HarvestJob):
 		record_group=None,
 		job_id=None,
 		index_mapper=None,
-		payload_dict=None):
+		payload_dict=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				static_payload (str): filepath of static payload on disk
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2439,6 +2613,18 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# prepare static files
 			self.prepare_static_files()
+
+			# get validation scenarios
+			self.validation_scenarios = validation_scenarios
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_static_files(self):
@@ -2599,17 +2785,17 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
 				'xpath_document_root':self.payload_dict['xpath_document_root'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2639,7 +2825,8 @@ class TransformJob(CombineJob):
 		input_job=None,
 		transformation=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2651,6 +2838,7 @@ class TransformJob(CombineJob):
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2671,6 +2859,7 @@ class TransformJob(CombineJob):
 			self.input_job = input_job
 			self.transformation = transformation
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2704,6 +2893,15 @@ class TransformJob(CombineJob):
 			job_input_link = JobInput(job=self.job, input_job=self.input_job)
 			job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2720,15 +2918,15 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2764,7 +2962,8 @@ class MergeJob(CombineJob):
 		record_group=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2775,6 +2974,7 @@ class MergeJob(CombineJob):
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2794,6 +2994,7 @@ class MergeJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2826,6 +3027,15 @@ class MergeJob(CombineJob):
 				job_input_link = JobInput(job=self.job, input_job=input_job)
 				job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2842,14 +3052,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2878,7 +3088,8 @@ class PublishJob(CombineJob):
 		record_group=None,
 		input_job=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2889,6 +3100,7 @@ class PublishJob(CombineJob):
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2908,6 +3120,7 @@ class PublishJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2943,6 +3156,15 @@ class PublishJob(CombineJob):
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2959,14 +3181,14 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)

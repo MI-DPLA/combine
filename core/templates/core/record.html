@@ -14,10 +14,10 @@
 		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
 	</ul>
 
-	<h3>DPLA Mappings</h3>
-
 	<!-- Show DPLA Mapped Fields if present -->
 	{% if record.dpla_mapped_field_values %}
+
+		<h3>DPLA Mappings</h3>
 
 		<div style="background-color:#E4E4E3; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
 			<h3>Combine --> DPLA Mapped Fields</h3>
@@ -48,6 +48,34 @@
 			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">DPLA item record</a></p>
 		</div>
 
+	{% endif %}	
+
+	<!-- Record Validations -->
+	{% if record.job.jobvalidation_set.count > 0 %}
+		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:{% if record.get_validation_errors.count > 0 %}#ffe7f4{% else %}#e0ffdf{% endif %}">
+			<h3>Record Validation </h3>
+			{% if record.get_validation_errors.count > 0 %}			
+				<p>Validation scenarios were run for this job, the following are failed assertions:
+				<table border="1" cellpadding="10" style="background-color:white;">
+					<tr>
+						<th>Validation Scenario</th>
+						<th>Assertion Failure</th>
+						<th>Actions</th>
+					</tr>
+					{% for rv in record.get_validation_errors %}
+						{% for failure in rv.failures %}
+							<tr>
+								<td>{{ rv.validation_scenario.name }}</td>
+								<td>{{ failure }}</td>
+								<td><a target="_blank" href="{% url 'record_validation_scenario' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id job_validation_id=rv.validation_scenario.id %}">Run Validation</a></td>
+							</tr>
+						{% endfor %}
+					{% endfor %}
+				</table>
+			{% else %}
+				<p>All validation tests passed!</p>
+			{% endif %}
+		</div>
 	{% endif %}
 
 	<h3>Record Stages</h3>
