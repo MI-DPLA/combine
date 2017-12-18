@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import logging
-from lxml import etree
+from lxml import etree, isoschematron
 import os
 import re
 import requests
@@ -1076,6 +1076,40 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 
 	# return document as XML
 	return HttpResponse("<pre>%s</pre>" % record.error)
+
+
+def record_validation_scenario(request, org_id, record_group_id, job_id, record_id, job_validation_id):
+
+	'''
+	Re-run validation test for single record
+
+	Returns:
+		results of validation
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# get validation scenario
+	vs = models.ValidationScenario.objects.get(pk=int(job_validation_id))
+
+	# get validation type
+	if vs.validation_type == 'sch':
+		logger.debug('schematron validation detected, running')
+
+		# re-run validation
+		# parse schematron
+		sct_doc = etree.parse(vs.filepath)
+		validator = isoschematron.Schematron(sct_doc, store_report=True)
+
+		# get document xml
+		record_xml = etree.fromstring(record.document.encode('utf-8'))
+
+		# validate
+		is_valid = validator.validate(record_xml)
+
+	# return
+	return HttpResponse(etree.tostring(validator.validation_report).decode('utf-8'), content_type='text/xml')
 
 
 ####################################################################
