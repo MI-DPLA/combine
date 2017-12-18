@@ -760,6 +760,10 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	# ensure columns to avro and DB
 	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
+	# write avro, coalescing for output
+	if write_avro:
+		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION).write.format("com.databricks.spark.avro").save(job.job_output)
+
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
 		settings.COMBINE_DATABASE['jdbc_url'],
@@ -779,7 +783,7 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 			numPartitions=settings.SPARK_REPARTITION
 		)
 	job_id = job.id
-	db_records = sqldf.filter(sqldf.job_id == job_id)
+	db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
 	# index to ElasticSearch
 	if settings.INDEX_TO_ES:
@@ -789,10 +793,6 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 			records_df=db_records,
 			index_mapper=kwargs['index_mapper']
 		)
-
-	# write avro, coalescing default 200 partitions to 4 for output
-	if write_avro:
-		db_records.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
 
 	# return db_records for later use
 	return db_records
