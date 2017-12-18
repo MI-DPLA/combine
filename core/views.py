@@ -1490,6 +1490,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			return qs
 
 
+
 class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 		'''

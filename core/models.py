@@ -940,12 +940,12 @@ class Record(models.Model):
 				# title
 				elif dpla_mapping.title:
 					logger.debug('title mapping found, using')
-					search_string = 'sourceRecord.title="%s"' % es_doc[dpla_mapping.title]
+					search_string = 'sourceResource.title="%s"' % es_doc[dpla_mapping.title]
 
 				# description
 				elif dpla_mapping.description:
 					logger.debug('description mapping found, using')
-					search_string = 'sourceRecord.description="%s"' % es_doc[dpla_mapping.description]
+					search_string = 'sourceResource.description="%s"' % es_doc[dpla_mapping.description]
 
 				else:
 					logger.debug('DPLA mapping not found')
@@ -967,15 +967,20 @@ class Record(models.Model):
 					self.dpla_api_doc = None
 					return self.dpla_api_doc
 
-				# response
-				if api_r['count'] == 1:
-					dpla_api_doc = api_r['docs'][0]		
-					logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
-				elif api_r['count'] > 1:
-					logger.debug('multiple hits for DPLA API query')
-					dpla_api_doc = None
+				# if count present
+				if 'count' in api_r.keys():
+					# response
+					if api_r['count'] == 1:
+						dpla_api_doc = api_r['docs'][0]		
+						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+					elif api_r['count'] > 1:
+						logger.debug('multiple hits for DPLA API query')
+						dpla_api_doc = None
+					else:
+						logger.debug('no matches found')
+						dpla_api_doc = None
 				else:
-					logger.debug('no matches found')
+					logger.debug(api_r)
 					dpla_api_doc = None
 
 				# save to record instance and return
