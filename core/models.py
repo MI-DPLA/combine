@@ -898,10 +898,17 @@ class Record(models.Model):
 		mapped_fields = self.job.dpla_mapping.mapped_fields()
 
 		if mapped_fields:
+			
 			# get elasticsearch doc
 			es_doc = self.get_es_doc()
+			
 			# loop through and use mapped key for es doc
-			return { k:str(es_doc[v]) for k,v in mapped_fields.items() }
+			mapped_values = {}
+			for k,v in mapped_fields.items():
+				val = es_doc.get(v, None)
+				if val:
+					mapped_values[k] = es_doc[v]
+
 		else:
 			return None
 
@@ -1209,39 +1216,32 @@ class ValidationScenario(models.Model):
 		is_valid = validator.validate(record_xml)
 
 		# if not valid, prepare fail dict
-		if not is_valid:
+		if not is_valid and not raw_schematron_response:
 
-			# if not raw schematron response, grab failures
-			if not raw_schematron_response:
+			# prepare fail_dict
+			fail_dict = {
+				'count':0,
+				'failures':[]
+			}
 
-				# prepare fail_dict
-				fail_dict = {
-					'count':0,
-					'failures':[]
-				}
+			# get failures
+			report_root = validator.validation_report.getroot()
+			fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
 
-				# get failures
-				report_root = validator.validation_report.getroot()
-				fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
+			# log count
+			fail_dict['count'] = len(fails)
 
-				# log count
-				fail_dict['count'] = len(fails)
+			# loop through fails and add to dictionary
+			for fail in fails:
+				fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+				fail_dict['failures'].append(fail_text_elem.text)
 
-				# loop through fails and add to dictionary
-				for fail in fails:
-					fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
-					fail_dict['failures'].append(fail_text_elem.text)
-
-				# return fail_dict
-				return fail_dict
-
-			# if raw response, return
-			else:
-				return etree.tostring(validator.validation_report).decode('utf-8')
+			# return fail_dict
+			return fail_dict
 
 		# if valid, return None
 		else:
-			return None
+			return etree.tostring(validator.validation_report).decode('utf-8')
 
 
 	def _validate_python(self, row):
@@ -1261,9 +1261,10 @@ class ValidationScenario(models.Model):
 		# instantiate prvb
 		prvb = PythonRecordValidationBase(row)
 
-		# prepare fail_dict
-		fail_dict = {
+		# prepare results_dict
+		results_dict = {
 			'count':0,
+			'success':[],
 			'failures':[]
 		}
 
@@ -1278,20 +1279,19 @@ class ValidationScenario(models.Model):
 
 				# if fail, append
 				if test_result != True:
-					fail_dict['count'] += 1
-					fail_dict['failures'].append(test_result)
+					results_dict['count'] += 1
+					results_dict['failures'].append(test_result)
+
+				# if success, paste funce to success
+				else:
+					results_dict['success'].append(func.__name__)
 
 			# if problem, report as failure with Exception string
 			except Exception as e:
-				fail_dict['count'] += 1
-				fail_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+				results_dict['count'] += 1
+				results_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
-		# if validation failures, return fail dictionary
-		if fail_dict['count'] > 0:
-			return fail_dict
-		# if no validation failures, return None
-		else:
-			return None
+		return results_dict
 
 
 

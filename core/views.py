@@ -1182,6 +1182,11 @@ def validation_scenario_payload(request, vs_id):
 		return HttpResponse(vs.payload, content_type='text/plain')
 
 
+@login_required
+def test_validation_scenario(request):
+
+	# return
+	return render(request, 'core/test_validation_scenario.html', {})
 
 
 ####################################################################
@@ -1278,11 +1283,16 @@ class DTRecordsJson(BaseDatatableView):
 			
 			# return queryset used as base for futher sorting/filtering
 			
-			# get job
-			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+			# if job present, filter by job
+			if 'job_id' in self.kwargs.keys():
+				# get job
+				job = models.Job.objects.get(pk=self.kwargs['job_id'])
+				# return filtered queryset
+				return models.Record.objects.filter(job=job)
 
-			# return filtered queryset
-			return models.Record.objects.filter(job=job)
+			# else, return all records
+			else:
+				return models.Record.objects
 
 
 		def render_column(self, row, column):

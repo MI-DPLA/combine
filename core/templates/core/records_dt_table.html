@@ -16,12 +16,17 @@
 </table>
 
 <script>
+
+	/*
+	If template variable `cjob` is present, return records for that job.
+	Else, return all records.
+	*/
 	$(document).ready(function() {
 		var oTable = $('#datatables_records').dataTable({
 			"processing": true,
 			"serverSide": true,
-			"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
-			"searchDelay": 1000,
+			"ajax": "{% if cjob %}{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}{% else %}{% url 'all_records_dt_json' %}{% endif %}",
+			"searchDelay": 1500,
 			"pageLength": 10,
 			"createdRow": function( row, data, dataIndex){
                 if( data[5] ==  false){
