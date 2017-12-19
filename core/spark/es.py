@@ -172,6 +172,9 @@ class BaseMapper(object):
 	'''
 	All mappers extend this BaseMapper class.
 
+	Note: Not currently implementing any attributes or methods at this base class,
+	but may in the future.
+
 	Mappers expected to contain following methods:
 		- map_record():
 			- sets self.mapped_record, and returns instance of self
