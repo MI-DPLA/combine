@@ -371,12 +371,13 @@ class HarvestStaticXMLSpark(object):
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
-		run_record_validation_scenarios(
+		vs = ValidationScenarioSpark(
 			spark=spark,
 			job=job,
 			records_df=db_records,
 			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
+		vs.run_record_validation_scenarios()
 
 		# remove temporary payload directory if static job was upload based, not location on disk
 		if kwargs['static_type'] == 'upload':
@@ -498,12 +499,13 @@ class TransformSpark(object):
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
-		run_record_validation_scenarios(
+		vs = ValidationScenarioSpark(
 			spark=spark,
 			job=job,
 			records_df=db_records,
 			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -599,12 +601,13 @@ class MergeSpark(object):
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
-		run_record_validation_scenarios(
+		vs = ValidationScenarioSpark(
 			spark=spark,
 			job=job,
 			records_df=db_records,
 			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -693,12 +696,13 @@ class PublishSpark(object):
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
-		run_record_validation_scenarios(
+		vs = ValidationScenarioSpark(
 			spark=spark,
 			job=job,
 			records_df=db_records,
 			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
+		vs.run_record_validation_scenarios()
 
 		# index to ES /published
 		ESIndex.index_published_job(
@@ -777,9 +781,6 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 
 	# return db_records for later use
 	return db_records
-
-
-
 
 
 def get_job_db_bounds(job):
