@@ -15,10 +15,10 @@ import pyjxslt
 # load elasticsearch spark code
 try:
 	from es import ESIndex
-	from record_validation import run_record_validation_scenarios
+	from record_validation import ValidationScenarioSpark
 except:
 	from core.spark.es import ESIndex
-	from core.spark.record_validation import run_record_validation_scenarios
+	from core.spark.record_validation import ValidationScenarioSpark
 
 # import Row from pyspark
 from pyspark.sql import Row
@@ -197,12 +197,13 @@ class HarvestOAISpark(object):
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
-		run_record_validation_scenarios(
+		vs = ValidationScenarioSpark(
 			spark=spark,
 			job=job,
 			records_df=db_records,
 			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
 		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
