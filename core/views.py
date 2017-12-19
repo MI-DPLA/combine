@@ -1192,7 +1192,26 @@ def test_validation_scenario(request):
 	if request.method == 'POST':
 
 		logger.debug('running test validation and returning')
-		return JsonResponse({'response':'HERE IS YOUR PAYLOAD'})
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('record_id')))
+
+		# init new validation scenario
+		vs = models.ValidationScenario(
+			name='temp_vs',
+			payload=request.POST.get('vs_payload'),
+			validation_type=request.POST.get('vs_type'),
+			default_run=False
+		)
+		vs.save()
+
+		# validate with record
+		vs_results = vs.validate_record(record, raw_schematron_response=True)
+
+		# delete vs
+		vs.delete()
+
+		return JsonResponse({'vs_results':vs_results})
 
 
 ####################################################################

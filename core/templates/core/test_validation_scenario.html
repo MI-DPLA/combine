@@ -23,7 +23,7 @@
 
 	<!-- validation results -->
 	<div style="width:80%">
-		<pre><code style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE</code></pre>
+		<pre><code id="vs_results" style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE.</code></pre>
 	</div>
 
 	<script>
@@ -36,11 +36,9 @@
 
 				// get vs_payload
 				var vs_payload = $("#vs_payload").val();
-				console.log(vs_payload);
 
 				// get vs_type
 				var vs_type = $("#vs_type").val();
-				console.log(vs_type);
 
 				// issue ajax request and get validation results
 				$.ajax({
@@ -54,7 +52,12 @@
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					success: function(data){
-						console.log(data);
+						console.log(data.vs_results);
+						$("#vs_results").html(data.vs_results);
+						$("#vs_results").each(function(i, block) {
+							console.log(block);
+							hljs.highlightBlock(block);
+						});
 					}			
 				});
 
