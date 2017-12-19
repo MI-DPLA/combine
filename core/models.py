@@ -3627,64 +3627,6 @@ class DTElasticSearch(View):
 		
 
 
-####################################################################
-# Python Validation Scenarios									   #
-####################################################################
-class PythonRecordValidationBase(object):
-
-
-	def __init__(self, row):
-
-		# get combine id
-		self.id = row.id
-
-		# get record id
-		self.record_id = row.record_id
-
-		# parse XML string, save
-		self.xml = etree.fromstring(row.document.encode('utf-8'))
-
-		# get namespace map, popping None values
-		_nsmap = self.xml.nsmap.copy()
-		_nsmap.pop(None)
-		self.nsmap = _nsmap
-
-		# test result
-		self.passed = None
-
-
-	def run_test(self):
-		
-		# run test defined by child class
-		passed = self.test()
-		self.passed = passed
-
-		# report
-		return self.report()
-
-
-	def report(self):
-		
-		return {
-			'name':self.name,
-			'description':self.description,
-			'passed':self.passed
-		}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 

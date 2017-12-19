@@ -21,7 +21,7 @@ django.setup()
 from django.conf import settings
 
 # import select models from Core
-from core.models import Job, PythonRecordValidationBase, ValidationScenario
+from core.models import Job, ValidationScenario
 
 
 
@@ -167,6 +167,38 @@ class ValidationScenarioSpark(object):
 			pyvs_funcs (list): list of functions imported from user created python validation scenario payload
 			row (): 
 		'''
+
+		# locally define class to be used
+		class PythonRecordValidationBase(object):
+
+			'''
+			Simple class to provide an object with parsed metadata for user defined functions
+			'''
+
+			def __init__(self, row):
+
+				# row
+				self._row = row
+
+				# get combine id
+				self.id = row.id
+
+				# get record id
+				self.record_id = row.record_id
+
+				# document string
+				self.document = row.document.encode('utf-8')
+
+				# parse XML string, save
+				self.xml = etree.fromstring(self.document)
+
+				# get namespace map, popping None values
+				_nsmap = self.xml.nsmap.copy()
+				_nsmap.pop(None)
+				self.nsmap = _nsmap
+
+		# prvb
+		prvb = PythonRecordValidationBase(row)
 		
 		# prepare fail_dict
 		fail_dict = {
@@ -178,21 +210,23 @@ class ValidationScenarioSpark(object):
 		for func in pyvs_funcs:
 
 			# run test
-			test_result = func(row)
+			test_result = func(prvb)
 
 			# if fail, append
 			if test_result != True:
 				fail_dict['count'] += 1
 				fail_dict['failures'].append(test_result)
 
-		# return row
-		return Row(
-			record_id=int(row.id),
-			validation_scenario_id=int(vs_id),
-			valid=0,
-			results_payload=json.dumps(fail_dict),
-			fail_count=fail_dict['count']
-		)
+		# if failures, return Row
+		if fail_dict['count'] > 0:
+			# return row
+			return Row(
+				record_id=int(row.id),
+				validation_scenario_id=int(vs_id),
+				valid=0,
+				results_payload=json.dumps(fail_dict),
+				fail_count=fail_dict['count']
+			)
 
 
 
