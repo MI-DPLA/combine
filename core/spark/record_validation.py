@@ -93,7 +93,8 @@ class ValidationScenarioSpark(object):
 
 				# get defined functions
 				pyvs_funcs = []
-				for attr in dir(temp_pyvs):
+				test_labeled_attrs = [ attr for attr in dir(temp_pyvs) if attr.lower().startswith('test') ]
+				for attr in test_labeled_attrs:
 					attr = getattr(temp_pyvs, attr)
 					if isfunction(attr):
 						pyvs_funcs.append(attr)
