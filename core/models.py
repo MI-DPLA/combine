@@ -7,7 +7,7 @@ import hashlib
 import inspect
 import json
 import logging
-from lxml import etree
+from lxml import etree, isoschematron
 import os
 import requests
 import shutil
@@ -17,6 +17,7 @@ import re
 import tarfile
 import textwrap
 import time
+from types import ModuleType
 import uuid
 import xmltodict
 import zipfile
@@ -1169,6 +1170,128 @@ class ValidationScenario(models.Model):
 
 	def __str__(self):
 		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+
+
+	def validate_record(self, row, raw_schematron_response=False):
+
+		'''
+		Method to test validation against a single record.
+
+		Note: The code for self._validate_schematron() and self._validate_python() are similar, if not identical,
+		to staticmethods found in core.spark.record_validation.py.  However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		validations are effectively defined twice.
+
+		Args:
+			row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
+		'''
+
+		# run appropriate validation based on type
+		if self.validation_type == 'sch':
+			result = self._validate_schematron(row, raw_schematron_response)
+		if self.validation_type == 'python':
+			result = self._validate_python(row)
+
+		# return result
+		return result
+
+
+	def _validate_schematron(self, row, raw_schematron_response=False):
+		
+		# parse schematron
+		sct_doc = etree.parse(self.filepath)
+		validator = isoschematron.Schematron(sct_doc, store_report=True)
+
+		# get document xml
+		record_xml = etree.fromstring(row.document.encode('utf-8'))
+
+		# validate
+		is_valid = validator.validate(record_xml)
+
+		# if not valid, prepare fail dict
+		if not is_valid:
+
+			# if not raw schematron response, grab failures
+			if not raw_schematron_response:
+
+				# prepare fail_dict
+				fail_dict = {
+					'count':0,
+					'failures':[]
+				}
+
+				# get failures
+				report_root = validator.validation_report.getroot()
+				fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
+
+				# log count
+				fail_dict['count'] = len(fails)
+
+				# loop through fails and add to dictionary
+				for fail in fails:
+					fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+					fail_dict['failures'].append(fail_text_elem.text)
+
+				# return fail_dict
+				return fail_dict
+
+			# if raw response, return
+			else:
+				return etree.tostring(validator.validation_report).decode('utf-8')
+
+		# if valid, return None
+		else:
+			return None
+
+
+	def _validate_python(self, row):
+		
+		# parse user defined functions from validation scenario payload
+		temp_pyvs = ModuleType('temp_pyvs')
+		exec(self.payload, temp_pyvs.__dict__)
+
+		# get defined functions
+		pyvs_funcs = []
+		test_labeled_attrs = [ attr for attr in dir(temp_pyvs) if attr.lower().startswith('test') ]
+		for attr in test_labeled_attrs:
+			attr = getattr(temp_pyvs, attr)
+			if inspect.isfunction(attr):
+				pyvs_funcs.append(attr)
+
+		# instantiate prvb
+		prvb = PythonRecordValidationBase(row)
+
+		# prepare fail_dict
+		fail_dict = {
+			'count':0,
+			'failures':[]
+		}
+
+		# loop through functions
+		for func in pyvs_funcs:
+
+			# attempt to run user-defined validation function
+			try:
+
+				# run test
+				test_result = func(prvb)
+
+				# if fail, append
+				if test_result != True:
+					fail_dict['count'] += 1
+					fail_dict['failures'].append(test_result)
+
+			# if problem, report as failure with Exception string
+			except Exception as e:
+				fail_dict['count'] += 1
+				fail_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+
+		# if validation failures, return fail dictionary
+		if fail_dict['count'] > 0:
+			return fail_dict
+		# if no validation failures, return None
+		else:
+			return None
 
 
 
@@ -3628,6 +3751,39 @@ class DTElasticSearch(View):
 
 
 
+####################################################################
+# Python based Record Validation								   #
+####################################################################
+class PythonRecordValidationBase(object):
+
+	'''
+	Simple class to provide an object with parsed metadata for user defined functions
+	'''
+
+	def __init__(self, row):
+
+		# row
+		self._row = row
+
+		# get combine id
+		self.id = row.id
+
+		# get record id
+		self.record_id = row.record_id
+
+		# document string
+		self.document = row.document.encode('utf-8')
+
+		# parse XML string, save
+		self.xml = etree.fromstring(self.document)
+
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			_nsmap.pop(None)
+		except:
+			pass
+		self.nsmap = _nsmap
 
 
 
