@@ -1093,28 +1093,47 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 	# get validation scenario
 	vs = models.ValidationScenario.objects.get(pk=int(job_validation_id))
 
-	# get validation type
+	# schematron type validation
 	if vs.validation_type == 'sch':
-		logger.debug('schematron validation detected, running')
 
-		# re-run validation
-		# parse schematron
-		sct_doc = etree.parse(vs.filepath)
-		validator = isoschematron.Schematron(sct_doc, store_report=True)
+		vs_result = vs.validate_record(record, raw_schematron_response=True)
 
-		# get document xml
-		record_xml = etree.fromstring(record.document.encode('utf-8'))
+		# return
+		return HttpResponse(vs_result, content_type='text/xml')
 
-		# validate
-		is_valid = validator.validate(record_xml)
+	# python type validation
+	if vs.validation_type == 'python':
 
-	# return
-	return HttpResponse(etree.tostring(validator.validation_report).decode('utf-8'), content_type='text/xml')
+		vs_result = vs.validate_record(record)
+		logger.debug(vs_result)
+
+		# return
+		return JsonResponse(vs_result, safe=False)
 
 
 ####################################################################
 # Configuration 												   #
 ####################################################################
+
+@login_required
+def configuration(request):
+
+	# get all transformations
+	transformations = models.Transformation.objects.all()
+
+	# get all OAI endpoints
+	oai_endpoints = models.OAIEndpoint.objects.all()
+
+	# get all validation scenarios
+	validation_scenarios = models.ValidationScenario.objects.all()
+
+	# return
+	return render(request, 'core/configuration.html', {
+			'transformations':transformations,
+			'oai_endpoints':oai_endpoints,
+			'validation_scenarios':validation_scenarios
+		})
+
 
 @login_required
 def oai_endpoint_payload(request, oai_endpoint_id):
@@ -1133,28 +1152,7 @@ def oai_endpoint_payload(request, oai_endpoint_id):
 	return JsonResponse(oai_endpoint.__dict__)
 
 
-
-####################################################################
-# Transformations 												   #
-####################################################################
-
-@login_required
-def configuration(request):
-
-	# get all transformations
-	transformations = models.Transformation.objects.all()
-
-	# get all OAI endpoints
-	oai_endpoints = models.OAIEndpoint.objects.all()
-
-	# return
-	return render(request, 'core/configuration.html', {
-			'transformations':transformations,
-			'oai_endpoints':oai_endpoints
-		})
-
-
-def trans_scen_payload(request, trans_id):
+def transformation_scenario_payload(request, trans_id):
 
 	'''
 	View payload for transformation scenario
@@ -1165,6 +1163,25 @@ def trans_scen_payload(request, trans_id):
 
 	# return document as XML
 	return HttpResponse(transformation.payload, content_type='text/xml')
+
+
+def validation_scenario_payload(request, vs_id):
+
+	'''
+	View payload for validation scenario
+	'''
+
+	# get transformation
+	vs = models.ValidationScenario.objects.get(pk=int(vs_id))
+
+	if vs.validation_type == 'sch':
+		# return document as XML
+		return HttpResponse(vs.payload, content_type='text/xml')
+
+	else:
+		return HttpResponse(vs.payload, content_type='text/plain')
+
+
 
 
 ####################################################################

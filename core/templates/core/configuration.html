@@ -6,6 +6,29 @@
 
 	<p><a href="/admin">Django Admin</a></p>
 
+	<h3>Validation Scenarios</h3>
+	<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
+	<div>
+		<table border="1" cellpadding="10">
+			<tr>
+				<th>ID</th>
+				<th>Name</th>
+				<th>Type</th>
+				<th>Path on disk</th>
+				<th>Validation Payload</th>
+			</tr>
+			{% for vs in validation_scenarios %}
+				<tr>
+					<td>{{vs.id}}</td>
+					<td>{{vs.name}}</td>
+					<td>{{vs.transformation_type}}</td>
+					<td>{{vs.filepath}}</td>
+					<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
+				</tr>
+			{% endfor %}
+		</table>
+	</div>
+	
 	<h3>Transformations</h3>
 	<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
 	<div>
@@ -23,7 +46,7 @@
 					<td>{{transformation.name}}</td>
 					<td>{{transformation.transformation_type}}</td>
 					<td>{{transformation.filepath}}</td>
-					<td><a href="{% url 'trans_scen_payload' trans_id=transformation.id %}">View XSL</a></td>
+					<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View XSL</a></td>
 				</tr>
 			{% endfor %}
 		</table>
