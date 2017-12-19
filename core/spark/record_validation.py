@@ -194,7 +194,10 @@ class ValidationScenarioSpark(object):
 
 				# get namespace map, popping None values
 				_nsmap = self.xml.nsmap.copy()
-				_nsmap.pop(None)
+				try:
+					_nsmap.pop(None)
+				except:
+					pass
 				self.nsmap = _nsmap
 
 		# prvb

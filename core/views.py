@@ -1567,16 +1567,16 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 				return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
 
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-		# 	# handle search
-		# 	search = self.request.GET.get(u'search[value]', None)
-		# 	if search:
-		# 		qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
 
-		# 	# return
-		# 	return qs
+			# return
+			return qs
 
 
 
