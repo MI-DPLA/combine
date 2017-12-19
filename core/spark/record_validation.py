@@ -213,13 +213,21 @@ class ValidationScenarioSpark(object):
 		# loop through functions
 		for func in pyvs_funcs:
 
-			# run test
-			test_result = func(prvb)
+			# attempt to run user-defined validation function
+			try:
 
-			# if fail, append
-			if test_result != True:
+				# run test
+				test_result = func(prvb)
+
+				# if fail, append
+				if test_result != True:
+					fail_dict['count'] += 1
+					fail_dict['failures'].append(test_result)
+
+			# if problem, report as failure with Exception string
+			except Exception as e:
 				fail_dict['count'] += 1
-				fail_dict['failures'].append(test_result)
+				fail_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
 		# if failures, return Row
 		if fail_dict['count'] > 0:
