@@ -7,4 +7,60 @@
 	<!-- All Records DT table -->
 	{% include 'core/records_dt_table.html' %}
 
+	<!-- input paylaod -->
+	<div style="width:80%;">
+		<h3>Validation Payload</h3>
+		<p>Paste/edit your validation payload in the textbox below:</p>
+		<p><textarea id="vs_payload" style="width:100%; height:320px;"></textarea></p>
+		<p>
+			<select id="vs_type">
+				<option value="sch">Schematron</option>
+				<option value="python">Python code</option>
+			</select>
+		</p>
+		<button id="test_vs">Test Validation</button>
+	</div>
+
+	<!-- validation results -->
+	<div style="width:80%">
+		<pre><code style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE</code></pre>
+	</div>
+
+	<script>
+
+		$(document).ready(function(){
+			$("#test_vs").click(function(){
+
+				// change this to dynamically grab from selected rows in records table
+				var record_id = 642568;
+
+				// get vs_payload
+				var vs_payload = $("#vs_payload").val();
+				console.log(vs_payload);
+
+				// get vs_type
+				var vs_type = $("#vs_type").val();
+				console.log(vs_type);
+
+				// issue ajax request and get validation results
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_validation_scenario' %}",
+					data: {
+						'record_id':record_id,
+						'vs_payload':vs_payload,
+						'vs_type':vs_type,
+						'vs_name':'temp_vs',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					success: function(data){
+						console.log(data);
+					}			
+				});
+
+			})
+		});
+		
+	</script>
+
 {% endblock %}

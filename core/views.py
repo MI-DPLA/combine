@@ -1182,11 +1182,17 @@ def validation_scenario_payload(request, vs_id):
 		return HttpResponse(vs.payload, content_type='text/plain')
 
 
-@login_required
 def test_validation_scenario(request):
 
-	# return
-	return render(request, 'core/test_validation_scenario.html', {})
+	if request.method == 'GET':
+
+		# return
+		return render(request, 'core/test_validation_scenario.html', {})
+
+	if request.method == 'POST':
+
+		logger.debug('running test validation and returning')
+		return JsonResponse({'response':'HERE IS YOUR PAYLOAD'})
 
 
 ####################################################################
