@@ -1207,7 +1207,7 @@ def test_validation_scenario(request):
 		try:
 			# init new validation scenario
 			vs = models.ValidationScenario(
-				name='temp_vs',
+				name='temp_vs_%s' % str(uuid.uuid4()),
 				payload=request.POST.get('vs_payload'),
 				validation_type=request.POST.get('vs_type'),
 				default_run=False
@@ -1220,14 +1220,19 @@ def test_validation_scenario(request):
 			# delete vs
 			vs.delete()
 
-			return HttpResponse(vs_results['raw'], content_type="text/plain")
+			if request.POST.get('vs_results_format') == 'raw':
+				return HttpResponse(vs_results['raw'], content_type="text/plain")
+			elif request.POST.get('vs_results_format') == 'parsed':
+				return JsonResponse(vs_results['parsed'])
+			else:
+				raise Exception('validation results format not recognized')
 
 		except Exception as e:
 
 			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
 			vs.delete()
 
-			return JsonResponse(str(e));
+			return HttpResponse(str(e), content_type="text/plain")
 
 
 ####################################################################

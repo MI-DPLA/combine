@@ -44,8 +44,13 @@
 	</div>
 
 	<!-- validation results -->
-	<div style="width:80%">
-		<textarea id="vs_results" style="width:100%; height:320px;">Results will show here...</textarea>
+	<div style="width:45%; float:left; margin-right:20px;">
+		<h4>Parsed Validation Results</h4>
+		<pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
+	</div>
+	<div style="width:45%; float:left;">
+		<h4>Raw Validation Results</h4>
+		<textarea id="vs_results_raw" style="width:100%; height:320px;">Raw results will show here...</textarea>
 	</div>
 
 	</div>
@@ -107,7 +112,7 @@
 				// get vs_type
 				var vs_type = $("#vs_type").val();
 
-				// issue ajax request and get validation results
+				// issue ajax request and get parsed validation results
 				$.ajax({
 					type: "POST",
 					url: "{% url 'test_validation_scenario' %}",
@@ -116,11 +121,41 @@
 						'vs_payload':vs_payload,
 						'vs_type':vs_type,
 						'vs_name':'temp_vs',
+						'vs_results_format':'parsed',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){																		
+						$("#vs_results_parsed").html(JSON.stringify(data, null, 2));
+						$("#vs_results_parsed").each(function(i, block) {
+							hljs.highlightBlock(block);
+						});
+
+						// highlight background
+						if (data.fail_count == 0){
+							$("#vs_results_parsed").css('background-color','#e0ffdf');	
+						}
+						else {
+							$("#vs_results_parsed").css('background-color','#ffe7f4');		
+						}
+					}			
+				});
+
+				// issue ajax request and get raw validation results
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_validation_scenario' %}",
+					data: {
+						'record_id':record_id,
+						'vs_payload':vs_payload,
+						'vs_type':vs_type,
+						'vs_name':'temp_vs',
+						'vs_results_format':'raw',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
 					success: function(data){												
-						$("#vs_results").val(data);
+						$("#vs_results_raw").val(data);
 					}			
 				});
 
