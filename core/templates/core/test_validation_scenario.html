@@ -7,10 +7,20 @@
 	<!-- All Records DT table -->
 	{% include 'core/records_dt_table.html' %}
 
+	<div style="width:100%;">
+
 	<!-- input paylaod -->
-	<div style="width:80%;">
+	<div style="width:45%; float:left; margin:auto;">
 		<h3>Validation Payload</h3>
-		<p>Paste/edit your validation payload in the textbox below:</p>
+		<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
+		<p>
+			<select id="vs_exists">
+				<option value="None">Select a pre-existing validation scenario</option>
+				{% for vs in validation_scenarios %}
+					<option value="{{vs.id}}|{{vs.validation_type}}">{{vs.name}}</option>
+				{% endfor %}
+			</select>
+		</p>
 		<p><textarea id="vs_payload" style="width:100%; height:320px;"></textarea></p>
 		<p>
 			<select id="vs_type">
@@ -18,15 +28,40 @@
 				<option value="python">Python code</option>
 			</select>
 		</p>
-		<button id="test_vs">Test Validation</button>
+		<p><button id="test_vs">Test Validation</button></p>
 	</div>
 
 	<!-- validation results -->
-	<div style="width:80%">
-		<pre><code id="vs_results" style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE.</code></pre>
+	<div style="width:45%; float:right; margin:auto;">
+		<!-- <pre><code id="vs_results" style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE.</code></pre> -->
+		<textarea id="vs_results" style="width:100%; height:320px;"></textarea>
+	</div>
+
 	</div>
 
 	<script>
+
+		// capture pre-existing validation scenarios and paste
+		$(document).ready(function(){
+			$("#vs_exists").change(function(){
+
+				// get vs info
+				var vs_info = this.value.split('|');
+
+				// update dropdown type
+				$("#vs_type").val(vs_info[1]);
+
+				// get payload
+				$.ajax({
+					type: "GET",
+					url: "/combine/configurations/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
+					dataType:'text',
+					success: function(data){
+						$("#vs_payload").val(data);
+					}			
+				});
+			})
+		});
 
 		$(document).ready(function(){
 			$("#test_vs").click(function(){
@@ -51,13 +86,14 @@
 						'vs_name':'temp_vs',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
+					dataType:'text',
 					success: function(data){
-						console.log(data.vs_results);
-						$("#vs_results").html(data.vs_results);
-						$("#vs_results").each(function(i, block) {
-							console.log(block);
-							hljs.highlightBlock(block);
-						});
+						console.log(data);
+						$("#vs_results").val(data);
+						// $("#vs_results").each(function(i, block) {
+						// 	console.log(block);
+						// 	hljs.highlightBlock(block);
+						// });
 					}			
 				});
 

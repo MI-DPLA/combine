@@ -1186,8 +1186,11 @@ def test_validation_scenario(request):
 
 	if request.method == 'GET':
 
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
 		# return
-		return render(request, 'core/test_validation_scenario.html', {})
+		return render(request, 'core/test_validation_scenario.html', {'validation_scenarios':validation_scenarios})
 
 	if request.method == 'POST':
 
@@ -1196,22 +1199,31 @@ def test_validation_scenario(request):
 		# get record
 		record = models.Record.objects.get(pk=int(request.POST.get('record_id')))
 
-		# init new validation scenario
-		vs = models.ValidationScenario(
-			name='temp_vs',
-			payload=request.POST.get('vs_payload'),
-			validation_type=request.POST.get('vs_type'),
-			default_run=False
-		)
-		vs.save()
+		try:
+			# init new validation scenario
+			vs = models.ValidationScenario(
+				name='temp_vs',
+				payload=request.POST.get('vs_payload'),
+				validation_type=request.POST.get('vs_type'),
+				default_run=False
+			)
+			vs.save()
 
-		# validate with record
-		vs_results = vs.validate_record(record, raw_schematron_response=True)
+			# validate with record
+			vs_results = vs.validate_record(record, raw_response=True)
+			logger.debug(vs_results)
 
-		# delete vs
-		vs.delete()
+			# delete vs
+			vs.delete()
 
-		return JsonResponse({'vs_results':vs_results})
+			return HttpResponse(vs_results, content_type="text/plain")
+
+		except Exception as e:
+
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			vs.delete()
+
+			return JsonResponse(str(e));
 
 
 ####################################################################

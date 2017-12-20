@@ -1179,7 +1179,7 @@ class ValidationScenario(models.Model):
 		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
 
 
-	def validate_record(self, row, raw_schematron_response=False):
+	def validate_record(self, row, raw_response=False):
 
 		'''
 		Method to test validation against a single record.
@@ -1195,15 +1195,15 @@ class ValidationScenario(models.Model):
 
 		# run appropriate validation based on type
 		if self.validation_type == 'sch':
-			result = self._validate_schematron(row, raw_schematron_response)
+			result = self._validate_schematron(row, raw_response)
 		if self.validation_type == 'python':
-			result = self._validate_python(row)
+			result = self._validate_python(row, raw_response)
 
 		# return result
 		return result
 
 
-	def _validate_schematron(self, row, raw_schematron_response=False):
+	def _validate_schematron(self, row, raw_response=False):
 		
 		# parse schematron
 		sct_doc = etree.parse(self.filepath)
@@ -1216,7 +1216,7 @@ class ValidationScenario(models.Model):
 		is_valid = validator.validate(record_xml)
 
 		# if not valid, prepare fail dict
-		if not is_valid and not raw_schematron_response:
+		if not is_valid and not raw_response:
 
 			# prepare fail_dict
 			fail_dict = {
@@ -1244,7 +1244,7 @@ class ValidationScenario(models.Model):
 			return etree.tostring(validator.validation_report).decode('utf-8')
 
 
-	def _validate_python(self, row):
+	def _validate_python(self, row, raw_response=False):
 		
 		# parse user defined functions from validation scenario payload
 		temp_pyvs = ModuleType('temp_pyvs')
@@ -1291,7 +1291,11 @@ class ValidationScenario(models.Model):
 				results_dict['count'] += 1
 				results_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
-		return results_dict
+		# if raw response
+		if raw_response:
+			return json.dumps(results_dict)
+		else:
+			return results_dict
 
 
 
