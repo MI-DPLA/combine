@@ -7,7 +7,7 @@ import hashlib
 import inspect
 import json
 import logging
-from lxml import etree
+from lxml import etree, isoschematron
 import os
 import requests
 import shutil
@@ -17,6 +17,7 @@ import re
 import tarfile
 import textwrap
 import time
+from types import ModuleType
 import uuid
 import xmltodict
 import zipfile
@@ -584,6 +585,7 @@ class Job(models.Model):
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
+	@property
 	def dpla_mapping(self):
 
 		'''
@@ -596,10 +598,14 @@ class Job(models.Model):
 			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
 		'''
 
-		if self.dplajobmap_set.count() == 1:
-			return self.dplajobmap_set.first()
-		else:
-			return False
+		if not hasattr(self, '_dpla_mapping'):
+			if self.dplajobmap_set.count() == 1:
+				self._dpla_mapping = self.dplajobmap_set.first()
+			else:
+				self._dpla_mapping = None
+
+		# return
+		return self._dpla_mapping
 
 
 
@@ -690,7 +696,10 @@ class Transformation(models.Model):
 
 	name = models.CharField(max_length=255)
 	payload = models.TextField()
-	transformation_type = models.CharField(max_length=255, choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')])
+	transformation_type = models.CharField(
+		max_length=255,
+		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+	)
 	filepath = models.CharField(max_length=1024, null=True, default=None)
 	
 
@@ -879,6 +888,128 @@ class Record(models.Model):
 		return etree.fromstring(self.document.encode('utf-8'))
 
 
+	def dpla_mapped_field_values(self):
+
+		'''
+		Using self.dpla_mapped_fields, loop through and insert values from ES document
+		'''
+
+		# get mapped fields
+		mapped_fields = self.job.dpla_mapping.mapped_fields()
+
+		if mapped_fields:
+			
+			# get elasticsearch doc
+			es_doc = self.get_es_doc()
+			
+			# loop through and use mapped key for es doc
+			mapped_values = {}
+			for k,v in mapped_fields.items():
+				val = es_doc.get(v, None)
+				if val:
+					mapped_values[k] = es_doc[v]
+
+		else:
+			return None
+
+
+	def dpla_api_record_match(self, search_string=None):
+
+		'''
+		Method to attempt a match against the DPLA's API
+
+		NOTE: Still exploratory.  Queries DPLA API for match against some known mappings.
+		'''
+
+		# attempt search if API key defined
+		if settings.DPLA_API_KEY:
+
+			'''
+			Exploratory testing of DPLA API matching
+			'''
+
+			# get es document
+			es_doc = self.get_es_doc()
+
+			# get DPLA mappings
+			dpla_mapping = self.job.dpla_mapping
+
+			if not search_string:
+
+				'''
+				Loop through mapped fields in opinionated order
+				'''
+
+				# isShownAt
+				if dpla_mapping.isShownAt:
+					logger.debug('isShownAt mapping found, using')
+					search_string = 'isShownAt="%s"' % es_doc[dpla_mapping.isShownAt]
+
+				# title
+				elif dpla_mapping.title:
+					logger.debug('title mapping found, using')
+					search_string = 'sourceResource.title="%s"' % es_doc[dpla_mapping.title]
+
+				# description
+				elif dpla_mapping.description:
+					logger.debug('description mapping found, using')
+					search_string = 'sourceResource.description="%s"' % es_doc[dpla_mapping.description]
+
+				else:
+					logger.debug('DPLA mapping not found')
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
+
+			# check for search string at this point
+			if search_string:
+
+				# query based on title
+				api_q = requests.get(
+					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+
+				# attempt to parse as JSON
+				try:
+					api_r = api_q.json()
+				except:
+					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
+
+				# if count present
+				if 'count' in api_r.keys():
+					# response
+					if api_r['count'] == 1:
+						dpla_api_doc = api_r['docs'][0]		
+						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+					elif api_r['count'] > 1:
+						logger.debug('multiple hits for DPLA API query')
+						dpla_api_doc = None
+					else:
+						logger.debug('no matches found')
+						dpla_api_doc = None
+				else:
+					logger.debug(api_r)
+					dpla_api_doc = None
+
+				# save to record instance and return
+				self.dpla_api_doc = dpla_api_doc
+				return self.dpla_api_doc
+
+		# return None by default
+		self.dpla_api_doc = None
+		return self.dpla_api_doc
+
+
+	def get_validation_errors(self):
+
+		'''
+		Return validation errors associated with this record
+		'''
+
+		vfs = RecordValidation.objects.filter(record=self)
+		return vfs
+
+
 
 class IndexMappingFailure(models.Model):
 
@@ -1025,6 +1156,273 @@ class DPLAJobMap(models.Model):
 
 		# invert and return
 		return {v: k for k, v in mapped_fields.items()}
+
+
+
+class ValidationScenario(models.Model):
+
+	'''
+	Model to handle validation scenarios used to validate records.
+	'''
+
+	name = models.CharField(max_length=255)
+	payload = models.TextField()
+	validation_type = models.CharField(
+		max_length=255,
+		choices=[('sch','Schematron'),('python','Python Code Snippet')]
+	)
+	filepath = models.CharField(max_length=1024, null=True, default=None)
+	default_run = models.BooleanField(default=1)
+	
+
+	def __str__(self):
+		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+
+
+	def validate_record(self, row):
+
+		'''
+		Method to test validation against a single record.
+
+		Note: The code for self._validate_schematron() and self._validate_python() are similar, if not identical,
+		to staticmethods found in core.spark.record_validation.py.  However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		validations are effectively defined twice.
+
+		Args:
+			row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
+		'''
+
+		# run appropriate validation based on type
+		if self.validation_type == 'sch':
+			result = self._validate_schematron(row)
+		if self.validation_type == 'python':
+			result = self._validate_python(row)
+
+		# return result
+		return result
+
+
+	def _validate_schematron(self, row):
+		
+		# parse schematron
+		sct_doc = etree.parse(self.filepath)
+		validator = isoschematron.Schematron(sct_doc, store_report=True)
+
+		# get document xml
+		record_xml = etree.fromstring(row.document.encode('utf-8'))
+
+		# validate
+		is_valid = validator.validate(record_xml)
+
+		# prepare results_dict
+		results_dict = {
+			'fail_count':0,
+			'passed':[],
+			'failed':[]
+		}
+
+		# temporarily add all tests to successes
+		sct_root = sct_doc.getroot()
+		nsmap = sct_root.nsmap			
+		
+		# if schematron namespace logged as None, fix
+		try:
+			schematron_ns = nsmap.pop(None)
+			nsmap['schematron'] = schematron_ns
+		except:
+			pass
+
+		# get all assertions
+		assertions = sct_root.xpath('//schematron:assert', namespaces=nsmap)
+		for a in assertions:
+			results_dict['passed'].append(a.text)
+
+		# record total tests
+		results_dict['total_tests'] = len(results_dict['passed'])
+
+		# if not valid, parse failed
+		if not is_valid:
+
+			# get failed
+			report_root = validator.validation_report.getroot()
+			fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
+
+			# log count
+			results_dict['fail_count'] = len(fails)
+
+			# loop through fails
+			for fail in fails:
+
+				# get fail test name
+				fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+				
+				# if in successes, remove
+				if fail_text_elem.text in results_dict['passed']:
+					results_dict['passed'].remove(fail_text_elem.text)
+				
+				# append to failed
+				results_dict['failed'].append(fail_text_elem.text)
+
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':etree.tostring(validator.validation_report).decode('utf-8')
+		}
+
+
+	def _validate_python(self, row):
+		
+		# parse user defined functions from validation scenario payload
+		temp_pyvs = ModuleType('temp_pyvs')
+		exec(self.payload, temp_pyvs.__dict__)
+
+		# get defined functions
+		pyvs_funcs = []
+		test_labeled_attrs = [ attr for attr in dir(temp_pyvs) if attr.lower().startswith('test') ]
+		for attr in test_labeled_attrs:
+			attr = getattr(temp_pyvs, attr)
+			if inspect.isfunction(attr):
+				pyvs_funcs.append(attr)
+
+		# instantiate prvb
+		prvb = PythonRecordValidationBase(row)
+
+		# prepare results_dict
+		results_dict = {
+			'fail_count':0,			
+			'passed':[],
+			'failed':[]
+		}
+
+		# record total tests
+		results_dict['total_tests'] = len(pyvs_funcs)
+
+		# loop through functions
+		for func in pyvs_funcs:
+
+			# get func test message
+			signature = inspect.signature(func)
+			t_msg = signature.parameters['test_message'].default
+
+			# attempt to run user-defined validation function
+			try:
+
+				# run test
+				test_result = func(prvb)
+
+				# if fail, append
+				if test_result != True:
+					results_dict['fail_count'] += 1
+					# if custom message override provided, use
+					if test_result != False:
+						results_dict['failed'].append(test_result)
+					# else, default to test message
+					else:
+						results_dict['failed'].append(t_msg)
+
+				# if success, append to passed
+				else:
+					results_dict['passed'].append(t_msg)
+
+			# if problem, report as failure with Exception string
+			except Exception as e:
+				results_dict['fail_count'] += 1
+				results_dict['failed'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':json.dumps(results_dict)
+		}
+
+
+
+class JobValidation(models.Model):
+
+	'''
+	Model to record one-to-many relationship between jobs and validation scenarios run against its records
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, on_delete=models.CASCADE)
+	failure_count = models.IntegerField(null=True, default=None)
+
+	def __str__(self):
+		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (self.id, self.job.id, self.validation_scenario.id, self.failure_count)
+
+
+	def get_record_validation_failures(self):
+
+		'''
+		Method to return records, for this job, with validation errors
+
+		Args:
+			None
+
+		Returns:
+			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
+		'''
+		stime = time.time()
+		rvs = RecordValidation.objects\
+			.filter(validation_scenario=self.validation_scenario)\
+			.filter(record__job=self.job)
+		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
+		return rvs
+
+
+	def validation_failure_count(self):
+
+		'''
+		Method to count, set, and return failure count for this job validation
+			- set self.failure_count if not set
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
+		'''
+
+		if self.failure_count is None:
+			logger.debug("failure count not found for %s, calculating" % self)
+			rvs = self.get_record_validation_failures()
+			self.failure_count = rvs.count()
+			self.save()
+
+		# return count
+		return self.failure_count
+
+
+
+class RecordValidation(models.Model):
+
+	'''
+	Model to manage validation tests associated with a Record	
+	'''
+
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL) # what kind of performance hit is this FK?
+	valid = models.BooleanField(default=1)
+	results_payload = models.TextField(null=True, default=None)
+	fail_count = models.IntegerField(null=True, default=None)
+
+
+	def __str__(self):
+		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
+
+
+	@property
+	def failed(self):
+
+		# if not set, set
+		if not hasattr(self, '_failures'):
+			self._failures = json.loads(self.results_payload)['failed']
+
+		# return
+		return self._failures
+
+
 
 
 
@@ -1233,6 +1631,44 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 	else:
 		logger.debug('currently only xslt style transformations accepted')
+
+
+@receiver(models.signals.pre_save, sender=ValidationScenario)
+def save_validation_scenario_to_disk(sender, instance, **kwargs):
+
+	'''
+	When users enter a payload for a validation scenario, write to disk for use in Spark context
+
+	Args:
+		sender (auth.models.ValidationScenario): class
+		user (auth.models.ValidationScenario): instance
+		kwargs: not used
+	'''
+
+	# check that transformation directory exists
+	validations_dir = '%s/validation' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+	if not os.path.exists(validations_dir):
+		os.mkdir(validations_dir)
+
+	# if previously written to disk, remove
+	if instance.filepath:
+		try:
+			os.remove(instance.filepath)
+		except:
+			logger.debug('could not remove validation scenario file: %s' % instance.filepath)
+
+	# write Schematron type validation to disk
+	if instance.validation_type == 'sch':
+		filename = 'file_%s.sch' % uuid.uuid4().hex
+	if instance.validation_type == 'python':
+		filename = 'file_%s.py' % uuid.uuid4().hex
+
+	filepath = '%s/%s' % (validations_dir, filename)
+	with open(filepath, 'w') as f:
+		f.write(instance.payload)
+
+	# update filepath
+	instance.filepath = filepath
 
 
 
@@ -2144,7 +2580,7 @@ class HarvestJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			index_mapper (str): String of index mapper clsas from core.spark.es			
 
 		Returns:
 			None
@@ -2203,16 +2639,18 @@ class HarvestOAIJob(HarvestJob):
 		job_id=None,
 		index_mapper=None,
 		oai_endpoint=None,
-		overrides=None):
+		overrides=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
 				overrides (dict): optional dictionary of overrides to OAI endpoint
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2236,6 +2674,16 @@ class HarvestOAIJob(HarvestJob):
 			# capture OAI specific args
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
+			self.validation_scenarios = validation_scenarios
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_job(self):
@@ -2257,7 +2705,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -2265,10 +2713,10 @@ class HarvestOAIJob(HarvestJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2299,15 +2747,17 @@ class HarvestStaticXMLJob(HarvestJob):
 		record_group=None,
 		job_id=None,
 		index_mapper=None,
-		payload_dict=None):
+		payload_dict=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
 			HarvestJob args
 				see: core.models.HarvestJob
 			
-			HarvestOAIJob args
+			HarvestOAIJob args (extending HarvestJob args)
 				static_payload (str): filepath of static payload on disk
+				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2334,6 +2784,18 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# prepare static files
 			self.prepare_static_files()
+
+			# get validation scenarios
+			self.validation_scenarios = validation_scenarios
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
 
 
 	def prepare_static_files(self):
@@ -2494,17 +2956,17 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
 				'xpath_document_root':self.payload_dict['xpath_document_root'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2534,7 +2996,8 @@ class TransformJob(CombineJob):
 		input_job=None,
 		transformation=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2546,6 +3009,7 @@ class TransformJob(CombineJob):
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2566,6 +3030,7 @@ class TransformJob(CombineJob):
 			self.input_job = input_job
 			self.transformation = transformation
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2599,6 +3064,15 @@ class TransformJob(CombineJob):
 			job_input_link = JobInput(job=self.job, input_job=self.input_job)
 			job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2615,15 +3089,15 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2659,7 +3133,8 @@ class MergeJob(CombineJob):
 		record_group=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2670,6 +3145,7 @@ class MergeJob(CombineJob):
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2689,6 +3165,7 @@ class MergeJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2721,6 +3198,15 @@ class MergeJob(CombineJob):
 				job_input_link = JobInput(job=self.job, input_job=input_job)
 				job_input_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2737,14 +3223,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -2773,7 +3259,8 @@ class PublishJob(CombineJob):
 		record_group=None,
 		input_job=None,
 		job_id=None,
-		index_mapper=None):
+		index_mapper=None,
+		validation_scenarios=[]):
 
 		'''
 		Args:
@@ -2784,6 +3271,7 @@ class PublishJob(CombineJob):
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -2803,6 +3291,7 @@ class PublishJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -2838,6 +3327,15 @@ class PublishJob(CombineJob):
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
 
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
 
 	def prepare_job(self):
 
@@ -2854,14 +3352,14 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
 			{
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
 			}
 		}
-		logger.debug(job_code)
 
 		# submit job
 		self.submit_job_to_livy(job_code, self.job.job_output)
@@ -3296,23 +3794,39 @@ class DTElasticSearch(View):
 
 
 
+####################################################################
+# Python based Record Validation								   #
+####################################################################
+class PythonRecordValidationBase(object):
 
+	'''
+	Simple class to provide an object with parsed metadata for user defined functions
+	'''
 
+	def __init__(self, row):
 
+		# row
+		self._row = row
 
+		# get combine id
+		self.id = row.id
 
+		# get record id
+		self.record_id = row.record_id
 
+		# document string
+		self.document = row.document.encode('utf-8')
 
+		# parse XML string, save
+		self.xml = etree.fromstring(self.document)
 
-
-
-
-
-
-
-
-
-
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			_nsmap.pop(None)
+		except:
+			pass
+		self.nsmap = _nsmap
 
 
 

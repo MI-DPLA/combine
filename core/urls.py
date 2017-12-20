@@ -35,8 +35,10 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/publish/new$', views.job_publish, name='job_publish'),
 
+	# Job Record Validation Scenarios
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_validation_scenario_failures/(?P<job_validation_id>[0-9]+)$', views.job_validation_scenario_failures, name='job_validation_scenario_failures'),
+
 	# Record Group Job Analysis
-	# url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/fields$', views.field_analysis, name='field_analysis'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/indexing_failures$', views.job_indexing_failures, name='job_indexing_failures'),
 
 	# ElasticSearch Analysis
@@ -51,11 +53,14 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)$', views.record, name='record'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/document$', views.record_document, name='record_document'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/error$', views.record_error, name='record_error'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
 
 	# Configuration
 	url(r'^configurations$', views.configuration, name='configuration'),
-	url(r'^configurations/transformation/(?P<trans_id>[0-9]+)/payload$', views.trans_scen_payload, name='trans_scen_payload'),
+	url(r'^configurations/transformation/(?P<trans_id>[0-9]+)/payload$', views.transformation_scenario_payload, name='transformation_scenario_payload'),
 	url(r'^configurations/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
+	url(r'^configurations/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload, name='validation_scenario_payload'),
+	url(r'^configurations/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
 
 	# Publish
 	url(r'^published$', views.published, name='published'),
@@ -65,8 +70,10 @@ urlpatterns = [
 	url(r'^oai$', views.oai, name='oai'),
 
 	# Datatables Endpoints
+	url(r'^datatables/all_records/records_dt_json$', views.DTRecordsJson.as_view(), name='all_records_dt_json'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/records_dt_json$', views.DTRecordsJson.as_view(), name='records_dt_json'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/indexing_failures_dt_json$', views.DTIndexingFailuresJson.as_view(), name='indexing_failures_dt_json'),
+	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_validation_scenario_failures_json/(?P<job_validation_id>[0-9]+)$', views.DTJobValidationScenarioFailuresJson.as_view(), name='job_validation_scenario_failures_json'),
 	url(r'^datatables/es/index/(?P<es_index>.+)/(?P<search_type>.+)/records_es_dt_json$', DTElasticSearch.as_view(), name='records_es_dt_json'),
 
 	# general views

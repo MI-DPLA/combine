@@ -67,7 +67,7 @@
 
 							<!-- show mapped DPLA field if exists -->
 							{% if cjob.job.dpla_mapping %}
-								{% if cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name %}
+								{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
 									<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
 								{% else %}
 									<td></td>

@@ -67,9 +67,32 @@
 	</table>
 
 	<div style="margin-top:20px;"/>
-	
+
 	<!-- Indexing Records DT Table -->
 	{% include 'core/records_dt_table.html' %}
+
+	{% if cjob.job.jobvalidation_set.count > 0 %}
+		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ffe7f4;">
+			<h3>Validation Scenarios</h3>
+			<p>The following validation scenarios were run for this job:</p>
+			<table border="1" cellpadding="5" style="background-color:white;">
+				<tr>
+					<th>Validation Name</th>
+					<th>Validation Type</th>
+					<th>Record Validation Failure Count</th>
+					<th>Actions</th>
+				<tr>
+				{% for jv in cjob.job.jobvalidation_set.all %}			
+					<tr>
+						<td>{{ jv.validation_scenario.name }}</td>
+						<td>{{ jv.validation_scenario.validation_type }}</td>
+						<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+						<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a>
+					</tr>
+				{% endfor %}
+			</table>
+		</div>
+	{% endif %}
 
 	<h3>Indexed Field Analysis</h3>
 

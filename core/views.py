@@ -4,7 +4,7 @@ from __future__ import unicode_literals
 import hashlib
 import json
 import logging
-from lxml import etree
+from lxml import etree, isoschematron
 import os
 import re
 import requests
@@ -431,7 +431,7 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 		cjob = models.CombineJob.get_combine_job(job_id)
 
 		# get DPLAJobMap
-		djm = cjob.job.dpla_mapping()
+		djm = cjob.job.dpla_mapping
 
 		# get fields 
 		dpla_field = request.POST.get('dpla_field')
@@ -467,10 +467,14 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# retrieve all OAI endoints
 		oai_endpoints = models.OAIEndpoint.objects.all()
 
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
 		# render page
 		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -503,6 +507,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -511,7 +518,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -535,6 +543,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 	
+	# get validation scenarios
+	validation_scenarios = models.ValidationScenario.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -542,6 +552,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# render page
 		return render(request, 'core/job_harvest_static_xml.html', {
 				'record_group':record_group,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -603,6 +614,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -610,7 +624,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			user=request.user,
 			record_group=record_group,
 			index_mapper=index_mapper,
-			payload_dict=payload_dict
+			payload_dict=payload_dict,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -641,7 +656,10 @@ def job_transform(request, org_id, record_group_id):
 		jobs = record_group.job_set.all()	
 
 		# get all transformation scenarios
-		transformations = models.Transformation.objects.all()	
+		transformations = models.Transformation.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# render page
 		return render(request, 'core/job_transform.html', {
@@ -649,6 +667,7 @@ def job_transform(request, org_id, record_group_id):
 				'record_group':record_group,
 				'jobs':jobs,
 				'transformations':transformations,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -681,6 +700,9 @@ def job_transform(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -689,7 +711,8 @@ def job_transform(request, org_id, record_group_id):
 			record_group=record_group,
 			input_job=input_job,
 			transformation=transformation,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -719,11 +742,15 @@ def job_merge(request, org_id, record_group_id):
 		# retrieve all jobs
 		jobs = models.Job.objects.all()
 
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
 				'record_group':record_group,
 				'jobs':jobs,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -752,6 +779,9 @@ def job_merge(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -759,7 +789,8 @@ def job_merge(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -786,15 +817,18 @@ def job_publish(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs for this record group
-		# jobs = record_group.job_set.all()
+		# retrieve all jobs for this record group		
 		jobs = models.Job.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
 				'jobs':jobs,
+				'validation_scenarios':validation_scenarios,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -823,6 +857,9 @@ def job_publish(request, org_id, record_group_id):
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
 
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
@@ -830,7 +867,8 @@ def job_publish(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_job=input_job,
-			index_mapper=index_mapper
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
 		)
 		
 		# start job and update status
@@ -946,6 +984,22 @@ def field_analysis_docs(request, es_index, filter_type):
 		})
 
 
+@login_required
+def job_validation_scenario_failures(request, org_id, record_group_id, job_id, job_validation_id):
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# get job validation instance
+	jv = models.JobValidation.objects.get(pk=int(job_validation_id))
+
+	# return
+	return render(request, 'core/job_validation_scenario_failures.html', {
+			'cjob':cjob,
+			'jv':jv,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
 
 ####################################################################
 # Records 														   #
@@ -983,12 +1037,18 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		logger.debug('could not load job details')
 		job_details = {}
 
+	##############################################################################################################
+	# DPLA API testing
+	dpla_api_doc = record.dpla_api_record_match()
+	##############################################################################################################
+
 	# return
 	return render(request, 'core/record.html', {
 			'record_id':record_id,
 			'record':record,
 			'record_stages':record_stages,
-			'job_details':job_details
+			'job_details':job_details,
+			'dpla_api_doc':dpla_api_doc
 		})
 
 
@@ -1018,9 +1078,61 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 	return HttpResponse("<pre>%s</pre>" % record.error)
 
 
+def record_validation_scenario(request, org_id, record_group_id, job_id, record_id, job_validation_id):
+
+	'''
+	Re-run validation test for single record
+
+	Returns:
+		results of validation
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# get validation scenario
+	vs = models.ValidationScenario.objects.get(pk=int(job_validation_id))
+
+	# schematron type validation
+	if vs.validation_type == 'sch':
+
+		vs_result = vs.validate_record(record)
+
+		# return
+		return HttpResponse(vs_result['raw'], content_type='text/xml')
+
+	# python type validation
+	if vs.validation_type == 'python':
+
+		vs_result = vs.validate_record(record)
+
+		# return
+		return JsonResponse(vs_result['parsed'], safe=False)
+
+
 ####################################################################
 # Configuration 												   #
 ####################################################################
+
+@login_required
+def configuration(request):
+
+	# get all transformations
+	transformations = models.Transformation.objects.all()
+
+	# get all OAI endpoints
+	oai_endpoints = models.OAIEndpoint.objects.all()
+
+	# get all validation scenarios
+	validation_scenarios = models.ValidationScenario.objects.all()
+
+	# return
+	return render(request, 'core/configuration.html', {
+			'transformations':transformations,
+			'oai_endpoints':oai_endpoints,
+			'validation_scenarios':validation_scenarios
+		})
+
 
 @login_required
 def oai_endpoint_payload(request, oai_endpoint_id):
@@ -1039,28 +1151,7 @@ def oai_endpoint_payload(request, oai_endpoint_id):
 	return JsonResponse(oai_endpoint.__dict__)
 
 
-
-####################################################################
-# Transformations 												   #
-####################################################################
-
-@login_required
-def configuration(request):
-
-	# get all transformations
-	transformations = models.Transformation.objects.all()
-
-	# get all OAI endpoints
-	oai_endpoints = models.OAIEndpoint.objects.all()
-
-	# return
-	return render(request, 'core/configuration.html', {
-			'transformations':transformations,
-			'oai_endpoints':oai_endpoints
-		})
-
-
-def trans_scen_payload(request, trans_id):
+def transformation_scenario_payload(request, trans_id):
 
 	'''
 	View payload for transformation scenario
@@ -1071,6 +1162,77 @@ def trans_scen_payload(request, trans_id):
 
 	# return document as XML
 	return HttpResponse(transformation.payload, content_type='text/xml')
+
+
+def validation_scenario_payload(request, vs_id):
+
+	'''
+	View payload for validation scenario
+	'''
+
+	# get transformation
+	vs = models.ValidationScenario.objects.get(pk=int(vs_id))
+
+	if vs.validation_type == 'sch':
+		# return document as XML
+		return HttpResponse(vs.payload, content_type='text/xml')
+
+	else:
+		return HttpResponse(vs.payload, content_type='text/plain')
+
+
+def test_validation_scenario(request):
+
+	'''
+	View to live test validation scenario
+	'''
+
+	# If GET, serve validation test screen
+	if request.method == 'GET':
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
+		# return
+		return render(request, 'core/test_validation_scenario.html', {'validation_scenarios':validation_scenarios})
+
+	# If POST, provide raw result of validation test
+	if request.method == 'POST':
+
+		logger.debug('running test validation and returning')
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('record_id')))
+
+		try:
+			# init new validation scenario
+			vs = models.ValidationScenario(
+				name='temp_vs_%s' % str(uuid.uuid4()),
+				payload=request.POST.get('vs_payload'),
+				validation_type=request.POST.get('vs_type'),
+				default_run=False
+			)
+			vs.save()
+
+			# validate with record
+			vs_results = vs.validate_record(record)
+
+			# delete vs
+			vs.delete()
+
+			if request.POST.get('vs_results_format') == 'raw':
+				return HttpResponse(vs_results['raw'], content_type="text/plain")
+			elif request.POST.get('vs_results_format') == 'parsed':
+				return JsonResponse(vs_results['parsed'])
+			else:
+				raise Exception('validation results format not recognized')
+
+		except Exception as e:
+
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			vs.delete()
+
+			return HttpResponse(str(e), content_type="text/plain")
 
 
 ####################################################################
@@ -1129,14 +1291,34 @@ class DTRecordsJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
+		columns = [
+			'id',
+			'record_id',
+			'job',
+			'oai_set',
+			'unique',
+			'success',
+			'document',
+			'error',
+			'validation_results'
+		]
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'oai_set', 'unique', 'success', 'document', 'error']
+		order_columns = [
+			'id',
+			'record_id',
+			'job',
+			'oai_set',
+			'unique',
+			'success',
+			'document',
+			'error',
+			'validation_results'
+		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -1147,15 +1329,20 @@ class DTRecordsJson(BaseDatatableView):
 			
 			# return queryset used as base for futher sorting/filtering
 			
-			# get job
-			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+			# if job present, filter by job
+			if 'job_id' in self.kwargs.keys():
+				# get job
+				job = models.Job.objects.get(pk=self.kwargs['job_id'])
+				# return filtered queryset
+				return models.Record.objects.filter(job=job)
 
-			# return filtered queryset
-			return models.Record.objects.filter(job=job)
+			# else, return all records
+			else:
+				return models.Record.objects
 
 
 		def render_column(self, row, column):
-			
+
 			# handle record_id
 			if column == 'record_id':
 				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
@@ -1165,7 +1352,7 @@ class DTRecordsJson(BaseDatatableView):
 					}), row.record_id)
 
 			# handle document
-			if column == 'document':
+			elif column == 'document':
 				# attempt to parse as XML and return if valid or not
 				try:
 					xml = etree.fromstring(row.document.encode('utf-8'))
@@ -1178,15 +1365,24 @@ class DTRecordsJson(BaseDatatableView):
 					return '<span style="color: red;">Invalid XML</span>'
 
 			# handle associated job
-			if column == 'job':
+			elif column == 'job':
 				return row.job.name
 
 			# handle unique
-			if column == 'unique':
+			elif column == 'unique':
 				if row.unique:
 					return '<span style="color:green;">Unique</span>'
 				else:
 					return '<span style="color:red;">Duplicate</span>'
+
+			# handle validation_results
+			elif column == 'validation_results':
+				# get validation failures
+				vfs = row.get_validation_errors()
+				if vfs.count() > 0:
+					return '<span style="color:red;">Failed</span>'
+				else:
+					return '<span style="color:green;">Passed</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
@@ -1198,10 +1394,11 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
+				qs = qs.filter(Q(id=search) | Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs
+
 
 
 class DTPublishedJson(BaseDatatableView):
@@ -1295,6 +1492,7 @@ class DTPublishedJson(BaseDatatableView):
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
 				qs = qs.filter(
+					Q(id=search) | 
 					Q(record_id__contains=search) | 
 					Q(document__contains=search) | 
 					Q(job__record_group__publish_set_id=search)
@@ -1363,6 +1561,95 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			if search:
 				qs = qs.filter(Q(record_id__contains=search))
 
+			return qs
+
+
+
+class DTJobValidationScenarioFailuresJson(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id',
+			'results_payload',
+			'fail_count'
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'record_id',
+			'results_payload',
+			'fail_count'
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			jv = models.JobValidation.objects.get(pk=self.kwargs['job_validation_id'])
+
+			# return filtered queryset
+			return jv.get_record_validation_failures()
+
+
+		def render_column(self, row, column):
+
+			# handle record id
+			if column == 'id':
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.id)
+
+			# handle record record_id
+			elif column == 'record_id':
+				# get target record from row
+				target_record = row.record
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.record_id)
+
+			# handle results_payload
+			elif column == 'results_payload':
+				rp = json.loads(row.results_payload)['failed']
+				return ', '.join(rp)
+
+			# handle all else
+			else:
+				return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
+
+			# return
 			return qs
 
 

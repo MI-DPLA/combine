@@ -113,7 +113,7 @@ class ESIndex(object):
 			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 			conf={
 					"es.resource":"%s/record" % index_name,
-					"es.nodes":"192.168.45.10:9200",
+					"es.nodes":"%s:9200" % settings.ES_HOST,
 					"es.mapping.exclude":"temp_id",
 					"es.mapping.id":"temp_id",
 				}
@@ -171,6 +171,9 @@ class BaseMapper(object):
 
 	'''
 	All mappers extend this BaseMapper class.
+
+	Note: Not currently implementing any attributes or methods at this base class,
+	but may in the future.
 
 	Mappers expected to contain following methods:
 		- map_record():

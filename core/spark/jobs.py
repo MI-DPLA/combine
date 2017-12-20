@@ -3,6 +3,7 @@ import ast
 import datetime
 import django
 import hashlib
+import json
 from lxml import etree
 import os
 import shutil
@@ -13,9 +14,11 @@ import pyjxslt
 
 # load elasticsearch spark code
 try:
-	from es import ESIndex, MODSMapper
+	from es import ESIndex
+	from record_validation import ValidationScenarioSpark
 except:
-	from core.spark.es import ESIndex, MODSMapper
+	from core.spark.es import ESIndex
+	from core.spark.record_validation import ValidationScenarioSpark
 
 # import Row from pyspark
 from pyspark.sql import Row
@@ -43,13 +46,13 @@ class AmbiguousIdentifier(Exception):
 
 
 ####################################################################
-# Combine Record Schema											   #
+# Dataframe Schemas 											   #
 ####################################################################
 
 class CombineRecordSchema(object):
 
 	'''
-	Class to organize Combine specific spark dataframe schemas
+	Class to organize Combine record spark dataframe schemas
 	'''
 
 	def __init__(self):
@@ -69,6 +72,7 @@ class CombineRecordSchema(object):
 
 		# fields
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
+
 
 
 ####################################################################
@@ -138,7 +142,7 @@ class HarvestOAISpark(object):
 		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# attempt to find and select <metadata> element from OAI record, else filter out
-		def find_metadata(document):
+		def find_metadata_udf(document):
 			if type(document) == str:
 				xml_root = etree.fromstring(document)
 				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
@@ -154,7 +158,7 @@ class HarvestOAISpark(object):
 			else:
 				return 'none'
 
-		metadata_udf = udf(lambda col_val: find_metadata(col_val), StringType())
+		metadata_udf = udf(lambda col_val: find_metadata_udf(col_val), StringType())
 		records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
 		records = records.filter(records.document != 'none')
 
@@ -185,12 +189,21 @@ class HarvestOAISpark(object):
 		records = records.withColumn('error', error(records.id))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records
 		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -263,7 +276,7 @@ class HarvestStaticXMLSpark(object):
 			return nsmap
 
 
-		def get_metadata(job_id, row, kwargs):
+		def get_metadata_udf(job_id, row, kwargs):
 
 			# get doc string
 			doc_string = row[1]
@@ -347,15 +360,24 @@ class HarvestStaticXMLSpark(object):
 
 		# transform via rdd.map
 		job_id = job.id
-		records = static_rdd.map(lambda row: get_metadata(job_id, row, kwargs))
+		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records.toDF()
 		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
 
 		# remove temporary payload directory if static job was upload based, not location on disk
 		if kwargs['static_type'] == 'upload':
@@ -427,7 +449,7 @@ class TransformSpark(object):
 		if transformation.transformation_type == 'xslt':
 
 			# define udf function for transformation
-			def transform_xml(job_id, row, xslt_string):
+			def transform_xml_udf(job_id, row, xslt_string):
 
 				# attempt transformation and save out put to 'document'
 				try:
@@ -463,18 +485,27 @@ class TransformSpark(object):
 
 			# transform via rdd.map
 			job_id = job.id			
-			records_trans = records.rdd.map(lambda row: transform_xml(job_id, row, xslt_string))
+			records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
 
 		# back to DataFrame
 		records_trans = records_trans.toDF()
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records_trans
 		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -562,12 +593,21 @@ class MergeSpark(object):
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=agg_df
 		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -647,13 +687,22 @@ class PublishSpark(object):
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to db
-		save_records(
+		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records,
 			write_avro=False
 		)
+
+		# run record validation scnearios if requested, using db_records from save_records() output
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
 
 		# index to ES /published
 		ESIndex.index_published_job(
@@ -696,6 +745,10 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	# ensure columns to avro and DB
 	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
+	# write avro, coalescing for output
+	if write_avro:
+		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION).write.format("com.databricks.spark.avro").save(job.job_output)
+
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
 		settings.COMBINE_DATABASE['jdbc_url'],
@@ -715,7 +768,7 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 			numPartitions=settings.SPARK_REPARTITION
 		)
 	job_id = job.id
-	db_records = sqldf.filter(sqldf.job_id == job_id)
+	db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
 	# index to ElasticSearch
 	if settings.INDEX_TO_ES:
@@ -726,9 +779,8 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 			index_mapper=kwargs['index_mapper']
 		)
 
-	# write avro, coalescing default 200 partitions to 4 for output
-	if write_avro:
-		db_records.coalesce(4).write.format("com.databricks.spark.avro").save(job.job_output)
+	# return db_records for later use
+	return db_records
 
 
 def get_job_db_bounds(job):
@@ -746,5 +798,7 @@ def get_job_db_bounds(job):
 		'lowerBound':start_id,
 		'upperBound':end_id
 	}
+
+
 
 

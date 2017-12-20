@@ -50,12 +50,11 @@
 		<!--highlight-->
 		<link rel="stylesheet" href="{% static 'core/highlight.js/default.min.css' %}">
 		<script src="{% static 'core/highlight.js/highlight.min.js' %}"></script>
-		<script>hljs.initHighlightingOnLoad();</script>
 
 	</head>
 	<body>
 
-		<h2><a href="{% url 'combine_home' %}">&#128668; Combine</a></h2>
+		<h2><a href="{% url 'combine_home' %}">&#128668; Combine</a></h2>		
 		<ul>
 			<li><a href="{% url 'livy_sessions' %}">Livy Sessions</a></li>
 			<li><a href="{% url 'organizations' %}">Organizations</a></li>
