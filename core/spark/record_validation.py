@@ -1,7 +1,7 @@
 # imports
 import django
 import hashlib
-from inspect import isfunction
+from inspect import isfunction, signature
 import json
 from lxml import etree, isoschematron
 import os
@@ -130,8 +130,8 @@ class ValidationScenarioSpark(object):
 			# if not valid, prepare Row
 			if not is_valid:
 
-				# prepare fail_dict
-				fail_dict = {
+				# prepare results_dict
+				results_dict = {
 					'count':0,
 					'failures':[]
 				}
@@ -141,19 +141,19 @@ class ValidationScenarioSpark(object):
 				fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
 
 				# log count
-				fail_dict['count'] = len(fails)
+				results_dict['count'] = len(fails)
 
 				# loop through fails and add to dictionary
 				for fail in fails:
 					fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
-					fail_dict['failures'].append(fail_text_elem.text)
+					results_dict['failures'].append(fail_text_elem.text)
 				
 				return Row(
 					record_id=int(row.id),
 					validation_scenario_id=int(vs_id),
 					valid=0,
-					results_payload=json.dumps(fail_dict),
-					fail_count=fail_dict['count']
+					results_payload=json.dumps(results_dict),
+					fail_count=results_dict['count']
 				)
 
 
@@ -204,14 +204,18 @@ class ValidationScenarioSpark(object):
 		# prvb
 		prvb = PythonRecordValidationBase(row)
 		
-		# prepare fail_dict
-		fail_dict = {
+		# prepare results_dict
+		results_dict = {
 			'count':0,
 			'failures':[]
 		}
 
 		# loop through functions
 		for func in pyvs_funcs:
+
+			# get func test message
+			func_signature = signature(func)
+			t_msg = func_signature.parameters['test_message'].default
 
 			# attempt to run user-defined validation function
 			try:
@@ -221,23 +225,28 @@ class ValidationScenarioSpark(object):
 
 				# if fail, append
 				if test_result != True:
-					fail_dict['count'] += 1
-					fail_dict['failures'].append(test_result)
+					results_dict['count'] += 1
+					# if custom message override provided, use
+					if test_result != False:
+						results_dict['failures'].append(test_result)
+					# else, default to test message
+					else:
+						results_dict['failures'].append(t_msg)
 
 			# if problem, report as failure with Exception string
 			except Exception as e:
-				fail_dict['count'] += 1
-				fail_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+				results_dict['count'] += 1
+				results_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
 		# if failures, return Row
-		if fail_dict['count'] > 0:
+		if results_dict['count'] > 0:
 			# return row
 			return Row(
 				record_id=int(row.id),
 				validation_scenario_id=int(vs_id),
 				valid=0,
-				results_payload=json.dumps(fail_dict),
-				fail_count=fail_dict['count']
+				results_payload=json.dumps(results_dict),
+				fail_count=results_dict['count']
 			)
 
 

@@ -1179,7 +1179,7 @@ class ValidationScenario(models.Model):
 		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
 
 
-	def validate_record(self, row, raw_response=False):
+	def validate_record(self, row):
 
 		'''
 		Method to test validation against a single record.
@@ -1195,15 +1195,15 @@ class ValidationScenario(models.Model):
 
 		# run appropriate validation based on type
 		if self.validation_type == 'sch':
-			result = self._validate_schematron(row, raw_response)
+			result = self._validate_schematron(row)
 		if self.validation_type == 'python':
-			result = self._validate_python(row, raw_response)
+			result = self._validate_python(row)
 
 		# return result
 		return result
 
 
-	def _validate_schematron(self, row, raw_response=False):
+	def _validate_schematron(self, row):
 		
 		# parse schematron
 		sct_doc = etree.parse(self.filepath)
@@ -1215,59 +1215,63 @@ class ValidationScenario(models.Model):
 		# validate
 		is_valid = validator.validate(record_xml)
 
-		# if not valid, prepare fail dict
-		if not is_valid and not raw_response:
+		# prepare results_dict
+		results_dict = {
+			'fail_count':0,
+			'passed':[],
+			'failed':[]
+		}
 
-			# prepare results_dict
-			results_dict = {
-				'count':0,
-				'success':[],
-				'failures':[]
-			}
+		# temporarily add all tests to successes
+		sct_root = sct_doc.getroot()
+		nsmap = sct_root.nsmap			
+		
+		# if schematron namespace logged as None, fix
+		try:
+			schematron_ns = nsmap.pop(None)
+			nsmap['schematron'] = schematron_ns
+		except:
+			pass
 
-			# temporarily add all tests to successes
-			sct_root = sct_doc.getroot()
-			nsmap = sct_root.nsmap			
-			
-			# if schematron namespace logged as None, fix
-			try:
-				schematron_ns = nsmap.pop(None)
-				nsmap['schematron'] = schematron_ns
-			except:
-				pass
+		# get all assertions
+		assertions = sct_root.xpath('//schematron:assert', namespaces=nsmap)
+		for a in assertions:
+			results_dict['passed'].append(a.text)
 
-			# get all assertions
-			assertions = sct_root.xpath('//schematron:assert', namespaces=nsmap)
-			for a in assertions:
-				results_dict['success'].append(a.text)
+		# record total tests
+		results_dict['total_tests'] = len(results_dict['passed'])
 
-			# record total tests
-			results_dict['total_tests'] = len(results_dict['success'])
+		# if not valid, parse failed
+		if not is_valid:
 
-			# get failures
+			# get failed
 			report_root = validator.validation_report.getroot()
 			fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
 
 			# log count
-			results_dict['count'] = len(fails)
+			results_dict['fail_count'] = len(fails)
 
-			# loop through fails and add to dictionary
+			# loop through fails
 			for fail in fails:
+
+				# get fail test name
 				fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+				
 				# if in successes, remove
-				if fail_text_elem.text in results_dict['success']:
-					results_dict['success'].remove(fail_text_elem.text)
-				results_dict['failures'].append(fail_text_elem.text)
+				if fail_text_elem.text in results_dict['passed']:
+					results_dict['passed'].remove(fail_text_elem.text)
+				
+				# append to failed
+				results_dict['failed'].append(fail_text_elem.text)
 
-			# return results_dict
-			return results_dict
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':etree.tostring(validator.validation_report).decode('utf-8')
+		}
 
-		# if valid, return None
-		else:
-			return etree.tostring(validator.validation_report).decode('utf-8')
 
-
-	def _validate_python(self, row, raw_response=False):
+	def _validate_python(self, row):
 		
 		# parse user defined functions from validation scenario payload
 		temp_pyvs = ModuleType('temp_pyvs')
@@ -1286,9 +1290,9 @@ class ValidationScenario(models.Model):
 
 		# prepare results_dict
 		results_dict = {
-			'count':0,			
-			'success':[],
-			'failures':[]
+			'fail_count':0,			
+			'passed':[],
+			'failed':[]
 		}
 
 		# record total tests
@@ -1296,6 +1300,10 @@ class ValidationScenario(models.Model):
 
 		# loop through functions
 		for func in pyvs_funcs:
+
+			# get func test message
+			signature = inspect.signature(func)
+			t_msg = signature.parameters['test_message'].default
 
 			# attempt to run user-defined validation function
 			try:
@@ -1305,23 +1313,28 @@ class ValidationScenario(models.Model):
 
 				# if fail, append
 				if test_result != True:
-					results_dict['count'] += 1
-					results_dict['failures'].append(test_result)
+					results_dict['fail_count'] += 1
+					# if custom message override provided, use
+					if test_result != False:
+						results_dict['failed'].append(test_result)
+					# else, default to test message
+					else:
+						results_dict['failed'].append(t_msg)
 
-				# if success, paste funce to success
+				# if success, append to passed
 				else:
-					results_dict['success'].append(func.__name__)
+					results_dict['passed'].append(t_msg)
 
 			# if problem, report as failure with Exception string
 			except Exception as e:
-				results_dict['count'] += 1
-				results_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+				results_dict['fail_count'] += 1
+				results_dict['failed'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
-		# if raw response
-		if raw_response:
-			return json.dumps(results_dict)
-		else:
-			return results_dict
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':json.dumps(results_dict)
+		}
 
 
 
