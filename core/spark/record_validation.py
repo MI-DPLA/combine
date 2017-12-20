@@ -132,28 +132,28 @@ class ValidationScenarioSpark(object):
 
 				# prepare results_dict
 				results_dict = {
-					'count':0,
-					'failures':[]
+					'fail_count':0,
+					'failed':[]
 				}
 
-				# get failures
+				# get failed
 				report_root = validator.validation_report.getroot()
 				fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
 
-				# log count
-				results_dict['count'] = len(fails)
+				# log fail_count
+				results_dict['fail_count'] = len(fails)
 
 				# loop through fails and add to dictionary
 				for fail in fails:
 					fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
-					results_dict['failures'].append(fail_text_elem.text)
+					results_dict['failed'].append(fail_text_elem.text)
 				
 				return Row(
 					record_id=int(row.id),
 					validation_scenario_id=int(vs_id),
 					valid=0,
 					results_payload=json.dumps(results_dict),
-					fail_count=results_dict['count']
+					fail_count=results_dict['fail_count']
 				)
 
 
@@ -206,8 +206,8 @@ class ValidationScenarioSpark(object):
 		
 		# prepare results_dict
 		results_dict = {
-			'count':0,
-			'failures':[]
+			'fail_count':0,
+			'failed':[]
 		}
 
 		# loop through functions
@@ -225,28 +225,28 @@ class ValidationScenarioSpark(object):
 
 				# if fail, append
 				if test_result != True:
-					results_dict['count'] += 1
+					results_dict['fail_count'] += 1
 					# if custom message override provided, use
 					if test_result != False:
-						results_dict['failures'].append(test_result)
+						results_dict['failed'].append(test_result)
 					# else, default to test message
 					else:
-						results_dict['failures'].append(t_msg)
+						results_dict['failed'].append(t_msg)
 
 			# if problem, report as failure with Exception string
 			except Exception as e:
-				results_dict['count'] += 1
-				results_dict['failures'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+				results_dict['fail_count'] += 1
+				results_dict['failed'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
-		# if failures, return Row
-		if results_dict['count'] > 0:
+		# if failed, return Row
+		if results_dict['fail_count'] > 0:
 			# return row
 			return Row(
 				record_id=int(row.id),
 				validation_scenario_id=int(vs_id),
 				valid=0,
 				results_payload=json.dumps(results_dict),
-				fail_count=results_dict['count']
+				fail_count=results_dict['fail_count']
 			)
 
 

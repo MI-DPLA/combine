@@ -1413,11 +1413,11 @@ class RecordValidation(models.Model):
 
 
 	@property
-	def failures(self):
+	def failed(self):
 
 		# if not set, set
 		if not hasattr(self, '_failures'):
-			self._failures = json.loads(self.results_payload)['failures']
+			self._failures = json.loads(self.results_payload)['failed']
 
 		# return
 		return self._failures

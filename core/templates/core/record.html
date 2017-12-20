@@ -63,7 +63,7 @@
 						<th>Actions</th>
 					</tr>
 					{% for rv in record.get_validation_errors %}
-						{% for failure in rv.failures %}
+						{% for failure in rv.failed %}
 							<tr>
 								<td>{{ rv.validation_scenario.name }}</td>
 								<td>{{ failure }}</td>

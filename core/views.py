@@ -1628,7 +1628,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 			# handle results_payload
 			elif column == 'results_payload':
-				rp = json.loads(row.results_payload)['failures']
+				rp = json.loads(row.results_payload)['failed']
 				return ', '.join(rp)
 
 			# handle all else
