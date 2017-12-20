@@ -4,13 +4,25 @@
 	
 	<h2>Test Validation Scenario</h2>
 
+	<p>Here you can test Validation Scenarios before adding them to Combine.  You have the option of selecting a pre-existing Validation Scenario to test, with the option of temporary editing to see what changes would have, or pasting in an entirely new Validation Scenario to test before creating and applying application wide.</p>
+
+	<p>To test, follow these steps:
+		<ol>
+			<li>Filter or search until you find the target record</li>
+			<li>Click that row, which should highlight the row indicating it is selected</li>
+			<li>Select a pre-existing scenario, or paste the XML of a Schematron validation or python code of a new one to try</li>			
+			<li>Select the validation type, "Schematron" or "Python code"</li>
+			<li>Click "Test Validation" to see the results of that validation applied to the selected record immediately</li>
+		</ol>
+	</p>
+
 	<!-- All Records DT table -->
 	{% include 'core/records_dt_table.html' %}
 
 	<div style="width:100%;">
 
 	<!-- input paylaod -->
-	<div style="width:45%; float:left; margin:auto;">
+	<div style="width:80%">
 		<h3>Validation Payload</h3>
 		<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
 		<p>
@@ -32,14 +44,34 @@
 	</div>
 
 	<!-- validation results -->
-	<div style="width:45%; float:right; margin:auto;">
-		<!-- <pre><code id="vs_results" style="padding:10px; border-radius:10px;">RESULTS WILL GO HERE.</code></pre> -->
-		<textarea id="vs_results" style="width:100%; height:320px;"></textarea>
+	<div style="width:80%">
+		<textarea id="vs_results" style="width:100%; height:320px;">Results will show here...</textarea>
 	</div>
 
 	</div>
 
 	<script>
+
+		// global variables
+		var sel_row_id;
+
+		// capture clicked row
+		$(document).ready(function() {
+			$("#datatables_records tbody").on( 'click', 'tr', function () {
+
+				// loop through and remove other selections
+				$("#datatables_records tbody tr.selected").each(function(i, block){
+					$(block).removeClass('selected');
+				});
+
+				// show selection
+				$(this).toggleClass('selected');
+
+				// get record id
+			    sel_row = $(this).children(":first");
+			    sel_row_id = sel_row.html();
+			} );
+		});
 
 		// capture pre-existing validation scenarios and paste
 		$(document).ready(function(){
@@ -67,7 +99,7 @@
 			$("#test_vs").click(function(){
 
 				// change this to dynamically grab from selected rows in records table
-				var record_id = 642568;
+				var record_id = sel_row_id;
 
 				// get vs_payload
 				var vs_payload = $("#vs_payload").val();
@@ -87,13 +119,8 @@
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
-					success: function(data){
-						console.log(data);
+					success: function(data){												
 						$("#vs_results").val(data);
-						// $("#vs_results").each(function(i, block) {
-						// 	console.log(block);
-						// 	hljs.highlightBlock(block);
-						// });
 					}			
 				});
 

@@ -215,11 +215,20 @@
 		<h3>Record Document</h3>
 		{% if record.document != '' %}
 			<div style="width:75%;">
-				<pre><code style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
+				<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
 			</div>
 		{% else %}
 			<p>None</p>
 		{% endif %}
 	</div>
+	<script>
+		// highlight raw document after loaded
+		$(document).ready(function(){
+			$("#record_document_raw").each(function(i, block) {
+				console.log(block);
+				hljs.highlightBlock(block);
+			});
+		});
+	</script>
 
 {% endblock %}

@@ -1184,6 +1184,11 @@ def validation_scenario_payload(request, vs_id):
 
 def test_validation_scenario(request):
 
+	'''
+	View to live test validation scenario
+	'''
+
+	# If GET, serve validation test screen
 	if request.method == 'GET':
 
 		# get validation scenarios
@@ -1192,6 +1197,7 @@ def test_validation_scenario(request):
 		# return
 		return render(request, 'core/test_validation_scenario.html', {'validation_scenarios':validation_scenarios})
 
+	# If POST, provide raw result of validation test
 	if request.method == 'POST':
 
 		logger.debug('running test validation and returning')
@@ -1211,7 +1217,6 @@ def test_validation_scenario(request):
 
 			# validate with record
 			vs_results = vs.validate_record(record, raw_response=True)
-			logger.debug(vs_results)
 
 			# delete vs
 			vs.delete()
