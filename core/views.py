@@ -1096,7 +1096,7 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 	# schematron type validation
 	if vs.validation_type == 'sch':
 
-		vs_result = vs.validate_record(record, raw_schematron_response=True)
+		vs_result = vs.validate_record(record, raw_response=True)
 
 		# return
 		return HttpResponse(vs_result, content_type='text/xml')

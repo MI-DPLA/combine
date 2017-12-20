@@ -1218,26 +1218,49 @@ class ValidationScenario(models.Model):
 		# if not valid, prepare fail dict
 		if not is_valid and not raw_response:
 
-			# prepare fail_dict
-			fail_dict = {
+			# prepare results_dict
+			results_dict = {
 				'count':0,
+				'success':[],
 				'failures':[]
 			}
+
+			# temporarily add all tests to successes
+			sct_root = sct_doc.getroot()
+			nsmap = sct_root.nsmap			
+			
+			# if schematron namespace logged as None, fix
+			try:
+				schematron_ns = nsmap.pop(None)
+				nsmap['schematron'] = schematron_ns
+			except:
+				pass
+
+			# get all assertions
+			assertions = sct_root.xpath('//schematron:assert', namespaces=nsmap)
+			for a in assertions:
+				results_dict['success'].append(a.text)
+
+			# record total tests
+			results_dict['total_tests'] = len(results_dict['success'])
 
 			# get failures
 			report_root = validator.validation_report.getroot()
 			fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
 
 			# log count
-			fail_dict['count'] = len(fails)
+			results_dict['count'] = len(fails)
 
 			# loop through fails and add to dictionary
 			for fail in fails:
 				fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
-				fail_dict['failures'].append(fail_text_elem.text)
+				# if in successes, remove
+				if fail_text_elem.text in results_dict['success']:
+					results_dict['success'].remove(fail_text_elem.text)
+				results_dict['failures'].append(fail_text_elem.text)
 
-			# return fail_dict
-			return fail_dict
+			# return results_dict
+			return results_dict
 
 		# if valid, return None
 		else:
@@ -1263,10 +1286,13 @@ class ValidationScenario(models.Model):
 
 		# prepare results_dict
 		results_dict = {
-			'count':0,
+			'count':0,			
 			'success':[],
 			'failures':[]
 		}
+
+		# record total tests
+		results_dict['total_tests'] = len(pyvs_funcs)
 
 		# loop through functions
 		for func in pyvs_funcs:
