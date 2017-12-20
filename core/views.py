@@ -1096,19 +1096,18 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 	# schematron type validation
 	if vs.validation_type == 'sch':
 
-		vs_result = vs.validate_record(record, raw_response=True)
+		vs_result = vs.validate_record(record)
 
 		# return
-		return HttpResponse(vs_result, content_type='text/xml')
+		return HttpResponse(vs_result['raw'], content_type='text/xml')
 
 	# python type validation
 	if vs.validation_type == 'python':
 
 		vs_result = vs.validate_record(record)
-		logger.debug(vs_result)
 
 		# return
-		return JsonResponse(vs_result, safe=False)
+		return JsonResponse(vs_result['parsed'], safe=False)
 
 
 ####################################################################
@@ -1216,12 +1215,12 @@ def test_validation_scenario(request):
 			vs.save()
 
 			# validate with record
-			vs_results = vs.validate_record(record, raw_response=True)
+			vs_results = vs.validate_record(record)
 
 			# delete vs
 			vs.delete()
 
-			return HttpResponse(vs_results, content_type="text/plain")
+			return HttpResponse(vs_results['raw'], content_type="text/plain")
 
 		except Exception as e:
 
@@ -1390,7 +1389,7 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search)|Q(document__contains=search))
+				qs = qs.filter(Q(id=search) | Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs
@@ -1488,6 +1487,7 @@ class DTPublishedJson(BaseDatatableView):
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
 				qs = qs.filter(
+					Q(id=search) | 
 					Q(record_id__contains=search) | 
 					Q(document__contains=search) | 
 					Q(job__record_group__publish_set_id=search)
