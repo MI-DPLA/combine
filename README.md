@@ -8,6 +8,9 @@ Combine is part of the larger Aggregator-in-a-Box project, and would not functio
 
 The name "Combine", pronounced /kämˌbīn/, is a nod to the [combine harvester used in farming](https://en.wikipedia.org/wiki/Combine_harvester) used to, "efficiently harvest a variety of grain crops."  Instead of grains, we have metadata records!  These metadata records may come in a variety of metadata formats (e.g. MODS, Dublin Core, METS, etc.), and in various states of completeness or DPLA-readiness.  Like the combine equipment used for farming, this application is designed to provide a single point of interaction for multiple steps along the way of harvesting, transforming, and analyzing metadata in preperation for inclusion in DPLA.
 
+## Documentation
+
+See the [docs](docs) folder for more detailed documentation.
 
 ## Installation
 

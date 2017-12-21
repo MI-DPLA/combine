@@ -306,55 +306,16 @@ def test_static_transform():
 #############################################################################
 # Test Validation Scenarios
 #############################################################################
-def test_add_validation_scenarios():
+def test_add_schematron_validation_scenario():
 
 	'''
-	Add validation scenarios
+	Add schematron validation
 	'''
 
-	# add schematron validation
-	sch_payload = \
-'''<?xml version="1.0" encoding="UTF-8"?>
-<schema xmlns="http://purl.oclc.org/dsdl/schematron" xmlns:mods="http://www.loc.gov/mods/v3">
-	<ns prefix="mods" uri="http://www.loc.gov/mods/v3"/>
-	<!-- Required top level Elements for all records record -->
-	<pattern>
-		<title>Required Elements for Each MODS record</title>
-		<rule context="mods:mods">
-			<assert test="mods:titleInfo">There must be a title element</assert>
-			<assert test="count(mods:location/mods:url[@usage='primary'])=1">There must be a url pointing to the item</assert>
-			<assert test="count(mods:location/mods:url[@access='preview'])=1">There must be a url pointing to a thumnail version of the item</assert>
-			<assert test="count(mods:accessCondition[@type='use and reproduction'])=1">There must be a rights statement</assert>
-		</rule>
-	</pattern>
-   
-	<!-- Additional Requirements within Required Elements -->
-		<pattern>
-			<title>Subelements and Attributes used in TitleInfo</title>
-			<rule context="mods:mods/mods:titleInfo">
-				<assert test="*">TitleInfo must contain child title elements</assert>
-			</rule>
-			<rule context="mods:mods/mods:titleInfo/*">
-				<assert test="normalize-space(.)">The title elements must contain text</assert>
-			</rule>
-		</pattern>
-		
-		<pattern>
-			<title>Additional URL requirements</title>
-			<rule context="mods:mods/mods:location/mods:url">
-				<assert test="normalize-space(.)">The URL field must contain text</assert>
-			</rule> 
-		</pattern>
+	# get schematron validation from test data
+	with open('tests/data/schematron_validation.sch','r') as f:
+		sch_payload = f.read()
 
-		<pattern>
-			<title>Impossible requirement</title>
-			<rule context="mods:mods">
-				<assert test="mods:does_not_exist">The element does_not_exist does not exist</assert>
-			</rule> 
-		</pattern>
-	
-</schema>
-'''
 	# init new validation scenario
 	schematron_validation_scenario = ValidationScenario(
 		name='temp_vs_%s' % str(uuid.uuid4()),
@@ -370,61 +331,22 @@ def test_add_validation_scenarios():
 	# assert creation
 	assert type(VO.schematron_validation_scenario.id) == int
 
-	# create python validation scenario
-	python_payload = \
-'''
-import re
 
+def test_add_python_validation_scenario():
 
-def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo element"):
+	'''
+	Add python code snippet validation
+	'''
 
-	titleInfo_elements = record.xml.xpath('//mods:titleInfo', namespaces=record.nsmap)
-	if len(titleInfo_elements) > 0:
-		return True
-	else:
-		return False
-
-
-def test_check_dateIssued_format(record, test_message="check mods:dateIssued is YYYY-MM-DD or YYYY or YYYY-YYYY"):
-
-	# get dateIssued elements
-	dateIssued_elements = record.xml.xpath('//mods:dateIssued', namespaces=record.nsmap)
-
-	# if found, check format 
-	if len(dateIssued_elements) > 0:
-
-		# loop through values and check
-		for dateIssued in dateIssued_elements:          
-		
-			# check format
-			if dateIssued.text is not None:
-				match = re.match(r'^([0-9]{4}-[0-9]{2}-[0-9]{2})|([0-9]{4})|([0-9]{4}-[0-9]{4})$', dateIssued.text)
-			else:
-				# allow None values to pass test 
-				return True
-
-			# match found, continue
-			if match:
-				continue
-			else:
-				return False
-
-		# if all matches, return True
-		return True
-
-	# if none found, return True indicating passed test due to omission
-	else:
-		return True
-
-def test_will_fail(record, test_message="Failure test confirmed fail"):
-	return False
-'''
+	# get python validation from test data
+	with open('tests/data/python_validation.py','r') as f:
+		sch_payload = f.read()
 
 	# init new validation scenario
 	python_validation_scenario = ValidationScenario(
 		name='temp_vs_%s' % str(uuid.uuid4()),
 		payload=sch_payload,
-		validation_type='sch',
+		validation_type='python',
 		default_run=False
 	)
 	python_validation_scenario.save()
@@ -459,18 +381,20 @@ def test_schematron_validation():
 
 def test_python_validation():
 
-	# validate harvest record with schematron
+	# validate harvest record with python
 	'''
-	expecting failure count of 2
+	expecting failure count of 1
 	'''
 	vs_results = VO.python_validation_scenario.validate_record(VO.harvest_record)
-	assert vs_results['parsed']['fail_count'] == 2
+	print(vs_results)
+	assert vs_results['parsed']['fail_count'] == 1
 
-	# validate transform record with schematron
+	# validate transform record with python
 	'''
 	expecting failure count of 1
 	'''
 	vs_results = VO.python_validation_scenario.validate_record(VO.transform_record)
+	print(vs_results)
 	assert vs_results['parsed']['fail_count'] == 1
 
 
