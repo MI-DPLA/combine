@@ -909,6 +909,9 @@ class Record(models.Model):
 				if val:
 					mapped_values[k] = es_doc[v]
 
+			# return mapped values
+			return mapped_values
+
 		else:
 			return None
 
