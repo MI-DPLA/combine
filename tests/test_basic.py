@@ -89,8 +89,7 @@ def test_organization_create():
 	# instantiate and save
 	VO.org = Organization(
 		name='test_org_%s' % uuid.uuid4().hex,
-		description='',
-		publish_id='test_org_pub_id'
+		description=''
 	)
 	VO.org.save()
 	assert type(VO.org.id) == int

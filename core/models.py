@@ -45,6 +45,9 @@ from core.es import es_handle
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
+# import ElasticSearch BaseMapper
+from core.spark.es import BaseMapper
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -227,7 +230,6 @@ class Organization(models.Model):
 
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
-	publish_id = models.CharField(max_length=255)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
@@ -1426,6 +1428,21 @@ class RecordValidation(models.Model):
 		return self._failures
 
 
+class IndexMappers(object):
+
+	'''
+	Model to aggregate built-in and custom index mappers from core.spark.es
+	'''
+
+	@staticmethod
+	def mappers():
+
+		'''
+		Find and return all index mappers that extend core.spark.es.BaseMapper
+		'''
+
+		mappers = BaseMapper.__subclasses__()
+		return mappers
 
 
 

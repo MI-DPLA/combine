@@ -13,14 +13,20 @@ import xmltodict
 import pyjxslt
 
 # import Row from pyspark
-from pyspark.sql import Row
-from pyspark.sql.types import StringType, IntegerType
-from pyspark.sql.functions import udf
+try:
+	from pyspark.sql import Row
+	from pyspark.sql.types import StringType, IntegerType
+	from pyspark.sql.functions import udf
+except:
+	pass
 
-# init django settings file to retrieve settings
-os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-sys.path.append('/opt/combine')
-django.setup()
+# check for registered apps signifying readiness, if not, run django.setup() to run as standalone
+if not hasattr(django, 'apps'):
+	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+	sys.path.append('/opt/combine')
+	django.setup()	
+
+# import django settings
 from django.conf import settings
 
 
@@ -218,6 +224,11 @@ class GenericMapper(BaseMapper):
 			1 (dict): details from mapping process, success or failure
 	'''
 
+
+	# human readable name
+	name = "Generic XPath based mapper"
+
+
 	def __init__(self):
 
 		# empty elems list
@@ -407,6 +418,11 @@ class MODSMapper(BaseMapper):
 			- field names are combination of prefixes and attributes
 		- convert to dictionary with xmltodict
 	'''
+
+
+	# human readable name
+	name = "Custom MODS mapper"
+
 
 	def __init__(self, xslt_processor='lxml'):
 

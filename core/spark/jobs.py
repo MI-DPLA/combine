@@ -27,10 +27,13 @@ import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
 from pyspark.sql.window import Window
 
-# init django settings file to retrieve settings
-os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-sys.path.append('/opt/combine')
-django.setup()
+# check for registered apps signifying readiness, if not, run django.setup() to run as standalone
+if not hasattr(django, 'apps'):
+	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+	sys.path.append('/opt/combine')
+	django.setup()	
+
+# import django settings
 from django.conf import settings
 
 # import select models from Core
