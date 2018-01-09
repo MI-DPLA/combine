@@ -225,7 +225,8 @@ class GenericMapper(BaseMapper):
 	'''
 
 
-	# human readable name
+	# Index Mapper class attributes (needed for easy access in Django templates)
+	classname = "GenericMapper" # must be same as class name
 	name = "Generic XPath based mapper"
 
 
@@ -420,7 +421,8 @@ class MODSMapper(BaseMapper):
 	'''
 
 
-	# human readable name
+	# Index Mapper class attributes (needed for easy access in Django templates)
+	classname = "MODSMapper" # must be same as class name
 	name = "Custom MODS mapper"
 
 

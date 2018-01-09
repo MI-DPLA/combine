@@ -470,11 +470,15 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
 		# render page
 		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -545,6 +549,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	
 	# get validation scenarios
 	validation_scenarios = models.ValidationScenario.objects.all()
+
+	# get index mappers
+	index_mappers = models.IndexMappers.get_mappers()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -553,6 +560,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		return render(request, 'core/job_harvest_static_xml.html', {
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -661,6 +669,9 @@ def job_transform(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
 		# render page
 		return render(request, 'core/job_transform.html', {
 				'job_select_type':'single',
@@ -668,6 +679,7 @@ def job_transform(request, org_id, record_group_id):
 				'jobs':jobs,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -745,12 +757,16 @@ def job_merge(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
 				'record_group':record_group,
 				'jobs':jobs,
 				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -823,12 +839,16 @@ def job_publish(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
 				'jobs':jobs,
 				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 

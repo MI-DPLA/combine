@@ -1,12 +1,16 @@
 {% block content %}
+{% load core_template_filters %}
 
 	<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ede7ff;">
 		<p><strong>Select Index Mapping</strong></p>
 		<p>When new records are created in Combine, through Harvest, Transform, Merging, or Publishing, they are also indexed in ElasticSearch for search and analysis.  Using the dropdown below, select a pre-configured scenario for mapping your metadata records to ElasticSearch fields.</p>
-		<select name='index_mapper'>		
-			<option value='GenericMapper'>Generic mapper for indexing</option>
-			<option value='MODSMapper'>MODS mapper</option>
+		
+		<select name='index_mapper'>
+			{% for im in index_mappers %}
+				<option value='{{ im.classname }}'>{{ im.name }}</option>
+			{% endfor %}
 		</select>
+
 	</div>
 
 {% endblock %}

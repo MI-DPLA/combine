@@ -1435,14 +1435,14 @@ class IndexMappers(object):
 	'''
 
 	@staticmethod
-	def mappers():
+	def get_mappers():
 
 		'''
 		Find and return all index mappers that extend core.spark.es.BaseMapper
 		'''
 
-		mappers = BaseMapper.__subclasses__()
-		return mappers
+		return BaseMapper.__subclasses__()
+
 
 
 
