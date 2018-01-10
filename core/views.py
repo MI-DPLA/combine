@@ -909,7 +909,7 @@ def job_reports_view(request, org_id, record_group_id, job_id):
 	View all reports for a given job
 	'''
 
-	pass
+	return HttpResponse('reports to come...')
 
 
 @login_required
@@ -955,9 +955,11 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# get mapped fields to include
-		mapped_field_include = request.POST.get('mapped_field_include')
+		mapped_field_include = request.POST.get('mapped_field_include', [])
 
-		return redirect('job_reports_create_validation', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
+
+
+		return redirect('job_reports_view', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
 
 
 @login_required

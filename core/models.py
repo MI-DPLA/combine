@@ -25,6 +25,9 @@ import zipfile
 # pandas
 import pandas as pd
 
+# django-pandas
+from django_pandas.io import read_frame
+
 # django imports
 from django.apps import AppConfig
 from django.conf import settings
@@ -1386,11 +1389,11 @@ class JobValidation(models.Model):
 			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
 		'''
 		stime = time.time()
-		rvs = RecordValidation.objects\
+		rvfs = RecordValidation.objects\
 			.filter(validation_scenario=self.validation_scenario)\
 			.filter(record__job=self.job)
 		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
-		return rvs
+		return rvfs
 
 
 	def validation_failure_count(self):
@@ -1408,8 +1411,8 @@ class JobValidation(models.Model):
 
 		if self.failure_count is None:
 			logger.debug("failure count not found for %s, calculating" % self)
-			rvs = self.get_record_validation_failures()
-			self.failure_count = rvs.count()
+			rvfs = self.get_record_validation_failures()
+			self.failure_count = rvfs.count()
 			self.save()
 
 		# return count
@@ -1480,8 +1483,6 @@ class JobReport(models.Model):
 	def __str__(self):
 		return '%s, JobReport: #%s, for Job #: %s' % (self.name, self.id, self.job)
 
-
-	
 
 
 ####################################################################
@@ -2608,6 +2609,55 @@ class CombineJob(object):
 		except:
 			logger.debug('could not load job output to determine filename hash')
 			return False
+
+
+	def generate_validation_report(self, validation_scenarios=None, mapped_field_include=None):
+
+		'''
+		Method to generate report based on validation scenarios run for this job
+
+		Appproach:
+			- Get all validation failures that match validation_scenarios, and build initial DataFrame
+			- Loop through requested mapped fields
+				- add new column with name as mapped field
+				- loop through validation record failure (vrf) get value retrieved with and add to column:
+					`vrf.record.get_es_doc()['mods_titleInfo_title']`
+
+		Args:
+			validation_scenarios (list): List of validation scenario IDs, run for this job, to include in report
+			mapped_field_include (list): List of mapped field as str to include in report
+			output_format (str)['csv','excel','pdf']: output format for report
+
+		Returns:
+			filepath (str): output filepath of report 
+		'''
+
+		# get QuerySet of all validation records failures (rvf) for job
+		rvfs = RecordValidation.objects.filter(record__job=self.job)
+
+		# if validation_scenarios passed, filter only those
+		if validation_scenarios:
+			rvfs = rvfs.filter(validation_scenario_id__in=validation_scenarios)
+
+		# create DataFrame with django-pands
+		rvf_df = read_frame(rvfs, fieldnames=[
+				'record__id', # Combine record DB ID
+				'record__record_id', # Record string ID
+				'validation_scenario__name',
+				'fail_count',
+				'results_payload'
+			])
+
+		# rename columns to more human readable format
+		col_mapping = {
+			'record__id':'Combine ID',
+			'record__record_id':'Record ID',
+			'validation_scenario__name':'Validation Scenario',
+			'fail_count':'Test Failure Count',
+			'results_payload':'Failure Message'
+		}
+		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
+
 
 
 
