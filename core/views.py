@@ -902,6 +902,68 @@ def job_publish(request, org_id, record_group_id):
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
+@login_required
+def job_reports_view(request, org_id, record_group_id, job_id):
+	
+	'''
+	View all reports for a given job
+	'''
+
+	pass
+
+
+@login_required
+def job_reports_create_validation(request, org_id, record_group_id, job_id):
+
+	'''
+	Generate job report based on validation results
+	'''
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# field analysis
+	field_counts = cjob.count_indexed_fields()
+
+	# if GET, prepare form
+	if request.method == 'GET':
+
+		# get validation scenarios run for this job
+
+		# render page
+		return render(request, 'core/job_reports_create_validation.html', {
+				'cjob':cjob,
+				'field_counts':field_counts,
+				'breadcrumbs':breadcrumb_parser(request.path)
+			})
+
+
+	# if POST, generate report
+	if request.method == 'POST':
+		
+		logger.debug('generating validation results report')
+
+		# debug form
+		logger.debug(request.POST)
+
+		# get job name
+		report_name = request.POST.get('report_name')
+		if report_name == '':
+			report_name = 'Validation Report'
+
+		# get requested validation scenarios to include in report
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+		# get mapped fields to include
+		mapped_field_include = request.POST.get('mapped_field_include')
+
+		return redirect('job_reports_create_validation', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
+
+
+@login_required
+def job_reports_create_audit(request, org_id, record_group_id, job_id):
+	pass
+
 
 ####################################################################
 # Jobs QA	                   									   #
