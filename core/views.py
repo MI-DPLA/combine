@@ -1031,7 +1031,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	Single Record page
 	'''
 
-	# get all records within this record group
+	# get single record based on Combine record DB id
 	record = models.Record.objects.get(pk=int(record_id))
 
 	# build ancestry in both directions
@@ -1057,10 +1057,12 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		logger.debug('could not load job details')
 		job_details = {}
 
-	##############################################################################################################
-	# DPLA API testing
+	# attempt to retrieve pre-existing DPLA document
 	dpla_api_doc = record.dpla_api_record_match()
-	##############################################################################################################
+	if dpla_api_doc is not None:
+		dpla_api_json = json.dumps(dpla_api_doc, indent=4, sort_keys=True)
+	else:
+		dpla_api_json = None
 
 	# return
 	return render(request, 'core/record.html', {
@@ -1068,7 +1070,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 			'record':record,
 			'record_stages':record_stages,
 			'job_details':job_details,
-			'dpla_api_doc':dpla_api_doc
+			'dpla_api_doc':dpla_api_doc,
+			'dpla_api_json':dpla_api_json
 		})
 
 
@@ -1414,7 +1417,7 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(id=search) | Q(record_id__contains=search) | Q(document__contains=search))
+				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs

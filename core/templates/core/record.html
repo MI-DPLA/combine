@@ -5,13 +5,12 @@
 
 	<h2>Record</h2>
 
-	<h3>Combine Attributes</h3>
 	<ul>
 		<li><strong>Combine ID:</strong> {{ record.id }}</li>
 		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
-		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
-		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
-		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
+		<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
+		<li><strong>Published OAI ID:</strong> <code>{{ record.oai_id }}</code></li>
+		<!-- <li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li> -->
 	</ul>
 
 	<!-- Show DPLA Mapped Fields if present -->
@@ -228,5 +227,23 @@
 			});
 		});
 	</script>
+
+	{% if dpla_api_doc %}
+		<div id="dpla_api_result">
+			<h3>DPLA API Result</h3>
+			<div style="width:75%;">
+				<pre><code id="dpla_api_result_json" style="padding:10px; border-radius:10px;" class="json">{{ dpla_api_json|safe }}</code></pre>
+			</div>		
+		</div>
+		<script>
+			// highlight raw document after loaded
+			$(document).ready(function(){
+				$("#dpla_api_result_json").each(function(i, block) {
+					console.log(block);
+					hljs.highlightBlock(block);
+				});
+			});
+		</script>
+	{% endif %}
 
 {% endblock %}

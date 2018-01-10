@@ -610,6 +610,24 @@ class Job(models.Model):
 		return self._dpla_mapping
 
 
+	def generate_validation_failure_report(self):
+
+		'''
+		Method to generate downloadable report of records that failed validation
+		'''
+
+		# get validation scenarios run
+		for jvs in self.jobvalidation_set.all():
+			logger.debug('adding %s to job validation dataframe' % jvs)
+
+			
+
+
+
+
+
+
+
 
 class JobTrack(models.Model):
 
@@ -923,7 +941,7 @@ class Record(models.Model):
 		'''
 		Method to attempt a match against the DPLA's API
 
-		NOTE: Still exploratory.  Queries DPLA API for match against some known mappings.
+		NOTE: Still experimental.  Queries DPLA API for match against some known mappings.
 		'''
 
 		# attempt search if API key defined
@@ -939,24 +957,27 @@ class Record(models.Model):
 			# get DPLA mappings
 			dpla_mapping = self.job.dpla_mapping
 
+			# if search string not provided, attempt to generate based on any mapped fields
 			if not search_string:
 
 				'''
 				Loop through mapped fields in opinionated order
+				Update: Leaning towards exclusive use of 'isShownAt'
+					- close to binary True/False API match, removes any fuzzy connections
 				'''
 
 				# isShownAt
-				if dpla_mapping.isShownAt:
+				if dpla_mapping.isShownAt and dpla_mapping.isShownAt in es_doc.keys():
 					logger.debug('isShownAt mapping found, using')
 					search_string = 'isShownAt="%s"' % es_doc[dpla_mapping.isShownAt]
 
 				# title
-				elif dpla_mapping.title:
+				elif dpla_mapping.title and dpla_mapping.title in es_doc.keys():
 					logger.debug('title mapping found, using')
 					search_string = 'sourceResource.title="%s"' % es_doc[dpla_mapping.title]
 
 				# description
-				elif dpla_mapping.description:
+				elif dpla_mapping.description and dpla_mapping.description in es_doc.keys():
 					logger.debug('description mapping found, using')
 					search_string = 'sourceResource.description="%s"' % es_doc[dpla_mapping.description]
 
@@ -968,7 +989,7 @@ class Record(models.Model):
 			# check for search string at this point
 			if search_string:
 
-				# query based on title
+				# query
 				api_q = requests.get(
 					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
@@ -1442,7 +1463,6 @@ class IndexMappers(object):
 		'''
 
 		return BaseMapper.__subclasses__()
-
 
 
 

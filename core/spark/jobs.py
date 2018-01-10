@@ -82,7 +82,6 @@ class CombineRecordSchema(object):
 # Spark Jobs           											   #
 ####################################################################
 
-
 class HarvestOAISpark(object):
 
 	'''
@@ -718,6 +717,10 @@ class PublishSpark(object):
 		job_track.save()
 
 
+
+####################################################################
+# Utility Functions 											   #
+####################################################################
 
 def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True):
 
