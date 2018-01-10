@@ -498,6 +498,7 @@ class Job(models.Model):
 		# return
 		return records
 
+
 	def get_errors(self):
 
 		'''
@@ -620,13 +621,6 @@ class Job(models.Model):
 		for jvs in self.jobvalidation_set.all():
 			logger.debug('adding %s to job validation dataframe' % jvs)
 
-			
-
-
-
-
-
-
 
 
 class JobTrack(models.Model):
@@ -642,6 +636,7 @@ class JobTrack(models.Model):
 
 	def __str__(self):
 		return 'JobTrack: job_id #%s' % self.job_id
+
 
 
 class JobInput(models.Model):
@@ -1085,6 +1080,7 @@ class IndexMappingFailure(models.Model):
 		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
 
 
+
 class DPLAJobMap(models.Model):
 
 	'''
@@ -1447,6 +1443,7 @@ class RecordValidation(models.Model):
 
 		# return
 		return self._failures
+
 
 
 class IndexMappers(object):
@@ -1934,7 +1931,6 @@ class LivyClient(object):
 ####################################################################
 # Combine Models 												   #
 ####################################################################
-
 
 class ESIndex(object):
 
@@ -3414,6 +3410,7 @@ class PublishJob(CombineJob):
 		pass
 
 
+
 ####################################################################
 # ElasticSearch DataTables connector 							   #
 ####################################################################
@@ -3837,6 +3834,7 @@ class DTElasticSearch(View):
 ####################################################################
 # Python based Record Validation								   #
 ####################################################################
+
 class PythonRecordValidationBase(object):
 
 	'''

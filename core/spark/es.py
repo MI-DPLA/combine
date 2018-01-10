@@ -187,6 +187,7 @@ class BaseMapper(object):
 	'''
 
 
+
 class GenericMapper(BaseMapper):
 
 	'''
@@ -468,7 +469,6 @@ class MODSMapper(BaseMapper):
 			(tuple):
 				0 (str): ['success','fail']
 				1 (dict): details from mapping process, success or failure
-
 		'''
 
 		try:
@@ -498,7 +498,7 @@ class MODSMapper(BaseMapper):
 			mapped_dict['publish_set_id'] = publish_set_id
 
 			# add record's Combine DB id
-			self.formatted_elems['combine_db_id'] = combine_db_id
+			mapped_dict['combine_db_id'] = combine_db_id
 
 			return (
 				'success',
