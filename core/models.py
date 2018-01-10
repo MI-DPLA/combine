@@ -2611,7 +2611,11 @@ class CombineJob(object):
 			return False
 
 
-	def generate_validation_report(self, report_type='csv', validation_scenarios=None, mapped_field_include=None):
+	def generate_validation_report(self,
+		report_type='csv',
+		validation_scenarios=None,
+		mapped_field_include=None,
+		return_dataframe_only=False):
 
 		'''
 		Method to generate report based on validation scenarios run for this job
@@ -2672,18 +2676,26 @@ class CombineJob(object):
 					if field in es_doc.keys():
 						vals.append(es_doc[field])
 					else:
-						vals.append('None')
+						vals.append(None)
 				rvf_df[field] = vals
 		##########################################################################################################
 
-		# output file
-		if report_type == 'csv':
-			filename = '/home/combine/test_report.csv'
-			rvf_df.to_csv(filename)
+		# if only dataframe needed, return
+		if return_dataframe_only:
+			logger.debug('report generation elapsed: %s' % (time.time() - stime))
+			return rvf_df
 
-		# return
-		logger.debug('report generation elapsed: %s' % (time.time() - stime))
-		return filename
+		# else, output to file and return path
+		else:
+
+			# output file
+			if report_type == 'csv':
+				filename = '/home/combine/test_report.csv'
+				rvf_df.to_csv(filename)
+
+			# return
+			logger.debug('report generation elapsed: %s' % (time.time() - stime))
+			return filename
 
 
 class HarvestJob(CombineJob):
