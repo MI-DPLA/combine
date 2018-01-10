@@ -1463,6 +1463,27 @@ class IndexMappers(object):
 
 
 
+class JobReport(models.Model):
+
+	'''
+	Model to generate and organize reports about jobs
+	'''
+
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	name = models.CharField(max_length=255, null=True, default=None)
+	report_type = models.CharField(max_length=255, null=True, default=None)
+	filepath = models.CharField(max_length=1024, null=True, default=None)
+	row_count = models.IntegerField(null=True, default=None)
+	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+
+
+	def __str__(self):
+		return '%s, JobReport: #%s, for Job #: %s' % (self.name, self.id, self.job)
+
+
+	
+
+
 ####################################################################
 # Signals Handlers                                                 # 
 ####################################################################
