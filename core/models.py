@@ -2611,7 +2611,7 @@ class CombineJob(object):
 			return False
 
 
-	def generate_validation_report(self, validation_scenarios=None, mapped_field_include=None):
+	def generate_validation_report(self, report_type='csv', validation_scenarios=None, mapped_field_include=None):
 
 		'''
 		Method to generate report based on validation scenarios run for this job
@@ -2631,6 +2631,9 @@ class CombineJob(object):
 		Returns:
 			filepath (str): output filepath of report 
 		'''
+
+		# DEBUG
+		stime = time.time()
 
 		# get QuerySet of all validation records failures (rvf) for job
 		rvfs = RecordValidation.objects.filter(record__job=self.job)
@@ -2658,7 +2661,29 @@ class CombineJob(object):
 		}
 		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
 
+		# loop through requests mapped fields, add to dataframe
+		# INEFFICIENT, BUT FUNCTIONAL ############################################################################
+		if mapped_field_include:
+			for field in mapped_field_include:
+				vals = []
+				for record_id in rvf_df['Combine ID']:
+					r = Record.objects.get(pk=int(record_id))
+					es_doc = r.get_es_doc()
+					if field in es_doc.keys():
+						vals.append(es_doc[field])
+					else:
+						vals.append('None')
+				rvf_df[field] = vals
+		##########################################################################################################
 
+		# output file
+		if report_type == 'csv':
+			filename = '/home/combine/test_report.csv'
+			rvf_df.to_csv(filename)
+
+		# return
+		logger.debug('report generation elapsed: %s' % (time.time() - stime))
+		return filename
 
 
 class HarvestJob(CombineJob):
