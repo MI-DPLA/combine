@@ -925,6 +925,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
+
 	# if GET, prepare form
 	if request.method == 'GET':
 

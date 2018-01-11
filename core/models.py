@@ -2272,16 +2272,6 @@ class PublishedRecords(object):
 		return self.esi.field_analysis(field_name)
 
 
-	# def field_analysis_dt(self, field_name):
-
-	# 	'''
-	# 	Wrapper for ESIndex.field_analysis_dt
-	# 	'''
-
-	# 	# return field analysis
-	# 	return self.esi.field_analysis_dt(field_name)
-
-
 
 class CombineJob(object):
 
@@ -2612,10 +2602,12 @@ class CombineJob(object):
 
 
 	def generate_validation_report(self,
-		report_type='csv',
-		validation_scenarios=None,
-		mapped_field_include=None,
-		return_dataframe_only=False):
+			report_type='csv',
+			validation_scenarios=None,
+			mapped_field_include=None,
+			return_dataframe_only=False,
+			chunk_size=1000
+		):
 
 		'''
 		Method to generate report based on validation scenarios run for this job
@@ -2633,7 +2625,8 @@ class CombineJob(object):
 			output_format (str)['csv','excel','pdf']: output format for report
 
 		Returns:
-			filepath (str): output filepath of report 
+			filepath (str): output filepath of report
+			report Dataframe (pandas.DataFrame): DataFrame of report
 		'''
 
 		# DEBUG
@@ -2666,19 +2659,42 @@ class CombineJob(object):
 		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
 
 		# loop through requests mapped fields, add to dataframe
-		# INEFFICIENT, BUT FUNCTIONAL ############################################################################
 		if mapped_field_include:
-			for field in mapped_field_include:
-				vals = []
-				for record_id in rvf_df['Combine ID']:
-					r = Record.objects.get(pk=int(record_id))
-					es_doc = r.get_es_doc()
-					if field in es_doc.keys():
-						vals.append(es_doc[field])
-					else:
-						vals.append(None)
-				rvf_df[field] = vals
-		##########################################################################################################
+
+			# prepare dictionary
+			field_values_dict = { field:[] for field in mapped_field_include }
+			
+			# establish chunking
+			tlen = rvf_df['Record ID'].count()
+			start = 0
+			end = start + chunk_size
+
+			while start < tlen:
+
+				# logger.debug('es chunk %s --> %s' % (start, end))
+
+				# get doc chunks from es
+				chunk = list(rvf_df['Record ID'].iloc[start:end])
+				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']				
+				
+				# grab values and add to dictionary
+				for es_doc in docs:
+					for field in mapped_field_include:
+						if field in es_doc['_source'].keys():
+							field_values_dict[field].append(es_doc['_source'][field]) 
+						else:
+							field_values_dict[field].append(None)
+				
+				if tlen > (end + chunk_size):
+					start = end
+					end = end + chunk_size
+				elif tlen <= (end + chunk_size):
+					start = end
+					end = tlen
+
+			# add values to dataframe
+			for field, value_list in field_values_dict.items():
+				rvf_df[field] = value_list
 
 		# if only dataframe needed, return
 		if return_dataframe_only:
