@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 # generic imports
 import datetime
+import gc
 import hashlib
 import inspect
 import json
@@ -2672,6 +2673,7 @@ class CombineJob(object):
 		# if only dataframe needed, return
 		if return_dataframe_only:
 			logger.debug('report generation elapsed: %s' % (time.time() - stime))
+			gc.collect() # manual garbage collection
 			return rvf_df
 
 		# else, output to file and return path
@@ -2698,6 +2700,7 @@ class CombineJob(object):
 			# return
 			logger.debug('report written to :%s' % full_path)
 			logger.debug('report generation elapsed: %s' % (time.time() - stime))
+			gc.collect() # manual garbage collection
 			return full_path
 
 

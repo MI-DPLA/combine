@@ -91,6 +91,7 @@
 					</tr>
 				{% endfor %}
 			</table>
+			<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button>Run validation results report</button></a></p>
 		</div>
 	{% endif %}
 
@@ -118,13 +119,7 @@
 	<!-- Indexed Fields Analysis DT Table -->
 	{% include 'core/indexed_fields_dt_table.html' %}
 
-	<div>
-		<h3>Reports</h3>
-		{% if cjob.job.jobvalidation_set.count > 0 %}
-		<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button>Validation Results Report</button></a></p>
-		{% endif %}
-		<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button>Audit Records Report</button></a></p>
-	</div>
+	
 
 {% endblock %}
 
