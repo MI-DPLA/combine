@@ -27,6 +27,7 @@ livy-python-api==0.3.0
 lxml==3.8.0
 mysqlclient==1.3.10
 numpy==1.13.1
+openpyxl==2.4.9
 pandas==0.20.3
 pathlib2==2.3.0
 pexpect==4.2.1

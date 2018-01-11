@@ -903,16 +903,6 @@ def job_publish(request, org_id, record_group_id):
 
 
 @login_required
-def job_reports_view(request, org_id, record_group_id, job_id):
-	
-	'''
-	View all reports for a given job
-	'''
-
-	return HttpResponse('reports to come...')
-
-
-@login_required
 def job_reports_create_validation(request, org_id, record_group_id, job_id):
 
 	'''
@@ -961,13 +951,30 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		mapped_field_include = request.POST.getlist('mapped_field_include', [])
 
 		# run report generation
-		report = cjob.generate_validation_report(
+		report_output = cjob.generate_validation_report(
 				report_format=report_format,
 				validation_scenarios=validation_scenarios,
 				mapped_field_include=mapped_field_include
 			)
 
-		return redirect('job_reports_view', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
+		# response is to download file from disk
+		with open(report_output, 'rb') as fhand:
+			
+			# csv
+			if report_format == 'csv':
+				content_type = 'text/plain'
+				attachment_filename = '%s.csv' % report_name
+			
+			# excel
+			if report_format == 'excel':
+				content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+				# content_type = 'text/plain'
+				attachment_filename = '%s.xlsx' % report_name
+
+			# prepare and return response
+			response = HttpResponse(fhand, content_type=content_type)
+			response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
+			return response
 
 
 @login_required

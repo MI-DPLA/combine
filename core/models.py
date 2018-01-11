@@ -1466,25 +1466,6 @@ class IndexMappers(object):
 
 
 
-class JobReport(models.Model):
-
-	'''
-	Model to generate and organize reports about jobs
-	'''
-
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	name = models.CharField(max_length=255, null=True, default=None)
-	report_type = models.CharField(max_length=255, null=True, default=None)
-	filepath = models.CharField(max_length=1024, null=True, default=None)
-	row_count = models.IntegerField(null=True, default=None)
-	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-
-
-	def __str__(self):
-		return '%s, JobReport: #%s, for Job #: %s' % (self.name, self.id, self.job)
-
-
-
 ####################################################################
 # Signals Handlers                                                 # 
 ####################################################################
@@ -2684,10 +2665,7 @@ class CombineJob(object):
 					start = end
 					end = tlen
 
-			# add values to dataframe
-			logger.debug(field_values_dict.keys())
-			for k,v in field_values_dict.items():
-				logger.debug(len(v))
+			# add values to dataframe			
 			for field, value_list in field_values_dict.items():
 				rvf_df[field] = value_list
 
@@ -2699,18 +2677,23 @@ class CombineJob(object):
 		# else, output to file and return path
 		else:
 
-			# check that reports directory exists
-			reports_dir = '%s/reports' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
-			if not os.path.exists(reports_dir):
-				os.mkdir(reports_dir)
+			# # check that reports directory exists
+			# reports_dir = '%s/reports' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+			# if not os.path.exists(reports_dir):
+			# 	os.mkdir(reports_dir)
 
 			# create filename
 			filename = uuid.uuid4().hex
 
 			# output csv
 			if report_format == 'csv':
-				full_path = '%s/%s.csv' % (reports_dir, filename)
-				rvf_df.to_csv(full_path)
+				full_path = '/tmp/%s.csv' % (filename)
+				rvf_df.to_csv(full_path, encoding='utf-8')
+
+			# output excel
+			if report_format == 'excel':
+				full_path = '/tmp/%s.xlsx' % (filename)
+				rvf_df.to_excel(full_path, encoding='utf-8')
 
 			# return
 			logger.debug('report written to :%s' % full_path)

@@ -12,14 +12,21 @@
 
 		{% csrf_token %}
 
-		<p><strong>Job Name (optional):</strong>
-			<input type="text" name="report_name" size=120 placeholder="e.g. OAI Harvest, validation report"/>
+		<p><strong>Report filename (optional):</strong></p>
+			<p><em>Note: file extension not needed, and avoid spaces or special characters where possible</em></p>
+		<p>	
+			<input type="text" name="report_name" size=120 placeholder="e.g. fedora_records_transformed"/>
 		<p>
 
-		<p>Select output format for report:</p>
+		<p>Select output format for report:
+			<ul>
+				<li><strong>Comma seperated file (.csv)</strong> - Fast report generation, large filesize</li>
+				<li><strong>Excel spreadsheet (.xlsx)</strong> - Considerably slower report generation, much smaller filesize</li>
+		</p>		
 		<p>
 			<select name='report_format'>
 				<option value='csv'>comma separated (.csv)</option>
+				<option value='excel'>Excel spreadsheet (.xslx)</option>
 			</select>
 		</p>
 
