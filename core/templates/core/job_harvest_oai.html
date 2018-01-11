@@ -2,20 +2,22 @@
 
 {% block content %}
 
-	<h3>Harvest Job for Record Group: {{ record_group.name }}</h3>
+	<h3>OAI Harvest Job</h3>
 
-	<form method="POST" action="{% url 'job_harvest' org_id=record_group.organization.id record_group_id=record_group.id %}">
+	<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque maximus diam quis auctor ornare. Aenean ac egestas odio. Suspendisse aliquet, eros vitae pretium tristique, est mi blandit nisl, ut accumsan risus tortor at lacus. Proin ut felis dapibus, tempor orci eu, condimentum purus. Pellentesque at lorem sed quam sollicitudin posuere sit amet in ipsum. In ornare sem et dapibus hendrerit. Praesent id bibendum dolor. Quisque et condimentum massa. Quisque sapien metus, tempor eget tortor sit amet, varius posuere mi. Aenean dapibus finibus tellus vitae consectetur. Pellentesque bibendum, ipsum et interdum luctus, lorem neque ultricies enim, vitae scelerisque eros ex sed lectus.</p>
+
+	<form method="POST" action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 		{% csrf_token %}
 
-		<p>Harvest Job Name (optional):
+		<p><strong>Job Name (optional):</strong>
 			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
 		<p>
 
 		<!-- optional job note -->
 		{% include 'core/job_note.html' %}
 		
-		<p>Select OAI endpoint to use:
+		<p><strong>Select OAI endpoint to use:</strong>
 			<select id="oai_endpoint_id" name="oai_endpoint_id">
 				<option value="">Select an oai endpoint...</option>
 				{% for oai_endpoint in oai_endpoints %}
@@ -31,17 +33,17 @@
 
 		<div style="background-color:#E4E4E3; width:50%; padding:10px; border-radius:10px;">
 			<p style="color:red;">Optional overrides for defaults shown above (each is applied separately, if completed):</p>
-			<p>OAI Verb:
+			<p><strong>OAI Verb:</strong>
 				<select name="verb">
 					<option value="">Select OAI verb...</option>
 					<option value="ListRecords">ListRecords</option>
 					<option value="ListSets">ListSets</option>
 				</select>
 			<p>
-			<p>OAI metadata prefix:
+			<p><strong>OAI metadata prefix:</strong>
 				<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
 			<p>
-			<p>Scope type:
+			<p><strong>Scope type:</strong>
 				<select name="scope_type">
 					<option value="">Select scope type...</option>
 					<option value="setList">setList</option>
@@ -50,7 +52,7 @@
 					<option value="harvestAllSets">harvestAllSets</option>
 				</select>
 			<p>
-			<p>Scope value:
+			<p><strong>Scope value:</strong>
 				<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
 			<p>
 		</div>
@@ -58,8 +60,11 @@
 		<!-- Indexing Mapping Selection -->
 		{% include 'core/index_mapping_select.html' %}
 
+		<!-- Record Validation Selection -->
+		{% include 'core/record_validation_select.html' %}
+
 		<p>
-			<input type="submit" value="Harvest"/>
+			<input type="submit" value="Harvest OAI"/>
 		</p>
 
 	</form>

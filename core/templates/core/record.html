@@ -1,22 +1,85 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
+{% load core_template_filters %}
 
 	<h2>Record</h2>
 
 	<ul>
-		<li><strong>Combine DB ID:</strong> {{ record.id }}</li>
-		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type }}">{{ record.job.job_type }}</span></li>
-		<li><strong>Record ID:</strong> {{ record.record_id }}</li>
-		<li><strong>Published OAI ID:</strong> {{ record.oai_id }}</li>
-		<li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li>
+		<li><strong>Combine ID:</strong> {{ record.id }}</li>
+		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
+		<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
+		<li><strong>Published OAI ID:</strong> <code>{{ record.oai_id }}</code></li>
+		<!-- <li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li> -->
 	</ul>
+
+	<!-- Show DPLA Mapped Fields if present -->
+	{% if record.dpla_mapped_field_values %}
+
+		<div style="background-color:#E4E4E3; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
+			<h3>Combine --> DPLA Mapped Fields</h3>
+
+		<!-- show thumbnail if mapped -->
+		{% if record.job.dpla_mapping.preview %}
+			<a target="_blank" href="{{record.dpla_mapped_field_values.isShownAt}}"><img src="{{ record.dpla_mapped_field_values.preview }}"/></a>
+		{% endif %}
+
+		<!-- show metadata fields if present -->
+		{% for field, value in record.dpla_mapped_field_values.items  %}
+			<p><strong>{{ field }}</strong>: {% if field == 'isShownAt' %}<a href="{{ value }}" target="_blank">{{ value }}</a>{% else %}{{ value }}{% endif %}</p>
+		{% endfor %}
+
+		</div> <!-- close DPLA mapped div -->
+
+	{% endif %}
+
+	<!-- DPLA API hit -->
+	{% if dpla_api_doc %}
+
+		<div style="margin-top: 20px; background-color:#f7deae; width:40%; padding:10px 10px 10px 10px; border-radius:10px;">
+			<h3>DPLA API Item match</h3>
+			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
+			{% for field, value in dpla_api_doc.sourceResource.items %}
+				<p><strong>{{field}}</strong>: {{value}}</p>
+			{% endfor %}
+			<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">DPLA item record</a></p>
+		</div>
+
+	{% endif %}	
+
+	<!-- Record Validations -->
+	{% if record.job.jobvalidation_set.count > 0 %}
+		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:{% if record.get_validation_errors.count > 0 %}#ffe7f4{% else %}#e0ffdf{% endif %}">
+			<h3>Record Validation </h3>
+			{% if record.get_validation_errors.count > 0 %}			
+				<p>Validation scenarios were run for this job, the following are failed assertions:
+				<table border="1" cellpadding="10" style="background-color:white;">
+					<tr>
+						<th>Validation Scenario</th>
+						<th>Assertion Failure</th>
+						<th>Actions</th>
+					</tr>
+					{% for rv in record.get_validation_errors %}
+						{% for failure in rv.failed %}
+							<tr>
+								<td>{{ rv.validation_scenario.name }}</td>
+								<td>{{ failure }}</td>
+								<td><a target="_blank" href="{% url 'record_validation_scenario' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id job_validation_id=rv.validation_scenario.id %}">Run Validation</a></td>
+							</tr>
+						{% endfor %}
+					{% endfor %}
+				</table>
+			{% else %}
+				<p>All validation tests passed!</p>
+			{% endif %}
+		</div>
+	{% endif %}
 
 	<h3>Record Stages</h3>
 
 	<table border="1" cellpadding="10">
 		<tr>
-			<th>DB ID</th>
+			<th>ID</th>
 			<th>Job ID</th>
 			<th>Job Name</th>
 			<th>Job Type</th>
@@ -25,11 +88,11 @@
 			<th>ElasticSearch document</th>
 		</tr>
 		{% for record_stage in record_stages %}
-			<tr class="{{ record_stage.job.job_type }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
+			<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
 				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
-				<td>{{ record_stage.job.id }}</td>
-				<td>{{ record_stage.job.name }}</td>
-				<td>{{ record_stage.job.job_type }}</td>
+				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
+				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
+				<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>
 				{% if record_stage.document != '' %}
 					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
 				{% else %}
@@ -52,23 +115,42 @@
 			<thead>
 				<tr>
 					<th>Field Name</th>
+					<th>DPLA Mapped Field</th>
+					<th>Map DPLA Field</th>
 					<th>Field Value</th>
 				</tr>
 			</thead>
-			<tfoot>
-				<tr>
-					<th>Field Name</th>
-					<th>Field Value</th>
-				</tr>
-			</tfoot>
 			<tbody>
-				{% for key, value in record.get_es_doc.items %}
+				{% for field_name, field_value in record.get_es_doc.items %}
 				<tr>
-					<td><strong>{{ key }}</strong></td>
-					{% if 'http://' in value or 'https://' in value %}
-						<td><a href="{{ value }}" target="_blank">{{ value }}</a></td>
+					<td><strong>{{ field_name }}</strong></td>
+
+					<!-- show mapped DPLA field if exists -->
+					{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
+						<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
 					{% else %}
-						<td>{{ value }}</td>
+						<td></td>
+					{% endif %}
+
+					<!-- provide in-place form for mapping field -->
+					<td>
+						<form method="POST" action="{% url 'job_dpla_field_map' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id %}">
+							{% csrf_token %}
+							<select name='dpla_field' onchange="this.form.submit()">
+								<option value="">Select DPLA field</option>
+								<option value="">None</option>
+								{% for field_name in record.job.dpla_mapping.all_fields %}									
+									<option value="{{ field_name }}">{{ field_name }}</option>
+								{% endfor %}
+							</select>
+							<input type="hidden" name="es_field" value="{{ field_name }}"></input>
+						</form>
+					</td>
+
+					{% if 'http://' in field_value or 'https://' in field_value %}
+						<td><a href="{{ field_value }}" target="_blank">{{ field_value }}</a></td>
+					{% else %}
+						<td>{{ field_value }}</td>
 					{% endif %}
 				</tr>
 				{% endfor %}
@@ -87,40 +169,42 @@
 	<!-- Details specific to Job Type -->
 
 	<!-- HarvestJob -->
-	{% if record.job.job_type == 'HarvestJob' %}
+	{% if record.job.job_type_family == 'HarvestJob' %}
 	{% endif %}
 
 	<!-- TransformJob -->
 	<div id="job_type_specific">
-		{% if record.job.job_type == 'TransformJob' %}
-			<h2>{{ record.job.job_type }} Details</h2>
-			<h3>Transformation Used</h3>
-			<table border="1" cellpadding="10">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Path on disk</th>
-					<th>Transformation Payload</th>
-					<th>Input Document</th>
-				</tr>
-				<tr>
-					<td>{{job_details.transformation.id}}</td>
-					<td>{{job_details.transformation.name}}</td>
-					<td>{{job_details.transformation.transformation_type}}</td>
-					<td>{{job_details.transformation.filepath}}</td>
-					<td><a href="{% url 'trans_scen_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
-					<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
-				</tr>
-			</table>
+		{% if record.job.job_type_family == 'TransformJob' %}
+			{% if job_details.transformation.id %}
+				<h2>{{ record.job.job_type_family }} Details</h2>
+				<h3>Transformation Used</h3>
+				<table border="1" cellpadding="10">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Transformation Payload</th>
+						<th>Input Document</th>
+					</tr>
+					<tr>
+						<td>{{job_details.transformation.id}}</td>
+						<td>{{job_details.transformation.name}}</td>
+						<td>{{job_details.transformation.transformation_type}}</td>
+						<td>{{job_details.transformation.filepath}}</td>
+						<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+						<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+					</tr>
+				</table>
+			{% endif %}
 		{% endif %}
 
 		<!-- MergeJob -->
-		{% if record.job.job_type == 'MergeJob' %}
+		{% if record.job.job_type_family == 'MergeJob' %}
 		{% endif %}
 
 		<!-- PublishJob -->
-		{% if record.job.job_type == 'PublishJob' %}
+		{% if record.job.job_type_family == 'PublishJob' %}
 		{% endif %}
 	</div>
 
@@ -128,12 +212,38 @@
 		<h3>Record Document</h3>
 		{% if record.document != '' %}
 			<div style="width:75%;">
-				<pre><code style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
+				<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
 			</div>
 		{% else %}
 			<p>None</p>
 		{% endif %}
 	</div>
+	<script>
+		// highlight raw document after loaded
+		$(document).ready(function(){
+			$("#record_document_raw").each(function(i, block) {
+				console.log(block);
+				hljs.highlightBlock(block);
+			});
+		});
+	</script>
 
+	{% if dpla_api_doc %}
+		<div id="dpla_api_result">
+			<h3>DPLA API Result</h3>
+			<div style="width:75%;">
+				<pre><code id="dpla_api_result_json" style="padding:10px; border-radius:10px;" class="json">{{ dpla_api_json|safe }}</code></pre>
+			</div>		
+		</div>
+		<script>
+			// highlight raw document after loaded
+			$(document).ready(function(){
+				$("#dpla_api_result_json").each(function(i, block) {
+					console.log(block);
+					hljs.highlightBlock(block);
+				});
+			});
+		</script>
+	{% endif %}
 
 {% endblock %}

@@ -8,7 +8,7 @@
 
 		{% csrf_token %}
 
-		<p>Publish Name (optional):
+		<p><strong>Job Name (optional):</strong>
 			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora Publish, 10/10/2017"/>
 		<p>
 
@@ -20,6 +20,9 @@
 
 		<!-- Indexing Mapping Selection -->
 		{% include 'core/index_mapping_select.html' %}
+
+		<!-- Record Validation Selection -->
+		{% include 'core/record_validation_select.html' %}
 
 		<p>
 			<input type="submit" value="Publish"/>

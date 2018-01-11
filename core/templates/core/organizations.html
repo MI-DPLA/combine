@@ -15,11 +15,10 @@
 			</tr>
 			{% for org in orgs %}
 				<tr>
-					<td>{{ org.id }}</td>
-					<td>{{ org.name }}</td>
-					<td>{{ org.description }}</td>
-					<td>{{ org.publish_id }}</td>
-					<td><a href="{% url 'organization' org_id=org.id %}">Details</a></td>
+					<td><a href="{% url 'organization' org_id=org.id %}">{{ org.id }}</a></td>
+					<td><a href="{% url 'organization' org_id=org.id %}">{{ org.name }}</a></td>
+					<td>{{ org.description }}</td>					
+					<td><a href="{% url 'organization_delete' org_id=org.id %}">Delete</a></td>
 				</tr>
 			{% endfor %}
 		</table>

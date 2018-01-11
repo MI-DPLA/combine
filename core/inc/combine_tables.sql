@@ -17,8 +17,10 @@ CREATE TABLE `core_record` (
   `unique` tinyint(1) NOT NULL,
   `job_id` int(11) NOT NULL,
   `oai_set` varchar(255) DEFAULT NULL,
+  `success` tinyint(1) DEFAULT 1 NOT NULL,
   PRIMARY KEY (`id`),
   INDEX `core_record_job_id_idx` (`job_id`),
+  INDEX `core_record_job_success_idx` (`success`),
   FOREIGN KEY (job_id) REFERENCES core_job(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 

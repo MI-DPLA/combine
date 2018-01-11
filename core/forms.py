@@ -9,7 +9,7 @@ class OrganizationForm(ModelForm):
 
 	class Meta:
 		model = Organization
-		fields = ['name', 'description', 'publish_id']
+		fields = ['name', 'description']
 
 
 

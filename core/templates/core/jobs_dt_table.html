@@ -6,7 +6,7 @@
 				<th>Job ID</th>
 				<th>Name</th>
 				<th>Record Group</th>
-				<th>Type</th>
+				<th>Job Type</th>
 				<th>Livy Job ID</th>
 				<th>Status</th>
 				<th>Monitor</th>
@@ -20,11 +20,11 @@
 		</thead>
 		<tbody>
 		{% for job in jobs %}
-			<tr class="{{ job.job_type }}">
+			<tr class="{{ job.job_type_family }}">
 				<td>{{ job.id }}</td>
 				<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
-				<td>{{ job.job_type }}</td>
+				<td>{{ job.job_type_family }}</td>
 				<td>{{ job.job_id }}</td>
 				<td><strong>{{ job.status }}</strong></td>
 				<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ livy_session.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
@@ -33,7 +33,7 @@
 				
 				{% if job.jobinput_set.all|length > 0 %}
 					<td>{% for input_job in job.jobinput_set.all %}
-						<div class="{{ input_job.input_job.job_type }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+						<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
 							<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 						</div>
 						{% endfor %}

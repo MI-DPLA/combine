@@ -1,0 +1,90 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<h3>Static XML Harvest Job</h3>
+
+	<p>Lorem ipsum dolor sit amet, consectetur adipiscing elit. Pellentesque maximus diam quis auctor ornare. Aenean ac egestas odio. Suspendisse aliquet, eros vitae pretium tristique, est mi blandit nisl, ut accumsan risus tortor at lacus. Proin ut felis dapibus, tempor orci eu, condimentum purus. Pellentesque at lorem sed quam sollicitudin posuere sit amet in ipsum. In ornare sem et dapibus hendrerit. Praesent id bibendum dolor. Quisque et condimentum massa. Quisque sapien metus, tempor eget tortor sit amet, varius posuere mi. Aenean dapibus finibus tellus vitae consectetur. Pellentesque bibendum, ipsum et interdum luctus, lorem neque ultricies enim, vitae scelerisque eros ex sed lectus.</p>
+
+	<form method="POST" action="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}" enctype="multipart/form-data">
+
+		{% csrf_token %}
+
+		<p><strong>Job Name (optional):</strong>
+			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
+		<p>
+
+		<!-- optional job note -->
+		{% include 'core/job_note.html' %}
+
+		<!-- payload -->
+		<p>Provide either a file upload or location on disk for static XML files.</p>
+		<p><strong>Uplaod XML:</strong>
+			<input type="file" name="static_payload">
+		</p>
+
+		<p><strong>Location of XML files on disk:</strong>
+			<input type="text" name="static_filepath" size=120 placeholder="e.g. /foo/bar/baz"/>
+		<p>
+
+		<!-- xpath -->
+		<p>Next, we need an XPath expression that helps pinpoint the records from your provided static files:
+			<table border="1" cellpadding="10">
+				<tr>
+					<td>zip / tar file of discrete XML files</td>
+					<td>XPath that drills down to metadata record, for each file</td>
+					<td>e.g. <code>//mods:mods</code></td>
+				</tr>
+				<tr>
+					<td>aggregate XML file with multiple records</td>
+					<td>XPath that drills down to metadata record within large XML file</td>
+					<td>e.g. <code>//metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']</code>
+				</tr>
+				<tr>
+					<td>Location on disk</td>
+					<td>Assuming directory of multiple files, XPath that drills down to metadata record, for each file</td>
+					<td>e.g. <code>/</code> (perhaps just a single slash indicating metadata is at the root of the file)</td>
+				</tr>
+			</table>
+		</p>		
+		<p><strong>XPath for metadata document root (default <code>/*</code>):</strong>
+			<input type="text" name="xpath_document_root" size=120 placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']"/>
+		<p>
+
+		<!-- xpath -->
+		<p>Finally, need an xpath expression for identifying a unique string to serve as the record ID for each record:			
+		</p>		
+		<p><strong>XPath for unique record identifier (default md5 hash of document string):</strong>
+			<input type="text" name="xpath_record_id" size=120 placeholder="e.g. //mods:mods/mods:location/mods:url[@access]"/>
+		<p>
+		
+		<!-- Indexing Mapping Selection -->
+		{% include 'core/index_mapping_select.html' %}
+
+		<!-- Record Validation Selection -->
+		{% include 'core/record_validation_select.html' %}
+
+		<p>
+			<input type="submit" value="Harvest Static Files"/>
+		</p>
+
+	</form>
+
+	<script>
+
+	// save all oai endpoints as parsed javascript values for previewing
+	oes = {}
+	{% for oai_endpoint in oai_endpoints %}
+		oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
+	{% endfor %}
+
+	$(function() {
+	    $("#oai_endpoint_id").change(function() {
+	        oe_id = $('option:selected', this).val()
+	        $("#defaults").html(JSON.stringify(oes[oe_id]));
+	    });
+	});
+
+	</script>
+
+{% endblock %}
