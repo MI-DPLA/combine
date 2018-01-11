@@ -925,7 +925,6 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
-
 	# if GET, prepare form
 	if request.method == 'GET':
 
@@ -952,13 +951,21 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		if report_name == '':
 			report_name = 'Validation Report'
 
+		# get report output format
+		report_format = request.POST.get('report_format')
+
 		# get requested validation scenarios to include in report
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# get mapped fields to include
-		mapped_field_include = request.POST.get('mapped_field_include', [])
+		mapped_field_include = request.POST.getlist('mapped_field_include', [])
 
-
+		# run report generation
+		report = cjob.generate_validation_report(
+				report_format=report_format,
+				validation_scenarios=validation_scenarios,
+				mapped_field_include=mapped_field_include
+			)
 
 		return redirect('job_reports_view', org_id=org_id, record_group_id=record_group_id, job_id=job_id)
 

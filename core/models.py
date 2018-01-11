@@ -2602,7 +2602,7 @@ class CombineJob(object):
 
 
 	def generate_validation_report(self,
-			report_type='csv',
+			report_format='csv',
 			validation_scenarios=None,
 			mapped_field_include=None,
 			return_dataframe_only=False,
@@ -2611,13 +2611,6 @@ class CombineJob(object):
 
 		'''
 		Method to generate report based on validation scenarios run for this job
-
-		Appproach:
-			- Get all validation failures that match validation_scenarios, and build initial DataFrame
-			- Loop through requested mapped fields
-				- add new column with name as mapped field
-				- loop through validation record failure (vrf) get value retrieved with and add to column:
-					`vrf.record.get_es_doc()['mods_titleInfo_title']`
 
 		Args:
 			validation_scenarios (list): List of validation scenario IDs, run for this job, to include in report
@@ -2669,9 +2662,7 @@ class CombineJob(object):
 			start = 0
 			end = start + chunk_size
 
-			while start < tlen:
-
-				# logger.debug('es chunk %s --> %s' % (start, end))
+			while start < tlen:				
 
 				# get doc chunks from es
 				chunk = list(rvf_df['Record ID'].iloc[start:end])
@@ -2685,6 +2676,7 @@ class CombineJob(object):
 						else:
 							field_values_dict[field].append(None)
 				
+				# bump iterations
 				if tlen > (end + chunk_size):
 					start = end
 					end = end + chunk_size
@@ -2693,6 +2685,9 @@ class CombineJob(object):
 					end = tlen
 
 			# add values to dataframe
+			logger.debug(field_values_dict.keys())
+			for k,v in field_values_dict.items():
+				logger.debug(len(v))
 			for field, value_list in field_values_dict.items():
 				rvf_df[field] = value_list
 
@@ -2704,14 +2699,23 @@ class CombineJob(object):
 		# else, output to file and return path
 		else:
 
-			# output file
-			if report_type == 'csv':
-				filename = '/home/combine/test_report.csv'
-				rvf_df.to_csv(filename)
+			# check that reports directory exists
+			reports_dir = '%s/reports' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+			if not os.path.exists(reports_dir):
+				os.mkdir(reports_dir)
+
+			# create filename
+			filename = uuid.uuid4().hex
+
+			# output csv
+			if report_format == 'csv':
+				full_path = '%s/%s.csv' % (reports_dir, filename)
+				rvf_df.to_csv(full_path)
 
 			# return
+			logger.debug('report written to :%s' % full_path)
 			logger.debug('report generation elapsed: %s' % (time.time() - stime))
-			return filename
+			return full_path
 
 
 class HarvestJob(CombineJob):

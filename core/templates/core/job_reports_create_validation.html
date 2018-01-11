@@ -16,6 +16,13 @@
 			<input type="text" name="report_name" size=120 placeholder="e.g. OAI Harvest, validation report"/>
 		<p>
 
+		<p>Select output format for report:</p>
+		<p>
+			<select name='report_format'>
+				<option value='csv'>comma separated (.csv)</option>
+			</select>
+		</p>
+
 		{% if cjob.job.jobvalidation_set.count > 0 %}
 			<div>
 				<p><strong>Select validation scenarios run for this job to include in report:</strong></p>
