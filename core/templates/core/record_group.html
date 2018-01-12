@@ -45,8 +45,6 @@
 				// style nodes
 				$(job_lineage.nodes).each(function(){
 
-					console.log(this);
-
 					// add label
 					this.label = this.name;
 
@@ -54,6 +52,15 @@
 					this.font = {
 						size:20
 					};
+
+					// add shadow
+					this.shadow = {
+				      enabled: true,
+				      color: 'rgba(0,0,0,0.5)',
+				      size:10,
+				      x:5,
+				      y:5
+				    };
 
 					// handle differences between job types
 					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticJob'){
@@ -71,6 +78,19 @@
 						this.physics = false;
 					}
 
+				});
+
+				// style edges
+				$(job_lineage.edges).each(function(){
+
+					// add arrow
+					this.arrows = {
+      					to:{
+  							enabled: true,
+  							scaleFactor:1,
+  							type:'arrow'
+  						}
+      				}
 				});
 
 				// init as viz data
