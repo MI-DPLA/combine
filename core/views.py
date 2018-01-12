@@ -292,6 +292,9 @@ def record_group(request, org_id, record_group_id):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
+	# get record group job lineage
+	job_lineage = record_group.get_job_lineage()	
+
 	# loop through jobs
 	for job in jobs:
 
@@ -303,6 +306,7 @@ def record_group(request, org_id, record_group_id):
 			'livy_session':livy_session,
 			'record_group':record_group,
 			'jobs':jobs,
+			'job_lineage_json':json.dumps(job_lineage),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 

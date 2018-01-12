@@ -260,6 +260,138 @@ class RecordGroup(models.Model):
 		return 'Record Group: %s' % self.name
 
 
+	def get_job_lineage(self):
+
+		'''
+		Method to generate structured data outlining the lineage of jobs for this Record Group.
+
+		Will use Combine DB ID as node identifiers.
+		
+		Structure:
+
+			{
+				'nodes':[
+					{
+						'id':42,
+						'name':'H1',
+						'job_type':'HarvestJob'
+					},
+					{
+						'id':43,
+						'name':'T1',
+						'job_type':'TransformJob'
+					},
+					{
+						'id':44,
+						'name':'T2',
+						'job_type':'TransformJob'
+					},
+					{
+						'id':45,
+						'name':'H2',
+						'job_type':'HarvestJob'
+					},
+					{
+						'id':46,
+						'name':'T3',
+						'job_type':'TransformJob'
+					},
+					{
+						'id':47, # new transform for old harvest
+						'name':'T4',
+						'job_type':'TransformJob'
+					},
+				],
+				'edges':[
+					{
+						'from':42,
+						'to':43
+					},
+					{
+						'from':43,
+						'to':44
+					},
+					{
+						'from':45,
+						'to':46
+					},
+					{
+						'from':42,
+						'to':47 # new transform for old harvest
+					},
+				]
+			}
+
+		'''
+
+		# lineage dict
+		ld = {'nodes':[],'edges':[]}
+
+		# get all harvest jobs
+		harvest_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticJob'])
+
+		# loop through harvest jobs
+		for hj in harvest_jobs:
+
+			# append harvest job node
+			ld['nodes'].append({
+					'id':hj.id,
+					'name':hj.name,
+					'job_type':hj.job_type
+				})
+
+			# update lineage dictionary recursively
+			self._get_child_jobs(hj, ld)
+
+		# debug
+		logger.debug('Lineage dictionary:')
+		logger.debug(ld)
+
+		# return
+		return ld
+
+
+	def _get_child_jobs(self, job_node, ld):
+
+		'''
+		Recursive function to return child jobs.		
+
+		Args:
+			job_node (core.models.Job): job_node to derive all downstream jobs from
+			ld (dict): lineage dictionary
+
+		Returns:
+			(dict): lineage dictionary, updated with downstream children
+		'''
+
+		# get child jobs, by checking for all jobs where job was input
+		child_job_links = job_node.input_job.all() # reverse many to one through JobInput model
+
+		# if child jobs founds
+		if child_job_links.count() > 0:
+
+			for link in child_job_links:
+
+				# get child job proper
+				cj = link.job
+
+				# add as node
+				ld['nodes'].append({
+					'id':cj.id,
+					'name':cj.name,
+					'job_type':cj.job_type
+				})
+
+				# add edges
+				ld['edges'].append({
+					'from':job_node.id,
+					'to':cj.id
+				})
+
+				# recurse
+				self._get_child_jobs(cj, ld)
+
+
 
 class Job(models.Model):
 

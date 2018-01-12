@@ -38,50 +38,79 @@
 			</style>
 			<div id="job_family_diagram"></div>
 			<script type="text/javascript">
-			  // create an array with nodes
-			  var nodes = new vis.DataSet([
-			    {id: 1, label: 'HarvestOAIJob @ 2018-01-12T14:42:03.972745', physics:false, shape:'square'},
-			    {id: 2, label: 'HarvestOAIJob @ 2018-01-12T14:42:32.528530', physics:false, shape:'square'},
 
-			    {id: 3, label: 'TransformJob @ 2018-01-12T14:42:17.094038', physics:true, shape:'square'},			    
-			    {id: 4, label: 'TransformJob @ 2018-01-12T14:42:38.745433', physics:true, shape:'square'},
-			    {id: 5, label: 'TransformJob @ 2018-01-12T14:42:53.535002', physics:true, shape:'square'},
-			    {id: 6, label: 'TransformJob @ 2018-01-12T14:58:18.037973', physics:true, shape:'square'}
-			  ]);
+				// // create an array with nodes
+				// var nodes = new vis.DataSet([
+				//   {id: 1, label: 'HarvestOAIJob @ 2018-01-12T14:42:03.972745', physics:true, shape:'box'},
+				//   {id: 2, label: 'TransformJob @ 2018-01-12T14:42:17.094038', physics:true, shape:'box'},			    
+				//   {id: 3, label: 'HarvestOAIJob @ 2018-01-12T14:42:32.528530', physics:true, shape:'box'},
+				//   {id: 4, label: 'TransformJob @ 2018-01-12T14:42:38.745433', physics:true, shape:'box'},
+				//   {id: 5, label: 'TransformJob @ 2018-01-12T14:42:53.535002', physics:true, shape:'box'},
+				//   {id: 6, label: 'TransformJob @ 2018-01-12T14:58:18.037973', physics:true, shape:'box'},			    
 
-			  // create an array with edges
-			  var edges = new vis.DataSet([
-			    {from: 1, to: 3},			    
-			    {from: 2, to: 4},
-			    {from: 4, to: 5},
-			    {from: 2, to: 6},
-			  ]);
+				// ]);
 
-			  // create a network
-			  var container = document.getElementById('job_family_diagram');
-			  var data = {
-			    nodes: nodes,
-			    edges: edges
-			  };
-			  var options = {
-			  	interaction:{
-		  		  zoomView:false	
-			  	},
-			  	layout:{
-				  	hierarchical: {
-				      enabled:true,
-				      levelSeparation: 300,
-				      nodeSpacing: 400,
-				      treeSpacing: 200,
-				      blockShifting: true,
-				      edgeMinimization: true,
-				      parentCentralization: true,
-				      direction: 'LR',        // UD, DU, LR, RL
-				      sortMethod: 'directed'   // hubsize, directed
-				    }
-			  	}			  	
-			  };
-			  var network = new vis.Network(container, data, options);
+				// // create an array with edges
+				// var edges = new vis.DataSet([
+				//   {from: 1, to: 2},
+				//   {from: 3, to: 4},
+				//   {from: 4, to: 5},
+				//   {from: 3, to: 6},
+				// ]);
+
+				// parse job lineage json
+				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+				console.log(job_lineage);
+
+				// style nodes
+				$(job_lineage.nodes).each(function(){
+
+					// add label
+					this.label = this.name;
+					
+					// handle harvest job styling
+					if (this.job_type in ['HarvestOAIJob','HarvestStaticJob']){
+						this.shape = 'box'
+					}
+
+					// handle transformation job styling
+					if (this.job_type in ['TransformJob']){
+						this.shape = 'box'
+					}
+				});
+
+				// init as viz data
+				var nodes = new vis.DataSet(job_lineage.nodes);
+				var edges = new vis.DataSet(job_lineage.edges);
+
+				// create a network
+				var container = document.getElementById('job_family_diagram');
+				var data = {
+					nodes: nodes,
+					edges: edges
+				};
+				var options = {
+					interaction:{
+						zoomView:false	
+					},
+					layout:{
+						hierarchical: {
+							enabled:true,
+							levelSeparation: 400,
+							nodeSpacing: 100,
+							treeSpacing: 100,
+							blockShifting: true,
+							edgeMinimization: true,
+							parentCentralization: true,
+							direction: 'LR',        // UD, DU, LR, RL
+							sortMethod: 'directed'   // hubsize, directed
+						}
+					}			  	
+				};
+
+				// fire network
+				var network = new vis.Network(container, data, options);
+
 			</script>
 		</div>
 
