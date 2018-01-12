@@ -39,44 +39,38 @@
 			<div id="job_family_diagram"></div>
 			<script type="text/javascript">
 
-				// // create an array with nodes
-				// var nodes = new vis.DataSet([
-				//   {id: 1, label: 'HarvestOAIJob @ 2018-01-12T14:42:03.972745', physics:true, shape:'box'},
-				//   {id: 2, label: 'TransformJob @ 2018-01-12T14:42:17.094038', physics:true, shape:'box'},			    
-				//   {id: 3, label: 'HarvestOAIJob @ 2018-01-12T14:42:32.528530', physics:true, shape:'box'},
-				//   {id: 4, label: 'TransformJob @ 2018-01-12T14:42:38.745433', physics:true, shape:'box'},
-				//   {id: 5, label: 'TransformJob @ 2018-01-12T14:42:53.535002', physics:true, shape:'box'},
-				//   {id: 6, label: 'TransformJob @ 2018-01-12T14:58:18.037973', physics:true, shape:'box'},			    
-
-				// ]);
-
-				// // create an array with edges
-				// var edges = new vis.DataSet([
-				//   {from: 1, to: 2},
-				//   {from: 3, to: 4},
-				//   {from: 4, to: 5},
-				//   {from: 3, to: 6},
-				// ]);
-
 				// parse job lineage json
 				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
-				console.log(job_lineage);
 
 				// style nodes
 				$(job_lineage.nodes).each(function(){
 
+					console.log(this);
+
 					// add label
 					this.label = this.name;
-					
-					// handle harvest job styling
-					if (this.job_type in ['HarvestOAIJob','HarvestStaticJob']){
-						this.shape = 'box'
+
+					// bump font
+					this.font = {
+						size:20
+					};
+
+					// handle differences between job types
+					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticJob'){
+						this.color = '#deffde';
+						this.shape = 'box';
+						this.shapeProperties = {
+							borderRadius: 10
+						};
+						this.physics = false;
 					}
 
-					// handle transformation job styling
-					if (this.job_type in ['TransformJob']){
-						this.shape = 'box'
+					if (this.job_type == 'TransformJob'){
+						this.color = '#fffcde';
+						this.shape = 'box';
+						this.physics = false;
 					}
+
 				});
 
 				// init as viz data
@@ -90,13 +84,14 @@
 					edges: edges
 				};
 				var options = {
+					clickToUse:true,
 					interaction:{
-						zoomView:false	
+						zoomView:true	
 					},
 					layout:{
 						hierarchical: {
 							enabled:true,
-							levelSeparation: 400,
+							levelSeparation: 600,
 							nodeSpacing: 100,
 							treeSpacing: 100,
 							blockShifting: true,
@@ -110,6 +105,9 @@
 
 				// fire network
 				var network = new vis.Network(container, data, options);
+
+				// fit all nodes in viewport
+				network.fit();
 
 			</script>
 		</div>
