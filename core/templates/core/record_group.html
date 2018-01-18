@@ -152,8 +152,26 @@
 
 				// set listener for node select
 				network.on('selectNode', function (node){
-					job_id = node.nodes[0];					
-					jobs_table.column(0).search(job_id).draw();
+
+					// fire ajax to get job lineage for selected job
+					base_url = "{% url 'job_lineage_json' org_id=record_group.organization.id record_group_id=record_group.id job_id='DYNAMIC_ID' %}";
+					base_url = base_url.replace('DYNAMIC_ID',node.nodes[0]);
+					console.log(base_url);
+					$.ajax({
+						type: 'POST',
+						url: base_url,
+						dataType:'json',
+						data: {							
+							'csrfmiddlewaretoken': '{{ csrf_token }}'
+						},
+						success: function(data){
+							console.log(data);
+							search_string = data.job_id_list.join('|');
+							job_id = node.nodes[0];
+							jobs_table.column(0).search(search_string, true, false).draw();
+						}			
+					});
+					
 				});
 
 				// set listener for node deselect

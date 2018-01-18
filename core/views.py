@@ -986,6 +986,25 @@ def job_reports_create_audit(request, org_id, record_group_id, job_id):
 	pass
 
 
+def job_lineage_json(request, org_id, record_group_id, job_id):
+
+	'''
+	Return job lineage as JSON
+	'''
+
+	# get job
+	job = models.Job.objects.get(pk=int(job_id))
+
+	# get lineage
+	job_lineage = job.get_lineage()
+
+	return JsonResponse({
+		'job_id_list':[ node['id'] for node in job_lineage['nodes'] ],
+		'nodes':job_lineage['nodes'],
+		'edges':job_lineage['edges']
+		})
+
+
 ####################################################################
 # Jobs QA	                   									   #
 ####################################################################

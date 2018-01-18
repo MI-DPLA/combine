@@ -724,9 +724,6 @@ class Job(models.Model):
 		# update lineage dictionary recursively
 		self._get_parent_jobs(self, ld)
 
-		# debug
-		logger.debug(ld)
-
 		# return
 		return ld
 
