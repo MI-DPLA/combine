@@ -260,75 +260,24 @@ class RecordGroup(models.Model):
 		return 'Record Group: %s' % self.name
 
 
-	def get_job_lineage(self):
+	def get_jobs_lineage(self):
 
 		'''
 		Method to generate structured data outlining the lineage of jobs for this Record Group.
-
 		Will use Combine DB ID as node identifiers.
-		
-		Structure:
 
-			{
-				'nodes':[
-					{
-						'id':42,
-						'name':'H1',
-						'job_type':'HarvestJob'
-					},
-					{
-						'id':43,
-						'name':'T1',
-						'job_type':'TransformJob'
-					},
-					{
-						'id':44,
-						'name':'T2',
-						'job_type':'TransformJob'
-					},
-					{
-						'id':45,
-						'name':'H2',
-						'job_type':'HarvestJob'
-					},
-					{
-						'id':46,
-						'name':'T3',
-						'job_type':'TransformJob'
-					},
-					{
-						'id':47, # new transform for old harvest
-						'name':'T4',
-						'job_type':'TransformJob'
-					},
-				],
-				'edges':[
-					{
-						'from':42,
-						'to':43
-					},
-					{
-						'from':43,
-						'to':44
-					},
-					{
-						'from':45,
-						'to':46
-					},
-					{
-						'from':42,
-						'to':47 # new transform for old harvest
-					},
-				]
-			}
+		Args:
+			None
 
+		Returns:
+			(dict): lineage dictionary of nodes (jobs) and edges (input jobs as edges)
 		'''
 
 		# lineage dict
 		ld = {'nodes':[],'edges':[]}
 
 		# get all harvest jobs
-		harvest_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticJob'])
+		harvest_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticXMLJob'])
 
 		# loop through harvest jobs
 		for hj in harvest_jobs:
@@ -343,21 +292,17 @@ class RecordGroup(models.Model):
 			# update lineage dictionary recursively
 			self._get_child_jobs(hj, ld)
 
-		# debug
-		logger.debug('Lineage dictionary:')
-		logger.debug(ld)
-
 		# return
 		return ld
 
 
-	def _get_child_jobs(self, job_node, ld):
+	def _get_child_jobs(self, job, ld):
 
 		'''
 		Recursive function to return child jobs.		
 
 		Args:
-			job_node (core.models.Job): job_node to derive all downstream jobs from
+			job (core.models.Job): job to derive all downstream jobs from
 			ld (dict): lineage dictionary
 
 		Returns:
@@ -365,7 +310,7 @@ class RecordGroup(models.Model):
 		'''
 
 		# get child jobs, by checking for all jobs where job was input
-		child_job_links = job_node.input_job.all() # reverse many to one through JobInput model
+		child_job_links = job.input_job.all() # reverse many to one through JobInput model
 
 		# if child jobs founds
 		if child_job_links.count() > 0:
@@ -375,18 +320,27 @@ class RecordGroup(models.Model):
 				# get child job proper
 				cj = link.job
 
-				# add as node
-				ld['nodes'].append({
-					'id':cj.id,
-					'name':cj.name,
-					'job_type':cj.job_type
-				})
+				# add as node, if not already added to nodes list
+				if cj.id not in [ node['id'] for node in ld['nodes'] ]:
+
+					# get validation results and add to node
+					validation_results = cj.validation_results()
+
+					ld['nodes'].append({
+						'id':cj.id,
+						'name':cj.name,
+						'job_type':cj.job_type,
+						'is_valid':validation_results['verdict']
+					})
 
 				# add edges
-				ld['edges'].append({
-					'from':job_node.id,
-					'to':cj.id
-				})
+				edge_id = '%s_to_%s' % (job.id, cj.id)
+				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
+					ld['edges'].append({
+						'id':edge_id,
+						'from':job.id,
+						'to':cj.id
+					})
 
 				# recurse
 				self._get_child_jobs(cj, ld)
@@ -747,15 +701,126 @@ class Job(models.Model):
 		return self._dpla_mapping
 
 
-	def generate_validation_failure_report(self):
+	def get_lineage(self):
 
 		'''
-		Method to generate downloadable report of records that failed validation
+		Method to retrieve lineage of self
 		'''
 
-		# get validation scenarios run
-		for jvs in self.jobvalidation_set.all():
-			logger.debug('adding %s to job validation dataframe' % jvs)
+		# lineage dict
+		ld = {'nodes':[],'edges':[]}		
+
+		# add self to lineage dictionary
+		ld['nodes'].append({
+				'id':self.id,
+				'name':self.name,
+				'job_type':self.job_type
+			})
+
+		# update lineage dictionary recursively
+		self._get_parent_jobs(self, ld)
+
+		# debug
+		logger.debug(ld)
+
+		# return
+		return ld
+
+
+	def _get_parent_jobs(self, job, ld):
+
+		'''
+		Method to recursively find parent jobs and add to lineage dictionary
+
+		Args:
+			job (core.models.Job): job to derive all upstream jobs from
+			ld (dict): lineage dictionary
+
+		Returns:
+			(dict): lineage dictionary, updated with upstream parents
+		'''
+
+		# get parent job(s)
+		parent_job_links = job.jobinput_set.all() # reverse many to one through JobInput model
+
+		# if parent jobs found
+		if parent_job_links.count() > 0:
+
+			# loop through
+			for link in parent_job_links:
+
+				# get parent job proper
+				pj = link.input_job
+
+				# add as node, if not already added to nodes list
+				if pj.id not in [ node['id'] for node in ld['nodes'] ]:
+
+					# get validation results and add to node
+					validation_results = pj.validation_results()
+
+					ld['nodes'].append({
+						'id':pj.id,
+						'name':pj.name,
+						'job_type':pj.job_type,
+						'is_valid':validation_results['verdict']
+					})
+
+				# add edges
+				edge_id = '%s_to_%s' % (job.id, pj.id)
+				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
+					ld['edges'].append({
+						'id':edge_id,
+						'from':job.id,
+						'to':pj.id
+					})
+
+				# recurse
+				self._get_parent_jobs(pj, ld)
+
+
+	def validation_results(self):
+
+		'''
+		Method to return boolean whether job passes all/any validation tests run
+
+		Args:
+			None
+
+		Returns:
+			(dict): 
+				verdict (boolean): True if all tests passed, or no tests performed, False is any fail
+				failure_count (int): Total number of validation failures
+				validation_scenarios (list): QuerySet of associated JobValidation
+		'''
+
+		# return dict
+		results = {
+			'verdict':True,
+			'failure_count':0,
+			'validation_scenarios':[]
+		}
+
+		# no validation tests run, return True
+		if self.jobvalidation_set.count() == 0:
+			return results
+
+		# validation tests run, loop through
+		else:
+
+			# bump failure count
+			for jv in self.jobvalidation_set.all():
+				if jv.failure_count:
+					results['failure_count'] += jv.failure_count
+
+			# if failures found, set result to False
+			if results['failure_count'] > 0:
+				results['verdict'] = False
+
+			# add all validation scenarios
+			results['validation_scenarios'] = self.jobvalidation_set.all()
+
+			# return
+			return results
 
 
 
@@ -2810,11 +2875,6 @@ class CombineJob(object):
 
 		# else, output to file and return path
 		else:
-
-			# # check that reports directory exists
-			# reports_dir = '%s/reports' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
-			# if not os.path.exists(reports_dir):
-			# 	os.mkdir(reports_dir)
 
 			# create filename
 			filename = uuid.uuid4().hex

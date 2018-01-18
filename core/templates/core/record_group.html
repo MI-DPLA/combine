@@ -63,7 +63,8 @@
 				    };
 
 					// handle differences between job types
-					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticJob'){
+					// Harvests
+					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticXMLJob'){
 						this.color = '#deffde';
 						this.shape = 'box';
 						this.shapeProperties = {
@@ -72,8 +73,23 @@
 						this.physics = false;
 					}
 
+					// Transform
 					if (this.job_type == 'TransformJob'){
 						this.color = '#fffcde';
+						this.shape = 'box';
+						this.physics = false;
+					}
+
+					// Merge
+					if (this.job_type == 'MergeJob'){
+						this.color = '#e3deff';
+						this.shape = 'box';
+						this.physics = false;
+					}
+
+					// Publish
+					if (this.job_type == 'PublishJob'){
+						this.color = '#def3ff';
 						this.shape = 'box';
 						this.physics = false;
 					}
@@ -104,9 +120,9 @@
 					edges: edges
 				};
 				var options = {
-					clickToUse:true,
+					clickToUse:false,
 					interaction:{
-						zoomView:true	
+						zoomView:false	
 					},
 					layout:{
 						hierarchical: {
@@ -128,6 +144,16 @@
 
 				// fit all nodes in viewport
 				network.fit();
+
+				// set listener for node selection
+				network.on('selectNode', nodeClicked);
+
+				// nodeClicked function
+				function nodeClicked(node){
+					console.log(node);
+					job_id = node.nodes[0];					
+					jobs_table.column(0).search(job_id).draw();
+				}
 
 			</script>
 		</div>

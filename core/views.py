@@ -293,7 +293,7 @@ def record_group(request, org_id, record_group_id):
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
 	# get record group job lineage
-	job_lineage = record_group.get_job_lineage()	
+	job_lineage = record_group.get_jobs_lineage()	
 
 	# loop through jobs
 	for job in jobs:
@@ -838,7 +838,7 @@ def job_publish(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs for this record group		
-		jobs = models.Job.objects.all()
+		jobs = models.Job.objects.filter(record_group=record_group).all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
