@@ -46,7 +46,7 @@
 				$(job_lineage.nodes).each(function(){
 
 					// add label
-					this.label = this.name;
+					this.label = "Job #"+this.id+", "+this.name;
 
 					// bump font
 					this.font = {
@@ -99,10 +99,11 @@
 					nodes: nodes,
 					edges: edges
 				};
-				var options = {
+				var options = {					
 					clickToUse:false,
 					interaction:{
-						zoomView:false	
+						zoomView:false,
+						multiselect: false
 					},
 					layout:{
 						hierarchical: {
