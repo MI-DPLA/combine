@@ -277,20 +277,24 @@ class RecordGroup(models.Model):
 		ld = {'nodes':[],'edges':[]}
 
 		# get all harvest jobs
-		harvest_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticXMLJob'])
+		origin_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticXMLJob','MergeJob'])
 
 		# loop through harvest jobs
-		for hj in harvest_jobs:
+		for oj in origin_jobs:
 
 			# append harvest job node
-			ld['nodes'].append({
-					'id':hj.id,
-					'name':hj.name,
-					'job_type':hj.job_type
-				})
+			validation_results = oj.validation_results()
+
+			if oj.id not in [ node['id'] for node in ld['nodes'] ]:
+				ld['nodes'].append({
+						'id':oj.id,
+						'name':oj.name,
+						'job_type':oj.job_type,
+						'is_valid':validation_results['verdict']
+					})
 
 			# update lineage dictionary recursively
-			self._get_child_jobs(hj, ld)
+			self._get_child_jobs(oj, ld)
 
 		# return
 		return ld

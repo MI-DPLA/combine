@@ -74,25 +74,30 @@
 					}
 
 					// Transform
-					if (this.job_type == 'TransformJob'){
+					else if (this.job_type == 'TransformJob'){
 						this.color = '#fffcde';
 						this.shape = 'box';
 						this.physics = false;
 					}
 
 					// Merge
-					if (this.job_type == 'MergeJob'){
+					else if (this.job_type == 'MergeJob'){
 						this.color = '#e3deff';
 						this.shape = 'box';
 						this.physics = false;
 					}
 
 					// Publish
-					if (this.job_type == 'PublishJob'){
+					else if (this.job_type == 'PublishJob'){
 						this.color = '#def3ff';
 						this.shape = 'box';
 						this.physics = false;
 					}
+
+					// override color is job is not valid
+					if (!this.is_valid){
+						this.color = 'rgb(255, 152, 152)';					
+					}					
 
 				});
 
@@ -145,15 +150,16 @@
 				// fit all nodes in viewport
 				network.fit();
 
-				// set listener for node selection
-				network.on('selectNode', nodeClicked);
-
-				// nodeClicked function
-				function nodeClicked(node){
-					console.log(node);
+				// set listener for node select
+				network.on('selectNode', function (node){
 					job_id = node.nodes[0];					
 					jobs_table.column(0).search(job_id).draw();
-				}
+				});
+
+				// set listener for node deselect
+				network.on('deselectNode', function (node){
+					jobs_table.column(0).search('').draw();
+				});
 
 			</script>
 		</div>
