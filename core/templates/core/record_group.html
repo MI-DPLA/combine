@@ -62,41 +62,39 @@
 				      y:5
 				    };
 
+				    // set base node parameters
+				    this.shape = 'box';
+				    this.shapeProperties = {
+						borderRadius: 10
+					};
+					this.physics = false;
+					this.borderWidth = 2;
+					this.borderWidthSelected = 5;
+
 					// handle differences between job types
 					// Harvests
 					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticXMLJob'){
 						this.color = '#deffde';
-						this.shape = 'box';
-						this.shapeProperties = {
-							borderRadius: 10
-						};
-						this.physics = false;
 					}
 
 					// Transform
 					else if (this.job_type == 'TransformJob'){
 						this.color = '#fffcde';
-						this.shape = 'box';
-						this.physics = false;
 					}
 
 					// Merge
 					else if (this.job_type == 'MergeJob'){
 						this.color = '#e3deff';
-						this.shape = 'box';
-						this.physics = false;
 					}
 
 					// Publish
 					else if (this.job_type == 'PublishJob'){
 						this.color = '#def3ff';
-						this.shape = 'box';
-						this.physics = false;
 					}
 
 					// override color is job is not valid
 					if (!this.is_valid){
-						this.color = 'rgb(255, 152, 152)';					
+						this.color = '#ff9898';					
 					}					
 
 				});
