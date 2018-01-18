@@ -72,30 +72,7 @@
 					this.borderWidthSelected = 5;
 
 					// handle differences between job types
-					// Harvests
-					if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticXMLJob'){
-						this.color = '#deffde';
-					}
-
-					// Transform
-					else if (this.job_type == 'TransformJob'){
-						this.color = '#fffcde';
-					}
-
-					// Merge
-					else if (this.job_type == 'MergeJob'){
-						this.color = '#e3deff';
-					}
-
-					// Publish
-					else if (this.job_type == 'PublishJob'){
-						this.color = '#def3ff';
-					}
-
-					// override color is job is not valid
-					if (!this.is_valid){
-						this.color = '#ff9898';					
-					}					
+					nodeStyle(this);						
 
 				});
 
@@ -154,7 +131,6 @@
 					// fire ajax to get job lineage for selected job
 					base_url = "{% url 'job_lineage_json' org_id=record_group.organization.id record_group_id=record_group.id job_id='DYNAMIC_ID' %}";
 					base_url = base_url.replace('DYNAMIC_ID',node.nodes[0]);
-					console.log(base_url);
 					$.ajax({
 						type: 'POST',
 						url: base_url,
@@ -163,10 +139,19 @@
 							'csrfmiddlewaretoken': '{{ csrf_token }}'
 						},
 						success: function(data){
-							console.log(data);
+							
+							// filter datatables
 							search_string = data.job_id_list.join('|');
 							job_id = node.nodes[0];
 							jobs_table.column(0).search(search_string, true, false).draw();
+
+							// gray out other nodes
+							nodes.forEach(function(node){								
+								if (!data.job_id_list.includes(node.id)){									
+									node.color = '#efefef';
+									nodes.update(node);
+								}
+							})
 						}			
 					});
 					
@@ -174,8 +159,46 @@
 
 				// set listener for node deselect
 				network.on('deselectNode', function (node){
+
+					// reset table
 					jobs_table.column(0).search('').draw();
+
+					// reset node colors
+					nodes.forEach(function(node){								
+						nodeStyle(node);
+						nodes.update(node);
+					})
+
 				});
+
+				// function to style nodes based on JobType and other properties
+				function nodeStyle(node){
+					// Harvests
+					if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob'){
+						node.color = '#deffde';
+					}
+
+					// Transform
+					else if (node.job_type == 'TransformJob'){
+						node.color = '#fffcde';
+					}
+
+					// Merge
+					else if (node.job_type == 'MergeJob'){
+						node.color = '#e3deff';
+					}
+
+					// Publish
+					else if (node.job_type == 'PublishJob'){
+						node.color = '#def3ff';
+					}
+
+					// override color is job is not valid
+					if (!node.is_valid){
+						node.color = '#ff9898';					
+					}
+					
+				}
 
 			</script>
 		</div>

@@ -366,11 +366,15 @@ def job_details(request, org_id, record_group_id, job_id):
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
+	# get job lineage
+	job_lineage = cjob.job.get_lineage()
+
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
+			'job_lineage_json':json.dumps(job_lineage),
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})

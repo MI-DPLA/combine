@@ -715,10 +715,12 @@ class Job(models.Model):
 		ld = {'nodes':[],'edges':[]}		
 
 		# add self to lineage dictionary
+		validation_results = self.validation_results()
 		ld['nodes'].append({
 				'id':self.id,
 				'name':self.name,
-				'job_type':self.job_type
+				'job_type':self.job_type,
+				'is_valid':validation_results['verdict']
 			})
 
 		# update lineage dictionary recursively
