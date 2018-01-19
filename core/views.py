@@ -322,6 +322,53 @@ def all_jobs(request):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.all()
 
+	# get job lineage for all jobs
+	# create record group lineage dictionary
+	ld = {'edges':[], 'nodes':[]}
+
+	# # get all records groups, add to ld
+	# record_groups = models.RecordGroup.objects.all()
+	# for rg in record_groups:
+
+	# 	rg_node_id = int('000%s' % rg.id)
+
+	# 	# add as node
+	# 	ld['nodes'].append({
+	# 			'id':rg_node_id,
+	# 			'name':rg.name,
+	# 			'job_type':'RecordGroup',
+	# 			'is_valid':True,
+	# 			'recursion_level':0
+	# 		})
+
+	# 	# loop through jobs and add edges from job to record group
+	# 	for job in rg.job_set.all():
+
+	# 		# add edge
+	# 		from_node = rg_node_id
+	# 		to_node = job.id
+	# 		edge_id = '%s_to_%s' % (from_node, to_node)
+	# 		if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
+	# 			ld['edges'].append({
+	# 				'id':edge_id,
+	# 				'from':from_node,
+	# 				'to':to_node
+	# 			})
+
+	# loop through jobs
+	for job in jobs:
+	    job_ld = job.get_lineage(directionality='downstream')
+	    ld['edges'].extend(job_ld['edges'])
+	    ld['nodes'].extend(job_ld['nodes'])
+
+	# filter for unique
+	ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
+	ld['edges'] = list({edge['id']:edge for edge in ld['edges']}.values())
+
+	# sort by id
+	ld['nodes'].sort(key=lambda x: x['id'])
+	ld['edges'].sort(key=lambda x: x['id'])
+
 	# loop through jobs and update status
 	for job in jobs:
 		job.update_status()
@@ -329,6 +376,7 @@ def all_jobs(request):
 	# render page 
 	return render(request, 'core/all_jobs.html', {
 			'jobs':jobs,
+			'job_lineage_json':json.dumps(ld),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 

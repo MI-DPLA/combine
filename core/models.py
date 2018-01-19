@@ -669,6 +669,8 @@ class Job(models.Model):
 		validation_results = self.validation_results()
 		ld['nodes'].append({
 				'id':self.id,
+				'record_group_id':self.record_group.id,
+				'org_id':self.record_group.organization.id,
 				'name':self.name,
 				'job_type':self.job_type,
 				'is_valid':validation_results['verdict'],
@@ -716,6 +718,8 @@ class Job(models.Model):
 
 					ld['nodes'].append({
 						'id':pj.id,
+						'record_group_id':pj.record_group.id,
+						'org_id':pj.record_group.organization.id,
 						'name':pj.name,
 						'job_type':pj.job_type,
 						'is_valid':validation_results['verdict']
