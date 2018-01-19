@@ -273,81 +273,32 @@ class RecordGroup(models.Model):
 			(dict): lineage dictionary of nodes (jobs) and edges (input jobs as edges)
 		'''
 
-		# lineage dict
-		ld = {'nodes':[],'edges':[]}
+		# debug
+		stime = time.time()
 
-		# get all harvest jobs
-		origin_jobs = self.job_set.filter(job_type__in=['HarvestOAIJob','HarvestStaticXMLJob','MergeJob'])
+		# create record group lineage dictionary
+		ld = {'edges':[], 'nodes':[]}
 
-		# loop through harvest jobs
-		for oj in origin_jobs:
+		# get all jobs
+		record_group_jobs = self.job_set.order_by('-id').all()
 
-			# append harvest job node
-			validation_results = oj.validation_results()
+		# loop through jobs
+		for job in record_group_jobs:
+		    job_ld = job.get_lineage(directionality='downstream')
+		    ld['edges'].extend(job_ld['edges'])
+		    ld['nodes'].extend(job_ld['nodes'])
 
-			if oj.id not in [ node['id'] for node in ld['nodes'] ]:
-				ld['nodes'].append({
-						'id':oj.id,
-						'name':oj.name,
-						'job_type':oj.job_type,
-						'is_valid':validation_results['verdict']
-					})
+		# filter for unique
+		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
+		ld['edges'] = list({edge['id']:edge for edge in ld['edges']}.values())
 
-			# update lineage dictionary recursively
-			self._get_child_jobs(oj, ld)
+		# sort by id
+		ld['nodes'].sort(key=lambda x: x['id'])
+		ld['edges'].sort(key=lambda x: x['id'])
 
 		# return
+		logger.debug('lineage calc time elapsed: %s' % (time.time()-stime))
 		return ld
-
-
-	def _get_child_jobs(self, job, ld):
-
-		'''
-		Recursive function to return child jobs.		
-
-		Args:
-			job (core.models.Job): job to derive all downstream jobs from
-			ld (dict): lineage dictionary
-
-		Returns:
-			(dict): lineage dictionary, updated with downstream children
-		'''
-
-		# get child jobs, by checking for all jobs where job was input
-		child_job_links = job.input_job.all() # reverse many to one through JobInput model
-
-		# if child jobs founds
-		if child_job_links.count() > 0:
-
-			for link in child_job_links:
-
-				# get child job proper
-				cj = link.job
-
-				# add as node, if not already added to nodes list
-				if cj.id not in [ node['id'] for node in ld['nodes'] ]:
-
-					# get validation results and add to node
-					validation_results = cj.validation_results()
-
-					ld['nodes'].append({
-						'id':cj.id,
-						'name':cj.name,
-						'job_type':cj.job_type,
-						'is_valid':validation_results['verdict']
-					})
-
-				# add edges
-				edge_id = '%s_to_%s' % (job.id, cj.id)
-				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
-					ld['edges'].append({
-						'id':edge_id,
-						'from':job.id,
-						'to':cj.id
-					})
-
-				# recurse
-				self._get_child_jobs(cj, ld)
 
 
 
@@ -705,7 +656,7 @@ class Job(models.Model):
 		return self._dpla_mapping
 
 
-	def get_lineage(self):
+	def get_lineage(self, directionality='downstream'):
 
 		'''
 		Method to retrieve lineage of self
@@ -720,17 +671,18 @@ class Job(models.Model):
 				'id':self.id,
 				'name':self.name,
 				'job_type':self.job_type,
-				'is_valid':validation_results['verdict']
+				'is_valid':validation_results['verdict'],
+				'recursion_level':0
 			})
 
 		# update lineage dictionary recursively
-		self._get_parent_jobs(self, ld)
+		self._get_parent_jobs(self, ld, directionality=directionality)
 
 		# return
 		return ld
 
 
-	def _get_parent_jobs(self, job, ld):
+	def _get_parent_jobs(self, job, ld, directionality='downstream'):
 
 		'''
 		Method to recursively find parent jobs and add to lineage dictionary
@@ -738,6 +690,7 @@ class Job(models.Model):
 		Args:
 			job (core.models.Job): job to derive all upstream jobs from
 			ld (dict): lineage dictionary
+			directionality (str)['upstream','downstream']: directionality for edges
 
 		Returns:
 			(dict): lineage dictionary, updated with upstream parents
@@ -768,17 +721,25 @@ class Job(models.Model):
 						'is_valid':validation_results['verdict']
 					})
 
-				# add edges
-				edge_id = '%s_to_%s' % (job.id, pj.id)
+				# determine directionality
+				if directionality == 'upstream':
+					from_node = job.id
+					to_node = pj.id
+				elif directionality == 'downstream':
+					from_node = pj.id
+					to_node = job.id
+
+				# add edge
+				edge_id = '%s_to_%s' % (from_node, to_node)
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
 					ld['edges'].append({
 						'id':edge_id,
-						'from':job.id,
-						'to':pj.id
+						'from':from_node,
+						'to':to_node
 					})
 
 				# recurse
-				self._get_parent_jobs(pj, ld)
+				self._get_parent_jobs(pj, ld, directionality=directionality)
 
 
 	def validation_results(self):
