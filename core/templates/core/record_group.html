@@ -11,16 +11,20 @@
 				<td>{{ record_group.description }}</td>
 			</tr>
 			<tr>
-				<th>Published Records</th>
+				<th>Published Jobs</th>
 				{% if record_group.jobpublish_set.all|length > 0 %}
-					<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+					<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}">
+						{% for published in record_group.jobpublish_set.all %}
+							<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a><br>
+						{% endfor %}
+					</td>
 				{% else %}
-					<td style="color:red;">None</td>
+					<td style="color:red;">No jobs published from this Record Group</td>
 				{% endif %}
 			</tr>
 			<tr>
-				<th>Published Set ID</th>
-				<td>{{ record_group.publish_set_id }}</td>
+				<th>OAI Set ID</th>
+				<td><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
 			</tr>
 		</table>
 	</div>
@@ -63,12 +67,13 @@
 					edges: edges
 				};
 				var options = {					
-					clickToUse:true,
+					clickToUse:false,
 					interaction:{
-						zoomView:true,
-						multiselect: false
+						zoomView:false,
+						multiselect: false,
+						navigationButtons: true,
 					},
-					layout:{
+						layout:{
 						hierarchical: {
 							enabled:true,
 							levelSeparation: 600,

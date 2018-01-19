@@ -2,7 +2,7 @@
 function styleNetworkNodes(node){
 
 	// add label
-	node.label = "Job #"+node.id+", "+node.name;
+	node.label = "#"+node.id+", "+node.name;
 
 	// bump font
 	node.font = {

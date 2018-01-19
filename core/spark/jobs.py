@@ -697,15 +697,6 @@ class PublishSpark(object):
 			write_avro=False
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
 		# index to ES /published
 		ESIndex.index_published_job(
 			job_id = job.id,
