@@ -2701,7 +2701,7 @@ class CombineJob(object):
 
 		# calc success percentages, based on records ratio to job record count (which includes both success and error)
 		if r_count_dict['records'] != 0:
-			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(self.job.record_count)), 4)		
+			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)		
 		else:
 			r_count_dict['success_percentage'] = 0.0
 

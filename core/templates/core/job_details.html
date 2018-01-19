@@ -16,9 +16,9 @@
 		</form>
 	</div>
 
-	<!-- {% if cjob.job.job_type_family != 'HarvestJob' %}
+	{% if cjob.job.job_type_family != 'HarvestJob' %}
 		<h3>Input</h3>
-		<p>The following jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong> type.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
+		<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
 		<table border="1" cellpadding="5">
 			<tr>
 				<th>Input Job Name</th>
@@ -41,7 +41,7 @@
 				<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 			</tr>
 		</table>
-	{% endif %} -->
+	{% endif %}
 
 	<div id="job_family_diagram_container">
 		<style type="text/css">
@@ -51,6 +51,7 @@
 				border: 1px solid lightgray;
 			}
 		</style>
+		<p>Job lineage for this job:</p>
 		<div id="job_family_diagram"></div>
 		<script type="text/javascript">
 
