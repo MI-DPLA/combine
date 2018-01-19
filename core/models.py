@@ -673,6 +673,7 @@ class Job(models.Model):
 				'org_id':self.record_group.organization.id,
 				'name':self.name,
 				'job_type':self.job_type,
+				'job_status':self.status,
 				'is_valid':validation_results['verdict'],
 				'recursion_level':0
 			})
@@ -722,6 +723,7 @@ class Job(models.Model):
 						'org_id':pj.record_group.organization.id,
 						'name':pj.name,
 						'job_type':pj.job_type,
+						'job_status':self.status,
 						'is_valid':validation_results['verdict']
 					})
 

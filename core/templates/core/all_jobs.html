@@ -22,49 +22,12 @@
 
 		// style nodes
 		$(job_lineage.nodes).each(function(){
-
-			// add label
-			this.label = "Job #"+this.id+", "+this.name;
-
-			// bump font
-			this.font = {
-				size:20
-			};
-
-			// add shadow
-			this.shadow = {
-		      enabled: true,
-		      color: 'rgba(0,0,0,0.5)',
-		      size:10,
-		      x:5,
-		      y:5
-		    };
-
-		    // set base node parameters
-		    this.shape = 'box';
-		    this.shapeProperties = {
-				borderRadius: 10
-			};
-			this.physics = false;
-			this.borderWidth = 2;
-			this.borderWidthSelected = 5;
-
-			// handle differences between job types
-			nodeStyle(this);						
-
+			styleNetworkNodes(this);						
 		});
 
 		// style edges
 		$(job_lineage.edges).each(function(){
-
-			// add arrow
-			this.arrows = {
-					to:{
-						enabled: true,
-						scaleFactor:1,
-						type:'arrow'
-					}
-				}
+			styleNetworkEdges(this);
 		});
 
 		// init as viz data
@@ -78,9 +41,9 @@
 			edges: edges
 		};
 		var options = {					
-			clickToUse:false,
+			clickToUse:true,
 			interaction:{
-				zoomView:false,
+				zoomView:true,
 				multiselect: false
 			},
 			layout:{
@@ -152,40 +115,11 @@
 
 			// reset node colors
 			nodes.forEach(function(node){								
-				nodeStyle(node);
+				styleNetworkNodes(node);
 				nodes.update(node);
 			})
 
 		});
-
-		// function to style nodes based on JobType and other properties
-		function nodeStyle(node){
-			// Harvests
-			if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob'){
-				node.color = '#deffde';
-			}
-
-			// Transform
-			else if (node.job_type == 'TransformJob'){
-				node.color = '#fffcde';
-			}
-
-			// Merge
-			else if (node.job_type == 'MergeJob'){
-				node.color = '#e3deff';
-			}
-
-			// Publish
-			else if (node.job_type == 'PublishJob'){
-				node.color = '#def3ff';
-			}
-
-			// override color is job is not valid
-			if (!node.is_valid){
-				node.color = '#ff9898';					
-			}
-			
-		}
 
 	</script>
 </div>
