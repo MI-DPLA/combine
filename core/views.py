@@ -322,6 +322,9 @@ def all_jobs(request):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.all()
 
+	# get job lineage for all jobs
+	ld = models.Job.get_all_jobs_lineage(directionality='downstream')
+
 	# loop through jobs and update status
 	for job in jobs:
 		job.update_status()
@@ -329,6 +332,7 @@ def all_jobs(request):
 	# render page 
 	return render(request, 'core/all_jobs.html', {
 			'jobs':jobs,
+			'job_lineage_json':json.dumps(ld),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -669,7 +673,7 @@ def job_transform(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		jobs = record_group.job_set.all()	
+		input_jobs = record_group.job_set.all()	
 
 		# get all transformation scenarios
 		transformations = models.Transformation.objects.all()
@@ -680,14 +684,18 @@ def job_transform(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
 		# render page
 		return render(request, 'core/job_transform.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -760,7 +768,7 @@ def job_merge(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		jobs = models.Job.objects.all()
+		input_jobs = models.Job.objects.all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -768,13 +776,17 @@ def job_merge(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -842,21 +854,21 @@ def job_publish(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs for this record group		
-		jobs = models.Job.objects.filter(record_group=record_group).all()
+		input_jobs = models.Job.objects.filter(record_group=record_group).all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
-				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -882,21 +894,13 @@ def job_publish(request, org_id, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
 			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
-			input_job=input_job,
-			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			input_job=input_job
 		)
 		
 		# start job and update status

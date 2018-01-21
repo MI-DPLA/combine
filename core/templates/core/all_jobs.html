@@ -6,6 +6,125 @@
 
 <p>The following table represents all jobs currently in Combine, across all Organizations and Record Groups.</p>
 
+<div id="job_family_diagram_container">
+	<style type="text/css">
+		#job_family_diagram {
+			width: 100%;
+			height: 400px;
+			border: 1px solid lightgray;
+		}
+	</style>
+	<div id="job_family_diagram"></div>
+	<script type="text/javascript">
+
+		// parse job lineage json
+		job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+
+		// style nodes
+		$(job_lineage.nodes).each(function(){
+			styleNetworkNodes(this);						
+		});
+
+		// style edges
+		$(job_lineage.edges).each(function(){
+			styleNetworkEdges(this);
+		});
+
+		// init as viz data
+		var nodes = new vis.DataSet(job_lineage.nodes);
+		var edges = new vis.DataSet(job_lineage.edges);
+
+		// create a network
+		var container = document.getElementById('job_family_diagram');
+		var data = {
+			nodes: nodes,
+			edges: edges
+		};
+		var options = {					
+			clickToUse:false,
+			interaction:{
+				zoomView:false,
+				multiselect: false,
+				navigationButtons: true,
+			},
+			layout:{
+				hierarchical: {
+					enabled:true,
+					levelSeparation: 600,
+					nodeSpacing: 100,
+					treeSpacing: 100,
+					blockShifting: true,
+					edgeMinimization: true,
+					parentCentralization: true,
+					direction: 'LR',        // UD, DU, LR, RL
+					sortMethod: 'directed'   // hubsize, directed
+				}
+			}			  	
+		};
+
+		// fire network
+		var network = new vis.Network(container, data, options);
+
+		// fit all nodes in viewport
+		network.fit();
+
+		// set listener for node select
+		network.on('selectNode', function (node){
+
+			// fire ajax to get job lineage for selected job
+			base_url = "{%url 'job_lineage_json' org_id='DYNAMIC_ORG_ID' record_group_id='DYNAMIC_RG_ID' job_id='DYNAMIC_ID' %}";
+			
+			// get node
+			node_data = nodes.get(node.nodes[0])
+			
+			// update URL
+			base_url = base_url.replace('DYNAMIC_ID', node_data.id);
+			base_url = base_url.replace('DYNAMIC_ID', node_data.record_group_id);
+			base_url = base_url.replace('DYNAMIC_ID', node_data.org_id);
+			
+			$.ajax({
+				type: 'POST',
+				url: base_url,
+				dataType:'json',
+				data: {							
+					'csrfmiddlewaretoken': '{{ csrf_token }}'
+				},
+				success: function(data){
+					
+					// filter datatables
+					search_string = data.job_id_list.join('|');
+					job_id = node.nodes[0];
+					jobs_table.column(0).search(search_string, true, false).draw();
+
+					// gray out other nodes
+					nodes.forEach(function(node){								
+						if (!data.job_id_list.includes(node.id)){									
+							node.color = '#efefef';
+							nodes.update(node);
+						}
+					})
+				}			
+			});
+			
+		});
+
+		// set listener for node deselect
+		network.on('deselectNode', function (node){
+
+			// reset table
+			jobs_table.column(0).search('').draw();
+
+			// reset node colors
+			nodes.forEach(function(node){								
+				styleNetworkNodes(node);
+				nodes.update(node);
+			})
+
+		});
+
+	</script>
+</div>
+
 <!-- optional job note -->
 {% include 'core/jobs_dt_table.html' %}
 

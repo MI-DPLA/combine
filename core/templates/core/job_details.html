@@ -60,72 +60,12 @@
 
 			// style nodes
 			$(job_lineage.nodes).each(function(){
-
-				// add label
-				this.label = "Job #"+this.id+", "+this.name;
-
-				// bump font
-				this.font = {
-					size:20
-				};
-
-				// add shadow
-				this.shadow = {
-			      enabled: true,
-			      color: 'rgba(0,0,0,0.5)',
-			      size:10,
-			      x:5,
-			      y:5
-			    };
-
-			    // set base node parameters
-			    this.shape = 'box';
-			    this.shapeProperties = {
-					borderRadius: 10
-				};
-				this.physics = false;
-				this.borderWidth = 2;
-				this.borderWidthSelected = 5;
-
-				// handle differences between job types
-				// Harvests
-				if (this.job_type == 'HarvestOAIJob' || this.job_type == 'HarvestStaticXMLJob'){
-					this.color = '#deffde';
-				}
-
-				// Transform
-				else if (this.job_type == 'TransformJob'){
-					this.color = '#fffcde';
-				}
-
-				// Merge
-				else if (this.job_type == 'MergeJob'){
-					this.color = '#e3deff';
-				}
-
-				// Publish
-				else if (this.job_type == 'PublishJob'){
-					this.color = '#def3ff';
-				}
-
-				// override color is job is not valid
-				if (!this.is_valid){
-					this.color = '#ff9898';					
-				}					
-
+				styleNetworkNodes(this);						
 			});
 
 			// style edges
 			$(job_lineage.edges).each(function(){
-
-				// add arrow
-				this.arrows = {
-  					to:{
-							enabled: true,
-							scaleFactor:1,
-							type:'arrow'
-						}
-  				}
+				styleNetworkEdges(this);
 			});
 
 			// init as viz data
@@ -141,7 +81,9 @@
 			var options = {
 				clickToUse:false,
 				interaction:{
-					zoomView:false	
+					zoomView:false,
+					multiselect: false,
+					navigationButtons: true,
 				},
 				layout:{
 					hierarchical: {

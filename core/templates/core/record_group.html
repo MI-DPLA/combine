@@ -11,16 +11,20 @@
 				<td>{{ record_group.description }}</td>
 			</tr>
 			<tr>
-				<th>Published Records</th>
+				<th>Published Jobs</th>
 				{% if record_group.jobpublish_set.all|length > 0 %}
-					<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}"><a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">{{ record_group.jobpublish_set.all.first.job.name }}, Job #{{ record_group.jobpublish_set.all.first.job.id }}</a></td>
+					<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}">
+						{% for published in record_group.jobpublish_set.all %}
+							<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a><br>
+						{% endfor %}
+					</td>
 				{% else %}
-					<td style="color:red;">None</td>
+					<td style="color:red;">No jobs published from this Record Group</td>
 				{% endif %}
 			</tr>
 			<tr>
-				<th>Published Set ID</th>
-				<td>{{ record_group.publish_set_id }}</td>
+				<th>OAI Set ID</th>
+				<td><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
 			</tr>
 		</table>
 	</div>
@@ -44,49 +48,12 @@
 
 				// style nodes
 				$(job_lineage.nodes).each(function(){
-
-					// add label
-					this.label = "Job #"+this.id+", "+this.name;
-
-					// bump font
-					this.font = {
-						size:20
-					};
-
-					// add shadow
-					this.shadow = {
-				      enabled: true,
-				      color: 'rgba(0,0,0,0.5)',
-				      size:10,
-				      x:5,
-				      y:5
-				    };
-
-				    // set base node parameters
-				    this.shape = 'box';
-				    this.shapeProperties = {
-						borderRadius: 10
-					};
-					this.physics = false;
-					this.borderWidth = 2;
-					this.borderWidthSelected = 5;
-
-					// handle differences between job types
-					nodeStyle(this);						
-
+					styleNetworkNodes(this);						
 				});
 
 				// style edges
 				$(job_lineage.edges).each(function(){
-
-					// add arrow
-					this.arrows = {
-      					to:{
-  							enabled: true,
-  							scaleFactor:1,
-  							type:'arrow'
-  						}
-      				}
+					styleNetworkEdges(this);
 				});
 
 				// init as viz data
@@ -103,9 +70,10 @@
 					clickToUse:false,
 					interaction:{
 						zoomView:false,
-						multiselect: false
+						multiselect: false,
+						navigationButtons: true,
 					},
-					layout:{
+						layout:{
 						hierarchical: {
 							enabled:true,
 							levelSeparation: 600,
@@ -131,7 +99,13 @@
 
 					// fire ajax to get job lineage for selected job
 					base_url = "{% url 'job_lineage_json' org_id=record_group.organization.id record_group_id=record_group.id job_id='DYNAMIC_ID' %}";
-					base_url = base_url.replace('DYNAMIC_ID',node.nodes[0]);
+
+					// get node
+					node_data = nodes.get(node.nodes[0])
+			
+					// update URL
+					base_url = base_url.replace('DYNAMIC_ID', node_data.id);
+
 					$.ajax({
 						type: 'POST',
 						url: base_url,
@@ -166,40 +140,11 @@
 
 					// reset node colors
 					nodes.forEach(function(node){								
-						nodeStyle(node);
+						styleNetworkNodes(node);
 						nodes.update(node);
 					})
 
 				});
-
-				// function to style nodes based on JobType and other properties
-				function nodeStyle(node){
-					// Harvests
-					if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob'){
-						node.color = '#deffde';
-					}
-
-					// Transform
-					else if (node.job_type == 'TransformJob'){
-						node.color = '#fffcde';
-					}
-
-					// Merge
-					else if (node.job_type == 'MergeJob'){
-						node.color = '#e3deff';
-					}
-
-					// Publish
-					else if (node.job_type == 'PublishJob'){
-						node.color = '#def3ff';
-					}
-
-					// override color is job is not valid
-					if (!node.is_valid){
-						node.color = '#ff9898';					
-					}
-					
-				}
 
 			</script>
 		</div>

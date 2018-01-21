@@ -669,8 +669,11 @@ class Job(models.Model):
 		validation_results = self.validation_results()
 		ld['nodes'].append({
 				'id':self.id,
+				'record_group_id':self.record_group.id,
+				'org_id':self.record_group.organization.id,
 				'name':self.name,
 				'job_type':self.job_type,
+				'job_status':self.status,
 				'is_valid':validation_results['verdict'],
 				'recursion_level':0
 			})
@@ -716,8 +719,11 @@ class Job(models.Model):
 
 					ld['nodes'].append({
 						'id':pj.id,
+						'record_group_id':pj.record_group.id,
+						'org_id':pj.record_group.organization.id,
 						'name':pj.name,
 						'job_type':pj.job_type,
+						'job_status':self.status,
 						'is_valid':validation_results['verdict']
 					})
 
@@ -740,6 +746,61 @@ class Job(models.Model):
 
 				# recurse
 				self._get_parent_jobs(pj, ld, directionality=directionality)
+
+
+	@staticmethod
+	def get_all_jobs_lineage(organization=None, record_group=None, directionality='downstream', jobs_query_set=None):
+
+		'''
+		Static method to get lineage for all Jobs
+			- used for all jobs and input select views
+
+		Args:
+			organization(core.models.Organization): Organization to filter results by
+			record_group(core.models.RecordGroup): RecordGroup to filter results by
+			directionality(str)['upstream','downstream']: directionality of network edges
+			jobs_query_set(django.db.models.query.QuerySet): optional pre-constructed Job model QuerySet
+
+		Returns:
+			(dict): lineage dictionary of Jobs
+		'''
+
+		# if Job QuerySet provided, use
+		if jobs_query_set:
+			jobs = jobs_query_set
+
+		# else, construct Job QuerySet
+		else:
+			# get all jobs
+			jobs = Job.objects.all()
+
+			# if Org provided, filter
+			if organization:
+				jobs = jobs.filter(record_group__organization=organization)
+
+			# if RecordGroup provided, filter
+			if record_group:
+				jobs = jobs.filter(record_group=record_group)
+
+		# create record group lineage dictionary
+		ld = {'edges':[], 'nodes':[]}
+
+		# loop through jobs
+		for job in jobs:
+		    job_ld = job.get_lineage(directionality=directionality)
+		    ld['edges'].extend(job_ld['edges'])
+		    ld['nodes'].extend(job_ld['nodes'])
+
+		# filter for unique
+		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
+		ld['edges'] = list({edge['id']:edge for edge in ld['edges']}.values())
+
+		# sort by id
+		ld['nodes'].sort(key=lambda x: x['id'])
+		ld['edges'].sort(key=lambda x: x['id'])
+
+		# return
+		return ld
 
 
 	def validation_results(self):
@@ -820,7 +881,7 @@ class JobPublish(models.Model):
 
 	'''
 	Model to manage published jobs.
-	Provides a one-to-one relationship for a record group and published job
+	Provides a one-to-many relationship for a record group and published job
 	'''
 
 	record_group = models.ForeignKey(RecordGroup)
@@ -2461,7 +2522,7 @@ class CombineJob(object):
 			(str): formatted, default job name
 		'''
 
-		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().isoformat())
+		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
 
 
 	@staticmethod
@@ -3564,9 +3625,7 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None,
-		index_mapper=None,
-		validation_scenarios=[]):
+		job_id=None):
 
 		'''
 		Args:
@@ -3576,8 +3635,6 @@ class PublishJob(CombineJob):
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
-			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -3596,8 +3653,6 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
-			self.index_mapper = index_mapper
-			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3633,15 +3688,6 @@ class PublishJob(CombineJob):
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
 
-			# write validation links
-			if len(self.validation_scenarios) > 0:
-				for vs_id in self.validation_scenarios:
-					val_job = JobValidation(
-						job=self.job,
-						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
-					)
-					val_job.save()
-
 
 	def prepare_job(self):
 
@@ -3658,12 +3704,10 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s")' % 
 			{
 				'input_job_id':self.input_job.id,
-				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'job_id':self.job.id
 			}
 		}
 
