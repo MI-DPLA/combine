@@ -2,8 +2,8 @@
 {% load core_template_filters %}
 
 <div id="index_analysis_block">
-	<p>
-		<div style="width:50%;">
+	<p><button onclick="$('#field_analysis_explanation').toggle();">Show field analysis explanation</button>
+		<div id="field_analysis_explanation" style="width:50%; display:none;">
 			<table border="1" cellpadding="5">
 				<tr>
 					<th>Column</th>
@@ -11,11 +11,11 @@
 				<tr>
 				<tr>
 					<td><strong>Field Name</strong></td>
-					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.  <strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
+					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.<br><br><strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
 				</tr>
 				<tr>
 					<td><strong>DPLA Mapped Field</strong></td>
-					<td>Mapped DPLA field.  <strong>Note:</strong> These are primarily for preview/QA, they do not represent a final mapping.</td>
+					<td>Mapped DPLA field.<br><br><strong>Note:</strong> These are primarily for preview / QA, they do not represent a final mapping.</td>
 				</tr>
 				<tr>
 					<td><strong>Documents with Field</strong></td>
@@ -27,7 +27,7 @@
 				</tr>
 				<tr>
 					<td><strong>Count of Distinct Values for Field</strong></td>
-					<td>How many unique values are present for a given field. <strong>Note:</strong> Though quite accurate, this count is not gauranteed to be 100% accurate, according to <a target="_blank" href="https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html">ES documentation</a>.  However, this should not dramatically effect analysis.</td>
+					<td>How many unique values are present for a given field.<br><br><strong>Note:</strong> Though quite accurate, this count is not gauranteed to be 100% accurate, according to <a target="_blank" href="https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html">ES documentation</a>.  However, this should not dramatically effect analysis.</td>
 				</tr>
 				<tr>
 					<td><strong>Percentage of Field Values that are Unique</strong></td>
