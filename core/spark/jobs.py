@@ -39,7 +39,7 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords
 
 
 ####################################################################
@@ -636,9 +636,8 @@ class PublishSpark(object):
 		Returns:
 			None
 			- creates symlinks from input job to new avro file symlinks on disk
-			- indexes records into DB
-			- map / flatten records and indexes to ES
-			- map / flatten records and indexes to ES under /published index
+			- copies records in DB from input job to new published job
+			- copies documents in ES from input to new published job index
 		'''
 
 		# get job
@@ -699,13 +698,11 @@ class PublishSpark(object):
 			index_records=False
 		)
 
-		##############################################################################################################
-		# copy indexed records from input job
-		# copy indexed documents from job to /published
+		# copy indexed ES documents from input job
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		index_name = 'j%s' % job.id
 
-		# check if published index exists
+		# check if job ES index exists
 		if not es_handle_temp.indices.exists(index_name):
 			mapping = {'mappings':{'record':{'date_detection':False}}}
 			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
@@ -724,13 +721,16 @@ class PublishSpark(object):
 				data=json.dumps(dupe_dict),
 				headers={'Content-Type':'application/json'}
 			)
-		##############################################################################################################
 
 		# index to ES /published
 		ESIndex.index_published_job(
 			job_id = job.id,
 			publish_set_id=job.record_group.publish_set_id
 		)
+
+		# update uniqueness of all published records
+		pr = PublishedRecords()
+		pr.update_published_uniqueness()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -764,6 +764,9 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	'''
 
 	# check uniqueness (overwrites if column already exists)
+	'''
+	What is the performance hit of this uniqueness check?
+	'''
 	records_df = records_df.withColumn("unique", (
 		pyspark_sql_functions.count('record_id')\
 		.over(Window.partitionBy('record_id')) == 1)\

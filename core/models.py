@@ -35,6 +35,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.db import models
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
@@ -986,6 +987,7 @@ class Record(models.Model):
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
+	unique_published = models.NullBooleanField()
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
 
@@ -1857,6 +1859,22 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not remove ES index: j%s' % instance.id)
 
 
+@receiver(models.signals.post_delete, sender=Job)
+def update_uniqueness_of_published_records(sender, instance, **kwargs):
+
+	'''
+	After job delete, if Publish job, update uniquess of published records 
+	'''
+
+	if instance.job_type == 'PublishJob':
+
+		logger.debug('updating uniquess of published records')
+
+		# get PublishedRecords instance and run method		
+		pr = PublishedRecords()
+		pr.update_published_uniqueness()
+
+
 @receiver(models.signals.pre_save, sender=Transformation)
 def save_transformation_to_disk(sender, instance, **kwargs):
 
@@ -2474,6 +2492,31 @@ class PublishedRecords(object):
 
 		# return field analysis
 		return self.esi.field_analysis(field_name)
+
+
+	def update_published_uniqueness(self):
+
+		'''
+		Method to update `unique_published` field from Record table for all published records
+		Note: Very likely possible to improve performance, currently about 1s per 10k records.
+		'''
+
+		stime = time.time()
+
+		# get non-unique as QuerySet
+		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
+
+		# get QuerySet of records to update
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+		logger.debug('setting %s records as unique' % set_true.count())
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+		logger.debug('setting %s records as dupes' % set_false.count())
+
+		# update in bulk
+		set_true.update(unique_published=True)
+		set_false.update(unique_published=False)
+
+		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
 

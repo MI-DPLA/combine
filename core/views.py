@@ -855,6 +855,7 @@ def job_publish(request, org_id, record_group_id):
 		
 		# retrieve all jobs for this record group		
 		input_jobs = models.Job.objects.filter(record_group=record_group).all()
+		# input_jobs = models.Job.objects.filter(record_group=record_group).exclude(job_type='PublishJob').all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1546,21 +1547,20 @@ class DTPublishedJson(BaseDatatableView):
 			'record_id',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
-			'unique',
+			'unique_published',
 			'document'
 		]
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
-		# value like ''
-		# order_columns = ['number', 'user', 'state', '', '']
+		# value like ''		
 		order_columns = [
 			'id',
 			'record_id',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
-			'unique',
+			'unique_published',
 			'document'
 		]
 
@@ -1608,11 +1608,11 @@ class DTPublishedJson(BaseDatatableView):
 				return row.job.record_group.publish_set_id
 
 			# handle associated job
-			if column == 'unique':
-				if row.unique:
-					return '<span style="color:green;">Unique</span>'
+			if column == 'unique_published':
+				if row.unique_published:
+					return '<span style="color:green;">True</span>'
 				else:
-					return '<span style="color:red;">Duplicate</span>'
+					return '<span style="color:red;">False</span>'
 
 			else:
 				return super(DTPublishedJson, self).render_column(row, column)
