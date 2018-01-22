@@ -51,6 +51,11 @@
 		<link rel="stylesheet" href="{% static 'core/highlight.js/default.min.css' %}">
 		<script src="{% static 'core/highlight.js/highlight.min.js' %}"></script>
 
+		<!--vis.js-->
+		<script type="text/javascript" src="{% static 'core/vis-4.21.0/dist/vis.min.js' %}"></script>
+		<script type="text/javascript" src="{% static 'core/visjs_network_global.js' %}"></script>
+  		<link href="{% static 'core/vis-4.21.0/dist/vis.min.css' %}" rel="stylesheet" type="text/css" />
+
 	</head>
 	<body>
 
@@ -58,7 +63,7 @@
 		<ul>
 			<li><a href="{% url 'livy_sessions' %}">Livy Sessions</a></li>
 			<li><a href="{% url 'organizations' %}">Organizations</a></li>
-			<li><a href="{% url 'published' %}">Published (OAI Server)</a></li>
+			<li><a href="{% url 'published' %}">Published Records</a></li>
 			<li><a href="{% url 'configuration' %}">Configuration</a></li>
 			<li><a href="{% url 'all_jobs' %}">All Jobs</a></li>
 			<!-- <li><a href="http://{{ APP_HOST }}:50070" target="_blank">HDFS Browser</a></li> -->

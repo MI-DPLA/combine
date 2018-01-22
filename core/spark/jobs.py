@@ -2,10 +2,12 @@
 import ast
 import datetime
 import django
+from elasticsearch import Elasticsearch
 import hashlib
 import json
 from lxml import etree
 import os
+import requests
 import shutil
 import sys
 
@@ -37,7 +39,7 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords
 
 
 ####################################################################
@@ -190,7 +192,7 @@ class HarvestOAISpark(object):
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
 
-		# index records to db
+		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
@@ -364,7 +366,7 @@ class HarvestStaticXMLSpark(object):
 		job_id = job.id
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
-		# index records to db
+		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
@@ -492,7 +494,7 @@ class TransformSpark(object):
 		# back to DataFrame
 		records_trans = records_trans.toDF()
 
-		# index records to db
+		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
@@ -594,7 +596,7 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
-		# index records to db
+		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
@@ -634,9 +636,8 @@ class PublishSpark(object):
 		Returns:
 			None
 			- creates symlinks from input job to new avro file symlinks on disk
-			- indexes records into DB
-			- map / flatten records and indexes to ES
-			- map / flatten records and indexes to ES under /published index
+			- copies records in DB from input job to new published job
+			- copies documents in ES from input to new published job index
 		'''
 
 		# get job
@@ -661,7 +662,6 @@ class PublishSpark(object):
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
-		# records = records.select(CombineRecordSchema().field_names)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
@@ -688,29 +688,49 @@ class PublishSpark(object):
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
-		# index records to db
+		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
 			records_df=records,
-			write_avro=False
+			write_avro=False,
+			index_records=False
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
+		# copy indexed ES documents from input job
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		index_name = 'j%s' % job.id
+
+		# check if job ES index exists
+		if not es_handle_temp.indices.exists(index_name):
+			mapping = {'mappings':{'record':{'date_detection':False}}}
+			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+
+		# prepare _reindex query
+		dupe_dict = {
+			'source':{
+				'index': 'j%s' % input_job.id,
+				'query':{}
+			},
+			'dest': {
+				'index':index_name
+			}
+		}
+		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
+				data=json.dumps(dupe_dict),
+				headers={'Content-Type':'application/json'}
+			)
 
 		# index to ES /published
 		ESIndex.index_published_job(
 			job_id = job.id,
 			publish_set_id=job.record_group.publish_set_id
 		)
+
+		# update uniqueness of all published records
+		pr = PublishedRecords()
+		pr.update_published_uniqueness()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -722,11 +742,12 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True):
+def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
 
 	'''
-	Function to index records to DB.
-	Additionally, generates and writes oai_id column to DB.
+	Function to index records to DB and trigger indexing to ElasticSearch (ES)
+	
+		- generates and writes oai_id column to DB.
 
 	Args:
 		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
@@ -743,6 +764,9 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	'''
 
 	# check uniqueness (overwrites if column already exists)
+	'''
+	What is the performance hit of this uniqueness check?
+	'''
 	records_df = records_df.withColumn("unique", (
 		pyspark_sql_functions.count('record_id')\
 		.over(Window.partitionBy('record_id')) == 1)\
@@ -753,7 +777,8 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 
 	# write avro, coalescing for output
 	if write_avro:
-		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION).write.format("com.databricks.spark.avro").save(job.job_output)
+		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
+		.write.format("com.databricks.spark.avro").save(job.job_output)
 
 	# write records to DB
 	records_df_combine_cols.write.jdbc(
@@ -777,7 +802,7 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
 	# index to ElasticSearch
-	if settings.INDEX_TO_ES:
+	if index_records and settings.INDEX_TO_ES:
 		ESIndex.index_job_to_es_spark(
 			spark,
 			job=job,

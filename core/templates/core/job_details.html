@@ -18,7 +18,7 @@
 
 	{% if cjob.job.job_type_family != 'HarvestJob' %}
 		<h3>Input</h3>
-		<p>The following jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong> type.  The counts indicate actual documents from previous jobs, not any errors that job may have generated.</p>
+		<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
 		<table border="1" cellpadding="5">
 			<tr>
 				<th>Input Job Name</th>
@@ -42,6 +42,72 @@
 			</tr>
 		</table>
 	{% endif %}
+
+	<div id="job_family_diagram_container">
+		<style type="text/css">
+			#job_family_diagram {
+				width: 80%;
+				height: 200px;
+				border: 1px solid lightgray;
+			}
+		</style>
+		<p>Job lineage for this job:</p>
+		<div id="job_family_diagram"></div>
+		<script type="text/javascript">
+
+			// parse job lineage json
+			job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+
+			// style nodes
+			$(job_lineage.nodes).each(function(){
+				styleNetworkNodes(this);						
+			});
+
+			// style edges
+			$(job_lineage.edges).each(function(){
+				styleNetworkEdges(this);
+			});
+
+			// init as viz data
+			var nodes = new vis.DataSet(job_lineage.nodes);
+			var edges = new vis.DataSet(job_lineage.edges);
+
+			// create a network
+			var container = document.getElementById('job_family_diagram');
+			var data = {
+				nodes: nodes,
+				edges: edges
+			};
+			var options = {
+				clickToUse:false,
+				interaction:{
+					zoomView:false,
+					multiselect: false,
+					navigationButtons: true,
+				},
+				layout:{
+					hierarchical: {
+						enabled:true,
+						levelSeparation: 600,
+						nodeSpacing: 100,
+						treeSpacing: 100,
+						blockShifting: true,
+						edgeMinimization: true,
+						parentCentralization: true,
+						direction: 'LR',        // UD, DU, LR, RL
+						sortMethod: 'directed'   // hubsize, directed
+					}
+				}			  	
+			};
+
+			// fire network
+			var network = new vis.Network(container, data, options);
+
+			// fit all nodes in viewport
+			network.fit();
+
+		</script>
+	</div>
 
 	<h3>Results</h3>
 	<p>The following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>

@@ -1,13 +1,14 @@
-{% extends 'core/base.html' %}
+	{% extends 'core/base.html' %}
 
 {% block content %}
 
 <h2>Published Sets</h2>
+<p>When a Job is published, it becomes an OAI set, taking the <code>publish_set_id</code> from that Job's Record Group as its set ID.  Publishing multiple Jobs from a single Record Group will effectively aggregate those files under the same OAI set ID.</p>
 
 <table border="1" cellpadding="10">
 
 	<tr>
-		<th>Set ID</th>
+		<th>OAI Set ID</th>
 		<th>Record Group</th>
 		<th>Published Records</th>
 		<th>Record Count</th>
@@ -16,8 +17,8 @@
 	{% for set, jobs in published.sets.items %}
 		{% for job in jobs %}
 			<tr>
-				<td>"{{ set }}"</td>
-				<td>{{ job.record_group.name }}</td>
+				<td><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a></td>
+				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 				<td class="{{ job.job_type }}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 				<td>{{ job.record_count }}</td>
 			</tr>
@@ -35,11 +36,7 @@
 
 <h2>Records</h2>
 
-<p>Some notes on the table below:
-	<ul>
-		<li>The <code>Unique</code> column is from the originating job, and does not mean the record is unique amongst all published records</li>
-	</ul>
-</p>
+<p>The table belows shows all published records, across all Record Groups and OAI sets.  <strong>Note:</strong> the <code>Unique</code> column is from the originating job, and does not mean the record is unique amongst all published records.</p>
 
 <table id='published_records'>
 	<thead>
@@ -47,7 +44,7 @@
 		<th>Record ID</th>
 		<th>Publish Set ID</th>
 		<th>Harvested OAI set</th>
-		<th>Unique</th>
+		<th>Unique in Published?</th>
 		<th>Document</th>
 	</thead>
 	<tfoot>
@@ -55,7 +52,7 @@
 		<th>Record ID</th>
 		<th>Publish Set ID</th>
 		<th>Harvested OAI set</th>
-		<th>Unique</th>
+		<th>Unique in Published?</th>
 		<th>Document</th>
 	</tfoot>
 	<tbody>
@@ -81,7 +78,7 @@
 <!-- Indexed Fields Analysis DT Table -->
 {% include 'core/indexed_fields_dt_table.html' %}
 
-<h2>OAI Endpoint</h2>
+<h2>OAI Endpoint examples</h2>
 
 <ul>
 	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=Identify" target="_blank">Identify</a></li>

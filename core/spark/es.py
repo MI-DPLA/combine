@@ -157,8 +157,7 @@ class ESIndex(object):
 				'index': 'j%s' % kwargs['job_id'],
 				'query':{
 					'term':{
-						'publish_set_id':
-						kwargs['publish_set_id']
+						'publish_set_id':kwargs['publish_set_id']
 					}
 				}
 			},

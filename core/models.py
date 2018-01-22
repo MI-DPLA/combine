@@ -35,6 +35,7 @@ from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.db import models
+from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
@@ -258,6 +259,47 @@ class RecordGroup(models.Model):
 
 	def __str__(self):
 		return 'Record Group: %s' % self.name
+
+
+	def get_jobs_lineage(self):
+
+		'''
+		Method to generate structured data outlining the lineage of jobs for this Record Group.
+		Will use Combine DB ID as node identifiers.
+
+		Args:
+			None
+
+		Returns:
+			(dict): lineage dictionary of nodes (jobs) and edges (input jobs as edges)
+		'''
+
+		# debug
+		stime = time.time()
+
+		# create record group lineage dictionary
+		ld = {'edges':[], 'nodes':[]}
+
+		# get all jobs
+		record_group_jobs = self.job_set.order_by('-id').all()
+
+		# loop through jobs
+		for job in record_group_jobs:
+		    job_ld = job.get_lineage(directionality='downstream')
+		    ld['edges'].extend(job_ld['edges'])
+		    ld['nodes'].extend(job_ld['nodes'])
+
+		# filter for unique
+		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
+		ld['edges'] = list({edge['id']:edge for edge in ld['edges']}.values())
+
+		# sort by id
+		ld['nodes'].sort(key=lambda x: x['id'])
+		ld['edges'].sort(key=lambda x: x['id'])
+
+		# return
+		logger.debug('lineage calc time elapsed: %s' % (time.time()-stime))
+		return ld
 
 
 
@@ -615,15 +657,196 @@ class Job(models.Model):
 		return self._dpla_mapping
 
 
-	def generate_validation_failure_report(self):
+	def get_lineage(self, directionality='downstream'):
 
 		'''
-		Method to generate downloadable report of records that failed validation
+		Method to retrieve lineage of self
 		'''
 
-		# get validation scenarios run
-		for jvs in self.jobvalidation_set.all():
-			logger.debug('adding %s to job validation dataframe' % jvs)
+		# lineage dict
+		ld = {'nodes':[],'edges':[]}		
+
+		# add self to lineage dictionary
+		validation_results = self.validation_results()
+		ld['nodes'].append({
+				'id':self.id,
+				'record_group_id':self.record_group.id,
+				'org_id':self.record_group.organization.id,
+				'name':self.name,
+				'job_type':self.job_type,
+				'job_status':self.status,
+				'is_valid':validation_results['verdict'],
+				'recursion_level':0
+			})
+
+		# update lineage dictionary recursively
+		self._get_parent_jobs(self, ld, directionality=directionality)
+
+		# return
+		return ld
+
+
+	def _get_parent_jobs(self, job, ld, directionality='downstream'):
+
+		'''
+		Method to recursively find parent jobs and add to lineage dictionary
+
+		Args:
+			job (core.models.Job): job to derive all upstream jobs from
+			ld (dict): lineage dictionary
+			directionality (str)['upstream','downstream']: directionality for edges
+
+		Returns:
+			(dict): lineage dictionary, updated with upstream parents
+		'''
+
+		# get parent job(s)
+		parent_job_links = job.jobinput_set.all() # reverse many to one through JobInput model
+
+		# if parent jobs found
+		if parent_job_links.count() > 0:
+
+			# loop through
+			for link in parent_job_links:
+
+				# get parent job proper
+				pj = link.input_job
+
+				# add as node, if not already added to nodes list
+				if pj.id not in [ node['id'] for node in ld['nodes'] ]:
+
+					# get validation results and add to node
+					validation_results = pj.validation_results()
+
+					ld['nodes'].append({
+						'id':pj.id,
+						'record_group_id':pj.record_group.id,
+						'org_id':pj.record_group.organization.id,
+						'name':pj.name,
+						'job_type':pj.job_type,
+						'job_status':self.status,
+						'is_valid':validation_results['verdict']
+					})
+
+				# determine directionality
+				if directionality == 'upstream':
+					from_node = job.id
+					to_node = pj.id
+				elif directionality == 'downstream':
+					from_node = pj.id
+					to_node = job.id
+
+				# add edge
+				edge_id = '%s_to_%s' % (from_node, to_node)
+				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
+					ld['edges'].append({
+						'id':edge_id,
+						'from':from_node,
+						'to':to_node
+					})
+
+				# recurse
+				self._get_parent_jobs(pj, ld, directionality=directionality)
+
+
+	@staticmethod
+	def get_all_jobs_lineage(organization=None, record_group=None, directionality='downstream', jobs_query_set=None):
+
+		'''
+		Static method to get lineage for all Jobs
+			- used for all jobs and input select views
+
+		Args:
+			organization(core.models.Organization): Organization to filter results by
+			record_group(core.models.RecordGroup): RecordGroup to filter results by
+			directionality(str)['upstream','downstream']: directionality of network edges
+			jobs_query_set(django.db.models.query.QuerySet): optional pre-constructed Job model QuerySet
+
+		Returns:
+			(dict): lineage dictionary of Jobs
+		'''
+
+		# if Job QuerySet provided, use
+		if jobs_query_set:
+			jobs = jobs_query_set
+
+		# else, construct Job QuerySet
+		else:
+			# get all jobs
+			jobs = Job.objects.all()
+
+			# if Org provided, filter
+			if organization:
+				jobs = jobs.filter(record_group__organization=organization)
+
+			# if RecordGroup provided, filter
+			if record_group:
+				jobs = jobs.filter(record_group=record_group)
+
+		# create record group lineage dictionary
+		ld = {'edges':[], 'nodes':[]}
+
+		# loop through jobs
+		for job in jobs:
+		    job_ld = job.get_lineage(directionality=directionality)
+		    ld['edges'].extend(job_ld['edges'])
+		    ld['nodes'].extend(job_ld['nodes'])
+
+		# filter for unique
+		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
+		ld['edges'] = list({edge['id']:edge for edge in ld['edges']}.values())
+
+		# sort by id
+		ld['nodes'].sort(key=lambda x: x['id'])
+		ld['edges'].sort(key=lambda x: x['id'])
+
+		# return
+		return ld
+
+
+	def validation_results(self):
+
+		'''
+		Method to return boolean whether job passes all/any validation tests run
+
+		Args:
+			None
+
+		Returns:
+			(dict): 
+				verdict (boolean): True if all tests passed, or no tests performed, False is any fail
+				failure_count (int): Total number of validation failures
+				validation_scenarios (list): QuerySet of associated JobValidation
+		'''
+
+		# return dict
+		results = {
+			'verdict':True,
+			'failure_count':0,
+			'validation_scenarios':[]
+		}
+
+		# no validation tests run, return True
+		if self.jobvalidation_set.count() == 0:
+			return results
+
+		# validation tests run, loop through
+		else:
+
+			# bump failure count
+			for jv in self.jobvalidation_set.all():
+				if jv.failure_count:
+					results['failure_count'] += jv.failure_count
+
+			# if failures found, set result to False
+			if results['failure_count'] > 0:
+				results['verdict'] = False
+
+			# add all validation scenarios
+			results['validation_scenarios'] = self.jobvalidation_set.all()
+
+			# return
+			return results
 
 
 
@@ -659,7 +882,7 @@ class JobPublish(models.Model):
 
 	'''
 	Model to manage published jobs.
-	Provides a one-to-one relationship for a record group and published job
+	Provides a one-to-many relationship for a record group and published job
 	'''
 
 	record_group = models.ForeignKey(RecordGroup)
@@ -764,6 +987,7 @@ class Record(models.Model):
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
+	unique_published = models.NullBooleanField()
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
 
@@ -1635,6 +1859,22 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not remove ES index: j%s' % instance.id)
 
 
+@receiver(models.signals.post_delete, sender=Job)
+def update_uniqueness_of_published_records(sender, instance, **kwargs):
+
+	'''
+	After job delete, if Publish job, update uniquess of published records 
+	'''
+
+	if instance.job_type == 'PublishJob':
+
+		logger.debug('updating uniquess of published records')
+
+		# get PublishedRecords instance and run method		
+		pr = PublishedRecords()
+		pr.update_published_uniqueness()
+
+
 @receiver(models.signals.pre_save, sender=Transformation)
 def save_transformation_to_disk(sender, instance, **kwargs):
 
@@ -2254,6 +2494,31 @@ class PublishedRecords(object):
 		return self.esi.field_analysis(field_name)
 
 
+	def update_published_uniqueness(self):
+
+		'''
+		Method to update `unique_published` field from Record table for all published records
+		Note: Very likely possible to improve performance, currently about 1s per 10k records.
+		'''
+
+		stime = time.time()
+
+		# get non-unique as QuerySet
+		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
+
+		# get QuerySet of records to update
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+		logger.debug('setting %s records as unique' % set_true.count())
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+		logger.debug('setting %s records as dupes' % set_false.count())
+
+		# update in bulk
+		set_true.update(unique_published=True)
+		set_false.update(unique_published=False)
+
+		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
+
+
 
 class CombineJob(object):
 
@@ -2300,7 +2565,7 @@ class CombineJob(object):
 			(str): formatted, default job name
 		'''
 
-		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().isoformat())
+		return '%s @ %s' % (type(self).__name__, datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
 
 
 	@staticmethod
@@ -2540,7 +2805,7 @@ class CombineJob(object):
 
 		# calc success percentages, based on records ratio to job record count (which includes both success and error)
 		if r_count_dict['records'] != 0:
-			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(self.job.record_count)), 4)		
+			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)		
 		else:
 			r_count_dict['success_percentage'] = 0.0
 
@@ -2678,11 +2943,6 @@ class CombineJob(object):
 
 		# else, output to file and return path
 		else:
-
-			# # check that reports directory exists
-			# reports_dir = '%s/reports' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
-			# if not os.path.exists(reports_dir):
-			# 	os.mkdir(reports_dir)
 
 			# create filename
 			filename = uuid.uuid4().hex
@@ -3408,9 +3668,7 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None,
-		index_mapper=None,
-		validation_scenarios=[]):
+		job_id=None):
 
 		'''
 		Args:
@@ -3420,8 +3678,6 @@ class PublishJob(CombineJob):
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
-			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
@@ -3440,8 +3696,6 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
-			self.index_mapper = index_mapper
-			self.validation_scenarios = validation_scenarios
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3477,15 +3731,6 @@ class PublishJob(CombineJob):
 			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
 			job_publish_link.save()
 
-			# write validation links
-			if len(self.validation_scenarios) > 0:
-				for vs_id in self.validation_scenarios:
-					val_job = JobValidation(
-						job=self.job,
-						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
-					)
-					val_job.save()
-
 
 	def prepare_job(self):
 
@@ -3502,12 +3747,10 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s")' % 
 			{
 				'input_job_id':self.input_job.id,
-				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'job_id':self.job.id
 			}
 		}
 

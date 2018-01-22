@@ -2,9 +2,22 @@
 
 {% block content %}
 
-	<h3>Merge Jobs</h3>
+	<h3>Duplicate/Merge Jobs</h3>
 
-	<p>This allows merging of multiple jobs into a single job.  <strong>Note:</strong> this can be done across Record Groups.</p>
+	<p>This allows the duplication of a single job, or merging of multiple jobs into a single job. <strong>Note:</strong> this can be done across Record Groups.</p>
+	<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#EFEFEC;">
+		<p><strong>Why Duplicate a Job?</strong>
+			<ul>
+				<li>By duplicating a job from another Record Group, this effectively copies a job from another Record Group to your current one.  This might be helpful for publishing a job under a different OAI set.</li>
+				<li>When duplicating a job, a user may run different validations and/or use a different mapper for ElasticSearch.</li>
+			</ul>
+		</p>
+		<p><strong>Why Merge jobs?</strong>
+			<ul>
+				<li>In the even an ad hoc harvest of records occurs, perhaps for a small subset or a static harvest, this would allow merging those records with a larger group of records for analysis and publishing.</li>
+			</ul>
+		</p>
+	</div>
 
 	<form method="POST" action="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">
 

@@ -292,6 +292,9 @@ def record_group(request, org_id, record_group_id):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
+	# get record group job lineage
+	job_lineage = record_group.get_jobs_lineage()	
+
 	# loop through jobs
 	for job in jobs:
 
@@ -303,6 +306,7 @@ def record_group(request, org_id, record_group_id):
 			'livy_session':livy_session,
 			'record_group':record_group,
 			'jobs':jobs,
+			'job_lineage_json':json.dumps(job_lineage),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -318,6 +322,9 @@ def all_jobs(request):
 	# get all jobs associated with record group
 	jobs = models.Job.objects.all()
 
+	# get job lineage for all jobs
+	ld = models.Job.get_all_jobs_lineage(directionality='downstream')
+
 	# loop through jobs and update status
 	for job in jobs:
 		job.update_status()
@@ -325,6 +332,7 @@ def all_jobs(request):
 	# render page 
 	return render(request, 'core/all_jobs.html', {
 			'jobs':jobs,
+			'job_lineage_json':json.dumps(ld),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -362,11 +370,15 @@ def job_details(request, org_id, record_group_id, job_id):
 	# field analysis
 	field_counts = cjob.count_indexed_fields()
 
+	# get job lineage
+	job_lineage = cjob.job.get_lineage()
+
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
+			'job_lineage_json':json.dumps(job_lineage),
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
@@ -661,7 +673,7 @@ def job_transform(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		jobs = record_group.job_set.all()	
+		input_jobs = record_group.job_set.all()	
 
 		# get all transformation scenarios
 		transformations = models.Transformation.objects.all()
@@ -672,14 +684,18 @@ def job_transform(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
 		# render page
 		return render(request, 'core/job_transform.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -752,7 +768,7 @@ def job_merge(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		jobs = models.Job.objects.all()
+		input_jobs = models.Job.objects.all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -760,13 +776,17 @@ def job_merge(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -834,21 +854,22 @@ def job_publish(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs for this record group		
-		jobs = models.Job.objects.all()
+		input_jobs = models.Job.objects.filter(record_group=record_group).all()
+		# input_jobs = models.Job.objects.filter(record_group=record_group).exclude(job_type='PublishJob').all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
 				'record_group':record_group,
-				'jobs':jobs,
+				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
-				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -874,21 +895,13 @@ def job_publish(request, org_id, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
 		# initiate job
 		cjob = models.PublishJob(
 			job_name=job_name,
 			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
-			input_job=input_job,
-			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			input_job=input_job
 		)
 		
 		# start job and update status
@@ -980,6 +993,25 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 @login_required
 def job_reports_create_audit(request, org_id, record_group_id, job_id):
 	pass
+
+
+def job_lineage_json(request, org_id, record_group_id, job_id):
+
+	'''
+	Return job lineage as JSON
+	'''
+
+	# get job
+	job = models.Job.objects.get(pk=int(job_id))
+
+	# get lineage
+	job_lineage = job.get_lineage()
+
+	return JsonResponse({
+		'job_id_list':[ node['id'] for node in job_lineage['nodes'] ],
+		'nodes':job_lineage['nodes'],
+		'edges':job_lineage['edges']
+		})
 
 
 ####################################################################
@@ -1515,21 +1547,20 @@ class DTPublishedJson(BaseDatatableView):
 			'record_id',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
-			'unique',
+			'unique_published',
 			'document'
 		]
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
-		# value like ''
-		# order_columns = ['number', 'user', 'state', '', '']
+		# value like ''		
 		order_columns = [
 			'id',
 			'record_id',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
-			'unique',
+			'unique_published',
 			'document'
 		]
 
@@ -1577,11 +1608,11 @@ class DTPublishedJson(BaseDatatableView):
 				return row.job.record_group.publish_set_id
 
 			# handle associated job
-			if column == 'unique':
-				if row.unique:
-					return '<span style="color:green;">Unique</span>'
+			if column == 'unique_published':
+				if row.unique_published:
+					return '<span style="color:green;">True</span>'
 				else:
-					return '<span style="color:red;">Duplicate</span>'
+					return '<span style="color:red;">False</span>'
 
 			else:
 				return super(DTPublishedJson, self).render_column(row, column)
