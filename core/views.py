@@ -1623,13 +1623,26 @@ class DTPublishedJson(BaseDatatableView):
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
+
 			if search:
-				qs = qs.filter(
-					Q(id=search) | 
-					Q(record_id__contains=search) | 
-					Q(document__contains=search) | 
-					Q(job__record_group__publish_set_id=search)
-				)
+
+				# determine if search is integer
+				try:
+					int_qs = int(search)					
+				except:
+					int_qs = False
+
+				# if integer
+				if int_qs:
+					qs = qs.filter(
+						Q(id=search)						
+					)
+				else:
+					qs = qs.filter(
+						Q(record_id__contains=search) | 
+						Q(document__contains=search) | 
+						Q(job__record_group__publish_set_id=search)
+					)
 
 			return qs
 
