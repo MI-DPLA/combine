@@ -127,48 +127,47 @@ class ESIndex(object):
 
 
 	@staticmethod
-	def index_published_job(**kwargs):
+	def copy_es_index(
+		source_index=None,
+		target_index=None,
+		create_target_index=True,
+		target_index_mapping={'mappings':{'record':{'date_detection':False}}},
+		refresh=True,
+		wait_for_completion=True):
 
 		'''
-		Index published records to ES by copying documents from another index
+		Method to duplicate one ES index to another
 
 		Args:
-			kwargs
-				job_id (int): Job ID
-				publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+			create_target_index (boolean): If True, check for target and create
+			source_index (str): Source ES index to copy from
+			target_index (str): Target ES index to copy to
+			target_index_mapping (dict): Dictionary of mapping to create target index
 
 		Returns:
-			None
-				- submits POST request to trigger ES to copy documents
+			(dict): results of reindex via elasticsearch client
 		'''
 
-		# copy indexed documents from job to /published
+		# get ES handle
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		index_name = 'published'
 
-		# check if published index exists
-		if not es_handle_temp.indices.exists(index_name):
-			mapping = {'mappings':{'record':{'date_detection':False}}}
-			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+		# if creating target index check if target index exists
+		if create_target_index and not es_handle_temp.indices.exists(target_index):
+			es_handle_temp.indices.create(target_index, body=json.dumps(target_index_mapping))
 
-		# prepare _reindex query
+		# prepare reindex query
 		dupe_dict = {
 			'source':{
-				'index': 'j%s' % kwargs['job_id'],
-				'query':{
-					'term':{
-						'publish_set_id':kwargs['publish_set_id']
-					}
-				}
+				'index': source_index,
+				'query':{}
 			},
 			'dest': {
-				'index':index_name
+				'index':target_index
 			}
 		}
-		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
-				data=json.dumps(dupe_dict),
-				headers={'Content-Type':'application/json'}
-			)
+		
+		# reindex using elasticsearch client
+		reindex = es_handle_temp.reindex(body=dupe_dict, wait_for_completion=wait_for_completion, refresh=refresh)
 
 
 

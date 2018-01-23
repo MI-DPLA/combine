@@ -10,6 +10,7 @@ import os
 import requests
 import shutil
 import sys
+import time
 
 # pyjxslt
 import pyjxslt
@@ -698,34 +699,16 @@ class PublishSpark(object):
 			index_records=False
 		)
 
-		# copy indexed ES documents from input job
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		index_name = 'j%s' % job.id
+		# copy index from input job to new Publish job
+		reindex_results = ESIndex.copy_es_index(
+			source_index = 'j%s' % input_job.id,
+			target_index = 'j%s' % job.id
+		)
 
-		# check if job ES index exists
-		if not es_handle_temp.indices.exists(index_name):
-			mapping = {'mappings':{'record':{'date_detection':False}}}
-			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
-
-		# prepare _reindex query
-		dupe_dict = {
-			'source':{
-				'index': 'j%s' % input_job.id,
-				'query':{}
-			},
-			'dest': {
-				'index':index_name
-			}
-		}
-		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
-				data=json.dumps(dupe_dict),
-				headers={'Content-Type':'application/json'}
-			)
-
-		# index to ES /published
-		ESIndex.index_published_job(
-			job_id = job.id,
-			publish_set_id=job.record_group.publish_set_id
+		# copy index from new Publish Job to /published index
+		reindex_results = ESIndex.copy_es_index(
+			source_index = 'j%s' % job.id,
+			target_index = 'published'
 		)
 
 		# update uniqueness of all published records
