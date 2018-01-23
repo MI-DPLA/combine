@@ -131,6 +131,7 @@
 					<th>Job Type</th>
 					<th>Status</th>
 					<th>Finished</th>
+					<th>Is Valid</th>
 					<th>Timestamp</th>
 					<th>Input</th>
 					<th>Notes</th>
@@ -147,6 +148,7 @@
 					<td>{{ job.job_type_family }}</td>
 					<td>{{ job.status }}</td>
 					<td>{{ job.finished }}</td>
+					<td>{{ job.validation_results.verdict }}</td>
 					<td>{{ job.timestamp }}</td>
 					<td>{% for input_job in job.jobinput_set.all %}
 						<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
@@ -189,6 +191,9 @@
 			    	lengthMenu: [ 10, 25, 100, 500 ],
 			    	createdRow: function( row, data, dataIndex){				    		
 	                    $('td', row).addClass(data[3]);
+	                    if (data[6] == 'False'){                    	
+	                    	$('td:nth-child(7)', row).css('background-color','#ff9898');
+	                    }
 		            },
 		            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
 		            initComplete: function () {
