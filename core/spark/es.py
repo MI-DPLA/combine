@@ -170,7 +170,7 @@ class ESIndex(object):
 		# if add_copied_from, include in reindexed document
 		if add_copied_from:
 			dupe_dict['script'] = {
-				'inline': 'ctx._source.source_job_id = "%s"' % add_copied_from,
+				'inline': 'ctx._source.source_job_id = %s' % add_copied_from,
 				'lang': 'painless'
 			}
 		

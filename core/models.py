@@ -1822,7 +1822,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			del_dsl = {
 				'query':{
 					'match':{
-						'publish_set_id':instance.record_group.publish_set_id
+						'source_job_id':instance.id
 					}
 				}
 			}
