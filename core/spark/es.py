@@ -133,7 +133,8 @@ class ESIndex(object):
 		create_target_index=True,
 		target_index_mapping={'mappings':{'record':{'date_detection':False}}},
 		refresh=True,
-		wait_for_completion=True):
+		wait_for_completion=True,
+		add_copied_from=None):
 
 		'''
 		Method to duplicate one ES index to another
@@ -145,7 +146,7 @@ class ESIndex(object):
 			target_index_mapping (dict): Dictionary of mapping to create target index
 
 		Returns:
-			(dict): results of reindex via elasticsearch client
+			(dict): results of reindex via elasticsearch client reindex request
 		'''
 
 		# get ES handle
@@ -163,11 +164,19 @@ class ESIndex(object):
 			},
 			'dest': {
 				'index':target_index
-			}
+			}			
 		}
+
+		# if add_copied_from, include in reindexed document
+		if add_copied_from:
+			dupe_dict['script'] = {
+				'inline': 'ctx._source.source_job_id = "%s"' % add_copied_from,
+				'lang': 'painless'
+			}
 		
 		# reindex using elasticsearch client
 		reindex = es_handle_temp.reindex(body=dupe_dict, wait_for_completion=wait_for_completion, refresh=refresh)
+		return reindex
 
 
 
