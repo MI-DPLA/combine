@@ -1162,87 +1162,97 @@ class Record(models.Model):
 	def dpla_api_record_match(self, search_string=None):
 
 		'''
-		Method to attempt a match against the DPLA's API
+		Method to query DPLA API for match against some known mappings.
+		NOTE: Experimental.		
 
-		NOTE: Still experimental.  Queries DPLA API for match against some known mappings.
+		Loop through mapped fields in opinionated order from search_hash
+		Update: Leaning towards exclusive use of 'isShownAt'
+			- close to binary True/False API match, removes any fuzzy connections
+
+		Args:
+			search_string(str): Optional search_string override
+
+		Returns:
+			(dict): If match found, return dictionary of DPLA API response
 		'''
 
-		# attempt search if API key defined
+		# check for DPLA_API_KEY, else return None
 		if settings.DPLA_API_KEY:
 
-			'''
-			Exploratory testing of DPLA API matching
-			'''
+			# check for any mapped DPLA fields
+			mapped_dpla_fields = self.dpla_mapped_field_values()
 
-			# get es document
-			es_doc = self.get_es_doc()
+			# attempt search if mapped fields present and search_string not provided
+			if not search_string and mapped_dpla_fields:
 
-			# get DPLA mappings
-			dpla_mapping = self.job.dpla_mapping
+				# opionated search hash
+				opinionated_search_hash = {
+					'isShownAt':'isShownAt',
+					'title':'sourceResource.title',
+					'description':'sourceResource.description'
+				}
 
-			# if search string not provided, attempt to generate based on any mapped fields
-			if not search_string:
+				# loop through opionated search hash
+				for local_mapped_field, target_dpla_field in opinionated_search_hash.items():
 
-				'''
-				Loop through mapped fields in opinionated order
-				Update: Leaning towards exclusive use of 'isShownAt'
-					- close to binary True/False API match, removes any fuzzy connections
-				'''
+					# if local_mapped_field in keys
+					if local_mapped_field in mapped_dpla_fields.keys():
 
-				# isShownAt
-				if dpla_mapping.isShownAt and dpla_mapping.isShownAt in es_doc.keys():
-					logger.debug('isShownAt mapping found, using')
-					search_string = 'isShownAt="%s"' % es_doc[dpla_mapping.isShownAt]
+						logger.debug('searching on locally mapped field: %s' % local_mapped_field)
 
-				# title
-				elif dpla_mapping.title and dpla_mapping.title in es_doc.keys():
-					logger.debug('title mapping found, using')
-					search_string = 'sourceResource.title="%s"' % es_doc[dpla_mapping.title]
+						# get value for mapped field					
+						field_value = mapped_dpla_fields[local_mapped_field]
 
-				# description
-				elif dpla_mapping.description and dpla_mapping.description in es_doc.keys():
-					logger.debug('description mapping found, using')
-					search_string = 'sourceResource.description="%s"' % es_doc[dpla_mapping.description]
+						# if list, loop through and attempt searches
+						if type(field_value) == list:
+							logger.debug('multiple values found for %s, searching...' % local_mapped_field)
 
-				else:
-					logger.debug('DPLA mapping not found')
-					self.dpla_api_doc = None
-					return self.dpla_api_doc
+							for val in field_value:
+								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+								search_string = '%s="%s"' % (target_dpla_field, val)
+								match_results = self.dpla_api_record_match(search_string=search_string)
 
-			# check for search string at this point
-			if search_string:
+								# if match found, use
+								if match_results:
+									self.dpla_api_doc = match_results
+									return self.dpla_api_doc
 
-				# query
-				api_q = requests.get(
-					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+						# else if string, perform search
+						else:
+							logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+							search_string = '%s="%s"' % (target_dpla_field, field_value)
 
-				# attempt to parse as JSON
-				try:
-					api_r = api_q.json()
-				except:
-					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
-					self.dpla_api_doc = None
-					return self.dpla_api_doc
+			# preapre search query			
+			api_q = requests.get(
+				'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
-				# if count present
-				if 'count' in api_r.keys():
-					# response
-					if api_r['count'] == 1:
-						dpla_api_doc = api_r['docs'][0]		
-						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
-					elif api_r['count'] > 1:
-						logger.debug('multiple hits for DPLA API query')
-						dpla_api_doc = None
-					else:
-						logger.debug('no matches found')
-						dpla_api_doc = None
-				else:
-					logger.debug(api_r)
-					dpla_api_doc = None
-
-				# save to record instance and return
-				self.dpla_api_doc = dpla_api_doc
+			# attempt to parse response as JSON
+			try:
+				api_r = api_q.json()
+			except:
+				logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
+				self.dpla_api_doc = None
 				return self.dpla_api_doc
+
+			# if count present
+			if 'count' in api_r.keys():
+				# response
+				if api_r['count'] == 1:
+					dpla_api_doc = api_r['docs'][0]		
+					logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+				elif api_r['count'] > 1:
+					logger.debug('multiple hits for DPLA API query')
+					dpla_api_doc = None
+				else:
+					logger.debug('no matches found')
+					dpla_api_doc = None
+			else:
+				logger.debug(api_r)
+				dpla_api_doc = None
+
+			# save to record instance and return
+			self.dpla_api_doc = dpla_api_doc
+			return self.dpla_api_doc
 
 		# return None by default
 		self.dpla_api_doc = None
