@@ -1259,6 +1259,16 @@ class Record(models.Model):
 		return vfs
 
 
+	def document_pretty_print(self):
+
+		'''
+		Method to return document as pretty printed (indented) XML
+		'''
+
+		# return as pretty printed string
+		return etree.tostring(self.parse_document_xml(), pretty_print=True)
+
+
 
 class IndexMappingFailure(models.Model):
 
@@ -1621,7 +1631,7 @@ class JobValidation(models.Model):
 		return rvfs
 
 
-	def validation_failure_count(self):
+	def validation_failure_count(self, force_recount=False):
 
 		'''
 		Method to count, set, and return failure count for this job validation
@@ -1632,10 +1642,11 @@ class JobValidation(models.Model):
 
 		Returns:
 			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
+				- sets self.failure_count and saves model
 		'''
 
-		if self.failure_count is None:
-			logger.debug("failure count not found for %s, calculating" % self)
+		if (self.failure_count is None and self.job.finished) or force_recount:
+			logger.debug("calculating failure count for validation job: %s" % self)
 			rvfs = self.get_record_validation_failures()
 			self.failure_count = rvfs.count()
 			self.save()
