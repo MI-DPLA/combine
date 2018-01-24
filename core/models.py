@@ -19,6 +19,7 @@ import tarfile
 import textwrap
 import time
 from types import ModuleType
+import urllib.parse
 import uuid
 import xmltodict
 import zipfile
@@ -217,11 +218,11 @@ class LivySession(models.Model):
 			return active_livy_sessions.first()
 
 		elif active_livy_sessions.count() == 0:
-			logger.debug('no active livy sessions found, returning False')
+			# logger.debug('no active livy sessions found, returning False')
 			return False
 
 		elif active_livy_sessions.count() > 1:
-			logger.debug('multiple active livy sessions found, returning as list')
+			# logger.debug('multiple active livy sessions found, returning as list')
 			return active_livy_sessions
 
 
@@ -1165,7 +1166,7 @@ class Record(models.Model):
 		Method to query DPLA API for match against some known mappings.
 		NOTE: Experimental.		
 
-		Loop through mapped fields in opinionated order from search_hash
+		Loop through mapped fields in opinionated order from opinionated_search_hash
 		Update: Leaning towards exclusive use of 'isShownAt'
 			- close to binary True/False API match, removes any fuzzy connections
 
@@ -1186,14 +1187,14 @@ class Record(models.Model):
 			if not search_string and mapped_dpla_fields:
 
 				# opionated search hash
-				opinionated_search_hash = {
-					'isShownAt':'isShownAt',
-					'title':'sourceResource.title',
-					'description':'sourceResource.description'
-				}
+				opinionated_search_fields = [
+					('isShownAt', 'isShownAt'),
+					('title', 'sourceResource.title'),
+					('description', 'sourceResource.description')
+				]
 
 				# loop through opionated search hash
-				for local_mapped_field, target_dpla_field in opinionated_search_hash.items():
+				for local_mapped_field, target_dpla_field in opinionated_search_fields:
 
 					# if local_mapped_field in keys
 					if local_mapped_field in mapped_dpla_fields.keys():
@@ -1209,18 +1210,19 @@ class Record(models.Model):
 
 							for val in field_value:
 								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
-								search_string = '%s="%s"' % (target_dpla_field, val)
+								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
 								match_results = self.dpla_api_record_match(search_string=search_string)
-
-								# if match found, use
-								if match_results:
-									self.dpla_api_doc = match_results
-									return self.dpla_api_doc
 
 						# else if string, perform search
 						else:
 							logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
-							search_string = '%s="%s"' % (target_dpla_field, field_value)
+							search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
+							match_results = self.dpla_api_record_match(search_string=search_string)
+
+						# if match found from list iteration or single string search, use
+						if match_results:
+							self.dpla_api_doc = match_results
+							return self.dpla_api_doc
 
 			# preapre search query			
 			api_q = requests.get(
@@ -2321,6 +2323,10 @@ class ESIndex(object):
 
 			# get field mappings for index
 			field_names = self.get_index_fields()
+			
+			'''
+			At this point, already mis-representing field names
+			'''
 
 			# init search
 			s = Search(using=es_handle, index=self.es_index)
@@ -3864,9 +3870,7 @@ class DTElasticSearch(View):
 				- modifies self.query
 		'''
 
-		##################################################################################
 		# filtering applied before DataTables input
-		##################################################################################
 		filter_type = self.request.GET.get('filter_type', None)
 
 		# equals filtering
@@ -3920,19 +3924,6 @@ class DTElasticSearch(View):
 				self.query = self.query.exclude(Q('exists', field=filter_field))
 
 
-		##################################################################################
-		# filtering applied by DataTables input
-		##################################################################################
-		# search_string = self.DTinput['search']['value']
-		# if search_string != '':
-		# 	self.query = self.query.where(
-		# 		(self.peewee_model.title.contains(search_string)) |
-		# 		(self.peewee_model.abstract.contains(search_string)) |
-		# 		(self.peewee_model.identifier.contains(search_string))
-		# 	)
-		##################################################################################
-
-
 	def sort(self):
 		
 		'''
@@ -3949,7 +3940,6 @@ class DTElasticSearch(View):
 		'''
 
 		# get sort params from DTinput
-		# https://bitbucket.org/pigletto/django-datatables-view/src/216fd0db6044d2eef43034f5e905ceff68bdfeaa/django_datatables_view/base_datatable_view.py?at=master&fileviewer=file-view-default#base_datatable_view.py-68:114
 		sorting_cols = 0
 		sort_key = 'order[{0}][column]'.format(sorting_cols)
 		while sort_key in self.DTinput:

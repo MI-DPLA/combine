@@ -335,6 +335,9 @@ class GenericMapper(BaseMapper):
 
 				# derive flat field name
 				flat_field = '_'.join(xpath_comps)
+
+				# replace any periods in flat field name with underscore
+				flat_field = flat_field.replace('.','_')
 				
 				# if not yet seen, add to dictionary as single element
 				if flat_field not in self.formatted_elems.keys():
