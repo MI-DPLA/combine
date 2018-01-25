@@ -64,6 +64,7 @@
 			<li><a href="{% url 'livy_sessions' %}"><span style="background-color:{% if LIVY_SESSION.status == 'idle' %}#deffde{% elif LIVY_SESSION.status == 'busy'%}#fffcde{% else %}rgb(255, 152, 152){% endif %};">Livy/Spark Session ({{ LIVY_SESSION.status}})</span></a></li>
 			<li><a href="{% url 'organizations' %}">Organizations</a></li>
 			<li><a href="{% url 'published' %}">Published Records</a></li>
+			<li><a href="{% url 'analysis' %}">Analysis</a></li>
 			<li><a href="{% url 'configuration' %}">Configuration</a></li>
 			<li><a href="{% url 'all_jobs' %}">All Jobs</a></li>
 			<!-- <li><a href="http://{{ APP_HOST }}:50070" target="_blank">HDFS Browser</a></li> -->

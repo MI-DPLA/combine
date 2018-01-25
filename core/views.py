@@ -1414,6 +1414,20 @@ def oai(request):
 
 
 ####################################################################
+# Analysis  													   #
+####################################################################
+
+def analysis(request):
+
+	'''
+	Home for analysis
+	'''
+
+	return render(request, 'core/analysis.html', {})
+
+
+
+####################################################################
 # Datatables endpoints 											   #
 # https://bitbucket.org/pigletto/django-datatables-view/overview   #
 ####################################################################
@@ -1807,7 +1821,6 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 @login_required
 def index(request):
 	username = request.user.username
-	logger.info('Welcome to Combine, %s' % username)
 	return render(request, 'core/index.html', {'username':username})
 
 
