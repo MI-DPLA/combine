@@ -6,7 +6,10 @@
 				<th>Job ID</th>
 				<th>Timestamp</th>
 				<th>Name</th>
-				<th>Record Group</th>
+				{# Jinja logic for including RecordGroups #}
+				{% if not for_analysis %}
+					<th>Record Group</th>
+				{% endif %}
 				<th>Job Type</th>
 				<th>Status</th>
 				<th>Finished</th>
@@ -25,7 +28,10 @@
 				<td>{{ job.id }}</td>
 				<td>{{ job.timestamp }}</td>
 				<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
-				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
+				{# Jinja logic for including RecordGroups #}
+				{% if not for_analysis %}
+					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
+				{% endif %}
 				<td>{{ job.job_type_family }}</td>
 				<td><strong>{{ job.status }}</strong></td>
 				<td>{{ job.finished }}</td>
@@ -55,12 +61,23 @@
 		    jobs_table = $('#jobs_table').DataTable({
 		    	"pageLength": 100,
 		    	"lengthMenu": [ 10, 25, 100, 500 ],
-		    	"createdRow": function( row, data, dataIndex){
-                    $('td', row).addClass(data[4]);
-                    if (data[7] == 'False'){                    	
-                    	$('td:nth-child(8)', row).css('background-color','#ff9898');
-                    }
-	            }	            
+
+		    	{# Jinja logic for including RecordGroups #}
+		    	{% if not for_analysis %}
+			    	"createdRow": function( row, data, dataIndex){
+	                    $('td', row).addClass(data[4]);
+	                    if (data[7] == 'False'){                    	
+	                    	$('td:nth-child(8)', row).css('background-color','#ff9898');
+	                    }
+		            }	            
+				{% else %}
+					"createdRow": function( row, data, dataIndex){
+	                    $('td', row).addClass(data[3]);
+	                    if (data[6] == 'False'){                    	
+	                    	$('td:nth-child(7)', row).css('background-color','#ff9898');
+	                    }
+		            }
+	            {% endif %}
 		    });
 		} );
 	</script>

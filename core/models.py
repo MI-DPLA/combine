@@ -1210,81 +1210,82 @@ class Record(models.Model):
 		# check for DPLA_API_KEY, else return None
 		if settings.DPLA_API_KEY:
 
-			# check for any mapped DPLA fields
+			# check for any mapped DPLA fields, skipping altogether if none
 			mapped_dpla_fields = self.dpla_mapped_field_values()
+			if mapped_dpla_fields:
 
-			# attempt search if mapped fields present and search_string not provided
-			if not search_string and mapped_dpla_fields:
+				# attempt search if mapped fields present and search_string not provided
+				if not search_string:
 
-				# opionated search hash
-				opinionated_search_fields = [
-					('isShownAt', 'isShownAt'),
-					('title', 'sourceResource.title'),
-					('description', 'sourceResource.description')
-				]
+					# opionated search hash
+					opinionated_search_fields = [
+						('isShownAt', 'isShownAt'),
+						('title', 'sourceResource.title'),
+						('description', 'sourceResource.description')
+					]
 
-				# loop through opionated search hash
-				for local_mapped_field, target_dpla_field in opinionated_search_fields:
+					# loop through opionated search hash
+					for local_mapped_field, target_dpla_field in opinionated_search_fields:
 
-					# if local_mapped_field in keys
-					if local_mapped_field in mapped_dpla_fields.keys():
+						# if local_mapped_field in keys
+						if local_mapped_field in mapped_dpla_fields.keys():
 
-						logger.debug('searching on locally mapped field: %s' % local_mapped_field)
+							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
 
-						# get value for mapped field					
-						field_value = mapped_dpla_fields[local_mapped_field]
+							# get value for mapped field					
+							field_value = mapped_dpla_fields[local_mapped_field]
 
-						# if list, loop through and attempt searches
-						if type(field_value) == list:
-							logger.debug('multiple values found for %s, searching...' % local_mapped_field)
+							# if list, loop through and attempt searches
+							if type(field_value) == list:
+								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
 
-							for val in field_value:
-								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
-								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
+								for val in field_value:
+									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
+									match_results = self.dpla_api_record_match(search_string=search_string)
+
+							# else if string, perform search
+							else:
+								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
 								match_results = self.dpla_api_record_match(search_string=search_string)
 
-						# else if string, perform search
-						else:
-							logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
-							search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
-							match_results = self.dpla_api_record_match(search_string=search_string)
+							# if match found from list iteration or single string search, use
+							if match_results:
+								self.dpla_api_doc = match_results
+								return self.dpla_api_doc
 
-						# if match found from list iteration or single string search, use
-						if match_results:
-							self.dpla_api_doc = match_results
-							return self.dpla_api_doc
+				# preapre search query			
+				api_q = requests.get(
+					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
-			# preapre search query			
-			api_q = requests.get(
-				'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+				# attempt to parse response as JSON
+				try:
+					api_r = api_q.json()
+				except:
+					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
 
-			# attempt to parse response as JSON
-			try:
-				api_r = api_q.json()
-			except:
-				logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
-				self.dpla_api_doc = None
-				return self.dpla_api_doc
-
-			# if count present
-			if 'count' in api_r.keys():
-				# response
-				if api_r['count'] == 1:
-					dpla_api_doc = api_r['docs'][0]		
-					logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
-				elif api_r['count'] > 1:
-					logger.debug('multiple hits for DPLA API query')
-					dpla_api_doc = None
+				# if count present
+				if 'count' in api_r.keys():
+					# response
+					if api_r['count'] == 1:
+						dpla_api_doc = api_r['docs'][0]		
+						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+					elif api_r['count'] > 1:
+						logger.debug('multiple hits for DPLA API query')
+						dpla_api_doc = None
+					else:
+						logger.debug('no matches found')
+						dpla_api_doc = None
 				else:
-					logger.debug('no matches found')
+					logger.debug(api_r)
 					dpla_api_doc = None
-			else:
-				logger.debug(api_r)
-				dpla_api_doc = None
 
-			# save to record instance and return
-			self.dpla_api_doc = dpla_api_doc
-			return self.dpla_api_doc
+				# save to record instance and return
+				self.dpla_api_doc = dpla_api_doc
+				return self.dpla_api_doc
 
 		# return None by default
 		self.dpla_api_doc = None

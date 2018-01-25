@@ -56,15 +56,22 @@ def breadcrumb_parser(path):
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
-		crumbs.append(('Organizations', reverse('organizations')))
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
-		crumbs.append((org.name, org_m.group(1)))
+		if org.for_analysis:
+			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
+			crumbs.append(('Analysis', reverse('analysis')))
+		else:
+			crumbs.append(('Organizations', reverse('organizations')))
+			crumbs.append((org.name, org_m.group(1)))
 
 	# record_group
 	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
 	if rg_m:
 		rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
-		crumbs.append(("%s" % rg.name, rg_m.group(1)))
+		if rg.for_analysis:
+			logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
+		else:
+			crumbs.append(("%s" % rg.name, rg_m.group(1)))
 
 	# job
 	j_m = re.match(r'(.+?/job/([0-9]+))', path)
@@ -1136,7 +1143,6 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
 	try:
 		job_details = json.loads(record.job.job_details)
-		logger.debug(job_details)
 
 		# TransformJob
 		if record.job.job_type == 'TransformJob':
@@ -1428,7 +1434,8 @@ def analysis(request):
 	# render page 
 	return render(request, 'core/analysis.html', {
 			'jobs':analysis_jobs,
-			'job_lineage_json':json.dumps(analysis_job_lineage)
+			'job_lineage_json':json.dumps(analysis_job_lineage),
+			'for_analysis':True
 		})
 
 

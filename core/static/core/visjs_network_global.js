@@ -49,7 +49,7 @@ function styleNetworkNodes(node){
 
 	// Analysis
 	else if (node.job_type == 'AnalysisJob'){
-		node.color = '#e8d3bd';
+		node.color = '#e8d3bd';		
 	}
 
 	// override color is job is not valid
