@@ -314,7 +314,7 @@ class Job(models.Model):
 	eventually Publishing.
 	'''
 
-	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
+	record_group = models.ForeignKey(RecordGroup, null=True, on_delete=models.CASCADE)
 	job_type = models.CharField(max_length=128, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
@@ -3441,7 +3441,7 @@ class TransformJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_job (core.models.Job): Job that provides input records for this job's work
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
@@ -3578,7 +3578,7 @@ class MergeJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
@@ -3702,7 +3702,7 @@ class PublishJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 
@@ -3789,6 +3789,133 @@ class PublishJob(CombineJob):
 
 		'''
 		Not implemented for Publish jobs, primarily just copying and indexing records
+		'''
+
+		pass
+
+
+
+class AnalysisJob(CombineJob):
+	
+	'''
+	Analysis job
+		- Analysis job are unique in name and some functionality, but closely mirror Merge Jobs in execution
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		record_group=None,
+		input_jobs=None,
+		job_id=None,
+		index_mapper=None,
+		validation_scenarios=[]):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			job_note (str): Free text note about job
+			user (auth.models.User): user that will issue job
+			record_group (core.models.RecordGroup): record group instance this job belongs to
+			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
+
+		# perform CombineJob initialization
+		super().__init__(user=user, job_id=job_id)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			self.job_name = job_name
+			self.job_note = job_note
+			self.record_group = record_group
+			self.organization = self.record_group.organization
+			self.input_jobs = input_jobs
+			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
+
+			# create Job entry in DB
+			self.job = Job(
+				record_group = self.record_group,
+				job_type = type(self).__name__,
+				user = self.user,
+				name = self.job_name,
+				note = self.job_note,
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None,
+				job_details = json.dumps(
+					{'publish':
+						{
+							'publish_job_id':str(self.input_jobs),
+						}
+					})
+			)
+			self.job.save()
+
+			# save input job to JobInput table
+			for input_job in self.input_jobs:
+				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link.save()
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
+
+	def prepare_job(self):
+
+		'''
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
+		'''
+
+		# prepare job code
+		job_code = {
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			{
+				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
+				'job_id':self.job.id,
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+			}
+		}
+
+		# submit job
+		self.submit_job_to_livy(job_code, self.job.job_output)
+
+
+	def get_job_errors(self):
+
+		'''
+		Not current implemented from Analyze jobs, as primarily just copying of successful records
 		'''
 
 		pass

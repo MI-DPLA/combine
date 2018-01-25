@@ -73,7 +73,6 @@ def breadcrumb_parser(path):
 		crumbs.append(("%s" % j.name, j_m.group(1)))
 
 	# return
-	# logger.debug(crumbs)
 	return crumbs
 
 
@@ -283,9 +282,6 @@ def record_group(request, org_id, record_group_id):
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
-	# retrieve current livy session
-	livy_session = models.LivySession.objects.filter(active=True).first()
-
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
@@ -303,7 +299,6 @@ def record_group(request, org_id, record_group_id):
 
 	# render page 
 	return render(request, 'core/record_group.html', {
-			'livy_session':livy_session,
 			'record_group':record_group,
 			'jobs':jobs,
 			'job_lineage_json':json.dumps(job_lineage),
@@ -1420,11 +1415,107 @@ def oai(request):
 def analysis(request):
 
 	'''
-	Home for analysis
+	Analysis home
 	'''
 
-	return render(request, 'core/analysis.html', {})
+	# get all jobs associated with record group
+	analysis_jobs = models.Job.objects.filter(job_type='AnalysisJob')
 
+	# get record group job lineage
+	# job_lineage = record_group.get_jobs_lineage()
+	job_lineage = {}
+
+	# loop through jobs
+	for job in analysis_jobs:
+		# update status
+		job.update_status()
+
+	# render page 
+	return render(request, 'core/analysis.html', {
+			'jobs':analysis_jobs,
+			'job_lineage_json':json.dumps(job_lineage)
+		})
+
+
+@login_required
+def job_analysis(request):
+
+	'''
+	Run new analysis job
+	'''
+
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# retrieve all jobs
+		input_jobs = models.Job.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
+		# render page
+		return render(request, 'core/job_analysis.html', {
+				'job_select_type':'multiple',
+				'record_group':record_group,
+				'input_jobs':input_jobs,
+				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld)				
+			})
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('Running new analysis job')
+
+		# debug form
+		logger.debug(request.POST)
+
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
+		# retrieve jobs to merge
+		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
+		logger.debug('analyzing jobs: %s' % input_jobs)
+
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+		# initiate job
+		cjob = models.AnalysisJob(
+			job_name=job_name,
+			job_note=job_note,
+			user=request.user,			
+			input_jobs=input_jobs,
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
+		)
+		
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
+
+		return redirect('analysis')
 
 
 ####################################################################
