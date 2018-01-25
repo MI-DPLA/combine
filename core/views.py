@@ -164,7 +164,7 @@ def organizations(request):
 		logger.debug('retrieving organizations')
 		
 		# get all organizations
-		orgs = models.Organization.objects.all()
+		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
 		# get Organization form
 		organization_form = forms.OrganizationForm()
@@ -197,7 +197,7 @@ def organization(request, org_id):
 	org = models.Organization.objects.get(pk=org_id)
 
 	# get record groups for this organization
-	record_groups = models.RecordGroup.objects.filter(organization=org)
+	record_groups = models.RecordGroup.objects.filter(organization=org).exclude(for_analysis=True)
 
 	# get RecordGroup form
 	record_group_form = forms.RecordGroupForm()
@@ -315,7 +315,7 @@ def record_group(request, org_id, record_group_id):
 def all_jobs(request):
 	
 	# get all jobs associated with record group
-	jobs = models.Job.objects.all()
+	jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
 
 	# get job lineage for all jobs
 	ld = models.Job.get_all_jobs_lineage(directionality='downstream')
@@ -395,17 +395,6 @@ def job_errors(request, org_id, record_group_id, job_id):
 			'job_errors':job_errors,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
-
-
-@login_required
-def job_input_select(request):
-	
-	logger.debug('loading job selection view')
-
-	jobs = models.Job.objects.all()
-	
-	# return
-	return render(request, 'core/job_input_select.html', {'jobs':jobs})
 
 
 @login_required
@@ -763,7 +752,7 @@ def job_merge(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		input_jobs = models.Job.objects.all()
+		input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1421,9 +1410,15 @@ def analysis(request):
 	# get all jobs associated with record group
 	analysis_jobs = models.Job.objects.filter(job_type='AnalysisJob')
 
-	# get record group job lineage
-	# job_lineage = record_group.get_jobs_lineage()
-	job_lineage = {}
+	# get analysis jobs hierarchy
+	analysis_hierarchy = models.AnalysisJob.get_analysis_hierarchy()
+
+	# get analysis jobs lineage
+	analysis_job_lineage = models.Job.get_all_jobs_lineage(
+			organization = analysis_hierarchy['organization'],
+			record_group = analysis_hierarchy['record_group'],
+			exclude_analysis_jobs = False
+		)
 
 	# loop through jobs
 	for job in analysis_jobs:
@@ -1433,7 +1428,7 @@ def analysis(request):
 	# render page 
 	return render(request, 'core/analysis.html', {
 			'jobs':analysis_jobs,
-			'job_lineage_json':json.dumps(job_lineage)
+			'job_lineage_json':json.dumps(analysis_job_lineage)
 		})
 
 
@@ -1461,8 +1456,7 @@ def job_analysis(request):
 
 		# render page
 		return render(request, 'core/job_analysis.html', {
-				'job_select_type':'multiple',
-				'record_group':record_group,
+				'job_select_type':'multiple',				
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'index_mappers':index_mappers,

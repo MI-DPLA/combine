@@ -237,6 +237,7 @@ class Organization(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	for_analysis = models.BooleanField(default=0)
 
 
 	def __str__(self):
@@ -255,7 +256,8 @@ class RecordGroup(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128)
+	publish_set_id = models.CharField(max_length=128, null=True, default=None)
+	for_analysis = models.BooleanField(default=0)
 
 
 	def __str__(self):
@@ -314,7 +316,7 @@ class Job(models.Model):
 	eventually Publishing.
 	'''
 
-	record_group = models.ForeignKey(RecordGroup, null=True, on_delete=models.CASCADE)
+	record_group = models.ForeignKey(RecordGroup, on_delete=models.CASCADE)
 	job_type = models.CharField(max_length=128, null=True)
 	user = models.ForeignKey(User, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128, null=True)
@@ -667,18 +669,28 @@ class Job(models.Model):
 		# lineage dict
 		ld = {'nodes':[],'edges':[]}		
 
-		# add self to lineage dictionary
+		# get validation results for self
 		validation_results = self.validation_results()
-		ld['nodes'].append({
+
+		# prepare node dictionary
+		node_dict = {
 				'id':self.id,
-				'record_group_id':self.record_group.id,
-				'org_id':self.record_group.organization.id,
 				'name':self.name,
+				'record_group_id':None,
+				'org_id':None,
 				'job_type':self.job_type,
 				'job_status':self.status,
 				'is_valid':validation_results['verdict'],
 				'recursion_level':0
-			})
+			}
+
+		# if not Analysis job, add org and record group
+		if self.job_type != 'AnalysisJob':
+			node_dict['record_group_id'] = self.record_group.id
+			node_dict['org_id'] = self.record_group.organization.id
+
+		# add self to lineage dictionary
+		ld['nodes'].append(node_dict)
 
 		# update lineage dictionary recursively
 		self._get_parent_jobs(self, ld, directionality=directionality)
@@ -719,15 +731,24 @@ class Job(models.Model):
 					# get validation results and add to node
 					validation_results = pj.validation_results()
 
-					ld['nodes'].append({
-						'id':pj.id,
-						'record_group_id':pj.record_group.id,
-						'org_id':pj.record_group.organization.id,
+					# prepare node dictionary
+					node_dict = {
+						'id':pj.id,						
 						'name':pj.name,
+						'record_group_id':None,
+						'org_id':None,
 						'job_type':pj.job_type,
 						'job_status':self.status,
 						'is_valid':validation_results['verdict']
-					})
+						}
+
+					# if not Analysis job, add org and record group
+					if pj.job_type != 'AnalysisJob':
+						node_dict['record_group_id'] = pj.record_group.id
+						node_dict['org_id'] = pj.record_group.organization.id
+
+					# append to nodes
+					ld['nodes'].append(node_dict)
 
 				# determine directionality
 				if directionality == 'upstream':
@@ -751,7 +772,12 @@ class Job(models.Model):
 
 
 	@staticmethod
-	def get_all_jobs_lineage(organization=None, record_group=None, directionality='downstream', jobs_query_set=None):
+	def get_all_jobs_lineage(
+		organization=None,
+		record_group=None,
+		directionality='downstream',
+		jobs_query_set=None,
+		exclude_analysis_jobs=True):
 
 		'''
 		Static method to get lineage for all Jobs
@@ -783,6 +809,10 @@ class Job(models.Model):
 			# if RecordGroup provided, filter
 			if record_group:
 				jobs = jobs.filter(record_group=record_group)
+
+			# if excluding analysis jobs
+			if exclude_analysis_jobs:
+				jobs = jobs.exclude(job_type='AnalysisJob')
 
 		# create record group lineage dictionary
 		ld = {'edges':[], 'nodes':[]}
@@ -1771,7 +1801,7 @@ def save_job(sender, instance, created, **kwargs):
 	'''
 
 	# if the record was just created, then update job output (ensures this only runs once)
-	if created:
+	if created and instance.job_type != 'AnalysisJob':
 
 		# set output based on job type
 		logger.debug('setting job output for job')
@@ -1783,7 +1813,9 @@ def save_job(sender, instance, created, **kwargs):
 			instance.id)
 		instance.save()
 
-		# create DPLAJobMap instance and save
+
+	# create DPLAJobMap instance and save
+	if created:
 		djm = DPLAJobMap(
 			job = instance
 		)
@@ -3800,13 +3832,15 @@ class AnalysisJob(CombineJob):
 	'''
 	Analysis job
 		- Analysis job are unique in name and some functionality, but closely mirror Merge Jobs in execution
+		- Though Analysis jobs are very similar to most typical workflow jobs, they do not naturally 
+		belong to an Organization and Record Group like others.  As such, they dynamically create their own Org and
+		Record Group, configured in localsettings.py, that is hidden from most other views.
 	'''
 
 	def __init__(self,
 		job_name=None,
 		job_note=None,
 		user=None,
-		record_group=None,
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None,
@@ -3817,7 +3851,6 @@ class AnalysisJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
@@ -3837,8 +3870,6 @@ class AnalysisJob(CombineJob):
 
 			self.job_name = job_name
 			self.job_note = job_note
-			self.record_group = record_group
-			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
@@ -3847,11 +3878,14 @@ class AnalysisJob(CombineJob):
 			if not self.job_name:
 				self.job_name = self.default_job_name()
 
+			# get Record Group for Analysis jobs via static method AnalysisJob.get_analysis_hierarchy()
+			analysis_hierarchy = self.get_analysis_hierarchy()
+
 			# create Job entry in DB
 			self.job = Job(
-				record_group = self.record_group,
 				job_type = type(self).__name__,
 				user = self.user,
+				record_group = analysis_hierarchy['record_group'],
 				name = self.job_name,
 				note = self.job_note,
 				spark_code = None,
@@ -3882,6 +3916,65 @@ class AnalysisJob(CombineJob):
 						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
 					)
 					val_job.save()
+
+
+	@staticmethod
+	def get_analysis_hierarchy():
+
+		'''
+		Method to return organization and record_group for Analysis jobs
+			- if do not exist, or name has changed, also create
+			- reads from settings.ANALYSIS_JOBS_HIERARCHY for unique names for Organization and Record Group
+		'''
+
+		# get Organization and Record Group name from settings
+		org_name = settings.ANALYSIS_JOBS_HIERARCHY['organization']
+		record_group_name = settings.ANALYSIS_JOBS_HIERARCHY['record_group']
+
+		# check of Analysis jobs aggregating Organization exists
+		analysis_org_search = Organization.objects.filter(name=org_name)
+		if analysis_org_search.count() == 0:
+			logger.debug('creating Organization with name %s' % org_name)
+			analysis_org = Organization(
+				name = org_name,
+				description = 'For the explicit use of aggregating Analysis jobs',
+				for_analysis = True
+			)
+			analysis_org.save()
+
+		# if one found, use
+		elif analysis_org_search.count() == 1:
+			analysis_org = analysis_org_search.first()
+
+		else:
+			raise Exception('multiple Organizations found for explicit purpose of aggregating Analysis jobs')
+
+		# check of Analysis jobs aggregating Record Group exists
+		analysis_record_group_search = RecordGroup.objects.filter(name=record_group_name)
+		if analysis_record_group_search.count() == 0:
+			logger.debug('creating RecordGroup with name %s' % record_group_name)
+			analysis_record_group = RecordGroup(
+				organization = analysis_org,
+				name = record_group_name,
+				description = 'For the explicit use of aggregating Analysis jobs',
+				publish_set_id = None,
+				for_analysis = True
+			)
+			analysis_record_group.save()
+
+		# if one found, use
+		elif analysis_record_group_search.count() == 1:
+			analysis_record_group = analysis_record_group_search.first()
+
+		else:
+			raise Exception('multiple Record Groups found for explicit purpose of aggregating Analysis jobs')
+
+		# return Org and Record Group
+		return {
+			'organization':analysis_org,
+			'record_group':analysis_record_group
+		}
+
 
 
 	def prepare_job(self):

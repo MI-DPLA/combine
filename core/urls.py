@@ -50,7 +50,6 @@ urlpatterns = [
 
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),
-	url(r'^jobs/input_select$', views.job_input_select, name='job_input_select'),
 
 	# Records
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)$', views.record, name='record'),
@@ -81,7 +80,7 @@ urlpatterns = [
 
 	# Analysis
 	url(r'^analysis$', views.analysis, name='analysis'),
-	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),
+	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),	
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

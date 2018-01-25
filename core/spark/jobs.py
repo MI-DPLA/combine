@@ -526,7 +526,7 @@ class MergeSpark(object):
 	'''
 
 	@staticmethod
-	def spark_function(spark, sc, **kwargs):
+	def spark_function(spark, sc, write_avro=True, **kwargs):
 
 		'''
 		Harvest records, select non-null, and write to avro files
@@ -597,12 +597,17 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
+		# if Analysis Job, do not write avro
+		if job.job_type == 'AnalysisJob':
+			write_avro = False
+
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=agg_df
+			records_df=agg_df,
+			write_avro=write_avro
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
