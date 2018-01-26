@@ -254,9 +254,9 @@ class RecordGroup(models.Model):
 
 	organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128)
-	description = models.CharField(max_length=255, null=True, default=None)
+	description = models.CharField(max_length=255, null=True, default=None, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128, null=True, default=None)
+	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
 	for_analysis = models.BooleanField(default=0)
 
 
@@ -303,6 +303,28 @@ class RecordGroup(models.Model):
 		# return
 		logger.debug('lineage calc time elapsed: %s' % (time.time()-stime))
 		return ld
+
+
+	def is_published(self):
+
+		'''
+		Method to determine if a Job has been published for this RecordGroup
+
+		Args:
+			None
+
+		Returns:
+			(bool): if a job has been published for this RecordGroup, return True, else False
+		'''
+
+		# get published links
+		published = self.jobpublish_set.all()
+
+		# return True/False
+		if published.count() == 0:
+			return False
+		else:
+			return True
 
 
 
@@ -973,7 +995,7 @@ class Transformation(models.Model):
 		max_length=255,
 		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	
 
 	def __str__(self):
@@ -1474,7 +1496,7 @@ class ValidationScenario(models.Model):
 		max_length=255,
 		choices=[('sch','Schematron'),('python','Python Code Snippet')]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	default_run = models.BooleanField(default=1)
 	
 
@@ -1894,6 +1916,11 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			logger.debug('could not remove published records from ES index')
 			logger.debug(str(e))
 
+
+		# when removing publish job, unset RecordGroup publish_set_id
+		logger.debug('Unsetting RecordGroup publish_set_id')
+		instance.record_group.publish_set_id = None
+		instance.record_group.save()
 
 	# remove avro files from disk
 	# if file://

@@ -179,6 +179,11 @@ class HarvestOAISpark(object):
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
 		# add oai_id column
+		'''
+		This will likely need to be revisited...
+			- potentially added to static harvests
+			- or removed in favor of a new approach
+		'''
 		publish_set_id = job.record_group.publish_set_id
 		oai_id_udf = udf(lambda id: '%s%s:%s' % (
 			settings.COMBINE_OAI_IDENTIFIER,
@@ -281,7 +286,7 @@ class HarvestStaticXMLSpark(object):
 			return nsmap
 
 
-		def get_metadata_udf(job_id, row, kwargs):
+		def get_metadata_udf(job_id, publish_set_id, row, kwargs):
 
 			# get doc string
 			doc_string = row[1]
@@ -364,7 +369,7 @@ class HarvestStaticXMLSpark(object):
 				)
 
 		# transform via rdd.map
-		job_id = job.id
+		job_id = job.id		
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
 		# index records to DB and index to ElasticSearch

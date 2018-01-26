@@ -102,5 +102,4 @@ need for users to manually create these somewhat unique Organization and Record 
 ANALYSIS_JOBS_HIERARCHY = {
 	'organization':'AnalysisOrganizationf8ed4bfcefc4dbf87b588a5de9b7cc95', # suffix is md5 hash of 'AnalysisOrganization'
 	'record_group':'AnalysisRecordGroupf660bb4826bea8b63fd773d27d687cfd' # suffix is md5 hash of 'AnalysisRecordGroup'
-
 }

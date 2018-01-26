@@ -11,20 +11,29 @@
 				<td>{{ record_group.description }}</td>
 			</tr>
 			<tr>
-				<th>Published Jobs</th>
-				{% if record_group.jobpublish_set.all|length > 0 %}
+				<th>Published?</th>
+
+				{# if published #}
+				{% if record_group.is_published %}
 					<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}">
 						{% for published in record_group.jobpublish_set.all %}
-							<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a><br>
-						{% endfor %}
+							<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>  <a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button>Unpublish</button></a><br>
+						{% endfor %} 
 					</td>
+				{# if unpublished #}
 				{% else %}
-					<td style="color:red;">No jobs published from this Record Group</td>
+					<td style="color:red;">No jobs published from this Record Group  <a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button>Publish</button></a></td>
 				{% endif %}
 			</tr>
 			<tr>
 				<th>OAI Set ID</th>
-				<td><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
+				<td>
+					{% if record_group.publish_set_id %}
+						<a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a>
+					{% else %}
+						<span style="color:red;">not set</span>
+					{% endif %}
+				</td>
 			</tr>
 		</table>
 	</div>
@@ -167,8 +176,7 @@
 					</ul>
 				</li>
 				<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
-				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Duplicate / Merge</a></li>
-				<li><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}">Publish</a></li>
+				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Duplicate / Merge</a></li>				
 			</ul>
 		</p>
 	</div>

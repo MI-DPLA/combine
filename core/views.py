@@ -174,7 +174,7 @@ def organizations(request):
 		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
 		# get Organization form
-		organization_form = forms.OrganizationForm()
+		organization_form = forms.OrganizationForm()		
 
 		# render page
 		return render(request, 'core/organizations.html', {
@@ -208,6 +208,9 @@ def organization(request, org_id):
 
 	# get RecordGroup form
 	record_group_form = forms.RecordGroupForm()
+	# exclude Organization for Analysis Jobs
+	record_group_form.fields['organization'].queryset = models.Organization.objects.exclude(
+		name=settings.ANALYSIS_JOBS_HIERARCHY['organization'])
 	
 	# render page
 	return render(request, 'core/organization.html', {
@@ -854,6 +857,9 @@ def job_publish(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all currently applied publish set ids
+		publish_set_ids = models.RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id')
+
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
@@ -861,6 +867,7 @@ def job_publish(request, org_id, record_group_id):
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
+				'publish_set_ids':publish_set_ids,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -885,6 +892,16 @@ def job_publish(request, org_id, record_group_id):
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
+
+		# update RecordGroup publish set id		
+		if request.POST.get('new_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('new_publish_set_id')
+			record_group.save()
+		elif request.POST.get('existing_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
+			record_group.save()
+		else:
+			logger.debug('publish_set_id not set, skipping')
 
 		# initiate job
 		cjob = models.PublishJob(

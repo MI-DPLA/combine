@@ -29,7 +29,7 @@
 
 	<h4>Create new Record Group</h4>
 
-	<form method="POST" action="{% url 'record_group_new' org_id=org.id %}">
+	<form method="POST" novalidate action="{% url 'record_group_new' org_id=org.id %}">
     {% csrf_token %}
 	    {{ record_group_form }}
 	    <input type='hidden' name='org_id' value='{{org.id}}'/>
