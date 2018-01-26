@@ -87,8 +87,7 @@
 		    	{% if not for_analysis %}
 			    	"createdRow": function( row, data, dataIndex){
 	                    $('td', row).addClass(data[4]);
-	                    if (data[7] == 'False'){                    	
-	                    	// $('td:nth-child(8)', row).css('background-color','#ff9898');
+	                    if (data[7] == 'False'){
 	                    	$('td:nth-child(8)', row).addClass('invalid_job');
 	                    }
 		            }	            
@@ -96,7 +95,7 @@
 					"createdRow": function( row, data, dataIndex){
 	                    $('td', row).addClass(data[3]);
 	                    if (data[6] == 'False'){                    	
-	                    	$('td:nth-child(7)', row).css('background-color','#ff9898');
+	                    	$('td:nth-child(7)', row).addClass('invalid_job');
 	                    }
 		            }
 	            {% endif %}

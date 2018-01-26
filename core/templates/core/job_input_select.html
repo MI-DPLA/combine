@@ -77,6 +77,9 @@
 				base_url = base_url.replace('DYNAMIC_ID', node_data.id);
 				base_url = base_url.replace('DYNAMIC_ID', node_data.record_group_id);
 				base_url = base_url.replace('DYNAMIC_ID', node_data.org_id);
+
+				// get datatables api
+				jobs_table_api = $("#jobs_table").dataTable();
 				
 				$.ajax({
 					type: 'POST',
@@ -87,18 +90,48 @@
 					},
 					success: function(data){
 						
-						// filter datatables
-						search_string = data.job_id_list.join('|');
-						job_id = node.nodes[0];
-						jobs_table.column(0).search(search_string, true, false).draw();
+						// // filter datatables
+						// search_string = data.job_id_list.join('|');
+						// job_id = node.nodes[0];
+						// jobs_table.column(0).search(search_string, true, false).draw();
 
-						// gray out other nodes
+						// // gray out other nodes
+						// nodes.forEach(function(node){								
+						// 	if (!data.job_id_list.includes(node.id)){									
+						// 		node.color = '#efefef';
+						// 		nodes.update(node);
+						// 	}
+						// })
+
+						// loop through nodes
 						nodes.forEach(function(node){								
+
 							if (!data.job_id_list.includes(node.id)){									
+
+								// update network node colors
 								node.color = '#efefef';
 								nodes.update(node);
+
+								// update datatables row color
+
+								// find row that matches id
+								row = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
+
+								// select row									
+								table_row = jobs_table.row(row[0]).node();								
+								$(table_row).children('td').each(function(){
+									
+									// gray out <td>s
+									$(this).addClass('grayed_dt_row');
+
+									// loop through input jobs and gray out
+									$(this).children('div').each(function() {
+										$(this).addClass('grayed_dt_row');
+									})
+								})
 							}
-						})
+
+						});
 					}			
 				});
 				
@@ -116,13 +149,16 @@
 					nodes.update(node);
 				})
 
+				// remove all grayed_out_dt classes
+				$(".grayed_dt_row").removeClass('grayed_dt_row');
+
 			});
 
 		</script>
 	</div>
 
 	<div>
-		<table id="input_jobs_table" border="1" cellpadding="10">
+		<table id="jobs_table" border="1" cellpadding="10">
 			<thead>
 				<tr>
 					<th>Job ID</th>
@@ -188,13 +224,13 @@
 		</table>
 		<script>
 			$(document).ready(function() {
-			    jobs_table = $('#input_jobs_table').DataTable({
+			    jobs_table = $('#jobs_table').DataTable({
 			    	pageLength: 100,
 			    	lengthMenu: [ 10, 25, 100, 500 ],
 			    	createdRow: function( row, data, dataIndex){				    		
 	                    $('td', row).addClass(data[3]);
 	                    if (data[6] == 'False'){                    	
-	                    	$('td:nth-child(7)', row).css('background-color','#ff9898');
+	                    	$('td:nth-child(7)', row).addClass('invalid_job');
 	                    }
 		            },
 		            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
