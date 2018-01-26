@@ -12,6 +12,7 @@
 		<th>Record Group</th>
 		<th>Published Records</th>
 		<th>Record Count</th>
+		<th>Action</th>
 	</tr>
 
 	{% for set, jobs in published.sets.items %}
@@ -21,6 +22,7 @@
 				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 				<td class="{{ job.job_type }}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 				<td>{{ job.record_count }}</td>
+				<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button>Unpublish</button></a></td>
 			</tr>
 		{% endfor %}
 	{% endfor %}

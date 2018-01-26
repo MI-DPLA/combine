@@ -24,8 +24,7 @@ function styleNetworkNodes(node){
 		borderRadius: 10
 	};
 	node.physics = false;
-	node.borderWidth = 2;
-	node.borderWidthSelected = 5;
+	node.borderWidth = 2;	
 
 	// Harvests
 	if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob'){
@@ -54,7 +53,14 @@ function styleNetworkNodes(node){
 
 	// override color is job is not valid
 	if (!node.is_valid){
-		node.color = '#ff9898';					
+		node.color = {
+			background:node.color,
+			highlight:{
+				background:node.color,
+				border:'#ff9898'				
+			},
+			border:'#ff9898'
+		};
 	}
 	
 }
