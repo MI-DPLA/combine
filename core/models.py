@@ -888,8 +888,12 @@ class Job(models.Model):
 
 			# bump failure count
 			for jv in self.jobvalidation_set.all():
-				if jv.failure_count:
-					results['failure_count'] += jv.failure_count
+
+				# update validation failure count
+				failure_count = jv.validation_failure_count()
+
+				if failure_count:
+					results['failure_count'] += failure_count
 
 			# if failures found, set result to False
 			if results['failure_count'] > 0:
