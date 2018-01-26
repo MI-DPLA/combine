@@ -299,7 +299,10 @@ def record_group(request, org_id, record_group_id):
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
 	# get record group job lineage
-	job_lineage = record_group.get_jobs_lineage()	
+	job_lineage = record_group.get_jobs_lineage()
+
+	# get all currently applied publish set ids
+	publish_set_ids = models.PublishedRecords.get_publish_set_ids()
 
 	# loop through jobs
 	for job in jobs:
@@ -312,8 +315,31 @@ def record_group(request, org_id, record_group_id):
 			'record_group':record_group,
 			'jobs':jobs,
 			'job_lineage_json':json.dumps(job_lineage),
+			'publish_set_ids':publish_set_ids,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
+
+
+def record_group_update_publish_set_id(request, org_id, record_group_id):
+
+	if request.method == 'POST':
+
+		# get record group
+		record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
+
+		logger.debug(request.POST)
+
+		# update RecordGroup publish set id		
+		if request.POST.get('new_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('new_publish_set_id')
+			record_group.save()
+		elif request.POST.get('existing_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
+			record_group.save()
+		else:
+			logger.debug('publish_set_id not set, skipping')
+
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 
@@ -422,6 +448,27 @@ def job_update_note(request, org_id, record_group_id, job_id):
 
 		# update job note
 		cjob.job.note = job_note
+		cjob.job.save()
+
+		# redirect 		
+		return redirect(request.META.get('HTTP_REFERER'))
+
+
+@login_required
+def job_update_name(request, org_id, record_group_id, job_id):
+	
+	if request.method == 'POST':
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get job note
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# update job note
+		cjob.job.name = job_name
 		cjob.job.save()
 
 		# redirect 		
@@ -858,7 +905,7 @@ def job_publish(request, org_id, record_group_id):
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
 		# get all currently applied publish set ids
-		publish_set_ids = models.RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id')
+		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
 
 		# render page
 		return render(request, 'core/job_publish.html', {

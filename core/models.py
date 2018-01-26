@@ -2610,6 +2610,23 @@ class PublishedRecords(object):
 		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
+	@staticmethod
+	def get_publish_set_ids():
+
+		'''
+		Static method to return unique, not Null publish set ids
+
+		Args:
+			None
+
+		Returns:
+			(list): list of publish set ids
+		'''
+
+		publish_set_ids = RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
+		return publish_set_ids
+
+
 
 class CombineJob(object):
 

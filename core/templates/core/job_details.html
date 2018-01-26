@@ -1,47 +1,17 @@
 {% extends 'core/base.html' %}
+{% load static %}
 {% block content %}
 
 	<div>
-		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span></h3>		
+		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
+		<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
+			<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+				{% csrf_token %}																		
+				<p>Enter new job name: <input type="text" name="job_name" size=80 placeholder="e.g. 'Fedora Harvest/Transform/Publish'"/></p>
+				<p><input type="submit" value="Update"/></p>
+			</form>
+		</div>
 	</div>
-
-	<h3>Notes</h3>
-	<div style="background-color:#E4E4E3; width:30%; padding:5px 10px 10px 10px; border-radius:10px;">
-		<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-			{% csrf_token %}
-			<p><textarea style="width:100%;" rows="5" name="job_note" placeholder="No job notes found...">{{ cjob.job.note }}</textarea></p>
-			<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
-			<input type="hidden" name="next" value="{{ request.path }}">
-			<input type="submit" value="update notes">
-		</form>
-	</div>
-
-	{% if cjob.job.job_type_family != 'HarvestJob' %}
-		<h3>Input</h3>
-		<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
-		<table border="1" cellpadding="5">
-			<tr>
-				<th>Input Job Name</th>
-				<th>Job Type Family</th>
-				<th>Job Type</th>
-				<th>Record Count</th>
-			</tr>
-			{% for input_job in cjob.job.jobinput_set.all %}
-			<tr class="{{ input_job.input_job.job_type_family }}">
-				<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
-				<td>{{ input_job.input_job.job_type_family }}</td>
-				<td>{{ input_job.input_job.job_type }}</td>
-				<td>{{ input_job.input_job.record_count }}</td>
-			</tr>
-			{% endfor %}
-			<tr>
-				<td></td>
-				<td></td>
-				<td><strong>Total:</strong></td>
-				<td>{{ record_count_details.input_jobs.total_input_records }}</td>
-			</tr>
-		</table>
-	{% endif %}
 
 	<div id="job_family_diagram_container">
 		<style type="text/css">
@@ -108,6 +78,46 @@
 
 		</script>
 	</div>
+
+	<h3>Notes</h3>
+	<div style="background-color:#E4E4E3; width:30%; padding:5px 10px 10px 10px; border-radius:10px;">
+		<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+			{% csrf_token %}
+			<p><textarea style="width:100%;" rows="5" name="job_note" placeholder="No job notes found...">{{ cjob.job.note }}</textarea></p>
+			<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
+			<input type="hidden" name="next" value="{{ request.path }}">
+			<input type="submit" value="update notes">
+		</form>
+	</div>
+
+	{% if cjob.job.job_type_family != 'HarvestJob' %}
+		<h3>Input</h3>
+		<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
+		<table border="1" cellpadding="5">
+			<tr>
+				<th>Input Job Name</th>
+				<th>Job Type Family</th>
+				<th>Job Type</th>
+				<th>Record Count</th>
+			</tr>
+			{% for input_job in cjob.job.jobinput_set.all %}
+			<tr class="{{ input_job.input_job.job_type_family }}">
+				<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+				<td>{{ input_job.input_job.job_type_family }}</td>
+				<td>{{ input_job.input_job.job_type }}</td>
+				<td>{{ input_job.input_job.record_count }}</td>
+			</tr>
+			{% endfor %}
+			<tr>
+				<td></td>
+				<td></td>
+				<td><strong>Total:</strong></td>
+				<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+			</tr>
+		</table>
+	{% endif %}
+
+	
 
 	<h3>Results</h3>
 	<p>The following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
