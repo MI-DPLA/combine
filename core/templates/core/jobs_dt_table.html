@@ -88,7 +88,8 @@
 			    	"createdRow": function( row, data, dataIndex){
 	                    $('td', row).addClass(data[4]);
 	                    if (data[7] == 'False'){                    	
-	                    	$('td:nth-child(8)', row).css('background-color','#ff9898');
+	                    	// $('td:nth-child(8)', row).css('background-color','#ff9898');
+	                    	$('td:nth-child(8)', row).addClass('invalid_job');
 	                    }
 		            }	            
 				{% else %}

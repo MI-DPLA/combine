@@ -6,8 +6,12 @@
 		<meta charset="utf-8">
 		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/jQuery-3.2.1/jquery-3.2.1.min.js' %}"></script>
+		
+		<!-- DataTables -->
 		<link rel="stylesheet" type="text/css" href="{% static 'core/datatables.min.css' %}">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
+		<script type="text/javascript" charset="utf8" src="{% static 'core/fnFindCellRowIndexes.js' %}"></script>
+		
 		<style>
 			body {
 				padding:0px 20px 20px 20px;
@@ -43,6 +47,9 @@
 			}
 			.error_record_row{
 				background-color:red;
+			}
+			.invalid_job {
+				background-color:#ff9898;
 			}
 
 			/* main navigation */
