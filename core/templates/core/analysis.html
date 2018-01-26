@@ -86,6 +86,9 @@
 					// update URL
 					base_url = base_url.replace('DYNAMIC_ID', node_data.id);
 
+					// get datatables api
+					jobs_table_api = $("#jobs_table").dataTable();
+
 					$.ajax({
 						type: 'POST',
 						url: base_url,
@@ -95,18 +98,35 @@
 						},
 						success: function(data){
 							
-							// filter datatables
-							search_string = data.job_id_list.join('|');
-							job_id = node.nodes[0];
-							jobs_table.column(0).search(search_string, true, false).draw();
-
-							// gray out other nodes
+							// loop through nodes
 							nodes.forEach(function(node){								
+
 								if (!data.job_id_list.includes(node.id)){									
+
+									// update network node colors
 									node.color = '#efefef';
 									nodes.update(node);
+
+									// update datatables row color
+
+									// find row that matches id
+									row = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
+
+									// select row									
+									table_row = jobs_table.row(row[0]).node();								
+									$(table_row).children('td').each(function(){
+										
+										// gray out <td>s
+										$(this).addClass('grayed_dt_row');
+
+										// loop through input jobs and gray out
+										$(this).children('div').each(function() {
+											$(this).addClass('grayed_dt_row');
+										})
+									})
 								}
-							})
+
+							});
 						}			
 					});
 					
@@ -123,6 +143,9 @@
 						styleNetworkNodes(node);
 						nodes.update(node);
 					})
+
+					// remove all grayed_out_dt classes
+					$(".grayed_dt_row").removeClass('grayed_dt_row');
 
 				});
 
