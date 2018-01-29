@@ -20,6 +20,7 @@ CREATE TABLE `core_record` (
   `unique` tinyint(1) NOT NULL,
   `unique_published` tinyint(1) DEFAULT NULL,
   `job_id` int(11) NOT NULL,
+  `published` tinyint(1) NOT NULL DEFAULT 0,
   `oai_set` varchar(255) DEFAULT NULL,
   `success` tinyint(1) DEFAULT 1 NOT NULL,
   PRIMARY KEY (`id`),

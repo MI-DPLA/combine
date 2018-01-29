@@ -1746,7 +1746,7 @@ class DTPublishedJson(BaseDatatableView):
 			# get PublishedRecords instance
 			pr = models.PublishedRecords()
 			
-			# return filtered queryset
+			# return queryset
 			return pr.records
 
 

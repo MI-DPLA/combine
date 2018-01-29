@@ -1038,7 +1038,7 @@ class Record(models.Model):
 	combine/core/inc/combine_tables.sql
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)	
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
@@ -1047,6 +1047,7 @@ class Record(models.Model):
 	unique_published = models.NullBooleanField()
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
+	published = models.BooleanField(default=0)
 
 
 	# this model is managed outside of Django
@@ -2534,7 +2535,7 @@ class PublishedRecords(object):
 		self.sets = sets
 
 		# get iterable queryset of records
-		self.records = Record.objects.filter(job__job_type = 'PublishJob')
+		self.records = Record.objects.filter(published=True)
 
 		# set record count
 		self.record_count = self.records.count()
