@@ -72,7 +72,8 @@ class CombineRecordSchema(object):
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
-				StructField('success', BooleanType(), False)
+				StructField('success', BooleanType(), False),
+				StructField('published', BooleanType(), False)
 			]
 		)
 
@@ -744,8 +745,13 @@ class PublishSpark(object):
 				time.sleep(3)
 				continue
 
-		# update uniqueness of all published records
+		# get PublishedRecords handle
 		pr = PublishedRecords()
+
+		# set records from job as published		
+		pr.set_published_field(job_id)
+
+		# update uniqueness of all published records
 		pr.update_published_uniqueness()
 
 		# finally, update finish_timestamp of job_track instance

@@ -1715,6 +1715,7 @@ class DTPublishedJson(BaseDatatableView):
 		columns = [
 			'id',
 			'record_id',
+			'job__record_group',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique_published',
@@ -1728,6 +1729,7 @@ class DTPublishedJson(BaseDatatableView):
 		order_columns = [
 			'id',
 			'record_id',
+			'job__record_group',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique_published',
@@ -1760,6 +1762,12 @@ class DTPublishedJson(BaseDatatableView):
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
+
+			if column == 'job__record_group':
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record_group, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id						
+					}), row.job.record_group.name)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not

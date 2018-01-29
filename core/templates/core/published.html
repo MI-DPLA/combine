@@ -51,19 +51,12 @@
 	<thead>
 		<th>ID</th>
 		<th>Record ID</th>
+		<th>Record Group</th>
 		<th>Outgoing OAI set</th>
 		<th>Harvested OAI set</th>
 		<th>Unique in Published?</th>
 		<th>Document</th>
 	</thead>
-	<tfoot>
-		<th>ID</th>
-		<th>Record ID</th>
-		<th>Outgoing OAI set</th>
-		<th>Harvested OAI set</th>
-		<th>Unique in Published?</th>
-		<th>Document</th>
-	</tfoot>
 	<tbody>
 	</tbody>
 </table>
@@ -75,7 +68,7 @@
 	        "serverSide": true,
 	        "ajax": "{% url 'published_dt_json' %}",
 	        "searchDelay": 1000,
-	        "pageLength": 10	        
+	        "pageLength": 10
 	    });
 	});
 </script>

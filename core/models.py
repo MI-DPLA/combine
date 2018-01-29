@@ -2534,14 +2534,18 @@ class PublishedRecords(object):
 			sets[publish_set_id].append(publish_link.job)	
 		self.sets = sets
 
-		# get iterable queryset of records
-		self.records = Record.objects.filter(published=True)
-
-		# set record count
-		self.record_count = self.records.count()
-
 		# setup ESIndex instance
 		self.esi = ESIndex('published')
+
+
+	@property
+	def records(self):
+
+		'''
+		Property to return QuerySet of all published records
+		'''
+		
+		return Record.objects.filter(published=True)
 
 
 	def get_record(self, id):
@@ -2598,17 +2602,31 @@ class PublishedRecords(object):
 		# get non-unique as QuerySet
 		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-		# get QuerySet of records to update
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-		logger.debug('setting %s records as unique' % set_true.count())
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-		logger.debug('setting %s records as dupes' % set_false.count())
-
-		# update in bulk
+		# set true in bulk
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])		
 		set_true.update(unique_published=True)
+
+		# set false in bulk
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])		
 		set_false.update(unique_published=False)
 
 		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
+
+
+	def set_published_field(self, job_id=None):
+
+		'''
+		Method to set 'published' for all Records with Publish Job parent
+		'''
+
+		to_set_published = Record.objects.filter(job__job_type='PublishJob')
+
+		# if job_id
+		if job_id:
+			to_set_published.filter(job__id=job_id)
+
+		# update
+		to_set_published.update(published=True)
 
 
 	@staticmethod
