@@ -15,7 +15,7 @@
 				<th>Published?</th>
 				{% if record_group.is_published %}
 					{% for published in record_group.jobpublish_set.all %}
-						<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }}">
+						<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }} {% if record_group.jobpublish_set.all.first.job.deleted %}deleted{% endif %}">
 								<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>
 						</td>
 						<td>
