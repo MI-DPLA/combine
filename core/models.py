@@ -703,8 +703,8 @@ class Job(models.Model):
 				'org_id':None,
 				'job_type':self.job_type,
 				'job_status':self.status,
-				'is_valid':validation_results['verdict'],
-				'recursion_level':0
+				'is_valid':validation_results['verdict'],				
+				'deleted':self.deleted
 			}
 
 		# if not Analysis job, add org and record group
@@ -762,7 +762,8 @@ class Job(models.Model):
 						'org_id':None,
 						'job_type':pj.job_type,
 						'job_status':self.status,
-						'is_valid':validation_results['verdict']
+						'is_valid':validation_results['verdict'],
+						'deleted':pj.deleted
 						}
 
 					# if not Analysis job, add org and record group

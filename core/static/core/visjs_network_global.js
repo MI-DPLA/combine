@@ -63,6 +63,11 @@ function styleNetworkNodes(node){
 		};
 	}
 
+	// override if job is slated for deletion
+	if (node.deleted) {
+		node.color = '#efefef';
+	}
+
 }
 
 

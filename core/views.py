@@ -382,8 +382,7 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job = models.Job.objects.get(pk=job_id)
 
 	# set job status to deleting
-	job.name = "%s (DELETING)" % job.name
-	job.job_type = 'deleted'
+	job.name = "%s (DELETING)" % job.name	
 	job.deleted = True
 	job.status = 'deleting'
 	job.save()

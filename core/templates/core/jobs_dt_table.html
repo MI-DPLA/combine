@@ -19,16 +19,16 @@
 				<th>Input</th>
 				<th>Notes</th>
 				<th>Record Count</th>
-				<th>Monitor</th>				
+				<th>Monitor</th>
 				<th>Actions</th>
 			</tr>
 		</thead>
 		<tbody>
 		{% for job in jobs %}
-			<tr class="{{ job.job_type_family }}">
-				<td>{{ job.id }}</td>
-				<td>{{ job.timestamp }}</td>
-				<td>
+			<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 					<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
 					<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 						<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
@@ -40,25 +40,25 @@
 				</td>
 				{# Jinja logic for including RecordGroups #}
 				{% if not for_analysis %}
-					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
 				{% endif %}
-				<td>{{ job.job_type_family }}</td>
-				<td><strong>{{ job.status }}</strong></td>
-				<td>{{ job.finished }}</td>
-				<td>{{ job.validation_results.verdict }}</td>
-				<td>{{ job.elapsed_as_string }} (<em>{{ job.calc_records_per_second }} r/s</em>)</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><strong>{{ job.status }}</strong></td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }} (<em>{{ job.calc_records_per_second }} r/s</em>)</td>
 				
 				{% if job.jobinput_set.all|length > 0 %}
-					<td>{% for input_job in job.jobinput_set.all %}
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
 						<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
 							<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 						</div>
 						{% endfor %}
 					</td>
 				{% else %}
-					<td>None</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
 				{% endif %}
-				<td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 					{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
 					<div id="job_notes_{{ job.id }}" style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
 						<form method="POST" action="{% url 'job_update_note' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
@@ -70,9 +70,9 @@
 						</form>
 					</div>
 				</td>
-				<td>{{ job.record_count }}</td>
-				<td><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ LIVY_SESSION.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
-				<td><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ LIVY_SESSION.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
+				<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>				
 			</tr>
 		{% endfor %}
 		</tbody>
@@ -86,14 +86,16 @@
 		    	{# Jinja logic for including RecordGroups #}
 		    	{% if not for_analysis %}
 			    	"createdRow": function( row, data, dataIndex){
-	                    $('td', row).addClass(data[4]);
+
+	                    // show job valid
 	                    if (data[7] == 'False'){
 	                    	$('td:nth-child(8)', row).addClass('invalid_job');
 	                    }
-		            }	            
+		            }           
 				{% else %}
 					"createdRow": function( row, data, dataIndex){
-	                    $('td', row).addClass(data[3]);
+
+	                    // show job valid
 	                    if (data[6] == 'False'){                    	
 	                    	$('td:nth-child(7)', row).addClass('invalid_job');
 	                    }
