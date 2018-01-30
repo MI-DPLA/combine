@@ -32,7 +32,7 @@ ALLOWED_HOSTS = ['*'] # for dev, allowing all hosts
 # Application definition
 
 INSTALLED_APPS = [
-    'core.apps.CoreConfig',
+    'core',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
+    'background_task',    
 ]
 
 MIDDLEWARE = [

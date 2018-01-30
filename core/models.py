@@ -356,6 +356,7 @@ class Job(models.Model):
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
 	elapsed = models.IntegerField(null=True, default=0)
+	deleted = models.BooleanField(default=0)
 
 
 	def __str__(self):

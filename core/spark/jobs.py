@@ -72,8 +72,7 @@ class CombineRecordSchema(object):
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
-				StructField('success', BooleanType(), False),
-				StructField('published', BooleanType(), False)
+				StructField('success', BooleanType(), False)				
 			]
 		)
 

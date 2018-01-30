@@ -30,6 +30,9 @@ from core.es import es_handle
 # import oai server
 from core.oai import OAIProvider
 
+# import background tasks
+from core import tasks
+
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
@@ -377,9 +380,17 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 	# get job
 	job = models.Job.objects.get(pk=job_id)
+
+	# set job status to deleting
+	job.name = "%s (DELETING)" % job.name
+	job.job_type = 'deleted'
+	job.deleted = True
+	job.status = 'deleting'
+	job.save()
 	
-	# remove from DB
-	job.delete()
+	# remove via background tasks
+	bg_task = tasks.job_delete(job.id)
+	logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
 
 	logger.debug('job deleted in: %s' % (time.time()-stime))
 
