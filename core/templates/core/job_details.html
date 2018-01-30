@@ -3,7 +3,7 @@
 {% block content %}
 
 	<div>
-		<h3>Job Details: <span class="{{ cjob.job.job_type }}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
+		<h3>Job Details: <span class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
 		<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 			<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 				{% csrf_token %}																		
@@ -98,7 +98,7 @@
 				<th>Record Count</th>
 			</tr>
 			{% for input_job in cjob.job.jobinput_set.all %}
-			<tr class="{{ input_job.input_job.job_type_family }}">
+			<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
 				<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 				<td>{{ input_job.input_job.job_type_family }}</td>
 				<td>{{ input_job.input_job.job_type }}</td>
@@ -128,7 +128,7 @@
 			<th>Errors</th>
 			<th>Success Percentage</th>
 		</tr>
-		<tr class="{{ cjob.job.job_type_family }}">
+		<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
 			<td>{{ cjob.job.name }}</td>
 			<td>{{ cjob.job.job_type_family }}</td>
 			<td>{{ cjob.job.job_type }}</td>
