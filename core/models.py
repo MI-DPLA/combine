@@ -235,7 +235,7 @@ class Organization(models.Model):
 	'''
 
 	name = models.CharField(max_length=128)
-	description = models.CharField(max_length=255)
+	description = models.CharField(max_length=255, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	for_analysis = models.BooleanField(default=0)
 

@@ -286,7 +286,7 @@ class HarvestStaticXMLSpark(object):
 			return nsmap
 
 
-		def get_metadata_udf(job_id, publish_set_id, row, kwargs):
+		def get_metadata_udf(job_id, row, kwargs):
 
 			# get doc string
 			doc_string = row[1]
