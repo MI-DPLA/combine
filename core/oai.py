@@ -154,13 +154,16 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
+		# get records
+		records = self.published.records
+
 		# if set present, filter by this set
 		if self.publish_set_id:
 			logger.debug('applying publish_set_id filter')
-			self.published.records = self.published.records.filter(job__record_group__publish_set_id = self.publish_set_id)
+			records = records.filter(job__record_group__publish_set_id = self.publish_set_id)
 
 		# loop through rows, limited by current OAI transaction start / chunk
-		for record in self.published.records[self.start:(self.start+self.chunk_size)]:
+		for record in records[self.start:(self.start+self.chunk_size)]:
 
 			record = OAIRecord(args=self.args, record_id=record.oai_id, document=record.document, timestamp=self.request_timestamp_string)
 
