@@ -64,8 +64,7 @@ def breadcrumb_parser(path):
 			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
 			crumbs.append(('Analysis', reverse('analysis')))
 		else:
-			crumbs.append(('Organizations', reverse('organizations')))
-			crumbs.append((org.name, org_m.group(1)))
+			crumbs.append(("Organzation - %s" % org.name, org_m.group(1)))
 
 	# record_group
 	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
@@ -74,13 +73,22 @@ def breadcrumb_parser(path):
 		if rg.for_analysis:
 			logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
 		else:
-			crumbs.append(("%s" % rg.name, rg_m.group(1)))
+			crumbs.append(("RecordGroup - %s" % rg.name, rg_m.group(1)))
 
 	# job
 	j_m = re.match(r'(.+?/job/([0-9]+))', path)
 	if j_m:
 		j = models.Job.objects.get(pk=int(j_m.group(2)))
-		crumbs.append(("%s" % j.name, j_m.group(1)))
+		if j.record_group.for_analysis:
+			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
+		else:
+			crumbs.append(("Job - %s" % j.name, j_m.group(1)))
+
+	# record
+	r_m = re.match(r'(.+?/record/([0-9]+))', path)
+	if r_m:
+		r = models.Record.objects.get(pk=int(r_m.group(2)))
+		crumbs.append(("Record - %s" % r.record_id, r_m.group(1)))
 
 	# return
 	return crumbs
@@ -1246,7 +1254,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 			'record_stages':record_stages,
 			'job_details':job_details,
 			'dpla_api_doc':dpla_api_doc,
-			'dpla_api_json':dpla_api_json
+			'dpla_api_json':dpla_api_json,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 

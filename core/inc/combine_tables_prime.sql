@@ -13,8 +13,7 @@
 
 CREATE TABLE `core_record` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `record_id` varchar(1024) DEFAULT NULL,
-  `oai_id` varchar(1024) DEFAULT NULL,
+  `record_id` varchar(1024) DEFAULT NULL,  
   `document` longtext,
   `error` longtext,
   `unique` tinyint(1) NOT NULL,
