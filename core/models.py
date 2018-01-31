@@ -12,6 +12,7 @@ from lxml import etree, isoschematron
 import os
 import requests
 import shutil
+from sickle import Sickle
 import subprocess
 from sqlalchemy import create_engine
 import re
@@ -2577,7 +2578,8 @@ class PublishedRecords(object):
 			return record_query.first()
 
 		else:
-			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
+			logger.debug('multiple records found for id %s - this is not allowed for published records' % id)
+			return False
 
 
 	def count_indexed_fields(self):
@@ -2832,20 +2834,18 @@ class CombineJob(object):
 		self.job = Job.objects.filter(id=job_id).first()
 
 
-	def get_record(self, id, is_oai=False):
+	def get_record(self, id, record_field='record_id'):
 
 		'''
 		Convenience method to return single record from job.
 
 		Args:
 			id (str): string of record ID
-			is_oai (bool): If True, use provided ID to search record.oai_id. Defaults to False
+			record_field (str): field from Record to filter on, defaults to 'record_id'
 		'''
 
-		if is_oai:
-			record_query = Record.objects.filter(job=self.job).filter(oai_id=id)
-		else:
-			record_query = Record.objects.filter(job=self.job).filter(record_id=id)
+		# query for record
+		record_query = Record.objects.filter(job=self.job).filter(**{record_field:id})
 
 		# if only one found
 		if record_query.count() == 1:
@@ -4531,6 +4531,57 @@ class PythonRecordValidationBase(object):
 		except:
 			pass
 		self.nsmap = _nsmap
+
+
+
+####################################################################
+# Published Records Test Clients								   #
+####################################################################
+
+class CombineOAIClient(object):
+
+	'''
+	This class provides a client to test the built-in OAI server for Combine
+	'''
+
+	def __init__(self):
+
+		# initiate sickle instance
+		self.sickle = Sickle(settings.COMBINE_OAI_ENDPOINT)
+
+		# set default metadata prefix
+		# NOTE: Currently Combine's OAI server does not support this, a nonfunctional default is provided
+		self.metadata_prefix = None
+
+
+	def get_records(self):
+
+		'''
+		Method to return generator of records
+		'''
+
+		return self.sickle.ListRecords(metadataPrefix=self.metadata_prefix)
+
+
+	def get_identifiers(self):
+
+		'''
+		Method to return generator of identifiers
+		'''
+
+		return self.sickle.ListIdentifiers(metadataPrefix=self.metadata_prefix)
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

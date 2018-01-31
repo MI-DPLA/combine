@@ -73,6 +73,7 @@ dependencies:
   - requests-kerberos==0.11.0
   - responses==0.8.1
   - scandir==1.5
+  - Sickle==0.6.2
   - simplegeneric==0.8.1
   - sqlalchemy==1.1.13
   - traitlets==4.3.2

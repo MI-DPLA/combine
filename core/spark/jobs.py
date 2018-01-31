@@ -766,9 +766,7 @@ class PublishSpark(object):
 def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
 
 	'''
-	Function to index records to DB and trigger indexing to ElasticSearch (ES)
-	
-		- generates and writes oai_id column to DB.
+	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
 
 	Args:
 		spark (pyspark.sql.session.SparkSession): spark instance from static job methods

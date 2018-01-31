@@ -49,6 +49,7 @@ requests==2.18.4
 requests-kerberos==0.11.0
 responses==0.8.1
 scandir==1.5
+Sickle==0.6.2
 simplegeneric==0.8.1
 six==1.10.0
 SQLAlchemy==1.1.13
