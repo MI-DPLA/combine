@@ -360,12 +360,28 @@ def record_group_update_publish_set_id(request, org_id, record_group_id):
 
 @login_required
 def all_jobs(request):
+
+	'''
+	View to show all jobs, across all Organizations, RecordGroups, and Job types
+
+	GET Args:
+		include_analysis: if true, 
+	'''
+
+	include_analysis = request.GET.get('include_analysis', False)
+	logger.debug(include_analysis)
 	
 	# get all jobs associated with record group
-	jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+	if include_analysis:
+		jobs = models.Job.objects.all()
+	else:
+		jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
 
 	# get job lineage for all jobs
-	ld = models.Job.get_all_jobs_lineage(directionality='downstream')
+	if include_analysis:
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=False)
+	else:
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=True)
 
 	# loop through jobs and update status
 	for job in jobs:
