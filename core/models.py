@@ -390,7 +390,8 @@ class Job(models.Model):
 	def update_status(self):
 
 		'''
-		Method to udpate job information based on status from Livy
+		Method to udpate job information based on status from Livy.
+		Jobs marked as deleted are not updated.
 
 		Args:
 			None
@@ -400,21 +401,22 @@ class Job(models.Model):
 				- updates status, record_count, elapsed (soon)
 		'''
 
-		if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
-			self.refresh_from_livy(save=False)
+		if not self.deleted:
+			if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
+				self.refresh_from_livy(save=False)
 
-		# udpate record count if not already calculated
-		if self.record_count == 0:
+			# udpate record count if not already calculated
+			if self.record_count == 0:
 
-			# if finished, count
-			if self.finished:
-				self.update_record_count(save=False)
+				# if finished, count
+				if self.finished:
+					self.update_record_count(save=False)
 
-		# update elapsed		
-		self.elapsed = self.calc_elapsed()
+			# update elapsed		
+			self.elapsed = self.calc_elapsed()
 
-		# finally, save
-		self.save()
+			# finally, save
+			self.save()
 
 
 	def calc_elapsed(self):
@@ -1853,7 +1855,7 @@ def save_job(sender, instance, created, **kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=Job)
-def delete_job_output_pre_delete(sender, instance, **kwargs):
+def delete_job_pre_delete(sender, instance, **kwargs):
 
 	'''
 	When jobs are removed, some actions are performed:
@@ -1947,6 +1949,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			es_handle.indices.delete('j%s' % instance.id)
 	except:
 		logger.debug('could not remove ES index: j%s' % instance.id)
+
+
+@receiver(models.signals.post_delete, sender=Job)
+def delete_job_post_delete(sender, instance, **kwargs):
+
+	logger.debug('job %s was deleted successfully' % instance)
 
 
 @receiver(models.signals.post_delete, sender=Job)
