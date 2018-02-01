@@ -365,11 +365,11 @@ def all_jobs(request):
 	View to show all jobs, across all Organizations, RecordGroups, and Job types
 
 	GET Args:
-		include_analysis: if true, 
+		include_analysis: if true, include Analysis type jobs
 	'''
 
+	# capture include_analysis GET param if present
 	include_analysis = request.GET.get('include_analysis', False)
-	logger.debug(include_analysis)
 	
 	# get all jobs associated with record group
 	if include_analysis:
