@@ -324,14 +324,21 @@ class GenericMapper(BaseMapper):
 
 				# if include attributes
 				if include_attributes:
-					for k,v in elem['attributes'].items():
+
+					# convert attributes dictionary to sortable list of tuples
+					attribs = [ (k,v) for k,v in elem['attributes'].items() ]
+
+					# sort alphabetically by attribute name
+					attribs.sort(key=lambda x: x[0])
+
+					for attribute, value in attribs:
 
 						# replace whitespace in attribute or value with underscore
-						k = k.replace(' ','_')
-						v = v.replace(' ','_')						
+						attribute = attribute.replace(' ','_')
+						value = value.replace(' ','_')						
 
 						# append to xpath_comps
-						xpath_comps.append('@%s_%s' % (k,v))
+						xpath_comps.append('@%s_%s' % (attribute,value))
 
 				# derive flat field name
 				flat_field = '_'.join(xpath_comps)
