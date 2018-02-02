@@ -78,11 +78,11 @@
 					'csrfmiddlewaretoken': '{{ csrf_token }}'
 				},
 				success: function(data){
-					
-					// loop through nodes
-					nodes.forEach(function(node){								
 
-						if (!data.job_id_list.includes(node.id)){									
+					// loop through nodes
+					nodes.forEach(function(node){
+
+						if (!data.job_id_list.includes(node.id)){
 
 							// update network node colors
 							node.color = '#efefef';
@@ -90,20 +90,23 @@
 
 							// update datatables row color
 							// find row that matches id
-							row = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
+							row_query = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
 
-							// select row									
-							table_row = jobs_table.row(row[0]).node();									
-							$(table_row).children('td').each(function(){
-								
-								// gray out <td>s
-								$(this).addClass('grayed_dt_row');
-
-								// loop through input jobs and gray out
-								$(this).children('div').each(function() {
+							// if row query has hit, remove (empty list will gray out first row)
+							if (row_query.length > 0){
+								// select row									
+								table_row = jobs_table.row(row_query[0]).node();							
+								$(table_row).children('td').each(function(){
+									
+									// gray out <td>s
 									$(this).addClass('grayed_dt_row');
-								})
-							})
+
+									// loop through input jobs and gray out
+									$(this).children('div').each(function() {
+										$(this).addClass('grayed_dt_row');
+									})
+								})	
+							}
 						}
 					});
 				}			

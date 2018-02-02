@@ -65,8 +65,7 @@ class CombineRecordSchema(object):
 
 		# schema for Combine records
 		self.schema = StructType([
-				StructField('record_id', StringType(), True),
-				StructField('oai_id', StringType(), True),
+				StructField('record_id', StringType(), True),				
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
 				StructField('unique', BooleanType(), False),
@@ -99,8 +98,7 @@ class HarvestOAISpark(object):
 
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
 			- record_id 
-			- job_id
-			- oai_id
+			- job_id			
 			- oai_set
 			- publish_set_id
 			- unique (TBD)
@@ -178,19 +176,6 @@ class HarvestOAISpark(object):
 		job_id_udf = udf(lambda id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
-		# add oai_id column
-		'''
-		This will likely need to be revisited...
-			- potentially added to static harvests
-			- or removed in favor of a new approach
-		'''
-		publish_set_id = job.record_group.publish_set_id
-		oai_id_udf = udf(lambda id: '%s%s:%s' % (
-			settings.COMBINE_OAI_IDENTIFIER,
-			publish_set_id,
-			id), StringType())
-		records = records.withColumn('oai_id', oai_id_udf(records.id))
-
 		# add oai_set
 		records = records.withColumn('oai_set', records.setIds[0])
 
@@ -242,7 +227,6 @@ class HarvestStaticXMLSpark(object):
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
 			- record_id 
 			- job_id
-			- oai_id
 			- oai_set
 			- publish_set_id
 			- unique (TBD)
@@ -326,7 +310,6 @@ class HarvestStaticXMLSpark(object):
 				# return success Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = etree.tostring(meta_root).decode('utf-8'),
 					error = '',
 					job_id = int(job_id),
@@ -343,7 +326,6 @@ class HarvestStaticXMLSpark(object):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = etree.tostring(meta_root).decode('utf-8'),
 					error = str(e),
 					job_id = int(job_id),
@@ -360,7 +342,6 @@ class HarvestStaticXMLSpark(object):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = '',
 					error = str(e),
 					job_id = int(job_id),
@@ -481,7 +462,6 @@ class TransformSpark(object):
 				# return Row
 				return Row(
 						record_id = row.record_id,
-						oai_id = row.oai_id,
 						document = trans_result[0],
 						error = trans_result[1],
 						job_id = int(job_id),
@@ -766,9 +746,7 @@ class PublishSpark(object):
 def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
 
 	'''
-	Function to index records to DB and trigger indexing to ElasticSearch (ES)
-	
-		- generates and writes oai_id column to DB.
+	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
 
 	Args:
 		spark (pyspark.sql.session.SparkSession): spark instance from static job methods

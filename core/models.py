@@ -12,6 +12,7 @@ from lxml import etree, isoschematron
 import os
 import requests
 import shutil
+import sickle
 import subprocess
 from sqlalchemy import create_engine
 import re
@@ -1044,7 +1045,6 @@ class Record(models.Model):
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)	
 	record_id = models.CharField(max_length=1024, null=True, default=None)
-	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
@@ -1133,21 +1133,21 @@ class Record(models.Model):
 		return record_stages
 
 
-	def derive_dpla_identifier(self):
+	# def derive_dpla_identifier(self):
 
-		'''
-		Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
-		identifier.  Experiemental.
+	# 	'''
+	# 	Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
+	# 	identifier.  Experiemental.
 
-		Args:
-			None
+	# 	Args:
+	# 		None
 
-		Returns:
-			(str): Derived DPLA identifier
-		'''
+	# 	Returns:
+	# 		(str): Derived DPLA identifier
+	# 	'''
 
-		pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
-		return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
+	# 	pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
+	# 	return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
 
 
 	def get_es_doc(self):
@@ -2558,26 +2558,27 @@ class PublishedRecords(object):
 		return Record.objects.filter(published=True)
 
 
-	def get_record(self, id):
+	def get_record(self, record_id):
 
 		'''
-		Return single, published record by record.oai_id
+		Return single, published record by record.record_id
 
 		Args:
-			id (str): OAI identifier, not internal record_id (pre OAI identifier generation)
+			record_id (str): Record's record_id
 
 		Returns:
 			(core.model.Record): single Record instance
 		'''
 
-		record_query = self.records.filter(oai_id = id)
+		record_query = self.records.filter(record_id = id)
 
 		# if one, return
 		if record_query.count() == 1:
 			return record_query.first()
 
 		else:
-			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
+			logger.debug('multiple records found for id %s - this is not allowed for published records' % id)
+			return False
 
 
 	def count_indexed_fields(self):
@@ -2832,20 +2833,18 @@ class CombineJob(object):
 		self.job = Job.objects.filter(id=job_id).first()
 
 
-	def get_record(self, id, is_oai=False):
+	def get_record(self, id, record_field='record_id'):
 
 		'''
 		Convenience method to return single record from job.
 
 		Args:
 			id (str): string of record ID
-			is_oai (bool): If True, use provided ID to search record.oai_id. Defaults to False
+			record_field (str): field from Record to filter on, defaults to 'record_id'
 		'''
 
-		if is_oai:
-			record_query = Record.objects.filter(job=self.job).filter(oai_id=id)
-		else:
-			record_query = Record.objects.filter(job=self.job).filter(record_id=id)
+		# query for record
+		record_query = Record.objects.filter(job=self.job).filter(**{record_field:id})
 
 		# if only one found
 		if record_query.count() == 1:
@@ -4531,6 +4530,103 @@ class PythonRecordValidationBase(object):
 		except:
 			pass
 		self.nsmap = _nsmap
+
+
+
+####################################################################
+# Published Records Test Clients								   #
+####################################################################
+
+class CombineOAIClient(object):
+
+	'''
+	This class provides a client to test the built-in OAI server for Combine
+	'''
+
+	def __init__(self):
+
+		# initiate sickle instance
+		self.sickle = sickle.Sickle(settings.COMBINE_OAI_ENDPOINT)
+
+		# set default metadata prefix
+		# NOTE: Currently Combine's OAI server does not support this, a nonfunctional default is provided
+		self.metadata_prefix = None
+
+		# save results from identify		
+		self.identify = self.sickle.Identify()
+
+
+	def get_records(self, oai_set=None):
+
+		'''
+		Method to return generator of records
+
+		Args:
+			oai_set ([str, sickle.models.Set]): optional OAI set, string or instance of Sickle Set to filter records
+		'''
+
+		# if oai_set is provided, filter records to set
+		if oai_set:
+			if type(oai_set) == sickle.models.Set:
+				set_name = oai_set.setName
+			elif type(oai_set) == str:
+				set_name = oai_set
+			
+			# return records filtered by set
+			return self.sickle.ListRecords(set=set_name, metadataPrefix=self.metadata_prefix)			
+
+		# no filter
+		return self.sickle.ListRecords(metadataPrefix=self.metadata_prefix)
+
+
+	def get_identifiers(self, oai_set=None):
+
+		'''
+		Method to return generator of identifiers
+
+		Args:
+			oai_set ([str, sickle.models.Set]): optional OAI set, string or instance of Sickle Set to filter records
+		'''
+
+		# if oai_set is provided, filter record identifiers to set
+		if oai_set:
+			if type(oai_set) == sickle.models.Set:
+				set_name = oai_set.setName
+			elif type(oai_set) == str:
+				set_name = oai_set
+			
+			# return record identifiers filtered by set
+			return self.sickle.ListIdentifiers(set=set_name, metadataPrefix=self.metadata_prefix)			
+
+		# no filter
+		return self.sickle.ListIdentifiers(metadataPrefix=self.metadata_prefix)
+
+
+	def get_sets(self):
+
+		'''
+		Method to return generator of all published sets
+		'''
+
+		return self.sickle.ListSets()
+
+
+	def get_record(self, oai_record_id):
+
+		'''
+		Method to return a single record
+		'''
+
+		return sickle.GetRecord(identifier = oai_record_id, metadataPrefix = self.metadata_prefix)
+
+
+
+
+
+
+
+
+
 
 
 
