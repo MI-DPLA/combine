@@ -12,6 +12,7 @@ from lxml import etree, isoschematron
 import os
 import requests
 import shutil
+import sickle
 import subprocess
 from sqlalchemy import create_engine
 import re
@@ -19,6 +20,7 @@ import tarfile
 import textwrap
 import time
 from types import ModuleType
+import urllib.parse
 import uuid
 import xmltodict
 import zipfile
@@ -217,11 +219,11 @@ class LivySession(models.Model):
 			return active_livy_sessions.first()
 
 		elif active_livy_sessions.count() == 0:
-			logger.debug('no active livy sessions found, returning False')
+			# logger.debug('no active livy sessions found, returning False')
 			return False
 
 		elif active_livy_sessions.count() > 1:
-			logger.debug('multiple active livy sessions found, returning as list')
+			# logger.debug('multiple active livy sessions found, returning as list')
 			return active_livy_sessions
 
 
@@ -234,8 +236,9 @@ class Organization(models.Model):
 	'''
 
 	name = models.CharField(max_length=128)
-	description = models.CharField(max_length=255)
+	description = models.CharField(max_length=255, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	for_analysis = models.BooleanField(default=0)
 
 
 	def __str__(self):
@@ -252,9 +255,10 @@ class RecordGroup(models.Model):
 
 	organization = models.ForeignKey(Organization, on_delete=models.CASCADE)
 	name = models.CharField(max_length=128)
-	description = models.CharField(max_length=255, null=True, default=None)
+	description = models.CharField(max_length=255, null=True, default=None, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128)
+	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
+	for_analysis = models.BooleanField(default=0)
 
 
 	def __str__(self):
@@ -302,6 +306,28 @@ class RecordGroup(models.Model):
 		return ld
 
 
+	def is_published(self):
+
+		'''
+		Method to determine if a Job has been published for this RecordGroup
+
+		Args:
+			None
+
+		Returns:
+			(bool): if a job has been published for this RecordGroup, return True, else False
+		'''
+
+		# get published links
+		published = self.jobpublish_set.all()
+
+		# return True/False
+		if published.count() == 0:
+			return False
+		else:
+			return True
+
+
 
 class Job(models.Model):
 
@@ -331,6 +357,7 @@ class Job(models.Model):
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
 	elapsed = models.IntegerField(null=True, default=0)
+	deleted = models.BooleanField(default=0)
 
 
 	def __str__(self):
@@ -364,7 +391,8 @@ class Job(models.Model):
 	def update_status(self):
 
 		'''
-		Method to udpate job information based on status from Livy
+		Method to udpate job information based on status from Livy.
+		Jobs marked as deleted are not updated.
 
 		Args:
 			None
@@ -374,21 +402,22 @@ class Job(models.Model):
 				- updates status, record_count, elapsed (soon)
 		'''
 
-		if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
-			self.refresh_from_livy(save=False)
+		if not self.deleted:
+			if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
+				self.refresh_from_livy(save=False)
 
-		# udpate record count if not already calculated
-		if self.record_count == 0:
+			# udpate record count if not already calculated
+			if self.record_count == 0:
 
-			# if finished, count
-			if self.finished:
-				self.update_record_count(save=False)
+				# if finished, count
+				if self.finished:
+					self.update_record_count(save=False)
 
-		# update elapsed		
-		self.elapsed = self.calc_elapsed()
+			# update elapsed		
+			self.elapsed = self.calc_elapsed()
 
-		# finally, save
-		self.save()
+			# finally, save
+			self.save()
 
 
 	def calc_elapsed(self):
@@ -666,18 +695,28 @@ class Job(models.Model):
 		# lineage dict
 		ld = {'nodes':[],'edges':[]}		
 
-		# add self to lineage dictionary
+		# get validation results for self
 		validation_results = self.validation_results()
-		ld['nodes'].append({
+
+		# prepare node dictionary
+		node_dict = {
 				'id':self.id,
-				'record_group_id':self.record_group.id,
-				'org_id':self.record_group.organization.id,
 				'name':self.name,
+				'record_group_id':None,
+				'org_id':None,
 				'job_type':self.job_type,
 				'job_status':self.status,
-				'is_valid':validation_results['verdict'],
-				'recursion_level':0
-			})
+				'is_valid':validation_results['verdict'],				
+				'deleted':self.deleted
+			}
+
+		# if not Analysis job, add org and record group
+		if self.job_type != 'AnalysisJob':
+			node_dict['record_group_id'] = self.record_group.id
+			node_dict['org_id'] = self.record_group.organization.id
+
+		# add self to lineage dictionary
+		ld['nodes'].append(node_dict)
 
 		# update lineage dictionary recursively
 		self._get_parent_jobs(self, ld, directionality=directionality)
@@ -718,15 +757,25 @@ class Job(models.Model):
 					# get validation results and add to node
 					validation_results = pj.validation_results()
 
-					ld['nodes'].append({
-						'id':pj.id,
-						'record_group_id':pj.record_group.id,
-						'org_id':pj.record_group.organization.id,
+					# prepare node dictionary
+					node_dict = {
+						'id':pj.id,						
 						'name':pj.name,
+						'record_group_id':None,
+						'org_id':None,
 						'job_type':pj.job_type,
 						'job_status':self.status,
-						'is_valid':validation_results['verdict']
-					})
+						'is_valid':validation_results['verdict'],
+						'deleted':pj.deleted
+						}
+
+					# if not Analysis job, add org and record group
+					if pj.job_type != 'AnalysisJob':
+						node_dict['record_group_id'] = pj.record_group.id
+						node_dict['org_id'] = pj.record_group.organization.id
+
+					# append to nodes
+					ld['nodes'].append(node_dict)
 
 				# determine directionality
 				if directionality == 'upstream':
@@ -750,7 +799,12 @@ class Job(models.Model):
 
 
 	@staticmethod
-	def get_all_jobs_lineage(organization=None, record_group=None, directionality='downstream', jobs_query_set=None):
+	def get_all_jobs_lineage(
+		organization=None,
+		record_group=None,
+		directionality='downstream',
+		jobs_query_set=None,
+		exclude_analysis_jobs=True):
 
 		'''
 		Static method to get lineage for all Jobs
@@ -782,6 +836,10 @@ class Job(models.Model):
 			# if RecordGroup provided, filter
 			if record_group:
 				jobs = jobs.filter(record_group=record_group)
+
+			# if excluding analysis jobs
+			if exclude_analysis_jobs:
+				jobs = jobs.exclude(job_type='AnalysisJob')
 
 		# create record group lineage dictionary
 		ld = {'edges':[], 'nodes':[]}
@@ -835,8 +893,12 @@ class Job(models.Model):
 
 			# bump failure count
 			for jv in self.jobvalidation_set.all():
-				if jv.failure_count:
-					results['failure_count'] += jv.failure_count
+
+				# update validation failure count
+				failure_count = jv.validation_failure_count()
+
+				if failure_count:
+					results['failure_count'] += failure_count
 
 			# if failures found, set result to False
 			if results['failure_count'] > 0:
@@ -942,7 +1004,7 @@ class Transformation(models.Model):
 		max_length=255,
 		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	
 
 	def __str__(self):
@@ -981,15 +1043,15 @@ class Record(models.Model):
 	combine/core/inc/combine_tables.sql
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)	
 	record_id = models.CharField(max_length=1024, null=True, default=None)
-	oai_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
 	unique = models.BooleanField(default=1)
 	unique_published = models.NullBooleanField()
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
+	published = models.BooleanField(default=0)
 
 
 	# this model is managed outside of Django
@@ -1071,21 +1133,21 @@ class Record(models.Model):
 		return record_stages
 
 
-	def derive_dpla_identifier(self):
+	# def derive_dpla_identifier(self):
 
-		'''
-		Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
-		identifier.  Experiemental.
+	# 	'''
+	# 	Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
+	# 	identifier.  Experiemental.
 
-		Args:
-			None
+	# 	Args:
+	# 		None
 
-		Returns:
-			(str): Derived DPLA identifier
-		'''
+	# 	Returns:
+	# 		(str): Derived DPLA identifier
+	# 	'''
 
-		pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
-		return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
+	# 	pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
+	# 	return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
 
 
 	def get_es_doc(self):
@@ -1162,61 +1224,73 @@ class Record(models.Model):
 	def dpla_api_record_match(self, search_string=None):
 
 		'''
-		Method to attempt a match against the DPLA's API
+		Method to query DPLA API for match against some known mappings.
+		NOTE: Experimental.		
 
-		NOTE: Still experimental.  Queries DPLA API for match against some known mappings.
+		Loop through mapped fields in opinionated order from opinionated_search_hash
+		Update: Leaning towards exclusive use of 'isShownAt'
+			- close to binary True/False API match, removes any fuzzy connections
+
+		Args:
+			search_string(str): Optional search_string override
+
+		Returns:
+			(dict): If match found, return dictionary of DPLA API response
 		'''
 
-		# attempt search if API key defined
+		# check for DPLA_API_KEY, else return None
 		if settings.DPLA_API_KEY:
 
-			'''
-			Exploratory testing of DPLA API matching
-			'''
+			# check for any mapped DPLA fields, skipping altogether if none
+			mapped_dpla_fields = self.dpla_mapped_field_values()
+			if mapped_dpla_fields:
 
-			# get es document
-			es_doc = self.get_es_doc()
+				# attempt search if mapped fields present and search_string not provided
+				if not search_string:
 
-			# get DPLA mappings
-			dpla_mapping = self.job.dpla_mapping
+					# opionated search hash
+					opinionated_search_fields = [
+						('isShownAt', 'isShownAt'),
+						('title', 'sourceResource.title'),
+						('description', 'sourceResource.description')
+					]
 
-			# if search string not provided, attempt to generate based on any mapped fields
-			if not search_string:
+					# loop through opionated search hash
+					for local_mapped_field, target_dpla_field in opinionated_search_fields:
 
-				'''
-				Loop through mapped fields in opinionated order
-				Update: Leaning towards exclusive use of 'isShownAt'
-					- close to binary True/False API match, removes any fuzzy connections
-				'''
+						# if local_mapped_field in keys
+						if local_mapped_field in mapped_dpla_fields.keys():
 
-				# isShownAt
-				if dpla_mapping.isShownAt and dpla_mapping.isShownAt in es_doc.keys():
-					logger.debug('isShownAt mapping found, using')
-					search_string = 'isShownAt="%s"' % es_doc[dpla_mapping.isShownAt]
+							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
 
-				# title
-				elif dpla_mapping.title and dpla_mapping.title in es_doc.keys():
-					logger.debug('title mapping found, using')
-					search_string = 'sourceResource.title="%s"' % es_doc[dpla_mapping.title]
+							# get value for mapped field					
+							field_value = mapped_dpla_fields[local_mapped_field]
 
-				# description
-				elif dpla_mapping.description and dpla_mapping.description in es_doc.keys():
-					logger.debug('description mapping found, using')
-					search_string = 'sourceResource.description="%s"' % es_doc[dpla_mapping.description]
+							# if list, loop through and attempt searches
+							if type(field_value) == list:
+								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
 
-				else:
-					logger.debug('DPLA mapping not found')
-					self.dpla_api_doc = None
-					return self.dpla_api_doc
+								for val in field_value:
+									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
+									match_results = self.dpla_api_record_match(search_string=search_string)
 
-			# check for search string at this point
-			if search_string:
+							# else if string, perform search
+							else:
+								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
+								match_results = self.dpla_api_record_match(search_string=search_string)
 
-				# query
+							# if match found from list iteration or single string search, use
+							if match_results:
+								self.dpla_api_doc = match_results
+								return self.dpla_api_doc
+
+				# preapre search query			
 				api_q = requests.get(
 					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
-				# attempt to parse as JSON
+				# attempt to parse response as JSON
 				try:
 					api_r = api_q.json()
 				except:
@@ -1257,6 +1331,16 @@ class Record(models.Model):
 
 		vfs = RecordValidation.objects.filter(record=self)
 		return vfs
+
+
+	def document_pretty_print(self):
+
+		'''
+		Method to return document as pretty printed (indented) XML
+		'''
+
+		# return as pretty printed string
+		return etree.tostring(self.parse_document_xml(), pretty_print=True)
 
 
 
@@ -1421,7 +1505,7 @@ class ValidationScenario(models.Model):
 		max_length=255,
 		choices=[('sch','Schematron'),('python','Python Code Snippet')]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	default_run = models.BooleanField(default=1)
 	
 
@@ -1621,7 +1705,7 @@ class JobValidation(models.Model):
 		return rvfs
 
 
-	def validation_failure_count(self):
+	def validation_failure_count(self, force_recount=False):
 
 		'''
 		Method to count, set, and return failure count for this job validation
@@ -1632,10 +1716,11 @@ class JobValidation(models.Model):
 
 		Returns:
 			(int): count of records that did not pass validation (Note: each record may have failed 1+ assertions)
+				- sets self.failure_count and saves model
 		'''
 
-		if self.failure_count is None:
-			logger.debug("failure count not found for %s, calculating" % self)
+		if (self.failure_count is None and self.job.finished) or force_recount:
+			logger.debug("calculating failure count for validation job: %s" % self)
 			rvfs = self.get_record_validation_failures()
 			self.failure_count = rvfs.count()
 			self.save()
@@ -1748,7 +1833,7 @@ def save_job(sender, instance, created, **kwargs):
 	'''
 
 	# if the record was just created, then update job output (ensures this only runs once)
-	if created:
+	if created and instance.job_type != 'AnalysisJob':
 
 		# set output based on job type
 		logger.debug('setting job output for job')
@@ -1760,7 +1845,9 @@ def save_job(sender, instance, created, **kwargs):
 			instance.id)
 		instance.save()
 
-		# create DPLAJobMap instance and save
+
+	# create DPLAJobMap instance and save
+	if created:
 		djm = DPLAJobMap(
 			job = instance
 		)
@@ -1768,7 +1855,7 @@ def save_job(sender, instance, created, **kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=Job)
-def delete_job_output_pre_delete(sender, instance, **kwargs):
+def delete_job_pre_delete(sender, instance, **kwargs):
 
 	'''
 	When jobs are removed, some actions are performed:
@@ -1822,7 +1909,7 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			del_dsl = {
 				'query':{
 					'match':{
-						'publish_set_id':instance.record_group.publish_set_id
+						'source_job_id':instance.id
 					}
 				}
 			}
@@ -1838,6 +1925,11 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			logger.debug('could not remove published records from ES index')
 			logger.debug(str(e))
 
+
+		# when removing publish job, unset RecordGroup publish_set_id
+		logger.debug('Unsetting RecordGroup publish_set_id')
+		instance.record_group.publish_set_id = None
+		instance.record_group.save()
 
 	# remove avro files from disk
 	# if file://
@@ -1857,6 +1949,12 @@ def delete_job_output_pre_delete(sender, instance, **kwargs):
 			es_handle.indices.delete('j%s' % instance.id)
 	except:
 		logger.debug('could not remove ES index: j%s' % instance.id)
+
+
+@receiver(models.signals.post_delete, sender=Job)
+def delete_job_post_delete(sender, instance, **kwargs):
+
+	logger.debug('job %s was deleted successfully' % instance)
 
 
 @receiver(models.signals.post_delete, sender=Job)
@@ -2300,6 +2398,10 @@ class ESIndex(object):
 
 			# get field mappings for index
 			field_names = self.get_index_fields()
+			
+			'''
+			At this point, already mis-representing field names
+			'''
 
 			# init search
 			s = Search(using=es_handle, index=self.es_index)
@@ -2442,36 +2544,41 @@ class PublishedRecords(object):
 			sets[publish_set_id].append(publish_link.job)	
 		self.sets = sets
 
-		# get iterable queryset of records
-		self.records = Record.objects.filter(job__job_type = 'PublishJob')
-
-		# set record count
-		self.record_count = self.records.count()
-
 		# setup ESIndex instance
 		self.esi = ESIndex('published')
 
 
-	def get_record(self, id):
+	@property
+	def records(self):
 
 		'''
-		Return single, published record by record.oai_id
+		Property to return QuerySet of all published records
+		'''
+		
+		return Record.objects.filter(published=True)
+
+
+	def get_record(self, record_id):
+
+		'''
+		Return single, published record by record.record_id
 
 		Args:
-			id (str): OAI identifier, not internal record_id (pre OAI identifier generation)
+			record_id (str): Record's record_id
 
 		Returns:
 			(core.model.Record): single Record instance
 		'''
 
-		record_query = self.records.filter(oai_id = id)
+		record_query = self.records.filter(record_id = id)
 
 		# if one, return
 		if record_query.count() == 1:
 			return record_query.first()
 
 		else:
-			raise Exception('multiple records found for id %s - this is not allowed for published records' % id)
+			logger.debug('multiple records found for id %s - this is not allowed for published records' % id)
+			return False
 
 
 	def count_indexed_fields(self):
@@ -2506,17 +2613,48 @@ class PublishedRecords(object):
 		# get non-unique as QuerySet
 		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-		# get QuerySet of records to update
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-		logger.debug('setting %s records as unique' % set_true.count())
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-		logger.debug('setting %s records as dupes' % set_false.count())
-
-		# update in bulk
+		# set true in bulk
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])		
 		set_true.update(unique_published=True)
+
+		# set false in bulk
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])		
 		set_false.update(unique_published=False)
 
 		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
+
+
+	def set_published_field(self, job_id=None):
+
+		'''
+		Method to set 'published' for all Records with Publish Job parent
+		'''
+
+		to_set_published = Record.objects.filter(job__job_type='PublishJob')
+
+		# if job_id
+		if job_id:
+			to_set_published.filter(job__id=job_id)
+
+		# update
+		to_set_published.update(published=True)
+
+
+	@staticmethod
+	def get_publish_set_ids():
+
+		'''
+		Static method to return unique, not Null publish set ids
+
+		Args:
+			None
+
+		Returns:
+			(list): list of publish set ids
+		'''
+
+		publish_set_ids = RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
+		return publish_set_ids
 
 
 
@@ -2695,20 +2833,18 @@ class CombineJob(object):
 		self.job = Job.objects.filter(id=job_id).first()
 
 
-	def get_record(self, id, is_oai=False):
+	def get_record(self, id, record_field='record_id'):
 
 		'''
 		Convenience method to return single record from job.
 
 		Args:
 			id (str): string of record ID
-			is_oai (bool): If True, use provided ID to search record.oai_id. Defaults to False
+			record_field (str): field from Record to filter on, defaults to 'record_id'
 		'''
 
-		if is_oai:
-			record_query = Record.objects.filter(job=self.job).filter(oai_id=id)
-		else:
-			record_query = Record.objects.filter(job=self.job).filter(record_id=id)
+		# query for record
+		record_query = Record.objects.filter(job=self.job).filter(**{record_field:id})
 
 		# if only one found
 		if record_query.count() == 1:
@@ -3414,7 +3550,7 @@ class TransformJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_job (core.models.Job): Job that provides input records for this job's work
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
@@ -3551,7 +3687,7 @@ class MergeJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
@@ -3675,7 +3811,7 @@ class PublishJob(CombineJob):
 			job_name (str): Name for job
 			job_note (str): Free text note about job
 			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
+			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_job (core.models.Job): Job that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
 
@@ -3768,6 +3904,194 @@ class PublishJob(CombineJob):
 
 
 
+class AnalysisJob(CombineJob):
+	
+	'''
+	Analysis job
+		- Analysis job are unique in name and some functionality, but closely mirror Merge Jobs in execution
+		- Though Analysis jobs are very similar to most typical workflow jobs, they do not naturally 
+		belong to an Organization and Record Group like others.  As such, they dynamically create their own Org and
+		Record Group, configured in localsettings.py, that is hidden from most other views.
+	'''
+
+	def __init__(self,
+		job_name=None,
+		job_note=None,
+		user=None,
+		input_jobs=None,
+		job_id=None,
+		index_mapper=None,
+		validation_scenarios=[]):
+
+		'''
+		Args:
+			job_name (str): Name for job
+			job_note (str): Free text note about job
+			user (auth.models.User): user that will issue job
+			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
+			job_id (int): Not set on init, but acquired through self.job.save()
+			index_mapper (str): String of index mapper clsas from core.spark.es
+			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+
+		Returns:
+			None
+				- sets multiple attributes for self.job
+				- sets in motion the output of spark jobs from core.spark.jobs
+		'''
+
+		# perform CombineJob initialization
+		super().__init__(user=user, job_id=job_id)
+
+		# if job_id not provided, assumed new Job
+		if not job_id:
+
+			self.job_name = job_name
+			self.job_note = job_note
+			self.input_jobs = input_jobs
+			self.index_mapper = index_mapper
+			self.validation_scenarios = validation_scenarios
+
+			# if job name not provided, provide default
+			if not self.job_name:
+				self.job_name = self.default_job_name()
+
+			# get Record Group for Analysis jobs via static method AnalysisJob.get_analysis_hierarchy()
+			analysis_hierarchy = self.get_analysis_hierarchy()
+
+			# create Job entry in DB
+			self.job = Job(
+				job_type = type(self).__name__,
+				user = self.user,
+				record_group = analysis_hierarchy['record_group'],
+				name = self.job_name,
+				note = self.job_note,
+				spark_code = None,
+				job_id = None,
+				status = 'initializing',
+				url = None,
+				headers = None,
+				job_output = None,
+				job_details = json.dumps(
+					{'publish':
+						{
+							'publish_job_id':str(self.input_jobs),
+						}
+					})
+			)
+			self.job.save()
+
+			# save input job to JobInput table
+			for input_job in self.input_jobs:
+				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link.save()
+
+			# write validation links
+			if len(self.validation_scenarios) > 0:
+				for vs_id in self.validation_scenarios:
+					val_job = JobValidation(
+						job=self.job,
+						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
+					)
+					val_job.save()
+
+
+	@staticmethod
+	def get_analysis_hierarchy():
+
+		'''
+		Method to return organization and record_group for Analysis jobs
+			- if do not exist, or name has changed, also create
+			- reads from settings.ANALYSIS_JOBS_HIERARCHY for unique names for Organization and Record Group
+		'''
+
+		# get Organization and Record Group name from settings
+		org_name = settings.ANALYSIS_JOBS_HIERARCHY['organization']
+		record_group_name = settings.ANALYSIS_JOBS_HIERARCHY['record_group']
+
+		# check of Analysis jobs aggregating Organization exists
+		analysis_org_search = Organization.objects.filter(name=org_name)
+		if analysis_org_search.count() == 0:
+			logger.debug('creating Organization with name %s' % org_name)
+			analysis_org = Organization(
+				name = org_name,
+				description = 'For the explicit use of aggregating Analysis jobs',
+				for_analysis = True
+			)
+			analysis_org.save()
+
+		# if one found, use
+		elif analysis_org_search.count() == 1:
+			analysis_org = analysis_org_search.first()
+
+		else:
+			raise Exception('multiple Organizations found for explicit purpose of aggregating Analysis jobs')
+
+		# check of Analysis jobs aggregating Record Group exists
+		analysis_record_group_search = RecordGroup.objects.filter(name=record_group_name)
+		if analysis_record_group_search.count() == 0:
+			logger.debug('creating RecordGroup with name %s' % record_group_name)
+			analysis_record_group = RecordGroup(
+				organization = analysis_org,
+				name = record_group_name,
+				description = 'For the explicit use of aggregating Analysis jobs',
+				publish_set_id = None,
+				for_analysis = True
+			)
+			analysis_record_group.save()
+
+		# if one found, use
+		elif analysis_record_group_search.count() == 1:
+			analysis_record_group = analysis_record_group_search.first()
+
+		else:
+			raise Exception('multiple Record Groups found for explicit purpose of aggregating Analysis jobs')
+
+		# return Org and Record Group
+		return {
+			'organization':analysis_org,
+			'record_group':analysis_record_group
+		}
+
+
+
+	def prepare_job(self):
+
+		'''
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
+		'''
+
+		# prepare job code
+		job_code = {
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			{
+				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
+				'job_id':self.job.id,
+				'index_mapper':self.index_mapper,
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+			}
+		}
+
+		# submit job
+		self.submit_job_to_livy(job_code, self.job.job_output)
+
+
+	def get_job_errors(self):
+
+		'''
+		Not current implemented from Analyze jobs, as primarily just copying of successful records
+		'''
+
+		pass
+
+
+
 ####################################################################
 # ElasticSearch DataTables connector 							   #
 ####################################################################
@@ -3843,9 +4167,7 @@ class DTElasticSearch(View):
 				- modifies self.query
 		'''
 
-		##################################################################################
 		# filtering applied before DataTables input
-		##################################################################################
 		filter_type = self.request.GET.get('filter_type', None)
 
 		# equals filtering
@@ -3899,19 +4221,6 @@ class DTElasticSearch(View):
 				self.query = self.query.exclude(Q('exists', field=filter_field))
 
 
-		##################################################################################
-		# filtering applied by DataTables input
-		##################################################################################
-		# search_string = self.DTinput['search']['value']
-		# if search_string != '':
-		# 	self.query = self.query.where(
-		# 		(self.peewee_model.title.contains(search_string)) |
-		# 		(self.peewee_model.abstract.contains(search_string)) |
-		# 		(self.peewee_model.identifier.contains(search_string))
-		# 	)
-		##################################################################################
-
-
 	def sort(self):
 		
 		'''
@@ -3928,7 +4237,6 @@ class DTElasticSearch(View):
 		'''
 
 		# get sort params from DTinput
-		# https://bitbucket.org/pigletto/django-datatables-view/src/216fd0db6044d2eef43034f5e905ceff68bdfeaa/django_datatables_view/base_datatable_view.py?at=master&fileviewer=file-view-default#base_datatable_view.py-68:114
 		sorting_cols = 0
 		sort_key = 'order[{0}][column]'.format(sorting_cols)
 		while sort_key in self.DTinput:
@@ -4222,6 +4530,103 @@ class PythonRecordValidationBase(object):
 		except:
 			pass
 		self.nsmap = _nsmap
+
+
+
+####################################################################
+# Published Records Test Clients								   #
+####################################################################
+
+class CombineOAIClient(object):
+
+	'''
+	This class provides a client to test the built-in OAI server for Combine
+	'''
+
+	def __init__(self):
+
+		# initiate sickle instance
+		self.sickle = sickle.Sickle(settings.COMBINE_OAI_ENDPOINT)
+
+		# set default metadata prefix
+		# NOTE: Currently Combine's OAI server does not support this, a nonfunctional default is provided
+		self.metadata_prefix = None
+
+		# save results from identify		
+		self.identify = self.sickle.Identify()
+
+
+	def get_records(self, oai_set=None):
+
+		'''
+		Method to return generator of records
+
+		Args:
+			oai_set ([str, sickle.models.Set]): optional OAI set, string or instance of Sickle Set to filter records
+		'''
+
+		# if oai_set is provided, filter records to set
+		if oai_set:
+			if type(oai_set) == sickle.models.Set:
+				set_name = oai_set.setName
+			elif type(oai_set) == str:
+				set_name = oai_set
+			
+			# return records filtered by set
+			return self.sickle.ListRecords(set=set_name, metadataPrefix=self.metadata_prefix)			
+
+		# no filter
+		return self.sickle.ListRecords(metadataPrefix=self.metadata_prefix)
+
+
+	def get_identifiers(self, oai_set=None):
+
+		'''
+		Method to return generator of identifiers
+
+		Args:
+			oai_set ([str, sickle.models.Set]): optional OAI set, string or instance of Sickle Set to filter records
+		'''
+
+		# if oai_set is provided, filter record identifiers to set
+		if oai_set:
+			if type(oai_set) == sickle.models.Set:
+				set_name = oai_set.setName
+			elif type(oai_set) == str:
+				set_name = oai_set
+			
+			# return record identifiers filtered by set
+			return self.sickle.ListIdentifiers(set=set_name, metadataPrefix=self.metadata_prefix)			
+
+		# no filter
+		return self.sickle.ListIdentifiers(metadataPrefix=self.metadata_prefix)
+
+
+	def get_sets(self):
+
+		'''
+		Method to return generator of all published sets
+		'''
+
+		return self.sickle.ListSets()
+
+
+	def get_record(self, oai_record_id):
+
+		'''
+		Method to return a single record
+		'''
+
+		return sickle.GetRecord(identifier = oai_record_id, metadataPrefix = self.metadata_prefix)
+
+
+
+
+
+
+
+
+
 
 
 

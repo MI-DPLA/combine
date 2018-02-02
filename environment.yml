@@ -39,6 +39,7 @@ dependencies:
   - cookies==2.2.1
   - decorator==4.1.2
   - django==1.11.4
+  - django-background-tasks==1.1.13
   - django-datatables-view==1.14.0
   - django-extensions==1.9.0
   - django-filter==1.1.0
@@ -72,6 +73,7 @@ dependencies:
   - requests-kerberos==0.11.0
   - responses==0.8.1
   - scandir==1.5
+  - Sickle==0.6.2
   - simplegeneric==0.8.1
   - sqlalchemy==1.1.13
   - traitlets==4.3.2

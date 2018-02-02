@@ -10,6 +10,7 @@ import os
 import requests
 import shutil
 import sys
+import time
 
 # pyjxslt
 import pyjxslt
@@ -64,14 +65,13 @@ class CombineRecordSchema(object):
 
 		# schema for Combine records
 		self.schema = StructType([
-				StructField('record_id', StringType(), True),
-				StructField('oai_id', StringType(), True),
+				StructField('record_id', StringType(), True),				
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
-				StructField('success', BooleanType(), False)
+				StructField('success', BooleanType(), False)				
 			]
 		)
 
@@ -98,8 +98,7 @@ class HarvestOAISpark(object):
 
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
 			- record_id 
-			- job_id
-			- oai_id
+			- job_id			
 			- oai_set
 			- publish_set_id
 			- unique (TBD)
@@ -177,14 +176,6 @@ class HarvestOAISpark(object):
 		job_id_udf = udf(lambda id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
-		# add oai_id column
-		publish_set_id = job.record_group.publish_set_id
-		oai_id_udf = udf(lambda id: '%s%s:%s' % (
-			settings.COMBINE_OAI_IDENTIFIER,
-			publish_set_id,
-			id), StringType())
-		records = records.withColumn('oai_id', oai_id_udf(records.id))
-
 		# add oai_set
 		records = records.withColumn('oai_set', records.setIds[0])
 
@@ -236,7 +227,6 @@ class HarvestStaticXMLSpark(object):
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
 			- record_id 
 			- job_id
-			- oai_id
 			- oai_set
 			- publish_set_id
 			- unique (TBD)
@@ -320,7 +310,6 @@ class HarvestStaticXMLSpark(object):
 				# return success Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = etree.tostring(meta_root).decode('utf-8'),
 					error = '',
 					job_id = int(job_id),
@@ -337,7 +326,6 @@ class HarvestStaticXMLSpark(object):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = etree.tostring(meta_root).decode('utf-8'),
 					error = str(e),
 					job_id = int(job_id),
@@ -354,7 +342,6 @@ class HarvestStaticXMLSpark(object):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					oai_id = record_id,
 					document = '',
 					error = str(e),
 					job_id = int(job_id),
@@ -363,7 +350,7 @@ class HarvestStaticXMLSpark(object):
 				)
 
 		# transform via rdd.map
-		job_id = job.id
+		job_id = job.id		
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
 		# index records to DB and index to ElasticSearch
@@ -475,7 +462,6 @@ class TransformSpark(object):
 				# return Row
 				return Row(
 						record_id = row.record_id,
-						oai_id = row.oai_id,
 						document = trans_result[0],
 						error = trans_result[1],
 						job_id = int(job_id),
@@ -525,7 +511,7 @@ class MergeSpark(object):
 	'''
 
 	@staticmethod
-	def spark_function(spark, sc, **kwargs):
+	def spark_function(spark, sc, write_avro=True, **kwargs):
 
 		'''
 		Harvest records, select non-null, and write to avro files
@@ -596,12 +582,17 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
+		# if Analysis Job, do not write avro
+		if job.job_type == 'AnalysisJob':
+			write_avro = False
+
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=agg_df
+			records_df=agg_df,
+			write_avro=write_avro
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
@@ -698,38 +689,48 @@ class PublishSpark(object):
 			index_records=False
 		)
 
-		# copy indexed ES documents from input job
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		index_name = 'j%s' % job.id
-
-		# check if job ES index exists
-		if not es_handle_temp.indices.exists(index_name):
-			mapping = {'mappings':{'record':{'date_detection':False}}}
-			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
-
-		# prepare _reindex query
-		dupe_dict = {
-			'source':{
-				'index': 'j%s' % input_job.id,
-				'query':{}
-			},
-			'dest': {
-				'index':index_name
-			}
-		}
-		r = requests.post('http://%s:9200/_reindex' % settings.ES_HOST,
-				data=json.dumps(dupe_dict),
-				headers={'Content-Type':'application/json'}
-			)
-
-		# index to ES /published
-		ESIndex.index_published_job(
-			job_id = job.id,
-			publish_set_id=job.record_group.publish_set_id
+		# copy index from input job to new Publish job
+		index_to_job_index = ESIndex.copy_es_index(
+			source_index = 'j%s' % input_job.id,
+			target_index = 'j%s' % job.id,
+			wait_for_completion=False
 		)
 
-		# update uniqueness of all published records
+		# copy index from new Publish Job to /published index
+		# NOTE: because back to back reindexes, and problems with timeouts on requests,
+		# wait on task from previous reindex
+		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+		retry = 1
+		while retry <= 100:
+
+			# get task
+			task = es_handle_temp.tasks.get(index_to_job_index['task'])
+
+			# if task complete, index job index to published index
+			if task['completed']:
+				index_to_published_index = ESIndex.copy_es_index(
+					source_index = 'j%s' % job.id,
+					target_index = 'published',
+					wait_for_completion = False,
+					add_copied_from = job_id # do not use Job instance here, only pass string
+				)
+				break # break from retry loop
+
+			else:
+				print("indexing to /published, waiting on task node %s, retry: %s/10" % (task['task']['node'], retry))
+
+				# bump retries, sleep, and continue
+				retry += 1
+				time.sleep(3)
+				continue
+
+		# get PublishedRecords handle
 		pr = PublishedRecords()
+
+		# set records from job as published		
+		pr.set_published_field(job_id)
+
+		# update uniqueness of all published records
 		pr.update_published_uniqueness()
 
 		# finally, update finish_timestamp of job_track instance
@@ -745,9 +746,7 @@ class PublishSpark(object):
 def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
 
 	'''
-	Function to index records to DB and trigger indexing to ElasticSearch (ES)
-	
-		- generates and writes oai_id column to DB.
+	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
 
 	Args:
 		spark (pyspark.sql.session.SparkSession): spark instance from static job methods

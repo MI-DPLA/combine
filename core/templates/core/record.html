@@ -9,8 +9,6 @@
 		<li><strong>Combine ID:</strong> {{ record.id }}</li>
 		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
 		<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
-		<li><strong>Published OAI ID:</strong> <code>{{ record.oai_id }}</code></li>
-		<!-- <li><strong>Derived DPLA ID:</strong> <a href="https://dp.la/item/{{ record.derive_dpla_identifier }}" target="_blank">{{ record.derive_dpla_identifier }}</a></li> -->
 	</ul>
 
 	<!-- Show DPLA Mapped Fields if present -->
@@ -212,7 +210,7 @@
 		<h3>Record Document</h3>
 		{% if record.document != '' %}
 			<div style="width:75%;">
-				<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document }}</code></pre>
+				<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document_pretty_print }}</code></pre>
 			</div>
 		{% else %}
 			<p>None</p>

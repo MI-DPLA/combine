@@ -86,3 +86,27 @@ COMBINE_DATABASE = {
 
 # DPLA API
 DPLA_API_KEY = None
+
+
+# Analysis Jobs Org and Record Group
+'''
+This dictionary provides the name of the Organization and Record Group that Analysis Jobs will be created under.
+Because Analysis jobs are extremely similar to other workflow jobs, but do not lend themselves towards the established
+Organization --> Record Group --> Job hierarchy, this ensures they are treated similarily to other jobs, but skip the
+need for users to manually create these somewhat unique Organization and Record Group.  
+	- it is recommended to make these names quite unique, to avoid clashing with user created Orgs and Record Groups
+	- the Organization and Record Group names defined in ANALYSIS_JOBS_HIERARCHY will NOT show up in any Org or Record
+	Group views or other workflows
+	- it is quite normal, and perhaps even encouraged, to leave these as the defaults provided
+'''
+ANALYSIS_JOBS_HIERARCHY = {
+	'organization':'AnalysisOrganizationf8ed4bfcefc4dbf87b588a5de9b7cc95', # suffix is md5 hash of 'AnalysisOrganization'
+	'record_group':'AnalysisRecordGroupf660bb4826bea8b63fd773d27d687cfd' # suffix is md5 hash of 'AnalysisRecordGroup'
+}
+
+
+# Django-Background-Tasks
+# http://django-background-tasks.readthedocs.io/en/latest/#
+MAX_ATTEMPTS = 3
+MAX_RUN_TIME = 14800
+BACKGROUND_TASK_RUN_ASYNC = False

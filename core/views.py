@@ -30,6 +30,9 @@ from core.es import es_handle
 # import oai server
 from core.oai import OAIProvider
 
+# import background tasks
+from core import tasks
+
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
@@ -56,24 +59,38 @@ def breadcrumb_parser(path):
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
-		crumbs.append(('Organizations', reverse('organizations')))
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
-		crumbs.append((org.name, org_m.group(1)))
+		if org.for_analysis:
+			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
+			crumbs.append(('Analysis', reverse('analysis')))
+		else:
+			crumbs.append(("Organzation - %s" % org.name, org_m.group(1)))
 
 	# record_group
 	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
 	if rg_m:
 		rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
-		crumbs.append(("%s" % rg.name, rg_m.group(1)))
+		if rg.for_analysis:
+			logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
+		else:
+			crumbs.append(("RecordGroup - %s" % rg.name, rg_m.group(1)))
 
 	# job
 	j_m = re.match(r'(.+?/job/([0-9]+))', path)
 	if j_m:
 		j = models.Job.objects.get(pk=int(j_m.group(2)))
-		crumbs.append(("%s" % j.name, j_m.group(1)))
+		if j.record_group.for_analysis:
+			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
+		else:
+			crumbs.append(("Job - %s" % j.name, j_m.group(1)))
+
+	# record
+	r_m = re.match(r'(.+?/record/([0-9]+))', path)
+	if r_m:
+		r = models.Record.objects.get(pk=int(r_m.group(2)))
+		crumbs.append(("Record - %s" % r.record_id, r_m.group(1)))
 
 	# return
-	# logger.debug(crumbs)
 	return crumbs
 
 
@@ -165,10 +182,10 @@ def organizations(request):
 		logger.debug('retrieving organizations')
 		
 		# get all organizations
-		orgs = models.Organization.objects.all()
+		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
 		# get Organization form
-		organization_form = forms.OrganizationForm()
+		organization_form = forms.OrganizationForm()		
 
 		# render page
 		return render(request, 'core/organizations.html', {
@@ -198,10 +215,13 @@ def organization(request, org_id):
 	org = models.Organization.objects.get(pk=org_id)
 
 	# get record groups for this organization
-	record_groups = models.RecordGroup.objects.filter(organization=org)
+	record_groups = models.RecordGroup.objects.filter(organization=org).exclude(for_analysis=True)
 
 	# get RecordGroup form
 	record_group_form = forms.RecordGroupForm()
+	# exclude Organization for Analysis Jobs
+	record_group_form.fields['organization'].queryset = models.Organization.objects.exclude(
+		name=settings.ANALYSIS_JOBS_HIERARCHY['organization'])
 	
 	# render page
 	return render(request, 'core/organization.html', {
@@ -283,9 +303,6 @@ def record_group(request, org_id, record_group_id):
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
-	# retrieve current livy session
-	livy_session = models.LivySession.objects.filter(active=True).first()
-
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
@@ -293,7 +310,10 @@ def record_group(request, org_id, record_group_id):
 	jobs = models.Job.objects.filter(record_group=record_group_id)
 
 	# get record group job lineage
-	job_lineage = record_group.get_jobs_lineage()	
+	job_lineage = record_group.get_jobs_lineage()
+
+	# get all currently applied publish set ids
+	publish_set_ids = models.PublishedRecords.get_publish_set_ids()
 
 	# loop through jobs
 	for job in jobs:
@@ -303,12 +323,34 @@ def record_group(request, org_id, record_group_id):
 
 	# render page 
 	return render(request, 'core/record_group.html', {
-			'livy_session':livy_session,
 			'record_group':record_group,
 			'jobs':jobs,
 			'job_lineage_json':json.dumps(job_lineage),
+			'publish_set_ids':publish_set_ids,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
+
+
+def record_group_update_publish_set_id(request, org_id, record_group_id):
+
+	if request.method == 'POST':
+
+		# get record group
+		record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
+
+		logger.debug(request.POST)
+
+		# update RecordGroup publish set id		
+		if request.POST.get('new_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('new_publish_set_id')
+			record_group.save()
+		elif request.POST.get('existing_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
+			record_group.save()
+		else:
+			logger.debug('publish_set_id not set, skipping')
+
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
 
@@ -318,12 +360,28 @@ def record_group(request, org_id, record_group_id):
 
 @login_required
 def all_jobs(request):
+
+	'''
+	View to show all jobs, across all Organizations, RecordGroups, and Job types
+
+	GET Args:
+		include_analysis: if true, include Analysis type jobs
+	'''
+
+	# capture include_analysis GET param if present
+	include_analysis = request.GET.get('include_analysis', False)
 	
 	# get all jobs associated with record group
-	jobs = models.Job.objects.all()
+	if include_analysis:
+		jobs = models.Job.objects.all()
+	else:
+		jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
 
 	# get job lineage for all jobs
-	ld = models.Job.get_all_jobs_lineage(directionality='downstream')
+	if include_analysis:
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=False)
+	else:
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=True)
 
 	# loop through jobs and update status
 	for job in jobs:
@@ -346,9 +404,16 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 	# get job
 	job = models.Job.objects.get(pk=job_id)
+
+	# set job status to deleting
+	job.name = "%s (DELETING)" % job.name	
+	job.deleted = True
+	job.status = 'deleting'
+	job.save()
 	
-	# remove from DB
-	job.delete()
+	# remove via background tasks
+	bg_task = tasks.job_delete(job.id)
+	logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
 
 	logger.debug('job deleted in: %s' % (time.time()-stime))
 
@@ -403,17 +468,6 @@ def job_errors(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_input_select(request):
-	
-	logger.debug('loading job selection view')
-
-	jobs = models.Job.objects.all()
-	
-	# return
-	return render(request, 'core/job_input_select.html', {'jobs':jobs})
-
-
-@login_required
 def job_update_note(request, org_id, record_group_id, job_id):
 	
 	if request.method == 'POST':
@@ -428,6 +482,27 @@ def job_update_note(request, org_id, record_group_id, job_id):
 
 		# update job note
 		cjob.job.note = job_note
+		cjob.job.save()
+
+		# redirect 		
+		return redirect(request.META.get('HTTP_REFERER'))
+
+
+@login_required
+def job_update_name(request, org_id, record_group_id, job_id):
+	
+	if request.method == 'POST':
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get job note
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# update job note
+		cjob.job.name = job_name
 		cjob.job.save()
 
 		# redirect 		
@@ -768,7 +843,7 @@ def job_merge(request, org_id, record_group_id):
 	if request.method == 'GET':
 		
 		# retrieve all jobs
-		input_jobs = models.Job.objects.all()
+		input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -863,6 +938,9 @@ def job_publish(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all currently applied publish set ids
+		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
+
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
@@ -870,6 +948,7 @@ def job_publish(request, org_id, record_group_id):
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
+				'publish_set_ids':publish_set_ids,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
@@ -894,6 +973,16 @@ def job_publish(request, org_id, record_group_id):
 		# retrieve input job
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
+
+		# update RecordGroup publish set id		
+		if request.POST.get('new_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('new_publish_set_id')
+			record_group.save()
+		elif request.POST.get('existing_publish_set_id') != '':
+			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
+			record_group.save()
+		else:
+			logger.debug('publish_set_id not set, skipping')
 
 		# initiate job
 		cjob = models.PublishJob(
@@ -1152,7 +1241,6 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
 	try:
 		job_details = json.loads(record.job.job_details)
-		logger.debug(job_details)
 
 		# TransformJob
 		if record.job.job_type == 'TransformJob':
@@ -1182,7 +1270,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 			'record_stages':record_stages,
 			'job_details':job_details,
 			'dpla_api_doc':dpla_api_doc,
-			'dpla_api_json':dpla_api_json
+			'dpla_api_json':dpla_api_json,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 
@@ -1414,6 +1503,122 @@ def oai(request):
 
 
 ####################################################################
+# Analysis  													   #
+####################################################################
+
+def analysis(request):
+
+	'''
+	Analysis home
+	'''
+
+	# get all jobs associated with record group
+	analysis_jobs = models.Job.objects.filter(job_type='AnalysisJob')
+
+	# get analysis jobs hierarchy
+	analysis_hierarchy = models.AnalysisJob.get_analysis_hierarchy()
+
+	# get analysis jobs lineage
+	analysis_job_lineage = models.Job.get_all_jobs_lineage(
+			organization = analysis_hierarchy['organization'],
+			record_group = analysis_hierarchy['record_group'],
+			exclude_analysis_jobs = False
+		)
+
+	# loop through jobs
+	for job in analysis_jobs:
+		# update status
+		job.update_status()
+
+	# render page 
+	return render(request, 'core/analysis.html', {
+			'jobs':analysis_jobs,
+			'job_lineage_json':json.dumps(analysis_job_lineage),
+			'for_analysis':True
+		})
+
+
+@login_required
+def job_analysis(request):
+
+	'''
+	Run new analysis job
+	'''
+
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# retrieve all jobs
+		input_jobs = models.Job.objects.all()
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
+
+		# get job lineage for all jobs (filtered to input jobs scope)
+		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+
+		# render page
+		return render(request, 'core/job_analysis.html', {
+				'job_select_type':'multiple',				
+				'input_jobs':input_jobs,
+				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
+				'job_lineage_json':json.dumps(ld)				
+			})
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('Running new analysis job')
+
+		# debug form
+		logger.debug(request.POST)
+
+		# get job name
+		job_name = request.POST.get('job_name')
+		if job_name == '':
+			job_name = None
+
+		# get job note
+		job_note = request.POST.get('job_note')
+		if job_note == '':
+			job_note = None
+
+		# retrieve jobs to merge
+		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
+		logger.debug('analyzing jobs: %s' % input_jobs)
+
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+
+		# get requested validation scenarios
+		validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+		# initiate job
+		cjob = models.AnalysisJob(
+			job_name=job_name,
+			job_note=job_note,
+			user=request.user,			
+			input_jobs=input_jobs,
+			index_mapper=index_mapper,
+			validation_scenarios=validation_scenarios
+		)
+		
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
+
+		return redirect('analysis')
+
+
+####################################################################
 # Datatables endpoints 											   #
 # https://bitbucket.org/pigletto/django-datatables-view/overview   #
 ####################################################################
@@ -1545,6 +1750,7 @@ class DTPublishedJson(BaseDatatableView):
 		columns = [
 			'id',
 			'record_id',
+			'job__record_group',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique_published',
@@ -1558,6 +1764,7 @@ class DTPublishedJson(BaseDatatableView):
 		order_columns = [
 			'id',
 			'record_id',
+			'job__record_group',
 			'job__record_group__publish_set_id', # note syntax for Django FKs
 			'oai_set',
 			'unique_published',
@@ -1576,7 +1783,7 @@ class DTPublishedJson(BaseDatatableView):
 			# get PublishedRecords instance
 			pr = models.PublishedRecords()
 			
-			# return filtered queryset
+			# return queryset
 			return pr.records
 
 
@@ -1590,6 +1797,12 @@ class DTPublishedJson(BaseDatatableView):
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
+
+			if column == 'job__record_group':
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record_group, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id						
+					}), row.job.record_group.name)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -1623,13 +1836,26 @@ class DTPublishedJson(BaseDatatableView):
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
+
 			if search:
-				qs = qs.filter(
-					Q(id=search) | 
-					Q(record_id__contains=search) | 
-					Q(document__contains=search) | 
-					Q(job__record_group__publish_set_id=search)
-				)
+
+				# determine if search is integer
+				try:
+					int_qs = int(search)					
+				except:
+					int_qs = False
+
+				# if integer
+				if int_qs:
+					qs = qs.filter(
+						Q(id=search)						
+					)
+				else:
+					qs = qs.filter(
+						Q(record_id__contains=search) | 
+						Q(document__contains=search) | 
+						Q(job__record_group__publish_set_id=search)
+					)
 
 			return qs
 
@@ -1794,7 +2020,6 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 @login_required
 def index(request):
 	username = request.user.username
-	logger.info('Welcome to Combine, %s' % username)
 	return render(request, 'core/index.html', {'username':username})
 
 

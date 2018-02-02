@@ -154,15 +154,18 @@ class OAIProvider(object):
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
 
+		# get records
+		records = self.published.records
+
 		# if set present, filter by this set
 		if self.publish_set_id:
 			logger.debug('applying publish_set_id filter')
-			self.published.records = self.published.records.filter(job__record_group__publish_set_id = self.publish_set_id)
+			records = records.filter(job__record_group__publish_set_id = self.publish_set_id)
 
 		# loop through rows, limited by current OAI transaction start / chunk
-		for record in self.published.records[self.start:(self.start+self.chunk_size)]:
+		for record in records[self.start:(self.start+self.chunk_size)]:
 
-			record = OAIRecord(args=self.args, record_id=record.oai_id, document=record.document, timestamp=self.request_timestamp_string)
+			record = OAIRecord(args=self.args, record_id=record.record_id, document=record.document, timestamp=self.request_timestamp_string)
 
 			# include full metadata in record
 			if include_metadata:
@@ -333,18 +336,29 @@ class OAIProvider(object):
 		# get single row
 		single_record = self.published.get_record(self.args['identifier'])
 
-		# open as OAIRecord 
-		record = OAIRecord(args=self.args, record_id=single_record.oai_id, document=single_record.document, timestamp=self.request_timestamp_string)
+		# if single record found
+		if single_record:
 
-		# include metadata
-		record.include_metadata()
+			# open as OAIRecord 
+			record = OAIRecord(
+					args=self.args,
+					record_id=single_record.record_id,
+					document=single_record.document,
+					timestamp=self.request_timestamp_string
+				)
 
-		# append to record_nodes
-		self.record_nodes.append(record.oai_record_node)
+			# include metadata
+			record.include_metadata()
 
-		# add to verb node
-		for oai_record_node in self.record_nodes:
-			self.verb_node.append(oai_record_node)
+			# append to record_nodes
+			self.record_nodes.append(record.oai_record_node)
+
+			# add to verb node
+			for oai_record_node in self.record_nodes:
+				self.verb_node.append(oai_record_node)
+
+		else:
+			logger.debug('record not found for id: %s, not appending node' % self.args['identifier'])
 
 		# report
 		etime = time.time()

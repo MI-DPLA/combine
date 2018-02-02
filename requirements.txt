@@ -8,6 +8,7 @@ configparser==3.5.0
 cookies==2.2.1
 decorator==4.1.2
 Django==1.11.4
+django-background-tasks==1.1.13
 django-datatables-view==1.14.0
 django-extensions==1.9.0
 django-filter==1.1.0
@@ -48,6 +49,7 @@ requests==2.18.4
 requests-kerberos==0.11.0
 responses==0.8.1
 scandir==1.5
+Sickle==0.6.2
 simplegeneric==0.8.1
 six==1.10.0
 SQLAlchemy==1.1.13

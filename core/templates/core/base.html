@@ -4,10 +4,14 @@
 <html>
 	<head>
 		<meta charset="utf-8">
-	    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+		<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/jQuery-3.2.1/jquery-3.2.1.min.js' %}"></script>
+		
+		<!-- DataTables -->
 		<link rel="stylesheet" type="text/css" href="{% static 'core/datatables.min.css' %}">
-	    <script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
+		<script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
+		<script type="text/javascript" charset="utf8" src="{% static 'core/fnFindCellRowIndexes.js' %}"></script>
+		
 		<style>
 			body {
 				padding:0px 20px 20px 20px;
@@ -19,7 +23,7 @@
 			}
 			.container {
 				max-width: 95%;
-			}
+			}			
 			.HarvestJob {
 				background-color:#deffde;
 			}
@@ -32,6 +36,9 @@
 			.PublishJob {
 				background-color:#def3ff;
 			}
+			.AnalysisJob {
+				background-color:#e8d3bd;
+			}
 			.error {
 				color:red;
 			}
@@ -41,6 +48,60 @@
 			.error_record_row{
 				background-color:red;
 			}
+			.grayed_dt_row {
+				background-color: #ececec;
+				color: #949494;
+			}
+			div.grayed_dt_row, td.grayed_dt_row {
+				background-color: #ececec;
+				color: #949494;
+			}
+			.grayed_dt_row a {
+				background-color: #ececec;
+				color: #949494;
+			}
+			.invalid_job {
+				background-color:#ff9898;
+			}
+			#job_family_diagram {
+				width: 100%;
+				height: 400px;				
+				border: none; 
+			}
+
+			/* main navigation */
+			#main_nav {
+				list-style-type:none;
+				margin-left:-40px;
+			}
+
+			#main_nav li {
+				float: left;
+				margin: 0;
+			    padding: 0;
+			    overflow: hidden;
+			}
+
+			#main_nav li a {
+				display: block;
+				text-align: center;
+				padding-right:20px;
+			}
+
+			.deleted {
+				background-color: #ececec;
+				color: #949494;
+			}
+			.deleted a {
+				background-color: #ececec;
+				color: #949494;
+			}
+
+			.deleted > div {
+				background-color: #ececec;
+				color: #949494;
+			}
+
 		</style>
 
 		<!-- bootstrap -->
@@ -54,32 +115,37 @@
 		<!--vis.js-->
 		<script type="text/javascript" src="{% static 'core/vis-4.21.0/dist/vis.min.js' %}"></script>
 		<script type="text/javascript" src="{% static 'core/visjs_network_global.js' %}"></script>
-  		<link href="{% static 'core/vis-4.21.0/dist/vis.min.css' %}" rel="stylesheet" type="text/css" />
+		<link href="{% static 'core/vis-4.21.0/dist/vis.min.css' %}" rel="stylesheet" type="text/css" />
 
 	</head>
 	<body>
 
-		<h2><a href="{% url 'combine_home' %}">&#128668; Combine</a></h2>		
-		<ul>
-			<li><a href="{% url 'livy_sessions' %}"><span style="background-color:{% if LIVY_SESSION.status == 'idle' %}#deffde{% elif LIVY_SESSION.status == 'busy'%}#fffcde{% else %}rgb(255, 152, 152){% endif %};">Livy/Spark Session ({{ LIVY_SESSION.status}})</span></a></li>
-			<li><a href="{% url 'organizations' %}">Organizations</a></li>
-			<li><a href="{% url 'published' %}">Published Records</a></li>
-			<li><a href="{% url 'configuration' %}">Configuration</a></li>
-			<li><a href="{% url 'all_jobs' %}">All Jobs</a></li>
-			<!-- <li><a href="http://{{ APP_HOST }}:50070" target="_blank">HDFS Browser</a></li> -->
-		</ul>	
+		<h2><a href="{% url 'combine_home' %}">&#128668; Combine</a></h2>
 
-		<!-- simple breadcrumbs -->
-		<div id="breadcrumbs">
-			<a href="/combine"><em>Home</em></a> 
-			{% if breadcrumbs %}
-				{% for crumb in breadcrumbs %}
-					/ <a href="{{ crumb.1 }}"><em>{{ crumb.0 }}</em></a> 
-				{% endfor %}
-			{% endif %}
+		<div style="width:100%; clear:both; padding-bottom:30px;">
+			<ul id="main_nav">
+				<li><a href="{% url 'organizations' %}">Organizations</a></li>
+				<li><a href="{% url 'analysis' %}">Analysis</a></li>
+				<li><a href="{% url 'published' %}">Published</a></li>
+				<li><a href="{% url 'all_jobs' %}">All Jobs</a></li>
+				<li><a href="{% url 'configuration' %}">Configuration</a></li>
+				<li><a href="{% url 'livy_sessions' %}"><span style="background-color:{% if LIVY_SESSION.status == 'idle' %}#deffde{% elif LIVY_SESSION.status == 'busy'%}#fffcde{% else %}rgb(255, 152, 152){% endif %};">Livy/Spark Session ({{ LIVY_SESSION.status}})</span></a></li>
+			</ul>	
 		</div>
 
-		<hr>
+		<div style="width:100%; clear:both;">
+			<!-- simple breadcrumbs -->
+			<div id="breadcrumbs">
+				<a href="/combine"><em>Home</em></a> 
+				{% if breadcrumbs %}
+					{% for crumb in breadcrumbs %}
+						/ <a href="{{ crumb.1 }}"><em>{{ crumb.0 }}</em></a> 
+					{% endfor %}
+				{% endif %}
+			</div>
+
+			<hr>
+		</div>
 
 		{% block content %}
 		{% endblock %}

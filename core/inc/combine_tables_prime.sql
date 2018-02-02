@@ -13,13 +13,13 @@
 
 CREATE TABLE `core_record` (
   `id` int(11) NOT NULL AUTO_INCREMENT,
-  `record_id` varchar(1024) DEFAULT NULL,
-  `oai_id` varchar(1024) DEFAULT NULL,
+  `record_id` varchar(1024) DEFAULT NULL,  
   `document` longtext,
   `error` longtext,
   `unique` tinyint(1) NOT NULL,
   `unique_published` tinyint(1) DEFAULT NULL,
   `job_id` int(11) NOT NULL,
+  `published` tinyint(1) NOT NULL DEFAULT 0,
   `oai_set` varchar(255) DEFAULT NULL,
   `success` tinyint(1) DEFAULT 1 NOT NULL,
   PRIMARY KEY (`id`),
