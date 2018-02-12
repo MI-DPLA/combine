@@ -33,7 +33,7 @@
 				<th>OAI Set</th>
 				<td>
 					{% if record_group.publish_set_id %}
-						<a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a>
+						<a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a>
 					{% else %}
 						<span style="color:red;"><strong>Not set - records will not sort under an OAI set in published records</strong></span>
 					{% endif %}

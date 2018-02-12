@@ -20,7 +20,7 @@
 			<tr>
 				<td>
 					{% if job.record_group.publish_set_id %}
-						<a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
+						<a href="{% url 'oai' %}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
 					{% else %}
 						<span style="color:red;"><strong>Not set</strong></span>
 					{% endif %}
@@ -83,10 +83,10 @@
 <h2>OAI Endpoint examples</h2>
 
 <ul>
-	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=Identify" target="_blank">Identify</a></li>
-	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
-	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords" target="_blank">List Records</a></li>
-	<li><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListSets" target="_blank">List Sets</a></li>
+	<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
+	<li><a href="{% url 'oai' %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
+	<li><a href="{% url 'oai' %}?verb=ListRecords" target="_blank">List Records</a></li>
+	<li><a href="{% url 'oai' %}?verb=ListSets" target="_blank">List Sets</a></li>
 </ul>
 
 

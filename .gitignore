@@ -113,3 +113,6 @@ combine/localsettings.py
 # Mac OS
 .DS_Store
 ._.DS_Store
+
+# Combine static files
+static/

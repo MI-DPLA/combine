@@ -20,7 +20,7 @@
 					<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.name }}</a></td>
 					<td>{{ record_group.description }}</td>
 					{% if record_group.is_published %}
-						<td style="background-color:#def3ff;"><a href="{{ COMBINE_OAI_ENDPOINT }}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
+						<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
 					{% else %}
 						<td><span style="color: red;">Not published</span></td>
 					{% endif %}
