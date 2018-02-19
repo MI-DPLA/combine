@@ -220,6 +220,17 @@ Here, you will find details about a specific Job.  Major sections include:
 
 Sortable, searchable, this shows all the individual, discrete Records for this Job.  This is *one*, but not the only, entry point for viewing the details about a single Record.  It is also helpful for determining if the Record is unique *with respect to other Records from this Job*.
 
+#### Validation results
+
+This table shows all the Validation Scenarios that were run for this job, including any/all failures for each scenario.  
+
+For our example Harvest, under *DPLA minimum*, we can see that there were 250 Records that failed validation.  For the *Date checker* validation, all records passed.  We can click "See Failures" to get the specific Records that failed, with some information about which tests within that Validation Scenario they failed.
+
+Additionally, we can click "Run validation results report" to generate an Excel or .csv output of the validation results.  From that screen, you are able to select:
+
+  * which Validation Scenarios to include in report
+  * any mapped fields (see below for an explanation of them) that would be helpful to include in the report as columns
+
 #### Indexed Fields
 
 This table represents individual fields as mapped from a Record's source XML record to ElasticSearch.  This relates back the "Index Mapper" that we select when running each Job.  
