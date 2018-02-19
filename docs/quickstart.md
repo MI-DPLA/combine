@@ -2,8 +2,9 @@
 
 Sometimes you can't beat kicking the tires to see how an application works.  Demo data from unit tests will be reused here to avoid the need to provide actual OAI-PMH endpoints, transformation XSLT, or other configurations unique to a DPLA Service Hub.  
 
-This quickstart guide will walk through:
+This quickstart guide will walk through the following, and it's recommended to do so in order:
 
+  * Combine python environment
   * starting / stopping Combine
   * data model (Organizations, RecordGroups, Jobs, Records)
   * configuration
@@ -17,7 +18,18 @@ This quickstart guide will walk through:
     * running reports
   * publishing records
 
-For simplicity's sake, we will assume Combine is installed on a server with the domain name of `combine`, though likely running at the IP `192.168.45.10`, which the Ansible/Vagrant install from [Combine-Playbook](https://github.com/WSULib/combine-playbook) defaults to.  On most systems you can point that IP to a domain name like `combine` by modifying your `/etc/hosts` file on your local machine.  **Just fair warning:** `combine` and `192.168.45.10` will be used interchangeably throughout.
+For simplicity's sake, we will assume Combine is installed on a server with the domain name of `combine`, though likely running at the IP `192.168.45.10`, which the Ansible/Vagrant install from [Combine-Playbook](https://github.com/WSULib/combine-playbook) defaults to.  On most systems you can point that IP to a domain name like `combine` by modifying your `/etc/hosts` file on your local machine.  **Fair warning:** `combine` and `192.168.45.10` might be used interchangeably throughout.
+
+
+## Combine python environment
+
+Combine runs in a [Miniconda](https://conda.io/miniconda.html) python environement, which can be activated from any filepath location by typing:
+
+```
+source active combine
+```
+
+**Note:** Most commands in this QuickStart guide require you to be in this environment!
   
 
 ## Starting / Stopping Combine
@@ -106,13 +118,81 @@ Lastly, the most granular major entity in Combine is an individual **Record**.  
 
 ## Configuration
 
+Currently, there are three main areas in Combine that require user configuration:
 
+  * OAI-PMH endpoints
+  * Transformation Scenarios
+  * Validation Scenarios
+
+For the sake of this quickstart demo, we can bootstrap our instance of Combine with some demo configurations, creating the following:
+
+  * Transformation Scenario
+    * *MODS to Service Hub profile (XSLT transformation)*
+  * Validation Scenarios
+    * *DPLA minimum (schematron validation)*
+    * *Date checker (python validation)*
+
+To boostrap, from `/opt/combine` run:
+
+```
+./manage.py bootstrapdemoconfig
+```
+
+You can confirm these demo configurations were created by navigating to the configuration screen at [http://192.168.45.10/combine/configurations](http://192.168.45.10/combine/configurations).
+  
 
 ## Harvesting Records
 
+### Static XML harvest
+
+Now we're ready to run our first Job and generate our first Records.  For this QuickStart, as we have not yet configured any OAI-PMH endpoints, we can run a **static XML** harvest on some demo data included with Combine.
+
+From the RecordGroup screen, near the bottom and under "Harvest", click "Static XML".  You will be presented with a screen to run a harvest job of static XML files from disk.
+
+Many fields are option -- e.g. Name, Description -- but we will need to tell it where to find the files.  For the field `Location of XML files on disk:`, enter the following, which points to a MODS file containing 250 demo records:
+
+```
+/tmp/combine/qs/mods
+```
+
+Next, we need to provide an XPath query that locates each discrete record within the providedd MODS file.  For the field `XPath for metadata document root (default /*)`, enter the following:
+
+```
+/mods:mods
+```
+
+Next, we can select the **Index Mapping** we will use for this job.  The default "Generic XPath based mapper" will work for now, with more discussion on Index Mapping later.
+
+Next, we can select Validation Scenarios to run for all Records in this Job.  If you bootstrapped the demo configurations from steps above, you should see two options, "DPLA minimum" and "Date checker"; make sure both are checked.
+
+Finally, click "Harvest Static Files" at the bottom!
+
+This should return you to the RecordGroup page, where a new Job has appeared and is `running` under the `Status` column in the Job table.  A static job of this size should not take long, refresh the page in 10-20 seconds, and hopefully, you should see the Job status switch to `available`.
+
+This table represents all Jobs run for this RecordGroup, and will grow as we run some more.  You may also note that the `Is Valid` column is red and shows `False`, meaning some records have failed the Validation Scenarios we optionally ran for this Job.  We will return to this later.
+
+For now, let's continue by running an XSLT Transformation on these records!
 
 
+## Transforming Records
 
+In the previous step, we harvestd 250 records from a bunch of static MODS XML documents.  Now, we will transform all the Records in that Job with an XSLT Transformation Scenario.  
+
+From the RecordGroup screen, click the "Transform" link at the bottom.
+
+For a Transform job, you are presented with other Jobs from this RecordGroup that will be used as an **input** job for this Transformation.  
+
+Again, Job Name and Description are both optional.  What is required, is selecting what job will be transformed.  This can be done by clicking the radio button next to the job in the table of Jobs (at this stage, we likely only have the one Harvest we just performed).
+
+Next, we must select a **Transformation Scenario** to apply to the records from the input Job.  We have a Transformation Scenario prepared for us from the quickstart bootstrapping, but this is where you might optionally select different transforms depending on your task at hand.  While only one Transformation Scenario can be applied to a single Transform job, many scenarios can be saved for use by all users, ready for different needs.
+
+Select `MODS to Service Hub profile / xslt` from the dropdown.
+
+Once the input job (radio button) and transformation scenario (dropdown) are selected, we are presented with the same Index Mapping and Validation Scenario options.  As will become apparent, these are configurable for each Job that is run.  We can leave the defaults again, double checking that the two Validation Scenarios -- *DPLA minimum* and *Date checker* -- are both checked.
+
+Finally, click "Transform" at the bottom.
+
+Again, we are kicked back to the RecordGroup screen, and should hopefully see a Transform job `running` as status.  Transforms can take a bit longer than harvests, particularly with the additional Validation Scenarios we are running; but still a small job, might take anywhere from 15-30 seconds.  Refresh the page until it shows the status as `available`.
 
 
 

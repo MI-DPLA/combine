@@ -339,12 +339,12 @@ def test_add_python_validation_scenario():
 
 	# get python validation from test data
 	with open('tests/data/python_validation.py','r') as f:
-		sch_payload = f.read()
+		py_payload = f.read()
 
 	# init new validation scenario
 	python_validation_scenario = ValidationScenario(
 		name='temp_vs_%s' % str(uuid.uuid4()),
-		payload=sch_payload,
+		payload=py_payload,
 		validation_type='python',
 		default_run=False
 	)
