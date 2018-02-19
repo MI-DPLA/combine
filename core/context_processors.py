@@ -8,8 +8,7 @@ def combine_settings(request):
 	'''
 
 	return {
-		'APP_HOST': settings.APP_HOST,
-		'COMBINE_OAI_ENDPOINT': settings.COMBINE_OAI_ENDPOINT,
+		'APP_HOST': settings.APP_HOST,		
 		'DPLA_API_KEY': settings.DPLA_API_KEY
 	}
 

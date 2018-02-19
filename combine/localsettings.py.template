@@ -24,7 +24,7 @@ LIVY_PORT = 8998
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
     'jars':[],
-    'files':[
+    'pyFiles':[
     	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/jobs.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/record_validation.py' % COMBINE_INSTALL_PATH.rstrip('/'),
@@ -58,7 +58,6 @@ SERVICE_HUB_PREFIX = 'mi--'
 
 
 # OAI Server
-COMBINE_OAI_ENDPOINT = 'http://combine-vm:8000/combine/oai'
 OAI_RESPONSE_SIZE = 500
 COMBINE_OAI_IDENTIFIER = 'oai:digital.library.wayne.edu'
 METADATA_PREFIXES = {
