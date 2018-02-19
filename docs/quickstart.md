@@ -230,7 +230,7 @@ Additionally, we can click "Run validation results report" to generate an Excel 
   * which Validation Scenarios to include in report
   * any mapped fields (see below for an explanation of them) that would be helpful to include in the report as columns
 
-More information about [Validation Scenarios](#validation-scenarios).
+More information about [Validation Scenarios]().
 
 #### Indexed Fields
 

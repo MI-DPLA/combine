@@ -10,6 +10,8 @@ The name "Combine", pronounced /kämˌbīn/, is a nod to the [combine harvester 
 
 See the [docs](docs) folder for more detailed documentation.
 
+Also available, a ["QuickStart" walkthrough](docs/quickstart.md).
+
 ## Installation
 
 Combine has a fair amount of server components, dependencies, and configurations that must be in place to work, as it leverages [Apache Spark](https://spark.apache.org/), among other applications, for processing on the backend.
