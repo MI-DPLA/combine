@@ -4,20 +4,19 @@ Sometimes you can't beat kicking the tires to see how an application works.  Dem
 
 This quickstart guide will walk through the following, and it's recommended to do so in order:
 
-  * Combine python environment
-  * starting / stopping Combine
-  * data model (Organizations, RecordGroups, Jobs, Records)
-  * configuration
+  * [Combine python environment](#combine-python-environment)
+  * [starting / stopping Combine](#starting--stopping-combine)
+  * [Combine data model](#combine-data-model)
+    * Organizations, RecordGroups, Jobs, Records
+  * [configuration](#configuration)
     * setting up OAI-PMH endpoints
     * creating Transformation Scenarios
     * creating Validation Scenarios
-  * harvesting records
-  * transforming records
-  * looking at Jobs and Records
-  * duplicating / merging jobs
-  * validation of records
-    * running reports
-  * publishing records
+  * [harvesting Records](#harvesting-records)
+  * [transforming Records](#transforming-records)
+  * [looking at Jobs and Records](#looking-at-jobs-and-records)
+  * [duplicating / merging Jobs]()  
+  * [publishing Records](#publishing-records)
 
 For simplicity's sake, we will assume Combine is installed on a server with the domain name of `combine`, though likely running at the IP `192.168.45.10`, which the Ansible/Vagrant install from [Combine-Playbook](https://github.com/WSULib/combine-playbook) defaults to.  On most systems you can point that IP to a domain name like `combine` by modifying your `/etc/hosts` file on your local machine.  **Fair warning:** `combine` and `192.168.45.10` might be used interchangeably throughout.
 
@@ -121,9 +120,9 @@ Lastly, the most granular major entity in Combine is an individual **Record**.  
 
 Currently, there are three main areas in Combine that require user configuration:
 
-  * OAI-PMH endpoints
-  * Transformation Scenarios
-  * Validation Scenarios
+  * [OAI-PMH endpoints]()
+  * [Transformation Scenarios]()
+  * [Validation Scenarios]()
 
 For the sake of this quickstart demo, we can bootstrap our instance of Combine with some demo configurations, creating the following:
 
@@ -231,6 +230,8 @@ Additionally, we can click "Run validation results report" to generate an Excel 
   * which Validation Scenarios to include in report
   * any mapped fields (see below for an explanation of them) that would be helpful to include in the report as columns
 
+More information about [Validation Scenarios](#validation-scenarios).
+
 #### Indexed Fields
 
 This table represents individual fields as mapped from a Record's source XML record to ElasticSearch.  This relates back the "Index Mapper" that we select when running each Job.  
@@ -263,8 +264,9 @@ Clicking on the button "Show field analysis explanation" will reveal some inform
 
 **Note:** Short of an extended discussion about this mapping, and possible value, it is worth noting these indexed fields are used almost exclusively for *analysis*, and are not any kind of final mapping or transformation on the Record itself.  The Record's XML is always stored seperately in MySQL (and on disk as Avro files), and is used for any downstream transformations or publishing.  The only exception being where Combine attempts to query the DPLA API to match records, which is based on these mapped fields, but more on that later.
 
+## Duplicating / Merging Jobs
 
-
+## Publishing Records
 
 
 
