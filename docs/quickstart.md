@@ -218,7 +218,7 @@ Here, you will find details about a specific Job.  Major sections include:
 
 #### Records table
 
-Sortable, searchable, this shows all the individual, discrete Records for this Job.  This is the one entry point for viewing the details about a single Record.  It is also helpful for determining if the Record *is unique with respect to this Job*.
+Sortable, searchable, this shows all the individual, discrete Records for this Job.  This is *one*, but not the only, entry point for viewing the details about a single Record.  It is also helpful for determining if the Record is unique *with respect to other Records from this Job*.
 
 #### Indexed Fields
 
@@ -235,22 +235,22 @@ For example, it might map the following XML block:
 </mods:titleInfo>
 ```
 
-into the following *two* ElasticSearch fields:
+into the following *two* ElasticSearch key/value pairs:
 
 ```
-mods_titleInfo_title
-mods_titleInfo_subTitle
+mods_titleInfo_title : Edmund Dulac's fairy-book :
+mods_titleInfo_subTitle : fairy tales of the allied nations
 ```
 
-It's not pretty to look at, but it's a convenient way to break records down in such a way that we can analyze across all Records in a Job.  This table represents the results of that mapping across all Records in a Job.
+It can be dizzying to look at, but it's a convenient way to break records down in such a way that we can analyze Record metadata across all Records in a Job.  This table represents the results of that mapping across all Records in a Job.
 
-Clicking on the field name on the far-left will reveal all indexed values for that field.  Clicking on the count from "Document with Field" will return a table of Records that have a value for that field, "Document without" will show Records that do not have a value for this field.  
+Clicking on the **field name** on the far-left will reveal all indexed values for that field.  Clicking on a count from the column `Document with Field` will return a table of Records that have a value for that field, `Document without` will show Records that do not have a value for this field.  
 
-An example of how this may be helpful: sorting by "Documents without", with zero at the top, you can scroll down until you see the number "11".  This represents a subset of Records, 11 of them, that *don't* have the field `mods_subject_topic`, which might itself be illuminating.
+An example of how this may be helpful: sorting the column `Documents without` in ascending order with zero at the top, you can scroll down until you see the count `11`.  This represents a subset of Records, 11 of them, that *don't* have the field `mods_subject_topic`, which might itself be helpful to know.  This is particularly true with fields that might represent titles, identifiers, etc.
 
 Clicking on the button "Show field analysis explanation" will reveal some information about other columns from this table.
 
-**Note:** Short of an extended discussion about this mapping, and possible value, it is worth noting these indexed fields are used almost exclusively for **analysis**, and are not any kind of final mapping or transformation on the Record itself.  The Record's XML is always stored seperately in MySQL (and on disk as Avro files), which is used for any downstream transformations or publishing.  The only exception being where Combine attempts to query the DPLA API to match records, which is based on these mapped fields, but more on that later.
+**Note:** Short of an extended discussion about this mapping, and possible value, it is worth noting these indexed fields are used almost exclusively for *analysis*, and are not any kind of final mapping or transformation on the Record itself.  The Record's XML is always stored seperately in MySQL (and on disk as Avro files), and is used for any downstream transformations or publishing.  The only exception being where Combine attempts to query the DPLA API to match records, which is based on these mapped fields, but more on that later.
 
 
 
