@@ -13,6 +13,7 @@ This quickstart guide will walk through the following, and it's recommended to d
     * creating Validation Scenarios
   * harvesting records
   * transforming records
+  * looking at Jobs and Records
   * duplicating / merging jobs
   * validation of records
     * running reports
@@ -192,7 +193,64 @@ Once the input job (radio button) and transformation scenario (dropdown) are sel
 
 Finally, click "Transform" at the bottom.
 
-Again, we are kicked back to the RecordGroup screen, and should hopefully see a Transform job `running` as status.  Transforms can take a bit longer than harvests, particularly with the additional Validation Scenarios we are running; but still a small job, might take anywhere from 15-30 seconds.  Refresh the page until it shows the status as `available`.
+Again, we are kicked back to the RecordGroup screen, and should hopefully see a Transform job `running` as status.  Note, the graph on this page indicates the original Harvest Job was the **input** for the new Transform Job.
+
+Transforms can take a bit longer than harvests, particularly with the additional Validation Scenarios we are running; but still a small job, might take anywhere from 15-30 seconds.  Refresh the page until it shows the status as `available`.
+
+Also of note, hopefully the `Is Valid` column is not red now, and should read `True`.  We will look at validations in more detail, but because we ran the same Validation Scenarios on both Jobs, this suggests the XSLT transformation fixed whatever Validation problems there were.
+
+
+## Looking at Jobs and Records
+
+At this point, it might be a good time to look at the details of the jobs we have run.  Let's start with the Harvest Job.  Clicking the Job name in the table, or "details" link at the far-right will take you to a Job details page.
+
+**Note:** Clicking the Job in the graph will gray out any other jobs in the table below that are not a) the job itself, or b) upstream jobs that served as inputs (internally referred to as "job lineage").
+
+### Job Details
+
+Here, you will find details about a specific Job.  Major sections include:
+
+  * Job lineage graph - similar to what is seen on RecordGroup page   
+  * Notes - user entered notes about the job
+  * Records table - sortable, searchable table that searches Records as stored in DB
+  * Validation results - results of validation scenarios run
+  * Indexed fields analysis - table of fields mapped from Record XML, stored in ElasticSearch
+
+#### Records table
+
+Sortable, searchable, this shows all the individual, discrete Records for this Job.  This is the one entry point for viewing the details about a single Record.  It is also helpful for determining if the Record *is unique with respect to this Job*.
+
+#### Indexed Fields
+
+This table represents individual fields as mapped from a Record's source XML record to ElasticSearch.  This relates back the "Index Mapper" that we select when running each Job.  
+
+To this point, we have been using the default "Generic XPath based mapper", which is a general purpose way of "flattening" an XML document into fields that can be indexed in ElasticSearch for analysis.
+
+For example, it might map the following XML block:
+
+```
+<mods:titleInfo>
+    <mods:title>Edmund Dulac's fairy-book : </mods:title>
+    <mods:subTitle>fairy tales of the allied nations</mods:subTitle>
+</mods:titleInfo>
+```
+
+into the following *two* ElasticSearch fields:
+
+```
+mods_titleInfo_title
+mods_titleInfo_subTitle
+```
+
+It's not pretty to look at, but it's a convenient way to break records down in such a way that we can analyze across all Records in a Job.  This table represents the results of that mapping across all Records in a Job.
+
+Clicking on the field name on the far-left will reveal all indexed values for that field.  Clicking on the count from "Document with Field" will return a table of Records that have a value for that field, "Document without" will show Records that do not have a value for this field.  
+
+An example of how this may be helpful: sorting by "Documents without", with zero at the top, you can scroll down until you see the number "11".  This represents a subset of Records, 11 of them, that *don't* have the field `mods_subject_topic`, which might itself be illuminating.
+
+Clicking on the button "Show field analysis explanation" will reveal some information about other columns from this table.
+
+**Note:** Short of an extended discussion about this mapping, and possible value, it is worth noting these indexed fields are used almost exclusively for **analysis**, and are not any kind of final mapping or transformation on the Record itself.  The Record's XML is always stored seperately in MySQL (and on disk as Avro files), which is used for any downstream transformations or publishing.  The only exception being where Combine attempts to query the DPLA API to match records, which is based on these mapped fields, but more on that later.
 
 
 
