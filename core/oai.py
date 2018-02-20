@@ -10,6 +10,7 @@ import uuid
 
 # django settings
 from django.conf import settings
+from django.urls import reverse
 
 # import models
 from core import models
@@ -130,7 +131,7 @@ class OAIProvider(object):
 		if 'metadataPrefix' in self.args.keys():
 			self.request_node.attrib['metadataPrefix'] = self.args['metadataPrefix']
 
-		self.request_node.text = settings.COMBINE_OAI_ENDPOINT
+		self.request_node.text = 'http://%s%s' % (settings.APP_HOST, reverse('oai'))
 		self.root_node.append(self.request_node)
 
 		# set verb node		
