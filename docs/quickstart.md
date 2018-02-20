@@ -17,6 +17,8 @@ This quickstart guide will walk through the following, and it's recommended to d
   * [looking at Jobs and Records](#looking-at-jobs-and-records)
   * [duplicating / merging Jobs]()  
   * [publishing Records](#publishing-records)
+  * [analysis jobs](#analysis-jobs)
+  * [troubleshooting](#troubleshooting)
 
 For simplicity's sake, we will assume Combine is installed on a server with the domain name of `combine`, though likely running at the IP `192.168.45.10`, which the Ansible/Vagrant install from [Combine-Playbook](https://github.com/WSULib/combine-playbook) defaults to.  On most systems you can point that IP to a domain name like `combine` by modifying your `/etc/hosts` file on your local machine.  **Fair warning:** `combine` and `192.168.45.10` might be used interchangeably throughout.
 
@@ -201,15 +203,15 @@ Also of note, hopefully the `Is Valid` column is not red now, and should read `T
 
 ## Looking at Jobs and Records
 
-At this point, it might be a good time to look at the details of the jobs we have run.  Let's start with the Harvest Job.  Clicking the Job name in the table, or "details" link at the far-right will take you to a Job details page.
+Now is a good time to look at the details of the jobs we have run.  Let's start with the Harvest Job.  Clicking the Job name in the table, or "details" link at the far-right will take you to a Job details page.
 
-**Note:** Clicking the Job in the graph will gray out any other jobs in the table below that are not a) the job itself, or b) upstream jobs that served as inputs (internally referred to as "job lineage").
+**Note:** Clicking the Job in the graph will gray out any other jobs in the table below that are not a) the job itself, or b) upstream jobs that served as inputs.
 
 ### Job Details
 
 Here, you will find details about a specific Job.  Major sections include:
 
-  * Job lineage graph - similar to what is seen on RecordGroup page   
+  * Job lineage graph - similar to what is seen on RecordGroup page, but limited to the "lineage" of this job only   
   * Notes - user entered notes about the job
   * Records table - sortable, searchable table that searches Records as stored in DB
   * Validation results - results of validation scenarios run
@@ -254,19 +256,108 @@ mods_titleInfo_title : Edmund Dulac's fairy-book :
 mods_titleInfo_subTitle : fairy tales of the allied nations
 ```
 
-It can be dizzying to look at, but it's a convenient way to break records down in such a way that we can analyze Record metadata across all Records in a Job.  This table represents the results of that mapping across all Records in a Job.
+It can be dizzying at a glance, but it provides a thorough and comprehensive way to analyze the breakdown of metadata field usage across *all* Records in a Job.
 
-Clicking on the **field name** on the far-left will reveal all indexed values for that field.  Clicking on a count from the column `Document with Field` will return a table of Records that have a value for that field, `Document without` will show Records that do not have a value for this field.  
+Clicking on the mapped, ElasticSearch field name on the far-left will reveal all indexed values for that field.  Clicking on a count from the column `Document with Field` will return a table of Records that *have* a value for that field, `Document without` will show Records that *do not have* a value for this field.  
 
-An example of how this may be helpful: sorting the column `Documents without` in ascending order with zero at the top, you can scroll down until you see the count `11`.  This represents a subset of Records, 11 of them, that *don't* have the field `mods_subject_topic`, which might itself be helpful to know.  This is particularly true with fields that might represent titles, identifiers, etc.
+An example of how this may be helpful: sorting the column `Documents without` in ascending order with zero at the top, you can scroll down until you see the count `11`.  This represents a subset of Records, 11 of them, that *do not* have the field `mods_subject_topic`, which might itself be helpful to know.  This is particularly true with fields that might represent titles, identifiers, or other required information.
 
 Clicking on the button "Show field analysis explanation" will reveal some information about other columns from this table.
 
 **Note:** Short of an extended discussion about this mapping, and possible value, it is worth noting these indexed fields are used almost exclusively for *analysis*, and are not any kind of final mapping or transformation on the Record itself.  The Record's XML is always stored seperately in MySQL (and on disk as Avro files), and is used for any downstream transformations or publishing.  The only exception being where Combine attempts to query the DPLA API to match records, which is based on these mapped fields, but more on that later.
 
+### Record Details
+
+Next, we can drill down one more level and view the details of an individual Record.  From the Record table at the top, click on the `Record ID` of any individual Record.  At this point, you are presented with the details of that particular Record.
+
+Similar to a Job's details, this page has a few major sections:
+
+  * Record validation
+  * Record stages
+  * Indexed Fields
+  * Record document  
+
+#### Record validation
+
+This area shows all the Validation scenarios that were run for this Job, and how this specific record fared.  In all likelihood, if you've been following this guide with the provided demo data, and you are viewing a Record from the original Harvest, you should see that it failed validation for the Validation scenario, *DPLA minimum*.  It will show a row in this table for *each* rule form the Validation Scenario the Record failed, as a single Validation Scenario -- schematron or python -- may contain multiples rules / tests.  You can click "Run Validation" to re-run and see the results of that Validation Scenario run against this Record's XML document.
+
+#### Record stages
+
+This table represents the various "stages", aka Jobs, this Record exists in.  This is good insight into how Records move through Combine.  We should see two stages in this table, one for the original Harvest Job (bolded, as that is the version of the Record we are currently looking at), and the as it exists in the "downstream" Transform Job.
+
+For any stage, you may view the Record Document (raw Record XML), the associated, mapped ElasticSearch document (JSON), or click into the Job details for that Record stage.
+
+#### Indexed fields
+
+This table shows the individual fields in ElasticSearch that were mapped from the Record's XML metadata.  This can further reveal how this mapping works, by finding a unique value in this table, noting the `Field Name`, and then searching for that value in the raw XML below.
+
+This table is mostly for informational purposes, but also provides a way to map generically mapped indexed fields from Combine, to known fields in the DPLA metadata profile.  This can be done with the from the dropdowns under the `DPLA Mapped Field` column. 
+
+Why is this helpful?  One goal of Combine is to determine how metadata will eventually map to the DPLA profile.  Short of doing the mapping that DPLA does when it harvests from a Service Hub, which includes enrichments as well, we can nonetheless try and "tether" this record on a known unique field to the version that might currently exist in DPLA already.
+
+To do this, two things need to happen:
+
+  1. [register for a DPLA API key](https://dp.la/info/developers/codex/policies/#get-a-key), and provide that key in `/opt/combine/combine/locasettings.py` for the variable `DPLA_API_KEY`.
+  2. find the URL that points to your actual item (not the thumbnail) in these mapped fields in Combine, and from the `DPLA Mapped Field` dropdown, select `isShownAt`.  The `isShownAt` field in DPLA records contain the URL that DPLA directs users *back* to, aka the actual item online.  This is a particularly unique field to match on.  If `title` or `description` are set, Combine will attempt to match on those fields as well, but `isShownAt` has proven to be much more accurate and reliable.
+
+If all goes well, when you identify the indexed field in Combine that contains your item's actual online URL, and map to `isShownAt` from the dropdown, the page will reload and fire a query to the DPLA API and attempt to match the record.  If it finds a match, a new section will appear at the top called "DPLA API Item match", which contains the metadata from the DPLA API that matches this record.
+
+This is an area still under development.  Though the `isShownAt` field is usually very reliable for matching a Combine record to its live DPLA item counterpart, obviously it will not match if the URL has changed between harvests.  Some kind of unique identifier might be even better, but there are problems there as well a bit outside the scope of this quickstart guide. 
+
+#### Record document
+
+And finally, at the very bottom, you will find the raw, but XML syntax highlighted, XML document for this Record.  **Note:** As mentioned, regardless of how fields are mapped in Combine to ElasticSearch, the Record's XML or "document" is always left intact, and is used for any downstream Jobs.  Combine provides mapping and analysis of Records through mapping to ElasticSearch, but the Record's XML document is stored as plain, LONGTEXT in MySQL for each Job.
+
+
 ## Duplicating / Merging Jobs
 
+This quickstart guide won't focus on Duplicating / Merging Jobs, but it worth knowing this is possible.  If you were to click "Duplicate / Merge" link at the bottom of the RecordGroup page, you would be presented with what hopefully is a relatively familiar Job creation screen, with one key difference: when selecting you input jobs, the radio buttons have been replaced by checkboxes, indicating your can select **multiple** jobs as input.  Or, you can select a **single** Job as well.
+
+The use cases are still emerging when this could be helpful, but here are a couple of examples...
+
+#### Run different Index Mapping or Validation Scenarios
+
+When you duplicate/merge Jobs, you have the ability to select a different Index Mapper, and/or run different Validation Scenarios than were run for the input job.  However, as has been pointed out, these are both used primarily for **analysis**.  As such, an Analysis Job might be a better option, which itself is running Duplicate/Merge jobs behind the scenes.
+
+#### Pull Jobs from one RecordGroup into another
+
+Most Job workflow actions -- Transformations and Publishing -- are limited to a RecordGroup, which is itself an intellectual grouping of Jobs (e.g. Fedora Repository).  However, use cases may drive the need for multiple RecordGroups, but a desire to "pull" in a Job from a different RecordGroup.  This can be done by merging.
+
+#### Merging Jobs
+
+In addition to "pulling" Jobs from one RecordGroup into another, it might also be beneficial to merge multiple Jobs into one.  An example might be:
+
+  1. Harvest a single group of records via an OAI-PMH set
+  2. Perform a Transformation tailored to that group of records (Job)
+  3. Harvest *another* group of records via a different OAI-PMH set
+  4. Perform a Transformation tailored to *that* group of records (Job)
+  5. Finally, Merge these two Transform Jobs into one, suitable for publishing from this RecordGroup.
+
+Here is a visual representation of this scenario, taken directly from the RecordGroup page:
+
+![alt text](img/merge_example.png)
+
 ## Publishing Records
+
+## Analysis Jobs
+
+## Troubleshooting
+
+Undoubtedly, things might sideways!  As Combine is still quite rough around some edges, here are some common gotchas you may encounter.
+
+### Run a job, status immediately flip to `available`, and has no records
+
+The best way to diagnose why a job may have failed, from the RecordGroup screen, is to click "Livy Statement" link under the `Monitor` column.  This returns the raw output from the Spark job, via Livy which dispatches jobs to Spark.  
+
+A common error is a stale Livy connection, specifically its MySQL connection, which is revealed at the end of the Livy statement output by:
+
+```
+MySQL server has gone away
+```
+
+This can be fixed by [restarting the Livy session[(#livy-sessions).
+
+
 
 
 
