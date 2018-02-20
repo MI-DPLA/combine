@@ -339,7 +339,70 @@ Here is a visual representation of this scenario, taken directly from the Record
 
 ## Publishing Records
 
+If you've made it this far, at this point we have:
+
+  * Created the Organization, "Amazing University"
+  * Created the RecordGroup, "Fedora Repository"
+  * Harvested 250 Records from static XML files 
+  * Transformed those 250 Records to meet our Service Hub profile
+    * thereby also fixing validation problems revealed in Harvest
+  * Looked at Job and Record details
+
+At this point, we may be ready to "publish" these materials from Combine for harvesting by others (e.g. DPLA)!
+
+### Overview
+Publishing is done at the **RecordGroup** level, giving more weight to the idea of a RecordGroup as a meaningful, intellectual group of records.  When a RecordGroup is published, it can be given a "Publish ID", which translates directly to an OAI-PMH **set**.  **Note:** It is possible to publish multiple, distinct RecordGroups with the same publish ID, which allows for publishing multiple RecordGroups under the same OAI-PMH set.
+
+Combine comes with a [built-in OAI-PMH server](http://192.168.45.10/combine/oai?verb=Identify) that serves all published RecordGroups via OAI-PMH.
+
+### Publishing a RecordGroup
+
+To run a Publish Job and publish a RecordGroup, navigate to the RecordGroup page, and near the top click the "Publish" button inside a small table.
+
+You will be presented with a familiar Job creation screen.
+
+Near the top, there are some fields for entering information about an OAI set identifier.  You can either select a previously used OAI set identifier, or create a new one; this will become the OAI set identifier used in the **outgoing** Combine OAI-PMH server.  Let's give it a new, simple identifier: `fedora`, representing that this RecordGroup is a workspace for Jobs and Records from our Fedora repository.
+
+Then, from the table below, select the Job (again, think as a *stage* of the same records) that will be published for this RecordGroup.
+
+Finally, click "Publish" at the bottom.
+
+You will be returned to the RecordGroup, and should see a new Publish Job running, further extending the Job "lineage" graph at the top.  Publish Jobs are usually fairly quick, as they are copy most data from the Job that served as input.
+
+In a few seconds you should be able to refresh the page and see this Job status switch to `available`, indicating the publishing is complete.
+
+Let's convfirm and see them as published records...
+
+### Viewing published records
+
+From any screen, click the "Published" link at the very top in the Combine navigation.  This brings you to a new page with some familiar looking tables.
+
+At the very top is the section **Published Sets**.  These show all **RecordGroups** that have been published, with the corresponding OAI set identifier.  This also provides a button to unpublish a RecordGroup (also doable from the RecordGroup page).
+
+Below that is a table -- similar to the table from a single Job details -- showing all **Records** that are published, spanning all RecordGroups and OAI sets.  One column of note is `Unique in Published?` which indicates whether or not this Record is unique among all published.  **Note:** This test is determined by checking the `record_id` field for published records; if two records are essentially the same, but have different `record_id`s, this will not detect that.
+
+Below that table, is the familiar Indexed Fields table.  This table shows mapped, indexed fields in ElasticSearch for *all* Records across *all* RecordGroups published.  Similar to a single Job, this can be useful for determining irregularities among published Records (e.g. small subset of Records that don't have an important field).
+
+Finally, at the very bottom are some links to the actual OAI-PMH serer coming out of Combine, representing four common OAI-PMH verbs:
+
+  * Identify
+    * basic identification of the Combine OAI-PMH server
+  * List Identifiers
+    * list OAI-PMH identifiers for all published Records
+  * List Records
+    * list full records for all published Records (primary mechanism for harvest)
+  * List Sets
+    * list all OAI-PMH sets, a direct correlation to OAI sets identifiers for each published RecordGroup  
+
 ## Analysis Jobs
+
+From any screen, clicking the "Analysis" link at the top in the navigation links will take you to the Analysis Jobs space.  Analysis Jobs are a special kind of Job in Combine, as they are meant to operate outside the workflows of a RecordGroup.
+
+Analysis Jobs look and feel very much like Duplicate / Merge Jobs, and that's because they share mechanisms on the back-end.  When starting a new Analysis Job, by clicking the "Run new analysis job" link at the bottom of the page, you are presented with a familiar screen to run a new Job.  However, you'll notice that you can select Jobs from any RecordGroup, and *multiple* jobs is so desired, much like Duplicate/Merge Jobs.
+
+An example use case may be running an Analysis Job across a handful of Jobs, in different RecordGroups, to get a sense of how fields are used.  Or run a battery or validation tests that may not relate directly to the workflows of a RecordGroup, but are helpful to see all the same.
+
+Analysis Jobs are *not* shown in RecordGroups, and are not available for selection as input Jobs from any other screens; they are a bit of an island, solely for the purpose of their Analysis namesake.
 
 ## Troubleshooting
 
