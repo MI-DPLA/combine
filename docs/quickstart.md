@@ -1,4 +1,4 @@
-# Quickstart
+# QuickStart
 
 > **Update 2/20/2018:** This walkthrough is for a still quite rough version of Combine, with virtually no front-end styling.  All the tables and interfaces are purely functional, but could use considerable spit and polish to be pleasant to use.  Please excuse the garish motif!
 
