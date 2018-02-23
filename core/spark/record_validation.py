@@ -19,10 +19,37 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 from django.conf import settings
+from django.db import connection
 
 # import select models from Core
 from core.models import Job, ValidationScenario
 
+
+
+####################################################################
+# Django DB Connection 											   #
+####################################################################
+def refresh_django_db_connection():
+	
+	'''
+	Function to refresh connection to Django DB.
+	
+	Behavior with python files uploaded to Spark context via Livy is atypical when
+	it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
+	apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
+
+	Running this function before jobs ensures that the connection is fresh between these python files
+	operating in the Livy context, and Django's DB connection to MySQL.
+
+	Args:
+		None
+
+	Returns:
+		None
+	'''
+
+	connection.close()
+	connection.connect()
 
 
 
@@ -65,6 +92,9 @@ class ValidationScenarioSpark(object):
 			None
 				- writes validation fails to RecordValidation table
 		'''
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
 
 		# loop through validation scenarios and fire validation type specific method
 		for vs_id in self.validation_scenarios:
