@@ -145,7 +145,7 @@ For the sake of this QuickStart demo, we can bootstrap our instance of Combine w
 To boostrap these demo configurations for the purpose of this walkthrough, run the following command from `/opt/combine`:
 
 ```
-./manage.py bootstrapdemoconfig
+./manage.py quickstartbootstrap
 ```
 
 You can confirm these demo configurations were created by navigating to the configuration screen at [http://192.168.45.10/combine/configurations](http://192.168.45.10/combine/configurations).
