@@ -784,7 +784,7 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
+def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True):
 
 	'''
 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		

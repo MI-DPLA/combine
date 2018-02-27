@@ -37,6 +37,7 @@ LIVY_DEFAULT_SESSION_CONFIG = {
 Make sure to note file:// or hdfs:// prefix
 '''
 BINARY_STORAGE = 'file:///home/combine/data/combine'
+WRITE_AVRO = True
 
 
 # ElasicSearch server
