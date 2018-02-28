@@ -64,7 +64,7 @@ def breadcrumb_parser(path):
 			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
 			crumbs.append(('Analysis', reverse('analysis')))
 		else:
-			crumbs.append(("Organzation - %s" % org.name, org_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
 	# record_group
 	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
@@ -73,7 +73,7 @@ def breadcrumb_parser(path):
 		if rg.for_analysis:
 			logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
 		else:
-			crumbs.append(("RecordGroup - %s" % rg.name, rg_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % rg.name, rg_m.group(1)))
 
 	# job
 	j_m = re.match(r'(.+?/job/([0-9]+))', path)
@@ -82,13 +82,13 @@ def breadcrumb_parser(path):
 		if j.record_group.for_analysis:
 			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
 		else:
-			crumbs.append(("Job - %s" % j.name, j_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
 	# record
 	r_m = re.match(r'(.+?/record/([0-9]+))', path)
 	if r_m:
 		r = models.Record.objects.get(pk=int(r_m.group(2)))
-		crumbs.append(("Record - %s" % r.record_id, r_m.group(1)))
+		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
 	# return
 	return crumbs

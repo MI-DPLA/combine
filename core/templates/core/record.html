@@ -3,13 +3,89 @@
 {% block content %}
 {% load core_template_filters %}
 
-	<h2>Record</h2>
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Record Details</h2>
+			<ul>
+				<li><strong>Combine ID:</strong> {{ record.id }}</li>
+				<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
+				<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
+			</ul>
+		</div>
+	</div>
 
-	<ul>
-		<li><strong>Combine ID:</strong> {{ record.id }}</li>
-		<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
-		<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
-	</ul>
+	<div class="row">
+
+		<!-- Record Stages -->
+		<div class="col-md-6">
+			<h4>Record Stages</h4>
+
+			<table class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Job ID</th>
+						<th>Job Name</th>
+						<th>Job Type</th>
+						<th>Record Document</th>
+						<th>Record Error</th>
+						<th>ElasticSearch document</th>
+					</tr>
+				</thead>
+				<tbody>
+				{% for record_stage in record_stages %}
+					<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
+						<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
+						<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
+						<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
+						<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>
+						{% if record_stage.document != '' %}
+							<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+						{% else %}
+							<td>None</td>
+						{% endif %}
+						{% if record_stage.error != ''%}
+							<td><a href="{% url 'record_error' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
+						{% else %}
+							<td>None</td>
+						{% endif %}
+						<td><a href='http://{{ APP_HOST }}:9200/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.record_id }}"' target="_blank">View</a></td>
+					</tr>
+				{% endfor %}
+				</tbody>
+			</table>
+		</div>
+
+		<!-- Record Validations -->
+		{% if record.job.jobvalidation_set.count > 0 %}
+		<div class="col-md-6" style="background-color:{% if record.get_validation_errors.count > 0 %}#ffe7f4{% else %}#e0ffdf{% endif %}">			
+			<h4>Record Validation </h4>
+			{% if record.get_validation_errors.count > 0 %}			
+				<p>Validation scenarios were run for this job, the following are failed assertions:
+				<table border="1" cellpadding="10" style="background-color:white;">
+					<tr>
+						<th>Validation Scenario</th>
+						<th>Assertion Failure</th>
+						<th>Actions</th>
+					</tr>
+					{% for rv in record.get_validation_errors %}
+						{% for failure in rv.failed %}
+							<tr>
+								<td>{{ rv.validation_scenario.name }}</td>
+								<td>{{ failure }}</td>
+								<td><a target="_blank" href="{% url 'record_validation_scenario' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id job_validation_id=rv.validation_scenario.id %}">Run Validation</a></td>
+							</tr>
+						{% endfor %}
+					{% endfor %}
+				</table>
+				</p>
+			{% else %}
+				<p>All validation tests passed!</p>
+			{% endif %}
+		</div>
+		{% endif %}
+
+	</div>
 
 	<!-- Show DPLA Mapped Fields if present -->
 	{% if record.dpla_mapped_field_values %}
@@ -45,66 +121,7 @@
 
 	{% endif %}	
 
-	<!-- Record Validations -->
-	{% if record.job.jobvalidation_set.count > 0 %}
-		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:{% if record.get_validation_errors.count > 0 %}#ffe7f4{% else %}#e0ffdf{% endif %}">
-			<h3>Record Validation </h3>
-			{% if record.get_validation_errors.count > 0 %}			
-				<p>Validation scenarios were run for this job, the following are failed assertions:
-				<table border="1" cellpadding="10" style="background-color:white;">
-					<tr>
-						<th>Validation Scenario</th>
-						<th>Assertion Failure</th>
-						<th>Actions</th>
-					</tr>
-					{% for rv in record.get_validation_errors %}
-						{% for failure in rv.failed %}
-							<tr>
-								<td>{{ rv.validation_scenario.name }}</td>
-								<td>{{ failure }}</td>
-								<td><a target="_blank" href="{% url 'record_validation_scenario' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id job_validation_id=rv.validation_scenario.id %}">Run Validation</a></td>
-							</tr>
-						{% endfor %}
-					{% endfor %}
-				</table>
-			{% else %}
-				<p>All validation tests passed!</p>
-			{% endif %}
-		</div>
-	{% endif %}
-
-	<h3>Record Stages</h3>
-
-	<table border="1" cellpadding="10">
-		<tr>
-			<th>ID</th>
-			<th>Job ID</th>
-			<th>Job Name</th>
-			<th>Job Type</th>
-			<th>Record Document</th>
-			<th>Record Error</th>
-			<th>ElasticSearch document</th>
-		</tr>
-		{% for record_stage in record_stages %}
-			<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold{% endif %} {% if record_stage.error != '' %}error{% endif %}">
-				<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
-				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
-				<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
-				<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>
-				{% if record_stage.document != '' %}
-					<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
-				{% else %}
-					<td>None</td>
-				{% endif %}
-				{% if record_stage.error != ''%}
-					<td><a href="{% url 'record_error' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
-				{% else %}
-					<td>None</td>
-				{% endif %}
-				<td><a href='http://{{ APP_HOST }}:9200/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.record_id }}"' target="_blank">View</a></td>
-			</tr>
-		{% endfor %}
-	</table>
+	
 
 	<h3>Indexed Fields</h3>
 
