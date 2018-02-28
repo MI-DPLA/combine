@@ -51,6 +51,11 @@ Combine runs in a [Miniconda](https://conda.io/miniconda.html) python environeme
 source active combine
 ```
 
+If that returns the error, `-bash: active: No such file or directory`, try a more explicit version of that command:
+```
+source /usr/local/anaconda/bin/activate combine
+```
+
 **Note:** Most commands in this QuickStart guide require you to be in this environment!
   
 
