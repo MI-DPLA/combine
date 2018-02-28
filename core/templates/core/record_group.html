@@ -24,7 +24,7 @@
 									<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>
 							</td>
 							<td class="text-center">
-								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button type="button" class="btn btn-primary btn-sm">Unpublish</button></a>
+								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a>
 							</td>
 						{% endfor %}
 					{% else %}
@@ -43,7 +43,7 @@
 						{% endif %}
 					</td>
 					<td>
-						<p><a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button>change OAI Set</button></a></p>
+						<p class="text-center"><a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">change OAI Set</button></a></p>
 						<div id="publish_set_id_update" style="display:none;">
 							<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=record_group.organization.id record_group_id=record_group.id %}">
 								{% csrf_token %}						
