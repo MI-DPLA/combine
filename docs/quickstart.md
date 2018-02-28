@@ -8,6 +8,7 @@ Demo data from unit tests will be reused here to avoid the need to provide actua
 
 This QuickStart guide will walk through the following areas of Combine, and it's recommended to do so in order:
 
+  * [sshing into server](#sshing-into-server)
   * [python environment](#combine-python-environment)
   * [starting / stopping Combine](#starting--stopping-combine)
   * [Combine data model](#combine-data-model)
@@ -26,6 +27,21 @@ This QuickStart guide will walk through the following areas of Combine, and it's
 
 For simplicity's sake, we will assume Combine is installed on a server with the domain name of `combine`, though likely running at the IP `192.168.45.10`, which the Ansible/Vagrant install from [Combine-Playbook](https://github.com/WSULib/combine-playbook) defaults to.  On most systems you can point that IP to a domain name like `combine` by modifying your `/etc/hosts` file on your local machine.  **Note:** `combine` and `192.168.45.10` might be used interchangeably throughout.
 
+## SSHing into server
+
+The most reliable way is to ssh in as the `combine` user (assuming server at `192.168.45.10`), password is also `combine`:
+
+```
+# username/password is combine/combine
+ssh combine@192.168.45.10
+```
+
+You can also use Vagrant to ssh in, from the Vagrant directory on the host machine:
+```
+vagrant ssh
+```
+
+If using Vagrant to ssh in, you'll want to switch users and become `combine`, as most things are geared for that user.
 
 ## Combine python environment
 
@@ -33,6 +49,11 @@ Combine runs in a [Miniconda](https://conda.io/miniconda.html) python environeme
 
 ```
 source active combine
+```
+
+If that returns the error, `-bash: active: No such file or directory`, try a more explicit version of that command:
+```
+source /usr/local/anaconda/bin/activate combine
 ```
 
 **Note:** Most commands in this QuickStart guide require you to be in this environment!
