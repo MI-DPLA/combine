@@ -9,12 +9,11 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-5">
-
+		<div class="col-md-5">			
 			<table class="table table-bordered table-hover">
 				<tr>
 					<th>Description</th>
-					<td><em>{{ record_group.description }}</em></td>
+					<td>{{ record_group.description }}</td>
 					<td></td>
 				</tr>
 				<tr>
@@ -24,13 +23,13 @@
 							<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }} {% if record_group.jobpublish_set.all.first.job.deleted %}deleted{% endif %}">
 									<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>
 							</td>
-							<td>
-								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button>Unpublish</button></a>
+							<td class="text-center">
+								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button type="button" class="btn btn-primary btn-sm">Unpublish</button></a>
 							</td>
 						{% endfor %}
 					{% else %}
 						<td style="color:red;"><strong>This Record Group is not published</strong></td>
-						<td><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button>Publish</button></a></td>
+						<td class="text-center"><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Publish</button></a></td>
 					{% endif %}
 				</tr>
 				{% if record_group.is_published %}
@@ -67,12 +66,12 @@
 				</tr>
 				{% endif %}
 			</table>
-		</div>
+		</div>		
 	</div>
 
 	<div class="row">		
 		<div class="col-md-12">		
-			<h3>Jobs</h3>
+			<h4>Jobs</h4>
 		</div>
 	</div>
 
@@ -84,20 +83,25 @@
 
 	</div>
 
-	<div>
-		<h3>Run new job</h3>
-		<p>
-			<ul>
-				<li>Harvest:
-					<ul>
-						<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">OAI-PMH</a></li>
-						<li><a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}">Static XML</a></li>
-					</ul>
-				</li>
-				<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
-				<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Duplicate / Merge</a></li>				
-			</ul>
-		</p>
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Run new job</h4>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+				<ul>
+					<li>Harvest:
+						<ul>
+							<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">OAI-PMH</a></li>
+							<li><a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}">Static XML</a></li>
+						</ul>
+					</li>
+					<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
+					<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Duplicate / Merge</a></li>				
+				</ul>
+		</div>
 	</div>
 
 {% endblock %}
