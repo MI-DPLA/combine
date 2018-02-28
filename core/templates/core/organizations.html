@@ -15,7 +15,8 @@
 					<tr>
 						<th>Organization ID</th>
 						<th>Name</th>
-						<th>Description</th>				
+						<th>Description</th>
+						<th>Created</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
@@ -24,7 +25,8 @@
 						<tr>
 							<td><a href="{% url 'organization' org_id=org.id %}">{{ org.id }}</a></td>
 							<td><a href="{% url 'organization' org_id=org.id %}">{{ org.name }}</a></td>
-							<td>{{ org.description }}</td>					
+							<td>{{ org.description }}</td>
+							<td>{{ org.timestamp }}</td>					
 							<td><a href="{% url 'organization_delete' org_id=org.id %}">Delete</a></td>
 						</tr>
 					{% endfor %}
@@ -46,7 +48,7 @@
 		    	{% csrf_token %}			    
 
 				<div class="form-group">
-					<label for="org_name">Organization name</label>
+					<label for="org_name">Name</label>
 					<input type="text" class="form-control" id="org_name" name="name" placeholder="Amazing Institution">					
 				</div>
 

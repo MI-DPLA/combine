@@ -77,13 +77,15 @@
 	    	<!-- breadcrumbs -->
 	    	<div id="breadcrumbs" class="row">
 	    		<div class="col-md-12">
-		    		<nav class="breadcrumb">
-		    			<a href="#">Home</a>
-		    			{% if breadcrumbs %}
-							{% for crumb in breadcrumbs %}
-								<a href="{{ crumb.1 }}"><em>{{ crumb.0 }}</em></a> 
-							{% endfor %}
-						{% endif %}
+		    		<nav aria-label="breadcrumb">
+		    			<ol class="breadcrumb">
+		    				<li class="breadcrumb-item"><a href="#">Home</a></li>
+		    				{% if breadcrumbs %}
+								{% for crumb in breadcrumbs %}
+									<li class="breadcrumb-item"><a href="{{ crumb.1 }}">{{ crumb.0 }}</a></li>
+								{% endfor %}
+							{% endif %}
+	    				</ol>
 	    			</nav>
     			</div>
     		</div>

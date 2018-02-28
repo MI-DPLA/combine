@@ -2,42 +2,74 @@
 
 {% block content %}
 
-	<h3>Record Groups for Organization: {{ org.name }}</h3>
-
-	<div>
-		<table border="1" cellpadding="5">
-			<tr>
-				<th>Record Group ID</th>
-				<th>Name</th>
-				<th>Description</th>
-				<th>Published?</th>
-				<th>Created</th>
-				<th>Actions</th>
-			</tr>
-			{% for record_group in record_groups %}
-				<tr>
-					<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.id }}</a></td>
-					<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.name }}</a></td>
-					<td>{{ record_group.description }}</td>
-					{% if record_group.is_published %}
-						<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
-					{% else %}
-						<td><span style="color: red;">Not published</span></td>
-					{% endif %}
-					<td>{{ record_group.timestamp }}</td>
-					<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}">Delete</a></td>
-				</tr>
-			{% endfor %}
-		</table>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Record Groups for Organization: {{ org.name }}</h3>
+		</div>
 	</div>
 
-	<h4>Create new Record Group</h4>
+	<div class="row">
+		<div class="col-md-12">
+			<table class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>Record Group ID</th>
+						<th>Name</th>
+						<th>Description</th>
+						<th>Published?</th>
+						<th>Created</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for record_group in record_groups %}
+						<tr>
+							<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.id }}</a></td>
+							<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.name }}</a></td>
+							<td>{{ record_group.description }}</td>
+							{% if record_group.is_published %}
+								<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
+							{% else %}
+								<td><span style="color: red;">Not published</span></td>
+							{% endif %}
+							<td>{{ record_group.timestamp }}</td>
+							<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}">Delete</a></td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+	</div>
 
-	<form method="POST" novalidate action="{% url 'record_group_new' org_id=org.id %}">
-    {% csrf_token %}
-	    {{ record_group_form }}
-	    <input type='hidden' name='org_id' value='{{org.id}}'/>
-	    <input type="submit" value="Submit" />
-	</form>
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Create new Record Group</h4>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-5">
+			<form method="POST" novalidate action="{% url 'record_group_new' org_id=org.id %}">
+		    	
+		    	{% csrf_token %}			    
+
+				<div class="form-group">
+					<label for="org_name">Name</label>
+					<input type="text" class="form-control" id="org_name" name="name" placeholder="Fedora Commons">					
+				</div>
+
+				<div class="form-group">
+					<label for="org_desc">Description</label>
+					<input type="text" class="form-control" id="org_desc" name="description" placeholder="digital collections">
+					<small id="descriptionHelp" class="form-text text-muted">(optional)</small>
+				</div>
+			    
+			    <input type="hidden" name="organization" value="{{ org.id }}">
+			    <input type="hidden" name="org_id" value="{{ org.id }}">
+			    <button type="submit" class="btn btn-primary">Submit</button>
+
+			</form>
+		</div>
+	</div>
 
 {% endblock %}

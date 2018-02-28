@@ -184,13 +184,9 @@ def organizations(request):
 		# get all organizations
 		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
-		# get Organization form
-		organization_form = forms.OrganizationForm()		
-
 		# render page
 		return render(request, 'core/organizations.html', {
-				'orgs':orgs,
-				'organization_form':organization_form
+				'orgs':orgs				
 			})
 
 
@@ -217,17 +213,10 @@ def organization(request, org_id):
 	# get record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org).exclude(for_analysis=True)
 
-	# get RecordGroup form
-	record_group_form = forms.RecordGroupForm()
-	# exclude Organization for Analysis Jobs
-	record_group_form.fields['organization'].queryset = models.Organization.objects.exclude(
-		name=settings.ANALYSIS_JOBS_HIERARCHY['organization'])
-	
 	# render page
 	return render(request, 'core/organization.html', {
 			'org':org,
 			'record_groups':record_groups,
-			'record_group_form':record_group_form,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
