@@ -2,111 +2,108 @@
 {% block content %}
 <div class="row">
 	<div class="col-md-12">
-		<div>
-			<table id="jobs_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Job ID</th>
-						<th>Timestamp</th>
-						<th>Name</th>
-						{# Jinja logic for including RecordGroups #}
-						{% if not for_analysis %}
-							<th>Record Group</th>
-						{% endif %}
-						<th>Job Type</th>
-						<th>Status</th>
-						<th>Finished</th>
-						<th>Is Valid</th>
-						<th>Elapsed</th>
-						<th>Input</th>
-						<th>Notes</th>
-						<th>Record Count</th>
-						<th>Monitor</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for job in jobs %}
-					<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
-							<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
-								<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
-									{% csrf_token %}																		
-									<p>Enter new job name: <input type="text" name="job_name" size=80 placeholder="e.g. 'Fedora Harvest/Transform/Publish'"/></p>
-									<p><input type="submit" value="Update"/></p>
-								</form>
+		<table id="jobs_table" class="table table-bordered table-hover">
+			<thead>
+				<tr>
+					<th>Job ID</th>
+					<th>Timestamp</th>
+					<th>Name</th>
+					{# Jinja logic for including RecordGroups #}
+					{% if not for_analysis %}
+						<th>Record Group</th>
+					{% endif %}
+					<th>Job Type</th>
+					<th>Status</th>
+					<th>Finished</th>
+					<th>Is Valid</th>
+					<th>Elapsed</th>
+					<th>Input</th>
+					<th>Notes</th>
+					<th>Record Count</th>
+					<th>Monitor</th>
+					<th>Actions</th>
+				</tr>
+			</thead>
+			<tbody>
+			{% for job in jobs %}
+				<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
+						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
+							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
+								{% csrf_token %}																		
+								<p>Enter new job name: <input type="text" name="job_name" size=80 placeholder="e.g. 'Fedora Harvest/Transform/Publish'"/></p>
+								<p><input type="submit" value="Update"/></p>
+							</form>
+						</div>
+					</td>
+					{# Jinja logic for including RecordGroups #}
+					{% if not for_analysis %}
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
+					{% endif %}
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><strong>{{ job.status }}</strong></td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
+					
+					{% if job.jobinput_set.all|length > 0 %}
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
+							<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+								<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 							</div>
+							{% endfor %}
 						</td>
-						{# Jinja logic for including RecordGroups #}
-						{% if not for_analysis %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
-						{% endif %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><strong>{{ job.status }}</strong></td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
-						
-						{% if job.jobinput_set.all|length > 0 %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
-								<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-									<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
-								</div>
-								{% endfor %}
-							</td>
-						{% else %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
-						{% endif %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-							{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
-							<div id="job_notes_{{ job.id }}" style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
-								<form method="POST" action="{% url 'job_update_note' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
-									{% csrf_token %}
-									<p><textarea style="width:100%;" rows="5" name="job_note" placeholder="No job notes found...">{% if job.note %}{{ job.note }}{% endif %}</textarea></p>
-									<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
-									<input type="hidden" name="next" value="{{ request.path }}">
-									<input type="submit" value="update notes">
-								</form>
-							</div>
-						</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ LIVY_SESSION.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>				
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    jobs_table = $('#jobs_table').DataTable({
-				    	"pageLength": 100,
-				    	"lengthMenu": [ 10, 25, 100, 500 ],
+					{% else %}
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
+					{% endif %}
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
+						<div id="job_notes_{{ job.id }}" style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
+							<form method="POST" action="{% url 'job_update_note' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
+								{% csrf_token %}
+								<p><textarea style="width:100%;" rows="5" name="job_note" placeholder="No job notes found...">{% if job.note %}{{ job.note }}{% endif %}</textarea></p>
+								<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
+								<input type="hidden" name="next" value="{{ request.path }}">
+								<input type="submit" value="update notes">
+							</form>
+						</div>
+					</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ LIVY_SESSION.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>				
+				</tr>
+			{% endfor %}
+			</tbody>
+		</table>
+		<script>
+			$(document).ready(function() {
+			    jobs_table = $('#jobs_table').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ],
+			    	{# Jinja logic for including RecordGroups #}
+			    	{% if not for_analysis %}
+				    	"createdRow": function( row, data, dataIndex){
 
-				    	{# Jinja logic for including RecordGroups #}
-				    	{% if not for_analysis %}
-					    	"createdRow": function( row, data, dataIndex){
+		                    // show job valid
+		                    if (data[7] == 'False'){
+		                    	$('td:nth-child(8)', row).addClass('invalid_job');
+		                    }
+			            }           
+					{% else %}
+						"createdRow": function( row, data, dataIndex){
 
-			                    // show job valid
-			                    if (data[7] == 'False'){
-			                    	$('td:nth-child(8)', row).addClass('invalid_job');
-			                    }
-				            }           
-						{% else %}
-							"createdRow": function( row, data, dataIndex){
-
-			                    // show job valid
-			                    if (data[6] == 'False'){                    	
-			                    	$('td:nth-child(7)', row).addClass('invalid_job');
-			                    }
-				            }
-			            {% endif %}
-				    });
-				} );
-			</script>
-		</div>
+		                    // show job valid
+		                    if (data[6] == 'False'){                    	
+		                    	$('td:nth-child(7)', row).addClass('invalid_job');
+		                    }
+			            }
+		            {% endif %}
+			    });
+			} );
+		</script>
 	</div>
 </div>
 {% endblock %}

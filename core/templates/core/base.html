@@ -59,9 +59,6 @@
 	            <a class="nav-link" href="{% url 'configuration' %}">Configuration</a>
 	          </li>
 	          <li class="nav-item">
-	            <a class="nav-link" href="{% url 'all_jobs' %}">Jobs</a>
-	          </li>	          
-	          <li class="nav-item">
 	            <a class="nav-link {% if LIVY_SESSION.status == 'idle' %}text-success{% else %}text-danger{% endif %}" href="{% url 'livy_sessions' %}">Livy/Spark session</a>
 	          </li>
 	        </ul>

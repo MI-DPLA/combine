@@ -56,6 +56,12 @@ def breadcrumb_parser(path):
 
 	crumbs = []
 
+
+	# published
+	pub_m = re.match(r'(.+?/published)', path)
+	if pub_m:		
+		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
@@ -1468,6 +1474,7 @@ def published(request):
 			'published':published,
 			'field_counts':field_counts,
 			'es_index':published.esi.es_index,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 
