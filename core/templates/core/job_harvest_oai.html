@@ -43,7 +43,7 @@
 					
 					<div class="form-group">
 						<label for="verb">OAI Verb</label>
-						<select class="form-control" id="verb" name="verb" required>
+						<select class="form-control" id="verb" name="verb">
 							<option value="">Select OAI verb...</option>
 							<option value="ListRecords">ListRecords</option>
 							<option value="ListSets">ListSets</option>						
@@ -57,7 +57,7 @@
 
 					<div class="form-group">
 						<label for="scope_type">Scope type</label>
-						<select class="form-control" id="scope_type" name="scope_type" required>
+						<select class="form-control" id="scope_type" name="scope_type">
 							<option value="">Select scope type...</option>
 							<option value="setList">setList</option>
 							<option value="whiteList">whiteList</option>
@@ -78,7 +78,7 @@
 				<!-- Record Validation Selection -->
 				{% include 'core/record_validation_select.html' %}
 
-				<button type="submit" class="btn btn-success btn-sm">Run OAI Harvest</button>
+				<button type="submit" class="btn btn-success btn-sm">Run Job</button>
 
 			</form>
 

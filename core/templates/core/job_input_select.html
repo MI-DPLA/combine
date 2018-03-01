@@ -3,106 +3,110 @@
 	<!-- optional job lineage network node graph -->
 	{% include 'core/job_lineage_network.html' %}
 
-	<div>
-		<table id="jobs_table" border="1" cellpadding="10">
-			<thead>
-				<tr>
-					<th>Job ID</th>
-					<th>Name</th>
-					<th>Record Group</th>
-					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
-					<th>Is Valid</th>
-					<th>Timestamp</th>
-					<th>Input</th>
-					<th>Notes</th>
-					<th>Record Count</th>
-					<th>Select</th>
-				</tr>
-			</thead>				
-			<tbody>
-			{% for job in input_jobs %}
-				<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.name }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
-						<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-							<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
-						</div>
-					{% endfor %}</td>
-					{% if 'hdfs://' in job.job_output %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
-					{% else %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>
-					{% endif %}
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
-					{% if job_select_type == 'single' %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}"></td>
-					{% else %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
-					{% endif %}
-				</tr>
-			{% endfor %}
-			</tbody>
-			<tfoot>
-				<tr>
-					<th></th>
-					<th></th>
-					<th>Record Group</th>
-					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
-					<th></th>
-					<th></th>
-					<th></th>
-					<th></th>
-					<th></th>
-					<th></th>
-				</tr>
-			</tfoot>
-		</table>
-		<script>
-			$(document).ready(function() {
-			    jobs_table = $('#jobs_table').DataTable({
-			    	pageLength: 100,
-			    	lengthMenu: [ 10, 25, 100, 500 ],
-			    	createdRow: function( row, data, dataIndex){				    		
-	                    $('td', row).addClass(data[3]);
-	                    if (data[6] == 'False'){                    	
-	                    	$('td:nth-child(7)', row).addClass('invalid_job');
-	                    }
-		            },
-		            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
-		            initComplete: function () {
-			            this.api().columns([2,3,4,5]).every( function () {
-			                var column = this;
-			                var select = $('<select><option value="">All</option></select>')
-			                    .appendTo( $(column.footer()).empty() )
-			                    .on( 'change', function () {				                    	
-			                        var val = $.fn.dataTable.util.escapeRegex(
-			                            $(this).val()
-			                        );
-			 
-			                        column
-			                            .search( val ? '^'+val+'$' : '', true, false )
-			                            .draw();
-			                    } );
-			 
-			                column.data().unique().sort().each( function ( d, j ) {
-			                    select.append( '<option value="'+d+'">'+d+'</option>' )
-			                } );
-			            } );
-			        }
-			    });
-			} );
-		</script>
+	<div class="row">
+		<div class="col-md-12">
+			<div>
+				<table id="jobs_table" border="1" cellpadding="10">
+					<thead>
+						<tr>
+							<th>Job ID</th>
+							<th>Name</th>
+							<th>Record Group</th>
+							<th>Job Type</th>
+							<th>Status</th>
+							<th>Finished</th>
+							<th>Is Valid</th>
+							<th>Timestamp</th>
+							<th>Input</th>
+							<th>Notes</th>
+							<th>Record Count</th>
+							<th>Select</th>
+						</tr>
+					</thead>				
+					<tbody>
+					{% for job in input_jobs %}
+						<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.name }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
+								<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+									<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+								</div>
+							{% endfor %}</td>
+							{% if 'hdfs://' in job.job_output %}
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
+							{% else %}
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>
+							{% endif %}
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
+							{% if job_select_type == 'single' %}
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}" required></td>
+							{% else %}
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
+							{% endif %}
+						</tr>
+					{% endfor %}
+					</tbody>
+					<tfoot>
+						<tr>
+							<th></th>
+							<th></th>
+							<th>Record Group</th>
+							<th>Job Type</th>
+							<th>Status</th>
+							<th>Finished</th>
+							<th></th>
+							<th></th>
+							<th></th>
+							<th></th>
+							<th></th>
+							<th></th>
+						</tr>
+					</tfoot>
+				</table>
+				<script>
+					$(document).ready(function() {
+					    jobs_table = $('#jobs_table').DataTable({
+					    	pageLength: 100,
+					    	lengthMenu: [ 10, 25, 100, 500 ],
+					    	createdRow: function( row, data, dataIndex){				    		
+			                    $('td', row).addClass(data[3]);
+			                    if (data[6] == 'False'){                    	
+			                    	$('td:nth-child(7)', row).addClass('invalid_job');
+			                    }
+				            },
+				            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
+				            initComplete: function () {
+					            this.api().columns([2,3,4,5]).every( function () {
+					                var column = this;
+					                var select = $('<select><option value="">All</option></select>')
+					                    .appendTo( $(column.footer()).empty() )
+					                    .on( 'change', function () {				                    	
+					                        var val = $.fn.dataTable.util.escapeRegex(
+					                            $(this).val()
+					                        );
+					 
+					                        column
+					                            .search( val ? '^'+val+'$' : '', true, false )
+					                            .draw();
+					                    } );
+					 
+					                column.data().unique().sort().each( function ( d, j ) {
+					                    select.append( '<option value="'+d+'">'+d+'</option>' )
+					                } );
+					            } );
+					        }
+					    });
+					} );
+				</script>
+			</div>
+		</div>
 	</div>
 
 {% endblock %}

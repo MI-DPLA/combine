@@ -8,9 +8,8 @@
 
 		{% csrf_token %}
 
-		<p><strong>Job Name (optional):</strong>
-			<input type="text" name="job_name" size=120 placeholder="e.g. 'Fedora Records Publish'"/>
-		<p>
+		<!-- optional job details -->
+		{% include 'core/job_optional_details.html' %}
 
 		<p><strong>Set OAI set identifier to use for publishing:</strong>
 			
@@ -26,16 +25,11 @@
 			</p>
 		</p>
 
-		<!-- optional job note -->
-		{% include 'core/job_note.html' %}
-
 		<p>Select job to publish for this Record Group:</p>
 		<!-- Job Select -->
 		{% include 'core/job_input_select.html' %}
 
-		<p>
-			<input type="submit" value="Publish"/>
-		</p>
+		<button type="submit" class="btn btn-success btn-sm">Run Job</button>
 
 	</form>
 

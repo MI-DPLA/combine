@@ -2,34 +2,36 @@
 
 {% block content %}
 
-	<h3>Analysis Job</h3>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Analysis Job</h3>
 
-	<p>Run a new analysis job based on previously run jobs.</p>
+			<p>Run a new analysis job based on previously run jobs.</p>
+		</div>
+	</div>
 
-	<form method="POST" action="{% url 'job_analysis' %}">
+	<div class="row">
+		<div class="col-md-12">
+			<form method="POST" action="{% url 'job_analysis' %}">
 
-		{% csrf_token %}
+				{% csrf_token %}
 
-		<p><strong>Job Name (optional):</strong>
-			<input type="text" name="job_name" size=120 placeholder="e.g. Analysis of Recent Harvest"/>
-		<p>
+				<!-- optional job details -->
+				{% include 'core/job_optional_details.html' %}
 
-		<!-- optional job note -->
-		{% include 'core/job_note.html' %}
+				<!-- Job Select -->
+				{% include 'core/job_input_select.html' %}
 
-		<!-- Job Select -->
-		{% include 'core/job_input_select.html' %}
+				<!-- Indexing Mapping Selection -->
+				{% include 'core/index_mapping_select.html' %}
 
-		<!-- Indexing Mapping Selection -->
-		{% include 'core/index_mapping_select.html' %}
+				<!-- Record Validation Selection -->
+				{% include 'core/record_validation_select.html' %}
 
-		<!-- Record Validation Selection -->
-		{% include 'core/record_validation_select.html' %}
+				<button type="submit" class="btn btn-success btn-sm">Run Job</button>
 
-		<p>
-			<input type="submit" value="Analyze"/>
-		</p>
-
-	</form>
+			</form>
+		</div>
+	</div>
 
 {% endblock %}
