@@ -29,19 +29,33 @@
 
 				{% csrf_token %}
 
-				<!-- optional job details -->
-				{% include 'core/job_optional_details.html' %}
+				<div class="row">
+					<div class="col-md-6">
+						<!-- optional job details -->
+						{% include 'core/job_optional_details.html' %}
+					</div>
+				</div>
 
-				<!-- Job Select -->
-				{% include 'core/job_input_select.html' %}
+				<div class="row">
+					<div class="col-md-12">
+						<!-- Job Select -->
+						{% include 'core/job_input_select.html' %}
+					</div>
+				</div>
 
-				<!-- Indexing Mapping Selection -->
-				{% include 'core/index_mapping_select.html' %}
+				<div class="row">
+					<div class="col-md-6">
 
-				<!-- Record Validation Selection -->
-				{% include 'core/record_validation_select.html' %}
+						<!-- Indexing Mapping Selection -->
+						{% include 'core/index_mapping_select.html' %}
 
-				<button type="submit" class="btn btn-success btn-sm">Run Job</button>
+						<!-- Record Validation Selection -->
+						{% include 'core/record_validation_select.html' %}
+
+					</div>
+				</div>
+
+				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 
 			</form>
 		</div>

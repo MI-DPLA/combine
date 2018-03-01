@@ -45,11 +45,14 @@
 								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>
 							{% endif %}
 							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
+
+							<!-- assign either radio or checkbox -->
 							{% if job_select_type == 'single' %}
 								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}" required></td>
 							{% else %}
-								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" required></td>
 							{% endif %}
+
 						</tr>
 					{% endfor %}
 					</tbody>

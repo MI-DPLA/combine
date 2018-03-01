@@ -13,30 +13,43 @@
 			<form method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 				{% csrf_token %}
-
 	
-				<!-- optional job details -->
-				{% include 'core/job_optional_details.html' %}
-
-				<!-- Job Select -->
-				{% include 'core/job_input_select.html' %}
-
-				<div class="form-group">
-					<label for="transformation_id">Select Transformation Scenario to use</label>
-					<select class="form-control" id="transformation_id" name="transformation_id" required>
-						{% for transformation in transformations %}
-							<option value="{{ transformation.id }}">{{ transformation.name }} / {{ transformation.transformation_type }}</option>	
-						{% endfor %}						
-					</select>
+				<div class="row">
+					<div class="col-md-6">
+						<!-- optional job details -->
+						{% include 'core/job_optional_details.html' %}
+					</div>
 				</div>
 
-				<!-- Indexing Mapping Selection -->
-				{% include 'core/index_mapping_select.html' %}
+				<div class="row">
+					<div class="col-md-12">
+						<!-- Job Select -->
+						{% include 'core/job_input_select.html' %}
+					</div>
+				</div>
 
-				<!-- Record Validation Selection -->
-				{% include 'core/record_validation_select.html' %}
+				<div class="row">
+					<div class="col-md-6">
+
+						<div class="form-group">
+							<label for="transformation_id">Select Transformation Scenario to use</label>
+							<select class="form-control" id="transformation_id" name="transformation_id" required>
+								{% for transformation in transformations %}
+									<option value="{{ transformation.id }}">{{ transformation.name }} / {{ transformation.transformation_type }}</option>	
+								{% endfor %}						
+							</select>
+						</div>
 				
-				<button type="submit" class="btn btn-success btn-sm">Run Job</button>
+						<!-- Indexing Mapping Selection -->
+						{% include 'core/index_mapping_select.html' %}
+
+						<!-- Record Validation Selection -->
+						{% include 'core/record_validation_select.html' %}
+
+					</div>
+				</div>
+				
+				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 
 			</form>
 		</div>

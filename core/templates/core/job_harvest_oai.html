@@ -30,16 +30,9 @@
 					</select>
 				</div>
 
-				<!-- TODO: STYLE THIS BETTER, OR PUT TO TABLE -->
-				<div id="oai_endpoint_defaults">
-					<p>OAI endpoint default values</p>
-					<pre id="defaults"></pre>
-				</div>
-				<!-- TODO: STYLE THIS BETTER, OR PUT TO TABLE -->
-
 				<!-- optional OAI endpoint defaults overrides -->				
-				<div style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px;">
-					<p class="text-danger font-weight-bold">Optional overrides for defaults shown above (each is applied separately, if completed):</p>
+				<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
+					<p class="text-danger font-weight-bold">Below are default settings for this configured OAI Endpoint, but can be selectively overridden for this job</p>
 					
 					<div class="form-group">
 						<label for="verb">OAI Verb</label>
@@ -72,13 +65,17 @@
 					</div>
 				</div>
 
-				<!-- Indexing Mapping Selection -->
-				{% include 'core/index_mapping_select.html' %}
+				<div class="row">
+					<div class="col-md-12">
+						<!-- Indexing Mapping Selection -->
+						{% include 'core/index_mapping_select.html' %}
 
-				<!-- Record Validation Selection -->
-				{% include 'core/record_validation_select.html' %}
+						<!-- Record Validation Selection -->
+						{% include 'core/record_validation_select.html' %}
+					</div>
+				</div>
 
-				<button type="submit" class="btn btn-success btn-sm">Run Job</button>
+				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 
 			</form>
 
@@ -92,8 +89,24 @@
 
 			$(function() {
 			    $("#oai_endpoint_id").change(function() {
+
+			    	// get id 
 			        oe_id = $('option:selected', this).val()
-			        $("#defaults").html(JSON.stringify(oes[oe_id]));
+
+			        // set verb
+			        $('#verb option[value="'+oes[oe_id].verb+'"]').attr("selected", "selected");
+
+			        // set metadata Prefix
+			        $('#metadataPrefix').val(oes[oe_id].metadataPrefix);
+
+			        // set scope type
+			        $('#scope_type option[value="'+oes[oe_id].scope_type+'"]').attr("selected", "selected");
+
+			        // set scope value
+			        $('#scope_value').val(oes[oe_id].scope_value);
+
+			        // show defaults
+			        $('#oai_endpoint_defaults').show();
 			    });
 			});
 
