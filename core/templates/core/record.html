@@ -161,7 +161,7 @@
 			{% if record.dpla_mapped_field_values %}
 
 				<div style="background-color:#E4E4E3; padding:10px 10px 10px 10px; border-radius:10px;">
-					<h3>Combine --> DPLA Mapped Fields</h3>
+					<h3>Mapped DLPA Fields</h3>
 
 				<!-- show thumbnail if mapped -->
 				{% if record.job.dpla_mapping.preview %}
@@ -208,20 +208,20 @@
 	</div>
 
 	<!-- Details specific to Job Type -->
-
-	<!-- HarvestJob -->
-	{% if record.job.job_type_family == 'HarvestJob' %}
-	{% endif %}
-
-	<!-- TransformJob -->
 	<div class="row">
 		<div class="col-md-12">
 			<div id="job_type_specific">
+
+				<!-- HarvestJob -->
+				{% if record.job.job_type_family == 'HarvestJob' %}
+				{% endif %}
+
+				<!-- TransformJob -->			
 				{% if record.job.job_type_family == 'TransformJob' %}
 					{% if job_details.transformation.id %}
 						<h2>{{ record.job.job_type_family }} Details</h2>
 						<h3>Transformation Used</h3>
-						<table border="1" cellpadding="10">
+						<table class="table table-bordered table-hover">
 							<tr>
 								<th>ID</th>
 								<th>Name</th>
@@ -234,8 +234,8 @@
 								<td>{{job_details.transformation.id}}</td>
 								<td>{{job_details.transformation.name}}</td>
 								<td>{{job_details.transformation.transformation_type}}</td>
-								<td>{{job_details.transformation.filepath}}</td>
-								<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View XSL</a></td>
+								<td><code>{{job_details.transformation.filepath}}</code></td>
+								<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
 								<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
 							</tr>
 						</table>
@@ -249,6 +249,7 @@
 				<!-- PublishJob -->
 				{% if record.job.job_type_family == 'PublishJob' %}
 				{% endif %}
+
 			</div>
 		</div>
 	</div>

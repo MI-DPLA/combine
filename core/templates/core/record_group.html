@@ -46,20 +46,22 @@
 						<p class="text-center"><a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">change OAI Set</button></a></p>
 						<div id="publish_set_id_update" style="display:none;">
 							<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=record_group.organization.id record_group_id=record_group.id %}">
-								{% csrf_token %}						
-								<p>Select an OAI set used from other published sets:
-									<select name="existing_publish_set_id">
+								{% csrf_token %}
+
+								<div class="form-group">
+									<label for="existing_publish_set_id">Select an OAI set used from other published sets</label>
+									<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
 										<option value=''></option>
 										{% for publish_set_id in publish_set_ids %}
 											<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
 										{% endfor %}
-									</select>
-									<br>							
-									Or enter a new one: <input type="text" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
-								</p>
-								<p>
-									<input type="submit" value="Update"/>
-								</p>
+									</select>																	
+								</div>
+								<div class="form-group">
+									<label for="new_publish_set_id">Or enter a new one</label>
+									<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
+								</div>
+								<button type="submit" class="btn btn-primary btn-sm">Update</button>
 							</form>
 						</div>
 					</td>

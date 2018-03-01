@@ -19,7 +19,7 @@
 					{% csrf_token %}
 					
 					<div class="form-group">						
-						<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="No notes yet...">{{ cjob.job.note }}</textarea>
+						<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
 					</div>
 					<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
 					<input type="hidden" name="next" value="{{ request.path }}">
