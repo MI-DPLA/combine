@@ -2,66 +2,70 @@
 
 {% block content %}
 
-	<h3>Documents related to Field: <code>{{ field_name }}</code></h3>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Documents with Field: <code>{{ field_name }}</code></h3>
 
-	<!-- DataTable of Fields per ES document -->
-	<table id='datatables_es_records' border="1" cellpadding="5">
-		<thead>
-			<th>Combine ID</th>
-			<th>Record ID</th>
-			<th><code>{{ field_name }}</code> Value</th>
-		</thead>
-		<tbody></tbody>
-	</table>
+			<!-- DataTable of Fields per ES document -->
+			<table id='datatables_es_records' class="table table-bordered table-hover">
+				<thead>
+					<th>Combine ID</th>
+					<th>Record ID</th>
+					<th><code>{{ field_name }}</code> Value</th>
+				</thead>
+				<tbody></tbody>
+			</table>
 
 
-	<script>
-		// prepare list of fields
-		var fields = {{ esi.get_index_fields|safe }};
+			<script>
+				// prepare list of fields
+				var fields = {{ esi.get_index_fields|safe }};
 
-		// prepare fields list as GET repeating parameters
-		fields_get_params = '';
-		for (var i = fields.length - 1; i >= 0; i--) {
-			fields_get_params += ('field_names='+fields[i]+'&');
-		};
+				// prepare fields list as GET repeating parameters
+				fields_get_params = '';
+				for (var i = fields.length - 1; i >= 0; i--) {
+					fields_get_params += ('field_names='+fields[i]+'&');
+				};
 
-		$(document).ready(function() {
-		    var oTable = $('#datatables_es_records').dataTable({
-		        "processing": true,
-		        "serverSide": true,
-		        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}",
-		        "searchDelay": 1000,
-		        "pageLength": 10,
-		        "order": [[ 1, "desc" ]],
-		        "columns": [
-		            { 
-		            	title: "Combine ID",
-		            	"render": function ( data, type, row ) {
-		                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
-		                }
-	            	},
-		            { 
-		            	title: "Record ID",
-		            	"render": function ( data, type, row ) {
-		                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
-		                }
-		            },
-		            {
-		            	title: "<code>{{ field_name }}</code> Value",
-		            	"render": function ( data, type, row ) {
-		                    if (!row[5]){
-		                    	return "<span style='color:red;'>None</span>";
-		                    }
-		                    else {
-		                    	return row[5];
-		                    }
-		                }
-		            	
-		            }
-		        ],
-		    });
-		});
-	</script>
-
+				$(document).ready(function() {
+				    var oTable = $('#datatables_es_records').dataTable({
+				        "processing": true,
+				        "serverSide": true,
+				        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}",
+				        "searchDelay": 1000,
+				        "pageLength": 10,
+				        "order": [[ 1, "desc" ]],
+				        "columns": [
+				            { 
+				            	title: "Combine ID",
+				            	"render": function ( data, type, row ) {
+				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
+				                }
+			            	},
+				            { 
+				            	title: "Record ID",
+				            	"render": function ( data, type, row ) {
+				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
+				                }
+				            },
+				            {
+				            	title: "<code>{{ field_name }}</code> Value",
+				            	"render": function ( data, type, row ) {
+				                    if (!row[5]){
+				                    	return "<span style='color:red;'>None</span>";
+				                    }
+				                    else {
+				                    	return row[5];
+				                    }
+				                }
+				            	
+				            }
+				        ],
+				    });
+				});
+			</script>
+			
+		</div>
+	</div>
 
 {% endblock %}

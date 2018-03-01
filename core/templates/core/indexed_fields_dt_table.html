@@ -2,46 +2,9 @@
 {% load core_template_filters %}
 
 <div class="row">
-	<div class="col-md-12">	
-		<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').slideToggle();">Show field analysis explanation</button>
-			<div class="bg-light" id="field_analysis_explanation" style="display:none;">
-				<table class="table table-bordered table-hover">
-					<tr>
-						<th>Column</th>
-						<th>Explanation</th>
-					</tr>
-					<tr>
-						<td><strong>Field Name</strong></td>
-						<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.<br><br><strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
-					</tr>
-					<tr>
-						<td><strong>DPLA Mapped Field</strong></td>
-						<td>Mapped DPLA field.<br><br><strong>Note:</strong> These are primarily for preview / QA, they do not represent a final mapping.</td>
-					</tr>
-					<tr>
-						<td><strong>Documents with Field</strong></td>
-						<td>Count of documents with instance of this field.</td>
-					</tr>
-					<tr>
-						<td><strong>Count of Total Values for Field</strong></td>
-						<td>Count of total values for this field, across all documents.</td>
-					</tr>
-					<tr>
-						<td><strong>Count of Distinct Values for Field</strong></td>
-						<td>How many unique values are present for a given field.<br><br><strong>Note:</strong> Though quite accurate, this count is not gauranteed to be 100% accurate, according to <a target="_blank" href="https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html">ES documentation</a>.  However, this should not dramatically effect analysis.</td>
-					</tr>
-					<tr>
-						<td><strong>Percentage of Field Values that are Unique</strong></td>
-						<td>Percentage of values for this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 (lighter green) would be 10% unique.</td>
-					</tr>
-					<tr>
-						<td><strong>Instance of Field in Total Indexed Records</strong></td>
-						<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) would mean all documents have this field, 0.10 (lighter green) would mean 10% of documents have this field.This can be useful for QA-ing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
-					</tr>
-				</table>
-			</div>
-		</p>
-	</div>
+	
+	<!-- Indexed Fields Analysis Explanation -->
+	{% include 'core/field_analysis_explanation.html' %}
 
 	<div class="col-md-12">
 		<p>
