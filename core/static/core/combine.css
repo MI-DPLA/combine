@@ -32,6 +32,11 @@ table {
 	margin-bottom: 1rem;
 }
 
+/* consider darkening lines in table with something similar */
+/*.table-bordered td, .table-bordered th {
+	border: 1px solid #828281;
+}
+*/
 /* Navbar */
 
 
