@@ -4,9 +4,15 @@
 
 <div class="row">
 	<div class="col-md-12">
-		<h3>Published Sets</h3>
+		<h3>Published Records</h3>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-8">
+		<h4>Published Sets</h4>
 		
-		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span style="color:red;">"Not set</span>", resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
+		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
 		<table border="1" cellpadding="10">
 
@@ -52,7 +58,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Published Records</h3>
+		<h4>Published Records</h4>
 
 		<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
 
@@ -88,7 +94,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Indexed Field Analysis</h3>
+		<h4>Indexed Field Analysis</h4>
 
 		<p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
 
@@ -101,7 +107,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Combine OAI Server</h3>
+		<h4>Combine OAI Server</h4>
 
 		<ul>
 			<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
