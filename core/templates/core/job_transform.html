@@ -2,41 +2,57 @@
 
 {% block content %}
 
-	<h3>Transform Job for Record Group: {{ record_group.name }}</h3>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Transform Job for Record Group: {{ record_group.name }}</h3>
+		</div>
+	</div>
 
-	<form method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
+	<div class="row">
+		<div class="col-md-12">
+			<form method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
-		{% csrf_token %}
+				{% csrf_token %}
+	
+				<div class="row">
+					<div class="col-md-6">
+						<!-- optional job details -->
+						{% include 'core/job_optional_details.html' %}
+					</div>
+				</div>
 
-		<p>Transform Job Name (optional):
-			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Transform, 10/10/2017"/>
-		<p>
+				<div class="row">
+					<div class="col-md-12">
+						<!-- Job Select -->
+						{% include 'core/job_input_select.html' %}
+					</div>
+				</div>
 
-		<!-- optional job note -->
-		{% include 'core/job_note.html' %}
+				<div class="row">
+					<div class="col-md-6">
 
-		<!-- Job Select -->
-		{% include 'core/job_input_select.html' %}
+						<div class="form-group">
+							<label for="transformation_id">Select Transformation Scenario to use</label>
+							<select class="form-control" id="transformation_id" name="transformation_id" required>
+								{% for transformation in transformations %}
+									<option value="{{ transformation.id }}">{{ transformation.name }} / {{ transformation.transformation_type }}</option>	
+								{% endfor %}						
+							</select>
+						</div>
+				
+						<!-- Indexing Mapping Selection -->
+						{% include 'core/index_mapping_select.html' %}
 
-		<p>Select Transformation Scenario to use:
-			<select name="transformation_id">
-				<option value="">Select a Transformation...</option>
-				{% for transformation in transformations %}
-					<option value="{{ transformation.id }}">{{ transformation.name }} / {{ transformation.transformation_type }}</option>	
-				{% endfor %}
-			</select>
-		<p>
+						<!-- Record Validation Selection -->
+						{% include 'core/record_validation_select.html' %}
 
-		<!-- Indexing Mapping Selection -->
-		{% include 'core/index_mapping_select.html' %}
+					</div>
+				</div>
+				
+				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 
-		<!-- Record Validation Selection -->
-		{% include 'core/record_validation_select.html' %}
-		
-		<p>
-			<input type="submit" value="Transform"/>
-		</p>
-
-	</form>
+			</form>
+		</div>
+	</div>
 
 {% endblock %}

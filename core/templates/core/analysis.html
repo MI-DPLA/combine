@@ -2,30 +2,34 @@
 
 {% block content %}
 
-	<div>
-		<h2>Analysis</h2>
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Analysis</h2>
 
-		<p>This page provides the ability to view, and run, analysis of Jobs.  These special "Analysis" jobs are designed explicitly for analyzing pre-existing jobs, and are not included in the workflow or progression of records for publishing.</p>
-
-	</div>
-
-	<div>		
-		<h3>Jobs</h3>
-
-		<!-- optional job lineage network node graph -->
-		{% include 'core/job_lineage_network.html' %}
-
-		<div>
-			<!-- job datatable -->
-			{% include 'core/jobs_dt_table.html' %}
+			<p>This page provides the ability to view, and run, analysis of Jobs.  These special "Analysis" jobs are designed explicitly for analyzing pre-existing jobs, and are not included in the workflow or progression of records for publishing.</p>
 		</div>
-		
 	</div>
 
-	<div>
-		<ul>			
-			<li><a href="{% url 'job_analysis' %}">Run new analysis job</a></li>
-		</ul>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Jobs</h3>
+
+			<!-- optional job lineage network node graph -->
+			{% include 'core/job_lineage_network.html' %}
+
+			<div>
+				<!-- job datatable -->
+				{% include 'core/jobs_dt_table.html' %}
+			</div>
+		</div>
+	</div>
+		
+
+	<div class="row">
+		<div class="col-md-12">
+			<p><a href="{% url 'job_analysis' %}"><button type="button" class="btn btn-success btn-sm">Run Analysis Job</button></a></p>
+		</div>
 	</div>
 
 {% endblock %}

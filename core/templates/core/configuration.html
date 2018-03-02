@@ -2,84 +2,100 @@
 
 {% block content %}
 	
-	<h2>Configurations</h2>
-
-	<p><a href="/admin">Django Admin</a></p>
-
-	<h3>Validation Scenarios</h3>
-	<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
-	<div>
-		<table border="1" cellpadding="10">
-			<tr>
-				<th>ID</th>
-				<th>Name</th>
-				<th>Type</th>
-				<th>Path on disk</th>
-				<th>Validation Payload</th>
-			</tr>
-			{% for vs in validation_scenarios %}
-				<tr>
-					<td>{{vs.id}}</td>
-					<td>{{vs.name}}</td>
-					<td>{{vs.transformation_type}}</td>
-					<td>{{vs.filepath}}</td>
-					<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
-				</tr>
-			{% endfor %}
-		</table>
-		<p><a href="{% url 'test_validation_scenario' %}">Test Validation Scenario</a></p>
-	</div>	
-	
-	<h3>Transformations</h3>
-	<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
-	<div>
-		<table border="1" cellpadding="10">
-			<tr>
-				<th>ID</th>
-				<th>Name</th>
-				<th>Type</th>
-				<th>Path on disk</th>
-				<th>Transformation Payload</th>
-			</tr>
-			{% for transformation in transformations %}
-				<tr>
-					<td>{{transformation.id}}</td>
-					<td>{{transformation.name}}</td>
-					<td>{{transformation.transformation_type}}</td>
-					<td>{{transformation.filepath}}</td>
-					<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View XSL</a></td>
-				</tr>
-			{% endfor %}
-		</table>
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Configurations</h2>
+			<p>Below are some pre-configured settings and user created scenarios for use in Combine.  For the time being, the creation and editing of these are done through the Django admin console.</p>
+			<p><a href="/admin"><button type="button" class="btn btn-primary btn-sm">Django Admin Console</button></a></p>
+		</div>
 	</div>
 
-	<h3>OAI Endpoints</h3>
-	<p>These are used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.</p>
-	<div>
-		<table border="1" cellpadding="10">
-			<tr>
-				<th>ID</th>
-				<th>Name</th>
-				<th>Endpoint URL</th>
-				<th>Verb</th>
-				<th>Metadata Prefix</th>
-				<th>Scope Type</th>
-				<th>Scope Value</th>
-				<th>Actions</th>
-			</tr>
-			{% for oai_endpoint in oai_endpoints %}
-				<tr>
-					<td>{{oai_endpoint.id}}</td>
-					<td>{{oai_endpoint.name}}</td>
-					<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
-					<td>{{oai_endpoint.verb}}</td>
-					<td>{{oai_endpoint.metadataPrefix}}</td>
-					<td>{{oai_endpoint.scope_type}}</td>
-					<td>{{oai_endpoint.scope_value}}</td>
-					<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
-				</tr>
-			{% endfor %}
-		</table>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Validation Scenarios</h3>
+			<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Validation Payload</th>
+					</tr>
+					{% for vs in validation_scenarios %}
+						<tr>
+							<td>{{vs.id}}</td>
+							<td>{{vs.name}}</td>
+							<td>{{vs.transformation_type}}</td>
+							<td><code>{{vs.filepath}}</code></td>
+							<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
+						</tr>
+					{% endfor %}
+				</table>
+				<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario</button></a></p>
+			</div>
+		</div>
+	</div>	
+	
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Transformations</h3>
+			<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Transformation Payload</th>
+					</tr>
+					{% for transformation in transformations %}
+						<tr>
+							<td>{{transformation.id}}</td>
+							<td>{{transformation.name}}</td>
+							<td>{{transformation.transformation_type}}</td>
+							<td><code>{{transformation.filepath}}</code></td>
+							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View XSL</a></td>
+						</tr>
+					{% endfor %}
+				</table>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>OAI Endpoints</h3>
+			<p>These are used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Endpoint URL</th>
+						<th>Verb</th>
+						<th>Metadata Prefix</th>
+						<th>Scope Type</th>
+						<th>Scope Value</th>
+						<th>Actions</th>
+					</tr>
+					{% for oai_endpoint in oai_endpoints %}
+						<tr>
+							<td>{{oai_endpoint.id}}</td>
+							<td>{{oai_endpoint.name}}</td>
+							<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
+							<td>{{oai_endpoint.verb}}</td>
+							<td>{{oai_endpoint.metadataPrefix}}</td>
+							<td>{{oai_endpoint.scope_type}}</td>
+							<td>{{oai_endpoint.scope_value}}</td>
+							<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+						</tr>
+					{% endfor %}
+				</table>
+			</div>
+		</div>
 	</div>
 
 {% endblock %}

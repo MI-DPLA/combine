@@ -1,93 +1,117 @@
-	{% extends 'core/base.html' %}
+{% extends 'core/base.html' %}
 
 {% block content %}
 
-<h2>Published Sets</h2>
-<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span style="color:red;">"Not set</span>", resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>  
+<div class="row">
+	<div class="col-md-12">
+		<h3>Published Sets</h3>
+		
+		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span style="color:red;">"Not set</span>", resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
-<table border="1" cellpadding="10">
+		<table border="1" cellpadding="10">
 
-	<tr>
-		<th>OAI Set</th>
-		<th>Record Group</th>
-		<th>Published Records</th>
-		<th>Record Count</th>
-		<th>Action</th>
-	</tr>
-
-	{% for set, jobs in published.sets.items %}
-		{% for job in jobs %}
 			<tr>
-				<td>
-					{% if job.record_group.publish_set_id %}
-						<a href="{% url 'oai' %}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
-					{% else %}
-						<span style="color:red;"><strong>Not set</strong></span>
-					{% endif %}
-				</td>
-				<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
-				<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
-				<td>{{ job.record_count }}</td>
-				<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button>Unpublish</button></a></td>
+				<th>Record Group</th>
+				<th>OAI Set</th>
+				<th>Published Job</th>
+				<th>Record Count</th>
+				<th>Action</th>
 			</tr>
-		{% endfor %}
-	{% endfor %}
 
-	<tr>
-		<td></td>
-		<td></td>
-		<td><strong>Total:</strong></td>
-		<td><strong>{{ published.record_count }}</strong></td>
-		<td></td>
-	</tr>
+			{% for set, jobs in published.sets.items %}
+				{% for job in jobs %}
+					<tr>
+						<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
+						<td>
+							{% if job.record_group.publish_set_id %}
+								<a href="{% url 'oai' %}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
+							{% else %}
+								<span style="color:red;"><strong>Not set</strong></span>
+							{% endif %}
+						</td>
+						<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
+						<td>{{ job.record_count }}</td>
+						<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+					</tr>
+				{% endfor %}
+			{% endfor %}
 
-</table>
+			<tr>
+				<td></td>
+				<td></td>
+				<td><strong>Total:</strong></td>
+				<td><strong>{{ published.record_count }}</strong></td>
+				<td></td>
+			</tr>
 
-<h2>Published Records</h2>
+		</table>
 
-<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
+	</div>
+</div>
 
-<table id='published_records'>
-	<thead>
-		<th>ID</th>
-		<th>Record ID</th>
-		<th>Record Group</th>
-		<th>Outgoing OAI set</th>
-		<th>Harvested OAI set</th>
-		<th>Unique in Published?</th>
-		<th>Document</th>
-	</thead>
-	<tbody>
-	</tbody>
-</table>
+<div class="row">
+	<div class="col-md-12">
 
-<script>
-	$(document).ready(function() {
-	    var oTable = $('#published_records').dataTable({
-	        "processing": true,
-	        "serverSide": true,
-	        "ajax": "{% url 'published_dt_json' %}",
-	        "searchDelay": 1000,
-	        "pageLength": 10
-	    });
-	});
-</script>
+		<h3>Published Records</h3>
 
-<h2>Indexed Field Analysis</h2>
+		<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
 
-<p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
+		<table id='published_records'>
+			<thead>
+				<th>ID</th>
+				<th>Record ID</th>
+				<th>Record Group</th>
+				<th>Outgoing OAI set</th>
+				<th>Harvested OAI set</th>
+				<th>Unique in Published?</th>
+				<th>Document</th>
+			</thead>
+			<tbody>
+			</tbody>
+		</table>
 
-<!-- Indexed Fields Analysis DT Table -->
-{% include 'core/indexed_fields_dt_table.html' %}
+		<script>
+			$(document).ready(function() {
+			    var oTable = $('#published_records').dataTable({
+			        "processing": true,
+			        "serverSide": true,
+			        "ajax": "{% url 'published_dt_json' %}",
+			        "searchDelay": 1000,
+			        "pageLength": 10
+			    });
+			});
+		</script>
 
-<h2>OAI Endpoint examples</h2>
+	</div>
+</div>
 
-<ul>
-	<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
-	<li><a href="{% url 'oai' %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
-	<li><a href="{% url 'oai' %}?verb=ListRecords" target="_blank">List Records</a></li>
-	<li><a href="{% url 'oai' %}?verb=ListSets" target="_blank">List Sets</a></li>
-</ul>
+<div class="row">
+	<div class="col-md-12">
+
+		<h3>Indexed Field Analysis</h3>
+
+		<p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
+
+		<!-- Indexed Fields Analysis DT Table -->
+		{% include 'core/indexed_fields_dt_table.html' %}
+
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-12">
+
+		<h3>Combine OAI Server</h3>
+
+		<ul>
+			<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
+			<li><a href="{% url 'oai' %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
+			<li><a href="{% url 'oai' %}?verb=ListRecords" target="_blank">List Records</a></li>
+			<li><a href="{% url 'oai' %}?verb=ListSets" target="_blank">List Sets</a></li>
+		</ul>
+
+	</div>
+</div>
 
 
 {% endblock %}

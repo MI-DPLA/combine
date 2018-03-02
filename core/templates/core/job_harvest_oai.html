@@ -2,88 +2,116 @@
 
 {% block content %}
 
-	<h3>OAI Harvest Job</h3>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>OAI Harvest Job</h3>
 
-	<p>Here you can harvest records via OAI-PMH from a remote endpoint.</p>	
-
-	<form method="POST" action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
-
-		{% csrf_token %}
-
-		<p><strong>Job Name (optional):</strong>
-			<input type="text" name="job_name" size=120 placeholder="e.g. Fedora OAI Harvest, 10/10/2017"/>
-		<p>
-
-		<!-- optional job note -->
-		{% include 'core/job_note.html' %}
-		
-		<p><strong>Select OAI endpoint to use:</strong>
-			<select id="oai_endpoint_id" name="oai_endpoint_id">
-				<option value="">Select an oai endpoint...</option>
-				{% for oai_endpoint in oai_endpoints %}
-					<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>	
-				{% endfor %}
-			</select>
-		<p>
-
-		<div id="oai_endpoint_defaults">
-			<p>OAI endpoint default values:</p>
-			<pre id="defaults"></pre>
+			<p>Harvest records via OAI-PMH from a remote endpoint.</p>	
 		</div>
+	</div>
 
-		<div style="background-color:#E4E4E3; width:50%; padding:10px; border-radius:10px;">
-			<p style="color:red;">Optional overrides for defaults shown above (each is applied separately, if completed):</p>
-			<p><strong>OAI Verb:</strong>
-				<select name="verb">
-					<option value="">Select OAI verb...</option>
-					<option value="ListRecords">ListRecords</option>
-					<option value="ListSets">ListSets</option>
-				</select>
-			<p>
-			<p><strong>OAI metadata prefix:</strong>
-				<input type="text" name="metadataPrefix" size=30 placeholder="e.g. mods, MODS, oai_dc, etc."/>
-			<p>
-			<p><strong>Scope type:</strong>
-				<select name="scope_type">
-					<option value="">Select scope type...</option>
-					<option value="setList">setList</option>
-					<option value="whiteList">whiteList</option>
-					<option value="blackList">blackList</option>
-					<option value="harvestAllSets">harvestAllSets</option>
-				</select>
-			<p>
-			<p><strong>Scope value:</strong>
-				<input type="text" name="scope_value" size=120 placeholder="set1,set2,set3 (comma separated)"/>
-			<p>
-		</div>
+	<div class="row">
+		<div class="col-md-6">
+			<form method="POST" action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
-		<!-- Indexing Mapping Selection -->
-		{% include 'core/index_mapping_select.html' %}
+				{% csrf_token %}
 
-		<!-- Record Validation Selection -->
-		{% include 'core/record_validation_select.html' %}
+				<!-- optional job details -->
+				{% include 'core/job_optional_details.html' %}
 
-		<p>
-			<input type="submit" value="Harvest OAI"/>
+				<!-- OAI endpoint -->
+				<div class="form-group">
+					<label for="oai_endpoint_id">Select OAI endpoint to use</label>
+					<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
+						<option value="">Select an oai endpoint...</option>
+						{% for oai_endpoint in oai_endpoints %}
+							<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
+						{% endfor %}						
+					</select>
+				</div>
+
+				<!-- optional OAI endpoint defaults overrides -->				
+				<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
+					<p class="text-danger font-weight-bold">Below are default settings for this configured OAI Endpoint, but can be selectively overridden for this job</p>
+					
+					<div class="form-group">
+						<label for="verb">OAI Verb</label>
+						<select class="form-control" id="verb" name="verb">
+							<option value="">Select OAI verb...</option>
+							<option value="ListRecords">ListRecords</option>
+							<option value="ListSets">ListSets</option>						
+						</select>
+					</div>
+
+					<div class="form-group">
+						<label for="metadataPrefix">OAI metadata prefix</label>
+						<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="e.g. mods, MODS, oai_dc, etc.">
+					</div>
+
+					<div class="form-group">
+						<label for="scope_type">Scope type</label>
+						<select class="form-control" id="scope_type" name="scope_type">
+							<option value="">Select scope type...</option>
+							<option value="setList">setList</option>
+							<option value="whiteList">whiteList</option>
+							<option value="blackList">blackList</option>
+							<option value="harvestAllSets">harvestAllSets</option>					
+						</select>
+					</div>
+
+					<div class="form-group">
+						<label for="scope_value">Scope value</label>
+						<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-12">
+						<!-- Indexing Mapping Selection -->
+						{% include 'core/index_mapping_select.html' %}
+
+						<!-- Record Validation Selection -->
+						{% include 'core/record_validation_select.html' %}
+					</div>
+				</div>
+
+				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
+
+			</form>
+
+			<script>
+
+			// save all oai endpoints as parsed javascript values for previewing
+			oes = {}
+			{% for oai_endpoint in oai_endpoints %}
+				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
+			{% endfor %}
+
+			$(function() {
+			    $("#oai_endpoint_id").change(function() {
+
+			    	// get id 
+			        oe_id = $('option:selected', this).val()
+
+			        // set verb
+			        $('#verb option[value="'+oes[oe_id].verb+'"]').attr("selected", "selected");
+
+			        // set metadata Prefix
+			        $('#metadataPrefix').val(oes[oe_id].metadataPrefix);
+
+			        // set scope type
+			        $('#scope_type option[value="'+oes[oe_id].scope_type+'"]').attr("selected", "selected");
+
+			        // set scope value
+			        $('#scope_value').val(oes[oe_id].scope_value);
+
+			        // show defaults
+			        $('#oai_endpoint_defaults').show();
+			    });
+			});
+
+			</script>
 		</p>
-
-	</form>
-
-	<script>
-
-	// save all oai endpoints as parsed javascript values for previewing
-	oes = {}
-	{% for oai_endpoint in oai_endpoints %}
-		oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
-	{% endfor %}
-
-	$(function() {
-	    $("#oai_endpoint_id").change(function() {
-	        oe_id = $('option:selected', this).val()
-	        $("#defaults").html(JSON.stringify(oes[oe_id]));
-	    });
-	});
-
-	</script>
+	</p>
 
 {% endblock %}
