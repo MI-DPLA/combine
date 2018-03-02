@@ -141,24 +141,16 @@ def index(request):
 @login_required
 def livy_sessions(request):
 	
-	logger.debug('retrieving Livy sessions')
-	
-	# query db
-	livy_sessions = models.LivySession.objects.all()
+	# single Livy session
+	logger.debug("checking or active Livy session")
+	livy_session = models.LivySession.get_active_session()
 
-	# refresh sessions
-	for livy_session in livy_sessions:
+	# if session found, refresh
+	if livy_session:
 		livy_session.refresh_from_livy()
 
-		# check user session status, and set active flag for session
-		if livy_session.status in ['starting','idle','busy']:
-			livy_session.active = True
-		else:
-			livy_session.active = False
-		livy_session.save()
-	
 	# return
-	return render(request, 'core/livy_sessions.html', {'livy_sessions':livy_sessions})
+	return render(request, 'core/livy_sessions.html', {'livy_session':livy_session})
 
 
 @login_required
