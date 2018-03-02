@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+from collections import OrderedDict
 import datetime
 import gc
 import hashlib
@@ -657,7 +658,8 @@ class Job(models.Model):
 		'''
 		
 		# index results save path
-		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
 	@property
@@ -948,7 +950,8 @@ class JobPublish(models.Model):
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 
 	def __str__(self):
-		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
+		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (
+			self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
 
 
 
@@ -1057,16 +1060,19 @@ class Record(models.Model):
 
 
 	def __str__(self):
-		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
+		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
+			self.id, self.record_id, self.job.id, self.job.job_type)
 
 
-	def get_record_stages(self, input_record_only=False):
+	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
 
 		'''
 		Method to return all upstream and downstreams stages of this record
 
 		Args:
 			input_record_only (bool): If True, return only immediate record that served as input for this record.
+			remove_duplicates (bool): Removes duplicates - handy for flat list of stages,
+			but use False to create lineage
 
 		Returns:
 			(list): ordered list of Record instances from first created (e.g. Harvest), to last (e.g. Publish).
@@ -1125,6 +1131,10 @@ class Record(models.Model):
 		if not input_record_only:
 			record_stages.append(self)
 			get_downstream(self)
+
+		# remove duplicate
+		if remove_duplicates:
+			record_stages = list(OrderedDict.fromkeys(record_stages))
 		
 		# return		
 		return record_stages
@@ -1507,7 +1517,8 @@ class ValidationScenario(models.Model):
 	
 
 	def __str__(self):
-		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (
+			self.name, self.validation_type, self.default_run)
 
 
 	def validate_record(self, row):
@@ -1680,7 +1691,8 @@ class JobValidation(models.Model):
 	failure_count = models.IntegerField(null=True, default=None)
 
 	def __str__(self):
-		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (self.id, self.job.id, self.validation_scenario.id, self.failure_count)
+		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (
+			self.id, self.job.id, self.validation_scenario.id, self.failure_count)
 
 
 	def get_record_validation_failures(self):
@@ -1734,7 +1746,8 @@ class RecordValidation(models.Model):
 	'''
 
 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL) # what kind of performance hit is this FK?
+	# what kind of performance hit is this FK?
+	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
 	valid = models.BooleanField(default=1)
 	results_payload = models.TextField(null=True, default=None)
 	fail_count = models.IntegerField(null=True, default=None)
