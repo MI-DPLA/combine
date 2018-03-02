@@ -40,15 +40,21 @@
 # free to import python modules as needed
 import re
 
-
+# each function that starts with `test` is used as a validation test
+# this one check for a MODS element
 def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo element"):
 
 	titleInfo_elements = record.xml.xpath('//mods:titleInfo', namespaces=record.nsmap)
 	if len(titleInfo_elements) > 0:
+
+		# returning True passes the validation
 		return True
 	else:
+		# returning False fails it
 		return False
 
+
+# this test checks the format of a date field
 def test_check_dateIssued_format(record, test_message="check mods:dateIssued is YYYY-MM-DD or YYYY or YYYY-YYYY"):
 
 	# get dateIssued elements

@@ -3,7 +3,52 @@
 {% block content %}
 	
 	<div class="row">
-		<p>Welcome to Combine!</p>
+		<div class="col-md-12">
+			<h3>Welcome to Combine!</h3>
+		</div>
 	</div>
+
+	<div class="row">
+		<div class="col-md-6">
+			<h4><a href="{% url 'organizations' %}">Organizations</a></h4>
+			<table class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>Name</th>
+						<th>Description</th>
+						<th>Created</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for org in orgs %}
+						<tr>
+							<td><a href="{% url 'organization' org_id=org.id %}">{{ org.name }}</a></td>
+							<td>{{ org.description }}</td>
+							<td>{{ org.timestamp }}</td>					
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+		</div>
+		<div class="col-md-6">
+			<h4>Statistics</h4>
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>Total number of Records</th>
+					<td><code>{{ record_count }}</code></td>
+				</tr>
+				<tr>
+					<th><a href="{% url 'published' %}">Published Records</a></th>
+					<td><code>{{ published_record_count }}</code></td>
+				</tr>
+				<tr>
+					<th><a href="{% url 'all_jobs' %}">Total number of Jobs</a></th>
+					<td><code>{{ job_count }}</code></td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+
 
 {% endblock %}
