@@ -86,7 +86,7 @@
 			<h4>Raw Validation Results</h4>
 			<div class="form-group">				
 				<!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
-				<code id="vs_results_raw" class="xml">Raw results will show here...</code>
+				<code id="vs_results_raw">Raw results will show here...</code>
 		</div>
 	</div>
 
@@ -203,7 +203,19 @@
 					},
 					dataType:'text',
 					success: function(data){
+
+						// hash to translate vs_type to output serialization format
+						vs_type_output_hash = {
+							'sch':'xml',
+							'python':'json'
+						}
+
+						// add raw data to div
 						$("#vs_results_raw").html(escapeHtmlEntities(data));
+
+						// update class for <code> tag for hljs and init
+						$("#vs_results_raw").removeClass();
+						$("#vs_results_raw").addClass(vs_type_output_hash[vs_type]);
 						$("#vs_results_raw").each(function(i, block) {
 							console.log(block);
 							hljs.highlightBlock(block);
