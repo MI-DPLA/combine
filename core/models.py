@@ -36,7 +36,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
-from django.db import models
+from django.db import connection, models
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.dispatch import receiver

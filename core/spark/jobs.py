@@ -38,6 +38,7 @@ if not hasattr(django, 'apps'):
 
 # import django settings
 from django.conf import settings
+from django.db import connection
 
 # import select models from Core
 from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords
@@ -78,6 +79,31 @@ class CombineRecordSchema(object):
 		# fields
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
 
+
+####################################################################
+# Django DB Connection 											   #
+####################################################################
+def refresh_django_db_connection():
+	
+	'''
+	Function to refresh connection to Django DB.
+	
+	Behavior with python files uploaded to Spark context via Livy is atypical when
+	it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
+	apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
+
+	Running this function before jobs ensures that the connection is fresh between these python files
+	operating in the Livy context, and Django's DB connection to MySQL.
+
+	Args:
+		None
+
+	Returns:
+		None
+	'''
+
+	connection.close()
+	connection.connect()
 
 
 ####################################################################
@@ -120,6 +146,9 @@ class HarvestOAISpark(object):
 			- indexes records into DB
 			- map / flatten records and indexes to ES
 		'''
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
@@ -244,6 +273,9 @@ class HarvestStaticXMLSpark(object):
 			- indexes records into DB
 			- map / flatten records and indexes to ES
 		'''
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
@@ -407,6 +439,9 @@ class TransformSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
+		# refresh Django DB Connection
+		refresh_django_db_connection()
+
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
@@ -530,6 +565,9 @@ class MergeSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
+		# refresh Django DB Connection
+		refresh_django_db_connection()
+
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
 
@@ -630,6 +668,9 @@ class PublishSpark(object):
 			- copies records in DB from input job to new published job
 			- copies documents in ES from input to new published job index
 		'''
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
 
 		# get job
 		job = Job.objects.get(pk=int(kwargs['job_id']))
@@ -743,7 +784,7 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=True, index_records=True):
+def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True):
 
 	'''
 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		

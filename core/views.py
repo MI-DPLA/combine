@@ -56,6 +56,12 @@ def breadcrumb_parser(path):
 
 	crumbs = []
 
+
+	# published
+	pub_m = re.match(r'(.+?/published)', path)
+	if pub_m:		
+		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
 	if org_m:
@@ -64,7 +70,7 @@ def breadcrumb_parser(path):
 			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
 			crumbs.append(('Analysis', reverse('analysis')))
 		else:
-			crumbs.append(("Organzation - %s" % org.name, org_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
 	# record_group
 	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
@@ -73,7 +79,7 @@ def breadcrumb_parser(path):
 		if rg.for_analysis:
 			logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
 		else:
-			crumbs.append(("RecordGroup - %s" % rg.name, rg_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % rg.name, rg_m.group(1)))
 
 	# job
 	j_m = re.match(r'(.+?/job/([0-9]+))', path)
@@ -82,13 +88,13 @@ def breadcrumb_parser(path):
 		if j.record_group.for_analysis:
 			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
 		else:
-			crumbs.append(("Job - %s" % j.name, j_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
 	# record
 	r_m = re.match(r'(.+?/record/([0-9]+))', path)
 	if r_m:
 		r = models.Record.objects.get(pk=int(r_m.group(2)))
-		crumbs.append(("Record - %s" % r.record_id, r_m.group(1)))
+		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
 	# return
 	return crumbs
@@ -184,13 +190,9 @@ def organizations(request):
 		# get all organizations
 		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
-		# get Organization form
-		organization_form = forms.OrganizationForm()		
-
 		# render page
 		return render(request, 'core/organizations.html', {
-				'orgs':orgs,
-				'organization_form':organization_form
+				'orgs':orgs				
 			})
 
 
@@ -217,17 +219,10 @@ def organization(request, org_id):
 	# get record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org).exclude(for_analysis=True)
 
-	# get RecordGroup form
-	record_group_form = forms.RecordGroupForm()
-	# exclude Organization for Analysis Jobs
-	record_group_form.fields['organization'].queryset = models.Organization.objects.exclude(
-		name=settings.ANALYSIS_JOBS_HIERARCHY['organization'])
-	
 	# render page
 	return render(request, 'core/organization.html', {
 			'org':org,
 			'record_groups':record_groups,
-			'record_group_form':record_group_form,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -1479,6 +1474,7 @@ def published(request):
 			'published':published,
 			'field_counts':field_counts,
 			'es_index':published.esi.es_index,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 

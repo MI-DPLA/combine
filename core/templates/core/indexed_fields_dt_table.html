@@ -1,117 +1,86 @@
 {% block content %}	
 {% load core_template_filters %}
 
-<div id="index_analysis_block">
-	<p><button onclick="$('#field_analysis_explanation').toggle();">Show field analysis explanation</button>
-		<div id="field_analysis_explanation" style="width:50%; display:none;">
-			<table border="1" cellpadding="5">
-				<tr>
-					<th>Column</th>
-					<th>Explanation</th>
-				<tr>
-				<tr>
-					<td><strong>Field Name</strong></td>
-					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.<br><br><strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
-				</tr>
-				<tr>
-					<td><strong>DPLA Mapped Field</strong></td>
-					<td>Mapped DPLA field.<br><br><strong>Note:</strong> These are primarily for preview / QA, they do not represent a final mapping.</td>
-				</tr>
-				<tr>
-					<td><strong>Documents with Field</strong></td>
-					<td>Count of documents with instance of this field.</td>
-				</tr>
-				<tr>
-					<td><strong>Count of Total Values for Field</strong></td>
-					<td>Count of total values for this field, across all documents.</td>
-				</tr>
-				<tr>
-					<td><strong>Count of Distinct Values for Field</strong></td>
-					<td>How many unique values are present for a given field.<br><br><strong>Note:</strong> Though quite accurate, this count is not gauranteed to be 100% accurate, according to <a target="_blank" href="https://www.elastic.co/guide/en/elasticsearch/guide/current/_approximate_aggregations.html">ES documentation</a>.  However, this should not dramatically effect analysis.</td>
-				</tr>
-				<tr>
-					<td><strong>Percentage of Field Values that are Unique</strong></td>
-					<td>Percentage of values for this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 (lighter green) would be 10% unique.</td>
-				</tr>
-				<tr>
-					<td><strong>Instance of Field in Total Indexed Records</strong></td>
-					<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) would mean all documents have this field, 0.10 (lighter green) would mean 10% of documents have this field.This can be useful for QA-ing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
-				</tr>
-			</table>
-		</div>
-	</p>
+<div class="row">
+	
+	<!-- Indexed Fields Analysis Explanation -->
+	{% include 'core/field_analysis_explanation.html' %}
 
-	<p>
-		<table id="index_analysis" border="1">
-			<thead>
-				<tr>
-					<th>Field Name</th>
-					{% if cjob %}
-						<th>DPLA Mapped Field</th>
-						<th>Map DPLA Field</th>
-					{% endif %}
-					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
-					<th>Documents without</th>
-					<th>Count of Total Values for Field</th>
-					<th>Count of Distinct Values for Field</th>
-					<th>Percentage of Field Values that are Unique</th>
-					<th>Instance of Field in Total Indexed Records</th>
-				</tr>
-			</thead>
-			<tbody>
-				{% for field in field_counts.fields %}
+	<div class="col-md-12">
+		<p>
+			<table id="index_analysis" class="table table-bordered table-hover">
+				<thead>
 					<tr>
-						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-
+						<th>Field Name</th>
 						{% if cjob %}
+							<th>DPLA Mapped Field</th>
+							<th>Map DPLA Field</th>
+						{% endif %}
+						<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+						<th>Documents without</th>
+						<th>Count of Total Values for Field</th>
+						<th>Count of Distinct Values for Field</th>
+						<th>Percentage of Field Values that are Unique</th>
+						<th>Instance of Field in Total Indexed Records</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for field in field_counts.fields %}
+						<tr>
+							<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 
-							<!-- show mapped DPLA field if exists -->
-							{% if cjob.job.dpla_mapping %}
-								{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
-									<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
+							{% if cjob %}
+
+								<!-- show mapped DPLA field if exists -->
+								{% if cjob.job.dpla_mapping %}
+									{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
+										<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
+									{% else %}
+										<td></td>
+									{% endif %}
 								{% else %}
 									<td></td>
 								{% endif %}
-							{% else %}
-								<td></td>
+
+								<!-- provide in-place form for mapping field -->
+								<td>
+									<form method="POST" action="{% url 'job_dpla_field_map' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+										{% csrf_token %}
+										<div class="form-group" style="margin-bottom:0rem;">
+											<select class="form-control form-control-sm" name='dpla_field' onchange="this.form.submit()">
+												<option value="">Select DPLA field</option>
+												<option value="">None</option>
+												{% for field_name in cjob.job.dpla_mapping.all_fields %}									
+													<option value="{{ field_name }}">{{ field_name }}</option>
+												{% endfor %}
+											</select>
+										</div>
+										<input type="hidden" name="es_field" value="{{ field.field_name }}"></input>
+									</form>
+								</td>
+
 							{% endif %}
 
-							<!-- provide in-place form for mapping field -->
-							<td>
-								<form method="POST" action="{% url 'job_dpla_field_map' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-									{% csrf_token %}
-									<select name='dpla_field' onchange="this.form.submit()">
-										<option value="">Select DPLA field</option>
-										<option value="">None</option>
-										{% for field_name in cjob.job.dpla_mapping.all_fields %}									
-											<option value="{{ field_name }}">{{ field_name }}</option>
-										{% endfor %}
-									</select>
-									<input type="hidden" name="es_field" value="{{ field.field_name }}"></input>
-								</form>
-							</td>
-
-						{% endif %}
-
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
-						<td>{{ field.val_instances }}</td>
-						<td>{{ field.distinct }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
-					</tr>
-				{% endfor %}
-			</tbody>
-		</table>
-		<script>
-			$(document).ready(function() {
-			    $('#index_analysis').DataTable({
-			    	"pageLength": 100,
-			    	"lengthMenu": [ 10, 25, 100, 500 ]
-			    });
-			} );
-		</script>
-	</p>
+							<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+							<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
+							<td>{{ field.val_instances }}</td>
+							<td>{{ field.distinct }}</td>
+							<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+							<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#index_analysis').DataTable({
+				    	"pageLength": 100,
+				    	"lengthMenu": [ 10, 25, 100, 500 ]
+				    });
+				} );
+			</script>
+		</p>
+	</div>
 </div>
 
 {% endblock %}

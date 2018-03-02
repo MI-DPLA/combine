@@ -1,0 +1,95 @@
+/* Combine CSS */
+
+/* High level, global */
+body {	
+	font-family: Arial, Helvetica, sans-serif;
+	font-size:90%;
+	padding-top: 4.5rem;
+	padding-right: 20px;
+	padding-bottom: 20px;
+	padding-left: 20px;
+}
+.bold {
+	font-weight: bold;
+}
+.breadcrumb {
+	padding: 0.5rem 1rem;
+	margin-bottom: 0.5rem;
+}
+.container {
+	max-width: 95%;
+}
+.error {
+	color:red;
+}
+.outlined_row {
+	border: 2px solid #929292;
+}
+table {
+	font-size: 90%;
+}
+.row {
+	margin-bottom: 1rem;
+}
+
+/* consider darkening lines in table with something similar */
+/*.table-bordered td, .table-bordered th {
+	border: 1px solid #828281;
+}
+*/
+/* Navbar */
+
+
+/* Jobs */
+.HarvestJob {
+	background-color:#deffde;
+}
+.TransformJob {
+	background-color:#fffcde;
+}
+.MergeJob {
+	background-color:#e3deff;
+}
+.PublishJob {
+	background-color:#def3ff;
+}
+.AnalysisJob {
+	background-color:#e8d3bd;
+}
+.error_record_row{
+	background-color:red;
+}
+.grayed_dt_row {
+	background-color: #ececec;
+	color: #949494;
+}
+div.grayed_dt_row, td.grayed_dt_row {
+	background-color: #ececec;
+	color: #949494;
+}
+.grayed_dt_row a {
+	background-color: #ececec;
+	color: #949494;
+}
+.invalid_job {
+	background-color:#ff9898;
+}
+#job_family_diagram {
+	width: 100%;
+	height: 400px;				
+	border: none; 
+}
+
+/* deleted jobs */
+.deleted {
+	background-color: #ececec;
+	color: #949494;
+}
+.deleted a {
+	background-color: #ececec;
+	color: #949494;
+}
+.deleted > div {
+	background-color: #ececec;
+	color: #949494;
+}

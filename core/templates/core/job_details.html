@@ -2,197 +2,226 @@
 {% load static %}
 {% block content %}
 
-	<div>
-		<h3>Job Details: <span class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
-		<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
-			<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-				{% csrf_token %}																		
-				<p>Enter new job name: <input type="text" name="job_name" size=80 placeholder="e.g. 'Fedora Harvest/Transform/Publish'"/></p>
-				<p><input type="submit" value="Update"/></p>
-			</form>
+	<div class="row">
+		<div class="col-md-12">	
+			<h3>Job Details: <span class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
+			<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
+				<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+					{% csrf_token %}																		
+					<p>Enter new job name: <input type="text" name="job_name" size=80 placeholder="e.g. 'Fedora Harvest/Transform/Publish'"/></p>
+					<p><input type="submit" value="Update"/></p>
+				</form>
+			</div>
+		</div>
+		<div class="col-md-12">			
+			<div>
+				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+					{% csrf_token %}
+					
+					<div class="form-group">						
+						<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
+					</div>
+					<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
+					<input type="hidden" name="next" value="{{ request.path }}">
+					<button type="submit" class="btn btn-primary btn-sm">Update Notes</button>
+				</form>
+			</div>
 		</div>
 	</div>
 
-	<div id="job_family_diagram_container">
-		<style type="text/css">
-			#job_family_diagram {				
-				height: 200px;				
-			}
-		</style>		
-		<div id="job_family_diagram"></div>
-		<script type="text/javascript">
-
-			// parse job lineage json
-			job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
-
-			// style nodes
-			$(job_lineage.nodes).each(function(){
-				styleNetworkNodes(this);						
-			});
-
-			// style edges
-			$(job_lineage.edges).each(function(){
-				styleNetworkEdges(this);
-			});
-
-			// init as viz data
-			var nodes = new vis.DataSet(job_lineage.nodes);
-			var edges = new vis.DataSet(job_lineage.edges);
-
-			// create a network
-			var container = document.getElementById('job_family_diagram');
-			var data = {
-				nodes: nodes,
-				edges: edges
-			};
-			var options = {
-				clickToUse:false,
-				interaction:{
-					zoomView:false,
-					multiselect: false,
-					navigationButtons: true,
-				},
-				layout:{
-					hierarchical: {
-						enabled:true,
-						levelSeparation: 600,
-						nodeSpacing: 100,
-						treeSpacing: 100,
-						blockShifting: true,
-						edgeMinimization: true,
-						parentCentralization: true,
-						direction: 'LR',        // UD, DU, LR, RL
-						sortMethod: 'directed'   // hubsize, directed
+	<div class="row">
+		<div class="col-md-12">
+			<div id="job_family_diagram_container">
+				<style type="text/css">
+					#job_family_diagram {				
+						height: 200px;				
 					}
-				}			  	
-			};
+				</style>		
+				<div id="job_family_diagram"></div>
+				<script type="text/javascript">
 
-			// fire network
-			var network = new vis.Network(container, data, options);
+					// parse job lineage json
+					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
 
-			// fit all nodes in viewport
-			network.fit();
+					// style nodes
+					$(job_lineage.nodes).each(function(){
+						styleNetworkNodes(this);						
+					});
 
-		</script>
+					// style edges
+					$(job_lineage.edges).each(function(){
+						styleNetworkEdges(this);
+					});
+
+					// init as viz data
+					var nodes = new vis.DataSet(job_lineage.nodes);
+					var edges = new vis.DataSet(job_lineage.edges);
+
+					// create a network
+					var container = document.getElementById('job_family_diagram');
+					var data = {
+						nodes: nodes,
+						edges: edges
+					};
+					var options = {
+						clickToUse:false,
+						interaction:{
+							zoomView:false,
+							multiselect: false,
+							navigationButtons: true,
+						},
+						layout:{
+							hierarchical: {
+								enabled:true,
+								levelSeparation: 600,
+								nodeSpacing: 100,
+								treeSpacing: 100,
+								blockShifting: true,
+								edgeMinimization: true,
+								parentCentralization: true,
+								direction: 'LR',        // UD, DU, LR, RL
+								sortMethod: 'directed'   // hubsize, directed
+							}
+						}			  	
+					};
+
+					// fire network
+					var network = new vis.Network(container, data, options);
+
+					// fit all nodes in viewport
+					network.fit();
+
+				</script>
+			</div>
+		</div>
 	</div>
 
-	<h3>Notes</h3>
-	<div style="background-color:#E4E4E3; width:30%; padding:5px 10px 10px 10px; border-radius:10px;">
-		<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-			{% csrf_token %}
-			<p><textarea style="width:100%;" rows="5" name="job_note" placeholder="No job notes found...">{{ cjob.job.note }}</textarea></p>
-			<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
-			<input type="hidden" name="next" value="{{ request.path }}">
-			<input type="submit" value="update notes">
-		</form>
+	<div class="row">
+		
+		<!-- Job Inputs -->
+		{% if cjob.job.job_type_family != 'HarvestJob' %}
+		<div class="col-md-6">
+			<h4>Input Jobs</h4>
+			<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>Input Job Name</th>
+					<th>Job Type Family</th>
+					<th>Job Type</th>
+					<th>Record Count</th>
+				</tr>
+				{% for input_job in cjob.job.jobinput_set.all %}
+				<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
+					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+					<td>{{ input_job.input_job.job_type_family }}</td>
+					<td>{{ input_job.input_job.job_type }}</td>
+					<td>{{ input_job.input_job.record_count }}</td>
+				</tr>
+				{% endfor %}
+				<tr>
+					<td></td>
+					<td></td>
+					<td><strong>Total:</strong></td>
+					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+				</tr>
+			</table>
+		</div>
+		{% endif %}
+
+		<!-- Job Results -->
+		<div class="col-md-6">
+			<h4>Results</h4>
+			<p>The following table shows details about input records, successes, and failures.</p>
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>Job Name</th>
+					<th>Job Type Family</th>
+					<th>Job Type</th>
+					<th>Total Input Records</th>
+					<th>Sucesssful Records</th>
+					<th>Errors</th>
+					<th>Success Percentage</th>
+				</tr>
+				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
+					<td>{{ cjob.job.name }}</td>
+					<td>{{ cjob.job.job_type_family }}</td>
+					<td>{{ cjob.job.job_type }}</td>
+					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+					<td>{{ record_count_details.records }}</td>
+					<td>{{ record_count_details.errors }}</td>
+					<td>{{ record_count_details.success_percentage }}</td>
+				</tr>
+			</table>
+		</div>
+
 	</div>
-
-	{% if cjob.job.job_type_family != 'HarvestJob' %}
-		<h3>Input</h3>
-		<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong> type.</p>
-		<table border="1" cellpadding="5">
-			<tr>
-				<th>Input Job Name</th>
-				<th>Job Type Family</th>
-				<th>Job Type</th>
-				<th>Record Count</th>
-			</tr>
-			{% for input_job in cjob.job.jobinput_set.all %}
-			<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-				<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
-				<td>{{ input_job.input_job.job_type_family }}</td>
-				<td>{{ input_job.input_job.job_type }}</td>
-				<td>{{ input_job.input_job.record_count }}</td>
-			</tr>
-			{% endfor %}
-			<tr>
-				<td></td>
-				<td></td>
-				<td><strong>Total:</strong></td>
-				<td>{{ record_count_details.input_jobs.total_input_records }}</td>
-			</tr>
-		</table>
-	{% endif %}
-
-	
-
-	<h3>Results</h3>
-	<p>The following table shows details about input records, successes, and failures.  Below that is a table with all records and errors for this job, searchable and sortable.</p>
-	<table border="1" cellpadding="5">
-		<tr>
-			<th>Job Name</th>
-			<th>Job Type Family</th>
-			<th>Job Type</th>
-			<th>Total Input Records</th>
-			<th>Sucesssful Records</th>
-			<th>Errors</th>
-			<th>Success Percentage</th>
-		</tr>
-		<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-			<td>{{ cjob.job.name }}</td>
-			<td>{{ cjob.job.job_type_family }}</td>
-			<td>{{ cjob.job.job_type }}</td>
-			<td>{{ record_count_details.input_jobs.total_input_records }}</td>
-			<td>{{ record_count_details.records }}</td>
-			<td>{{ record_count_details.errors }}</td>
-			<td>{{ record_count_details.success_percentage }}</td>
-		</tr>
-	</table>
 
 	<div style="margin-top:20px;"/>
 
 	<!-- Indexing Records DT Table -->
 	{% include 'core/records_dt_table.html' %}
 
-	{% if cjob.job.jobvalidation_set.count > 0 %}
-		<div style="margin-top:10px; width:35%; padding:20px; border-radius:10px; background-color:#ffe7f4;">
+	<div style="margin-top:20px;"/>
+
+	{% if cjob.job.jobvalidation_set.count > 0 %}	
+	<div class="row">		
+		<div class="col-md-6">
 			<h3>Validation Scenarios</h3>
 			<p>The following validation scenarios were run for this job:</p>
-			<table border="1" cellpadding="5" style="background-color:white;">
-				<tr>
-					<th>Validation Name</th>
-					<th>Validation Type</th>
-					<th>Record Validation Failure Count</th>
-					<th>Actions</th>
-				<tr>
-				{% for jv in cjob.job.jobvalidation_set.all %}			
+			<table class="table table-bordered table-hover">
+				<thead>
 					<tr>
-						<td>{{ jv.validation_scenario.name }}</td>
-						<td>{{ jv.validation_scenario.validation_type }}</td>
-						<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
-						<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a>
+						<th>Validation Name</th>
+						<th>Validation Type</th>
+						<th>Record Validation Failure Count</th>
+						<th>Actions</th>
 					</tr>
-				{% endfor %}
+				</thead>
+				<tbody>
+					{% for jv in cjob.job.jobvalidation_set.all %}			
+						<tr>
+							<td>{{ jv.validation_scenario.name }}</td>
+							<td>{{ jv.validation_scenario.validation_type }}</td>
+							<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+							<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
+						</tr>
+					{% endfor %}
+				</tbody>
 			</table>
-			<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button>Run validation results report</button></a></p>
+			<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
 		</div>
+	</div>
 	{% endif %}
 
-	<h3>Indexed Field Analysis</h3>
-
-	<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
-
-	<p>
-		<table border="1" cellpadding="5">
-			<tr>
-				<th>Total records for indexing</th>
-				<th>Indexed</th>
-				<th>Percentage of total records</th>
-				<th>Actions</th>
-			</tr>
-			<tr>
-				<td>{{ record_count_details.records }}</td>
-				<td>{{ field_counts.total_docs }}</td>
-				<td>{{ field_counts.indexed_percentage }}</td>
-				<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
-			</tr>
-		</table>
-	</p>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Indexed Field Analysis</h3>
+			<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
+		</div>
+		<div class="col-md-6">
+			<table class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>Total records for indexing</th>
+						<th>Indexed</th>
+						<th>Percentage of total records</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>{{ record_count_details.records }}</td>
+						<td>{{ field_counts.total_docs }}</td>
+						<td>{{ field_counts.indexed_percentage }}</td>
+						<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
 
 	<!-- Indexed Fields Analysis DT Table -->
 	{% include 'core/indexed_fields_dt_table.html' %}
-
-	
 
 {% endblock %}
 
