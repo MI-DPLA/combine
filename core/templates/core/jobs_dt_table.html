@@ -77,7 +77,7 @@
 						</div>
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Statement</a> / <a href="{{ LIVY_SESSION.sparkUiUrl }}/jobs/job?id={{job.job_id}}" target="_blank">Spark UI</a></td> 
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy Output</a></td> 
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>				
 				</tr>
 			{% endfor %}
