@@ -59,7 +59,7 @@
 	            <a class="nav-link" href="{% url 'configuration' %}">Configuration</a>
 	          </li>
 	          <li class="nav-item">
-	            <a class="nav-link {% if LIVY_SESSION.status == 'idle' %}text-success{% else %}text-danger{% endif %}" href="{% url 'livy_sessions' %}">Livy/Spark session</a>
+	            <a class="nav-link {% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}" href="{% url 'livy_sessions' %}">Livy/Spark session</a>
 	          </li>
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0">

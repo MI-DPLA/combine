@@ -108,11 +108,8 @@ class LivySession(models.Model):
 		livy_response = LivyClient().session_status(self.session_id)
 
 		# parse response and set self values
-		logger.debug(livy_response.status_code)
 		response = livy_response.json()
-		logger.debug(response)
 		headers = livy_response.headers
-		logger.debug(headers)
 
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:

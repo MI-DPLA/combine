@@ -21,6 +21,7 @@ def livy_session(request):
 
 	# get active livy session
 	lv = LivySession.get_active_session()
+	lv.refresh_from_livy()
 
 	return {
 		'LIVY_SESSION':lv
