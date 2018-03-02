@@ -50,7 +50,7 @@
 							{% if job_select_type == 'single' %}
 								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}" required></td>
 							{% else %}
-								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" required></td>
+								<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
 							{% endif %}
 
 						</tr>
