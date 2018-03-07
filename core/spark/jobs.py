@@ -139,6 +139,7 @@ class HarvestOAISpark(object):
 				scope_type (str): [setList, whiteList, blackList, harvestAllSets], used by DPLA Ingestion3
 				scope_value (str): value for scope_type
 				index_mapper (str): class name from core.spark.es, extending BaseMapper
+				validation_scenarios (list): list of Validadtion Scenario IDs
 
 		Returns:
 			None:
@@ -265,7 +266,9 @@ class HarvestStaticXMLSpark(object):
 			kwargs:
 				job_id (int): Job ID
 				static_payload (str): path of static payload on disk
+				# TODO: add other kwargs here from static job
 				index_mapper (str): class name from core.spark.es, extending BaseMapper
+				validation_scenarios (list): list of Validadtion Scenario IDs
 
 		Returns:
 			None:
@@ -422,15 +425,16 @@ class TransformSpark(object):
 	def spark_function(spark, **kwargs):
 
 		'''
-		Harvest records, select non-null, and write to avro files
+		Transform records based on Transformation Scenario.
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
 			kwargs:
 				job_id (int): Job ID
 				job_input (str): location of avro files on disk
-				transform_filepath (str): location of XSL file used for transformation
+				transformation_id (str): id of Transformation Scenario
 				index_mapper (str): class name from core.spark.es, extending BaseMapper
+				validation_scenarios (list): list of Validadtion Scenario IDs
 
 		Returns:
 			None
@@ -473,46 +477,13 @@ class TransformSpark(object):
 
 		# if xslt type transformation
 		if transformation.transformation_type == 'xslt':
+			records_trans = TransformSpark.transform_xslt(spark, kwargs, job, transformation, records)
 
-			# define udf function for transformation
-			def transform_xml_udf(job_id, row, xslt_string):
+		# if python type transformation
+		if transformation.transformation_type == 'xslt':
+			records_trans = TransformSpark.transform_python(spark, kwargs, job, transformation, records)
 
-				# attempt transformation and save out put to 'document'
-				try:
-					
-					# transform with pyjxslt gateway
-					gw = pyjxslt.Gateway(6767)
-					gw.add_transform('xslt_transform', xslt_string)
-					result = gw.transform('xslt_transform', row.document)
-					gw.drop_transform('xslt_transform')
-
-					# set trans_result tuple
-					trans_result = (result, '', 1)
-
-				# catch transformation exception and save exception to 'error'
-				except Exception as e:
-					# set trans_result tuple
-					trans_result = ('', str(e), 0)
-
-				# return Row
-				return Row(
-						record_id = row.record_id,
-						document = trans_result[0],
-						error = trans_result[1],
-						job_id = int(job_id),
-						oai_set = row.oai_set,
-						success = trans_result[2]
-					)
-
-			# open XSLT transformation, pass to map as string
-			with open(transformation.filepath,'r') as f:
-				xslt_string = f.read()
-
-			# transform via rdd.map
-			job_id = job.id			
-			records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
-
-		# back to DataFrame
+		# convert back to DataFrame
 		records_trans = records_trans.toDF()
 
 		# index records to DB and index to ElasticSearch
@@ -537,6 +508,85 @@ class TransformSpark(object):
 		job_track.save()
 
 
+	@staticmethod
+	def transform_xslt(spark, kwargs, job, transformation, records):
+
+		'''		
+		Method to transform records with XSLT, using pyjxslt server
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs (dict): kwargs from parent job
+			job: job from parent job
+			transformation: Transformation Scenario from parent job
+			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
+
+		Return:
+			records_trans (rdd): transformed records as RDD
+		'''
+
+		# define udf function for transformation
+		def transform_xml_udf(job_id, row, xslt_string):
+
+			# attempt transformation and save out put to 'document'
+			try:
+				
+				# transform with pyjxslt gateway
+				gw = pyjxslt.Gateway(6767)
+				gw.add_transform('xslt_transform', xslt_string)
+				result = gw.transform('xslt_transform', row.document)
+				gw.drop_transform('xslt_transform')
+
+				# set trans_result tuple
+				trans_result = (result, '', 1)
+
+			# catch transformation exception and save exception to 'error'
+			except Exception as e:
+				# set trans_result tuple
+				trans_result = ('', str(e), 0)
+
+			# return Row
+			return Row(
+					record_id = row.record_id,
+					document = trans_result[0],
+					error = trans_result[1],
+					job_id = int(job_id),
+					oai_set = row.oai_set,
+					success = trans_result[2]
+				)
+
+		# open XSLT transformation, pass to map as string
+		with open(transformation.filepath,'r') as f:
+			xslt_string = f.read()
+
+		# transform via rdd.map and return
+		job_id = job.id			
+		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
+		return records_trans
+
+
+	@staticmethod
+	def transform_python(spark, kwargs, job, transformation, records):
+
+		'''
+		Transform records via python code snippet
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs (dict): kwargs from parent job
+			job: job from parent job
+			transformation: Transformation Scenario from parent job
+			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
+
+		Return:
+			records_trans (rdd): transformed records as RDD
+		'''
+
+		
+
+		return records_trans
+
+
 
 class MergeSpark(object):
 
@@ -557,6 +607,7 @@ class MergeSpark(object):
 				job_id (int): Job ID
 				job_inputs (list): list of locations of avro files on disk
 				index_mapper (str): class name from core.spark.es, extending BaseMapper
+				validation_scenarios (list): list of Validadtion Scenario IDs
 
 		Returns:
 			None
@@ -660,7 +711,7 @@ class PublishSpark(object):
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
 			kwargs:
 				job_id (int): Job ID
-				job_input (str): location of avro files on disk
+				job_input (str): location of avro files on disk				
 
 		Returns:
 			None
