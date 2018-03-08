@@ -1628,7 +1628,7 @@ class ValidationScenario(models.Model):
 				pyvs_funcs.append(attr)
 
 		# instantiate prvb
-		prvb = PythonRecordValidationBase(row)
+		prvb = PythonUDFRecord(row)
 
 		# prepare results_dict
 		results_dict = {
