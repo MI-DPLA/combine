@@ -4510,37 +4510,40 @@ class DTElasticSearch(View):
 # Python Record for User Defined Functions (UDFs)				   #
 ####################################################################
 
-# class PythonUDFRecord(object):
+class PythonUDFRecord(object):
 
-# 	'''
-# 	Simple class to provide an object with parsed metadata for user defined functions (UDF) in Spark
-# 	'''
+	'''
+	Simple class to provide an object with parsed metadata
 
-# 	def __init__(self, row):
+	Note: Here mostly for convenience sake, as it mirrors the PythonUDFRecord that is
+	used for Spark jobs for python-based Transformation and Validation.  This class
+	is used almost exclusively for console testing.
+	'''
 
-# 		# row
-# 		self._row = row
+	def __init__(self, row):
 
-# 		# get combine id
-# 		self.id = row.id
+		# row
+		self._row = row
 
-# 		# get record id
-# 		self.record_id = row.record_id
+		# get combine id
+		self.id = row.id
 
-# 		# document string
-# 		# self.document = row.document.encode('utf-8')
-# 		self.document = row.document
+		# get record id
+		self.record_id = row.record_id
 
-# 		# parse XML string, save
-# 		self.xml = etree.fromstring(self.document)
+		# document string		
+		self.document = row.document
 
-# 		# get namespace map, popping None values
-# 		_nsmap = self.xml.nsmap.copy()
-# 		try:
-# 			_nsmap.pop(None)
-# 		except:
-# 			pass
-# 		self.nsmap = _nsmap
+		# parse XML string, save
+		self.xml = etree.fromstring(self.document)
+
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			_nsmap.pop(None)
+		except:
+			pass
+		self.nsmap = _nsmap
 
 
 

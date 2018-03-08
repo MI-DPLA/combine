@@ -607,8 +607,8 @@ class TransformSpark(object):
 		'''
 		Transform records via python code snippet.
 
-		Look for function python_record_transformation(record):
-			- returns XML string
+		Required:
+			- a function named `python_record_transformation(record)` in transformation.payload python code
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
