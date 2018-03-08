@@ -621,24 +621,29 @@ class TransformSpark(object):
 			records_trans (rdd): transformed records as RDD
 		'''
 
-		# define udf function for transformation
+		# define udf function for python transformation
 		def transform_xml_udf(job_id, row, python_code):
 			
-			# prepare row as parsed document with PythonUDFRecord class
-			prtb = PythonUDFRecord(row)
+			try:
+				# prepare row as parsed document with PythonUDFRecord class
+				prtb = PythonUDFRecord(row)
 
-			# get python function from Transformation Scenario
-			temp_pyts = ModuleType('temp_pyts')
-			exec(python_code, temp_pyts.__dict__)
+				# get python function from Transformation Scenario
+				temp_pyts = ModuleType('temp_pyts')
+				exec(python_code, temp_pyts.__dict__)
 
-			# run transformation
-			trans_result = temp_pyts.python_record_transformation(prtb)
+				# run transformation
+				trans_result = temp_pyts.python_record_transformation(prtb)
 
-			# convert any possible byte responses to string
-			if type(trans_result[0]) == bytes:
-				trans_result[0] = trans_result[0].decode('utf-8')
-			if type(trans_result[1]) == bytes:
-				trans_result[1] = trans_result[1].decode('utf-8')
+				# convert any possible byte responses to string
+				if type(trans_result[0]) == bytes:
+					trans_result[0] = trans_result[0].decode('utf-8')
+				if type(trans_result[1]) == bytes:
+					trans_result[1] = trans_result[1].decode('utf-8')
+
+			except Exception as e:
+				# set trans_result tuple
+				trans_result = ('', str(e), 0)
 
 			# return Row
 			return Row(
