@@ -2,6 +2,9 @@
 <div class="col-md-12">	
 	<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').slideToggle();">Show field analysis explanation</button>
 		<div class="bg-light" id="field_analysis_explanation" style="display:none;">
+			<p>In Combine, Records undergo a processing of <span class="font-weight-bold">mapping</span> to extract discrete metadata fields from their original XML record for analysis and comparison across Records, or to associate with specific fields from DPLA.  The method by which Records are mapped is selected for each Job when run, defaulting to what is called the <code>Generic Mapper</code> that creates mapped fields based on raw XPath locations of fields in an XML record.  While not tailored for any particular purpose, this serves to extract as many fields as possible to help with analysis and comparison.</p> 
+
+			<p>The following describes the columns in the larger table below, which is populated by Records as mapped to fields and stored in ElasticSearch.  They can provide insights into outlier Records that may not have a particular field, or provide a method to view all values of a particular mapped field.</p>
 			<table class="table table-bordered table-hover">
 				<tr>
 					<th>Column</th>
@@ -9,7 +12,7 @@
 				</tr>
 				<tr>
 					<td><strong>Field Name</strong></td>
-					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.<br><br><strong>Note:</strong> If field name column is <span style="background-color:yellow;">yellow</span>, that means this field <em>very likely</em> has one, distinct value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
+					<td>Depending on what metadata mapper was used, the field name is a rough approximation of the XML field from the original metadata record.<br><br><span class="font-weight-bold">Note:</span> If field name column is <span style="background-color:yellow;">yellow</span>, that means every Record in the Job <span class="font-italic">very likely</span> has <span class="font-weight-bold">one</span>, <span class="font-weight-bold">unique</span> value for this field for all documents (this would be important for things like identifiers or access URLs).</td>
 				</tr>
 				<tr>
 					<td><strong>DPLA Mapped Field</strong></td>
