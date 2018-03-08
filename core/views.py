@@ -1403,8 +1403,13 @@ def transformation_scenario_payload(request, trans_id):
 	# get transformation
 	transformation = models.Transformation.objects.get(pk=int(trans_id))
 
-	# return document as XML
-	return HttpResponse(transformation.payload, content_type='text/xml')
+	# return transformation as XML
+	if transformation.transformation_type == 'xslt':
+		return HttpResponse(transformation.payload, content_type='text/xml')
+
+	# return transformation as Python
+	if transformation.transformation_type == 'python':
+		return HttpResponse(transformation.payload, content_type='text/plain')
 
 
 def validation_scenario_payload(request, vs_id):

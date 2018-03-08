@@ -53,6 +53,46 @@ def refresh_django_db_connection():
 
 
 
+####################################################################
+# Models for UDFs												   #
+####################################################################
+
+class PythonUDFRecord(object):
+
+	'''
+	Simple class to provide an object with parsed metadata for user defined functions
+	'''
+
+	def __init__(self, row):
+
+		# row
+		self._row = row
+
+		# get combine id
+		self.id = row.id
+
+		# get record id
+		self.record_id = row.record_id
+
+		# document string
+		self.document = row.document
+
+		# parse XML string, save
+		self.xml = etree.fromstring(self.document)
+
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			_nsmap.pop(None)
+		except:
+			pass
+		self.nsmap = _nsmap
+
+
+####################################################################
+# Record Validation												   #
+####################################################################
+
 class ValidationScenarioSpark(object):
 
 	'''
@@ -199,40 +239,8 @@ class ValidationScenarioSpark(object):
 			row (): 
 		'''
 
-		# locally define class to be used
-		class PythonRecordValidationBase(object):
-
-			'''
-			Simple class to provide an object with parsed metadata for user defined functions
-			'''
-
-			def __init__(self, row):
-
-				# row
-				self._row = row
-
-				# get combine id
-				self.id = row.id
-
-				# get record id
-				self.record_id = row.record_id
-
-				# document string
-				self.document = row.document.encode('utf-8')
-
-				# parse XML string, save
-				self.xml = etree.fromstring(self.document)
-
-				# get namespace map, popping None values
-				_nsmap = self.xml.nsmap.copy()
-				try:
-					_nsmap.pop(None)
-				except:
-					pass
-				self.nsmap = _nsmap
-
-		# prvb
-		prvb = PythonRecordValidationBase(row)
+		# prepare row as parsed document with PythonUDFRecord class
+		prvb = PythonUDFRecord(row)
 		
 		# prepare results_dict
 		results_dict = {

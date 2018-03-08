@@ -62,7 +62,7 @@
 							<td>{{transformation.name}}</td>
 							<td>{{transformation.transformation_type}}</td>
 							<td><code>{{transformation.filepath}}</code></td>
-							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View XSL</a></td>
+							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">{% if transformation.transformation_type == 'xslt' %}View XSL{% elif transformation.transformation_type == 'python' %}View Python{% endif %}</a></td>
 						</tr>
 					{% endfor %}
 				</table>

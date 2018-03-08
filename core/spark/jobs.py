@@ -11,6 +11,7 @@ import requests
 import shutil
 import sys
 import time
+from types import ModuleType
 
 # pyjxslt
 import pyjxslt
@@ -104,6 +105,42 @@ def refresh_django_db_connection():
 
 	connection.close()
 	connection.connect()
+
+
+####################################################################
+# Models for UDFs												   #
+####################################################################
+
+class PythonUDFRecord(object):
+
+	'''
+	Simple class to provide an object with parsed metadata for user defined functions
+	'''
+
+	def __init__(self, row):
+
+		# row
+		self._row = row
+
+		# get combine id
+		self.id = row.id
+
+		# get record id
+		self.record_id = row.record_id
+
+		# document string
+		self.document = row.document
+
+		# parse XML string, save
+		self.xml = etree.fromstring(self.document)
+
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			_nsmap.pop(None)
+		except:
+			pass
+		self.nsmap = _nsmap
 
 
 ####################################################################
@@ -480,7 +517,7 @@ class TransformSpark(object):
 			records_trans = TransformSpark.transform_xslt(spark, kwargs, job, transformation, records)
 
 		# if python type transformation
-		if transformation.transformation_type == 'xslt':
+		if transformation.transformation_type == 'python':
 			records_trans = TransformSpark.transform_python(spark, kwargs, job, transformation, records)
 
 		# convert back to DataFrame
@@ -555,9 +592,8 @@ class TransformSpark(object):
 					success = trans_result[2]
 				)
 
-		# open XSLT transformation, pass to map as string
-		with open(transformation.filepath,'r') as f:
-			xslt_string = f.read()
+		# get XSLT transformation as string		
+		xslt_string = transformation.payload
 
 		# transform via rdd.map and return
 		job_id = job.id			
@@ -569,7 +605,10 @@ class TransformSpark(object):
 	def transform_python(spark, kwargs, job, transformation, records):
 
 		'''
-		Transform records via python code snippet
+		Transform records via python code snippet.
+
+		Look for function python_record_transformation(record):
+			- returns XML string
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
@@ -582,8 +621,39 @@ class TransformSpark(object):
 			records_trans (rdd): transformed records as RDD
 		'''
 
-		
+		# define udf function for transformation
+		def transform_xml_udf(job_id, row, python_code):
+			
+			# prepare row as parsed document with PythonUDFRecord class
+			prtb = PythonUDFRecord(row)
 
+			# get python function from Transformation Scenario
+			temp_pyts = ModuleType('temp_pyts')
+			exec(python_code, temp_pyts.__dict__)
+
+			# run transformation
+			trans_result = temp_pyts.python_record_transformation(prtb)
+
+			# convert any possible byte responses to string
+			if type(trans_result[0]) == bytes:
+				trans_result[0] = trans_result[0].decode('utf-8')
+			if type(trans_result[1]) == bytes:
+				trans_result[1] = trans_result[1].decode('utf-8')
+
+			# return Row
+			return Row(
+				record_id = row.record_id,
+				document = trans_result[0],
+				error = trans_result[1],
+				job_id = int(job_id),
+				oai_set = row.oai_set,
+				success = trans_result[2]
+			)
+
+		# transform via rdd.map and return
+		job_id = job.id			
+		transformation_payload = transformation.payload
+		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, transformation_payload))
 		return records_trans
 
 
