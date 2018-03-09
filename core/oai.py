@@ -166,7 +166,7 @@ class OAIProvider(object):
 		# loop through rows, limited by current OAI transaction start / chunk
 		for record in records[self.start:(self.start+self.chunk_size)]:
 
-			record = OAIRecord(args=self.args, record_id=record.record_id, document=record.document, timestamp=self.request_timestamp_string)
+			record = OAIRecord(args=self.args, record_id=record.record_id, publish_set_id=record.job.record_group.publish_set_id, document=record.document, timestamp=self.request_timestamp_string)
 
 			# include full metadata in record
 			if include_metadata:
@@ -479,16 +479,33 @@ class OAIRecord(object):
 	Initialize OAIRecord with pid and args
 	'''
 
-	def __init__(self, args=None, record_id=None, document=None, timestamp=None):
+	def __init__(self, args=None, record_id=None, publish_set_id=None, document=None, timestamp=None):
 
 		self.args = args
 		self.record_id = record_id
+		self.publish_set_id = publish_set_id
 		self.document = document
 		self.timestamp = timestamp
 		self.oai_record_node = None
 
 		# build record node
 		self.init_record_node()
+
+
+	def _construct_oai_identifier(self):
+
+		'''
+		build OAI identifier
+		'''
+
+		# if publish set id include
+		if self.publish_set_id:
+			return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.publish_set_id, self.record_id)
+
+		# else
+		else:
+
+			return '%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.record_id)
 
 
 	def init_record_node(self):
@@ -512,7 +529,7 @@ class OAIRecord(object):
 		
 		# identifier 
 		identifier_node = etree.Element('identifier')
-		identifier_node.text = self.record_id
+		identifier_node.text = self._construct_oai_identifier()
 		header_node.append(identifier_node)
 
 		# datestamp

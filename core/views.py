@@ -994,7 +994,12 @@ def job_publish(request, org_id, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
 
-		# update RecordGroup publish set id		
+		# update RecordGroup publish set id
+		'''
+		priority:
+			1) new, user input publish_set_id
+			2) pre-existing publish_set_id
+		'''
 		if request.POST.get('new_publish_set_id') != '':
 			record_group.publish_set_id = request.POST.get('new_publish_set_id')
 			record_group.save()

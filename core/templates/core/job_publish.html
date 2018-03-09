@@ -23,24 +23,28 @@
 				</div>
 
 				<div class="row">
-					<div class="col-md-6">
+					<div class="col-md-6" style="padding:20px; border-radius:10px; background-color:#ffe7f4;">
 
-						<p>The next step is to assign a <span class="font-weight-bold">Publish Set ID</span> for this Record Group.  This will translate to an OAI set for the outbound Combine OAI-PMH server.  You have the option of reusing a pre-existing one from the dropdown, effectively including Records from this Job in that OAI set, or creating and establishing a new one.</p>
+						<p>The next step is to assign a <span class="font-weight-bold">Publish Set ID</span> for this Record Group.  <span class="font-italic"><span class="font-weight-bold">Note:</span> This will translate to an OAI set for the outbound Combine OAI-PMH server.</span></p>
+
+						<p>You have the option of creating and establishing a new one, or reusing a pre-existing one from the dropdown, effectively grouping Records from this Job under that Published set.</p>
 						
 						<div class="form-group">
-							<label for="existing_publish_set_id">Select a pre-existing Published Set ID</label>
+							<label for="new_publish_set_id">Create a new Publish Set ID</label>
+							<input type="text" class="form-control" id="new_publish_set_id" name="new_publish_set_id" placeholder="e.g. 'wsuoai'">
+						</div>
+
+						<div class="form-group">
+							<label for="existing_publish_set_id">Select a pre-existing Publish Set ID</label>
 							<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
-								<option value='Select pre-existing Publish Set ID to use...'></option>
+								<option value=''>Select pre-existing Publish Set ID to use...</option>
 								{% for publish_set_id in publish_set_ids %}
 									<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
 								{% endfor %}					
 							</select>
 						</div>
 							
-						<div class="form-group">
-							<label for="new_publish_set_id">Or, create a new one</label>
-							<input type="text" class="form-control" id="new_publish_set_id" name="new_publish_set_id" placeholder="e.g. 'fedora_records'">
-						</div>
+						
 
 					</div>
 				</div>
