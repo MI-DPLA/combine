@@ -1702,6 +1702,7 @@ class DTRecordsJson(BaseDatatableView):
 		# define the columns that will be returned
 		columns = [
 			'id',
+			'combine_id',
 			'record_id',
 			'job',
 			'oai_set',
@@ -1719,6 +1720,7 @@ class DTRecordsJson(BaseDatatableView):
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
 			'id',
+			'combine_id',
 			'record_id',
 			'job',
 			'oai_set',
@@ -1752,9 +1754,25 @@ class DTRecordsJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.id)
+
+			# handle combine_id
+			if column == 'combine_id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.combine_id)
+
 			# handle record_id
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id

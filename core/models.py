@@ -1043,7 +1043,8 @@ class Record(models.Model):
 	combine/core/inc/combine_tables.sql
 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)	
+	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+	combine_id = models.CharField(max_length=1024, null=True, default=None) 	
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
@@ -1089,12 +1090,12 @@ class Record(models.Model):
 			# if upstream jobs found, continue
 			if upstream_job_query.count() > 0:
 
-				logger.debug('upstream jobs found, checking for record_id')
+				logger.debug('upstream jobs found, checking for combine_id')
 
 				# loop through upstream jobs, look for record id
 				for upstream_job in upstream_job_query.all():
 					upstream_record_query = Record.objects.filter(
-						job=upstream_job.input_job).filter(record_id=self.record_id)
+						job=upstream_job.input_job).filter(combine_id=self.combine_id)
 
 					# if count found, save record to record_stages and re-run
 					if upstream_record_query.count() > 0:
@@ -1112,13 +1113,13 @@ class Record(models.Model):
 			# if downstream jobs found, continue
 			if downstream_job_query.count() > 0:
 
-				logger.debug('downstream jobs found, checking for record_id')
+				logger.debug('downstream jobs found, checking for combine_id')
 
 				# loop through downstream jobs
 				for downstream_job in downstream_job_query.all():
 
 					downstream_record_query = Record.objects.filter(
-						job=downstream_job.job).filter(record_id=self.record_id)
+						job=downstream_job.job).filter(combine_id=self.combine_id)
 
 					# if count found, save record to record_stages and re-run
 					if downstream_record_query.count() > 0:
@@ -1161,7 +1162,7 @@ class Record(models.Model):
 
 		'''
 		Return indexed ElasticSearch document as dictionary.
-		Search is limited by ES index (Job associated) and record_id
+		Search is limited by ES index (Job associated) and combine_id
 
 		Args:
 			None
@@ -1172,7 +1173,7 @@ class Record(models.Model):
 
 		# init search
 		s = Search(using=es_handle, index='j%s' % self.job_id)
-		s = s.query('match', _id=self.record_id)
+		s = s.query('match', _id=self.combine_id)
 
 		# execute search and capture as dictionary
 		sr = s.execute()
@@ -1361,7 +1362,7 @@ class IndexMappingFailure(models.Model):
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	record_id = models.CharField(max_length=1024, null=True, default=None)
+	combine_id = models.CharField(max_length=1024, null=True, default=None)
 	mapping_error = models.TextField(null=True, default=None)
 
 
@@ -1371,7 +1372,7 @@ class IndexMappingFailure(models.Model):
 
 
 	def __str__(self):
-		return 'Index Mapping Failure: #%s, record_id: %s, job_id: %s' % (self.id, self.record_id, self.job.id)
+		return 'Index Mapping Failure: #%s, combine_id: %s, job_id: %s' % (self.id, self.combine_id, self.job.id)
 
 
 	@property
@@ -1384,7 +1385,7 @@ class IndexMappingFailure(models.Model):
 			(core.models.Record): Record instance that relates to this indexing failure
 		'''
 
-		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
+		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
 
 
 	def get_record(self):
@@ -1396,7 +1397,7 @@ class IndexMappingFailure(models.Model):
 			(core.models.Record): Record instance that relates to this indexing failure
 		'''
 
-		return Record.objects.filter(job=self.job, record_id=self.record_id).first()
+		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
 
 
 

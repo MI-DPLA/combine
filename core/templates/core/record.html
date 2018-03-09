@@ -7,9 +7,10 @@
 		<div class="col-md-12">
 			<h2>Record: <code>{{ record.record_id }}</code></h2>
 			<ul>
-				<li><strong>Combine ID:</strong> {{ record.id }}</li>
-				<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
+				<li><strong>DB ID:</strong> <code>{{ record.id }}</code></li>
+				<li><strong>Combine ID:</strong> <code>{{ record.combine_id }}</code></li>				
 				<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
+				<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
 			</ul>
 		</div>
 	</div>

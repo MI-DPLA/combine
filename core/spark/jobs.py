@@ -12,6 +12,7 @@ import shutil
 import sys
 import time
 from types import ModuleType
+import uuid
 
 # pyjxslt
 import pyjxslt
@@ -67,7 +68,8 @@ class CombineRecordSchema(object):
 
 		# schema for Combine records
 		self.schema = StructType([
-				StructField('record_id', StringType(), True),				
+				StructField('combine_id', StringType(), True),
+				StructField('record_id', StringType(), True),
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
 				StructField('unique', BooleanType(), False),
@@ -255,7 +257,8 @@ class HarvestOAISpark(object):
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=records
+			records_df=records,
+			assign_combine_id=True
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
@@ -421,7 +424,8 @@ class HarvestStaticXMLSpark(object):
 					success = 0
 				)
 
-		# transform via rdd.map
+
+		# map with get_metadata_udf 
 		job_id = job.id		
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
@@ -430,7 +434,8 @@ class HarvestStaticXMLSpark(object):
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=records.toDF()
+			records_df=records.toDF(),
+			assign_combine_id=True
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
@@ -910,7 +915,7 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True):
+def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True, assign_combine_id=False):
 
 	'''
 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
@@ -920,7 +925,9 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		kwargs (dict): dictionary of args sent to Job spark method
 		job (core.models.Job): Job instance		
 		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-		write_avro (bool): boolean to write avro files to disk after DB indexing 
+		write_avro (bool): boolean to write avro files to disk after DB indexing
+		index_records (bool): boolean to index to ES
+		assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
 
 	Returns:
 		None
@@ -928,6 +935,11 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 			- selects only columns that match CombineRecordSchema
 			- writes to DB, writes to avro files
 	'''
+
+	# assign combine ID
+	if assign_combine_id:
+		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
+		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
 	# check uniqueness (overwrites if column already exists)
 	'''
