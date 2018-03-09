@@ -3312,13 +3312,22 @@ class HarvestStaticXMLJob(HarvestJob):
 				see: core.models.HarvestJob
 			
 			HarvestOAIJob args (extending HarvestJob args)
-				static_payload (str): filepath of static payload on disk
+				payload_dict (dict): dictionary of user provided arguments for static harvest
+					static_filepath (str): location of metadata records on disk
+					type (str)['location','upload']: type of static harvest, uploaded content or location on disk
+					payload_dir (str): location on disk to work form, NOTE: for uploads this is a UUID 
+						named directory at /tmp/combine/ 
+					static_payload (str): temporary filename from upload
+					content_type (str): mimetype of static file from upload
+					payload_filename (str): final filename of static payload on disk
+					xpath_document_root (str): XPath location of documents in parsed files
+					xpath_record_id (str): XPath to retrieve a unique identifier for each Record
+
 				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
-				- fires parent HarvestJob init
-				- captures args specific to OAI harvesting
+				- fires parent HarvestJob init				
 		'''
 
 		# perform HarvestJob initialization
@@ -3369,6 +3378,9 @@ class HarvestStaticXMLJob(HarvestJob):
 			- zip / tar file with discrete files, one record per file
 			- aggregate XML file, containing multiple records
 			- location of directory on disk, with files pre-arranged to match structure above
+
+		Args:
+			see HarvestStaticXMLJob.__init__() above
 
 		########################################################################################################
 		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
@@ -3454,7 +3466,7 @@ class HarvestStaticXMLJob(HarvestJob):
 	def _handle_xml_upload(self, p, fpath):
 
 		'''
-		Handle uploads of XML files with group of discrete records.
+		Handle upload of single XML file that contains multiple discrete records.
 		Using xpath_document_root query from user, parse records and write to discrete files on disk,
 		then delete the aggregate file.
 

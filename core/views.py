@@ -716,11 +716,13 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		payload_dict = {}
 
 		# use location on disk
+		# When a location on disk is provided, set payload_dir as the location provided
 		if request.POST.get('static_filepath') != '':
 			payload_dict['type'] = 'location'
 			payload_dict['payload_dir'] = request.POST.get('static_filepath')
 
 		# use upload
+		# When a payload is uploaded, create payload_dir and set
 		else:
 			payload_dict['type'] = 'upload'
 

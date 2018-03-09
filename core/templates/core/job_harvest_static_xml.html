@@ -20,52 +20,101 @@
 				{% include 'core/job_optional_details.html' %}
 
 				<!-- payload -->
-				<p>Provide either a file upload or location on disk for static XML files.</p>
+				<h5>Provide Static Content</h5>
+				<p>For static harvests, optionally upload content, or provide a location on the filesystem where the content is.</p>
 
-				<div class="form-group">
-					<div class="custom-file">
-						<input type="file" name="static_payload" class="custom-file-input" id="static_payload">
-						<label class="custom-file-label" for="static_payload">Uplaod XML file</label>
+				<ul class="nav nav-tabs">
+					<li class="nav-item">
+						<a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload</a>
+					</li>
+					<li class="nav-item">
+						<a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
+					</li>					
+				</ul>
+
+				<div class="tab-content">
+
+					<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+						<div class="custom-file">
+						   <input type="file" id="static_payload" name="static_payload" class="custom-file-input">
+						   <label for="static_payload" class="custom-file-label">Choose file...</label>
+						</div>
+						<script>
+							$('.custom-file-input').on('change', function() { 
+							   let fileName = $(this).val().split('\\').pop(); 
+							   $(this).next('.custom-file-label').addClass("selected").html(fileName); 
+							});
+						</script>
 					</div>
+
+					<div id="filesystem_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+						<label for="static_filepath">Location of XML files on disk:</label>
+						<input type="text" class="form-control" id="static_filepath" name="static_filepath" placeholder="e.g. /foo/bar/baz">
+					</div>
+
 				</div>
 
-				<div class="form-group">
-					<label for="static_filepath">Location of XML files on disk:</label>
-					<input type="text" class="form-control" id="static_filepath" name="static_filepath" placeholder="e.g. /foo/bar/baz">
-				</div>
-
-				<!-- xpath -->
-				<p>Next, we need an XPath expression that helps pinpoint the records from your provided static files:
-					<table class="table table-bordered table-hover">
+				<!-- xpath for documents -->
+				<h5>Identify Documents</h5>
+				<p>Next, to identify discrete documents, an XPath expression is needed to help located the records.  Here are some examples of how to provide an XPath expression for locating documents.</p>
+				<table class="table table-bordered table-hover">
+					<thead>
 						<tr>
-							<td>zip / tar file of discrete XML files</td>
+							<th>Static content type</th>
+							<th>XPath needed</th>
+							<th>Example</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Archive (<code>.zip</code>, <code>.tar</code>) file of discrete XML files</td>
 							<td>XPath that drills down to metadata record, for each file</td>
-							<td>e.g. <code>//mods:mods</code></td>
+							<td><code>//mods:mods</code></td>
 						</tr>
 						<tr>
-							<td>aggregate XML file with multiple records</td>
+							<td>Aggregate XML file with multiple records</td>
 							<td>XPath that drills down to metadata record within large XML file</td>
-							<td>e.g. <code>//metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']</code>
+							<td><code>//metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']</code>
 						</tr>
 						<tr>
 							<td>Location on disk</td>
 							<td>Assuming directory of multiple files, XPath that drills down to metadata record, for each file</td>
-							<td>e.g. <code>/</code> (perhaps just a single slash indicating metadata is at the root of the file)</td>
+							<td><code>/</code> (a single slash might be sufficient, indicating the metadata record is at the root of the file)</td>
 						</tr>
-					</table>
-				</p>
+					</td>
+				</table>
 
 				<div class="form-group">
 					<label for="xpath_document_root">XPath for metadata document root (default <code>/*</code>):</label>
 					<input type="text" class="form-control" id="xpath_document_root" name="xpath_document_root" placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']">
 				</div>
 
-				<!-- xpath -->
-				<p>Finally, need an xpath expression for identifying a unique string to serve as the record ID for each record:</p>		
+				<!-- xpath for identifiers -->
+				<h5>Locate Identifier in Document</h5>
+				<p>Finally, an optional XPath expression can be provided to locate a unique, meaningful identifier for each document.</p>
+				<p><span class="font-weight-bold">Note:</span> While not required, this is encouraged.  In the absence of an XPath expression to locate an identifier, an MD5 hash of the document's contents will be created, which might help with potential duplicate records.  However, if the document changes harvest-to-harvest, this identifier will not remain constant.  Furthermore, this MD5 hash identifier will propogate through Combine and eventually be used for publishing, which is important to consider.</p>
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>Description</th>
+							<th>Example</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td>Use Dublin Core <code>&lt;dc:identifier&gt;</code> element.</td>
+							<td><code>//dc:identifier</code></td>
+						</tr>
+						<tr>
+							<td>Locate <code>&lt;mods:url&gt;</code> element with <code>access</code> attribute.</td>
+							<td><code>//mods:mods/mods:location/mods:url[@access]</code></td>
+						</tr>						
+					</td>
+				</table>
 				
 				<div class="form-group">
-					<label for="xpath_record_id">XPath for unique record identifier (default md5 hash of document string):</label>
-					<input type="text" class="form-control" id="xpath_record_id" name="xpath_record_id" placeholder="e.g. //mods:mods/mods:location/mods:url[@access]">
+					<label for="xpath_record_id">XPath for Record Identifier:</label>
+					<input type="text" class="form-control" id="xpath_record_id" name="xpath_record_id" placeholder="e.g. //dc:identifier">
 				</div>
 				
 				<div class="row">
