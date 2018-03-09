@@ -1491,9 +1491,10 @@ def test_validation_scenario(request):
 	if request.method == 'POST':
 
 		logger.debug('running test validation and returning')
+		logger.debug(request.POST)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('record_id')))
+		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
 
 		try:
 			# init new validation scenario
@@ -1793,7 +1794,11 @@ class DTRecordsJson(BaseDatatableView):
 
 			# handle associated job
 			elif column == 'job':
-				return row.job.name
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.job.name)
 
 			# handle unique
 			elif column == 'unique':
@@ -1821,7 +1826,7 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search) | Q(document__contains=search))
+				qs = qs.filter(Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs

@@ -1,7 +1,7 @@
 {% block content %}	
 <table id='datatables_records'>
 	<thead>
-		<th>ID</th>
+		<th>DB ID</th>
 		<th>Combine ID</th>
 		<th>Record ID</th>
 		<th>Job</th>
@@ -47,7 +47,13 @@
 	            {
 					"targets": 8,
 					"orderable": false
-				}
+				},
+				{% if cjob %}
+				{
+					"targets": 3,
+					"visible": false
+				},
+				{% endif %}
 			]
 		});
 	});

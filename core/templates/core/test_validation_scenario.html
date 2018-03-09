@@ -186,7 +186,7 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 
 				// get record id
 			    sel_row = $(this).children(":first");
-			    sel_row_id = sel_row.html();
+			    sel_row_id = sel_row.find('code').html()
 			} );
 		});
 
@@ -229,7 +229,7 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 			$("#test_vs").click(function(){
 
 				// change this to dynamically grab from selected rows in records table
-				var record_id = sel_row_id;
+				var db_id = sel_row_id;
 
 				// get vs_payload
 				var vs_payload = $("#vs_payload").val();
@@ -242,7 +242,7 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 					type: "POST",
 					url: "{% url 'test_validation_scenario' %}",
 					data: {
-						'record_id':record_id,
+						'db_id':db_id,
 						'vs_payload':vs_payload,
 						'vs_type':vs_type,
 						'vs_name':'temp_vs',
@@ -271,7 +271,7 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 					type: "POST",
 					url: "{% url 'test_validation_scenario' %}",
 					data: {
-						'record_id':record_id,
+						'db_id':db_id,
 						'vs_payload':vs_payload,
 						'vs_type':vs_type,
 						'vs_name':'temp_vs',
