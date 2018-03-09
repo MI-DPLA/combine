@@ -48,14 +48,15 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 def breadcrumb_parser(path):
 	
 	'''
-	Return parsed URL based on the pattern:
-	organization / record_group / job 
-
-	NOTE: temporary, hacky solution for breadcrumbs, not meant to endure
+	Rudimentary breadcrumbs parser
 	'''
 
 	crumbs = []
 
+	# configurations
+	config_m = re.match(r'(.+?/configuration)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
 
 	# published
 	pub_m = re.match(r'(.+?/published)', path)
@@ -370,7 +371,9 @@ def record_group_update_publish_set_id(request, org_id, record_group_id):
 		else:
 			logger.debug('publish_set_id not set, skipping')
 
-		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+		# redirect to 
+		# return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+		return redirect(request.META.get('HTTP_REFERER'))
 
 
 
@@ -1378,7 +1381,8 @@ def configuration(request):
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
-			'validation_scenarios':validation_scenarios
+			'validation_scenarios':validation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 

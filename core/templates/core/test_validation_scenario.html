@@ -205,7 +205,7 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 					// get payload
 					$.ajax({
 						type: "GET",
-						url: "/combine/configurations/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
+						url: "/combine/configuration/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
 						dataType:'text',
 						success: function(data){
 							$("#vs_payload").val(data);

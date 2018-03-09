@@ -4,7 +4,7 @@
 
 	<div class="row">
 		<div class="col-md-12">	
-			<h3>Job Details: <span class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a></h3>
+			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').fadeToggle();">Job Notes</button></h3>
 			<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 				<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}																		
@@ -16,8 +16,9 @@
 				</form>
 			</div>
 		</div>
-		<div class="col-md-12">			
-			<div>
+		<div class="col-md-12">
+			<!-- <p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').slideToggle();">Job Notes</button> -->
+			<div id="job_notes_section" style="display:none;">
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
 					

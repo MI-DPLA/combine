@@ -60,11 +60,11 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
 
 	# Configuration
-	url(r'^configurations$', views.configuration, name='configuration'),
-	url(r'^configurations/transformation/(?P<trans_id>[0-9]+)/payload$', views.transformation_scenario_payload, name='transformation_scenario_payload'),
-	url(r'^configurations/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
-	url(r'^configurations/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload, name='validation_scenario_payload'),
-	url(r'^configurations/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
+	url(r'^configuration$', views.configuration, name='configuration'),
+	url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$', views.transformation_scenario_payload, name='transformation_scenario_payload'),
+	url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
+	url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload, name='validation_scenario_payload'),
+	url(r'^configuration/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
 
 	# Publish
 	url(r'^published$', views.published, name='published'),

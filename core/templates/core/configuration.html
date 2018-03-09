@@ -12,8 +12,8 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>OAI Endpoints</h3>
-			<p>These are used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.</p>
+			<h3>OAI Endpoints for Harvest</h3>
+			<p>These are pre-configured OAI endpoints used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.  Combine uses <a href="https://github.com/dpla/ingestion3#oai-pmh" target="_blank">DPLA's Ingestion 3 for OAI harvesting</a>, where more information about these settings can be found.</p>
 			<div>
 				<table class="table table-bordered table-hover">
 					<tr>
@@ -31,10 +31,10 @@
 							<td>{{oai_endpoint.id}}</td>
 							<td>{{oai_endpoint.name}}</td>
 							<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
-							<td>{{oai_endpoint.verb}}</td>
-							<td>{{oai_endpoint.metadataPrefix}}</td>
-							<td>{{oai_endpoint.scope_type}}</td>
-							<td>{{oai_endpoint.scope_value}}</td>
+							<td><code>{{oai_endpoint.verb}}</code></td>
+							<td><code>{{oai_endpoint.metadataPrefix}}</code></td>
+							<td><code>{{oai_endpoint.scope_type}}</code></td>
+							<td><code>{{oai_endpoint.scope_value}}</code></td>
 							<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 						</tr>
 					{% endfor %}
@@ -96,6 +96,36 @@
 				<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario</button></a></p>
 			</div>
 		</div>
-	</div>	
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Combine OAI Server</h3>
+			<p>Combine comes with a built-in OAI server to serve published RecordGroups.  Currently, these settings are configured in <code>localsettings.py</code>.</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>Setting</th>
+							<th>Description</th>
+							<th>Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>OAI_RESPONSE_SIZE</code></td>
+							<td>How many records to return per OAI response</td>
+							<td><code>{{ OAI_RESPONSE_SIZE }}</code></td>
+						</tr>
+						<tr>
+							<td><code>COMBINE_OAI_IDENTIFIER</code></td>
+							<td>It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server.  This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimick downstream identifiers.</td>
+							<td><code>{{ COMBINE_OAI_IDENTIFIER }}</code></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>		
 
 {% endblock %}
