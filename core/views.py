@@ -53,6 +53,11 @@ def breadcrumb_parser(path):
 
 	crumbs = []
 
+	# livy/spark
+	config_m = re.match(r'(.+?/livy_sessions)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Livy/Spark</span>", reverse('livy_sessions')))
+
 	# configurations
 	config_m = re.match(r'(.+?/configuration)', path)
 	if config_m:		
@@ -77,6 +82,11 @@ def breadcrumb_parser(path):
 	pub_m = re.match(r'(.+?/published)', path)
 	if pub_m:		
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+
+	# organization
+	pub_m = re.match(r'(.+?/organization/.*)', path)
+	if pub_m:		
+		crumbs.append(("<span class='font-weight-bold'>Organizations</span>", reverse('organizations')))
 
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
@@ -166,7 +176,10 @@ def livy_sessions(request):
 		livy_session.refresh_from_livy()
 
 	# return
-	return render(request, 'core/livy_sessions.html', {'livy_session':livy_session})
+	return render(request, 'core/livy_sessions.html', {
+		'livy_session':livy_session,
+		'breadcrumbs':breadcrumb_parser(request.path)
+	})
 
 
 @login_required
@@ -233,7 +246,8 @@ def organizations(request):
 
 		# render page
 		return render(request, 'core/organizations.html', {
-				'orgs':orgs				
+				'orgs':orgs,
+				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
 

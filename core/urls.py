@@ -13,7 +13,7 @@ urlpatterns = [
 	url(r'^livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
 
 	# Organizations
-	url(r'^organizations$', views.organizations, name='organizations'),
+	url(r'^organization/all$', views.organizations, name='organizations'),
 	url(r'^organization/(?P<org_id>[0-9]+)$', views.organization, name='organization'),
 	url(r'^organization/(?P<org_id>[0-9]+)/delete$', views.organization_delete, name='organization_delete'),
 
