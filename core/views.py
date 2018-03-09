@@ -58,6 +58,21 @@ def breadcrumb_parser(path):
 	if config_m:		
 		crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
 
+	# configurations/test_validation_scenario
+	config_m = re.match(r'(.+?/configuration/test_validation_scenario)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Test Validation Scenario</span>", reverse('test_validation_scenario')))
+
+	# all jobs
+	config_m = re.match(r'(.+?/jobs/all)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>All Jobs</span>", reverse('all_jobs')))
+
+	# analysis
+	config_m = re.match(r'(.+?/analysis)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
+
 	# published
 	pub_m = re.match(r'(.+?/published)', path)
 	if pub_m:		
@@ -69,7 +84,7 @@ def breadcrumb_parser(path):
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
 		if org.for_analysis:
 			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
-			crumbs.append(('Analysis', reverse('analysis')))
+			crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
 		else:
 			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
@@ -87,7 +102,7 @@ def breadcrumb_parser(path):
 	if j_m:
 		j = models.Job.objects.get(pk=int(j_m.group(2)))
 		if j.record_group.for_analysis:
-			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Analysis</span> - %s" % j.name, j_m.group(1)))
 		else:
 			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
@@ -1451,7 +1466,10 @@ def test_validation_scenario(request):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# return
-		return render(request, 'core/test_validation_scenario.html', {'validation_scenarios':validation_scenarios})
+		return render(request, 'core/test_validation_scenario.html', {
+			'validation_scenarios':validation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
@@ -1569,7 +1587,8 @@ def analysis(request):
 	return render(request, 'core/analysis.html', {
 			'jobs':analysis_jobs,
 			'job_lineage_json':json.dumps(analysis_job_lineage),
-			'for_analysis':True
+			'for_analysis':True,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 
