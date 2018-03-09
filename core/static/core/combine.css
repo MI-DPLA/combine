@@ -40,6 +40,9 @@ table {
 .row {
 	margin-bottom: 1rem;
 }
+label {
+	font-weight: bold;
+}
 
 /* consider darkening lines in table with something similar */
 /*.table-bordered td, .table-bordered th {
