@@ -589,6 +589,7 @@ class TransformSpark(object):
 
 			# return Row
 			return Row(
+					combine_id = row.combine_id,
 					record_id = row.record_id,
 					document = trans_result[0],
 					error = trans_result[1],
@@ -652,6 +653,7 @@ class TransformSpark(object):
 
 			# return Row
 			return Row(
+				combine_id = row.combine_id,
 				record_id = row.record_id,
 				document = trans_result[0],
 				error = trans_result[1],
