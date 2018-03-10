@@ -9,7 +9,9 @@ def combine_settings(request):
 
 	return {
 		'APP_HOST': settings.APP_HOST,		
-		'DPLA_API_KEY': settings.DPLA_API_KEY
+		'DPLA_API_KEY': settings.DPLA_API_KEY,
+		'OAI_RESPONSE_SIZE':settings.OAI_RESPONSE_SIZE,
+		'COMBINE_OAI_IDENTIFIER':settings.COMBINE_OAI_IDENTIFIER
 	}
 
 
@@ -21,6 +23,8 @@ def livy_session(request):
 
 	# get active livy session
 	lv = LivySession.get_active_session()
+	if lv:
+		lv.refresh_from_livy()
 
 	return {
 		'LIVY_SESSION':lv

@@ -48,19 +48,45 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 def breadcrumb_parser(path):
 	
 	'''
-	Return parsed URL based on the pattern:
-	organization / record_group / job 
-
-	NOTE: temporary, hacky solution for breadcrumbs, not meant to endure
+	Rudimentary breadcrumbs parser
 	'''
 
 	crumbs = []
 
+	# livy/spark
+	config_m = re.match(r'(.+?/livy_sessions)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Livy/Spark</span>", reverse('livy_sessions')))
+
+	# configurations
+	config_m = re.match(r'(.+?/configuration)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
+
+	# configurations/test_validation_scenario
+	config_m = re.match(r'(.+?/configuration/test_validation_scenario)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Test Validation Scenario</span>", reverse('test_validation_scenario')))
+
+	# all jobs
+	config_m = re.match(r'(.+?/jobs/all)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>All Jobs</span>", reverse('all_jobs')))
+
+	# analysis
+	config_m = re.match(r'(.+?/analysis)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
 
 	# published
 	pub_m = re.match(r'(.+?/published)', path)
 	if pub_m:		
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+
+	# organization
+	pub_m = re.match(r'(.+?/organization/.*)', path)
+	if pub_m:		
+		crumbs.append(("<span class='font-weight-bold'>Organizations</span>", reverse('organizations')))
 
 	# org
 	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
@@ -68,7 +94,7 @@ def breadcrumb_parser(path):
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
 		if org.for_analysis:
 			logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
-			crumbs.append(('Analysis', reverse('analysis')))
+			crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
 		else:
 			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
@@ -86,7 +112,7 @@ def breadcrumb_parser(path):
 	if j_m:
 		j = models.Job.objects.get(pk=int(j_m.group(2)))
 		if j.record_group.for_analysis:
-			crumbs.append(("Analysis - %s" % j.name, j_m.group(1)))
+			crumbs.append(("<span class='font-weight-bold'>Analysis</span> - %s" % j.name, j_m.group(1)))
 		else:
 			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
@@ -102,30 +128,58 @@ def breadcrumb_parser(path):
 
 
 ####################################################################
+# Index 														   #
+####################################################################
+
+@login_required
+def index(request):
+
+	# get username
+	username = request.user.username
+
+	# get all organizations
+	orgs = models.Organization.objects.exclude(for_analysis=True).all()
+
+	# get record count
+	record_count = models.Record.objects.all().count()
+
+	# get published records count
+	pr = models.PublishedRecords()
+	published_record_count = pr.records.count()
+
+	# get job count
+	job_count = models.Job.objects.all().count()	
+
+	return render(request, 'core/index.html', {
+		'username':username,
+		'orgs':orgs,
+		'record_count':"{:,}".format(record_count),
+		'published_record_count':"{:,}".format(published_record_count),
+		'job_count':"{:,}".format(job_count)
+		})
+
+
+
+####################################################################
 # User Livy Sessions 											   #
 ####################################################################
 
 @login_required
 def livy_sessions(request):
 	
-	logger.debug('retrieving Livy sessions')
-	
-	# query db
-	livy_sessions = models.LivySession.objects.all()
+	# single Livy session
+	logger.debug("checking or active Livy session")
+	livy_session = models.LivySession.get_active_session()
 
-	# refresh sessions
-	for livy_session in livy_sessions:
+	# if session found, refresh
+	if livy_session:
 		livy_session.refresh_from_livy()
 
-		# check user session status, and set active flag for session
-		if livy_session.status in ['starting','idle','busy']:
-			livy_session.active = True
-		else:
-			livy_session.active = False
-		livy_session.save()
-	
 	# return
-	return render(request, 'core/livy_sessions.html', {'livy_sessions':livy_sessions})
+	return render(request, 'core/livy_sessions.html', {
+		'livy_session':livy_session,
+		'breadcrumbs':breadcrumb_parser(request.path)
+	})
 
 
 @login_required
@@ -192,7 +246,8 @@ def organizations(request):
 
 		# render page
 		return render(request, 'core/organizations.html', {
-				'orgs':orgs				
+				'orgs':orgs,
+				'breadcrumbs':breadcrumb_parser(request.path)
 			})
 
 
@@ -345,7 +400,9 @@ def record_group_update_publish_set_id(request, org_id, record_group_id):
 		else:
 			logger.debug('publish_set_id not set, skipping')
 
-		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+		# redirect to 
+		# return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+		return redirect(request.META.get('HTTP_REFERER'))
 
 
 
@@ -659,11 +716,13 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		payload_dict = {}
 
 		# use location on disk
+		# When a location on disk is provided, set payload_dir as the location provided
 		if request.POST.get('static_filepath') != '':
 			payload_dict['type'] = 'location'
 			payload_dict['payload_dir'] = request.POST.get('static_filepath')
 
 		# use upload
+		# When a payload is uploaded, create payload_dir and set
 		else:
 			payload_dict['type'] = 'upload'
 
@@ -969,7 +1028,12 @@ def job_publish(request, org_id, record_group_id):
 		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
 		logger.debug('publishing job: %s' % input_job)
 
-		# update RecordGroup publish set id		
+		# update RecordGroup publish set id
+		'''
+		priority:
+			1) new, user input publish_set_id
+			2) pre-existing publish_set_id
+		'''
 		if request.POST.get('new_publish_set_id') != '':
 			record_group.publish_set_id = request.POST.get('new_publish_set_id')
 			record_group.save()
@@ -1348,7 +1412,8 @@ def configuration(request):
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
-			'validation_scenarios':validation_scenarios
+			'validation_scenarios':validation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 
@@ -1378,8 +1443,13 @@ def transformation_scenario_payload(request, trans_id):
 	# get transformation
 	transformation = models.Transformation.objects.get(pk=int(trans_id))
 
-	# return document as XML
-	return HttpResponse(transformation.payload, content_type='text/xml')
+	# return transformation as XML
+	if transformation.transformation_type == 'xslt':
+		return HttpResponse(transformation.payload, content_type='text/xml')
+
+	# return transformation as Python
+	if transformation.transformation_type == 'python':
+		return HttpResponse(transformation.payload, content_type='text/plain')
 
 
 def validation_scenario_payload(request, vs_id):
@@ -1412,7 +1482,10 @@ def test_validation_scenario(request):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# return
-		return render(request, 'core/test_validation_scenario.html', {'validation_scenarios':validation_scenarios})
+		return render(request, 'core/test_validation_scenario.html', {
+			'validation_scenarios':validation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
@@ -1530,7 +1603,8 @@ def analysis(request):
 	return render(request, 'core/analysis.html', {
 			'jobs':analysis_jobs,
 			'job_lineage_json':json.dumps(analysis_job_lineage),
-			'for_analysis':True
+			'for_analysis':True,
+			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
 
@@ -2009,14 +2083,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 
 
-####################################################################
-# Index 														   #
-####################################################################
 
-@login_required
-def index(request):
-	username = request.user.username
-	return render(request, 'core/index.html', {'username':username})
 
 
 

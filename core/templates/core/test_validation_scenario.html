@@ -2,57 +2,169 @@
 
 {% block content %}
 	
-	<h2>Test Validation Scenario</h2>
+	<div class="row">
+		<div class="col-md-8">
+			<h2>Test Validation Scenario</h2>
+			<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#validation_instructions').toggle();">Instructions</button>
 
-	<p>Here you can test Validation Scenarios before adding them to Combine.  You have the option of selecting a pre-existing Validation Scenario to test, with the option of temporary editing to see what changes would have, or pasting in an entirely new Validation Scenario to test before creating and applying application wide.</p>
+			<div id="validation_instructions" style="display:none;">
 
-	<p>To test, follow these steps:
-		<ol>
-			<li>Filter or search until you find the target record</li>
-			<li>Click that row, which should highlight the row indicating it is selected</li>
-			<li>Select a pre-existing scenario, or paste the XML of a Schematron validation or python code of a new one to try</li>			
-			<li>Select the validation type, "Schematron" or "Python code"</li>
-			<li>Click "Test Validation" to see the results of that validation applied to the selected record immediately</li>
-		</ol>
-	</p>
+				<h5>Overview</h5>
+				<p>Here you can test Validation Scenarios before adding them to Combine.  You have the option of selecting a pre-existing Validation Scenario to test, with the option of temporary editing to see what changes would have, or pasting in an entirely new Validation Scenario to test before creating and applying application wide.</p>
 
-	<!-- All Records DT table -->
-	{% include 'core/records_dt_table.html' %}
+				<p>To test, follow these steps:
+					<ol>
+						<li>Filter or search to identify a Record of interest</li>
+						<li>Click that row, which should highlight indicating it is selected</li>
+						<li>Select a pre-existing scenario, or paste the XML of a Schematron validation or python code of a new one to try</li>			
+						<li>If new, select the validation type <code>Schematron</code> or <code>Python code</code></li>
+						<li>Click "Test Validation" to see the results of that validation applied to the selected record immediately</li>
+					</ol>
+				</p>
 
-	<div style="width:100%;">
+				<h5>Writing Python Validation Scenarios</h5>
+				<p>To write your own Python Validation Scenarios, there are a couple of conventions that need to be followed for them to fire.</p>
+				<ul>
+					<li>Validation tests are defined by functions with names that start with the prefix <code>test</code></li>
+					<li>These functions are passed a single positional argument that is a python object of the the Record being validated; a good convention might be to name this argument <code>record</code>.  This <code>record</code> object has two primary attributes to work with:
+						<ul>
+							<li><code>record.xml</code>: a parsed etree instance of the Record XML</li>
+							<li><code>record.raw</code>: the raw string of the Record XML</li>
+						</ul>
+					</li>
+					<li>these functions must return <code>True</code> or <code>False</code></li>
+					<li>finally, these functions must also define a single named argument <code>test_message</code> with a string that will represent this test in failure reporting</li>
+				</ul>
+				<p>Examples can be helpful.  Below is an example of a Python Validation Scenario, including two tests, one checking for a particular MODS element, and the second, checking the format of a date field:</p>
+				<pre><code id="python_test_code" class="python">
+# free to import python modules as needed
+import re
+
+# each function that starts with `test` is used as a validation test
+# this one check for a MODS element
+def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo element"):
+
+	titleInfo_elements = record.xml.xpath('//mods:titleInfo', namespaces=record.nsmap)
+	if len(titleInfo_elements) > 0:
+
+		# returning True passes the validation
+		return True
+	else:
+		# returning False fails it
+		return False
+
+
+# this test checks the format of a date field
+def test_check_dateIssued_format(record, test_message="check mods:dateIssued is YYYY-MM-DD or YYYY or YYYY-YYYY"):
+
+	# get dateIssued elements
+	dateIssued_elements = record.xml.xpath('//mods:dateIssued', namespaces=record.nsmap)
+
+	# if found, check format 
+	if len(dateIssued_elements) > 0:
+
+		# loop through values and check
+		for dateIssued in dateIssued_elements:          
+		
+			# check format
+			if dateIssued.text is not None:
+				match = re.match(r'^([0-9]{4}-[0-9]{2}-[0-9]{2})|([0-9]{4})|([0-9]{4}-[0-9]{4})$', dateIssued.text)
+			else:
+				# allow None values to pass test 
+				return True
+
+			# match found, continue
+			if match:
+				continue
+			else:
+				return False
+
+		# if all matches, return True
+		return True
+
+	# if none found, return True indicating passed test due to omission
+	else:
+		return True
+				</pre></code>
+				<script>
+					$("#python_test_code").each(function(i, block) {
+						hljs.highlightBlock(block);
+					});
+				</script>
+
+			</div>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<!-- All Records DT table -->
+			{% include 'core/records_dt_table.html' %}
+		</div>
+	</div>
+
 
 	<!-- input paylaod -->
-	<div style="width:80%">
-		<h3>Validation Payload</h3>
-		<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
-		<p>
-			<select id="vs_exists">
-				<option value="None">Select a pre-existing validation scenario</option>
-				{% for vs in validation_scenarios %}
-					<option value="{{vs.id}}|{{vs.validation_type}}">{{vs.name}}</option>
-				{% endfor %}
-			</select>
-		</p>
-		<p><textarea id="vs_payload" style="width:100%; height:320px;"></textarea></p>
-		<p>
-			<select id="vs_type">
-				<option value="sch">Schematron</option>
-				<option value="python">Python code</option>
-			</select>
-		</p>
-		<p><button id="test_vs">Test Validation</button></p>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Validation Payload</h3>
+			<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
+			
+			<!-- pre-existing Validation Scenario -->
+			<div class="row">
+				<div class="col-md-4">
+					<div class="form-group">
+						<label for="vs_exists">Select a pre-existing Validation Scenario</label>
+						<select id="vs_exists" class="form-control">
+							<option value=''></option>
+							{% for vs in validation_scenarios %}
+								<option value="{{vs.id}}|{{vs.validation_type}}">{{vs.name}}</option>
+							{% endfor %}
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validation Scenario payload -->
+			<div class="row">
+				<div class="col-md-12">
+					<div class="form-group">				
+						<textarea id="vs_payload" class="form-control" rows="15"></textarea>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validation Scenario type -->
+			<div class="row">
+				<div class="col-md-4">
+					<div class="form-group">
+						<label for="vs_type">Select Validation Scenario type</label>
+						<select id="vs_type" class="form-control">
+							<option value=''></option>
+							<option value="sch">Schematron</option>
+							<option value="python">Python code</option>
+						</select>
+					</div>
+				</div>
+			</div>
+			
+			<button class="btn btn-success btn-sm" id="test_vs">Test Validation</button>
+		</div>
 	</div>
 
 	<!-- validation results -->
-	<div style="width:45%; float:left; margin-right:20px;">
-		<h4>Parsed Validation Results</h4>
-		<pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
-	</div>
-	<div style="width:45%; float:left;">
-		<h4>Raw Validation Results</h4>
-		<textarea id="vs_results_raw" style="width:100%; height:320px;">Raw results will show here...</textarea>
-	</div>
-
+	<div class="row">
+		<div class="col-md-6">
+			<h4>Parsed Validation Results</h4>
+			<pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
+		</div>
+		<div class="col-md-6">
+			<h4>Raw Validation Results</h4>
+			<div class="form-group">				
+				<!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
+				<code id="vs_results_raw">Raw results will show here...</code>
+		</div>
 	</div>
 
 	<script>
@@ -82,21 +194,34 @@
 		$(document).ready(function(){
 			$("#vs_exists").change(function(){
 
-				// get vs info
-				var vs_info = this.value.split('|');
+				if (this.value != ''){
 
-				// update dropdown type
-				$("#vs_type").val(vs_info[1]);
+					// get vs info
+					var vs_info = this.value.split('|');
 
-				// get payload
-				$.ajax({
-					type: "GET",
-					url: "/combine/configurations/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
-					dataType:'text',
-					success: function(data){
-						$("#vs_payload").val(data);
-					}			
-				});
+					// update validation dropdown type
+					$("#vs_type").val(vs_info[1]);
+
+					// get payload
+					$.ajax({
+						type: "GET",
+						url: "/combine/configuration/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
+						dataType:'text',
+						success: function(data){
+							$("#vs_payload").val(data);
+						}			
+					});	
+				}
+
+				else {
+					
+					// clear validation dropdown type
+					$("#vs_type").val(this.value);
+
+					// clear payload box
+					$("#vs_payload").val('');
+				}
+
 			})
 		});
 
@@ -154,10 +279,35 @@
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
-					success: function(data){												
-						$("#vs_results_raw").val(data);
+					success: function(data){
+
+						// hash to translate vs_type to output serialization format
+						vs_type_output_hash = {
+							'sch':'xml',
+							'python':'json'
+						}
+
+						// add raw data to div
+						$("#vs_results_raw").html(escapeHtmlEntities(data));
+
+						// update class for <code> tag for hljs and init
+						$("#vs_results_raw").removeClass();
+						$("#vs_results_raw").addClass(vs_type_output_hash[vs_type]);
+						$("#vs_results_raw").each(function(i, block) {
+							hljs.highlightBlock(block);
+						});
 					}			
 				});
+
+				// https://stackoverflow.com/a/10825766/1196358
+				function escapeHtmlEntities (str) {
+				  // No jQuery, so use string replace.
+				  return str
+				    .replace(/&/g, '&amp;')
+				    .replace(/>/g, '&gt;')
+				    .replace(/</g, '&lt;')
+				    .replace(/"/g, '&quot;');
+				}
 
 			})
 		});

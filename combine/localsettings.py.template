@@ -37,7 +37,7 @@ LIVY_DEFAULT_SESSION_CONFIG = {
 Make sure to note file:// or hdfs:// prefix
 '''
 BINARY_STORAGE = 'file:///home/combine/data/combine'
-WRITE_AVRO = True
+WRITE_AVRO = False
 
 
 # ElasicSearch server
@@ -60,7 +60,7 @@ SERVICE_HUB_PREFIX = 'mi--'
 
 # OAI Server
 OAI_RESPONSE_SIZE = 500
-COMBINE_OAI_IDENTIFIER = 'oai:digital.library.wayne.edu'
+COMBINE_OAI_IDENTIFIER = 'oai:michigan'
 METADATA_PREFIXES = {
 	'mods':{
 			'schema':'http://www.loc.gov/standards/mods/v3/mods.xsd',

@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+from collections import OrderedDict
 import datetime
 import gc
 import hashlib
@@ -108,11 +109,8 @@ class LivySession(models.Model):
 		livy_response = LivyClient().session_status(self.session_id)
 
 		# parse response and set self values
-		logger.debug(livy_response.status_code)
 		response = livy_response.json()
-		logger.debug(response)
 		headers = livy_response.headers
-		logger.debug(headers)
 
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
@@ -660,7 +658,8 @@ class Job(models.Model):
 		'''
 		
 		# index results save path
-		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
+		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
 	@property
@@ -951,7 +950,8 @@ class JobPublish(models.Model):
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 
 	def __str__(self):
-		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
+		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (
+			self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
 
 
 
@@ -1060,16 +1060,19 @@ class Record(models.Model):
 
 
 	def __str__(self):
-		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (self.id, self.record_id, self.job.id, self.job.job_type)
+		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
+			self.id, self.record_id, self.job.id, self.job.job_type)
 
 
-	def get_record_stages(self, input_record_only=False):
+	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
 
 		'''
 		Method to return all upstream and downstreams stages of this record
 
 		Args:
 			input_record_only (bool): If True, return only immediate record that served as input for this record.
+			remove_duplicates (bool): Removes duplicates - handy for flat list of stages,
+			but use False to create lineage
 
 		Returns:
 			(list): ordered list of Record instances from first created (e.g. Harvest), to last (e.g. Publish).
@@ -1128,6 +1131,10 @@ class Record(models.Model):
 		if not input_record_only:
 			record_stages.append(self)
 			get_downstream(self)
+
+		# remove duplicate
+		if remove_duplicates:
+			record_stages = list(OrderedDict.fromkeys(record_stages))
 		
 		# return		
 		return record_stages
@@ -1510,7 +1517,8 @@ class ValidationScenario(models.Model):
 	
 
 	def __str__(self):
-		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (self.name, self.validation_type, self.default_run)
+		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (
+			self.name, self.validation_type, self.default_run)
 
 
 	def validate_record(self, row):
@@ -1620,7 +1628,7 @@ class ValidationScenario(models.Model):
 				pyvs_funcs.append(attr)
 
 		# instantiate prvb
-		prvb = PythonRecordValidationBase(row)
+		prvb = PythonUDFRecord(row)
 
 		# prepare results_dict
 		results_dict = {
@@ -1683,7 +1691,8 @@ class JobValidation(models.Model):
 	failure_count = models.IntegerField(null=True, default=None)
 
 	def __str__(self):
-		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (self.id, self.job.id, self.validation_scenario.id, self.failure_count)
+		return 'JobValidation: #%s, Job: #%s, ValidationScenario: #%s, failure count: %s' % (
+			self.id, self.job.id, self.validation_scenario.id, self.failure_count)
 
 
 	def get_record_validation_failures(self):
@@ -1737,7 +1746,8 @@ class RecordValidation(models.Model):
 	'''
 
 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL) # what kind of performance hit is this FK?
+	# what kind of performance hit is this FK?
+	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
 	valid = models.BooleanField(default=1)
 	results_payload = models.TextField(null=True, default=None)
 	fail_count = models.IntegerField(null=True, default=None)
@@ -3302,13 +3312,22 @@ class HarvestStaticXMLJob(HarvestJob):
 				see: core.models.HarvestJob
 			
 			HarvestOAIJob args (extending HarvestJob args)
-				static_payload (str): filepath of static payload on disk
+				payload_dict (dict): dictionary of user provided arguments for static harvest
+					static_filepath (str): location of metadata records on disk
+					type (str)['location','upload']: type of static harvest, uploaded content or location on disk
+					payload_dir (str): location on disk to work form, NOTE: for uploads this is a UUID 
+						named directory at /tmp/combine/ 
+					static_payload (str): temporary filename from upload
+					content_type (str): mimetype of static file from upload
+					payload_filename (str): final filename of static payload on disk
+					xpath_document_root (str): XPath location of documents in parsed files
+					xpath_record_id (str): XPath to retrieve a unique identifier for each Record
+
 				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 
 		Returns:
 			None
-				- fires parent HarvestJob init
-				- captures args specific to OAI harvesting
+				- fires parent HarvestJob init				
 		'''
 
 		# perform HarvestJob initialization
@@ -3359,6 +3378,9 @@ class HarvestStaticXMLJob(HarvestJob):
 			- zip / tar file with discrete files, one record per file
 			- aggregate XML file, containing multiple records
 			- location of directory on disk, with files pre-arranged to match structure above
+
+		Args:
+			see HarvestStaticXMLJob.__init__() above
 
 		########################################################################################################
 		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
@@ -3444,7 +3466,7 @@ class HarvestStaticXMLJob(HarvestJob):
 	def _handle_xml_upload(self, p, fpath):
 
 		'''
-		Handle uploads of XML files with group of discrete records.
+		Handle upload of single XML file that contains multiple discrete records.
 		Using xpath_document_root query from user, parse records and write to discrete files on disk,
 		then delete the aggregate file.
 
@@ -4497,13 +4519,17 @@ class DTElasticSearch(View):
 
 
 ####################################################################
-# Python based Record Validation								   #
+# Python Record for User Defined Functions (UDFs)				   #
 ####################################################################
 
-class PythonRecordValidationBase(object):
+class PythonUDFRecord(object):
 
 	'''
-	Simple class to provide an object with parsed metadata for user defined functions
+	Simple class to provide an object with parsed metadata
+
+	Note: Here mostly for convenience sake, as it mirrors the PythonUDFRecord that is
+	used for Spark jobs for python-based Transformation and Validation.  This class
+	is used almost exclusively for console testing.
 	'''
 
 	def __init__(self, row):
@@ -4517,8 +4543,8 @@ class PythonRecordValidationBase(object):
 		# get record id
 		self.record_id = row.record_id
 
-		# document string
-		self.document = row.document.encode('utf-8')
+		# document string		
+		self.document = row.document
 
 		# parse XML string, save
 		self.xml = etree.fromstring(self.document)
@@ -4618,13 +4644,6 @@ class CombineOAIClient(object):
 		'''
 
 		return sickle.GetRecord(identifier = oai_record_id, metadataPrefix = self.metadata_prefix)
-
-
-
-
-
-
-
 
 
 

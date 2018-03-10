@@ -4,9 +4,15 @@
 
 <div class="row">
 	<div class="col-md-12">
-		<h3>Published Sets</h3>
+		<h3>Published Records</h3>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-8">
+		<h4>Published Sets</h4>
 		
-		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span style="color:red;">"Not set</span>", resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
+		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
 		<table border="1" cellpadding="10">
 
@@ -15,6 +21,7 @@
 				<th>OAI Set</th>
 				<th>Published Job</th>
 				<th>Record Count</th>
+				<th>Action</th>
 				<th>Action</th>
 			</tr>
 
@@ -32,6 +39,32 @@
 						<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 						<td>{{ job.record_count }}</td>
 						<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+
+						<!-- NEW -->
+						<td>
+							<a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
+							<div id="publish_set_id_update" style="display:none; margin-top:10px;">
+								<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">
+									{% csrf_token %}
+
+									<div class="form-group">
+										<label for="existing_publish_set_id">Select a pre-existing Publish Set ID used from other RecordGroups</label>
+										<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
+											<option value=''>Select pre-existing Publish Set ID to use...</option>
+											{% for publish_set_id in publish_set_ids %}
+												<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
+											{% endfor %}
+										</select>																	
+									</div>
+									<div class="form-group">
+										<label for="new_publish_set_id">Or enter a new one</label>
+										<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
+									</div>
+									<button type="submit" class="btn btn-primary btn-sm">Update</button>
+								</form>
+							</div>
+						</td>
+
 					</tr>
 				{% endfor %}
 			{% endfor %}
@@ -40,7 +73,8 @@
 				<td></td>
 				<td></td>
 				<td><strong>Total:</strong></td>
-				<td><strong>{{ published.record_count }}</strong></td>
+				<td><strong>{{ published.records.count }}</strong></td>
+				<td></td>
 				<td></td>
 			</tr>
 
@@ -52,7 +86,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Published Records</h3>
+		<h4>Published Records</h4>
 
 		<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
 
@@ -88,7 +122,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Indexed Field Analysis</h3>
+		<h4>Indexed Field Analysis</h4>
 
 		<p><a href="http://{{ APP_HOST }}:9200/published/_search" target="_blank">Published ElasticSearch index</a></p>
 
@@ -101,7 +135,7 @@
 <div class="row">
 	<div class="col-md-12">
 
-		<h3>Combine OAI Server</h3>
+		<h4>Combine OAI Server</h4>
 
 		<ul>
 			<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>

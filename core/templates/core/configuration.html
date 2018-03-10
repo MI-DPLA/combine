@@ -12,32 +12,37 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Validation Scenarios</h3>
-			<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
+			<h3>OAI Endpoints for Harvest</h3>
+			<p>These are pre-configured OAI endpoints used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.  Combine uses <a href="https://github.com/dpla/ingestion3#oai-pmh" target="_blank">DPLA's Ingestion 3 for OAI harvesting</a>, where more information about these settings can be found.</p>
 			<div>
 				<table class="table table-bordered table-hover">
 					<tr>
 						<th>ID</th>
 						<th>Name</th>
-						<th>Type</th>
-						<th>Path on disk</th>
-						<th>Validation Payload</th>
+						<th>Endpoint URL</th>
+						<th>Verb</th>
+						<th>Metadata Prefix</th>
+						<th>Scope Type</th>
+						<th>Scope Value</th>
+						<th>Actions</th>
 					</tr>
-					{% for vs in validation_scenarios %}
+					{% for oai_endpoint in oai_endpoints %}
 						<tr>
-							<td>{{vs.id}}</td>
-							<td>{{vs.name}}</td>
-							<td>{{vs.transformation_type}}</td>
-							<td><code>{{vs.filepath}}</code></td>
-							<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
+							<td>{{oai_endpoint.id}}</td>
+							<td>{{oai_endpoint.name}}</td>
+							<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
+							<td><code>{{oai_endpoint.verb}}</code></td>
+							<td><code>{{oai_endpoint.metadataPrefix}}</code></td>
+							<td><code>{{oai_endpoint.scope_type}}</code></td>
+							<td><code>{{oai_endpoint.scope_value}}</code></td>
+							<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 						</tr>
 					{% endfor %}
 				</table>
-				<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario</button></a></p>
 			</div>
 		</div>
-	</div>	
-	
+	</div>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h3>Transformations</h3>
@@ -57,7 +62,7 @@
 							<td>{{transformation.name}}</td>
 							<td>{{transformation.transformation_type}}</td>
 							<td><code>{{transformation.filepath}}</code></td>
-							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View XSL</a></td>
+							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">{% if transformation.transformation_type == 'xslt' %}View XSL{% elif transformation.transformation_type == 'python' %}View Python{% endif %}</a></td>
 						</tr>
 					{% endfor %}
 				</table>
@@ -67,35 +72,60 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>OAI Endpoints</h3>
-			<p>These are used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.</p>
+			<h3>Validation Scenarios</h3>
+			<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
 			<div>
 				<table class="table table-bordered table-hover">
 					<tr>
 						<th>ID</th>
 						<th>Name</th>
-						<th>Endpoint URL</th>
-						<th>Verb</th>
-						<th>Metadata Prefix</th>
-						<th>Scope Type</th>
-						<th>Scope Value</th>
-						<th>Actions</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Validation Payload</th>
 					</tr>
-					{% for oai_endpoint in oai_endpoints %}
+					{% for vs in validation_scenarios %}
 						<tr>
-							<td>{{oai_endpoint.id}}</td>
-							<td>{{oai_endpoint.name}}</td>
-							<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
-							<td>{{oai_endpoint.verb}}</td>
-							<td>{{oai_endpoint.metadataPrefix}}</td>
-							<td>{{oai_endpoint.scope_type}}</td>
-							<td>{{oai_endpoint.scope_value}}</td>
-							<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+							<td>{{vs.id}}</td>
+							<td>{{vs.name}}</td>
+							<td>{{vs.validation_type}}</td>
+							<td><code>{{vs.filepath}}</code></td>
+							<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
 						</tr>
 					{% endfor %}
 				</table>
+				<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario</button></a></p>
 			</div>
 		</div>
 	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Combine OAI Server</h3>
+			<p>Combine comes with a built-in OAI server to serve published RecordGroups.  Currently, these settings are configured in <code>localsettings.py</code>.</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>Setting</th>
+							<th>Description</th>
+							<th>Value</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td><code>OAI_RESPONSE_SIZE</code></td>
+							<td>How many records to return per OAI response</td>
+							<td><code>{{ OAI_RESPONSE_SIZE }}</code></td>
+						</tr>
+						<tr>
+							<td><code>COMBINE_OAI_IDENTIFIER</code></td>
+							<td>It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server.  This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimick downstream identifiers.</td>
+							<td><code>{{ COMBINE_OAI_IDENTIFIER }}</code></td>
+						</tr>
+					</tbody>
+				</table>
+			</div>
+		</div>
+	</div>		
 
 {% endblock %}

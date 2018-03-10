@@ -22,6 +22,15 @@ body {
 .error {
 	color:red;
 }
+.bg_light_green{
+	background-color: #deffde;
+}
+.bg_light_yellow{
+	background-color: #fffcde;
+}
+.bg_light_red{
+	background-color: #ff9898;
+}
 .outlined_row {
 	border: 2px solid #929292;
 }
@@ -30,6 +39,9 @@ table {
 }
 .row {
 	margin-bottom: 1rem;
+}
+label {
+	font-weight: bold;
 }
 
 /* consider darkening lines in table with something similar */
