@@ -16,25 +16,23 @@
 
 			<div class="row">
 				<div class="col-md-6">
-					<div style="padding:20px; border-radius:10px; background-color:#ffe7f4;">
-						<!-- field existence -->
-						{% if filter_type == 'exists' %}
-							{% if analysis_scenario.exists == "true" %}
-								<p style="margin-bottom:0px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">exists</span></p>
-							{% elif analysis_scenario.exists == "false" %}
-								<p style="margin-bottom:0px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">does not exist</span></p>
-							{% endif %}				
-						{% endif %}
+					<!-- field existence -->
+					{% if filter_type == 'exists' %}
+						{% if analysis_scenario.exists == "true" %}
+							<p class="bg_light_green"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">exists</span></p>
+						{% elif analysis_scenario.exists == "false" %}
+							<p class="bg_light_red"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">does not exist</span></p>
+						{% endif %}				
+					{% endif %}
 
-						<!-- field value equals -->
-						{% if filter_type == 'equals' %}
-							{% if analysis_scenario.matches == "true" %}
-								<p style="margin-bottom:0px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">matches or includes</span> <code>{{ analysis_scenario.value }}</code></p>
-							{% elif analysis_scenario.matches == "false" %}
-								<p style="margin-bottom:0px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">does not match or does not include</span> <code>{{ analysis_scenario.value }}</code></p>
-							{% endif %}				
-						{% endif %}
-					</div>
+					<!-- field value equals -->
+					{% if filter_type == 'equals' %}
+						{% if analysis_scenario.matches == "true" %}
+							<p class="bg_light_green"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">matches or includes</span> <code>"{{ analysis_scenario.value }}"</code></p>
+						{% elif analysis_scenario.matches == "false" %}
+							<p class="bg_light_red"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">does not match or does not include</span> <code>"{{ analysis_scenario.value }}"</code></p>
+						{% endif %}				
+					{% endif %}
 				</div>
 			</div>
 
