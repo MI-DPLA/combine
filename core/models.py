@@ -4281,8 +4281,8 @@ class DTElasticSearch(View):
 			# determine if field is sortable
 			if sort_col < len(self.fields):
 
-				# if combine_db_id, do not add keyword
-				if self.fields[sort_col] == 'combine_db_id':
+				# if db_id, do not add keyword
+				if self.fields[sort_col] == 'db_id':
 					sort_field_string = self.fields[sort_col]
 				# else, add .keyword
 				else:
@@ -4420,7 +4420,7 @@ class DTElasticSearch(View):
 		for hit in self.query_results.hits:
 
 			# get combine record
-			record = Record.objects.get(pk=int(hit.combine_db_id))
+			record = Record.objects.get(pk=int(hit.db_id))
 
 			# loop through rows, add to list while handling data types
 			row_data = []

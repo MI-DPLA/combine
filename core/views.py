@@ -1223,12 +1223,20 @@ def field_analysis_docs(request, es_index, filter_type):
 
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
-		('field_names', 'combine_db_id'), # get Combine DB ID
+		('field_names', 'db_id'), # get DB ID
+		('field_names', 'combine_id'), # get Combine ID
 		('field_names', 'record_id'), # get ID from ES index document
 		('field_names', field_name), # add field to returned fields
 		('filter_field', field_name),
 		('filter_type', filter_type)
 	]
+
+	# analysis scenario dict
+	analysis_scenario = {
+		'exists':None,
+		'matches':None,
+		'value':None
+	}
 
 	# field existence
 	if filter_type == 'exists':
@@ -1236,6 +1244,9 @@ def field_analysis_docs(request, es_index, filter_type):
 		# if check exists, get expected GET params
 		exists = request.GET.get('exists')
 		dt_get_params.append(('exists', exists))
+
+		# update analysis scenario dict
+		analysis_scenario['exists'] = exists
 
 	# field equals
 	if filter_type == 'equals':
@@ -1248,6 +1259,10 @@ def field_analysis_docs(request, es_index, filter_type):
 		if value:
 			dt_get_params.append(('filter_value', value))
 
+		# update analysis scenario dict
+		analysis_scenario['matches'] = matches
+		analysis_scenario['value'] = value
+
 
 	# construct DT Ajax GET parameters string from tuples
 	dt_get_params_string = urlencode(dt_get_params)
@@ -1257,6 +1272,7 @@ def field_analysis_docs(request, es_index, filter_type):
 			'esi':esi,
 			'field_name':field_name,
 			'filter_type':filter_type,
+			'analysis_scenario':analysis_scenario,
 			'msg':None,
 			'dt_get_params_string':dt_get_params_string,
 			'breadcrumbs':breadcrumb_parser(request.path)
