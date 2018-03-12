@@ -7,19 +7,23 @@
 			<h3>New Job: <span class="font-weight-bold">Duplicate / Merge</span></h3>
 
 			<p>This allows the duplication of a single job, or merging of multiple jobs into a single job. <strong>Note:</strong> this can be done across Record Groups.</p>
-			<div style="margin-top:10px; padding:20px; border-radius:10px; background-color:#EFEFEC;">
+
+			<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#why_merge').fadeToggle();">Why Duplicate / Merge?</button></p>
+
+			<div id="why_merge" style="margin-top:10px; padding:20px; border-radius:10px; background-color:#EFEFEC; display:none;">
 				<p><strong>Why Duplicate a Job?</strong>
 					<ul>
 						<li>By duplicating a job from another Record Group, this effectively copies a job from another Record Group to your current one.  This might be helpful for publishing a job under a different OAI set.</li>
 						<li>When duplicating a job, a user may run different validations and/or use a different mapper for ElasticSearch.</li>
 					</ul>
 				</p>
-				<p><strong>Why Merge jobs?</strong>
+				<p><strong>Why Merge Jobs?</strong>
 					<ul>
 						<li>In the even an ad hoc harvest of records occurs, perhaps for a small subset or a static harvest, this would allow merging those records with a larger group of records for analysis and publishing.</li>
 					</ul>
 				</p>
 			</div>
+
 		</div>
 	</div>
 
@@ -51,6 +55,9 @@
 
 						<!-- Record Validation Selection -->
 						{% include 'core/record_validation_select.html' %}
+
+						<!-- Record Identifier Transformation -->
+						{% include 'core/record_identifier_transform.html' %}
 
 					</div>
 				</div>

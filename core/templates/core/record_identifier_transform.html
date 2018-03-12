@@ -1,0 +1,98 @@
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			
+			<div style="padding:20px; border-radius:10px; background-color:#FFFBD3;">
+				
+				<h5>Transform Record Identifier</h5>
+
+				<p>Optionally, transform a Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.</p>
+
+				<p><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">Transform Record Identifier?</button></p>				
+
+				<div id="record_id_transform_options" style="display:none;">
+					<div class="form-group">
+						<label for="record_id_transform_type">Select how to transform the identifier:</label>
+						<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
+							<option value=''>Select one...</option>
+							<option value='regex'>Regular Expression</option>
+							<option value='python'>Python Code Snippet</option>
+							<option value='xpath'>XPath Expression</option>
+						</select>
+					</div>
+					
+					<div class="form-group">
+						<label for="record_id_transform_target">Select what will be used as input for the transformation process:</label>
+						<select class="form-control" id="record_id_transform_target" name="record_id_transform_target">
+							<option value=''>Select one...</option>
+							<option value='record_id'>Record's identifier</option>
+							<option value='document'>Record's XML document</option>
+						</select>
+					</div>
+
+					<div class="form-group">
+						<label for="record_id_transform_payload">Enter transformation payload below:</label>
+						<textarea class="form-control" id="record_id_transform_payload" name="record_id_transform_payload" rows="3"></textarea>
+					</div>
+
+					<!-- test identifier transform -->
+					<div style="padding:20px; background-color:#e2e2e2;">
+						<h6>Test Identifier Transformation</h6>
+
+						<p>Using the boxes below, test a transformation before finalizing and running with the Job.  In the textarea, paste either an example Record's raw XML document, or the string of an identifier.  The identifier transformation settings from above will operate over the pasted input and show what a resulting identifier would look like.</p>
+
+						<div class="form-group">
+							<label for="test_transform_input">Enter input payload below (Record document XML or identifier string):</label>
+							<textarea class="form-control" id="test_transform_input" name="test_transform_input" rows="3"></textarea>
+						</div>
+
+						<div class="form-group">
+							<label for="test_transform_input">Test Output:</label>
+							<input type="text" class="form-control" id="test_transform_input" name="test_transform_input"/>
+						</div>
+
+						<p><button type="button" class="btn btn-success btn-sm" id="test_record_id_transform">Test Validation</button></p>
+
+					</div>
+
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+	<script>
+
+		$(document).ready(function(){
+			
+			// test record_id transformation
+			$("#test_record_id_transform").click(function(){
+
+				// get values
+				t_type = $("#record_id_transform_type").val();
+				t_target = $("#record_id_transform_target").val();
+				t_payload = $("#record_id_transform_payload").val();
+
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_record_id_transform' %}",
+					data: {
+						't_type':t_type,
+						't_target':t_target,
+						't_payload':t_payload,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){																		
+						console.log(data);
+					}			
+				});
+
+			});
+
+		});
+
+	</script>
+
+{% endblock %}

@@ -1706,6 +1706,31 @@ def job_analysis(request):
 
 
 ####################################################################
+# Misc 				 											   #
+####################################################################
+
+def test_record_id_transform(request):
+
+	'''
+	View to faciliate testing of record_id transformations
+	'''
+
+	# If POST, provide raw result of validation test
+	if request.method == 'POST':
+
+		logger.debug('running test validation and returning')
+		logger.debug(request.POST)
+
+		# return dict
+		r_dict = {
+			'output_identifier':'RESULTS SHALL BE'
+		}
+
+		return JsonResponse(r_dict)
+
+
+
+####################################################################
 # Datatables endpoints 											   #
 # https://bitbucket.org/pigletto/django-datatables-view/overview   #
 ####################################################################
