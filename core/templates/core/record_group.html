@@ -86,23 +86,46 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-12">
-			<h4>Run new job</h4>
-		</div>
-	</div>
+		<div class="col-md-8">
+			
+			<h4>New Job</h4>
+			
+			<table class="table table-bordered table-hover">
+				<tbody>
+					<tr>
+						<td><span class="font-weight-bold">Harvest</span></td>
+						<td>Harvests jobs are how Records are created and introduced to a Record Group.  Currently this includes OAI-PMH harvesting, or ingesting Records from static files on disk. </td>
+						<td>
+							<p>
+								<a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest OAI-PMH</button></a>
+							</p>
+							<p>
+								<a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest Static XML</button></a>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<td><span class="font-weight-bold">Transform</span></td>
+						<td>Transformation jobs change the Record in some way.  Currently this includes transformation of the Record's XML document with XSLT or python code snippets.  Before running a Transformation, make a <a href="{% url 'configuration' %}">pre-configured Transformation Scenario</a> exists.</td>
+						<td>
+							<p>
+								<a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Transform Document</button></a>
+							</p>
+						</td>
+					</tr>
+					<tr>
+						<td><span class="font-weight-bold">Duplicate / Merge</span></td>
+						<td>Duplicate / Merge jobs do not modify the Record, but can be used to combine multiple Jobs into one Job, run new or different Validation Scenarios on a pre-existing Job, or index to ElasticSearch with a different mapping.</td>
+						<td>
+							<p>
+								<a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Duplicate / Merge Jobs</button></a>
+							</p>
+						</td>
+					</tr>
 
-	<div class="row">
-		<div class="col-md-12">
-				<ul>
-					<li>Harvest:
-						<ul>
-							<li><a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">OAI-PMH</a></li>
-							<li><a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}">Static XML</a></li>
-						</ul>
-					</li>
-					<li><a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Transform</a></li>
-					<li><a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Duplicate / Merge</a></li>				
-				</ul>
+				</tbody>
+			</table>
+			
 		</div>
 	</div>
 

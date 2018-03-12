@@ -25,10 +25,23 @@
 		</div>
 	</div>
 		
-
 	<div class="row">
-		<div class="col-md-12">
-			<p><a href="{% url 'job_analysis' %}"><button type="button" class="btn btn-success btn-sm">Run Analysis Job</button></a></p>
+		<div class="col-md-8">
+			
+			<h4>New Job</h4>
+			
+			<table class="table table-bordered table-hover">
+				<tbody>					
+					<tr>
+						<td><span class="font-weight-bold">Analysis</span></td>
+						<td>Analysis jobs are a special kind of job.  They do not run in the context of a single Record Group, but instead run in their own unique space in Combine.  They are designed for analysis of previously run jobs, allowing for analysis across jobs by merging, running new Validation Scenarios, and/or running different indexing mappers to ElasticSearch.  They are intended to be run, used, and discarded where convenient.</td>
+						<td>
+							<p><a href="{% url 'job_analysis' %}"><button type="button" class="btn btn-primary btn-sm">Analysis Job</button></a></p>
+						</td>
+					</tr>
+				</tbody>
+			</table>
+			
 		</div>
 	</div>
 

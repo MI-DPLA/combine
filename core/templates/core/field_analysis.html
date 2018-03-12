@@ -25,8 +25,8 @@
 				</thead>
 				<tbody>
 					<tr>
-						<td><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=true">{{ field_metrics.metrics.doc_instances }}</a></td>
-						<td><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">{{ field_metrics.metrics.doc_missing }}</a></td>
+						<td class="bg_light_green"><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=true">{{ field_metrics.metrics.doc_instances }}</a></td>
+						<td class="bg_light_red"><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">{{ field_metrics.metrics.doc_missing }}</a></td>
 						<td>{{ field_metrics.metrics.val_instances }}</td>
 						<td>{{ field_metrics.metrics.distinct }}</td>
 						<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.distinct_ratio }});">{{ field_metrics.metrics.distinct_ratio }}</td>
