@@ -10,6 +10,7 @@ import re
 import requests
 import textwrap
 import time
+from types import ModuleType
 from urllib.parse import urlencode
 import uuid
 
@@ -1721,9 +1722,44 @@ def test_record_id_transform(request):
 		logger.debug('running test validation and returning')
 		logger.debug(request.POST)
 
+		# get test input
+		test_input = request.POST.get('test_transform_input', None)
+
+		# handle regex
+		if request.POST.get('record_id_transform_type', None) == 'regex':
+			logger.debug('TEST RECORD_ID TRANSFORM: regex')
+
+			# get match and replace
+			regex_match = request.POST.get('regex_match_payload', None)
+			regex_replace = request.POST.get('regex_replace_payload', None)
+
+			# perform regex
+			trans_result = re.sub(regex_match, regex_replace, test_input)
+
+		# handle python
+		if request.POST.get('record_id_transform_type', None) == 'python':
+			logger.debug('TEST RECORD_ID TRANSFORM: python')
+
+			# get python code
+			python_payload = request.POST.get('python_payload', None)
+
+			# parse user supplied python code
+			temp_mod = ModuleType('temp_mod')
+			exec(python_payload, temp_mod.__dict__)
+
+			# DEBUG
+			trans_result = 'not yet implemented'
+
+		# handle xpath
+		if request.POST.get('record_id_transform_type', None) == 'xpath':
+			logger.debug('TEST RECORD_ID TRANSFORM: xpath')
+
+			# DEBUG
+			trans_result = 'not yet implemented'
+
 		# return dict
 		r_dict = {
-			'output_identifier':'RESULTS SHALL BE'
+			'results':trans_result
 		}
 
 		return JsonResponse(r_dict)

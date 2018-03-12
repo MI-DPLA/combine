@@ -7,7 +7,7 @@
 				
 				<h5>Transform Record Identifier</h5>
 
-				<p>Optionally, transform a Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.</p>
+				<p>Optionally, for all Records in this Job, transform the Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.</p>
 
 				<p><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">Show options</button></p>				
 
@@ -89,8 +89,6 @@
 
 						<p>Using the boxes below, test a transformation before finalizing and running with the Job.  In the textarea, paste either an example Record's raw XML document, or the string of an identifier.  The identifier transformation settings from above will operate over the pasted input and show what a resulting identifier would look like.</p>
 
-						<!-- <p><span class="font-weight-bold text-danger">Note: Testing only</span></p> -->
-
 						<div class="form-group">
 							<label for="test_transform_input">Enter test input payload below (Record document XML or identifier string):</label>
 							<textarea class="form-control" id="test_transform_input" name="test_transform_input" rows="3"></textarea>
@@ -123,6 +121,7 @@
 					url: "{% url 'test_record_id_transform' %}",
 					data: {
 						'record_id_transform_target':$("#record_id_transform_target").val(),
+						'record_id_transform_type':$("#record_id_transform_type").val(),
 						'regex_match_payload':$("#regex_match_payload").val(),
 						'regex_replace_payload':$("#regex_replace_payload").val(),
 						'python_payload':$("#python_payload").val(),
@@ -133,6 +132,7 @@
 					dataType:'json',
 					success: function(data){																		
 						console.log(data);
+						$("#test_transform_output").val(data.results);
 					}			
 				});
 
