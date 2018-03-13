@@ -1714,6 +1714,11 @@ def test_record_id_transform(request):
 
 	'''
 	View to faciliate testing of record_id transformations
+
+	NOTES:
+		- build out this area with the goal of moving to spark.jobs
+		- consider both python and XSLT using same "SimpleModel" for Record
+			- consider renaming "PythonUDFRecord" to "SimpleRecord"?
 	'''
 
 	# If POST, provide raw result of validation test
@@ -1743,19 +1748,35 @@ def test_record_id_transform(request):
 			# get python code
 			python_payload = request.POST.get('python_payload', None)
 
+			# DEBUG #############################################################
 			# parse user supplied python code
 			temp_mod = ModuleType('temp_mod')
 			exec(python_payload, temp_mod.__dict__)
 
-			# DEBUG
-			trans_result = 'not yet implemented'
+			trans_result = temp_mod.transform_identifier(test_input)
+			# DEBUG #############################################################
 
 		# handle xpath
 		if request.POST.get('record_id_transform_type', None) == 'xpath':
 			logger.debug('TEST RECORD_ID TRANSFORM: xpath')
 
-			# DEBUG
-			trans_result = 'not yet implemented'
+			xpath_payload = request.POST.get('xpath_payload', None)
+
+			# DEBUG #############################################################
+			xml = etree.fromstring(test_input)
+			_nsmap = xml.nsmap.copy()
+			try:
+				_nsmap.pop(None)
+			except:
+				pass
+			nsmap = _nsmap
+
+			# attempt xpath
+			xpath_results = xml.xpath(xpath_payload, namespaces=nsmap)
+			# if len(xpath_results == 1):
+			n = xpath_results[0]
+			trans_result = n.text
+			# DEBUG #############################################################
 
 		# return dict
 		r_dict = {
