@@ -1727,6 +1727,9 @@ def test_record_id_transform(request):
 		logger.debug('running test validation and returning')
 		logger.debug(request.POST)
 
+		# get transform type
+		record_id_transform_target = request.POST.get('record_id_transform_target', None)
+
 		# get test input
 		test_input = request.POST.get('test_transform_input', None)
 
@@ -1749,11 +1752,46 @@ def test_record_id_transform(request):
 			python_payload = request.POST.get('python_payload', None)
 
 			# DEBUG #############################################################
+			'''
+			Thinking here is to create a SimpleRecord instance where a user
+			can be confident either self.record_id is set, or self.document and
+			self.xml depending on the input.
+
+			This could be used for XPath as well.
+			'''
+
+			class SimpleRecord(object):
+
+				def __init__(self, test_input):
+					self.test_input = test_input
+
+					# if identifier, set id
+					if record_id_transform_target == 'record_id':
+						self.record_id = test_input
+
+					# if record XML, parse and set
+					if record_id_transform_target == 'document':
+						self.document = test_input
+						self.xml = etree.fromstring(self.document)
+
+						_nsmap = self.xml.nsmap.copy()
+						try:
+							_nsmap.pop(None)
+						except:
+							pass
+						self.nsmap = _nsmap
+
+			sr = SimpleRecord(test_input)
+
 			# parse user supplied python code
 			temp_mod = ModuleType('temp_mod')
 			exec(python_payload, temp_mod.__dict__)
 
-			trans_result = temp_mod.transform_identifier(test_input)
+			try:
+				trans_result = temp_mod.transform_identifier(sr)
+			except Exception as e:
+				trans_result = str(e)
+
 			# DEBUG #############################################################
 
 		# handle xpath
@@ -1763,19 +1801,22 @@ def test_record_id_transform(request):
 			xpath_payload = request.POST.get('xpath_payload', None)
 
 			# DEBUG #############################################################
-			xml = etree.fromstring(test_input)
-			_nsmap = xml.nsmap.copy()
-			try:
-				_nsmap.pop(None)
-			except:
-				pass
-			nsmap = _nsmap
+			if record_id_transform_target == 'record_id':
+				trans_result = 'XPath only works for Record Document'
 
-			# attempt xpath
-			xpath_results = xml.xpath(xpath_payload, namespaces=nsmap)
-			# if len(xpath_results == 1):
-			n = xpath_results[0]
-			trans_result = n.text
+			if record_id_transform_target == 'document':
+				xml = etree.fromstring(test_input)
+				_nsmap = xml.nsmap.copy()
+				try:
+					_nsmap.pop(None)
+				except:
+					pass
+				nsmap = _nsmap
+
+				# attempt xpath
+				xpath_results = xml.xpath(xpath_payload, namespaces=nsmap)
+				n = xpath_results[0]
+				trans_result = n.text
 			# DEBUG #############################################################
 
 		# return dict
