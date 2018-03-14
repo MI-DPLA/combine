@@ -24,6 +24,12 @@ from django.db import connection
 # import select models from Core
 from core.models import Job, ValidationScenario
 
+# load from core.spark.models
+try:
+	from models import PythonUDFRecord	
+except:
+	from core.spark.models import PythonUDFRecord	
+
 
 
 ####################################################################
@@ -51,42 +57,6 @@ def refresh_django_db_connection():
 	connection.close()
 	connection.connect()
 
-
-
-####################################################################
-# Models for UDFs												   #
-####################################################################
-
-class PythonUDFRecord(object):
-
-	'''
-	Simple class to provide an object with parsed metadata for user defined functions
-	'''
-
-	def __init__(self, row):
-
-		# row
-		self._row = row
-
-		# get combine id
-		self.id = row.id
-
-		# get record id
-		self.record_id = row.record_id
-
-		# document string
-		self.document = row.document
-
-		# parse XML string, save
-		self.xml = etree.fromstring(self.document)
-
-		# get namespace map, popping None values
-		_nsmap = self.xml.nsmap.copy()
-		try:
-			_nsmap.pop(None)
-		except:
-			pass
-		self.nsmap = _nsmap
 
 
 ####################################################################

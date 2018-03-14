@@ -55,6 +55,7 @@ from elasticsearch_dsl.utils import AttrList
 
 # import ElasticSearch BaseMapper
 from core.spark.es import BaseMapper
+from core.spark.models import PythonUDFRecord
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -4516,48 +4517,6 @@ class DTElasticSearch(View):
 			# add list to object
 			self.DToutput['data'].append(row_data)
 		
-
-
-
-####################################################################
-# Python Record for User Defined Functions (UDFs)				   #
-####################################################################
-
-class PythonUDFRecord(object):
-
-	'''
-	Simple class to provide an object with parsed metadata
-
-	Note: Here mostly for convenience sake, as it mirrors the PythonUDFRecord that is
-	used for Spark jobs for python-based Transformation and Validation.  This class
-	is used almost exclusively for console testing.
-	'''
-
-	def __init__(self, row):
-
-		# row
-		self._row = row
-
-		# get combine id
-		self.id = row.id
-
-		# get record id
-		self.record_id = row.record_id
-
-		# document string		
-		self.document = row.document
-
-		# parse XML string, save
-		self.xml = etree.fromstring(self.document)
-
-		# get namespace map, popping None values
-		_nsmap = self.xml.nsmap.copy()
-		try:
-			_nsmap.pop(None)
-		except:
-			pass
-		self.nsmap = _nsmap
-
 
 
 ####################################################################
