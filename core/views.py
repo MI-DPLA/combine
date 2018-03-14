@@ -1715,10 +1715,7 @@ def test_record_id_transform(request):
 	'''
 	View to faciliate testing of record_id transformations
 
-	NOTES:
-		- build out this area with the goal of moving to spark.jobs
-		- consider both python and XSLT using same "SimpleModel" for Record
-			- consider renaming "PythonUDFRecord" to "SimpleRecord"?
+	TODO build out this area with the goal of moving to spark.jobs
 	'''
 
 	# If POST, provide raw result of validation test
@@ -1752,36 +1749,10 @@ def test_record_id_transform(request):
 			python_payload = request.POST.get('python_payload', None)
 
 			# DEBUG #############################################################
-			'''
-			Thinking here is to create a SimpleRecord instance where a user
-			can be confident either self.record_id is set, or self.document and
-			self.xml depending on the input.
-
-			This could be used for XPath as well.
-			'''
-
-			class SimpleRecord(object):
-
-				def __init__(self, test_input):
-					self.test_input = test_input
-
-					# if identifier, set id
-					if record_id_transform_target == 'record_id':
-						self.record_id = test_input
-
-					# if record XML, parse and set
-					if record_id_transform_target == 'document':
-						self.document = test_input
-						self.xml = etree.fromstring(self.document)
-
-						_nsmap = self.xml.nsmap.copy()
-						try:
-							_nsmap.pop(None)
-						except:
-							pass
-						self.nsmap = _nsmap
-
-			sr = SimpleRecord(test_input)
+			if record_id_transform_target == 'record_id':
+				sr = models.PythonUDFRecord(None, non_row_input=True, record_id=test_input)
+			if record_id_transform_target == 'document':
+				sr = models.PythonUDFRecord(None, non_row_input=True, document=test_input)
 
 			# parse user supplied python code
 			temp_mod = ModuleType('temp_mod')
@@ -1791,7 +1762,6 @@ def test_record_id_transform(request):
 				trans_result = temp_mod.transform_identifier(sr)
 			except Exception as e:
 				trans_result = str(e)
-
 			# DEBUG #############################################################
 
 		# handle xpath
@@ -1805,16 +1775,10 @@ def test_record_id_transform(request):
 				trans_result = 'XPath only works for Record Document'
 
 			if record_id_transform_target == 'document':
-				xml = etree.fromstring(test_input)
-				_nsmap = xml.nsmap.copy()
-				try:
-					_nsmap.pop(None)
-				except:
-					pass
-				nsmap = _nsmap
+				sr = models.PythonUDFRecord(None, non_row_input=True, document=test_input)
 
 				# attempt xpath
-				xpath_results = xml.xpath(xpath_payload, namespaces=nsmap)
+				xpath_results = sr.xml.xpath(xpath_payload, namespaces=sr.nsmap)
 				n = xpath_results[0]
 				trans_result = n.text
 			# DEBUG #############################################################
