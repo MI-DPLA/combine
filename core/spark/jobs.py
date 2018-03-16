@@ -27,9 +27,9 @@ except:
 
 # load from core.spark.models
 try:
-	from models import PythonUDFRecord	
+	from models import PythonUDFRecord, refresh_django_db_connection
 except:
-	from core.spark.models import PythonUDFRecord	
+	from core.spark.models import PythonUDFRecord, refresh_django_db_connection
 
 # import Row from pyspark
 from pyspark.sql import Row
@@ -88,32 +88,6 @@ class CombineRecordSchema(object):
 
 		# fields
 		self.field_names = [f.name for f in self.schema.fields if f.name != 'id']
-
-
-####################################################################
-# Django DB Connection 											   #
-####################################################################
-def refresh_django_db_connection():
-	
-	'''
-	Function to refresh connection to Django DB.
-	
-	Behavior with python files uploaded to Spark context via Livy is atypical when
-	it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
-	apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
-
-	Running this function before jobs ensures that the connection is fresh between these python files
-	operating in the Livy context, and Django's DB connection to MySQL.
-
-	Args:
-		None
-
-	Returns:
-		None
-	'''
-
-	connection.close()
-	connection.connect()
 
 
 

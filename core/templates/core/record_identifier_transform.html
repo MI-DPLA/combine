@@ -7,10 +7,10 @@
 				
 				<h5>Transform Record Identifier</h5>
 
-				<p>Ror all Records in this Job, transform the Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.  If configured, select desired <code>record_id</code> transformations below:</p>
+				<p>For all Records in this Job, transform the Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.  If configured, select desired <code>record_id</code> transformations below:</p>
 
 				<!-- placeholders for eventual saved record_id transformation scenarios -->
-				<div class="row">
+				<!-- <div class="row">
 					<div class="col-md-12">
 						<div class="form-check">
 						  <input class="form-check-input" type="checkbox" value="rits1" id="rits1" name="validation_scenario">
@@ -26,11 +26,69 @@
 						  </label>
 						</div>
 					</div>
+				</div> -->
+				<div class="col-md-12">
+					<div class="form-check">
+						<table class="table table-bordered">
+							<thead>
+								<tr>
+									<th>transformation name</th>
+									<th>transformation type</th>
+									<th>order</th>									
+								</tr>
+							</thead>
+							<tbody>
+								<tr>
+									<td>normalize whitespace</td>
+									<td>regex</td>
+									<td>
+										<div class="form-group">
+											<select class="form-control rits_ordering" name="rits_1" id="rits_1">
+												<option value='-1'>Do not run</option>
+												<option value='1'>1</option>
+												<option value='2'>2</option>
+												<option value='3'>3</option>												
+											</select>
+										</div>
+									</td>
+								</tr>
+								<tr>
+									<td>pull identifier from XML record</td>
+									<td>XPath</td>
+									<td>
+										<div class="form-group">
+											<select class="form-control rits_ordering" name="rits_2" id="rits_2">
+												<option value='-1'>Do not run</option>
+												<option value='1'>1</option>
+												<option value='2'>2</option>
+												<option value='3'>3</option>												
+											</select>
+										</div>
+									</td>
+								</tr>
+							</tbody>
+						</table>
+					</div>
 				</div>
+				<script>
+
+					/* add checks that do not allow multiple transformations to use the same ordering */
+					$(document).ready(function(){
+						$(".rits_ordering").change(function(){
+							console.log(this);
+							if ($('select option[value="' + $(this).val() + '"]:selected').length > 1) {
+						      $(this).val('-1').change();
+						      alert('A record_id transformation has already been set for this order.  Please unset or change the order and try again!');
+						    }
+						});	
+					})					
+
+				</script>
+				<!-- end placeholder -->
 
 				<div class="row">
 					<div class="col-md-12">
-						<p>Or, run a new, "ad hoc" <code>record_id</code> transformation for this job only:<br><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">ad hoc record_id transformation</button></p>
+						<p>Or, run a new, "ad hoc" <code>record_id</code> transformation for this job only:<br><br><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">ad hoc <code>record_id</code> transformation</button></p>
 					</div>
 				</div>
 
@@ -99,15 +157,6 @@
 								</div>
 
 							</div>
-
-							<p>
-								<div class="form-check">
-									<input class="form-check-input" type="checkbox" value="true" name="record_id_transform_perform" id="record_id_transform_perform">
-									<label class="form-check-label" for="record_id_transform_perform">
-									<span class="font-weight-bold text-danger">Perform this Record Identifier Transformation when the job is run</span>
-									</label>
-								</div>
-							</p>
 
 							<!-- test identifier transform -->
 							<div style="padding:20px; background-color:#e2e2e2;">
