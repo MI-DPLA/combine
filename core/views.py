@@ -948,6 +948,10 @@ def job_merge(request, org_id, record_group_id):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		if request.POST.get('record_id_transform_type', False):			
+			rits = models.RecordIDTransformationScenario(request.POST)
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -1713,82 +1717,11 @@ def job_analysis(request):
 def test_record_id_transform(request):
 
 	'''
-	View to faciliate testing of record_id transformations
-
-	TODO build out this area with the goal of moving to spark.jobs
+	View to faciliate testing of record_id transformations	
 	'''
 
-	# If POST, provide raw result of validation test
-	if request.method == 'POST':
-
-		logger.debug('running test validation and returning')
-		logger.debug(request.POST)
-
-		# get transform type
-		record_id_transform_target = request.POST.get('record_id_transform_target', None)
-
-		# get test input
-		test_input = request.POST.get('test_transform_input', None)
-
-		# handle regex
-		if request.POST.get('record_id_transform_type', None) == 'regex':
-			logger.debug('TEST RECORD_ID TRANSFORM: regex')
-
-			# get match and replace
-			regex_match = request.POST.get('regex_match_payload', None)
-			regex_replace = request.POST.get('regex_replace_payload', None)
-
-			# perform regex
-			trans_result = re.sub(regex_match, regex_replace, test_input)
-
-		# handle python
-		if request.POST.get('record_id_transform_type', None) == 'python':
-			logger.debug('TEST RECORD_ID TRANSFORM: python')
-
-			# get python code
-			python_payload = request.POST.get('python_payload', None)
-
-			# DEBUG #############################################################
-			if record_id_transform_target == 'record_id':
-				sr = models.PythonUDFRecord(None, non_row_input=True, record_id=test_input)
-			if record_id_transform_target == 'document':
-				sr = models.PythonUDFRecord(None, non_row_input=True, document=test_input)
-
-			# parse user supplied python code
-			temp_mod = ModuleType('temp_mod')
-			exec(python_payload, temp_mod.__dict__)
-
-			try:
-				trans_result = temp_mod.transform_identifier(sr)
-			except Exception as e:
-				trans_result = str(e)
-			# DEBUG #############################################################
-
-		# handle xpath
-		if request.POST.get('record_id_transform_type', None) == 'xpath':
-			logger.debug('TEST RECORD_ID TRANSFORM: xpath')
-
-			xpath_payload = request.POST.get('xpath_payload', None)
-
-			# DEBUG #############################################################
-			if record_id_transform_target == 'record_id':
-				trans_result = 'XPath only works for Record Document'
-
-			if record_id_transform_target == 'document':
-				sr = models.PythonUDFRecord(None, non_row_input=True, document=test_input)
-
-				# attempt xpath
-				xpath_results = sr.xml.xpath(xpath_payload, namespaces=sr.nsmap)
-				n = xpath_results[0]
-				trans_result = n.text
-			# DEBUG #############################################################
-
-		# return dict
-		r_dict = {
-			'results':trans_result
-		}
-
-		return JsonResponse(r_dict)
+	rits = models.RecordIDTransformationScenario(request.POST)
+	return JsonResponse(rits.test_user_input())
 
 
 
