@@ -28,7 +28,7 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/jobs.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/record_validation.py' % COMBINE_INSTALL_PATH.rstrip('/'),
-    	'file://%s/core/spark/models.py' % COMBINE_INSTALL_PATH.rstrip('/'),
+    	'file://%s/core/spark/utils.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     ]
 }
 

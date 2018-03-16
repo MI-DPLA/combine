@@ -55,7 +55,7 @@ from elasticsearch_dsl.utils import AttrList
 
 # import ElasticSearch BaseMapper
 from core.spark.es import BaseMapper
-from core.spark.models import PythonUDFRecord
+from core.spark.utils import PythonUDFRecord
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)

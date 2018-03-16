@@ -17,19 +17,15 @@ import uuid
 # pyjxslt
 import pyjxslt
 
-# load elasticsearch spark code
+# import from core.spark
 try:
 	from es import ESIndex
+	from utils import PythonUDFRecord, refresh_django_db_connection	
 	from record_validation import ValidationScenarioSpark
 except:
 	from core.spark.es import ESIndex
+	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 	from core.spark.record_validation import ValidationScenarioSpark
-
-# load from core.spark.models
-try:
-	from models import PythonUDFRecord, refresh_django_db_connection
-except:
-	from core.spark.models import PythonUDFRecord, refresh_django_db_connection
 
 # import Row from pyspark
 from pyspark.sql import Row

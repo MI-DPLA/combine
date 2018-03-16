@@ -14,11 +14,11 @@ from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql.functions import udf
 
-# load from core.spark.models
+# import from core.spark
 try:
-	from models import PythonUDFRecord, refresh_django_db_connection
+	from utils import PythonUDFRecord, refresh_django_db_connection	
 except:
-	from core.spark.models import PythonUDFRecord, refresh_django_db_connection
+	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
