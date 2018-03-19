@@ -4618,7 +4618,6 @@ class RecordIDTransformationScenario(object):
 
 	def __init__(self, query_dict):
 
-		logger.debug("##########################################")
 		logger.debug('initializaing RITS')
 		logger.debug(query_dict)
 
@@ -4664,8 +4663,6 @@ class RecordIDTransformationScenario(object):
 
 		# capture test data if
 		self.test_input = self.qd.get('test_transform_input', None)
-
-		logger.debug("##########################################")		
 
 
 	def test_user_input(self):
