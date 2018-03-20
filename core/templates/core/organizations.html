@@ -27,7 +27,7 @@
 							<td><a href="{% url 'organization' org_id=org.id %}">{{ org.name }}</a></td>
 							<td>{{ org.description }}</td>
 							<td>{{ org.timestamp }}</td>					
-							<td><a href="{% url 'organization_delete' org_id=org.id %}">Delete</a></td>
+                                                        <td><a href="{% url 'organization_delete' org_id=org.id %}" onclick="return confirm('Please click on OK to continue.');">Delete</a></td>
 						</tr>
 					{% endfor %}
 				</tbody>
