@@ -31,7 +31,7 @@ except:
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf
+from pyspark.sql.functions import udf, regexp_replace
 from pyspark.sql.window import Window
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -45,7 +45,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario
 
 
 
@@ -695,6 +695,9 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
+		# run record identifier transformations (rits) if present
+		agg_df = run_rits(agg_df, kwargs.get('rits', False))
+
 		# if Analysis Job, do not write avro
 		if job.job_type == 'AnalysisJob':
 			write_avro = False
@@ -953,11 +956,75 @@ def get_job_db_bounds(job):
 	}
 
 
-def transform_record_id(**kwargs):
+def run_rits(records_df, rits_id):
 
 	'''
-	
+	Function to run Record Identifier Transformation Scenarios (rits) if present
 	'''
-	pass
+	
+	print("###################### RITS ############################")
+	
+	# if rits id provided
+	if rits_id:
+
+		rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+		print(rits.name)
+
+		# handle regex
+		if rits.transformation_type == 'regex':
+
+			print(rits.regex_match_payload)
+			print(rits.regex_replace_payload)
+
+			# target of record_id
+			if rits.transformation_target == 'record_id':
+				records_df = records_df.withColumn('record_id', regexp_replace(
+					records_df.record_id, rits.regex_match_payload, rits.regex_replace_payload)
+				)
+
+			# target of document
+			if rits.transformation_target == 'document':
+				records_df = records_df.withColumn('document', regexp_replace(
+					records_df.document, rits.regex_match_payload, rits.regex_replace_payload)
+				)
+
+		# handle python
+		if rits.transformation_type == 'python':
+
+			def record_id_trans_udf(row, python_code):
+			
+				# get python function from Transformation Scenario
+				temp_mod = ModuleType('temp_mod')
+				exec(python_code, temp_mod.__dict__)
+
+				# establish python udf record
+				if rits.transformation_target == 'record_id':
+					pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
+				if rits.transformation_target == 'document':
+					pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+				# run transformation
+				trans_result = temp_mod.transform_identifier(pyudfr)
+				return trans_result
+
+			# transform via rdd.map and return			
+			python_code = rits.python_payload
+			records_df = records_df.withColumn('record_id', record_id_trans_udf(records_df, python_code))
+
+		# handle xpath
+		if rits.transformation_type == 'xpath':
+			print('xpath record_id transformation not yet implemented')
+			records_df = records_df
+		
+		# return
+		print("###################### /RITS ############################")
+		return records_df
+
+	# else return dataframe untouched
+	else:
+
+		print('we got nothing.')
+		print("###################### /RITS ############################")
+		return records_df
 
 

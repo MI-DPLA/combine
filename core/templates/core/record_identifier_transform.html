@@ -7,173 +7,30 @@
 				
 				<h5>Transform Record Identifier</h5>
 
-				<p>For all Records in this Job, transform the Record's <code>record_id</code> identifier that is used for publishing and uniqueness checks.  Select a pre-existing <code>record_id</code> transformation if they exist, or run configure and apply a transformation for this job only.</p>
+				<p>For Records in this Job, optionally transform the Record's <code>record_id</code> -- used for publishing and uniqueness checks -- with a pre-existing Record Identifier Transformation Scenario.</p>
 				
 				<div class="row">
 					<div class="col-md-12" style="padding:20px;">
 
 						{% if rits|length > 0 %}
-							{% for rt in rits %}
-								
-								<div class="form-check">
-								  <input class="form-check-input" type="checkbox" value="{{ rt.id }}" id="rits_{{ rt.id }}" name="rits" {% if rt.default_run %}checked{% endif %}>
-								  <label class="form-check-label" for="rits_{{ rt.id }}">
-								    {{ rt.name }}
-								  </label>
-								</div>
 
-							{% endfor %}
+							<div class="form-group">
+								<select class="form-control" id="rits" name="rits" required>
+									<option value=''>Select a Record Identifier Transformation Scenario...</option>
+									{% for rt in rits %}
+										<option value='{{ rt.id }}'>{{ rt.name }}</option>
+									{% endfor %}					
+								</select>
+							</div>
+
 						{% else %}
 							<p class="font-weight-bold"style="margin-bottom:0px;">No pre-existing transformations found. <a href="{% url 'configuration' %}">Create one!</a></p>
 						{% endif %}
 
 					</div>
 				</div>
-				
-				<div class="row">
-					<div class="col-md-12">
-						<p><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">Setup <code>record_id</code> transformation for this job only</button></p>
-					</div>
-				</div>
-
-				<div class="row">
-					<div class="col-md-12">
-						<div id="record_id_transform_options" style="display:none;">
-
-							<div class="form-group">
-								<label for="record_id_transform_target">First, select what will be used as input for the transformation process:</label>
-								<select class="form-control" id="record_id_transform_target" name="record_id_transform_target">
-									<option value=''>Select one...</option>
-									<option value='record_id'>Record's identifier</option>
-									<option value='document'>Record's XML document</option>
-								</select>
-							</div>
-
-							<!-- tabbed input for different transformation types -->					
-							<div class="form-group">
-								<label for="record_id_transform_type">Next, select the transformation type and enter the transformation parameters in the spaces provided:</label>
-								<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
-									<option value=''>Select one...</option>
-									<option value='regex'>Regular Expression</option>
-									<option value='python'>Python Code Snippet</option>
-									<option value='xpath'>XPath Expression</option>
-								</select>
-							</div>
-
-							<ul id="type_payload_tabs" class="nav nav-tabs" style="display:none;">
-								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#regex_tab">Regex</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#python_tab">Python</a>
-								</li>
-								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#xpath_tab">XPath</a>
-								</li>
-							</ul>
-
-							<div class="tab-content">
-
-								<div id="regex_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
-									<div class="form-group">
-										<label for="regex_match_payload">Regex match pattern:</label>
-										<input type="text" class="form-control" id="regex_match_payload" name="regex_match_payload"/>
-									</div>
-									<div class="form-group">
-										<label for="regex_replace_payload">Regex replace pattern:</label>
-										<input type="text" class="form-control" id="regex_replace_payload" name="regex_replace_payload"/>
-									</div>
-								</div>
-
-								<div id="python_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-									<div class="form-group">
-										<label for="python_payload">Python code for transformation:</label>
-										<p>Current debug requirements: function named <code>transform_identifier(test_input)</code> with single argument for input payload (<code>test_input</code>, identifier or raw XML).</p>
-										<textarea class="form-control" id="python_payload" name="python_payload" rows="3"></textarea>
-									</div>
-								</div>
-
-								<div id="xpath_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-									<div class="form-group">
-										<label for="xpath_payload">XPath expression:</label>
-										<input type="text" class="form-control" id="xpath_payload" name="xpath_payload"/>
-									</div>
-								</div>
-
-							</div>
-
-							<!-- test identifier transform -->
-							<div style="padding:20px; background-color:#e2e2e2;">
-								<h6>Test Identifier Transformation (optional)</h6>
-
-								<p>Using the boxes below, test a transformation before finalizing and running with the Job.  In the textarea, paste either an example Record's raw XML document, or the string of an identifier.  The identifier transformation settings from above will operate over the pasted input and show what a resulting identifier would look like.</p>
-
-								<div class="form-group">
-									<label for="test_transform_input">Enter test input payload below (Record document XML or identifier string):</label>
-									<textarea class="form-control" id="test_transform_input" name="test_transform_input" rows="3"></textarea>
-								</div>
-
-								<div class="form-group">
-									<label for="test_transform_output">Test Record identifier output:</label>
-									<input type="text" class="form-control" id="test_transform_output" name="test_transform_output"/>
-								</div>
-
-								<p><button type="button" class="btn btn-success btn-sm" id="test_record_id_transform">Test Validation</button></p>
-
-							</div>
-
-						</div>
-
-					</div>
-				</div>
 			</div>
 		</div>
 	</div>
-
-	<script>
-
-		$(document).ready(function(){
-			
-			// test record_id transformation
-			$("#test_record_id_transform").click(function(){
-
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_record_id_transform' %}",
-					data: {
-						'record_id_transform_target':$("#record_id_transform_target").val(),
-						'record_id_transform_type':$("#record_id_transform_type").val(),
-						'regex_match_payload':$("#regex_match_payload").val(),
-						'regex_replace_payload':$("#regex_replace_payload").val(),
-						'python_payload':$("#python_payload").val(),
-						'xpath_payload':$("#xpath_payload").val(),
-						'test_transform_input':$("#test_transform_input").val(),
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){																		
-						console.log(data);
-						$("#test_transform_output").val(data.results);
-					}			
-				});
-
-			});
-
-
-			// listen for transformation type change and show inputs
-			$("#record_id_transform_type").change(function(){
-				type_val = $("#record_id_transform_type").val();
-				if (type_val != ''){
-					$('#type_payload_tabs a[href="#'+type_val+'_tab"]').tab('show');
-				}
-				else {
-					$(".tab-content .tab-pane").removeClass('active');
-					$("#type_payload_tabs .nav-item").removeClass('active');
-				}
-			})
-
-		});
-
-	</script>
-
+				
 {% endblock %}

@@ -954,8 +954,7 @@ def job_merge(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		if request.POST.get('record_id_transform_type', False):			
-			rits = models.RecordIDTransformationScenario(request.POST)
+		rits = request.POST.get('rits')
 
 		# initiate job
 		cjob = models.MergeJob(
@@ -965,7 +964,8 @@ def job_merge(request, org_id, record_group_id):
 			record_group=record_group,
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -1614,7 +1614,7 @@ def test_rits(request):
 				request.POST['test_transform_input'] = record.document
 
 			# instantiate rits and return test
-			rits = models.RecordIDTransformationScenario(request.POST)
+			rits = models.RITSClient(request.POST)
 			return JsonResponse(rits.test_user_input())
 
 		except Exception as e:

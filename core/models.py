@@ -1797,7 +1797,7 @@ class RecordIdentifierTransformationScenario(models.Model):
 	name = models.CharField(max_length=255)
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('regex','Regular Expressions'),('python','Python Code Snippet'),('xpath','XPath Expression')]
+		choices=[('regex','Java Regular Expressions'),('python','Python Code Snippet'),('xpath','XPath Expression')]
 	)
 	transformation_target = models.CharField(
 		max_length=255,
@@ -1807,7 +1807,6 @@ class RecordIdentifierTransformationScenario(models.Model):
 	regex_replace_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
 	python_payload = models.TextField(null=True, default=None, blank=True)
 	xpath_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
-	default_run = models.BooleanField(default=0)
 
 	def __str__(self):
 		return '%s, RITS: #%s' % (self.name, self.id)
@@ -3730,7 +3729,8 @@ class MergeJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=[]):
+		validation_scenarios=[],
+		rits=None):
 
 		'''
 		Args:
@@ -3762,6 +3762,7 @@ class MergeJob(CombineJob):
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
+			self.rits = rits
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3819,12 +3820,13 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits="%(rits)s")' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
+				'rits':self.rits
 			}
 		}
 
@@ -4636,7 +4638,7 @@ class CombineOAIClient(object):
 # Identifier Transformation Scenario							   #
 ####################################################################
 
-class RecordIDTransformationScenario(object):
+class RITSClient(object):
 
 	'''
 	class to handle the record_id transformation scenarios
