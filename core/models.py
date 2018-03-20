@@ -1788,6 +1788,32 @@ class IndexMappers(object):
 
 
 
+class RecordIdentifierTransformationScenario(models.Model):
+
+	'''
+	Model to manage transformation scenarios for Record's record_ids
+	'''
+
+	name = models.CharField(max_length=255)
+	transformation_type = models.CharField(
+		max_length=255,
+		choices=[('regex','Regular Expressions'),('python','Python Code Snippet'),('xpath','XPath Expression')]
+	)
+	transformation_target = models.CharField(
+		max_length=255,
+		choices=[('record_id','Record Identifier'),('document','Record Document')]
+	)
+	regex_match_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
+	regex_replace_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
+	python_payload = models.TextField(null=True, default=None, blank=True)
+	xpath_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
+	default_run = models.BooleanField(default=0)
+
+	def __str__(self):
+		return '%s, RITS: #%s' % (self.name, self.id)
+
+
+
 ####################################################################
 # Signals Handlers                                                 # 
 ####################################################################
@@ -4714,6 +4740,15 @@ class RecordIDTransformationScenario(object):
 			'results':trans_result
 		}		
 		return r_dict
+
+
+	def params_as_json(self):
+
+		'''
+		Method to generate the required parameters to include in Spark job
+		'''
+
+		return json.dumps(self.__dict__)
 
 
 

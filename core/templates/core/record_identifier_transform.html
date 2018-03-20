@@ -1,77 +1,40 @@
 {% block content %}
 
-	<div id="record_identifier_transformation_pane" class="row" style="display:none;">
+	<div id="record_identifier_transformation_pane" class="row">
 		<div class="col-md-12">
 			
 			<div style="padding:20px; border-radius:10px; background-color:#FFFBD3;">
 				
 				<h5>Transform Record Identifier</h5>
 
-				<p>For all Records in this Job, transform the Record's <code>record_id</code> that is used for downstream publishing and uniqueness checks.  If configured, select desired <code>record_id</code> transformations below:</p>
+				<p>For all Records in this Job, transform the Record's <code>record_id</code> identifier that is used for publishing and uniqueness checks.  Select a pre-existing <code>record_id</code> transformation if they exist, or run configure and apply a transformation for this job only.</p>
+				
+				<div class="row">
+					<div class="col-md-12" style="padding:20px;">
 
-				<!-- placeholders for eventual saved record_id transformation scenarios -->
-				<!-- <div class="col-md-12">
-					<div class="form-check">
-						<table class="table table-bordered">
-							<thead>
-								<tr>
-									<th>transformation name</th>
-									<th>transformation type</th>
-									<th>order</th>									
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>normalize whitespace</td>
-									<td>regex</td>
-									<td>
-										<div class="form-group">
-											<select class="form-control rits_ordering" name="rits_1" id="rits_1">
-												<option value='-1'>Do not run</option>
-												<option value='1'>1</option>
-												<option value='2'>2</option>
-												<option value='3'>3</option>												
-											</select>
-										</div>
-									</td>
-								</tr>
-								<tr>
-									<td>pull identifier from XML record</td>
-									<td>XPath</td>
-									<td>
-										<div class="form-group">
-											<select class="form-control rits_ordering" name="rits_2" id="rits_2">
-												<option value='-1'>Do not run</option>
-												<option value='1'>1</option>
-												<option value='2'>2</option>
-												<option value='3'>3</option>												
-											</select>
-										</div>
-									</td>
-								</tr>
-							</tbody>
-						</table>
+						{% if rits|length > 0 %}
+							{% for rt in rits %}
+								
+								<div class="form-check">
+								  <input class="form-check-input" type="checkbox" value="{{ rt.id }}" id="validation_scenario_{{ rt.id }}" name="validation_scenario" {% if rt.default_run %}checked{% endif %}>
+								  <label class="form-check-label" for="validation_scenario_{{ rt.id }}">
+								    {{ rt.name }}
+								  </label>
+								</div>
+
+							{% endfor %}
+						{% else %}
+							<p class="font-weight-bold"style="margin-bottom:0px;">No pre-existing transformations found. <a href="{% url 'configuration' %}">Create one!</a></p>
+						{% endif %}
+
 					</div>
-				</div> -->
-				<script>
-
-					/* add checks that do not allow multiple transformations to use the same ordering */
-					$(document).ready(function(){
-						$(".rits_ordering").change(function(){
-							console.log(this);
-							if ($('select option[value="' + $(this).val() + '"]:selected').length > 1) {
-						      $(this).val('-1').change();
-						      alert('A record_id transformation has already been set for this order.  Please unset or change the order and try again!');
-						    }
-						});	
-					})					
-
-				</script>
+				</div>
+				
 				<!-- end placeholder -->
 
 				<div class="row">
 					<div class="col-md-12">
-						<p>Or, run a new, "ad hoc" <code>record_id</code> transformation for this job only:<br><br><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">ad hoc <code>record_id</code> transformation</button></p>
+						<p><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">Setup <code>record_id</code> transformation for this job only</button></p>
 					</div>
 				</div>
 

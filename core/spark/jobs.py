@@ -953,5 +953,11 @@ def get_job_db_bounds(job):
 	}
 
 
+def transform_record_id(**kwargs):
+
+	'''
+	
+	'''
+	pass
 
 

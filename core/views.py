@@ -903,6 +903,9 @@ def job_merge(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
@@ -915,6 +918,7 @@ def job_merge(request, org_id, record_group_id):
 				'record_group':record_group,
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
