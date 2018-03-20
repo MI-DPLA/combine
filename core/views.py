@@ -1433,11 +1433,15 @@ def configuration(request):
 	# get all validation scenarios
 	validation_scenarios = models.ValidationScenario.objects.all()
 
+	# get record identifier transformation scenarios
+	rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
+			'rits':rits,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
