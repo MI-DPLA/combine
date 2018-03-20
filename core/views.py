@@ -20,6 +20,7 @@ from django.core import serializers
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
@@ -1513,6 +1514,77 @@ def test_validation_scenario(request):
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
 			'validation_scenarios':validation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
+	# If POST, provide raw result of validation test
+	if request.method == 'POST':
+
+		logger.debug('running test validation and returning')
+		logger.debug(request.POST)
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+
+		try:
+			# init new validation scenario
+			vs = models.ValidationScenario(
+				name='temp_vs_%s' % str(uuid.uuid4()),
+				payload=request.POST.get('vs_payload'),
+				validation_type=request.POST.get('vs_type'),
+				default_run=False
+			)
+			vs.save()
+
+			# validate with record
+			vs_results = vs.validate_record(record)
+
+			# delete vs
+			vs.delete()
+
+			if request.POST.get('vs_results_format') == 'raw':
+				return HttpResponse(vs_results['raw'], content_type="text/plain")
+			elif request.POST.get('vs_results_format') == 'parsed':
+				return JsonResponse(vs_results['parsed'])
+			else:
+				raise Exception('validation results format not recognized')
+
+		except Exception as e:
+
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			vs.delete()
+
+			return HttpResponse(str(e), content_type="text/plain")
+
+
+def rits_payload(request, rits_id):
+
+	'''
+	View payload for record identifier transformation scenario
+	'''
+
+	# get transformation
+	rt = models.RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+
+	# return as json package
+	return JsonResponse(model_to_dict(rt))	
+
+
+def test_rits(request):
+
+	'''
+	View to live test record identifier transformation scenarios
+	'''
+
+	# If GET, serve validation test screen
+	if request.method == 'GET':
+
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
+		# return
+		return render(request, 'core/test_rits.html', {
+			'rits':rits,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
