@@ -4690,6 +4690,9 @@ class RecordIDTransformationScenario(object):
 		# capture test data if
 		self.test_input = self.qd.get('test_transform_input', None)
 
+		# DEBUG
+		logger.debug(self.__dict__)
+
 
 	def test_user_input(self):
 

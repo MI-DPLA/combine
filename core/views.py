@@ -1591,41 +1591,26 @@ def test_rits(request):
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
 
-		logger.debug('running test validation and returning')
+		logger.debug('testing record identifier transformation')		
 		logger.debug(request.POST)
+
+		# make POST data mutable
+		request.POST._mutable = True
 
 		# get record
 		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
 
-		try:
-			# init new validation scenario
-			vs = models.ValidationScenario(
-				name='temp_vs_%s' % str(uuid.uuid4()),
-				payload=request.POST.get('vs_payload'),
-				validation_type=request.POST.get('vs_type'),
-				default_run=False
-			)
-			vs.save()
+		# determine testing type
+		if request.POST['record_id_transform_target'] == 'record_id':			
+			logger.debug('configuring test for record_id')
+			request.POST['test_transform_input'] = record.record_id
+		elif request.POST['record_id_transform_target'] == 'document':
+			logger.debug('configuring test for record_id')
+			request.POST['test_transform_input'] = record.document
 
-			# validate with record
-			vs_results = vs.validate_record(record)
-
-			# delete vs
-			vs.delete()
-
-			if request.POST.get('vs_results_format') == 'raw':
-				return HttpResponse(vs_results['raw'], content_type="text/plain")
-			elif request.POST.get('vs_results_format') == 'parsed':
-				return JsonResponse(vs_results['parsed'])
-			else:
-				raise Exception('validation results format not recognized')
-
-		except Exception as e:
-
-			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
-			vs.delete()
-
-			return HttpResponse(str(e), content_type="text/plain")
+		# instantiate rits and return test
+		rits = models.RecordIDTransformationScenario(request.POST)
+		return JsonResponse(rits.test_user_input())
 
 
 ####################################################################
@@ -1794,14 +1779,18 @@ def job_analysis(request):
 # Misc 				 											   #
 ####################################################################
 
-def test_record_id_transform(request):
+# def test_record_id_transform(request):
 
-	'''
-	View to faciliate testing of record_id transformations	
-	'''
+# 	'''
+# 	View to faciliate testing of record_id transformations	
+# 	'''
 
-	rits = models.RecordIDTransformationScenario(request.POST)
-	return JsonResponse(rits.test_user_input())
+# 	logger.debug(request.POST)
+
+
+
+# 	rits = models.RecordIDTransformationScenario(request.POST)
+# 	return JsonResponse(rits.test_user_input())
 
 
 
