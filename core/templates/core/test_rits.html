@@ -4,11 +4,12 @@
 	
 	<div class="row">
 		<div class="col-md-8">
-			<h2>Test Record Identifier Transformation Scenario <span class="text-danger">(IN PROGRESS)</span></h2>
+			<h2>Test Record Identifier Transformation Scenario (RITS)</h2>			
 			<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#validation_instructions').toggle();">Instructions</button></p>
 
 			<div id="validation_instructions" style="display:none;">
 				<h5>Overview</h5>
+				<p class="text-danger">Explantory text needed...</p>
 			</div>		
 
 		</div>
@@ -24,17 +25,14 @@
 
 	<!-- input paylaod -->
 	<div class="row">
-		<div class="col-md-12">
-
-			<h3>Record Identifier Transformation Payload</h3>
-			<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
+		<div class="col-md-6">			
 			
 			<div class="row">
-				<div class="col-md-4">
+				<div class="col-md-12">
 					<div class="form-group">
 						<label for="rt_exists">Optionally, select a pre-existing Record Identifier Transformation Scenario</label>
 						<select id="rt_exists" class="form-control">
-							<option value=''></option>
+							<option value=''>Select a pre-existing scenario...</option>
 							{% for rt in rits %}
 								<option value="{{rt.id}}">{{rt.name}}</option>
 							{% endfor %}
@@ -63,7 +61,7 @@
 			</div>
 
 			<div class="row" style="display:none;">
-				<div class="col-md-4">
+				<div class="col-md-12">
 					<ul id="type_payload_tabs" class="nav nav-tabs">
 						<li class="nav-item">
 							<a class="nav-link" data-toggle="tab" href="#regex_tab">Regex</a>
@@ -117,20 +115,14 @@
 			<button class="btn btn-success btn-sm" id="test_rits">Test Record Identifier Transformation</button>
 
 		</div>
-	</div>
 
-	<!-- validation results -->
-	<div class="row">
 		<div class="col-md-6">
-			<h4>Parsed Validation Results</h4>
-			<pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
-		</div>
-		<div class="col-md-6">
-			<h4>Raw Validation Results</h4>
+			<h5>Results</h5>
 			<div class="form-group">				
-				<!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
-				<code id="vs_results_raw">Raw results will show here...</code>
+				<p id="rits_results_raw">Results will show here...</p>
+			</div>
 		</div>
+
 	</div>
 
 	<script>
@@ -138,6 +130,20 @@
 		// global variables
 		var sel_row_id;
 
+		// listen for transformation type change and show inputs
+		$(document).ready(function(){
+			$("#record_id_transform_type").change(function(){
+				type_val = $("#record_id_transform_type").val();
+				if (type_val != ''){
+					$('#type_payload_tabs a[href="#'+type_val+'_tab"]').tab('show');
+				}
+				else {
+					$(".tab-content .tab-pane").removeClass('active');
+					$("#type_payload_tabs .nav-item").removeClass('active');
+				}
+			})
+		});
+			
 		// capture clicked row
 		$(document).ready(function() {
 			$("#datatables_records tbody").on( 'click', 'tr', function () {
@@ -197,15 +203,6 @@
 					});	
 				}
 
-				// else {
-					
-				// 	// clear validation dropdown type
-				// 	$("#vs_type").val(this.value);
-
-				// 	// clear payload box
-				// 	$("#vs_payload").val('');
-				// }
-
 			})
 		});
 
@@ -235,180 +232,21 @@
 
 						console.log(data);
 
-						// // hash to translate vs_type to output serialization format
-						// vs_type_output_hash = {
-						// 	'sch':'xml',
-						// 	'python':'json'
-						// }
+						// show results
 
-						// // add raw data to div
-						// $("#vs_results_raw").html(escapeHtmlEntities(data));
-
-						// // update class for <code> tag for hljs and init
-						// $("#vs_results_raw").removeClass();
-						// $("#vs_results_raw").addClass(vs_type_output_hash[vs_type]);
-						// $("#vs_results_raw").each(function(i, block) {
-						// 	hljs.highlightBlock(block);
-						// });
+						if (data['success'] == true){							
+							$("#rits_results_raw").html("<code class='text-success'>"+data['results']+"</span>");
+						}
+						else {
+							$("#rits_results_raw").html("<code class='text-danger'>"+data['results']+"</span>");
+						}
 
 					}			
 				});
-
-				// https://stackoverflow.com/a/10825766/1196358
-				function escapeHtmlEntities (str) {
-				  // No jQuery, so use string replace.
-				  return str
-				    .replace(/&/g, '&amp;')
-				    .replace(/>/g, '&gt;')
-				    .replace(/</g, '&lt;')
-				    .replace(/"/g, '&quot;');
-				}
 
 			})
 		});
 		
-	</script>
-
-	<!-- INTEGRATE -->
-	<!-- <div class="row">
-		<div class="col-md-12">
-			<p><button type="button" class="btn btn-outline-dark btn-sm" onclick="$('#record_id_transform_options').fadeToggle();">Setup <code>record_id</code> transformation for this job only</button></p>
-		</div>
-	</div>
-
-	<div class="row">
-		<div class="col-md-12">
-			<div id="record_id_transform_options" style="display:none;">
-
-				<div class="form-group">
-					<label for="record_id_transform_target">First, select what will be used as input for the transformation process:</label>
-					<select class="form-control" id="record_id_transform_target" name="record_id_transform_target">
-						<option value=''>Select one...</option>
-						<option value='record_id'>Record's identifier</option>
-						<option value='document'>Record's XML document</option>
-					</select>
-				</div>
-
-				<div class="form-group">
-					<label for="record_id_transform_type">Next, select the transformation type and enter the transformation parameters in the spaces provided:</label>
-					<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
-						<option value=''>Select one...</option>
-						<option value='regex'>Regular Expression</option>
-						<option value='python'>Python Code Snippet</option>
-						<option value='xpath'>XPath Expression</option>
-					</select>
-				</div>
-
-				<ul id="type_payload_tabs" class="nav nav-tabs" style="display:none;">
-					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#regex_tab">Regex</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#python_tab">Python</a>
-					</li>
-					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#xpath_tab">XPath</a>
-					</li>
-				</ul>
-
-				<div class="tab-content">
-
-					<div id="regex_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
-						<div class="form-group">
-							<label for="regex_match_payload">Regex match pattern:</label>
-							<input type="text" class="form-control" id="regex_match_payload" name="regex_match_payload"/>
-						</div>
-						<div class="form-group">
-							<label for="regex_replace_payload">Regex replace pattern:</label>
-							<input type="text" class="form-control" id="regex_replace_payload" name="regex_replace_payload"/>
-						</div>
-					</div>
-
-					<div id="python_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-						<div class="form-group">
-							<label for="python_payload">Python code for transformation:</label>
-							<p>Current debug requirements: function named <code>transform_identifier(test_input)</code> with single argument for input payload (<code>test_input</code>, identifier or raw XML).</p>
-							<textarea class="form-control" id="python_payload" name="python_payload" rows="3"></textarea>
-						</div>
-					</div>
-
-					<div id="xpath_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-						<div class="form-group">
-							<label for="xpath_payload">XPath expression:</label>
-							<input type="text" class="form-control" id="xpath_payload" name="xpath_payload"/>
-						</div>
-					</div>
-
-				</div>
-
-				<div style="padding:20px; background-color:#e2e2e2;">
-					<h6>Test Identifier Transformation (optional)</h6>
-
-					<p>Using the boxes below, test a transformation before finalizing and running with the Job.  In the textarea, paste either an example Record's raw XML document, or the string of an identifier.  The identifier transformation settings from above will operate over the pasted input and show what a resulting identifier would look like.</p>
-
-					<div class="form-group">
-						<label for="test_transform_input">Enter test input payload below (Record document XML or identifier string):</label>
-						<textarea class="form-control" id="test_transform_input" name="test_transform_input" rows="3"></textarea>
-					</div>
-
-					<div class="form-group">
-						<label for="test_transform_output">Test Record identifier output:</label>
-						<input type="text" class="form-control" id="test_transform_output" name="test_transform_output"/>
-					</div>
-
-					<p><button type="button" class="btn btn-success btn-sm" id="test_record_id_transform">Test Validation</button></p>
-
-				</div>
-
-			</div>
-
-		</div>
-	</div> -->
-	
-	<script>
-
-		$(document).ready(function(){
-			
-			// test record_id transformation
-			$("#test_record_id_transform").click(function(){
-
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_rits' %}",
-					data: {
-						'record_id_transform_target':$("#record_id_transform_target").val(),
-						'record_id_transform_type':$("#record_id_transform_type").val(),
-						'regex_match_payload':$("#regex_match_payload").val(),
-						'regex_replace_payload':$("#regex_replace_payload").val(),
-						'python_payload':$("#python_payload").val(),
-						'xpath_payload':$("#xpath_payload").val(),
-						'test_transform_input':$("#test_transform_input").val(),
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){																		
-						console.log(data);
-						$("#test_transform_output").val(data.results);
-					}			
-				});
-
-			});
-
-
-			// listen for transformation type change and show inputs
-			$("#record_id_transform_type").change(function(){
-				type_val = $("#record_id_transform_type").val();
-				if (type_val != ''){
-					$('#type_payload_tabs a[href="#'+type_val+'_tab"]').tab('show');
-				}
-				else {
-					$(".tab-content .tab-pane").removeClass('active');
-					$("#type_payload_tabs .nav-item").removeClass('active');
-				}
-			})
-
-		});
-
 	</script>
 
 {% endblock %}

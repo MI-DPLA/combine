@@ -1594,23 +1594,31 @@ def test_rits(request):
 		logger.debug('testing record identifier transformation')		
 		logger.debug(request.POST)
 
-		# make POST data mutable
-		request.POST._mutable = True
+		try:
 
-		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+			# make POST data mutable
+			request.POST._mutable = True
 
-		# determine testing type
-		if request.POST['record_id_transform_target'] == 'record_id':			
-			logger.debug('configuring test for record_id')
-			request.POST['test_transform_input'] = record.record_id
-		elif request.POST['record_id_transform_target'] == 'document':
-			logger.debug('configuring test for record_id')
-			request.POST['test_transform_input'] = record.document
+			# get record
+			if request.POST.get('db_id', False):
+				record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+			else:
+				return JsonResponse({'results':'Please select a record from the table above!','success':False})
 
-		# instantiate rits and return test
-		rits = models.RecordIDTransformationScenario(request.POST)
-		return JsonResponse(rits.test_user_input())
+			# determine testing type
+			if request.POST['record_id_transform_target'] == 'record_id':			
+				logger.debug('configuring test for record_id')
+				request.POST['test_transform_input'] = record.record_id
+			elif request.POST['record_id_transform_target'] == 'document':
+				logger.debug('configuring test for record_id')
+				request.POST['test_transform_input'] = record.document
+
+			# instantiate rits and return test
+			rits = models.RecordIDTransformationScenario(request.POST)
+			return JsonResponse(rits.test_user_input())
+
+		except Exception as e:
+			return JsonResponse({'results':str(e), 'success':False})
 
 
 ####################################################################
