@@ -65,6 +65,8 @@ urlpatterns = [
 	url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
 	url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload, name='validation_scenario_payload'),
 	url(r'^configuration/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
+	url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$', views.rits_payload, name='rits_payload'),
+	url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
 
 	# Publish
 	url(r'^published$', views.published, name='published'),
@@ -85,7 +87,7 @@ urlpatterns = [
 	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),
 
 	# Misc
-	url(r'^misc/test_record_id_transform$', views.test_record_id_transform, name='test_record_id_transform'),
+	# url(r'^misc/test_record_id_transform$', views.test_record_id_transform, name='test_record_id_transform'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

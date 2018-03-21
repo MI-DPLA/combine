@@ -7,6 +7,7 @@ import hashlib
 import json
 from lxml import etree
 import os
+import re
 import requests
 import shutil
 import sys
@@ -31,7 +32,7 @@ except:
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf
+from pyspark.sql.functions import udf, regexp_replace
 from pyspark.sql.window import Window
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -45,7 +46,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario
 
 
 
@@ -695,6 +696,9 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
+		# run record identifier transformations (rits) if present
+		agg_df = run_rits(agg_df, kwargs.get('rits', False))
+
 		# if Analysis Job, do not write avro
 		if job.job_type == 'AnalysisJob':
 			write_avro = False
@@ -953,5 +957,165 @@ def get_job_db_bounds(job):
 	}
 
 
+def run_rits(records_df, rits_id):
+
+	'''
+	Function to run Record Identifier Transformation Scenarios (rits) if present.
+
+	RITS can be of three types:
+		1) 'regex' - Java Regular Expressions
+		2) 'python' - Python Code Snippets
+		3) 'xpath' - XPath expression
+
+	Each are handled differently, but all strive to return a dataframe (records_df),
+	with the `record_id` column modified.
+
+	Args:
+		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+		rits_id (string|int): DB identifier of pre-configured RITS
+	'''
+	
+	# if rits id provided
+	if rits_id:
+
+		rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+
+		# handle regex
+		if rits.transformation_type == 'regex':
+
+				# define udf function for python transformation
+			def regex_record_id_trans_udf(row, match, replace, trans_target):
+				
+				try:
+					
+					# use python's re module to perform regex
+					if trans_target == 'record_id':
+						trans_result = re.sub(match, replace, row.record_id)
+					if trans_target == 'document':
+						trans_result = re.sub(match, replace, row.document)
+
+					# run transformation
+					success = 1
+					error = row.error
+
+				except Exception as e:
+					trans_result = str(e)
+					error = 'record_id transformation failure'
+					success = 0
+
+				# return Row
+				return Row(
+					combine_id = row.combine_id,
+					record_id = trans_result,
+					document = row.document,
+					error = error,
+					job_id = row.job_id,
+					oai_set = row.oai_set,
+					success = success
+				)
+
+			# transform via rdd.map and return			
+			match = rits.regex_match_payload
+			replace = rits.regex_replace_payload
+			trans_target = rits.transformation_target
+			records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
+			records_df = records_rdd.toDF()
+
+		# handle python
+		if rits.transformation_type == 'python':	
+
+			# define udf function for python transformation
+			def python_record_id_trans_udf(row, python_code, trans_target):
+				
+				try:
+					# get python function from Transformation Scenario
+					temp_mod = ModuleType('temp_mod')
+					exec(python_code, temp_mod.__dict__)
+
+					# establish python udf record
+					if trans_target == 'record_id':
+						pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
+					if trans_target == 'document':
+						pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+					# run transformation
+					trans_result = temp_mod.transform_identifier(pyudfr)
+					success = 1
+					error = row.error
+
+				except Exception as e:
+					trans_result = str(e)
+					error = 'record_id transformation failure'
+					success = 0
+
+				# return Row
+				return Row(
+					combine_id = row.combine_id,
+					record_id = trans_result,
+					document = row.document,
+					error = error,
+					job_id = row.job_id,
+					oai_set = row.oai_set,
+					success = success
+				)
+
+			# transform via rdd.map and return			
+			python_code = rits.python_payload
+			trans_target = rits.transformation_target
+			records_rdd = records_df.rdd.map(lambda row: python_record_id_trans_udf(row, python_code, trans_target))
+			records_df = records_rdd.toDF()
+
+		# handle xpath
+		if rits.transformation_type == 'xpath':
+
+			'''
+			Currently XPath RITS are handled via python and etree,
+			but might be worth investigating if this could be performed
+			via pyjxslt to support XPath 2.0
+			'''
+			
+			# define udf function for xpath expression
+			def xpath_record_id_trans_udf(row, xpath):				
+
+				# establish python udf record, forcing 'document' type trans for XPath				
+				pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+				# run xpath and retrieve value
+				xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
+				if len(xpath_query) == 1:
+					trans_result = xpath_query[0].text
+					success = 1
+					error = row.error
+				elif len(xpath_query) == 0:
+					trans_result = 'xpath expression found nothing'
+					success = 0
+					error = 'record_id transformation failure'
+				else:
+					trans_result = 'more than one node found for XPath query'
+					success = 0
+					error = 'record_id transformation failure'
+
+				# return Row
+				return Row(
+					combine_id = row.combine_id,
+					record_id = trans_result,
+					document = row.document,
+					error = error,
+					job_id = row.job_id,
+					oai_set = row.oai_set,
+					success = success
+				)
+
+			# transform via rdd.map and return			
+			xpath = rits.xpath_payload			
+			records_rdd = records_df.rdd.map(lambda row: xpath_record_id_trans_udf(row, xpath))
+			records_df = records_rdd.toDF()
+		
+		# return
+		return records_df
+
+	# else return dataframe untouched
+	else:
+		return records_df
 
 

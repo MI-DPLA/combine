@@ -20,6 +20,7 @@ from django.core import serializers
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
 from django.db.models import Q
+from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
@@ -610,6 +611,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
@@ -618,6 +622,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
@@ -654,6 +659,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -663,7 +671,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -692,6 +701,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 	# get index mappers
 	index_mappers = models.IndexMappers.get_mappers()
+
+	# get record identifier transformation scenarios
+	rits = models.RecordIdentifierTransformationScenario.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -700,6 +712,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		return render(request, 'core/job_harvest_static_xml.html', {
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
@@ -767,6 +780,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -775,7 +791,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			record_group=record_group,
 			index_mapper=index_mapper,
 			payload_dict=payload_dict,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -814,6 +831,9 @@ def job_transform(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
@@ -824,6 +844,7 @@ def job_transform(request, org_id, record_group_id):
 				'input_jobs':input_jobs,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
@@ -861,6 +882,9 @@ def job_transform(request, org_id, record_group_id):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -870,7 +894,8 @@ def job_transform(request, org_id, record_group_id):
 			input_job=input_job,
 			transformation=transformation,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -903,6 +928,9 @@ def job_merge(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
@@ -915,6 +943,7 @@ def job_merge(request, org_id, record_group_id):
 				'record_group':record_group,
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
@@ -949,8 +978,7 @@ def job_merge(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		if request.POST.get('record_id_transform_type', False):			
-			rits = models.RecordIDTransformationScenario(request.POST)
+		rits = request.POST.get('rits')
 
 		# initiate job
 		cjob = models.MergeJob(
@@ -960,7 +988,8 @@ def job_merge(request, org_id, record_group_id):
 			record_group=record_group,
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -1429,11 +1458,15 @@ def configuration(request):
 	# get all validation scenarios
 	validation_scenarios = models.ValidationScenario.objects.all()
 
+	# get record identifier transformation scenarios
+	rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
+			'rits':rits,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -1548,6 +1581,70 @@ def test_validation_scenario(request):
 			return HttpResponse(str(e), content_type="text/plain")
 
 
+def rits_payload(request, rits_id):
+
+	'''
+	View payload for record identifier transformation scenario
+	'''
+
+	# get transformation
+	rt = models.RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+
+	# return as json package
+	return JsonResponse(model_to_dict(rt))	
+
+
+def test_rits(request):
+
+	'''
+	View to live test record identifier transformation scenarios
+	'''
+
+	# If GET, serve validation test screen
+	if request.method == 'GET':
+
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
+		# return
+		return render(request, 'core/test_rits.html', {
+			'rits':rits,
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
+
+	# If POST, provide raw result of validation test
+	if request.method == 'POST':
+
+		logger.debug('testing record identifier transformation')		
+		logger.debug(request.POST)
+
+		try:
+
+			# make POST data mutable
+			request.POST._mutable = True
+
+			# get record
+			if request.POST.get('db_id', False):
+				record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+			else:
+				return JsonResponse({'results':'Please select a record from the table above!','success':False})
+
+			# determine testing type
+			if request.POST['record_id_transform_target'] == 'record_id':			
+				logger.debug('configuring test for record_id')
+				request.POST['test_transform_input'] = record.record_id
+			elif request.POST['record_id_transform_target'] == 'document':
+				logger.debug('configuring test for record_id')
+				request.POST['test_transform_input'] = record.document
+
+			# instantiate rits and return test
+			rits = models.RITSClient(request.POST)
+			return JsonResponse(rits.test_user_input())
+
+		except Exception as e:
+			return JsonResponse({'results':str(e), 'success':False})
+
+
 ####################################################################
 # Published 													   #
 ####################################################################
@@ -1649,6 +1746,9 @@ def job_analysis(request):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
@@ -1657,6 +1757,7 @@ def job_analysis(request):
 				'job_select_type':'multiple',				
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld)				
 			})
@@ -1689,6 +1790,9 @@ def job_analysis(request):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.AnalysisJob(
 			job_name=job_name,
@@ -1696,7 +1800,8 @@ def job_analysis(request):
 			user=request.user,			
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -1714,14 +1819,18 @@ def job_analysis(request):
 # Misc 				 											   #
 ####################################################################
 
-def test_record_id_transform(request):
+# def test_record_id_transform(request):
 
-	'''
-	View to faciliate testing of record_id transformations	
-	'''
+# 	'''
+# 	View to faciliate testing of record_id transformations	
+# 	'''
 
-	rits = models.RecordIDTransformationScenario(request.POST)
-	return JsonResponse(rits.test_user_input())
+# 	logger.debug(request.POST)
+
+
+
+# 	rits = models.RecordIDTransformationScenario(request.POST)
+# 	return JsonResponse(rits.test_user_input())
 
 
 
