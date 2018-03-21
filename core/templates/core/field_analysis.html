@@ -25,8 +25,8 @@
 				</thead>
 				<tbody>
 					<tr>
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=true">{{ field_metrics.metrics.doc_instances }}</a></td>
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">{{ field_metrics.metrics.doc_missing }}</a></td>
+						<td class="bg_light_green"><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=true">{{ field_metrics.metrics.doc_instances }}</a></td>
+						<td class="bg_light_red"><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">{{ field_metrics.metrics.doc_missing }}</a></td>
 						<td>{{ field_metrics.metrics.val_instances }}</td>
 						<td>{{ field_metrics.metrics.distinct }}</td>
 						<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.distinct_ratio }});">{{ field_metrics.metrics.distinct_ratio }}</td>
@@ -99,7 +99,7 @@
 				            		for (var i = escapes.length - 1; i >= 0; i--) {
 				            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
 				            		};
-				            		return "<a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Records with value</a> / <a target=\"_blank\" href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Records without</a>";
+				            		return "<a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Records with value</a> / <a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Records without</a>";
 				            	}
 				            }
 				        ],

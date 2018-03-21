@@ -4,11 +4,42 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Documents with Field: <code>{{ field_name }}</code></h3>
+
+			<h3>Field Analysis: <code>{{ field_name }}</code></h3>
+
+			<!-- one of four possible scenarios 
+				1) Records where field exists (exists)
+				2) Records where field does not exist (exists)
+				3) Records where field == value (equals)
+				4) Records where field != value (equals) 
+			-->
+
+			<div class="row">
+				<div class="col-md-12">
+					<!-- field existence -->
+					{% if filter_type == 'exists' %}
+						{% if analysis_scenario.exists == "true" %}
+							<p class="bg_light_green"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">exists</span></p>
+						{% elif analysis_scenario.exists == "false" %}
+							<p class="bg_light_red"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where field <code>{{ field_name }}</code> <span class="font-weight-bold">does not exist</span></p>
+						{% endif %}				
+					{% endif %}
+
+					<!-- field value equals -->
+					{% if filter_type == 'equals' %}
+						{% if analysis_scenario.matches == "true" %}
+							<p class="bg_light_green"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">matches or includes</span> <code>"{{ analysis_scenario.value }}"</code></p>
+						{% elif analysis_scenario.matches == "false" %}
+							<p class="bg_light_red"style="margin-bottom:0px; padding:20px; border-radius:10px;">Showing records where <code>{{ field_name }}</code> <span class="font-weight-bold">does not match or does not include</span> <code>"{{ analysis_scenario.value }}"</code></p>
+						{% endif %}				
+					{% endif %}
+				</div>
+			</div>
 
 			<!-- DataTable of Fields per ES document -->
 			<table id='datatables_es_records' class="table table-bordered table-hover">
 				<thead>
+					<th>DB ID</th>
 					<th>Combine ID</th>
 					<th>Record ID</th>
 					<th><code>{{ field_name }}</code> Value</th>
@@ -37,25 +68,31 @@
 				        "order": [[ 1, "desc" ]],
 				        "columns": [
 				            { 
-				            	title: "Combine ID",
+				            	title: "DB ID",
 				            	"render": function ( data, type, row ) {
 				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
 				                }
 			            	},
 				            { 
-				            	title: "Record ID",
+				            	title: "Combine ID",
 				            	"render": function ( data, type, row ) {
 				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
+				                }
+			            	},
+				            { 
+				            	title: "Record ID",
+				            	"render": function ( data, type, row ) {
+				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[5] + "</a>";
 				                }
 				            },
 				            {
 				            	title: "<code>{{ field_name }}</code> Value",
 				            	"render": function ( data, type, row ) {
-				                    if (!row[5]){
+				                    if (!row[6]){
 				                    	return "<span style='color:red;'>None</span>";
 				                    }
 				                    else {
-				                    	return row[5];
+				                    	return row[6];
 				                    }
 				                }
 				            	

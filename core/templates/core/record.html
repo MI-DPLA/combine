@@ -7,9 +7,10 @@
 		<div class="col-md-12">
 			<h2>Record: <code>{{ record.record_id }}</code></h2>
 			<ul>
-				<li><strong>Combine ID:</strong> {{ record.id }}</li>
-				<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
+				<li><strong>DB ID:</strong> <code>{{ record.id }}</code></li>
+				<li><strong>Combine ID:</strong> <code>{{ record.combine_id }}</code></li>				
 				<li><strong>Record ID:</strong> <code>{{ record.record_id }}</code></li>
+				<li><strong>Job Type:</strong> <span class="{{ record.job.job_type_family }}">{{ record.job.job_type }}</span></li>
 			</ul>
 		</div>
 	</div>
@@ -23,7 +24,8 @@
 			<table class="table table-bordered">
 				<thead>
 					<tr>
-						<th>ID</th>
+						<th>Record DB ID</th>
+						<th>Record Record ID</th>
 						<th>Job ID</th>
 						<th>Job Name</th>
 						<th>Job Type</th>
@@ -37,6 +39,7 @@
 				{% for record_stage in record_stages %}
 					<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold outlined_row{% endif %} {% if record_stage.error != '' %}error{% endif %}">
 						<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
+						<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.record_id }}</a></td>
 						<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
 						<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
 						<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>

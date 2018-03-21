@@ -14,79 +14,23 @@ from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
 from pyspark.sql.functions import udf
 
+# import from core.spark
+try:
+	from utils import PythonUDFRecord, refresh_django_db_connection	
+except:
+	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
+
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
+
 from django.conf import settings
 from django.db import connection
 
 # import select models from Core
 from core.models import Job, ValidationScenario
 
-
-
-####################################################################
-# Django DB Connection 											   #
-####################################################################
-def refresh_django_db_connection():
-	
-	'''
-	Function to refresh connection to Django DB.
-	
-	Behavior with python files uploaded to Spark context via Livy is atypical when
-	it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
-	apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
-
-	Running this function before jobs ensures that the connection is fresh between these python files
-	operating in the Livy context, and Django's DB connection to MySQL.
-
-	Args:
-		None
-
-	Returns:
-		None
-	'''
-
-	connection.close()
-	connection.connect()
-
-
-
-####################################################################
-# Models for UDFs												   #
-####################################################################
-
-class PythonUDFRecord(object):
-
-	'''
-	Simple class to provide an object with parsed metadata for user defined functions
-	'''
-
-	def __init__(self, row):
-
-		# row
-		self._row = row
-
-		# get combine id
-		self.id = row.id
-
-		# get record id
-		self.record_id = row.record_id
-
-		# document string
-		self.document = row.document
-
-		# parse XML string, save
-		self.xml = etree.fromstring(self.document)
-
-		# get namespace map, popping None values
-		_nsmap = self.xml.nsmap.copy()
-		try:
-			_nsmap.pop(None)
-		except:
-			pass
-		self.nsmap = _nsmap
 
 
 ####################################################################
@@ -251,6 +195,9 @@ class ValidationScenarioSpark(object):
 		# loop through functions
 		for func in pyvs_funcs:
 
+			# get name as string
+			func_name = func.__name__
+
 			# get func test message
 			func_signature = signature(func)
 			t_msg = func_signature.parameters['test_message'].default
@@ -263,10 +210,14 @@ class ValidationScenarioSpark(object):
 
 				# if fail, append
 				if test_result != True:
+
+					# bump fail count
 					results_dict['fail_count'] += 1
+
 					# if custom message override provided, use
 					if test_result != False:
 						results_dict['failed'].append(test_result)
+
 					# else, default to test message
 					else:
 						results_dict['failed'].append(t_msg)
@@ -274,11 +225,12 @@ class ValidationScenarioSpark(object):
 			# if problem, report as failure with Exception string
 			except Exception as e:
 				results_dict['fail_count'] += 1
-				results_dict['failed'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
+				results_dict['failed'].append("test '%s' had exception: %s" % (func_name, str(e)))
 
 		# if failed, return Row
 		if results_dict['fail_count'] > 0:
-			# return row
+
+			# return row			
 			return Row(
 				record_id=int(row.id),
 				validation_scenario_id=int(vs_id),

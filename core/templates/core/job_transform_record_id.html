@@ -4,7 +4,8 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">Transform Document</span></h3>
+			<h3>New Job: <span class="font-weight-bold">Transform Record ID</span></h3>
+			<p>Transform a Record's <code>record_id</code> that is used as the unique identifier for publishing.  An example might be modifying a portion of the <code>record_id</code> from an original Harvest job that no longer matches the desired final, published identifier for this Record.</p>
 		</div>
 	</div>
 
@@ -46,12 +47,6 @@
 						<!-- Record Validation Selection -->
 						{% include 'core/record_validation_select.html' %}
 
-					</div>
-					<div class="col-md-6">
-
-						<!-- Record Identifier Transformation -->
-						{% include 'core/record_identifier_transform.html' %}
-						
 					</div>
 				</div>
 				

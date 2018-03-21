@@ -59,6 +59,7 @@ class ESIndex(object):
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
 				row.id,
+				row.combine_id,
 				row.record_id,
 				row.document,
 				job.record_group.publish_set_id
@@ -72,15 +73,15 @@ class ESIndex(object):
 		# if failures, write
 		if not failures_rdd.isEmpty():
 
-			failures_df = failures_rdd.map(lambda row: Row(record_id=row[1]['record_id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = failures_rdd.map(lambda row: Row(combine_id=row[1]['combine_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
 			# add job_id as column
 			job_id = job.id
 			job_id_udf = udf(lambda id: job_id, IntegerType())
-			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.record_id))
+			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.combine_id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('record_id', failures_df.record_id).select(['record_id', 'job_id', 'mapping_error'])\
+			failures_df.withColumn('combine_id', failures_df.combine_id).select(['combine_id', 'job_id', 'mapping_error'])\
 			.write.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_indexmappingfailure',
@@ -365,7 +366,7 @@ class GenericMapper(BaseMapper):
 				self.formatted_elems[k] = tuple(v)
 
 
-	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
+	def map_record(self, db_id, combine_id, record_id, record_string, publish_set_id):
 
 		'''
 		Map record
@@ -400,7 +401,10 @@ class GenericMapper(BaseMapper):
 			self.format_record()
 
 			# add temporary id field
-			self.formatted_elems['temp_id'] = record_id
+			self.formatted_elems['temp_id'] = combine_id
+
+			# add combine_id field
+			self.formatted_elems['combine_id'] = combine_id
 
 			# add record_id field
 			self.formatted_elems['record_id'] = record_id
@@ -409,7 +413,7 @@ class GenericMapper(BaseMapper):
 			self.formatted_elems['publish_set_id'] = publish_set_id
 
 			# add record's Combine DB id
-			self.formatted_elems['combine_db_id'] = combine_db_id
+			self.formatted_elems['db_id'] = db_id
 
 			return (
 					'success',
@@ -421,7 +425,7 @@ class GenericMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'record_id':record_id,
+					'combine_id':combine_id,
 					'mapping_error':str(e)
 				}
 			)
@@ -509,13 +513,19 @@ class MODSMapper(BaseMapper):
 			mapped_dict = { field['@name']:field['#text'] for field in fields }
 
 			# add temporary id field
-			mapped_dict['temp_id'] = record_id
+			mapped_dict['temp_id'] = combine_id
+
+			# add combine_id field
+			mapped_dict['combine_id'] = combine_id
+
+			# add record_id field
+			mapped_dict['record_id'] = record_id
 
 			# add publish set id
 			mapped_dict['publish_set_id'] = publish_set_id
 
 			# add record's Combine DB id
-			mapped_dict['combine_db_id'] = combine_db_id
+			mapped_dict['db_id'] = db_id
 
 			return (
 				'success',
@@ -527,7 +537,7 @@ class MODSMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'record_id':record_id,
+					'combine_id':combine_id,
 					'mapping_error':str(e)
 				}
 			)

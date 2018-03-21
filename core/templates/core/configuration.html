@@ -45,7 +45,7 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Transformations</h3>
+			<h3>Transformation Scenarios</h3>
 			<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
 			<div>
 				<table class="table table-bordered table-hover">
@@ -60,7 +60,7 @@
 						<tr>
 							<td>{{transformation.id}}</td>
 							<td>{{transformation.name}}</td>
-							<td>{{transformation.transformation_type}}</td>
+							<td>{{transformation.get_transformation_type_display}}</td>
 							<td><code>{{transformation.filepath}}</code></td>
 							<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">{% if transformation.transformation_type == 'xslt' %}View XSL{% elif transformation.transformation_type == 'python' %}View Python{% endif %}</a></td>
 						</tr>
@@ -87,13 +87,39 @@
 						<tr>
 							<td>{{vs.id}}</td>
 							<td>{{vs.name}}</td>
-							<td>{{vs.validation_type}}</td>
+							<td>{{vs.get_validation_type_display}}</td>
 							<td><code>{{vs.filepath}}</code></td>
 							<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
 						</tr>
 					{% endfor %}
 				</table>
 				<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario</button></a></p>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Record Identifier Transformation Scenarios</h3>
+			<p>NEED TEXT HERE</p>
+			<div>
+				<table class="table table-bordered table-hover">
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Target</th>
+					</tr>
+					{% for rt in rits %}
+						<tr>
+							<td>{{rt.id}}</td>
+							<td>{{rt.name}}</td>
+							<td>{{rt.get_transformation_type_display}}</td>
+							<td>{{rt.get_transformation_target_display}}</td>
+						</tr>
+					{% endfor %}
+				</table>
+				<p><a href="{% url 'test_rits' %}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario</button></a></p>
 			</div>
 		</div>
 	</div>

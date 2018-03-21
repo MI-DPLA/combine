@@ -4,7 +4,7 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Static XML Harvest Job</h3>
+			<h3>New Job: <span class="font-weight-bold">Static XML Harvest</span></h3>
 			<p>Still nascent, Combine provides the ability to harvest records from static XML files.</p>
 		</div>
 	</div>
@@ -118,12 +118,18 @@
 				</div>
 				
 				<div class="row">
-					<div class="col-md-12">
+					<div class="col-md-6">
 						<!-- Indexing Mapping Selection -->
 						{% include 'core/index_mapping_select.html' %}
 
 						<!-- Record Validation Selection -->
 						{% include 'core/record_validation_select.html' %}
+					</div>
+					<div class="col-md-6">
+
+						<!-- Record Identifier Transformation -->
+						{% include 'core/record_identifier_transform.html' %}
+						
 					</div>
 				</div>
 
