@@ -15,7 +15,7 @@
 						{% if rits|length > 0 %}
 
 							<div class="form-group">
-								<select class="form-control" id="rits" name="rits" required>
+								<select class="form-control" id="rits" name="rits">
 									<option value=''>Select a Record Identifier Transformation Scenario...</option>
 									{% for rt in rits %}
 										<option value='{{ rt.id }}'>{{ rt.name }}</option>

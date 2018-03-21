@@ -11,57 +11,62 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-6">
+		<div class="col-md-12">
 			<form method="POST" action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 				{% csrf_token %}
 
-				<!-- optional job details -->
-				{% include 'core/job_optional_details.html' %}
+				<div class="row">
+					<div class="col-md-6">
 
-				<!-- OAI endpoint -->
-				<div class="form-group">
-					<label for="oai_endpoint_id">Select OAI endpoint to use</label>
-					<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
-						<option value="">Select an oai endpoint...</option>
-						{% for oai_endpoint in oai_endpoints %}
-							<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
-						{% endfor %}						
-					</select>
-				</div>
+						<!-- optional job details -->
+						{% include 'core/job_optional_details.html' %}
 
-				<!-- optional OAI endpoint defaults overrides -->				
-				<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
-					<p class="text-danger font-weight-bold">Below are default settings for this configured OAI Endpoint, but can be selectively overridden for this job</p>
-					
-					<div class="form-group">
-						<label for="verb">OAI Verb</label>
-						<select class="form-control" id="verb" name="verb">
-							<option value="">Select OAI verb...</option>
-							<option value="ListRecords">ListRecords</option>
-							<option value="ListSets">ListSets</option>						
-						</select>
-					</div>
+						<!-- OAI endpoint -->
+						<div class="form-group">
+							<label for="oai_endpoint_id">Select OAI endpoint to use</label>
+							<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
+								<option value="">Select an oai endpoint...</option>
+								{% for oai_endpoint in oai_endpoints %}
+									<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
+								{% endfor %}						
+							</select>
+						</div>
 
-					<div class="form-group">
-						<label for="metadataPrefix">OAI metadata prefix</label>
-						<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="e.g. mods, MODS, oai_dc, etc.">
-					</div>
+						<!-- optional OAI endpoint defaults overrides -->				
+						<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
+							<p class="text-danger font-weight-bold">Below are default settings for this configured OAI Endpoint, but can be selectively overridden for this job</p>
+							
+							<div class="form-group">
+								<label for="verb">OAI Verb</label>
+								<select class="form-control" id="verb" name="verb">
+									<option value="">Select OAI verb...</option>
+									<option value="ListRecords">ListRecords</option>
+									<option value="ListSets">ListSets</option>						
+								</select>
+							</div>
 
-					<div class="form-group">
-						<label for="scope_type">Scope type</label>
-						<select class="form-control" id="scope_type" name="scope_type">
-							<option value="">Select scope type...</option>
-							<option value="setList">setList</option>
-							<option value="whiteList">whiteList</option>
-							<option value="blackList">blackList</option>
-							<option value="harvestAllSets">harvestAllSets</option>					
-						</select>
-					</div>
+							<div class="form-group">
+								<label for="metadataPrefix">OAI metadata prefix</label>
+								<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="e.g. mods, MODS, oai_dc, etc.">
+							</div>
 
-					<div class="form-group">
-						<label for="scope_value">Scope value</label>
-						<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
+							<div class="form-group">
+								<label for="scope_type">Scope type</label>
+								<select class="form-control" id="scope_type" name="scope_type">
+									<option value="">Select scope type...</option>
+									<option value="setList">setList</option>
+									<option value="whiteList">whiteList</option>
+									<option value="blackList">blackList</option>
+									<option value="harvestAllSets">harvestAllSets</option>					
+								</select>
+							</div>
+
+							<div class="form-group">
+								<label for="scope_value">Scope value</label>
+								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
+							</div>
+						</div>
 					</div>
 				</div>
 

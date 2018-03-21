@@ -1797,7 +1797,7 @@ class RecordIdentifierTransformationScenario(models.Model):
 	name = models.CharField(max_length=255)
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('regex','Java Regular Expressions'),('python','Python Code Snippet'),('xpath','XPath Expression')]
+		choices=[('regex','Python Regular Expression'),('python','Python Code Snippet'),('xpath','XPath Expression')]
 	)
 	transformation_target = models.CharField(
 		max_length=255,
@@ -3259,6 +3259,7 @@ class HarvestOAIJob(HarvestJob):
 			self.oai_endpoint = oai_endpoint
 			self.overrides = overrides
 			self.validation_scenarios = validation_scenarios
+			self.rits = rits
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3382,6 +3383,9 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# get validation scenarios
 			self.validation_scenarios = validation_scenarios
+
+			# rits
+			self.rits = rits
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3631,6 +3635,7 @@ class TransformJob(CombineJob):
 			self.transformation = transformation
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
+			self.rits = rits
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4009,6 +4014,7 @@ class AnalysisJob(CombineJob):
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
+			self.rits = rits
 
 			# if job name not provided, provide default
 			if not self.job_name:

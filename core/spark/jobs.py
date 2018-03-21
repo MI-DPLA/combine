@@ -7,6 +7,7 @@ import hashlib
 import json
 from lxml import etree
 import os
+import re
 import requests
 import shutil
 import sys
@@ -982,17 +983,43 @@ def run_rits(records_df, rits_id):
 		# handle regex
 		if rits.transformation_type == 'regex':
 
-			# target of record_id
-			if rits.transformation_target == 'record_id':
-				records_df = records_df.withColumn('record_id', regexp_replace(
-					records_df.record_id, rits.regex_match_payload, rits.regex_replace_payload)
+				# define udf function for python transformation
+			def regex_record_id_trans_udf(row, match, replace, trans_target):
+				
+				try:
+					
+					# use python's re module to perform regex
+					if trans_target == 'record_id':
+						trans_result = re.sub(match, replace, row.record_id)
+					if trans_target == 'document':
+						trans_result = re.sub(match, replace, row.document)
+
+					# run transformation
+					success = 1
+					error = row.error
+
+				except Exception as e:
+					trans_result = str(e)
+					error = 'record_id transformation failure'
+					success = 0
+
+				# return Row
+				return Row(
+					combine_id = row.combine_id,
+					record_id = trans_result,
+					document = row.document,
+					error = error,
+					job_id = row.job_id,
+					oai_set = row.oai_set,
+					success = success
 				)
 
-			# target of document
-			if rits.transformation_target == 'document':
-				records_df = records_df.withColumn('document', regexp_replace(
-					records_df.document, rits.regex_match_payload, rits.regex_replace_payload)
-				)
+			# transform via rdd.map and return			
+			match = rits.regex_match_payload
+			replace = rits.regex_replace_payload
+			trans_target = rits.transformation_target
+			records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
+			records_df = records_rdd.toDF()
 
 		# handle python
 		if rits.transformation_type == 'python':	
