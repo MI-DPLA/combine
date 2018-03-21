@@ -992,8 +992,7 @@ def run_rits(records_df, rits_id):
 		if rits.transformation_type == 'python':	
 
 			# define udf function for python transformation
-			def record_id_trans_udf(row, python_code, trans_target):
-				
+			def python_record_id_trans_udf(row, python_code, trans_target):
 				
 				# get python function from Transformation Scenario
 				temp_mod = ModuleType('temp_mod')
@@ -1022,13 +1021,40 @@ def run_rits(records_df, rits_id):
 			# transform via rdd.map and return			
 			python_code = rits.python_payload
 			trans_target = rits.transformation_target
-			records_rdd = records_df.rdd.map(lambda row: record_id_trans_udf(row, python_code, trans_target))
+			records_rdd = records_df.rdd.map(lambda row: python_record_id_trans_udf(row, python_code, trans_target))
 			records_df = records_rdd.toDF()
 
 		# handle xpath
 		if rits.transformation_type == 'xpath':
-			print('xpath record_id transformation not yet implemented')
-			records_df = records_df
+			
+			# define udf function for python transformation
+			def xpath_record_id_trans_udf(row, xpath):				
+
+				# establish python udf record, forcing 'document' type trans for XPath				
+				pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+				# run xpath and retrieve value
+				xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
+				if len(xpath_query) == 1:
+					trans_result = xpath_query[0].text
+				else:
+					trans_result = 'more than one node found for XPath query'
+
+				# return Row
+				return Row(
+					combine_id = row.combine_id,
+					record_id = trans_result,
+					document = row.document,
+					error = row.error,
+					job_id = row.job_id,
+					oai_set = row.oai_set,
+					success = row.success
+				)
+
+			# transform via rdd.map and return			
+			xpath = rits.xpath_payload			
+			records_rdd = records_df.rdd.map(lambda row: xpath_record_id_trans_udf(row, xpath))
+			records_df = records_rdd.toDF()
 		
 		# return
 		print("###################### /RITS ############################")
@@ -1036,9 +1062,6 @@ def run_rits(records_df, rits_id):
 
 	# else return dataframe untouched
 	else:
-
-		print('we got nothing.')
-		print("###################### /RITS ############################")
 		return records_df
 
 
