@@ -195,6 +195,9 @@ class HarvestOAISpark(object):
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
 
+		# run record identifier transformations (rits) if present
+		records = run_rits(records, kwargs.get('rits', False))
+
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
@@ -372,6 +375,9 @@ class HarvestStaticXMLSpark(object):
 		job_id = job.id		
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
+		# run record identifier transformations (rits) if present
+		records = run_rits(records, kwargs.get('rits', False))
+
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
@@ -470,6 +476,9 @@ class TransformSpark(object):
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
+
+		# run record identifier transformations (rits) if present
+		records = run_rits(records, kwargs.get('rits', False))
 
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
@@ -976,7 +985,7 @@ def run_rits(records_df, rits_id):
 	'''
 	
 	# if rits id provided
-	if rits_id:
+	if rits_id and rits_id != None:
 
 		rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
 
