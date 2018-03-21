@@ -959,22 +959,28 @@ def get_job_db_bounds(job):
 def run_rits(records_df, rits_id):
 
 	'''
-	Function to run Record Identifier Transformation Scenarios (rits) if present
+	Function to run Record Identifier Transformation Scenarios (rits) if present.
+
+	RITS can be of three types:
+		1) 'regex' - Java Regular Expressions
+		2) 'python' - Python Code Snippets
+		3) 'xpath' - XPath expression
+
+	Each are handled differently, but all strive to return a dataframe (records_df),
+	with the `record_id` column modified.
+
+	Args:
+		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+		rits_id (string|int): DB identifier of pre-configured RITS
 	'''
-	
-	print("###################### RITS ############################")
 	
 	# if rits id provided
 	if rits_id:
 
 		rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
-		print(rits.name)
 
 		# handle regex
 		if rits.transformation_type == 'regex':
-
-			print(rits.regex_match_payload)
-			print(rits.regex_replace_payload)
 
 			# target of record_id
 			if rits.transformation_target == 'record_id':
@@ -994,28 +1000,36 @@ def run_rits(records_df, rits_id):
 			# define udf function for python transformation
 			def python_record_id_trans_udf(row, python_code, trans_target):
 				
-				# get python function from Transformation Scenario
-				temp_mod = ModuleType('temp_mod')
-				exec(python_code, temp_mod.__dict__)
+				try:
+					# get python function from Transformation Scenario
+					temp_mod = ModuleType('temp_mod')
+					exec(python_code, temp_mod.__dict__)
 
-				# establish python udf record
-				if trans_target == 'record_id':
-					pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
-				if trans_target == 'document':
-					pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+					# establish python udf record
+					if trans_target == 'record_id':
+						pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
+					if trans_target == 'document':
+						pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
 
-				# run transformation
-				trans_result = temp_mod.transform_identifier(pyudfr)
+					# run transformation
+					trans_result = temp_mod.transform_identifier(pyudfr)
+					success = 1
+					error = row.error
+
+				except Exception as e:
+					trans_result = str(e)
+					error = 'record_id transformation failure'
+					success = 0
 
 				# return Row
 				return Row(
 					combine_id = row.combine_id,
 					record_id = trans_result,
 					document = row.document,
-					error = row.error,
+					error = error,
 					job_id = row.job_id,
 					oai_set = row.oai_set,
-					success = row.success
+					success = success
 				)
 
 			# transform via rdd.map and return			
@@ -1026,8 +1040,14 @@ def run_rits(records_df, rits_id):
 
 		# handle xpath
 		if rits.transformation_type == 'xpath':
+
+			'''
+			Currently XPath RITS are handled via python and etree,
+			but might be worth investigating if this could be performed
+			via pyjxslt to support XPath 2.0
+			'''
 			
-			# define udf function for python transformation
+			# define udf function for xpath expression
 			def xpath_record_id_trans_udf(row, xpath):				
 
 				# establish python udf record, forcing 'document' type trans for XPath				
@@ -1037,18 +1057,26 @@ def run_rits(records_df, rits_id):
 				xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
 				if len(xpath_query) == 1:
 					trans_result = xpath_query[0].text
+					success = 1
+					error = row.error
+				elif len(xpath_query) == 0:
+					trans_result = 'xpath expression found nothing'
+					success = 0
+					error = 'record_id transformation failure'
 				else:
 					trans_result = 'more than one node found for XPath query'
+					success = 0
+					error = 'record_id transformation failure'
 
 				# return Row
 				return Row(
 					combine_id = row.combine_id,
 					record_id = trans_result,
 					document = row.document,
-					error = row.error,
+					error = error,
 					job_id = row.job_id,
 					oai_set = row.oai_set,
-					success = row.success
+					success = success
 				)
 
 			# transform via rdd.map and return			
@@ -1057,7 +1085,6 @@ def run_rits(records_df, rits_id):
 			records_df = records_rdd.toDF()
 		
 		# return
-		print("###################### /RITS ############################")
 		return records_df
 
 	# else return dataframe untouched
