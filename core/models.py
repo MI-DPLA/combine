@@ -3223,7 +3223,8 @@ class HarvestOAIJob(HarvestJob):
 		index_mapper=None,
 		oai_endpoint=None,
 		overrides=None,
-		validation_scenarios=[]):
+		validation_scenarios=[],
+		rits=None):
 
 		'''
 		Args:
@@ -3288,7 +3289,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits="%(rits)s")' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -3297,7 +3298,8 @@ class HarvestOAIJob(HarvestJob):
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
+				'rits':self.rits
 			}
 		}
 
@@ -3331,7 +3333,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		job_id=None,
 		index_mapper=None,
 		payload_dict=None,
-		validation_scenarios=[]):
+		validation_scenarios=[],
+		rits=None):
 
 		'''
 		Args:
@@ -3551,7 +3554,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits="%(rits)s")' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -3559,7 +3562,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
+				'rits':self.rits
 			}
 		}
 
@@ -3592,7 +3596,8 @@ class TransformJob(CombineJob):
 		transformation=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=[]):
+		validation_scenarios=[],
+		rits=None):
 
 		'''
 		Args:
@@ -3684,13 +3689,14 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits="%(rits)s")' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
+				'rits':self.rits
 			}
 		}
 
@@ -3973,7 +3979,8 @@ class AnalysisJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None,
-		validation_scenarios=[]):
+		validation_scenarios=[],
+		rits=None):
 
 		'''
 		Args:
@@ -4121,12 +4128,13 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s")' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits="%(rits)s")' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ])
+				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
+				'rits':self.rits
 			}
 		}
 
