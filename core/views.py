@@ -611,6 +611,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
@@ -619,6 +622,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'record_group':record_group,
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
@@ -655,6 +659,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -664,7 +671,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -693,6 +701,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 	# get index mappers
 	index_mappers = models.IndexMappers.get_mappers()
+
+	# get record identifier transformation scenarios
+	rits = models.RecordIdentifierTransformationScenario.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -701,6 +712,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		return render(request, 'core/job_harvest_static_xml.html', {
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request.path)
 			})
@@ -768,6 +780,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -776,7 +791,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			record_group=record_group,
 			index_mapper=index_mapper,
 			payload_dict=payload_dict,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -815,6 +831,9 @@ def job_transform(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
@@ -825,6 +844,7 @@ def job_transform(request, org_id, record_group_id):
 				'input_jobs':input_jobs,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
 				'breadcrumbs':breadcrumb_parser(request.path)
@@ -862,6 +882,9 @@ def job_transform(request, org_id, record_group_id):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -871,7 +894,8 @@ def job_transform(request, org_id, record_group_id):
 			input_job=input_job,
 			transformation=transformation,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
@@ -1722,6 +1746,9 @@ def job_analysis(request):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get record identifier transformation scenarios
+		rits = models.RecordIdentifierTransformationScenario.objects.all()
+
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
@@ -1730,6 +1757,7 @@ def job_analysis(request):
 				'job_select_type':'multiple',				
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
+				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld)				
 			})
@@ -1762,6 +1790,9 @@ def job_analysis(request):
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+		# handle requested record_id transform
+		rits = request.POST.get('rits')
+
 		# initiate job
 		cjob = models.AnalysisJob(
 			job_name=job_name,
@@ -1769,7 +1800,8 @@ def job_analysis(request):
 			user=request.user,			
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios
+			validation_scenarios=validation_scenarios,
+			rits=rits
 		)
 		
 		# start job and update status
