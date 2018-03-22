@@ -142,7 +142,7 @@ def transform_identifier(record):
 						<label for="record_id_transform_type">Select the transformation typ:</label>
 						<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
 							<option value=''>Select one...</option>
-							<option value='regex'>Python Regular Expression</option>
+							<option value='regex'>Regular Expression</option>
 							<option value='python'>Python Code Snippet</option>
 							<option value='xpath'>XPath Expression</option>
 						</select>
@@ -174,10 +174,12 @@ def transform_identifier(record):
 						<div id="regex_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">						
 							<div class="form-group">
 								<label for="regex_match_payload">Regex match pattern:</label>
+								<p class="font-italic">Python regular expression syntax required</p>
 								<input type="text" class="code_style form-control" id="regex_match_payload" name="regex_match_payload"/>
 							</div>
 							<div class="form-group">
 								<label for="regex_replace_payload">Regex replace pattern:</label>
+								<p class="font-italic">Python regular expression syntax required</p>
 								<input type="text" class="code_style form-control" id="regex_replace_payload" name="regex_replace_payload"/>
 							</div>
 						</div>
@@ -185,7 +187,7 @@ def transform_identifier(record):
 						<div id="python_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
 							<div class="form-group">
 								<label for="python_payload">Python code for transformation:</label>
-								<p>Current debug requirements: function named <code>transform_identifier(test_input)</code> with single argument for input payload (<code>test_input</code>, identifier or raw XML).</p>
+								<p class="font-italic">A function named <code>transform_identifier(record)</code> is required, with the single argument <code>record</code> containing the properties outlined above</p>
 								<textarea class="code_style form-control" id="python_payload" name="python_payload" rows="3"></textarea>
 							</div>
 						</div>
@@ -193,6 +195,7 @@ def transform_identifier(record):
 						<div id="xpath_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
 							<div class="form-group">
 								<label for="xpath_payload">XPath expression:</label>
+								<p class="font-italic">Only works with "Record's XML document" as input</p>
 								<input type="text" class="code_style form-control" id="xpath_payload" name="xpath_payload"/>
 							</div>
 						</div>

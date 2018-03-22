@@ -1797,7 +1797,7 @@ class RecordIdentifierTransformationScenario(models.Model):
 	name = models.CharField(max_length=255)
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('regex','Python Regular Expression'),('python','Python Code Snippet'),('xpath','XPath Expression')]
+		choices=[('regex','Regular Expression'),('python','Python Code Snippet'),('xpath','XPath Expression')]
 	)
 	transformation_target = models.CharField(
 		max_length=255,
