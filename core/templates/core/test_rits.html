@@ -11,9 +11,9 @@
 
 				<h5>Overview</h5>
 
-				<p>This area allows you to test <span class="font-weight-bold">Record Identifier Transformation Scenarios (RITS)</span> in preparation for including with a Job.  Additional information about Record Identifiers can be [found here](https://github.com/WSULib/combine/blob/master/docs/record_identifiers.md).</p>
+				<p>This area allows you to test <span class="font-weight-bold">Record Identifier Transformation Scenarios (RITS)</span> in preparation for including with a Job.  Additional information about Record Identifiers can be <a href="https://github.com/WSULib/combine/blob/master/docs/record_identifiers.md">found here</a>.</p>
 
-				<p>In short: Record Identifiers, stored in the <code>record_id</code> column for each Record, are used as the unique identifier when <span class="font-weight-bold">publishing</span> or <span class="font-weight-bold">de-duping</span> Records within Combine.  For publishing, the form and uniqueness of this identifier is particularly imporant.  Consider the following example.</p>
+				<p><span class="font-weight-bold">In short:</span> Record Identifiers, stored in the <code>record_id</code> column for each Record, are used as the unique identifier when <span class="font-weight-bold">publishing</span> or <span class="font-weight-bold">de-duping</span> Records within Combine.  For publishing, the form and uniqueness of this identifier is particularly imporant.  Consider the following example.</p>
 
 				<p>At some point in the past, a record was sent to DPLA with the following identifier:</p>
 
@@ -35,7 +35,7 @@
 					</ul>
 				</p>
 
-				<p>For each type, a user has the option of using the Record's current identifier as input for transformation, or particularly in the case of XPath or Python Code Snippets, the Record's actual XML document as raw material for crafting a new one.  This is referred to as the "input" for the transformation process.</p>
+				<p>For each type, a user has the option of using the Record's current identifier, <code>record_id</code>, as input for transformation, or particularly in the case of XPath or Python Code Snippets, the Record's actual XML document as input for crafting a new one.  This is referred to as the "input" for the transformation process.</p>
 
 				<p>Both the "type" and the "input" are configured with the RITS.</p>
 
@@ -50,7 +50,7 @@
 					</ul>
 				</p>
 
-				<p>Fairly straightforward for this example, with no real regex or group replacement, those options would be available as well.</p>
+				<p>Fairly straightforward for this example, not utilizing complex regex matching or group replacement, anything matching and replacing that regex supports would be possible.</p>
 
 				<h5>Python Code Snippets</h5>
 
@@ -90,6 +90,16 @@ def transform_identifier(record):
 				<h5>XPath Expression</h5>
 
 				<p>Finally, XPath expressions are an option as well.  The "input" for an XPath transformation must be the Record's document, not the <code>record_id</code>.  This is provided as a single XPath expression for the RITS scenario, and must resolve to a single, text node.</p>
+
+				<h5>Testing</h5>
+
+				<p>Any of these transformation types can be tested below.</p>
+
+				<ol>
+					<li>Search for and select a row to test on by clicking the row in the table</li>
+					<li>Select a pre-existing RITS scenario if configured, or input the parameters for a new one in the form below</li>
+					<li>Click "Test Record Identifier Transformation" to see the output of the transformation</li>
+				</ol>
 			</div>		
 
 		</div>
