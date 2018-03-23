@@ -1,7 +1,10 @@
 {% load static %}
 {% block content %}
+
 <div class="row">
 	<div class="col-md-12">
+	<form method="POST" action="delete_jobs">
+	{% csrf_token %}
 		<table id="jobs_table" class="table table-bordered table-hover">
 			<thead>
 				<tr>
@@ -27,7 +30,7 @@
 			<tbody>
 			{% for job in jobs %}
 				<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" value="{{ job.id }}" name="jobnum"> {{ job.id }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
@@ -83,6 +86,8 @@
 			{% endfor %}
 			</tbody>
 		</table>
+	<input type="submit" value="Delete Jobs" name="Delete" />
+	</form>
 		<script>
 			$(document).ready(function() {
 			    jobs_table = $('#jobs_table').DataTable({
