@@ -451,7 +451,7 @@ def all_jobs(request):
 
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
-	
+
 	stime = time.time()
 
 	logger.debug('deleting job by id: %s' % job_id)
@@ -473,6 +473,36 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 	# redirect
 	return redirect(request.META.get('HTTP_REFERER'))
+
+
+@login_required
+def delete_jobs(request):
+
+		logger.debug('deleting jobs')
+		
+		job_ids = request.POST.getlist('job_ids[]')
+		logger.debug(job_ids)
+
+		# loop through job_ids
+		for job_id in job_ids:
+
+			logger.debug('deleting job by ids: %s' % job_id)
+			
+			# get job
+			job = models.Job.objects.get(pk=int(job_id))
+
+			# set job status to deleting
+			job.name = "%s (DELETING)" % job.name
+			job.deleted = True
+			job.status = 'deleting'
+			job.save()
+
+			# remove via background tasks
+			bg_task = tasks.job_delete(job.id)
+			logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+
+		# return
+		return JsonResponse({'results':True})
 
 
 @login_required

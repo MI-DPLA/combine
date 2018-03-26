@@ -4,12 +4,102 @@
 	
 	<div class="row">
 		<div class="col-md-8">
-			<h2>Test Record Identifier Transformation Scenario (RITS)</h2>			
+			<h2>Test Record Identifier Transformation Scenario</h2>			
 			<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#validation_instructions').toggle();">Instructions</button></p>
 
 			<div id="validation_instructions" style="display:none;">
+
 				<h5>Overview</h5>
-				<p class="text-danger">Explantory text needed...</p>
+
+				<p>This area allows you to test <span class="font-weight-bold">Record Identifier Transformation Scenarios (RITS)</span> in preparation for including with a Job.  Additional information about Record Identifiers can be <a href="https://github.com/WSULib/combine/blob/master/docs/record_identifiers.md">found here</a>.</p>
+
+				<p><span class="font-weight-bold">In short:</span> Record Identifiers, stored in the <code>record_id</code> column for each Record, are used as the unique identifier when <span class="font-weight-bold">publishing</span> or <span class="font-weight-bold">de-duping</span> Records within Combine.  For publishing, the form and uniqueness of this identifier is particularly imporant.  Consider the following example.</p>
+
+				<p>At some point in the past, a record was sent to DPLA with the following identifier:</p>
+
+				<p><pre><code class="code_style">oai:host_foo:set_bar:host_goober:set_tronic:repository_identifier_baz</code></pre></p>
+
+				<p>This identifier was the result of a handful of OAI-PMH server harvests or "hops", each further prefixing the original identifier of <code>repository_identifier_baz</code>.  As most are likely keenly aware, server architecture and workflows can change.  With changes to where, and how, records destined for DPLA are harvested and transformed, there is a very good chance the identifier will change along the way.  To illustrate this, here is a <span class="font-italic">similar</span> but not <span class="font-italic">identical</span> identifier for the same intellectual item, altered because it is now harvested from another OAI-PMH set:</p>
+
+				<p><pre><code class="code_style">oai:host_foo:set_bar:host_goober:set_electric:repository_identifier_baz</code></pre></p>
+
+				<p>It can be observed that the second set, <code>set_tronic</code> has changed to <code>set_electric</code>, breaking the continuity of this record's identifier if bound for DPLA.  Futhermore, this change likely applies to group of records with the same origins and workflows.  Thankfully, we can change that!  <span class="font-weight-bold">Note:</span> this does not change any metadata for the record itself, merely the identifier associated with this Record through OAI-PMH harvests and "hops".</p>
+
+				<p>When running any Job in Combine, it is possible to apply a <span class="font-weight-bold">Record Identifier Transformation Scenarios (RITS)</span> that can alter the Record's identifier.  When an identifier is altered, it remains changed through all downstream jobs, and eventual publishing.</p>
+
+				<p>There are three transformation "types" supported:
+					<ul>
+						<li>Regular Expressions (python syntax)</li>
+						<li>Python Code Snippets</li>
+						<li>XPath Expression</li>
+					</ul>
+				</p>
+
+				<p>For each type, a user has the option of using the Record's current identifier, <code>record_id</code>, as input for transformation, or particularly in the case of XPath or Python Code Snippets, the Record's actual XML document as input for crafting a new one.  This is referred to as the "input" for the transformation process.</p>
+
+				<p>Both the "type" and the "input" are configured with the RITS.</p>
+
+				<h5>Regular Expression (regex)</h5>
+
+				<p>For regex style transformations, a <span class="font-weight-bold">Regex match pattern</span> and <span class="font-weight-bold">Regex replace pattern</span> are required.  This handles all the selecting, matching, and replacing with groups that regular expressions provide.  To fix the identifier for the example above, we might do the following:</p>
+
+				<p>
+					<ul>
+						<li>regex match: <code>host_goober:set_tronic:</code></li>
+						<li>regex replace: <code>host_goober:set_electric:</code></li>
+					</ul>
+				</p>
+
+				<p>Fairly straightforward for this example, not utilizing complex regex matching or group replacement, anything matching and replacing that regex supports would be possible.</p>
+
+				<h5>Python Code Snippets</h5>
+
+				<p>A bit more complex, python code snippets offer the ability to perform complex alterations.  To write a python code snippet, a single function is required called <code>transform_identifier</code>, with a single parameter automatically passed to that function that includes the Record's identifier, raw XML, and parsed XML.  Here is an example of how that might work:</p>
+
+				<pre style="background-color:#e6e6e6; padding:20px;"><code id="python_test_code" class="python">
+# free to import python modules as needed
+import re
+import hashlib
+# etc.
+
+# One required function, called `transform_identifier`, with an automatically passed positional argument,
+# good convention may be to call it "record" when defining function.
+# This object automatically passed has the following properties:
+#	- `record.record_id`: the record's identifier
+#	- `record.document`: the record's raw XML
+#	- `record.xml`: the record's raw XML parsed via lxml's etree
+#	- `record.nsmap`: namespaces from the record's parsed XML, dropping empty ones
+
+# this example function uses XPath to grab an identifier from the document and strip unwanted bit
+# or, if that's not present, use record_id
+def transform_identifier(record):
+
+	local_identifier = record.xml.xpath('//mods:identifier[@type="local"]', namespaces=record.nsmap)
+	if len(local_identifier) == 1:
+
+		l_id = local_identifier[0]		
+		return l_id.rstrip('unwanted_string')		
+
+	# fall back on record_id, if known to be good in absence of identifier in metadata record
+	else:
+		return record.record_id
+				</pre></code>
+
+				<p>This is a contrived example, but with the power of python scripting for the transformation, it is possible to do quite complex cleanup of Record identifiers if necessary.</p>
+
+				<h5>XPath Expression</h5>
+
+				<p>Finally, XPath expressions are an option as well.  The "input" for an XPath transformation must be the Record's document, not the <code>record_id</code>.  This is provided as a single XPath expression for the RITS scenario, and must resolve to a single, text node.</p>
+
+				<h5>Testing</h5>
+
+				<p>Any of these transformation types can be tested below.</p>
+
+				<ol>
+					<li>Search for and select a row to test on by clicking the row in the table</li>
+					<li>Select a pre-existing RITS scenario if configured, or input the parameters for a new one in the form below</li>
+					<li>Click "Test Record Identifier Transformation" to see the output of the transformation</li>
+				</ol>
 			</div>		
 
 		</div>
@@ -52,7 +142,7 @@
 						<label for="record_id_transform_type">Select the transformation typ:</label>
 						<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
 							<option value=''>Select one...</option>
-							<option value='regex'>Python Regular Expression</option>
+							<option value='regex'>Regular Expression</option>
 							<option value='python'>Python Code Snippet</option>
 							<option value='xpath'>XPath Expression</option>
 						</select>
@@ -84,10 +174,12 @@
 						<div id="regex_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">						
 							<div class="form-group">
 								<label for="regex_match_payload">Regex match pattern:</label>
+								<p class="font-italic">Python regular expression syntax required</p>
 								<input type="text" class="code_style form-control" id="regex_match_payload" name="regex_match_payload"/>
 							</div>
 							<div class="form-group">
 								<label for="regex_replace_payload">Regex replace pattern:</label>
+								<p class="font-italic">Python regular expression syntax required</p>
 								<input type="text" class="code_style form-control" id="regex_replace_payload" name="regex_replace_payload"/>
 							</div>
 						</div>
@@ -95,7 +187,7 @@
 						<div id="python_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
 							<div class="form-group">
 								<label for="python_payload">Python code for transformation:</label>
-								<p>Current debug requirements: function named <code>transform_identifier(test_input)</code> with single argument for input payload (<code>test_input</code>, identifier or raw XML).</p>
+								<p class="font-italic">A function named <code>transform_identifier(record)</code> is required, with the single argument <code>record</code> containing the properties outlined above</p>
 								<textarea class="code_style form-control" id="python_payload" name="python_payload" rows="3"></textarea>
 							</div>
 						</div>
@@ -103,6 +195,7 @@
 						<div id="xpath_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
 							<div class="form-group">
 								<label for="xpath_payload">XPath expression:</label>
+								<p class="font-italic">Only works with "Record's XML document" as input</p>
 								<input type="text" class="code_style form-control" id="xpath_payload" name="xpath_payload"/>
 							</div>
 						</div>

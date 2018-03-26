@@ -18,8 +18,7 @@ body {
 }
 .code_style {
 	font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-	color: #e83e8c;
-	font-size: 87.5%;
+	color: #e83e8c;	
 	word-break: break-word;
 }
 .container {

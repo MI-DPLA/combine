@@ -1,10 +1,13 @@
 {% load static %}
 {% block content %}
+
 <div class="row">
 	<div class="col-md-12">
+	{% csrf_token %}
 		<table id="jobs_table" class="table table-bordered table-hover">
 			<thead>
 				<tr>
+					<th></th>
 					<th>Job ID</th>
 					<th>Timestamp</th>
 					<th>Name</th>
@@ -27,6 +30,7 @@
 			<tbody>
 			{% for job in jobs %}
 				<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% if job.job_type != 'PublishJob' %}<input class="job_id_sel" type="checkbox" value="{{ job.id }}" name="job_id">{% endif %}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
@@ -78,14 +82,16 @@
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy</a> / <a href="http://{{ APP_HOST }}:4040" target="_blank">Spark</a></td> 
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Details</a>{% if job.job_type != 'PublishJob' %} / <a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">Delete</a>{% endif %}</td>				
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a></td>				
 				</tr>
 			{% endfor %}
 			</tbody>
 		</table>
+	
 		<script>
 			$(document).ready(function() {
 			    jobs_table = $('#jobs_table').DataTable({
+			    	"order": [[ 1, "asc" ]],
 			    	"pageLength": 100,
 			    	"lengthMenu": [ 10, 25, 100, 500 ],
 			    	{# Jinja logic for including RecordGroups #}
@@ -93,16 +99,16 @@
 				    	"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[7] == 'False'){
-		                    	$('td:nth-child(8)', row).addClass('invalid_job');
+		                    if (data[8] == 'False'){
+		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
 			            }           
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[6] == 'False'){                    	
-		                    	$('td:nth-child(7)', row).addClass('invalid_job');
+		                    if (data[7] == 'False'){                    	
+		                    	$('td:nth-child(8)', row).addClass('invalid_job');
 		                    }
 			            }
 		            {% endif %}
@@ -111,4 +117,59 @@
 		</script>
 	</div>
 </div>
+
+<div class="row">
+	<div class="col-md-12">
+		<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs</button>
+	</div>
+
+	<script>
+
+	// handle bulk job deletion
+	function delete_jobs(){
+
+		confirmation = confirm('Are you sure you want to delete the selected Jobs?');
+
+		if (confirmation){
+
+			// get values for job_ids
+			job_ids = [];
+			$(".job_id_sel:checkbox:checked").each(function(i){
+				job_ids.push($(this).val());
+			});			
+
+			// submit job ids via ajax
+			$.ajax({
+				type: "POST",
+				url: "{% url 'delete_jobs' %}",
+				data: {
+					'job_ids':job_ids,
+					'csrfmiddlewaretoken': '{{ csrf_token }}'
+				},
+				dataType:'json',
+				success: function(data){
+					console.log(data);
+					if (data.results == true) {
+						location.reload();
+					}
+					else {
+						console.log(data);
+					}
+				}
+			});	
+		}
+	}
+
+	</script>
+
+</div>
 {% endblock %}
+
+
+
+
+
+
+
+
+

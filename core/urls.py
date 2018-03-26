@@ -52,6 +52,7 @@ urlpatterns = [
 
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),
+	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),
 
 	# Records
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)$', views.record, name='record'),
@@ -91,6 +92,6 @@ urlpatterns = [
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
-    url(r'^logout$', auth_views.logout, name='logout'),
-    url(r'^', views.index, name='combine_home'),
+	url(r'^logout$', auth_views.logout, name='logout'),
+	url(r'^', views.index, name='combine_home'),
 ]
