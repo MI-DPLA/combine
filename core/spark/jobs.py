@@ -685,7 +685,6 @@ class MergeSpark(object):
 				upperBound=records_ids[-1],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-
 		input_jobs_dfs = []		
 		for input_job_id in input_jobs_ids:
 
@@ -699,6 +698,16 @@ class MergeSpark(object):
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
+
+		'''
+		# invalid records
+		SELECT r.id FROM core_record AS r LEFT OUTER JOIN core_recordvalidation rv ON r.id = rv.record_id WHERE r.job_id = 41 AND rv.record_id is not null;
+		
+		# valid records:
+		SELECT r.id FROM core_record AS r LEFT OUTER JOIN core_recordvalidation rv ON r.id = rv.record_id WHERE r.job_id = 41 AND rv.record_id is not null;
+
+		Need to perform this in Spark SQL calls to whittle down the DF
+		'''
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = job.id
