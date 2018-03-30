@@ -11,6 +11,7 @@ import json
 import logging
 from lxml import etree, isoschematron
 import os
+import pdb
 import requests
 import shutil
 import sickle
@@ -4304,17 +4305,17 @@ class DTElasticSearch(View):
 
 		# get sort params from DTinput
 		sorting_cols = 0
-		sort_key = 'order[{0}][column]'.format(sorting_cols)
+		sort_key = 'order[%s][column]' % (sorting_cols)
 		while sort_key in self.DTinput:
 			sorting_cols += 1
-			sort_key = 'order[{0}][column]'.format(sorting_cols)
+			sort_key = 'order[%s][column]' % (sorting_cols)
 
 		for i in range(sorting_cols):
 			# sorting column
 			sort_dir = 'asc'
-			sort_col = int(self.DTinput.get('order[{0}][column]'.format(i)))
+			sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
 			# sorting order
-			sort_dir = self.DTinput.get('order[{0}][dir]'.format(i))
+			sort_dir = self.DTinput.get('order[%s][dir]' % (i))
 
 			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
 		
