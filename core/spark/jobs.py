@@ -707,6 +707,26 @@ class MergeSpark(object):
 		SELECT r.id FROM core_record AS r LEFT OUTER JOIN core_recordvalidation rv ON r.id = rv.record_id WHERE r.job_id = 41 AND rv.record_id is not null;
 
 		Need to perform this in Spark SQL calls to whittle down the DF
+		####### CONSOLE ############################################################################################################
+		import django
+		# check for registered apps signifying readiness, if not, run django.setup() to run as standalone
+		if not hasattr(django, 'apps'):
+		    os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+		    sys.path.append('/opt/combine')
+		    django.setup()  
+
+		# import django settings
+		from django.conf import settings
+		from django.db import connection
+		r_df = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
+		rv_df = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_recordvalidation',properties=settings.COMBINE_DATABASE)
+
+		# get join
+		j_df = r_df.join(rv_df, r_df.id == rv_df.record_id, "left_outer")
+
+		# with show, can see have all columns, with duplicates (https://stackoverflow.com/a/33778971/1196358)
+		j_df.show(1)		
+		####### CONSOLE ############################################################################################################
 		'''
 
 		# update job column, overwriting job_id from input jobs in merge
