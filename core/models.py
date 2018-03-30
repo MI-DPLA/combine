@@ -4002,7 +4002,8 @@ class AnalysisJob(CombineJob):
 		job_id=None,
 		index_mapper=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		input_validity_valve=None):
 
 		'''
 		Args:
@@ -4013,6 +4014,8 @@ class AnalysisJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			rits (str): Identifier of Record Identifier Transformation Scenario
+			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4032,6 +4035,7 @@ class AnalysisJob(CombineJob):
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4151,13 +4155,14 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s")' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'input_validity_valve':self.input_validity_valve
 			}
 		}
 

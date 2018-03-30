@@ -625,12 +625,12 @@ class TransformSpark(object):
 class MergeSpark(object):
 
 	'''
-	Spark code for Merging records from previously run jobs
+	Spark code for running Merge type jobs.  Also used for duplciation, analysis, and others.
 	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
 	@staticmethod
-	def spark_function(spark, sc, write_avro=True, **kwargs):
+	def spark_function(spark, sc, **kwargs):
 
 		'''
 		Harvest records, select non-null, and write to avro files
@@ -717,8 +717,7 @@ class MergeSpark(object):
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=agg_df,
-			write_avro=write_avro
+			records_df=agg_df			
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output

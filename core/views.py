@@ -6,6 +6,7 @@ import json
 import logging
 from lxml import etree, isoschematron
 import os
+import pdb
 import re
 import requests
 import textwrap
@@ -690,7 +691,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
 
 		# initiate job
 		cjob = models.HarvestOAIJob(			
@@ -811,7 +814,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
 
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
@@ -913,7 +918,9 @@ def job_transform(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
 
 		# initiate job
 		cjob = models.TransformJob(
@@ -1008,7 +1015,9 @@ def job_merge(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
 
 		# initiate job
 		cjob = models.MergeJob(
@@ -1821,7 +1830,12 @@ def job_analysis(request):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None		
+
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
 
 		# initiate job
 		cjob = models.AnalysisJob(
@@ -1831,7 +1845,8 @@ def job_analysis(request):
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status
