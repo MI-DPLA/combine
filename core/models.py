@@ -1148,6 +1148,7 @@ class Record(models.Model):
 	# 	'''
 	# 	Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
 	# 	identifier.  Experiemental.
+	#	NOTE: If keeping, move to PublishedRecords, as it would require published ID as well
 
 	# 	Args:
 	# 		None
@@ -1341,6 +1342,21 @@ class Record(models.Model):
 
 		vfs = RecordValidation.objects.filter(record=self)
 		return vfs
+
+
+	def is_valid(self):
+
+		'''
+		Method to determine if record had any validation errors
+
+		Returns:
+			(boolean)
+		'''
+
+		if len(self.get_validation_errors()) > 0:
+			return False
+		else:
+			return True
 
 
 	def document_pretty_print(self):

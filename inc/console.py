@@ -9,9 +9,14 @@ def r(id):
 	return Record.objects.get(pk=int(id))
 
 
-# get Record instance
+# get Job instance
 def j(id):
 	return Job.objects.get(pk=int(id))
+
+
+# get CombineJob instance
+def cj(id):
+	return CombineJob.get_combine_job(int(id))
 
 
 # get RecordGroup instance
