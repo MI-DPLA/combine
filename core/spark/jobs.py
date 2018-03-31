@@ -46,7 +46,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
 
 
 
@@ -699,35 +699,8 @@ class MergeSpark(object):
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
-		'''
-		# invalid records
-		SELECT r.id FROM core_record AS r LEFT OUTER JOIN core_recordvalidation rv ON r.id = rv.record_id WHERE r.job_id = 41 AND rv.record_id is not null;
-		
-		# valid records:
-		SELECT r.id FROM core_record AS r LEFT OUTER JOIN core_recordvalidation rv ON r.id = rv.record_id WHERE r.job_id = 41 AND rv.record_id is not null;
-
-		Need to perform this in Spark SQL calls to whittle down the DF
-		####### CONSOLE ############################################################################################################
-		import django
-		# check for registered apps signifying readiness, if not, run django.setup() to run as standalone
-		if not hasattr(django, 'apps'):
-		    os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-		    sys.path.append('/opt/combine')
-		    django.setup()  
-
-		# import django settings
-		from django.conf import settings
-		from django.db import connection
-		r_df = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
-		rv_df = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_recordvalidation',properties=settings.COMBINE_DATABASE)
-
-		# get join
-		j_df = r_df.join(rv_df, r_df.id == rv_df.record_id, "left_outer")
-
-		# with show, can see have all columns, with duplicates (https://stackoverflow.com/a/33778971/1196358)
-		j_df.show(1)		
-		####### CONSOLE ############################################################################################################
-		'''
+		# filter based on record validity
+		agg_df = record_validity_valve(spark, agg_df, kwargs)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = job.id
@@ -1010,6 +983,9 @@ def run_rits(records_df, rits_id):
 	Args:
 		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
 		rits_id (string|int): DB identifier of pre-configured RITS
+
+	Returns:
+		
 	'''
 	
 	# if rits id provided
@@ -1155,4 +1131,48 @@ def run_rits(records_df, rits_id):
 	else:
 		return records_df
 
+
+def record_validity_valve(spark, records_df, kwargs):
+
+	'''
+	Helper function to include all, valid, or invalid records only 
+
+	Args:
+		spark (pyspark.sql.session.SparkSession): provided by pyspark context
+		records_df (pyspark.sql.DataFrame): DataFrame of records pre validity filtering
+		kwargs (dict): kwargs
+
+	Returns:
+		(pyspark.sql.DataFrame): DataFrame of records post validity filtering
+	'''
+
+	# if all, return untouched
+	if kwargs['input_validity_valve'] == 'all':
+		filtered_df = records_df
+
+	# else, returning valid or invalid
+	else:
+
+		# prepare record validations as dataframe, selecting only distinct record_ids
+		rvs = RecordValidation.objects.all().order_by('id')
+		rv_df = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_recordvalidation',
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=rvs.first().id,
+				upperBound=rvs.last().id,
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			).select('record_id').distinct()
+
+		# return valid records		
+		if kwargs['input_validity_valve'] == 'valid':
+			filtered_df = records_df.join(rv_df, records_df.id == rv_df.record_id, 'leftanti').select(records_df['*'])
+
+		# return invalid records		
+		if kwargs['input_validity_valve'] == 'invalid':
+			filtered_df = records_df.join(rv_df, records_df.id == rv_df.record_id, 'leftsemi').select(records_df['*'])
+
+	# return
+	return filtered_df
 
