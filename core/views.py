@@ -693,7 +693,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# handle requested record_id transform
 		rits = request.POST.get('rits', None)
 		if rits == '':
-			rits = None	
+			rits = None
 
 		# initiate job
 		cjob = models.HarvestOAIJob(			
@@ -922,6 +922,9 @@ def job_transform(request, org_id, record_group_id):
 		if rits == '':
 			rits = None	
 
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -932,7 +935,8 @@ def job_transform(request, org_id, record_group_id):
 			transformation=transformation,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status
@@ -1019,6 +1023,9 @@ def job_merge(request, org_id, record_group_id):
 		if rits == '':
 			rits = None	
 
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -1028,7 +1035,8 @@ def job_merge(request, org_id, record_group_id):
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status

@@ -463,6 +463,9 @@ class TransformSpark(object):
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
 
+		# filter based on record validity
+		records = record_validity_valve(spark, records, kwargs)
+
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
 
@@ -1135,7 +1138,7 @@ def run_rits(records_df, rits_id):
 def record_validity_valve(spark, records_df, kwargs):
 
 	'''
-	Helper function to include all, valid, or invalid records only 
+	Helper function to include all, valid, or invalid records only for downstream jobs
 
 	Args:
 		spark (pyspark.sql.session.SparkSession): provided by pyspark context
