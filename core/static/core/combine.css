@@ -48,6 +48,9 @@ table {
 label {
 	font-weight: bold;
 }
+.gray_box {
+	background-color: #f5f5f5;
+}
 
 /* consider darkening lines in table with something similar */
 /*.table-bordered td, .table-bordered th {
