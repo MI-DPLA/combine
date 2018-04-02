@@ -792,7 +792,9 @@ class Job(models.Model):
 					ld['edges'].append({
 						'id':edge_id,
 						'from':from_node,
-						'to':to_node
+						'to':to_node,
+						'input_validity_valve':link.input_validity_valve,
+						'input_validity_valve_pretty':link.get_input_validity_valve_display()
 					})
 
 				# recurse

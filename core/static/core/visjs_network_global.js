@@ -81,7 +81,41 @@ function styleNetworkEdges(edge){
 			scaleFactor:1,
 			type:'arrow'
 		}
+	};
+
+	// set edge label based on input validity type
+	edge.label = edge.input_validity_valve_pretty;
+
+	// all records edge
+	if (edge.input_validity_valve == 'all'){
+		edge.color = {
+			color:'orange'
+		};
+		edge.font = {
+			color:'orange'
+		}	
 	}
+	
+	// valid records edge
+	if (edge.input_validity_valve == 'valid'){
+		edge.color = {
+			color:'green'
+		};
+		edge.font = {
+			color:'green'
+		}
+	}
+
+	// invalid records edge
+	if (edge.input_validity_valve == 'invalid'){
+		edge.color = {
+			color:'red'
+		};
+		edge.font = {
+			color:'red'
+		}
+	}
+
 
 }
 
