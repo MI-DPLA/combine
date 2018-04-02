@@ -938,6 +938,13 @@ class JobInput(models.Model):
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	input_job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='input_job')
+	input_validity_valve = models.CharField(
+			max_length=255,
+			default=None,
+			null=True,
+			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
+		)
+
 
 
 
@@ -3687,7 +3694,7 @@ class TransformJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
 			job_input_link.save()
 
 			# write validation links
@@ -3829,7 +3836,7 @@ class MergeJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
 				job_input_link.save()
 
 			# write validation links
@@ -3950,7 +3957,7 @@ class PublishJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve='all')
 			job_input_link.save()
 
 			# save publishing link from job to record_group
@@ -4078,7 +4085,7 @@ class AnalysisJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
 				job_input_link.save()
 
 			# write validation links

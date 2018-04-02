@@ -112,6 +112,7 @@
 					<th>Input Job Name</th>
 					<th>Job Type Family</th>
 					<th>Job Type</th>
+					<th>Record Input Type</th>
 					<th>Record Count</th>
 				</tr>
 				{% for input_job in cjob.job.jobinput_set.all %}
@@ -119,10 +120,12 @@
 					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 					<td>{{ input_job.input_job.job_type_family }}</td>
 					<td>{{ input_job.input_job.job_type }}</td>
+					<td>{{ input_job.get_input_validity_valve_display }}</td>
 					<td>{{ input_job.input_job.record_count }}</td>
 				</tr>
 				{% endfor %}
 				<tr>
+					<td></td>
 					<td></td>
 					<td></td>
 					<td><strong>Total:</strong></td>
@@ -134,7 +137,7 @@
 
 		<!-- Job Results -->
 		<div class="col-md-6">
-			<!-- <h4>Results</h4> -->
+			<h4>Results</h4>
 			<p>The following table shows details about input records, successes, and failures.</p>
 			<table class="table table-bordered table-hover">
 				<tr>
