@@ -63,7 +63,7 @@
 					base_url = "{%url 'job_lineage_json' org_id='DYNAMIC_ORG_ID' record_group_id='DYNAMIC_RG_ID' job_id='DYNAMIC_ID' %}";
 					
 					// get node
-					node_data = nodes.get(node.nodes[0])
+					node_data = nodes.get(node.nodes[0])					
 					
 					// update URL
 					base_url = base_url.replace('DYNAMIC_ID', node_data.id);
@@ -93,7 +93,7 @@
 
 									// update datatables row color
 									// find row that matches id
-									row_query = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
+									row_query = jobs_table_api.fnFindCellRowIndexes(node.id, 1);									
 
 									// if row query has hit, remove (empty list will gray out first row)
 									if (row_query.length > 0){

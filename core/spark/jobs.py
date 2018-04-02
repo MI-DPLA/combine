@@ -672,10 +672,16 @@ class MergeSpark(object):
 		records_ids = []
 		for input_job_id in input_jobs_ids:
 			input_job_temp = Job.objects.get(pk=int(input_job_id))
-			records = input_job_temp.get_records().order_by('id')
-			start_id = records.first().id
-			end_id = records.last().id
-			records_ids += [start_id, end_id]
+
+			# if job has records, continue
+			if len(input_job_temp.get_records()) > 0:
+				records = input_job_temp.get_records().order_by('id')
+				start_id = records.first().id
+				end_id = records.last().id
+				records_ids += [start_id, end_id]
+			else:
+				print("Job %s had no records, skipping" % input_job_temp.name)
+
 		records_ids.sort()		
 
 		# get list of RDDs from input jobs
@@ -722,7 +728,7 @@ class MergeSpark(object):
 			spark=spark,
 			kwargs=kwargs,
 			job=job,
-			records_df=agg_df			
+			records_df=agg_df
 		)
 
 		# run record validation scnearios if requested, using db_records from save_records() output
@@ -926,31 +932,37 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		properties=settings.COMBINE_DATABASE,
 		mode='append')
 
-	# read rows from DB for indexing to ES and writing avro
-	bounds = get_job_db_bounds(job)
-	sqldf = spark.read.jdbc(
-			settings.COMBINE_DATABASE['jdbc_url'],
-			'core_record',
-			properties=settings.COMBINE_DATABASE,
-			column='id',
-			lowerBound=bounds['lowerBound'],
-			upperBound=bounds['upperBound'],
-			numPartitions=settings.SPARK_REPARTITION
-		)
-	job_id = job.id
-	db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+	# check if anything written to DB to continue, else abort
+	if len(job.get_records()) > 0:
 
-	# index to ElasticSearch
-	if index_records and settings.INDEX_TO_ES:
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=db_records,
-			index_mapper=kwargs['index_mapper']
-		)
+		# read rows from DB for indexing to ES and writing avro
+		bounds = get_job_db_bounds(job)
+		sqldf = spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.SPARK_REPARTITION
+			)
+		job_id = job.id
+		db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
-	# return db_records for later use
-	return db_records
+		# index to ElasticSearch
+		if index_records and settings.INDEX_TO_ES:
+			ESIndex.index_job_to_es_spark(
+				spark,
+				job=job,
+				records_df=db_records,
+				index_mapper=kwargs['index_mapper']
+			)
+
+		# return db_records for later use
+		return db_records
+
+	else:		
+		raise Exception("Nothing written to disk for Job: %s" % job.name)
 
 
 def get_job_db_bounds(job):

@@ -8,6 +8,7 @@
 			<table id="jobs_table" class="table table-bordered table-hover">
 				<thead>
 					<tr>
+						<th>Select</th>
 						<th>Job ID</th>
 						<th>Name</th>
 						<th>Record Group</th>
@@ -18,13 +19,18 @@
 						<th>Timestamp</th>
 						<th>Input</th>
 						<th>Notes</th>
-						<th>Record Count</th>
-						<th>Select</th>
+						<th>Record Count</th>						
 					</tr>
 				</thead>				
 				<tbody>
 				{% for job in input_jobs %}
 					<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						<!-- assign either radio or checkbox -->
+						{% if job_select_type == 'single' %}
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}" required></td>
+						{% else %}
+							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
+						{% endif %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.name }}</td>
@@ -39,21 +45,9 @@
 									<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
 								</div>
 							{% endfor %}
-						</td>
-						{% if 'hdfs://' in job.job_output %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:50070/explorer.html#/user/combine/record_group/{{ record_group.id }}/jobs/harvest/{{ job.id }}" target="_blank">{{ job.job_output }}</a></td>
-						{% else %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>
-						{% endif %}
+						</td>						
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>						
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
-
-						<!-- assign either radio or checkbox -->
-						{% if job_select_type == 'single' %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="radio" name="input_job_id" value="{{ job.id }}" required></td>
-						{% else %}
-							<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}"></td>
-						{% endif %}
-
 					</tr>
 				{% endfor %}
 				</tbody>
@@ -80,14 +74,14 @@
 				    	pageLength: 100,
 				    	lengthMenu: [ 10, 25, 100, 500 ],
 				    	createdRow: function( row, data, dataIndex){				    		
-		                    $('td', row).addClass(data[3]);
-		                    if (data[6] == 'False'){                    	
-		                    	$('td:nth-child(7)', row).addClass('invalid_job');
+		                    $('td', row).addClass(data[4]);
+		                    if (data[7] == 'False'){                    	
+		                    	$('td:nth-child(8)', row).addClass('invalid_job');
 		                    }
 			            },
 			            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
 			            initComplete: function () {
-				            this.api().columns([2,3,4,5]).every( function () {
+				            this.api().columns([3,4,5,6]).every( function () {
 				                var column = this;
 				                var select = $('<select><option value="">All</option></select>')
 				                    .appendTo( $(column.footer()).empty() )
