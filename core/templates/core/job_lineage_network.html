@@ -8,19 +8,17 @@
 				// parse job lineage json
 				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
 
-				// style nodes
-				$(job_lineage.nodes).each(function(){
-					styleNetworkNodes(this);						
-				});
-
-				// style edges
+				// style edges and init
 				$(job_lineage.edges).each(function(){
 					styleNetworkEdges(this);
 				});
-
-				// init as viz data
-				var nodes = new vis.DataSet(job_lineage.nodes);
 				var edges = new vis.DataSet(job_lineage.edges);
+
+				// style nodes and init
+				$(job_lineage.nodes).each(function(){
+					styleNetworkNodes(this);						
+				});
+				var nodes = new vis.DataSet(job_lineage.nodes);
 
 				// create a network
 				var container = document.getElementById('job_family_diagram');
@@ -85,6 +83,7 @@
 							// loop through nodes
 							nodes.forEach(function(node){
 
+								// gray out nodes
 								if (!data.job_id_list.includes(node.id)){
 
 									// update network node colors
@@ -110,7 +109,17 @@
 											})
 										})	
 									}
+
+									// gray out all edges to this node									
+									node_edges = getEdgesOfNode(node.id)									
+									node_edges.forEach(function(edge){										
+										edge.color.color = '#efefef';
+										edge.font.color = '#efefef';
+										edges.update(edge);
+									})
+
 								}
+
 							});
 						}			
 					});
@@ -125,14 +134,26 @@
 
 					// reset node colors
 					nodes.forEach(function(node){								
-						styleNetworkNodes(node);						
+						
+						// restyle node
+						styleNetworkNodes(node);
 						nodes.update(node);
+
+						// restyle edges
+						node_edges = getEdgesOfNode(node.id)									
+						node_edges.forEach(function(edge){							
+							styleNetworkEdges(edge);
+							edges.update(edge);
+						})
+
 					})
 
 					// remove all grayed_out_dt classes
 					$(".grayed_dt_row").removeClass('grayed_dt_row');
 
 				});
+
+				
 
 			</script>	
 			

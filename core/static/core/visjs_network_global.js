@@ -65,7 +65,15 @@ function styleNetworkNodes(node){
 
 	// override if job is slated for deletion
 	if (node.deleted) {
-		node.color = '#efefef';		
+		node.color = '#efefef';
+
+		// gray out all edges to this node									
+		node_edges = getEdgesOfNode(node.id)									
+		node_edges.forEach(function(edge){										
+			edge.color.color = '#efefef';
+			edge.font.color = '#efefef';
+			edges.update(edge);
+		})
 	}
 
 }
@@ -116,9 +124,15 @@ function styleNetworkEdges(edge){
 		}
 	}
 
-
 }
 
+
+// helper function to get edges of node
+function getEdgesOfNode(nodeId) {
+		return edges.get().filter(function (edge) {
+		return edge.from === nodeId || edge.to === nodeId;
+	});
+}
 
 
 
