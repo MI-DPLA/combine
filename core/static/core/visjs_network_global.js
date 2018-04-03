@@ -84,7 +84,7 @@ function styleNetworkEdges(edge){
 	};
 
 	// set edge label based on input validity type
-	edge.label = edge.input_validity_valve_pretty;
+	edge.label = `${edge.input_validity_valve_pretty} (${edge.record_count})`;
 
 	// all records edge
 	if (edge.input_validity_valve == 'all'){

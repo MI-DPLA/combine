@@ -789,13 +789,25 @@ class Job(models.Model):
 				# add edge
 				edge_id = '%s_to_%s' % (from_node, to_node)
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
-					ld['edges'].append({
+					
+					# prepare edge dictionary
+					edge_dict = {
 						'id':edge_id,
 						'from':from_node,
 						'to':to_node,
 						'input_validity_valve':link.input_validity_valve,
 						'input_validity_valve_pretty':link.get_input_validity_valve_display()
-					})
+					}
+
+					# add record count depending in input_validity_valve
+					if link.input_validity_valve == 'all':
+						edge_dict['record_count'] = link.input_job.record_count
+					elif link.input_validity_valve == 'valid':
+						edge_dict['record_count'] = link.input_job.validation_results()['passed_count']
+					elif link.input_validity_valve == 'invalid':
+						edge_dict['record_count'] = link.input_job.validation_results()['failure_count']
+
+					ld['edges'].append(edge_dict)
 
 				# recurse
 				self._get_parent_jobs(pj, ld, directionality=directionality)
