@@ -883,6 +883,7 @@ class Job(models.Model):
 		# return dict
 		results = {
 			'verdict':True,
+			'passed_count':self.record_count,
 			'failure_count':0,
 			'validation_scenarios':[]
 		}
@@ -901,11 +902,14 @@ class Job(models.Model):
 				failure_count = jv.validation_failure_count()
 
 				if failure_count:
-					results['failure_count'] += failure_count
+					results['failure_count'] += failure_count					
 
-			# if failures found, set result to False
+			# if failures found
 			if results['failure_count'] > 0:
+				# set result to False
 				results['verdict'] = False
+				# subtract failures from passed
+				results['passed_count'] -= results['failure_count']
 
 			# add all validation scenarios
 			results['validation_scenarios'] = self.jobvalidation_set.all()
@@ -2958,7 +2962,7 @@ class CombineJob(object):
 	def get_total_input_job_record_count(self):
 
 		'''
-		Calc record count sum from all input jobs
+		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
 
 		Args:
 			None
@@ -2967,9 +2971,16 @@ class CombineJob(object):
 			(int): count of records
 		'''
 
-		if self.job.jobinput_set.count() > 0:
-			total_input_record_count = sum([input_job.input_job.record_count for input_job in self.job.jobinput_set.all()])
-			return total_input_record_count
+		if self.job.jobinput_set.count() > 0:			
+			total_record_count = 0			
+			for input_job in self.job.jobinput_set.all():
+				if input_job.input_validity_valve == 'all':
+					total_record_count += input_job.input_job.record_count
+				elif input_job.input_validity_valve == 'valid':
+					total_record_count += input_job.input_job.validation_results()['passed_count']
+				elif input_job.input_validity_valve == 'invalid':
+					total_record_count += input_job.input_job.validation_results()['failure_count']
+			return total_record_count
 		else:
 			return None
 
@@ -2985,9 +2996,6 @@ class CombineJob(object):
 		Returns:
 			(dict): Dictionary of record counts
 		'''
-
-		# DEBUG
-		stime = time.time()
 
 		r_count_dict = {}
 
@@ -3008,9 +3016,6 @@ class CombineJob(object):
 		else:
 			r_count_dict['success_percentage'] = 0.0
 
-		# DEBUG
-		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
-		
 		# return
 		return r_count_dict
 
