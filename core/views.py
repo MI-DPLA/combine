@@ -1868,24 +1868,6 @@ def job_analysis(request):
 		return redirect('analysis')
 
 
-####################################################################
-# Misc 				 											   #
-####################################################################
-
-# def test_record_id_transform(request):
-
-# 	'''
-# 	View to faciliate testing of record_id transformations	
-# 	'''
-
-# 	logger.debug(request.POST)
-
-
-
-# 	rits = models.RecordIDTransformationScenario(request.POST)
-# 	return JsonResponse(rits.test_user_input())
-
-
 
 ####################################################################
 # Datatables endpoints 											   #

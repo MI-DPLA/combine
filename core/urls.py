@@ -87,9 +87,6 @@ urlpatterns = [
 	url(r'^analysis$', views.analysis, name='analysis'),
 	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),
 
-	# Misc
-	# url(r'^misc/test_record_id_transform$', views.test_record_id_transform, name='test_record_id_transform'),
-
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
 	url(r'^logout$', auth_views.logout, name='logout'),

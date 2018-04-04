@@ -5,26 +5,26 @@ from core.models import *
 
 
 # get Record instance
-def r(id):
+def get_r(id):
 	return Record.objects.get(pk=int(id))
 
 
 # get Job instance
-def j(id):
+def get_j(id):
 	return Job.objects.get(pk=int(id))
 
 
 # get CombineJob instance
-def cj(id):
+def get_cj(id):
 	return CombineJob.get_combine_job(int(id))
 
 
 # get RecordGroup instance
-def rg(id):
+def get_rg(id):
 	return RecordGroup.objects.get(pk=int(id))
 
 
 # get Organization instance
-def o(id):
+def get_o(id):
 	return Organization.objects.get(pk=int(id))
 
