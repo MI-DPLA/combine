@@ -347,6 +347,9 @@ def record_group_delete(request, org_id, record_group_id):
 
 def record_group(request, org_id, record_group_id):
 
+	# get record groups for this organization
+	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
+
 	'''
 	View information about a single record group, including any and all jobs run
 
@@ -378,6 +381,7 @@ def record_group(request, org_id, record_group_id):
 	return render(request, 'core/record_group.html', {
 			'record_group':record_group,
 			'jobs':jobs,
+			'record_groups':record_groups,
 			'job_lineage_json':json.dumps(job_lineage),
 			'publish_set_ids':publish_set_ids,
 			'breadcrumbs':breadcrumb_parser(request.path)
@@ -416,6 +420,9 @@ def record_group_update_publish_set_id(request, org_id, record_group_id):
 @login_required
 def all_jobs(request):
 
+	# get all the record groups.
+	record_groups = models.RecordGroup.objects.exclude(for_analysis=True)
+
 	'''
 	View to show all jobs, across all Organizations, RecordGroups, and Job types
 
@@ -445,6 +452,7 @@ def all_jobs(request):
 	# render page 
 	return render(request, 'core/all_jobs.html', {
 			'jobs':jobs,
+			'record_groups':record_groups,
 			'job_lineage_json':json.dumps(ld),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
@@ -505,6 +513,30 @@ def delete_jobs(request):
 		# return
 		return JsonResponse({'results':True})
 
+@login_required
+def move_jobs(request):
+
+	logger.debug('moving jobs')
+
+	stime = time.time()
+
+	job_ids = request.POST.getlist('job_ids[]')
+	record_group_id = request.POST.getlist('record_group_id')[0]
+
+	# loop through job_ids
+	for job_id in job_ids:
+
+		logger.debug('moving job by ids: %s' % job_id)
+		
+		cjob = models.CombineJob.get_combine_job(job_id)
+		new_record_group = models.RecordGroup.objects.get(pk=record_group_id)		
+		cjob.job.record_group = new_record_group
+		cjob.job.save()
+
+		logger.debug('job has been moved ids: %s' % job_id)
+
+	# redirect
+	return JsonResponse({'results':True})
 
 @login_required
 def job_details(request, org_id, record_group_id, job_id):
