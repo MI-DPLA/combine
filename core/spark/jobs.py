@@ -195,9 +195,6 @@ class HarvestOAISpark(object):
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
 
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
-
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
@@ -366,9 +363,6 @@ class HarvestStaticXMLSpark(object):
 		job_id = job.id		
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
-
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
 			spark=spark,
@@ -461,9 +455,6 @@ class TransformSpark(object):
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
-
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
 
 		# index records to DB and index to ElasticSearch
 		db_records = save_records(
@@ -689,9 +680,6 @@ class MergeSpark(object):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
-		# run record identifier transformations (rits) if present
-		agg_df = run_rits(agg_df, kwargs.get('rits', False))
-
 		# if Analysis Job, do not write avro
 		if job.job_type == 'AnalysisJob':
 			write_avro = False
@@ -880,6 +868,9 @@ def save_records(
 		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
+	# run record identifier transformation scenario is provided
+	records_df = run_rits(records_df, kwargs.get('rits', False))
+
 	# check uniqueness (overwrites if column already exists)	
 	records_df = records_df.withColumn("unique", (
 		pyspark_sql_functions.count('record_id')\
@@ -939,7 +930,7 @@ def save_records(
 		# update `valid` column for Records based on results of ValidationScenarios
 		cursor = connection.cursor()
 		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,1,0)) WHERE r.job_id = %s" % job.id)
-		
+
 		# return db_records DataFrame
 		return db_records
 
