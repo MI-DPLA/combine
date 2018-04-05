@@ -936,6 +936,10 @@ def save_records(
 		)
 		vs.run_record_validation_scenarios()
 
+		# update `valid` column for Records based on results of ValidationScenarios
+		cursor = connection.cursor()
+		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,1,0)) WHERE r.job_id = %s" % job.id)
+		
 		# return db_records DataFrame
 		return db_records
 

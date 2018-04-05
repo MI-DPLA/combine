@@ -1923,7 +1923,7 @@ class DTRecordsJson(BaseDatatableView):
 			'success',
 			'document',
 			'error',
-			'validation_results'
+			'valid'
 		]
 
 		# define column names that will be used in sorting
@@ -1941,7 +1941,7 @@ class DTRecordsJson(BaseDatatableView):
 			'success',
 			'document',
 			'error',
-			'validation_results'
+			'valid'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
@@ -2020,13 +2020,11 @@ class DTRecordsJson(BaseDatatableView):
 					return '<span style="color:red;">Duplicate</span>'
 
 			# handle validation_results
-			elif column == 'validation_results':
-				# get validation failures
-				vfs = row.get_validation_errors()
-				if vfs.count() > 0:
-					return '<span style="color:red;">Failed</span>'
+			elif column == 'valid':				
+				if row.valid:
+					return '<span style="color:green;">Valid</span>'
 				else:
-					return '<span style="color:green;">Passed</span>'
+					return '<span style="color:red;">Invalid</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)
