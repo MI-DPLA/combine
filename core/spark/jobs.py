@@ -207,15 +207,6 @@ class HarvestOAISpark(object):
 			assign_combine_id=True
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
 		job_track.save()
@@ -387,15 +378,6 @@ class HarvestStaticXMLSpark(object):
 			assign_combine_id=True
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
 		# remove temporary payload directory if static job was upload based, not location on disk
 		if kwargs['static_type'] == 'upload':
 			shutil.rmtree(kwargs['static_payload'])
@@ -490,15 +472,6 @@ class TransformSpark(object):
 			job=job,
 			records_df=records_trans
 		)
-
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
 
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
@@ -731,15 +704,6 @@ class MergeSpark(object):
 			records_df=agg_df
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
 		# finally, update finish_timestamp of job_track instance
 		job_track.finish_timestamp = datetime.datetime.now()
 		job_track.save()
@@ -882,7 +846,15 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True, assign_combine_id=False):
+def save_records(
+	spark=None,
+	kwargs=None,
+	job=None,
+	records_df=None,
+	write_avro=settings.WRITE_AVRO,
+	index_records=settings.INDEX_TO_ES,
+	assign_combine_id=False
+):
 
 	'''
 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
@@ -908,10 +880,7 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
-	# check uniqueness (overwrites if column already exists)
-	'''
-	What is the performance hit of this uniqueness check?
-	'''
+	# check uniqueness (overwrites if column already exists)	
 	records_df = records_df.withColumn("unique", (
 		pyspark_sql_functions.count('record_id')\
 		.over(Window.partitionBy('record_id')) == 1)\
@@ -935,7 +904,7 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 	# check if anything written to DB to continue, else abort
 	if len(job.get_records()) > 0:
 
-		# read rows from DB for indexing to ES and writing avro
+		# read rows from DB for indexing to ES
 		bounds = get_job_db_bounds(job)
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
@@ -958,7 +927,16 @@ def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=
 				index_mapper=kwargs['index_mapper']
 			)
 
-		# return db_records for later use
+		# run Validation Scenarios
+		vs = ValidationScenarioSpark(
+			spark=spark,
+			job=job,
+			records_df=db_records,
+			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+		)
+		vs.run_record_validation_scenarios()
+
+		# return db_records DataFrame
 		return db_records
 
 	else:		

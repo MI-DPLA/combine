@@ -1080,6 +1080,7 @@ class Record(models.Model):
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
 	published = models.BooleanField(default=0)
+	valid = models.BooleanField(default=1)
 
 
 	# this model is managed outside of Django

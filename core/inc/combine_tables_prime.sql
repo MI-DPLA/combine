@@ -23,9 +23,11 @@ CREATE TABLE `core_record` (
   `published` tinyint(1) NOT NULL DEFAULT 0,
   `oai_set` varchar(255) DEFAULT NULL,
   `success` tinyint(1) DEFAULT 1 NOT NULL,
+  `valid` tinyint(1) DEFAULT 1 NOT NULL,  
   PRIMARY KEY (`id`),
   INDEX `core_record_job_id_idx` (`job_id`),
   INDEX `core_record_job_success_idx` (`success`)
+  INDEX `core_record_job_valid_idx` (`valid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
