@@ -113,6 +113,12 @@
 			            }
 		            {% endif %}
 			    });
+
+			    // fire when table redrawn
+			    jobs_table.on( 'draw', function () {
+				    update_lineage_on_filter();
+				} );
+				
 			} );
 		</script>
 	</div>

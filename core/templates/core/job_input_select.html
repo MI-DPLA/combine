@@ -85,7 +85,8 @@
 				                var column = this;
 				                var select = $('<select><option value="">All</option></select>')
 				                    .appendTo( $(column.footer()).empty() )
-				                    .on( 'change', function () {				                    	
+				                    .on( 'change', function () {
+
 				                        var val = $.fn.dataTable.util.escapeRegex(
 				                            $(this).val()
 				                        );
@@ -101,7 +102,14 @@
 				            } );
 				        }
 				    });
+
+				    // fire when table redrawn
+				    jobs_table.on( 'draw', function () {
+					    update_lineage_on_filter();
+					} );
+
 				} );
+
 			</script>
 		</div>
 	</div>
