@@ -1378,7 +1378,7 @@ class Record(models.Model):
 			(boolean)
 		'''
 
-		if len(self.get_validation_errors()) > 0:
+		if self.get_validation_errors().count() > 0:
 			return False
 		else:
 			return True
