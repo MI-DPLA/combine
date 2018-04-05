@@ -345,10 +345,7 @@ def record_group_delete(request, org_id, record_group_id):
 
 
 
-def record_group(request, org_id, record_group_id):
-
-	# get record groups for this organization
-	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
+def record_group(request, org_id, record_group_id):	
 
 	'''
 	View information about a single record group, including any and all jobs run
@@ -357,7 +354,7 @@ def record_group(request, org_id, record_group_id):
 		record_group_id (str/int): PK for RecordGroup table
 	'''
 	
-	logger.debug('retrieving record group ID: %s' % record_group_id)
+	logger.debug('retrieving record group ID: %s' % record_group_id)	
 
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -377,13 +374,16 @@ def record_group(request, org_id, record_group_id):
 		# update status
 		job.update_status()
 
+	# get all record groups for this organization
+	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
+
 	# render page 
 	return render(request, 'core/record_group.html', {
 			'record_group':record_group,
-			'jobs':jobs,
-			'record_groups':record_groups,
+			'jobs':jobs,			
 			'job_lineage_json':json.dumps(job_lineage),
 			'publish_set_ids':publish_set_ids,
+			'record_groups':record_groups,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
