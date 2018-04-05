@@ -123,42 +123,94 @@
 		<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs</button>
 	</div>
 
+
+	<div class="col-md-12">
+		Select Record Group to move Job to....
+		<select id="record_group_id_select" name="record_group_id">
+			{% for record_group in record_groups %}
+				<option value="{{ record_group.id }}">{{ record_group.name }}</option>
+			{% endfor %}  
+		</select>
+        	and then press button...
+        	<button type="button" id="move" class="btn btn-danger btn-sm" value="move" onclick="move_jobs(); return false;">Move Job to Record Group</button>
+	</div>
+
 	<script>
 
-	// handle bulk job deletion
-	function delete_jobs(){
+        // handle bulk job deletion
+        function delete_jobs(){
 
-		confirmation = confirm('Are you sure you want to delete the selected Jobs?');
+           confirmation = confirm('Are you sure you want to delete the selected Jobs?');
 
-		if (confirmation){
+                if (confirmation){
 
-			// get values for job_ids
-			job_ids = [];
-			$(".job_id_sel:checkbox:checked").each(function(i){
-				job_ids.push($(this).val());
-			});			
+                        // get values for job_ids
+                        job_ids = [];
+                        $(".job_id_sel:checkbox:checked").each(function(i){
+                                job_ids.push($(this).val());
+                        });                     
 
-			// submit job ids via ajax
-			$.ajax({
-				type: "POST",
-				url: "{% url 'delete_jobs' %}",
-				data: {
-					'job_ids':job_ids,
-					'csrfmiddlewaretoken': '{{ csrf_token }}'
-				},
-				dataType:'json',
-				success: function(data){
-					console.log(data);
-					if (data.results == true) {
-						location.reload();
-					}
-					else {
-						console.log(data);
-					}
-				}
-			});	
+                        // submit job ids via ajax
+                        $.ajax({
+                                type: "POST",
+                                url: "{% url 'delete_jobs' %}",
+                                data: {
+                                        'job_ids':job_ids,
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                },
+                                dataType:'json',
+                                success: function(data){
+                                        console.log(data);
+                                        if (data.results == true) {
+                                                location.reload();
+                                        }
+                                        else {
+                                                console.log(data);
+                                        }
+                                }
+                        });     
+                }
+
+        }
+
+	// handle bulk moving of jobs
+	function move_jobs(){
+
+          confirmation = confirm('Are you sure you want to move these job(s)?');
+                if (confirmation){
+
+                        // get values for job_ids
+                        job_ids = [];
+                        $(".job_id_sel:checkbox:checked").each(function(i){
+                                job_ids.push($(this).val());
+                        });                     
+
+                        // get value for record_group_id
+                        var e = document.getElementById("record_group_id_select");
+                        var record_group_id = e.options[e.selectedIndex].value;
+
+                        // submit job ids via ajax
+                        $.ajax({
+                                type: "POST",
+                                url: "{% url 'move_jobs' %}",
+                                data: {
+                                        'job_ids':job_ids,
+                                        'record_group_id':record_group_id,
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                },
+                                dataType:'json',
+                                success: function(data){
+                                        console.log(data);
+                                        if (data.results == true) {
+                                                location.reload();
+                                        }
+                                        else {
+                                                console.log(data);
+                                        }
+                                }
+			});     
 		}
-	}
+	} 
 
 	</script>
 
