@@ -919,13 +919,14 @@ def save_records(
 			)
 
 		# run Validation Scenarios
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
+		if 'validation_scenarios' in kwargs.keys():
+			vs = ValidationScenarioSpark(
+				spark=spark,
+				job=job,
+				records_df=db_records,
+				validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+			)
+			vs.run_record_validation_scenarios()
 
 		# update `valid` column for Records based on results of ValidationScenarios
 		cursor = connection.cursor()

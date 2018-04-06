@@ -86,17 +86,14 @@
 				                var select = $('<select><option value="">All</option></select>')
 				                    .appendTo( $(column.footer()).empty() )
 				                    .on( 'change', function () {
-
-				                        var val = $.fn.dataTable.util.escapeRegex(
-				                            $(this).val()
-				                        );
-				 
-				                        column
-				                            .search( val ? '^'+val+'$' : '', true, false )
-				                            .draw();
+				                        var val = $.fn.dataTable.util.escapeRegex($(this).val());				 
+				                        column.search( val ? '^'+val+'$' : '', true, false ).draw();
 				                    } );
 				 
 				                column.data().unique().sort().each( function ( d, j ) {
+				                	if (column.index() == 4){				                		
+				                		d = $(d).html();			                		
+				                	}
 				                    select.append( '<option value="'+d+'">'+d+'</option>' )
 				                } );
 				            } );

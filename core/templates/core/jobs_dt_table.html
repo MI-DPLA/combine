@@ -51,7 +51,7 @@
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><strong>{{ job.status }}</strong></td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
@@ -86,6 +86,28 @@
 				</tr>
 			{% endfor %}
 			</tbody>
+			<tfoot>
+				<tr>
+					<th></th>
+					<th></th>
+					<th></th>
+					<th></th>
+					{# Jinja logic for including RecordGroups #}
+					{% if not for_analysis %}
+						<th>Record Group</th>
+					{% endif %}
+					<th>Job Type</th>
+					<th>Status</th>
+					<th>Finished</th>
+					<th>Is Valid</th>
+					<th></th>
+					<th></th>
+					<th></th>
+					<th></th>
+					<th></th>
+					<th></th>
+				</tr>
+			</tfoot>
 		</table>
 	
 		<script>
@@ -102,7 +124,7 @@
 		                    if (data[8] == 'False'){
 		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
-			            }           
+			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
 
@@ -110,8 +132,33 @@
 		                    if (data[7] == 'False'){                    	
 		                    	$('td:nth-child(8)', row).addClass('invalid_job');
 		                    }
-			            }
+			            },
 		            {% endif %}
+		            initComplete: function () {
+		            	{% if not for_analysis %}
+		            		filter_cols = [4,5,6,7,8];
+	            		{% else %}	            			
+	            			filter_cols = [4,5,6,7];
+            			{% endif %}
+			            this.api().columns(filter_cols).every( function () {
+			                var column = this;			                
+			                var select = $('<select><option value="">All</option></select>')
+			                    .appendTo( $(column.footer()).empty() )
+			                    .on( 'change', function () {			                    	
+			                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+			                        column.search( val ? '^'+val+'$' : '', true, false ).draw();
+			                    } );
+			 
+			                column.data().unique().sort().each( function ( d, j ) {
+			                	{% if not for_analysis %}
+				                	if (column.index() == 4){
+				                		d = $(d).html();			                		
+				                	}
+			                	{% endif %}
+			                    select.append( '<option value="'+d+'">'+d+'</option>' )
+			                } );
+			            } );
+			        }
 			    });
 
 			    // fire when table redrawn

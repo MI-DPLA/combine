@@ -61,7 +61,7 @@ class OAIProvider(object):
 		}
 
 		# debug
-		logger.debug(args)
+		# logger.debug(args)
 
 		self.args = args.copy()
 		self.request_timestamp = datetime.datetime.now()
@@ -166,7 +166,13 @@ class OAIProvider(object):
 		# loop through rows, limited by current OAI transaction start / chunk
 		for record in records[self.start:(self.start+self.chunk_size)]:
 
-			record = OAIRecord(args=self.args, record_id=record.record_id, publish_set_id=record.job.record_group.publish_set_id, document=record.document, timestamp=self.request_timestamp_string)
+			record = OAIRecord(
+					args=self.args,
+					record_id=record.record_id,
+					publish_set_id=record.job.record_group.publish_set_id,
+					document=record.document,
+					timestamp=self.request_timestamp_string
+				)
 
 			# include full metadata in record
 			if include_metadata:
@@ -255,7 +261,7 @@ class OAIProvider(object):
 				ot = ot_query.first()
 
 				# set args and start and chunk_size
-				self.args = json.loads(ot.args)
+				# self.args = json.loads(ot.args)
 				self.start = ot.start
 				self.chunk_size = ot.chunk_size
 				self.publish_set_id = ot.publish_set_id
