@@ -1370,21 +1370,6 @@ class Record(models.Model):
 		return vfs
 
 
-	def is_valid(self):
-
-		'''
-		Method to determine if record had any validation errors
-
-		Returns:
-			(boolean)
-		'''
-
-		if self.get_validation_errors().count() > 0:
-			return False
-		else:
-			return True
-
-
 	def document_pretty_print(self):
 
 		'''
