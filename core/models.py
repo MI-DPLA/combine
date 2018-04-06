@@ -3935,6 +3935,7 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
