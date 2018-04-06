@@ -436,11 +436,11 @@ class TransformSpark(object):
 			)
 		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
 
-		# repartition
-		records = records.repartition(settings.SPARK_REPARTITION)
-
 		# filter based on record validity
 		records = record_validity_valve(spark, records, kwargs)
+
+		# repartition
+		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
@@ -669,11 +669,11 @@ class MergeSpark(object):
 		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
-		# repartition
-		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
-
 		# filter based on record validity
 		agg_df = record_validity_valve(spark, agg_df, kwargs)
+
+		# repartition
+		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = job.id
@@ -929,7 +929,7 @@ def save_records(
 
 		# update `valid` column for Records based on results of ValidationScenarios
 		cursor = connection.cursor()
-		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,1,0)) WHERE r.job_id = %s" % job.id)
+		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % job.id)
 
 		# return db_records DataFrame
 		return db_records
@@ -984,7 +984,7 @@ def run_rits(records_df, rits_id):
 		# handle regex
 		if rits.transformation_type == 'regex':
 
-				# define udf function for python transformation
+			# define udf function for python transformation
 			def regex_record_id_trans_udf(row, match, replace, trans_target):
 				
 				try:
@@ -1138,28 +1138,15 @@ def record_validity_valve(spark, records_df, kwargs):
 	if kwargs['input_validity_valve'] == 'all':
 		filtered_df = records_df
 
-	# else, returning valid or invalid
+	# else, filter to valid or invalid records
 	else:
-
-		# prepare record validations as dataframe, selecting only distinct record_ids
-		rvs = RecordValidation.objects.all().order_by('id')
-		rv_df = spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_recordvalidation',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=rvs.first().id,
-				upperBound=rvs.last().id,
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			).select('record_id').distinct()
-
 		# return valid records		
 		if kwargs['input_validity_valve'] == 'valid':
-			filtered_df = records_df.join(rv_df, records_df.id == rv_df.record_id, 'leftanti').select(records_df['*'])
+			filtered_df = records_df.filter(records_df.valid == 1)
 
 		# return invalid records		
 		if kwargs['input_validity_valve'] == 'invalid':
-			filtered_df = records_df.join(rv_df, records_df.id == rv_df.record_id, 'leftsemi').select(records_df['*'])
+			filtered_df = records_df.filter(records_df.valid == 0)
 
 	# return
 	return filtered_df
