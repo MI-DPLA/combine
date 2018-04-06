@@ -533,12 +533,15 @@ class TransformSpark(CombineSparkJob):
 			- transforms records via XSL, writes new records to avro files on disk
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''		
+		'''
+
+		# init job
+		self.init_job()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
 		bounds = get_job_db_bounds(input_job)
-		sqldf = spark.read.jdbc(
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -550,7 +553,7 @@ class TransformSpark(CombineSparkJob):
 		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
 		# filter based on record validity
-		records = record_validity_valve(spark, records, self.kwargs)
+		records = record_validity_valve(self.spark, records, self.kwargs)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
@@ -560,11 +563,11 @@ class TransformSpark(CombineSparkJob):
 
 		# if xslt type transformation
 		if transformation.transformation_type == 'xslt':
-			records_trans = TransformSpark.transform_xslt(spark, self.kwargs, self.job, transformation, records)
+			records_trans = self.transform_xslt(transformation, records)
 
 		# if python type transformation
 		if transformation.transformation_type == 'python':
-			records_trans = TransformSpark.transform_python(spark, self.kwargs, self.job, transformation, records)
+			records_trans = self.transform_python(transformation, records)
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
@@ -578,8 +581,7 @@ class TransformSpark(CombineSparkJob):
 		self.close_job()
 
 
-	@staticmethod
-	def transform_xslt(spark, kwargs, job, transformation, records):
+	def transform_xslt(self, transformation, records):
 
 		'''		
 		Method to transform records with XSLT, using pyjxslt server
@@ -630,13 +632,12 @@ class TransformSpark(CombineSparkJob):
 		xslt_string = transformation.payload
 
 		# transform via rdd.map and return
-		job_id = job.id			
+		job_id = self.job.id
 		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
 		return records_trans
 
 
-	@staticmethod
-	def transform_python(spark, kwargs, job, transformation, records):
+	def transform_python(self, transformation, records):
 
 		'''
 		Transform records via python code snippet.
@@ -691,7 +692,7 @@ class TransformSpark(CombineSparkJob):
 			)
 
 		# transform via rdd.map and return
-		job_id = job.id			
+		job_id = self.job.id			
 		transformation_payload = transformation.payload
 		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, transformation_payload))
 		return records_trans
