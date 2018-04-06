@@ -984,10 +984,13 @@ class MergeSpark(CombineSparkJob):
 		# if Analysis Job, do not write avro
 		if self.job.job_type == 'AnalysisJob':
 			write_avro = False
+		else:
+			write_avro = settings.WRITE_AVRO
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
-			records_df=agg_df
+			records_df=agg_df,
+			write_avro=write_avro
 		)
 
 		# close job
