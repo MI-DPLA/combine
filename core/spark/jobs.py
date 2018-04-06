@@ -1011,10 +1011,13 @@ class MergeSpark(CombineSparkJob):
 
 
 
-class PublishSpark(object):
+class PublishSpark(CombineSparkJob):
 
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	'''
+	Spark code for running Publish type jobs.	
+	'''
+	
+	def spark_function(self):
 
 		'''
 		Publish records in Combine, prepares for OAI server output
@@ -1032,27 +1035,13 @@ class PublishSpark(object):
 			- copies documents in ES from input to new published job index
 		'''
 
-		# Logging support
-		spark.sparkContext.setLogLevel('INFO')
-		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-		logger = log4jLogger.LogManager.getLogger(__name__)		
-
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
+		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
 		bounds = self.get_job_db_bounds(input_job)
-		sqldf = spark.read.jdbc(
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -1061,7 +1050,7 @@ class PublishSpark(object):
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
@@ -1070,12 +1059,12 @@ class PublishSpark(object):
 		records = records[records['document'] != '']
 
 		# update job column, overwriting job_id from input jobs in merge
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# write job output to avro
-		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
+		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(self.job.job_output)
 
 		# confirm directory exists
 		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
@@ -1083,16 +1072,13 @@ class PublishSpark(object):
 			os.mkdir(published_dir)
 
 		# get avro files
-		job_output_dir = job.job_output.split('file://')[-1]
+		job_output_dir = self.job.job_output.split('file://')[-1]
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records,
 			write_avro=False,
 			index_records=False
@@ -1101,7 +1087,7 @@ class PublishSpark(object):
 		# copy index from input job to new Publish job
 		index_to_job_index = ESIndex.copy_es_index(
 			source_index = 'j%s' % input_job.id,
-			target_index = 'j%s' % job.id,
+			target_index = 'j%s' % self.job.id,
 			wait_for_completion=False
 		)
 
@@ -1118,7 +1104,7 @@ class PublishSpark(object):
 			# if task complete, index job index to published index
 			if task['completed']:
 				index_to_published_index = ESIndex.copy_es_index(
-					source_index = 'j%s' % job.id,
+					source_index = 'j%s' % self.job.id,
 					target_index = 'published',
 					wait_for_completion = False,
 					add_copied_from = job_id # do not use Job instance here, only pass string
@@ -1137,24 +1123,14 @@ class PublishSpark(object):
 		pr = PublishedRecords()
 
 		# set records from job as published		
+		job_id = self.job.id
 		pr.set_published_field(job_id)
 
 		# update uniqueness of all published records
 		pr.update_published_uniqueness()
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
-
-
-
-####################################################################
-# Utility Functions 											   #
-####################################################################
-
-
-
-
+		# close job
+		self.close_job()
 
 
 
