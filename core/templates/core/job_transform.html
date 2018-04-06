@@ -30,7 +30,6 @@
 
 				<div class="row">
 					<div class="col-md-6">
-
 						<div class="form-group">
 							<label for="transformation_id">Select Transformation Scenario to use</label>
 							<select class="form-control" id="transformation_id" name="transformation_id" required>
@@ -39,6 +38,11 @@
 								{% endfor %}						
 							</select>
 						</div>
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-6">						
 				
 						<!-- Indexing Mapping Selection -->
 						{% include 'core/index_mapping_select.html' %}
@@ -51,6 +55,9 @@
 
 						<!-- Record Identifier Transformation -->
 						{% include 'core/record_identifier_transform.html' %}
+
+						<!-- Input Job Valid Record Valve -->
+						{% include 'core/record_valid_valve_select.html' %}
 						
 					</div>
 				</div>

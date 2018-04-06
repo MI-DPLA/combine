@@ -28,7 +28,7 @@
 							</td>
 						{% endfor %}
 					{% else %}
-						<td style="color:red;"><strong>This Record Group is not published</strong></td>
+						<td style="color:red;"><strong>This Record Group has not been published yet</strong></td>
 						<td><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Publish</button></a></td>
 					{% endif %}
 				</tr>
@@ -71,11 +71,11 @@
 		</div>		
 	</div>
 
-	<div class="row">		
+	<!-- <div class="row">		
 		<div class="col-md-12">		
 			<h4>Jobs</h4>
 		</div>
-	</div>
+	</div> -->
 
 	<!-- optional job lineage network node graph -->
 	{% include 'core/job_lineage_network.html' %}
@@ -86,16 +86,16 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-8">
+		<div class="col-md-12">
 			
-			<h4>New Job</h4>
+			<h4>Run New Job</h4>
 			
 			<table class="table table-bordered table-hover">
 				<tbody>
 					<tr>
-						<td><span class="font-weight-bold">Harvest</span></td>
-						<td>Harvests jobs are how Records are created and introduced to a Record Group.  Currently this includes OAI-PMH harvesting, or ingesting Records from static files on disk. </td>
-						<td>
+						<th style="width:10%;">Harvest</th>
+						<td>Harvests Jobs are how Records are created and introduced to a Record Group.  Currently this includes OAI-PMH harvesting, or ingesting Records from static files on disk. </td>
+						<td style="width:20%; text-align:center;">
 							<p>
 								<a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest OAI-PMH</button></a>
 							</p>
@@ -105,18 +105,18 @@
 						</td>
 					</tr>
 					<tr>
-						<td><span class="font-weight-bold">Transform</span></td>
-						<td>Transformation jobs change the Record in some way.  Currently this includes transformation of the Record's XML document with XSLT or python code snippets.  Before running a Transformation, make a <a href="{% url 'configuration' %}">pre-configured Transformation Scenario</a> exists.</td>
-						<td>
+						<th style="width:10%;">Transform</th>
+						<td>Transformation Jobs change the Records within a Job some way.  Currently this includes transformation of the Record's XML document with XSLT or python code snippets.  Before running a Transformation, make a <a href="{% url 'configuration' %}">pre-configured Transformation Scenario</a> exists.</td>
+						<td style="width:20%; text-align:center;">
 							<p>
-								<a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Transform Document</button></a>
+								<a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Transform Job</button></a>
 							</p>
 						</td>
 					</tr>
 					<tr>
-						<td><span class="font-weight-bold">Duplicate / Merge</span></td>
-						<td>Duplicate / Merge jobs do not modify the Record, but can be used to combine multiple Jobs into one Job, run new or different Validation Scenarios on a pre-existing Job, or index to ElasticSearch with a different mapping.</td>
-						<td>
+						<th style="width:10%;">Duplicate / Merge</th>
+						<td>Duplicate / Merge Jobs do not modify the Record, but can be used to combine multiple Jobs into one Job, run new or different Validation Scenarios on a pre-existing Job, or index to ElasticSearch with a different mapping.</td>
+						<td style="width:20%; text-align:center;">
 							<p>
 								<a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Duplicate / Merge Jobs</button></a>
 							</p>

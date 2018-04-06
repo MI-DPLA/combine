@@ -45,7 +45,7 @@
 				<script type="text/javascript">
 
 					// parse job lineage json
-					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');										
 
 					// style nodes
 					$(job_lineage.nodes).each(function(){
@@ -112,6 +112,7 @@
 					<th>Input Job Name</th>
 					<th>Job Type Family</th>
 					<th>Job Type</th>
+					<th>Record Input Type</th>
 					<th>Record Count</th>
 				</tr>
 				{% for input_job in cjob.job.jobinput_set.all %}
@@ -119,14 +120,24 @@
 					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 					<td>{{ input_job.input_job.job_type_family }}</td>
 					<td>{{ input_job.input_job.job_type }}</td>
-					<td>{{ input_job.input_job.record_count }}</td>
+					<td>{{ input_job.get_input_validity_valve_display }}</td>
+					<td>
+						{% if input_job.input_validity_valve == 'all' %}
+							{{ input_job.input_job.record_count }}
+						{% elif input_job.input_validity_valve == 'valid' %}
+							{{ input_job.input_job.validation_results.passed_count }}
+						{% elif input_job.input_validity_valve == 'invalid' %}
+							{{ input_job.input_job.validation_results.failure_count }}
+						{% endif %}
+					</td>
 				</tr>
 				{% endfor %}
 				<tr>
 					<td></td>
 					<td></td>
+					<td></td>
 					<td><strong>Total:</strong></td>
-					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+					<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
 				</tr>
 			</table>
 		</div>
@@ -142,9 +153,10 @@
 					<th>Job Type Family</th>
 					<th>Job Type</th>
 					<th>Total Input Records</th>
-					<th>Sucesssful Records</th>
-					<th>Errors</th>
-					<th>Success Percentage</th>
+					<th>Successfully Processed</th>
+					<th>Error in Processing</th>					
+					<th>Valid Records</th>
+					<th>Invalid Records</th>					
 				</tr>
 				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
 					<td>{{ cjob.job.name }}</td>
@@ -153,7 +165,8 @@
 					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 					<td>{{ record_count_details.records }}</td>
 					<td>{{ record_count_details.errors }}</td>
-					<td>{{ record_count_details.success_percentage }}</td>
+					<td>{{ cjob.job.validation_results.passed_count }}</td>
+					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
 			</table>
 		</div>

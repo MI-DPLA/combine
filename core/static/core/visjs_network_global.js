@@ -65,7 +65,15 @@ function styleNetworkNodes(node){
 
 	// override if job is slated for deletion
 	if (node.deleted) {
-		node.color = '#efefef';		
+		node.color = '#efefef';
+
+		// gray out all edges to this node									
+		node_edges = getEdgesOfNode(node.id)									
+		node_edges.forEach(function(edge){										
+			edge.color.color = '#efefef';
+			edge.font.color = '#efefef';
+			edges.update(edge);
+		})
 	}
 
 }
@@ -81,10 +89,50 @@ function styleNetworkEdges(edge){
 			scaleFactor:1,
 			type:'arrow'
 		}
+	};
+
+	// set edge label based on input validity type
+	edge.label = `${edge.input_validity_valve_pretty} (${edge.record_count})`;
+
+	// all records edge
+	if (edge.input_validity_valve == 'all'){
+		edge.color = {
+			color:'orange'
+		};
+		edge.font = {
+			color:'orange'
+		}	
+	}
+	
+	// valid records edge
+	if (edge.input_validity_valve == 'valid'){
+		edge.color = {
+			color:'green'
+		};
+		edge.font = {
+			color:'green'
+		}
+	}
+
+	// invalid records edge
+	if (edge.input_validity_valve == 'invalid'){
+		edge.color = {
+			color:'red'
+		};
+		edge.font = {
+			color:'red'
+		}
 	}
 
 }
 
+
+// helper function to get edges of node
+function getEdgesOfNode(nodeId) {
+		return edges.get().filter(function (edge) {
+		return edge.from === nodeId || edge.to === nodeId;
+	});
+}
 
 
 

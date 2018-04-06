@@ -46,7 +46,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
 
 
 
@@ -56,6 +56,7 @@ from core.models import CombineJob, Job, JobTrack, Transformation, PublishedReco
 
 class AmbiguousIdentifier(Exception):
 	pass
+
 
 
 ####################################################################
@@ -92,14 +93,367 @@ class CombineRecordSchema(object):
 # Spark Jobs           											   #
 ####################################################################
 
-class HarvestOAISpark(object):
+class CombineSparkJob(object):
+
+	'''
+	Base class for Combine Spark Jobs.
+	Provides some usuable components for jobs.
+	'''
+
+
+	def __init__(self, spark, **kwargs):
+
+		self.spark = spark
+
+		self.kwargs = kwargs
+
+		# init logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		self.logger = log4jLogger.LogManager.getLogger(__name__)
+
+
+	def init_job(self):
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
+
+		# get job
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+
+		# start job_track instance, marking job start
+		self.job_track = JobTrack(
+			job_id = self.job.id
+		)
+		self.job_track.save()
+
+
+	def close_job(self):
+
+		# finally, update finish_timestamp of job_track instance
+		self.job_track.finish_timestamp = datetime.datetime.now()
+		self.job_track.save()
+
+
+	def save_records(self, records_df=None, write_avro=settings.WRITE_AVRO, index_records=settings.INDEX_TO_ES, assign_combine_id=False):
+
+		'''
+		Method to index records to DB and trigger indexing to ElasticSearch (ES)		
+
+		Args:				
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+			write_avro (bool): boolean to write avro files to disk after DB indexing
+			index_records (bool): boolean to index to ES
+			assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
+
+		Returns:
+			None
+				- determines if record_id unique among records DataFrame
+				- selects only columns that match CombineRecordSchema
+				- writes to DB, writes to avro files
+		'''
+
+		# assign combine ID
+		if assign_combine_id:
+			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
+			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
+
+		# run record identifier transformation scenario is provided
+		records_df = self.run_rits(records_df)
+
+		# check uniqueness (overwrites if column already exists)	
+		records_df = records_df.withColumn("unique", (
+			pyspark_sql_functions.count('record_id')\
+			.over(Window.partitionBy('record_id')) == 1)\
+			.cast('integer'))
+
+		# ensure columns to avro and DB
+		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
+
+		# write avro, coalescing for output
+		if write_avro:
+			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
+			.write.format("com.databricks.spark.avro").save(self.job.job_output)
+
+		# write records to DB
+		records_df_combine_cols.write.jdbc(
+			settings.COMBINE_DATABASE['jdbc_url'],
+			'core_record',
+			properties=settings.COMBINE_DATABASE,
+			mode='append')
+
+		# check if anything written to DB to continue, else abort
+		if len(self.job.get_records()) > 0:
+
+			# read rows from DB for indexing to ES
+			bounds = self.get_job_db_bounds(self.job)
+			sqldf = self.spark.read.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'core_record',
+					properties=settings.COMBINE_DATABASE,
+					column='id',
+					lowerBound=bounds['lowerBound'],
+					upperBound=bounds['upperBound'],
+					numPartitions=settings.SPARK_REPARTITION
+				)
+			job_id = self.job.id
+			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+
+			# index to ElasticSearch
+			if index_records and settings.INDEX_TO_ES:
+				ESIndex.index_job_to_es_spark(
+					self.spark,
+					job=self.job,
+					records_df=db_records,
+					index_mapper=self.kwargs['index_mapper']
+				)
+
+			# run Validation Scenarios
+			if 'validation_scenarios' in self.kwargs.keys():
+				vs = ValidationScenarioSpark(
+					spark=self.spark,
+					job=self.job,
+					records_df=db_records,
+					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+				)
+				vs.run_record_validation_scenarios()
+
+			# update `valid` column for Records based on results of ValidationScenarios
+			cursor = connection.cursor()
+			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+			# return db_records DataFrame
+			return db_records
+
+		else:		
+			raise Exception("Nothing written to disk for Job: %s" % self.job.name)
+
+
+	def get_job_db_bounds(self, job):
+
+		'''
+		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
+		'''	
+
+		records = job.get_records()
+		records = records.order_by('id')
+		start_id = records.first().id
+		end_id = records.last().id
+
+		return {
+			'lowerBound':start_id,
+			'upperBound':end_id
+		}
+
+
+	def record_validity_valve(self, records_df):
+
+		'''
+		Method to include all, valid, or invalid records only for downstream jobs
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			records_df (pyspark.sql.DataFrame): DataFrame of records pre validity filtering
+			kwargs (dict): kwargs
+
+		Returns:
+			(pyspark.sql.DataFrame): DataFrame of records post validity filtering
+		'''
+
+		# if all, return untouched
+		if self.kwargs['input_validity_valve'] == 'all':
+			filtered_df = records_df
+
+		# else, filter to valid or invalid records
+		else:
+			# return valid records		
+			if self.kwargs['input_validity_valve'] == 'valid':
+				filtered_df = records_df.filter(records_df.valid == 1)
+
+			# return invalid records		
+			if self.kwargs['input_validity_valve'] == 'invalid':
+				filtered_df = records_df.filter(records_df.valid == 0)
+
+		# return
+		return filtered_df
+
+
+	def run_rits(self, records_df):
+
+		'''
+		Method to run Record Identifier Transformation Scenarios (rits) if present.
+
+		RITS can be of three types:
+			1) 'regex' - Java Regular Expressions
+			2) 'python' - Python Code Snippets
+			3) 'xpath' - XPath expression
+
+		Each are handled differently, but all strive to return a dataframe (records_df),
+		with the `record_id` column modified.
+
+		Args:
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+			rits_id (string|int): DB identifier of pre-configured RITS
+
+		Returns:
+			
+		'''
+
+		# get rits ID from kwargs
+		rits_id = self.kwargs.get('rits', False)
+		
+		# if rits id provided
+		if rits_id and rits_id != None:
+
+			rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+
+			# handle regex
+			if rits.transformation_type == 'regex':
+
+				# define udf function for python transformation
+				def regex_record_id_trans_udf(row, match, replace, trans_target):
+					
+					try:
+						
+						# use python's re module to perform regex
+						if trans_target == 'record_id':
+							trans_result = re.sub(match, replace, row.record_id)
+						if trans_target == 'document':
+							trans_result = re.sub(match, replace, row.document)
+
+						# run transformation
+						success = 1
+						error = row.error
+
+					except Exception as e:
+						trans_result = str(e)
+						error = 'record_id transformation failure'
+						success = 0
+
+					# return Row
+					return Row(
+						combine_id = row.combine_id,
+						record_id = trans_result,
+						document = row.document,
+						error = error,
+						job_id = row.job_id,
+						oai_set = row.oai_set,
+						success = success
+					)
+
+				# transform via rdd.map and return			
+				match = rits.regex_match_payload
+				replace = rits.regex_replace_payload
+				trans_target = rits.transformation_target
+				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
+				records_df = records_rdd.toDF()
+
+			# handle python
+			if rits.transformation_type == 'python':	
+
+				# define udf function for python transformation
+				def python_record_id_trans_udf(row, python_code, trans_target):
+					
+					try:
+						# get python function from Transformation Scenario
+						temp_mod = ModuleType('temp_mod')
+						exec(python_code, temp_mod.__dict__)
+
+						# establish python udf record
+						if trans_target == 'record_id':
+							pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
+						if trans_target == 'document':
+							pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+						# run transformation
+						trans_result = temp_mod.transform_identifier(pyudfr)
+						success = 1
+						error = row.error
+
+					except Exception as e:
+						trans_result = str(e)
+						error = 'record_id transformation failure'
+						success = 0
+
+					# return Row
+					return Row(
+						combine_id = row.combine_id,
+						record_id = trans_result,
+						document = row.document,
+						error = error,
+						job_id = row.job_id,
+						oai_set = row.oai_set,
+						success = success
+					)
+
+				# transform via rdd.map and return			
+				python_code = rits.python_payload
+				trans_target = rits.transformation_target
+				records_rdd = records_df.rdd.map(lambda row: python_record_id_trans_udf(row, python_code, trans_target))
+				records_df = records_rdd.toDF()
+
+			# handle xpath
+			if rits.transformation_type == 'xpath':
+
+				'''
+				Currently XPath RITS are handled via python and etree,
+				but might be worth investigating if this could be performed
+				via pyjxslt to support XPath 2.0
+				'''
+				
+				# define udf function for xpath expression
+				def xpath_record_id_trans_udf(row, xpath):				
+
+					# establish python udf record, forcing 'document' type trans for XPath				
+					pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
+
+					# run xpath and retrieve value
+					xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
+					if len(xpath_query) == 1:
+						trans_result = xpath_query[0].text
+						success = 1
+						error = row.error
+					elif len(xpath_query) == 0:
+						trans_result = 'xpath expression found nothing'
+						success = 0
+						error = 'record_id transformation failure'
+					else:
+						trans_result = 'more than one node found for XPath query'
+						success = 0
+						error = 'record_id transformation failure'
+
+					# return Row
+					return Row(
+						combine_id = row.combine_id,
+						record_id = trans_result,
+						document = row.document,
+						error = error,
+						job_id = row.job_id,
+						oai_set = row.oai_set,
+						success = success
+					)
+
+				# transform via rdd.map and return			
+				xpath = rits.xpath_payload			
+				records_rdd = records_df.rdd.map(lambda row: xpath_record_id_trans_udf(row, xpath))
+				records_df = records_rdd.toDF()
+			
+			# return
+			return records_df
+
+		# else return dataframe untouched
+		else:
+			return records_df
+
+
+
+class HarvestOAISpark(CombineSparkJob):
 
 	'''
 	Spark code for harvesting OAI records
 	'''
-
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	
+	def spark_function(self):
 
 		'''
 		Harvest records via OAI.
@@ -113,8 +467,7 @@ class HarvestOAISpark(object):
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs:
-				job_id (int): Job ID
+			kwargs:				
 				endpoint (str): OAI endpoint
 				verb (str): OAI verb used
 				metadataPrefix (str): metadataPrefix for OAI harvest
@@ -130,24 +483,15 @@ class HarvestOAISpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# harvest OAI records via Ingestion3
-		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", kwargs['endpoint'])\
-		.option("verb", kwargs['verb'])\
-		.option("metadataPrefix", kwargs['metadataPrefix'])\
-		.option(kwargs['scope_type'], kwargs['scope_value'])\
+		df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
+		.option("endpoint", self.kwargs['endpoint'])\
+		.option("verb", self.kwargs['verb'])\
+		.option("metadataPrefix", self.kwargs['metadataPrefix'])\
+		.option(self.kwargs['scope_type'], self.kwargs['scope_value'])\
 		.load()
 
 		# select records with content
@@ -184,7 +528,7 @@ class HarvestOAISpark(object):
 		records = records.withColumn('record_id', records.id)
 
 		# add job_id as column
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
@@ -195,41 +539,24 @@ class HarvestOAISpark(object):
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
 
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
-
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records,
 			assign_combine_id=True
 		)
-
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
 		
+		# close job
+		self.close_job()
 
 
-class HarvestStaticXMLSpark(object):
+
+class HarvestStaticXMLSpark(CombineSparkJob):
 
 	'''
 	Spark code for harvesting static xml records
 	'''
 
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	def spark_function(self):
 
 		'''
 		Harvest static XML records provided by user.
@@ -263,21 +590,12 @@ class HarvestStaticXMLSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# read directory of static files
-		static_rdd = spark.sparkContext.wholeTextFiles(
-				'file://%s' % kwargs['static_payload'],
+		static_rdd = self.spark.sparkContext.wholeTextFiles(
+				'file://%s' % self.kwargs['static_payload'],
 				minPartitions=settings.SPARK_REPARTITION
 			)
 
@@ -372,48 +690,32 @@ class HarvestStaticXMLSpark(object):
 
 
 		# map with get_metadata_udf 
-		job_id = job.id		
+		job_id = self.job.id
+		kwargs = self.kwargs
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
-
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records.toDF(),
 			assign_combine_id=True
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
 		# remove temporary payload directory if static job was upload based, not location on disk
-		if kwargs['static_type'] == 'upload':
-			shutil.rmtree(kwargs['static_payload'])
+		if self.kwargs['static_type'] == 'upload':
+			shutil.rmtree(self.kwargs['static_payload'])
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
-
+		# close job
+		self.close_job()
 
 
-class TransformSpark(object):
+
+class TransformSpark(CombineSparkJob):
 
 	'''
 	Spark code for Transform jobs
 	'''
-
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	
+	def spark_function(self):
 
 		'''
 		Transform records based on Transformation Scenario.
@@ -434,22 +736,13 @@ class TransformSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
-		bounds = get_job_db_bounds(input_job)
-		sqldf = spark.read.jdbc(
+		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
+		bounds = self.get_job_db_bounds(input_job)
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -458,52 +751,38 @@ class TransformSpark(object):
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
+
+		# filter based on record validity
+		records = self.record_validity_valve(records)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# get transformation
-		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
+		transformation = Transformation.objects.get(pk=int(self.kwargs['transformation_id']))
 
 		# if xslt type transformation
 		if transformation.transformation_type == 'xslt':
-			records_trans = TransformSpark.transform_xslt(spark, kwargs, job, transformation, records)
+			records_trans = self.transform_xslt(transformation, records)
 
 		# if python type transformation
 		if transformation.transformation_type == 'python':
-			records_trans = TransformSpark.transform_python(spark, kwargs, job, transformation, records)
+			records_trans = self.transform_python(transformation, records)
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
 
-		# run record identifier transformations (rits) if present
-		records = run_rits(records, kwargs.get('rits', False))
-
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records_trans
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
-	@staticmethod
-	def transform_xslt(spark, kwargs, job, transformation, records):
+	def transform_xslt(self, transformation, records):
 
 		'''		
 		Method to transform records with XSLT, using pyjxslt server
@@ -554,13 +833,12 @@ class TransformSpark(object):
 		xslt_string = transformation.payload
 
 		# transform via rdd.map and return
-		job_id = job.id			
+		job_id = self.job.id
 		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
 		return records_trans
 
 
-	@staticmethod
-	def transform_python(spark, kwargs, job, transformation, records):
+	def transform_python(self, transformation, records):
 
 		'''
 		Transform records via python code snippet.
@@ -615,22 +893,21 @@ class TransformSpark(object):
 			)
 
 		# transform via rdd.map and return
-		job_id = job.id			
+		job_id = self.job.id			
 		transformation_payload = transformation.payload
 		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, transformation_payload))
 		return records_trans
 
 
 
-class MergeSpark(object):
+class MergeSpark(CombineSparkJob):
 
 	'''
-	Spark code for Merging records from previously run jobs
+	Spark code for running Merge type jobs.  Also used for duplciation, analysis, and others.
 	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
-	@staticmethod
-	def spark_function(spark, sc, write_avro=True, **kwargs):
+	def spark_function(self):
 
 		'''
 		Harvest records, select non-null, and write to avro files
@@ -650,33 +927,30 @@ class MergeSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# rehydrate list of input jobs
-		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
+		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
 
 		# get total range of id's from input jobs to help partition jdbc reader
 		records_ids = []
 		for input_job_id in input_jobs_ids:
 			input_job_temp = Job.objects.get(pk=int(input_job_id))
-			records = input_job_temp.get_records().order_by('id')
-			start_id = records.first().id
-			end_id = records.last().id
-			records_ids += [start_id, end_id]
+
+			# if job has records, continue
+			if len(input_job_temp.get_records()) > 0:
+				records = input_job_temp.get_records().order_by('id')
+				start_id = records.first().id
+				end_id = records.last().id
+				records_ids += [start_id, end_id]
+			else:
+				print("Job %s had no records, skipping" % input_job_temp.name)
+
 		records_ids.sort()		
 
 		# get list of RDDs from input jobs
-		sqldf = spark.read.jdbc(
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -685,7 +959,6 @@ class MergeSpark(object):
 				upperBound=records_ids[-1],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-
 		input_jobs_dfs = []		
 		for input_job_id in input_jobs_ids:
 
@@ -694,52 +967,44 @@ class MergeSpark(object):
 			input_jobs_dfs.append(job_df)
 
 		# create aggregate rdd of frames
-		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
-		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
+		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+
+		# filter based on record validity
+		agg_df = self.record_validity_valve(agg_df)
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
 		# update job column, overwriting job_id from input jobs in merge
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
-		# run record identifier transformations (rits) if present
-		agg_df = run_rits(agg_df, kwargs.get('rits', False))
-
 		# if Analysis Job, do not write avro
-		if job.job_type == 'AnalysisJob':
+		if self.job.job_type == 'AnalysisJob':
 			write_avro = False
+		else:
+			write_avro = settings.WRITE_AVRO
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=agg_df,
 			write_avro=write_avro
 		)
 
-		# run record validation scnearios if requested, using db_records from save_records() output
-		vs = ValidationScenarioSpark(
-			spark=spark,
-			job=job,
-			records_df=db_records,
-			validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-		)
-		vs.run_record_validation_scenarios()
-
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
 
-class PublishSpark(object):
+class PublishSpark(CombineSparkJob):
 
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	'''
+	Spark code for running Publish type jobs.	
+	'''
+	
+	def spark_function(self):
 
 		'''
 		Publish records in Combine, prepares for OAI server output
@@ -757,22 +1022,13 @@ class PublishSpark(object):
 			- copies documents in ES from input to new published job index
 		'''
 
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
-		bounds = get_job_db_bounds(input_job)
-		sqldf = spark.read.jdbc(
+		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
+		bounds = self.get_job_db_bounds(input_job)
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -781,7 +1037,7 @@ class PublishSpark(object):
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
@@ -790,12 +1046,12 @@ class PublishSpark(object):
 		records = records[records['document'] != '']
 
 		# update job column, overwriting job_id from input jobs in merge
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# write job output to avro
-		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(job.job_output)
+		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(self.job.job_output)
 
 		# confirm directory exists
 		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
@@ -803,16 +1059,13 @@ class PublishSpark(object):
 			os.mkdir(published_dir)
 
 		# get avro files
-		job_output_dir = job.job_output.split('file://')[-1]
+		job_output_dir = self.job.job_output.split('file://')[-1]
 		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 		for avro in avros:
 			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records,
 			write_avro=False,
 			index_records=False
@@ -821,7 +1074,7 @@ class PublishSpark(object):
 		# copy index from input job to new Publish job
 		index_to_job_index = ESIndex.copy_es_index(
 			source_index = 'j%s' % input_job.id,
-			target_index = 'j%s' % job.id,
+			target_index = 'j%s' % self.job.id,
 			wait_for_completion=False
 		)
 
@@ -838,7 +1091,7 @@ class PublishSpark(object):
 			# if task complete, index job index to published index
 			if task['completed']:
 				index_to_published_index = ESIndex.copy_es_index(
-					source_index = 'j%s' % job.id,
+					source_index = 'j%s' % self.job.id,
 					target_index = 'published',
 					wait_for_completion = False,
 					add_copied_from = job_id # do not use Job instance here, only pass string
@@ -846,7 +1099,7 @@ class PublishSpark(object):
 				break # break from retry loop
 
 			else:
-				print("indexing to /published, waiting on task node %s, retry: %s/10" % (task['task']['node'], retry))
+				print("indexing to /published, waiting on task node %s, retry: %s/100" % (task['task']['node'], retry))
 
 				# bump retries, sleep, and continue
 				retry += 1
@@ -857,274 +1110,17 @@ class PublishSpark(object):
 		pr = PublishedRecords()
 
 		# set records from job as published		
+		job_id = self.job.id
 		pr.set_published_field(job_id)
 
 		# update uniqueness of all published records
 		pr.update_published_uniqueness()
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
 
-####################################################################
-# Utility Functions 											   #
-####################################################################
 
-def save_records(spark=None, kwargs=None, job=None, records_df=None, write_avro=settings.WRITE_AVRO, index_records=True, assign_combine_id=False):
-
-	'''
-	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
-
-	Args:
-		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
-		kwargs (dict): dictionary of args sent to Job spark method
-		job (core.models.Job): Job instance		
-		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-		write_avro (bool): boolean to write avro files to disk after DB indexing
-		index_records (bool): boolean to index to ES
-		assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
-
-	Returns:
-		None
-			- determines if record_id unique among records DataFrame
-			- selects only columns that match CombineRecordSchema
-			- writes to DB, writes to avro files
-	'''
-
-	# assign combine ID
-	if assign_combine_id:
-		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
-		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
-
-	# check uniqueness (overwrites if column already exists)
-	'''
-	What is the performance hit of this uniqueness check?
-	'''
-	records_df = records_df.withColumn("unique", (
-		pyspark_sql_functions.count('record_id')\
-		.over(Window.partitionBy('record_id')) == 1)\
-		.cast('integer'))
-
-	# ensure columns to avro and DB
-	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
-
-	# write avro, coalescing for output
-	if write_avro:
-		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
-		.write.format("com.databricks.spark.avro").save(job.job_output)
-
-	# write records to DB
-	records_df_combine_cols.write.jdbc(
-		settings.COMBINE_DATABASE['jdbc_url'],
-		'core_record',
-		properties=settings.COMBINE_DATABASE,
-		mode='append')
-
-	# read rows from DB for indexing to ES and writing avro
-	bounds = get_job_db_bounds(job)
-	sqldf = spark.read.jdbc(
-			settings.COMBINE_DATABASE['jdbc_url'],
-			'core_record',
-			properties=settings.COMBINE_DATABASE,
-			column='id',
-			lowerBound=bounds['lowerBound'],
-			upperBound=bounds['upperBound'],
-			numPartitions=settings.SPARK_REPARTITION
-		)
-	job_id = job.id
-	db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
-
-	# index to ElasticSearch
-	if index_records and settings.INDEX_TO_ES:
-		ESIndex.index_job_to_es_spark(
-			spark,
-			job=job,
-			records_df=db_records,
-			index_mapper=kwargs['index_mapper']
-		)
-
-	# return db_records for later use
-	return db_records
-
-
-def get_job_db_bounds(job):
-
-	'''
-	Function to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-	'''	
-
-	records = job.get_records()
-	records = records.order_by('id')
-	start_id = records.first().id
-	end_id = records.last().id
-
-	return {
-		'lowerBound':start_id,
-		'upperBound':end_id
-	}
-
-
-def run_rits(records_df, rits_id):
-
-	'''
-	Function to run Record Identifier Transformation Scenarios (rits) if present.
-
-	RITS can be of three types:
-		1) 'regex' - Java Regular Expressions
-		2) 'python' - Python Code Snippets
-		3) 'xpath' - XPath expression
-
-	Each are handled differently, but all strive to return a dataframe (records_df),
-	with the `record_id` column modified.
-
-	Args:
-		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-		rits_id (string|int): DB identifier of pre-configured RITS
-	'''
-	
-	# if rits id provided
-	if rits_id and rits_id != None:
-
-		rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
-
-		# handle regex
-		if rits.transformation_type == 'regex':
-
-				# define udf function for python transformation
-			def regex_record_id_trans_udf(row, match, replace, trans_target):
-				
-				try:
-					
-					# use python's re module to perform regex
-					if trans_target == 'record_id':
-						trans_result = re.sub(match, replace, row.record_id)
-					if trans_target == 'document':
-						trans_result = re.sub(match, replace, row.document)
-
-					# run transformation
-					success = 1
-					error = row.error
-
-				except Exception as e:
-					trans_result = str(e)
-					error = 'record_id transformation failure'
-					success = 0
-
-				# return Row
-				return Row(
-					combine_id = row.combine_id,
-					record_id = trans_result,
-					document = row.document,
-					error = error,
-					job_id = row.job_id,
-					oai_set = row.oai_set,
-					success = success
-				)
-
-			# transform via rdd.map and return			
-			match = rits.regex_match_payload
-			replace = rits.regex_replace_payload
-			trans_target = rits.transformation_target
-			records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
-			records_df = records_rdd.toDF()
-
-		# handle python
-		if rits.transformation_type == 'python':	
-
-			# define udf function for python transformation
-			def python_record_id_trans_udf(row, python_code, trans_target):
-				
-				try:
-					# get python function from Transformation Scenario
-					temp_mod = ModuleType('temp_mod')
-					exec(python_code, temp_mod.__dict__)
-
-					# establish python udf record
-					if trans_target == 'record_id':
-						pyudfr = PythonUDFRecord(None, non_row_input = True, record_id = row.record_id)
-					if trans_target == 'document':
-						pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
-
-					# run transformation
-					trans_result = temp_mod.transform_identifier(pyudfr)
-					success = 1
-					error = row.error
-
-				except Exception as e:
-					trans_result = str(e)
-					error = 'record_id transformation failure'
-					success = 0
-
-				# return Row
-				return Row(
-					combine_id = row.combine_id,
-					record_id = trans_result,
-					document = row.document,
-					error = error,
-					job_id = row.job_id,
-					oai_set = row.oai_set,
-					success = success
-				)
-
-			# transform via rdd.map and return			
-			python_code = rits.python_payload
-			trans_target = rits.transformation_target
-			records_rdd = records_df.rdd.map(lambda row: python_record_id_trans_udf(row, python_code, trans_target))
-			records_df = records_rdd.toDF()
-
-		# handle xpath
-		if rits.transformation_type == 'xpath':
-
-			'''
-			Currently XPath RITS are handled via python and etree,
-			but might be worth investigating if this could be performed
-			via pyjxslt to support XPath 2.0
-			'''
-			
-			# define udf function for xpath expression
-			def xpath_record_id_trans_udf(row, xpath):				
-
-				# establish python udf record, forcing 'document' type trans for XPath				
-				pyudfr = PythonUDFRecord(None, non_row_input = True, document = row.document)
-
-				# run xpath and retrieve value
-				xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
-				if len(xpath_query) == 1:
-					trans_result = xpath_query[0].text
-					success = 1
-					error = row.error
-				elif len(xpath_query) == 0:
-					trans_result = 'xpath expression found nothing'
-					success = 0
-					error = 'record_id transformation failure'
-				else:
-					trans_result = 'more than one node found for XPath query'
-					success = 0
-					error = 'record_id transformation failure'
-
-				# return Row
-				return Row(
-					combine_id = row.combine_id,
-					record_id = trans_result,
-					document = row.document,
-					error = error,
-					job_id = row.job_id,
-					oai_set = row.oai_set,
-					success = success
-				)
-
-			# transform via rdd.map and return			
-			xpath = rits.xpath_payload			
-			records_rdd = records_df.rdd.map(lambda row: xpath_record_id_trans_udf(row, xpath))
-			records_df = records_rdd.toDF()
-		
-		# return
-		return records_df
-
-	# else return dataframe untouched
-	else:
-		return records_df
 
 

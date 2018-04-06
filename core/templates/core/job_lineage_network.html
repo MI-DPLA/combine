@@ -8,19 +8,17 @@
 				// parse job lineage json
 				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
 
-				// style nodes
-				$(job_lineage.nodes).each(function(){
-					styleNetworkNodes(this);						
-				});
-
-				// style edges
+				// style edges and init
 				$(job_lineage.edges).each(function(){
 					styleNetworkEdges(this);
 				});
-
-				// init as viz data
-				var nodes = new vis.DataSet(job_lineage.nodes);
 				var edges = new vis.DataSet(job_lineage.edges);
+
+				// style nodes and init
+				$(job_lineage.nodes).each(function(){
+					styleNetworkNodes(this);						
+				});
+				var nodes = new vis.DataSet(job_lineage.nodes);
 
 				// create a network
 				var container = document.getElementById('job_family_diagram');
@@ -63,7 +61,7 @@
 					base_url = "{%url 'job_lineage_json' org_id='DYNAMIC_ORG_ID' record_group_id='DYNAMIC_RG_ID' job_id='DYNAMIC_ID' %}";
 					
 					// get node
-					node_data = nodes.get(node.nodes[0])
+					node_data = nodes.get(node.nodes[0])					
 					
 					// update URL
 					base_url = base_url.replace('DYNAMIC_ID', node_data.id);
@@ -85,15 +83,14 @@
 							// loop through nodes
 							nodes.forEach(function(node){
 
+								// gray out nodes
 								if (!data.job_id_list.includes(node.id)){
 
-									// update network node colors
-									node.color = '#efefef';
-									nodes.update(node);
+									gray_out_node(node);
 
 									// update datatables row color
 									// find row that matches id
-									row_query = jobs_table_api.fnFindCellRowIndexes(node.id, 0);
+									row_query = jobs_table_api.fnFindCellRowIndexes(node.id, 1);									
 
 									// if row query has hit, remove (empty list will gray out first row)
 									if (row_query.length > 0){
@@ -110,7 +107,9 @@
 											})
 										})	
 									}
+
 								}
+
 							});
 						}			
 					});
@@ -124,15 +123,71 @@
 					jobs_table.column(0).search('').draw();
 
 					// reset node colors
-					nodes.forEach(function(node){								
-						styleNetworkNodes(node);
-						nodes.update(node);
-					})
+					restyle_nodes_and_edges();
 
 					// remove all grayed_out_dt classes
 					$(".grayed_dt_row").removeClass('grayed_dt_row');
 
 				});
+
+				function restyle_nodes_and_edges(){
+					// reset node colors
+					nodes.forEach(function(node){														
+						restyle_node(node);
+					});					
+				}
+
+				function restyle_node(node){
+					// restyle node
+					styleNetworkNodes(node);
+					nodes.update(node);
+
+					// restyle edges
+					node_edges = getEdgesOfNode(node.id)									
+					node_edges.forEach(function(edge){							
+						styleNetworkEdges(edge);
+						edges.update(edge);
+					})
+				}
+
+				function gray_out_node(node){
+					// update network node colors
+					node.color = '#efefef';
+					nodes.update(node);
+
+					// gray out all edges to this node									
+					node_edges = getEdgesOfNode(node.id)									
+					node_edges.forEach(function(edge){										
+						edge.color.color = '#efefef';
+						edge.font.color = '#efefef';
+						edges.update(edge);
+					})
+				}
+
+				// update lineage graph
+				function update_lineage_on_filter(){
+
+					// get current row ids after filtering
+					crows = jobs_table.rows({filter:'applied'});
+					
+					// loop through current rows and get job id
+					job_ids = [];
+					crows[0].forEach(function(row){
+						job_ids.push(parseInt(jobs_table.cell(row, 1).data()));
+					})
+
+					// loop through nodes and gray out if NOT in list					
+					nodes.forEach(function(node){
+						// gray out nodes
+						if (!job_ids.includes(node.id)){
+							gray_out_node(node);
+						}
+						else {
+							restyle_node(node);
+						}
+					});
+
+				}
 
 			</script>	
 			

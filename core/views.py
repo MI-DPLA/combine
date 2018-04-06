@@ -6,6 +6,7 @@ import json
 import logging
 from lxml import etree, isoschematron
 import os
+import pdb
 import re
 import requests
 import textwrap
@@ -344,7 +345,7 @@ def record_group_delete(request, org_id, record_group_id):
 
 
 
-def record_group(request, org_id, record_group_id):
+def record_group(request, org_id, record_group_id):	
 
 	'''
 	View information about a single record group, including any and all jobs run
@@ -353,7 +354,7 @@ def record_group(request, org_id, record_group_id):
 		record_group_id (str/int): PK for RecordGroup table
 	'''
 	
-	logger.debug('retrieving record group ID: %s' % record_group_id)
+	logger.debug('retrieving record group ID: %s' % record_group_id)	
 
 	# retrieve record group
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -373,12 +374,16 @@ def record_group(request, org_id, record_group_id):
 		# update status
 		job.update_status()
 
+	# get all record groups for this organization
+	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
+
 	# render page 
 	return render(request, 'core/record_group.html', {
 			'record_group':record_group,
-			'jobs':jobs,
+			'jobs':jobs,			
 			'job_lineage_json':json.dumps(job_lineage),
 			'publish_set_ids':publish_set_ids,
+			'record_groups':record_groups,
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
 
@@ -415,6 +420,9 @@ def record_group_update_publish_set_id(request, org_id, record_group_id):
 @login_required
 def all_jobs(request):
 
+	# get all the record groups.
+	record_groups = models.RecordGroup.objects.exclude(for_analysis=True)
+
 	'''
 	View to show all jobs, across all Organizations, RecordGroups, and Job types
 
@@ -444,6 +452,7 @@ def all_jobs(request):
 	# render page 
 	return render(request, 'core/all_jobs.html', {
 			'jobs':jobs,
+			'record_groups':record_groups,
 			'job_lineage_json':json.dumps(ld),
 			'breadcrumbs':breadcrumb_parser(request.path)
 		})
@@ -504,6 +513,30 @@ def delete_jobs(request):
 		# return
 		return JsonResponse({'results':True})
 
+@login_required
+def move_jobs(request):
+
+	logger.debug('moving jobs')
+
+	stime = time.time()
+
+	job_ids = request.POST.getlist('job_ids[]')
+	record_group_id = request.POST.getlist('record_group_id')[0]
+
+	# loop through job_ids
+	for job_id in job_ids:
+
+		logger.debug('moving job by ids: %s' % job_id)
+		
+		cjob = models.CombineJob.get_combine_job(job_id)
+		new_record_group = models.RecordGroup.objects.get(pk=record_group_id)		
+		cjob.job.record_group = new_record_group
+		cjob.job.save()
+
+		logger.debug('job has been moved ids: %s' % job_id)
+
+	# redirect
+	return JsonResponse({'results':True})
 
 @login_required
 def job_details(request, org_id, record_group_id, job_id):
@@ -690,7 +723,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None
 
 		# initiate job
 		cjob = models.HarvestOAIJob(			
@@ -811,7 +846,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
 
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
@@ -913,7 +950,12 @@ def job_transform(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
+
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
 
 		# initiate job
 		cjob = models.TransformJob(
@@ -925,7 +967,8 @@ def job_transform(request, org_id, record_group_id):
 			transformation=transformation,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status
@@ -1008,7 +1051,12 @@ def job_merge(request, org_id, record_group_id):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None	
+
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
 
 		# initiate job
 		cjob = models.MergeJob(
@@ -1019,7 +1067,8 @@ def job_merge(request, org_id, record_group_id):
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status
@@ -1821,7 +1870,12 @@ def job_analysis(request):
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
 
 		# handle requested record_id transform
-		rits = request.POST.get('rits')
+		rits = request.POST.get('rits', None)
+		if rits == '':
+			rits = None		
+
+		# capture input record validity valve
+		input_validity_valve = request.POST.get('input_validity_valve', None)
 
 		# initiate job
 		cjob = models.AnalysisJob(
@@ -1831,7 +1885,8 @@ def job_analysis(request):
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			input_validity_valve=input_validity_valve
 		)
 		
 		# start job and update status
@@ -1843,24 +1898,6 @@ def job_analysis(request):
 			cjob.job.save()
 
 		return redirect('analysis')
-
-
-####################################################################
-# Misc 				 											   #
-####################################################################
-
-# def test_record_id_transform(request):
-
-# 	'''
-# 	View to faciliate testing of record_id transformations	
-# 	'''
-
-# 	logger.debug(request.POST)
-
-
-
-# 	rits = models.RecordIDTransformationScenario(request.POST)
-# 	return JsonResponse(rits.test_user_input())
 
 
 
@@ -1886,7 +1923,7 @@ class DTRecordsJson(BaseDatatableView):
 			'success',
 			'document',
 			'error',
-			'validation_results'
+			'valid'
 		]
 
 		# define column names that will be used in sorting
@@ -1904,7 +1941,7 @@ class DTRecordsJson(BaseDatatableView):
 			'success',
 			'document',
 			'error',
-			'validation_results'
+			'valid'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
@@ -1983,13 +2020,11 @@ class DTRecordsJson(BaseDatatableView):
 					return '<span style="color:red;">Duplicate</span>'
 
 			# handle validation_results
-			elif column == 'validation_results':
-				# get validation failures
-				vfs = row.get_validation_errors()
-				if vfs.count() > 0:
-					return '<span style="color:red;">Failed</span>'
+			elif column == 'valid':				
+				if row.valid:
+					return '<span style="color:green;">Valid</span>'
 				else:
-					return '<span style="color:green;">Passed</span>'
+					return '<span style="color:red;">Invalid</span>'
 
 			else:
 				return super(DTRecordsJson, self).render_column(row, column)

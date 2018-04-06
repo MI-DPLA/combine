@@ -181,6 +181,12 @@ LOGGING = {
     },
 }
 
+
+# shell_plus additional imports
+SHELL_PLUS_POST_IMPORTS = {    
+    ('inc.console', '*')
+}
+
 #########################
 # Import localsettings.py
 #########################

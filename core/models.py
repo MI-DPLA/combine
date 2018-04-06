@@ -11,6 +11,7 @@ import json
 import logging
 from lxml import etree, isoschematron
 import os
+import pdb
 import requests
 import shutil
 import sickle
@@ -788,11 +789,25 @@ class Job(models.Model):
 				# add edge
 				edge_id = '%s_to_%s' % (from_node, to_node)
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
-					ld['edges'].append({
+					
+					# prepare edge dictionary
+					edge_dict = {
 						'id':edge_id,
 						'from':from_node,
-						'to':to_node
-					})
+						'to':to_node,
+						'input_validity_valve':link.input_validity_valve,
+						'input_validity_valve_pretty':link.get_input_validity_valve_display()
+					}
+
+					# add record count depending in input_validity_valve
+					if link.input_validity_valve == 'all':
+						edge_dict['record_count'] = link.input_job.record_count
+					elif link.input_validity_valve == 'valid':
+						edge_dict['record_count'] = link.input_job.validation_results()['passed_count']
+					elif link.input_validity_valve == 'invalid':
+						edge_dict['record_count'] = link.input_job.validation_results()['failure_count']
+
+					ld['edges'].append(edge_dict)
 
 				# recurse
 				self._get_parent_jobs(pj, ld, directionality=directionality)
@@ -880,6 +895,7 @@ class Job(models.Model):
 		# return dict
 		results = {
 			'verdict':True,
+			'passed_count':self.record_count,
 			'failure_count':0,
 			'validation_scenarios':[]
 		}
@@ -898,11 +914,14 @@ class Job(models.Model):
 				failure_count = jv.validation_failure_count()
 
 				if failure_count:
-					results['failure_count'] += failure_count
+					results['failure_count'] += failure_count					
 
-			# if failures found, set result to False
+			# if failures found
 			if results['failure_count'] > 0:
+				# set result to False
 				results['verdict'] = False
+				# subtract failures from passed
+				results['passed_count'] -= results['failure_count']
 
 			# add all validation scenarios
 			results['validation_scenarios'] = self.jobvalidation_set.all()
@@ -937,6 +956,13 @@ class JobInput(models.Model):
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 	input_job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='input_job')
+	input_validity_valve = models.CharField(
+			max_length=255,
+			default=None,
+			null=True,
+			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
+		)
+
 
 
 
@@ -1054,6 +1080,7 @@ class Record(models.Model):
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
 	published = models.BooleanField(default=0)
+	valid = models.BooleanField(default=1)
 
 
 	# this model is managed outside of Django
@@ -1147,6 +1174,7 @@ class Record(models.Model):
 	# 	'''
 	# 	Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
 	# 	identifier.  Experiemental.
+	#	NOTE: If keeping, move to PublishedRecords, as it would require published ID as well
 
 	# 	Args:
 	# 		None
@@ -2567,8 +2595,7 @@ class PublishedRecords(object):
 		# get published jobs
 		self.publish_links = JobPublish.objects.all()
 
-		# get set IDs from record group of published jobs
-		# self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		# get set IDs from record group of published jobs		
 		sets = {}
 		for publish_link in self.publish_links:
 			publish_set_id = publish_link.record_group.publish_set_id
@@ -2932,7 +2959,7 @@ class CombineJob(object):
 	def get_total_input_job_record_count(self):
 
 		'''
-		Calc record count sum from all input jobs
+		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
 
 		Args:
 			None
@@ -2941,9 +2968,16 @@ class CombineJob(object):
 			(int): count of records
 		'''
 
-		if self.job.jobinput_set.count() > 0:
-			total_input_record_count = sum([input_job.input_job.record_count for input_job in self.job.jobinput_set.all()])
-			return total_input_record_count
+		if self.job.jobinput_set.count() > 0:			
+			total_record_count = 0			
+			for input_job in self.job.jobinput_set.all():
+				if input_job.input_validity_valve == 'all':
+					total_record_count += input_job.input_job.record_count
+				elif input_job.input_validity_valve == 'valid':
+					total_record_count += input_job.input_job.validation_results()['passed_count']
+				elif input_job.input_validity_valve == 'invalid':
+					total_record_count += input_job.input_job.validation_results()['failure_count']
+			return total_record_count
 		else:
 			return None
 
@@ -2959,9 +2993,6 @@ class CombineJob(object):
 		Returns:
 			(dict): Dictionary of record counts
 		'''
-
-		# DEBUG
-		stime = time.time()
 
 		r_count_dict = {}
 
@@ -2982,9 +3013,6 @@ class CombineJob(object):
 		else:
 			r_count_dict['success_percentage'] = 0.0
 
-		# DEBUG
-		logger.debug('detailed job record count elapsed: %s' % (time.time() - stime))
-		
 		# return
 		return r_count_dict
 
@@ -3290,7 +3318,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark.spark_function(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -3558,7 +3586,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -3601,7 +3629,8 @@ class TransformJob(CombineJob):
 		job_id=None,
 		index_mapper=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3614,6 +3643,8 @@ class TransformJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			rits (str): Identifier of Record Identifier Transformation Scenario
+			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -3636,6 +3667,7 @@ class TransformJob(CombineJob):
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3666,7 +3698,7 @@ class TransformJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
 			job_input_link.save()
 
 			# write validation links
@@ -3694,14 +3726,15 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark.spark_function(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'input_validity_valve':self.input_validity_valve
 			}
 		}
 
@@ -3741,7 +3774,8 @@ class MergeJob(CombineJob):
 		job_id=None,
 		index_mapper=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3753,6 +3787,8 @@ class MergeJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			rits (str): Identifier of Record Identifier Transformation Scenario
+			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -3774,6 +3810,7 @@ class MergeJob(CombineJob):
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3803,7 +3840,7 @@ class MergeJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
 				job_input_link.save()
 
 			# write validation links
@@ -3831,13 +3868,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'input_validity_valve':self.input_validity_valve
 			}
 		}
 
@@ -3867,7 +3905,8 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None):
+		job_id=None,
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3895,6 +3934,7 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3923,7 +3963,7 @@ class PublishJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job)
+			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
 			job_input_link.save()
 
 			# save publishing link from job to record_group
@@ -3946,7 +3986,7 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark.spark_function(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s")' % 
+			'code':'from jobs import PublishSpark\nPublishSpark(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s").spark_function()' % 
 			{
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id
@@ -3985,7 +4025,8 @@ class AnalysisJob(CombineJob):
 		job_id=None,
 		index_mapper=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3996,6 +4037,8 @@ class AnalysisJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			rits (str): Identifier of Record Identifier Transformation Scenario
+			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4015,6 +4058,7 @@ class AnalysisJob(CombineJob):
 			self.index_mapper = index_mapper
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4047,7 +4091,7 @@ class AnalysisJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job)
+				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
 				job_input_link.save()
 
 			# write validation links
@@ -4134,13 +4178,14 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark.spark_function(spark, sc, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'input_validity_valve':self.input_validity_valve
 			}
 		}
 
@@ -4304,17 +4349,17 @@ class DTElasticSearch(View):
 
 		# get sort params from DTinput
 		sorting_cols = 0
-		sort_key = 'order[{0}][column]'.format(sorting_cols)
+		sort_key = 'order[%s][column]' % (sorting_cols)
 		while sort_key in self.DTinput:
 			sorting_cols += 1
-			sort_key = 'order[{0}][column]'.format(sorting_cols)
+			sort_key = 'order[%s][column]' % (sorting_cols)
 
 		for i in range(sorting_cols):
 			# sorting column
 			sort_dir = 'asc'
-			sort_col = int(self.DTinput.get('order[{0}][column]'.format(i)))
+			sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
 			# sorting order
-			sort_dir = self.DTinput.get('order[{0}][dir]'.format(i))
+			sort_dir = self.DTinput.get('order[%s][dir]' % (i))
 
 			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
 		
