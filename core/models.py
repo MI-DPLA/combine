@@ -3631,7 +3631,7 @@ class TransformJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve=None):
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3776,7 +3776,7 @@ class MergeJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve=None):
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3906,7 +3906,8 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None):
+		job_id=None,
+		input_validity_valve='all'):
 
 		'''
 		Args:
@@ -3962,7 +3963,7 @@ class PublishJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve='all')
+			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
 			job_input_link.save()
 
 			# save publishing link from job to record_group
@@ -4025,7 +4026,7 @@ class AnalysisJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve=None):
+		input_validity_valve='all'):
 
 		'''
 		Args:
