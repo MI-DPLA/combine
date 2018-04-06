@@ -97,14 +97,145 @@ class CombineRecordSchema(object):
 # Spark Jobs           											   #
 ####################################################################
 
-class HarvestOAISpark(object):
+class CombineSparkJob(object):
+
+
+	def __init__(self, spark, **kwargs):
+
+		self.spark = spark
+
+		self.kwargs = kwargs
+
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		self.logger = log4jLogger.LogManager.getLogger(__name__)
+
+
+	def init_job(self):
+
+		# refresh Django DB Connection
+		refresh_django_db_connection()
+
+		# get job
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+
+		# start job_track instance, marking job start
+		self.job_track = JobTrack(
+			job_id = self.job.id
+		)
+		self.job_track.save()
+
+
+	def close_job(self):
+
+		# finally, update finish_timestamp of job_track instance
+		self.job_track.finish_timestamp = datetime.datetime.now()
+		self.job_track.save()
+
+
+	def save_records(self, records_df=None, write_avro=settings.WRITE_AVRO, index_records=settings.INDEX_TO_ES, assign_combine_id=False):
+
+		'''
+		Function to index records to DB and trigger indexing to ElasticSearch (ES)		
+
+		Args:				
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+			write_avro (bool): boolean to write avro files to disk after DB indexing
+			index_records (bool): boolean to index to ES
+			assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
+
+		Returns:
+			None
+				- determines if record_id unique among records DataFrame
+				- selects only columns that match CombineRecordSchema
+				- writes to DB, writes to avro files
+		'''
+
+		# assign combine ID
+		if assign_combine_id:
+			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
+			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
+
+		# run record identifier transformation scenario is provided
+		records_df = run_rits(records_df, self.kwargs.get('rits', False))
+
+		# check uniqueness (overwrites if column already exists)	
+		records_df = records_df.withColumn("unique", (
+			pyspark_sql_functions.count('record_id')\
+			.over(Window.partitionBy('record_id')) == 1)\
+			.cast('integer'))
+
+		# ensure columns to avro and DB
+		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
+
+		# write avro, coalescing for output
+		if write_avro:
+			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
+			.write.format("com.databricks.spark.avro").save(self.job.job_output)
+
+		# write records to DB
+		records_df_combine_cols.write.jdbc(
+			settings.COMBINE_DATABASE['jdbc_url'],
+			'core_record',
+			properties=settings.COMBINE_DATABASE,
+			mode='append')
+
+		# check if anything written to DB to continue, else abort
+		if len(self.job.get_records()) > 0:
+
+			# read rows from DB for indexing to ES
+			bounds = get_job_db_bounds(self.job)
+			sqldf = self.spark.read.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'core_record',
+					properties=settings.COMBINE_DATABASE,
+					column='id',
+					lowerBound=bounds['lowerBound'],
+					upperBound=bounds['upperBound'],
+					numPartitions=settings.SPARK_REPARTITION
+				)
+			job_id = self.job.id
+			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+
+			# index to ElasticSearch
+			if index_records and settings.INDEX_TO_ES:
+				ESIndex.index_job_to_es_spark(
+					self.spark,
+					job=self.job,
+					records_df=db_records,
+					index_mapper=self.kwargs['index_mapper']
+				)
+
+			# run Validation Scenarios
+			if 'validation_scenarios' in self.kwargs.keys():
+				vs = ValidationScenarioSpark(
+					spark=self.spark,
+					job=self.job,
+					records_df=db_records,
+					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+				)
+				vs.run_record_validation_scenarios()
+
+			# update `valid` column for Records based on results of ValidationScenarios
+			cursor = connection.cursor()
+			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+			# return db_records DataFrame
+			return db_records
+
+		else:		
+			raise Exception("Nothing written to disk for Job: %s" % self.job.name)
+
+
+
+class HarvestOAISpark(CombineSparkJob):
 
 	'''
 	Spark code for harvesting OAI records
 	'''
-
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	
+	def spark_function(self):
 
 		'''
 		Harvest records via OAI.
@@ -118,8 +249,7 @@ class HarvestOAISpark(object):
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs:
-				job_id (int): Job ID
+			kwargs:				
 				endpoint (str): OAI endpoint
 				verb (str): OAI verb used
 				metadataPrefix (str): metadataPrefix for OAI harvest
@@ -135,29 +265,15 @@ class HarvestOAISpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# Logging support
-		spark.sparkContext.setLogLevel('INFO')
-		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-		logger = log4jLogger.LogManager.getLogger(__name__)
-
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# harvest OAI records via Ingestion3
-		df = spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", kwargs['endpoint'])\
-		.option("verb", kwargs['verb'])\
-		.option("metadataPrefix", kwargs['metadataPrefix'])\
-		.option(kwargs['scope_type'], kwargs['scope_value'])\
+		df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
+		.option("endpoint", self.kwargs['endpoint'])\
+		.option("verb", self.kwargs['verb'])\
+		.option("metadataPrefix", self.kwargs['metadataPrefix'])\
+		.option(self.kwargs['scope_type'], self.kwargs['scope_value'])\
 		.load()
 
 		# select records with content
@@ -194,7 +310,7 @@ class HarvestOAISpark(object):
 		records = records.withColumn('record_id', records.id)
 
 		# add job_id as column
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
@@ -206,18 +322,13 @@ class HarvestOAISpark(object):
 		records = records.withColumn('error', error(records.id))
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records,
 			assign_combine_id=True
 		)
-
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
 		
+		# close job
+		self.close_job()
 
 
 class HarvestStaticXMLSpark(object):
@@ -397,14 +508,13 @@ class HarvestStaticXMLSpark(object):
 
 
 
-class TransformSpark(object):
+class TransformSpark(CombineSparkJob):
 
 	'''
 	Spark code for Transform jobs
 	'''
-
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	
+	def spark_function(self):
 
 		'''
 		Transform records based on Transformation Scenario.
@@ -423,27 +533,10 @@ class TransformSpark(object):
 			- transforms records via XSL, writes new records to avro files on disk
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
-
-		# Logging support
-		spark.sparkContext.setLogLevel('INFO')
-		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-		logger = log4jLogger.LogManager.getLogger(__name__)
-
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		'''		
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(kwargs['input_job_id']))
+		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
 		bounds = get_job_db_bounds(input_job)
 		sqldf = spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
@@ -454,39 +547,35 @@ class TransformSpark(object):
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(kwargs['input_job_id']))
+		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
 		# filter based on record validity
-		records = record_validity_valve(spark, records, kwargs)
+		records = record_validity_valve(spark, records, self.kwargs)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# get transformation
-		transformation = Transformation.objects.get(pk=int(kwargs['transformation_id']))
+		transformation = Transformation.objects.get(pk=int(self.kwargs['transformation_id']))
 
 		# if xslt type transformation
 		if transformation.transformation_type == 'xslt':
-			records_trans = TransformSpark.transform_xslt(spark, kwargs, job, transformation, records)
+			records_trans = TransformSpark.transform_xslt(spark, self.kwargs, self.job, transformation, records)
 
 		# if python type transformation
 		if transformation.transformation_type == 'python':
-			records_trans = TransformSpark.transform_python(spark, kwargs, job, transformation, records)
+			records_trans = TransformSpark.transform_python(spark, self.kwargs, self.job, transformation, records)
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records_trans
 		)
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
 	@staticmethod
@@ -864,109 +953,109 @@ class PublishSpark(object):
 # Utility Functions 											   #
 ####################################################################
 
-def save_records(
-		spark=None,
-		kwargs=None,
-		job=None,
-		records_df=None,
-		write_avro=settings.WRITE_AVRO,
-		index_records=settings.INDEX_TO_ES,
-		assign_combine_id=False
-	):
+# def save_records(
+# 		spark=None,
+# 		kwargs=None,
+# 		job=None,
+# 		records_df=None,
+# 		write_avro=settings.WRITE_AVRO,
+# 		index_records=settings.INDEX_TO_ES,
+# 		assign_combine_id=False
+# 	):
 
-	'''
-	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
+# 	'''
+# 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		
 
-	Args:
-		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
-		kwargs (dict): dictionary of args sent to Job spark method
-		job (core.models.Job): Job instance		
-		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-		write_avro (bool): boolean to write avro files to disk after DB indexing
-		index_records (bool): boolean to index to ES
-		assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
+# 	Args:
+# 		spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+# 		kwargs (dict): dictionary of args sent to Job spark method
+# 		job (core.models.Job): Job instance		
+# 		records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+# 		write_avro (bool): boolean to write avro files to disk after DB indexing
+# 		index_records (bool): boolean to index to ES
+# 		assign_combine_id (bool): if True, establish `combine_id` column and populate with UUID
 
-	Returns:
-		None
-			- determines if record_id unique among records DataFrame
-			- selects only columns that match CombineRecordSchema
-			- writes to DB, writes to avro files
-	'''
+# 	Returns:
+# 		None
+# 			- determines if record_id unique among records DataFrame
+# 			- selects only columns that match CombineRecordSchema
+# 			- writes to DB, writes to avro files
+# 	'''
 
-	# assign combine ID
-	if assign_combine_id:
-		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
-		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
+# 	# assign combine ID
+# 	if assign_combine_id:
+# 		combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
+# 		records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
-	# run record identifier transformation scenario is provided
-	records_df = run_rits(records_df, kwargs.get('rits', False))
+# 	# run record identifier transformation scenario is provided
+# 	records_df = run_rits(records_df, kwargs.get('rits', False))
 
-	# check uniqueness (overwrites if column already exists)	
-	records_df = records_df.withColumn("unique", (
-		pyspark_sql_functions.count('record_id')\
-		.over(Window.partitionBy('record_id')) == 1)\
-		.cast('integer'))
+# 	# check uniqueness (overwrites if column already exists)	
+# 	records_df = records_df.withColumn("unique", (
+# 		pyspark_sql_functions.count('record_id')\
+# 		.over(Window.partitionBy('record_id')) == 1)\
+# 		.cast('integer'))
 
-	# ensure columns to avro and DB
-	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
+# 	# ensure columns to avro and DB
+# 	records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
-	# write avro, coalescing for output
-	if write_avro:
-		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
-		.write.format("com.databricks.spark.avro").save(job.job_output)
+# 	# write avro, coalescing for output
+# 	if write_avro:
+# 		records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
+# 		.write.format("com.databricks.spark.avro").save(job.job_output)
 
-	# write records to DB
-	records_df_combine_cols.write.jdbc(
-		settings.COMBINE_DATABASE['jdbc_url'],
-		'core_record',
-		properties=settings.COMBINE_DATABASE,
-		mode='append')
+# 	# write records to DB
+# 	records_df_combine_cols.write.jdbc(
+# 		settings.COMBINE_DATABASE['jdbc_url'],
+# 		'core_record',
+# 		properties=settings.COMBINE_DATABASE,
+# 		mode='append')
 
-	# check if anything written to DB to continue, else abort
-	if len(job.get_records()) > 0:
+# 	# check if anything written to DB to continue, else abort
+# 	if len(job.get_records()) > 0:
 
-		# read rows from DB for indexing to ES
-		bounds = get_job_db_bounds(job)
-		sqldf = spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.SPARK_REPARTITION
-			)
-		job_id = job.id
-		db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+# 		# read rows from DB for indexing to ES
+# 		bounds = get_job_db_bounds(job)
+# 		sqldf = spark.read.jdbc(
+# 				settings.COMBINE_DATABASE['jdbc_url'],
+# 				'core_record',
+# 				properties=settings.COMBINE_DATABASE,
+# 				column='id',
+# 				lowerBound=bounds['lowerBound'],
+# 				upperBound=bounds['upperBound'],
+# 				numPartitions=settings.SPARK_REPARTITION
+# 			)
+# 		job_id = job.id
+# 		db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
-		# index to ElasticSearch
-		if index_records and settings.INDEX_TO_ES:
-			ESIndex.index_job_to_es_spark(
-				spark,
-				job=job,
-				records_df=db_records,
-				index_mapper=kwargs['index_mapper']
-			)
+# 		# index to ElasticSearch
+# 		if index_records and settings.INDEX_TO_ES:
+# 			ESIndex.index_job_to_es_spark(
+# 				spark,
+# 				job=job,
+# 				records_df=db_records,
+# 				index_mapper=kwargs['index_mapper']
+# 			)
 
-		# run Validation Scenarios
-		if 'validation_scenarios' in kwargs.keys():
-			vs = ValidationScenarioSpark(
-				spark=spark,
-				job=job,
-				records_df=db_records,
-				validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
-			)
-			vs.run_record_validation_scenarios()
+# 		# run Validation Scenarios
+# 		if 'validation_scenarios' in kwargs.keys():
+# 			vs = ValidationScenarioSpark(
+# 				spark=spark,
+# 				job=job,
+# 				records_df=db_records,
+# 				validation_scenarios = ast.literal_eval(kwargs['validation_scenarios'])
+# 			)
+# 			vs.run_record_validation_scenarios()
 
-		# update `valid` column for Records based on results of ValidationScenarios
-		cursor = connection.cursor()
-		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % job.id)
+# 		# update `valid` column for Records based on results of ValidationScenarios
+# 		cursor = connection.cursor()
+# 		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % job.id)
 
-		# return db_records DataFrame
-		return db_records
+# 		# return db_records DataFrame
+# 		return db_records
 
-	else:		
-		raise Exception("Nothing written to disk for Job: %s" % job.name)
+# 	else:		
+# 		raise Exception("Nothing written to disk for Job: %s" % job.name)
 
 
 def get_job_db_bounds(job):

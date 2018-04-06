@@ -60,9 +60,6 @@ class OAIProvider(object):
 			'ListSets':self._ListSets
 		}
 
-		# debug
-		# logger.debug(args)
-
 		self.args = args.copy()
 		self.request_timestamp = datetime.datetime.now()
 		self.request_timestamp_string = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
