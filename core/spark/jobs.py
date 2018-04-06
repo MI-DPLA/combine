@@ -699,15 +699,14 @@ class TransformSpark(CombineSparkJob):
 
 
 
-class MergeSpark(object):
+class MergeSpark(CombineSparkJob):
 
 	'''
 	Spark code for running Merge type jobs.  Also used for duplciation, analysis, and others.
 	Note: Merge jobs merge only successful documents from an input job, not the errors
 	'''
 
-	@staticmethod
-	def spark_function(spark, sc, **kwargs):
+	def spark_function(self):
 
 		'''
 		Harvest records, select non-null, and write to avro files
@@ -727,25 +726,11 @@ class MergeSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# Logging support
-		spark.sparkContext.setLogLevel('INFO')
-		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-		logger = log4jLogger.LogManager.getLogger(__name__)
-
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# rehydrate list of input jobs
-		input_jobs_ids = ast.literal_eval(kwargs['input_jobs_ids'])
+		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
 
 		# get total range of id's from input jobs to help partition jdbc reader
 		records_ids = []
@@ -764,7 +749,7 @@ class MergeSpark(object):
 		records_ids.sort()		
 
 		# get list of RDDs from input jobs
-		sqldf = spark.read.jdbc(
+		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
 				properties=settings.COMBINE_DATABASE,
@@ -781,35 +766,31 @@ class MergeSpark(object):
 			input_jobs_dfs.append(job_df)
 
 		# create aggregate rdd of frames
-		agg_rdd = sc.union([ df.rdd for df in input_jobs_dfs ])
-		agg_df = spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
+		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
 		# filter based on record validity
-		agg_df = record_validity_valve(spark, agg_df, kwargs)
+		agg_df = record_validity_valve(self.spark, agg_df, self.kwargs)
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 
 		# update job column, overwriting job_id from input jobs in merge
-		job_id = job.id
+		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
 		# if Analysis Job, do not write avro
-		if job.job_type == 'AnalysisJob':
+		if self.job.job_type == 'AnalysisJob':
 			write_avro = False
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=agg_df
 		)
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
 
