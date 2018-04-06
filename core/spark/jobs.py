@@ -48,6 +48,11 @@ from django.db import connection
 # import select models from Core
 from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
 
+# # Logging support
+# spark.sparkContext.setLogLevel('INFO')
+# log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+# logger = log4jLogger.LogManager.getLogger(__name__)
+# logger.info("############### pyspark script logger initialized ###############")
 
 
 ####################################################################
@@ -129,6 +134,11 @@ class HarvestOAISpark(object):
 			- indexes records into DB
 			- map / flatten records and indexes to ES
 		'''
+
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)
 
 		# refresh Django DB Connection
 		refresh_django_db_connection()
@@ -250,6 +260,11 @@ class HarvestStaticXMLSpark(object):
 			- indexes records into DB
 			- map / flatten records and indexes to ES
 		'''
+
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)
 
 		# refresh Django DB Connection
 		refresh_django_db_connection()
@@ -409,6 +424,11 @@ class TransformSpark(object):
 			- indexes records into DB
 			- map / flatten records and indexes to ES
 		'''
+
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)
 
 		# refresh Django DB Connection
 		refresh_django_db_connection()
@@ -617,6 +637,11 @@ class MergeSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)
+
 		# refresh Django DB Connection
 		refresh_django_db_connection()
 
@@ -719,6 +744,11 @@ class PublishSpark(object):
 			- copies documents in ES from input to new published job index
 		'''
 
+		# Logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)		
+
 		# refresh Django DB Connection
 		refresh_django_db_connection()
 
@@ -808,7 +838,7 @@ class PublishSpark(object):
 				break # break from retry loop
 
 			else:
-				print("indexing to /published, waiting on task node %s, retry: %s/10" % (task['task']['node'], retry))
+				print("indexing to /published, waiting on task node %s, retry: %s/100" % (task['task']['node'], retry))
 
 				# bump retries, sleep, and continue
 				retry += 1
@@ -835,14 +865,14 @@ class PublishSpark(object):
 ####################################################################
 
 def save_records(
-	spark=None,
-	kwargs=None,
-	job=None,
-	records_df=None,
-	write_avro=settings.WRITE_AVRO,
-	index_records=settings.INDEX_TO_ES,
-	assign_combine_id=False
-):
+		spark=None,
+		kwargs=None,
+		job=None,
+		records_df=None,
+		write_avro=settings.WRITE_AVRO,
+		index_records=settings.INDEX_TO_ES,
+		assign_combine_id=False
+	):
 
 	'''
 	Function to index records to DB and trigger indexing to ElasticSearch (ES)		

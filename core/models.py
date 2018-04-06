@@ -2595,8 +2595,7 @@ class PublishedRecords(object):
 		# get published jobs
 		self.publish_links = JobPublish.objects.all()
 
-		# get set IDs from record group of published jobs
-		# self.sets = { publish_link.record_group.publish_set_id:publish_link.job for publish_link in self.publish_links }
+		# get set IDs from record group of published jobs		
 		sets = {}
 		for publish_link in self.publish_links:
 			publish_set_id = publish_link.record_group.publish_set_id

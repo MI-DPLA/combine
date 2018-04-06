@@ -28,6 +28,7 @@ CREATE TABLE `core_record` (
   INDEX `core_record_job_id_idx` (`job_id`),
   INDEX `core_record_job_success_idx` (`success`)
   INDEX `core_record_job_valid_idx` (`valid`)
+  INDEX `core_record_job_published_idx` (`published`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
