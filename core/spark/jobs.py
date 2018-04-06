@@ -48,11 +48,6 @@ from django.db import connection
 # import select models from Core
 from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
 
-# # Logging support
-# spark.sparkContext.setLogLevel('INFO')
-# log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-# logger = log4jLogger.LogManager.getLogger(__name__)
-# logger.info("############### pyspark script logger initialized ###############")
 
 
 ####################################################################
@@ -61,6 +56,7 @@ from core.models import CombineJob, Job, JobTrack, Transformation, PublishedReco
 
 class AmbiguousIdentifier(Exception):
 	pass
+
 
 
 ####################################################################
@@ -99,6 +95,11 @@ class CombineRecordSchema(object):
 
 class CombineSparkJob(object):
 
+	'''
+	Base class for Combine Spark Jobs.
+	Provides some usuable components for jobs.
+	'''
+
 
 	def __init__(self, spark, **kwargs):
 
@@ -106,7 +107,7 @@ class CombineSparkJob(object):
 
 		self.kwargs = kwargs
 
-		# Logging support
+		# init logging support
 		spark.sparkContext.setLogLevel('INFO')
 		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
 		self.logger = log4jLogger.LogManager.getLogger(__name__)
@@ -137,7 +138,7 @@ class CombineSparkJob(object):
 	def save_records(self, records_df=None, write_avro=settings.WRITE_AVRO, index_records=settings.INDEX_TO_ES, assign_combine_id=False):
 
 		'''
-		Function to index records to DB and trigger indexing to ElasticSearch (ES)		
+		Method to index records to DB and trigger indexing to ElasticSearch (ES)		
 
 		Args:				
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
@@ -231,7 +232,7 @@ class CombineSparkJob(object):
 	def get_job_db_bounds(self, job):
 
 		'''
-		Function to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
+		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
 		'''	
 
 		records = job.get_records()
@@ -248,7 +249,7 @@ class CombineSparkJob(object):
 	def record_validity_valve(self, records_df):
 
 		'''
-		Helper function to include all, valid, or invalid records only for downstream jobs
+		Method to include all, valid, or invalid records only for downstream jobs
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
@@ -280,7 +281,7 @@ class CombineSparkJob(object):
 	def run_rits(self, records_df):
 
 		'''
-		Function to run Record Identifier Transformation Scenarios (rits) if present.
+		Method to run Record Identifier Transformation Scenarios (rits) if present.
 
 		RITS can be of three types:
 			1) 'regex' - Java Regular Expressions
@@ -548,14 +549,14 @@ class HarvestOAISpark(CombineSparkJob):
 		self.close_job()
 
 
-class HarvestStaticXMLSpark(object):
+
+class HarvestStaticXMLSpark(CombineSparkJob):
 
 	'''
 	Spark code for harvesting static xml records
 	'''
 
-	@staticmethod
-	def spark_function(spark, **kwargs):
+	def spark_function(self):
 
 		'''
 		Harvest static XML records provided by user.
@@ -589,26 +590,12 @@ class HarvestStaticXMLSpark(object):
 			- map / flatten records and indexes to ES
 		'''
 
-		# Logging support
-		spark.sparkContext.setLogLevel('INFO')
-		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
-		logger = log4jLogger.LogManager.getLogger(__name__)
-
-		# refresh Django DB Connection
-		refresh_django_db_connection()
-
-		# get job
-		job = Job.objects.get(pk=int(kwargs['job_id']))
-
-		# start job_track instance, marking job start
-		job_track = JobTrack(
-			job_id = job.id
-		)
-		job_track.save()
+		# init job
+		self.init_job()
 
 		# read directory of static files
-		static_rdd = spark.sparkContext.wholeTextFiles(
-				'file://%s' % kwargs['static_payload'],
+		static_rdd = self.spark.sparkContext.wholeTextFiles(
+				'file://%s' % self.kwargs['static_payload'],
 				minPartitions=settings.SPARK_REPARTITION
 			)
 
@@ -703,25 +690,22 @@ class HarvestStaticXMLSpark(object):
 
 
 		# map with get_metadata_udf 
-		job_id = job.id		
+		job_id = self.job.id
+		kwargs = self.kwargs
 		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
 
 		# index records to DB and index to ElasticSearch
-		db_records = save_records(
-			spark=spark,
-			kwargs=kwargs,
-			job=job,
+		self.save_records(			
 			records_df=records.toDF(),
 			assign_combine_id=True
 		)
 
 		# remove temporary payload directory if static job was upload based, not location on disk
-		if kwargs['static_type'] == 'upload':
-			shutil.rmtree(kwargs['static_payload'])
+		if self.kwargs['static_type'] == 'upload':
+			shutil.rmtree(self.kwargs['static_payload'])
 
-		# finally, update finish_timestamp of job_track instance
-		job_track.finish_timestamp = datetime.datetime.now()
-		job_track.save()
+		# close job
+		self.close_job()
 
 
 

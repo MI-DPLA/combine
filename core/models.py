@@ -3586,7 +3586,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark.spark_function(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s)' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
