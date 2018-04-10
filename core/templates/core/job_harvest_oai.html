@@ -35,8 +35,13 @@
 
 						<!-- optional OAI endpoint defaults overrides -->				
 						<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
-							<p class="text-danger font-weight-bold">Below are default settings for this configured OAI Endpoint, but can be selectively overridden for this job</p>
+							<p class="text-danger font-weight-bold">Below are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job</p>
 							
+							<div class="form-group">
+								<label for="endpoint">OAI endpoint</label>
+								<input type="text" class="form-control" id="endpoint" name="endpoint" placeholder="http://example.org/oai" disabled>
+							</div>
+
 							<div class="form-group">
 								<label for="verb">OAI Verb</label>
 								<select class="form-control" id="verb" name="verb">
@@ -95,14 +100,17 @@
 			// save all oai endpoints as parsed javascript values for previewing
 			oes = {}
 			{% for oai_endpoint in oai_endpoints %}
-				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
-			{% endfor %}
+				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};				
+			{% endfor %}			
 
 			$(function() {
 			    $("#oai_endpoint_id").change(function() {
 
 			    	// get id 
 			        oe_id = $('option:selected', this).val()
+
+			        // set endpoint URL
+			        $('#endpoint').val(oes[oe_id].endpoint);
 
 			        // set verb
 			        $('#verb option[value="'+oes[oe_id].verb+'"]').attr("selected", "selected");
