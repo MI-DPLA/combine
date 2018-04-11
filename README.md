@@ -8,9 +8,7 @@ The name "Combine", pronounced /kämˌbīn/, is a nod to the [combine harvester 
 
 ## Documentation
 
-See the [docs](docs) folder for more detailed documentation.
-
-Also available, a ["QuickStart" walkthrough](docs/quickstart.md).
+Documentation is available at [Read the Docs](http://combine.readthedocs.io/).
 
 ## Installation
 
