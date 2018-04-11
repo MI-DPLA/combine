@@ -76,6 +76,7 @@ dependencies:
   - simplegeneric==0.8.1
   - Sphinx==1.7.2
   - sphinx-autobuild==0.7.1
+  - sphinx-rtd-theme==0.3.0
   - sqlalchemy==1.1.13
   - traitlets==4.3.2
   - urllib3==1.22

@@ -51,6 +51,9 @@ scandir==1.5
 Sickle==0.6.2
 simplegeneric==0.8.1
 six==1.10.0
+Sphinx==1.7.2
+sphinx-autobuild==0.7.1
+sphinx-rtd-theme==0.3.0
 SQLAlchemy==1.1.13
 traitlets==4.3.2
 urllib3==1.22

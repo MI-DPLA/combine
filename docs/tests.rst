@@ -35,13 +35,13 @@ Examples
 
 **run tests, no output, create Livy session, destroy records**
 
-.. code-block:: python
+.. code-block:: bash
 
 	pytest
 
 
 **run tests, see output, use active Livy session, keep records after test**
 
-.. code-block:: python
+.. code-block:: bash
 
 	pytest -s --use_active_livy --keep_records
