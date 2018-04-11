@@ -1,8 +1,11 @@
-**********
 QuickStart
-**********
+==========
 
-    **Update 4/11/2018:** *In migrating from Markdown to reStructuredText, some of the formatting has gone a little sideways.  And, there are new features to include in this quickstart guide.  Thanks for your patience while those updates are made!*
+    **Update 2/20/2018:** This walkthrough is for a still quite rough
+    version of Combine, with virtually no front-end styling. All the
+    tables and interfaces are purely functional, but could use
+    considerable spit and polish to be pleasant to use. Please excuse
+    the garish motif!
 
 Sometimes you can't beat kicking the tires to see how an application
 works. This "QuickStart" guide will walkthrough the harvesting,
@@ -32,7 +35,7 @@ and it's recommended to do so in order:
 -  `harvesting Records <#harvesting-records>`__
 -  `transforming Records <#transforming-records>`__
 -  `looking at Jobs and Records <#looking-at-jobs-and-records>`__
--  `duplicating / merging Jobs <#duplicating-and-merging-jobs>`__
+-  `duplicating / merging Jobs <>`__
 -  `publishing Records <#publishing-records>`__
 -  `analysis jobs <#analysis-jobs>`__
 -  `troubleshooting <#troubleshooting>`__
@@ -47,12 +50,12 @@ defaults to. On most systems you can point that IP to a domain name like
 interchangeably throughout.
 
 SSHing into server
-==================
+------------------
 
 The most reliable way is to ssh in as the ``combine`` user (assuming
 server at ``192.168.45.10``), password is also ``combine``:
 
-.. code-block:: bash
+::
 
     # username/password is combine/combine
     ssh combine@192.168.45.10
@@ -60,7 +63,7 @@ server at ``192.168.45.10``), password is also ``combine``:
 You can also use Vagrant to ssh in, from the Vagrant directory on the
 host machine:
 
-.. code-block:: bash
+::
 
     vagrant ssh
 
@@ -68,20 +71,20 @@ If using Vagrant to ssh in, you'll want to switch users and become
 ``combine``, as most things are geared for that user.
 
 Combine python environment
-==========================
+--------------------------
 
 Combine runs in a `Miniconda <https://conda.io/miniconda.html>`__ python
 environement, which can be activated from any filepath location by
 typing:
 
-.. code-block:: bash
+::
 
     source active combine
 
 If that returns the error, ``-bash: active: No such file or directory``,
 try a more explicit version of that command:
 
-.. code-block:: bash
+::
 
     source /usr/local/anaconda/bin/activate combine
 
@@ -89,10 +92,10 @@ try a more explicit version of that command:
 this environment!
 
 Starting / Stopping Combine
-===========================
+---------------------------
 
 Gunicorn
---------
+~~~~~~~~
 
 For normal operations, Combine is run using
 `Supervisor <http://supervisord.org/>`__, a python based application for
@@ -102,44 +105,45 @@ program named ``gunicorn``.
 
 Start Combine:
 
-.. code-block:: bash
+::
 
     sudo supervisorctl start gunicorn
 
 Stop Combine:
 
-.. code-block:: bash
+::
 
     sudo supervisorctl stop gunicorn
 
 You can confirm that Combine is running by visiting
-http://192.168.45.10/combine, where
+```http://192.168.45.10/combine`` <http://combine-vm/combine>`__, where
 you should be prompted to login with a username and password. For
 default/testing installations, you can use ``combine`` / ``combine`` for
 these credentials.
 
 Django runserver
-----------------
+~~~~~~~~~~~~~~~~
 
 You can also run Combine via Django's built-in server.
 
 Convenience script, from ``/opt/combine``:
 
-.. code-block:: bash
+::
 
     ./runserver.sh
 
 Or, you can run the Django command explicitly from ``/opt/combine``:
 
-.. code-block:: bash
+::
 
     ./manage.py runserver --noreload 0.0.0.0:8000
 
 You can confirm that Combine is running by visiting
-http://192.168.45.10:8000/combine (note the ``8000`` port number).
+```http://192.168.45.10:8000/combine`` <http://combine-vm/combine>`__
+(note the ``8000`` port number).
 
 Livy Sessions
--------------
+~~~~~~~~~~~~~
 
 To run any Jobs, Combine relies on an active (idle) Apache Livy session.
 Livy is what makes running Spark jobs possible via the familiar
@@ -160,24 +164,24 @@ Combine navigation, which should read ``Livy/Spark Session (idle)`` and
 have a green background if active.
 
 Combine Data Model
-==================
+------------------
 
 Organization
-------------
+~~~~~~~~~~~~
 
 The highest level of organization in Combine is an **Organization**.
 Organizations are intended to group and organize records at the level of
 an institution or organization, hence the name!
 
 You can create a new Organization from the Organizations page at
-`Organizations page <http://192.168.45.10/combine/organizations>`__, or by clicking
+http://192.168.45.10/combine/organizations, or by clicking
 "Organizations" from navigation links at the top of any page.
 
 For this walkthrough, we can create one with the name "Amazing
 University". Only the ``name`` field is required, others are optional.
 
 RecordGroup
------------
+~~~~~~~~~~~
 
 Within Organizations are **RecordGroups**. RecordGroups are a "bucket"
 at the level of a bunch of intellectually similar records. It is worth
@@ -199,7 +203,7 @@ Finally, click into the newly created RecordGroup "Fedora Repository" to
 see the RecordGroup's page, where we can begin to run Jobs.
 
 Jobs
-----
+~~~~
 
 Central to Combine's workflow philosophy are the ideas of **Jobs**. Jobs
 include any of the following:
@@ -219,7 +223,7 @@ run on those records. i.e.
     OAI-PMH Harvest Job ---> XSLT Transform Job --> Publish Job
 
 Record
-------
+~~~~~~
 
 Lastly, the most granular major entity in Combine is an individual
 **Record**. Records exist within a Job. When a Job is deleted, so are
@@ -239,31 +243,31 @@ It is worth noting, though not dwelling on here, that groups of Records
 are also stored as Avro files on disk.
 
 Configuration
-=============
+-------------
 
 Currently, there are three main areas in Combine that require user
 configuration:
 
--  `OAI-PMH endpoints <.>`__
--  `Transformation Scenarios <.>`__
--  `Validation Scenarios <.>`__
+-  `OAI-PMH endpoints <>`__
+-  `Transformation Scenarios <>`__
+-  `Validation Scenarios <>`__
 
 For the sake of this QuickStart demo, we can bootstrap our instance of
 Combine with some demo configurations, creating the following:
 
 -  Transformation Scenario
 
-   -  "MODS to Service Hub profile" (XSLT transformation)
+   -  *"MODS to Service Hub profile" (XSLT transformation)*
 
 -  Validation Scenarios
 
-   -  "DPLA minimum" (schematron validation)
-   -  "Date checker" (python validation)
+   -  *"DPLA minimum" (schematron validation)*
+   -  *"Date checker" (python validation)*
 
 To boostrap these demo configurations for the purpose of this
 walkthrough, run the following command from ``/opt/combine``:
 
-.. code-block:: bash
+::
 
     ./manage.py quickstartbootstrap
 
@@ -271,10 +275,10 @@ You can confirm these demo configurations were created by navigating to
 the configuration screen at http://192.168.45.10/combine/configurations.
 
 Harvesting Records
-==================
+------------------
 
 Static XML harvest
-------------------
+~~~~~~~~~~~~~~~~~~
 
 Now we're ready to run our first Job and generate our first Records. For
 this QuickStart, as we have not yet configured any OAI-PMH endpoints, we
@@ -330,7 +334,7 @@ For now, let's continue by running an XSLT Transformation on these
 records!
 
 Transforming Records
-====================
+--------------------
 
 In the previous step, we harvestd 250 records from a bunch of static
 MODS XML documents. Now, we will transform all the Records in that Job
@@ -389,7 +393,7 @@ the XSLT transformation fixed whatever validation problems there were
 for the Records in the Harvest job.
 
 Looking at Jobs and Records
-===========================
+---------------------------
 
 Now is a good time to look at the details of the jobs we have run. Let's
 start with the Harvest Job. Clicking the Job name in the table, or
@@ -400,7 +404,7 @@ the table below that are not a) the job itself, or b) upstream jobs that
 served as inputs.
 
 Job Details
------------
+~~~~~~~~~~~
 
 Here, you will find details about a specific Job. Major sections
 include:
@@ -415,7 +419,7 @@ include:
    stored in ElasticSearch
 
 Records table
--------------
+^^^^^^^^^^^^^
 
 Sortable, searchable, this shows all the individual, discrete Records
 for this Job. This is *one*, but not the only, entry point for viewing
@@ -423,7 +427,7 @@ the details about a single Record. It is also helpful for determining if
 the Record is unique *with respect to other Records from this Job*.
 
 Validation results
-------------------
+^^^^^^^^^^^^^^^^^^
 
 This table shows all the Validation Scenarios that were run for this
 job, including any/all failures for each scenario.
@@ -442,10 +446,10 @@ are able to select:
 -  any mapped fields (see below for an explanation of them) that would
    be helpful to include in the report as columns
 
-More information about `Validation Scenarios <.>`__.
+More information about `Validation Scenarios <>`__.
 
 Indexed Fields
---------------
+^^^^^^^^^^^^^^
 
 This table represents individual fields as mapped from a Record's source
 XML record to fields in ElasticSearch. This relates back the "Index
@@ -458,7 +462,7 @@ into fields that can be indexed in ElasticSearch for analysis.
 For example, it might map the following XML block from a Record's MODS
 metadata:
 
-.. code-block:: xml
+::
 
     <mods:titleInfo>
         <mods:title>Edmund Dulac's fairy-book : </mods:title>
@@ -467,7 +471,7 @@ metadata:
 
 to the following *two* ElasticSearch key/value pairs:
 
-.. code-block:: text
+::
 
     mods_titleInfo_title : Edmund Dulac's fairy-book :
     mods_titleInfo_subTitle : fairy tales of the allied nations
@@ -507,7 +511,7 @@ Combine attempts to query the DPLA API to match records, which is based
 on these mapped fields, but more on that later.
 
 Record Details
---------------
+~~~~~~~~~~~~~~
 
 Next, we can drill down one more level and view the details of an
 individual Record. From the Record table at the top, click on the
@@ -516,13 +520,13 @@ with the details of that particular Record.
 
 Similar to a Job's details, this page has a few major sections:
 
--  `Record validation <#record-validation>`_
--  `Record stages <#record-stages>`_
--  `Indexed Fields <#record-fields>`_
--  `Record document <#record-document>`_
+-  Record validation
+-  Record stages
+-  Indexed Fields
+-  Record document
 
 Record validation
-~~~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^^^
 
 This area shows all the Validation scenarios that were run for this Job,
 and how this specific record fared. In all likelihood, if you've been
@@ -536,7 +540,7 @@ to re-run and see the results of that Validation Scenario run against
 this Record's XML document.
 
 Record stages
-~~~~~~~~~~~~~
+^^^^^^^^^^^^^
 
 This table represents the various "stages", aka Jobs, this Record exists
 in. This is good insight into how Records move through Combine. We
@@ -552,7 +556,7 @@ Record XML), the associated, mapped ElasticSearch document (JSON), or
 click into the Job details for that Record stage.
 
 Indexed fields
-~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^
 
 This table shows the individual fields in ElasticSearch that were mapped
 from the Record's XML metadata. This can further reveal how this mapping
@@ -601,7 +605,7 @@ but there are problems there as well a bit outside the scope of this
 QuickStart guide.
 
 Record document
-~~~~~~~~~~~~~~~
+^^^^^^^^^^^^^^^
 
 And finally, at the very bottom, you will find the raw XML document for
 this Record. **Note:** As mentioned, regardless of how fields are mapped
@@ -611,8 +615,8 @@ mapping and analysis of Records through mapping to ElasticSearch, but
 the Record's XML document is stored as plain, LONGTEXT in MySQL for each
 Job.
 
-Duplicating and Merging Jobs
-============================
+Duplicating / Merging Jobs
+--------------------------
 
 This QuickStart guide won't focus on Duplicating / Merging Jobs, but it
 worth knowing this is possible. If you were to click "Duplicate / Merge"
@@ -626,7 +630,7 @@ The use cases are still emerging when this could be helpful, but here
 are a couple of examples...
 
 Run different Index Mapping or Validation Scenarios
----------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 When you duplicate/merge Jobs, you have the ability to select a
 different Index Mapper, and/or run different Validation Scenarios than
@@ -636,7 +640,7 @@ Job <#analysis-job>`__ might be a better option, which itself is running
 Duplicate/Merge jobs behind the scenes.
 
 Pull Jobs from one RecordGroup into another
--------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Most Job workflow actions -- Transformations and Publishing -- are
 limited to a RecordGroup, which is itself an intellectual grouping of
@@ -645,7 +649,7 @@ multiple RecordGroups, but a desire to "pull" in a Job from a different
 RecordGroup. This can be done by merging.
 
 Merging Jobs
-------------
+^^^^^^^^^^^^
 
 In addition to "pulling" Jobs from one RecordGroup into another, it
 might also be beneficial to merge multiple Jobs into one. An example
@@ -667,7 +671,7 @@ the RecordGroup page:
    alt text
 
 Publishing Records
-==================
+------------------
 
 If you've made it this far, at this point we have:
 
@@ -684,7 +688,7 @@ Now, we may be ready to "publish" these materials from Combine for
 harvesting by others (e.g. DPLA).
 
 Overview
---------
+~~~~~~~~
 
 Publishing is done at the **RecordGroup** level, giving more weight to
 the idea of a RecordGroup as a meaningful, intellectual group of
@@ -699,7 +703,7 @@ in <http://192.168.45.10/combine/oai?verb=Identify>`__ that serves all
 published RecordGroups via the OAI-PMH HTTP protocol.
 
 Publishing a RecordGroup
-------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~
 
 To run a Publish Job and publish a RecordGroup, navigate to the
 RecordGroup page, and near the top click the "Publish" button inside the
@@ -732,7 +736,7 @@ status switch to ``available``, indicating the publishing is complete.
 Let's confirm and see them as published records...
 
 Viewing published records
--------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~
 
 From any screen, click the "Published" link at the very top in the
 navigation links. This brings you to a new page with some familiar
@@ -780,7 +784,7 @@ coming out of Combine, representing four common OAI-PMH verbs:
       identifiers for each published RecordGroup
 
 Analysis Jobs
-=============
+-------------
 
 From any screen, clicking the "Analysis" link at the top in the
 navigation links will take you to the Analysis Jobs space. Analysis Jobs
@@ -805,13 +809,13 @@ selection as input Jobs from any other screens; they are a bit of an
 island, solely for the purpose of their Analysis namesake.
 
 Troubleshooting
-===============
+---------------
 
 Undoubtedly, things might go sideways! As Combine is still quite rough
 around some edges, here are some common gotchas you may encounter.
 
 Run a job, status immediately flip to ``available``, and has no records
------------------------------------------------------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 The best way to diagnose why a job may have failed, from the RecordGroup
 screen, is to click "Livy Statement" link under the ``Monitor`` column.
@@ -829,7 +833,7 @@ by:
 This can be fixed by [restarting the Livy session[(#livy-sessions).
 
 Cannot start a Livy session
----------------------------
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 If a Livy session will not settle to an ``idle`` status, it might be
 worth checking the YARN container manager which is used to manage Livy
