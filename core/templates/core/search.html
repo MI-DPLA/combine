@@ -27,7 +27,7 @@
 				    var oTable = $('#dt_field_analysis').DataTable({
 				        "processing": true,
 				        "serverSide": true,
-				        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_names={{ field_name }}",
+				        "ajax": "{% url 'records_es_generic_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_names={{ field_name }}",
 				        "searchDelay": 1000,
 				        "pageLength": 10,
 				        "order": [[ 1, "desc" ]],
