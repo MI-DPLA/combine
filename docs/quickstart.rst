@@ -76,14 +76,7 @@ typing:
 
 .. code-block:: bash
 
-    source active combine
-
-If that returns the error, ``-bash: active: No such file or directory``,
-try a more explicit version of that command:
-
-.. code-block:: bash
-
-    source /usr/local/anaconda/bin/activate combine
+    source activate combine
 
 **Note:** Most commands in this QuickStart guide require you to be in
 this environment.
