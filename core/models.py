@@ -4616,13 +4616,11 @@ class DTElasticGenericSearch(View):
 	Model to query ElasticSearch and return DataTables ready JSON.
 	This model is a Django Class-based view.
 	This model is located in core.models, as it still may function seperate from a Django view.
-
-	NOTE: Consider breaking aggregation search to own class, very different approach
 	'''
 
 	def __init__(self,
-			fields=None,
-			es_index=None,
+			fields=['db_id','combine_id','record_id'],
+			es_index='j*',
 			DTinput={
 				'draw':None,
 				'start':0,
@@ -4814,12 +4812,7 @@ class DTElasticGenericSearch(View):
 		# using offset (start) and limit (length)
 		start = int(self.DTinput['start'])
 		length = int(self.DTinput['length'])
-
-		if self.search_type == 'fields_per_doc':
-			self.query = self.query[start : (start + length)]
-
-		if self.search_type == 'values_per_field':
-			self.query_results = self.query_results[start : (start + length)]
+		self.query = self.query[start : (start + length)]
 
 
 	def to_json(self):
@@ -4834,7 +4827,7 @@ class DTElasticGenericSearch(View):
 		return json.dumps(self.DToutput)
 
 
-	def get(self, request, es_index, search_type):
+	def get(self, request):
 
 		'''
 		Django Class-based view, GET request.
@@ -4847,7 +4840,7 @@ class DTElasticGenericSearch(View):
 
 		# save parameters to self
 		self.request = request
-		self.es_index = es_index
+		# self.es_index = es_index
 		self.DTinput = self.request.GET
 
 		# time respond build
@@ -4857,7 +4850,7 @@ class DTElasticGenericSearch(View):
 		self.search()		
 
 		# end time
-		logger.debug('DTElasticFieldSearch calc time: %s' % (time.time()-stime))
+		logger.debug('DTElasticGenericSearch calc time: %s' % (time.time()-stime))
 
 		# for all search types, build and return response
 		return JsonResponse(self.DToutput)
@@ -4869,63 +4862,55 @@ class DTElasticGenericSearch(View):
 		Execute search
 		'''
 
-		# # set search type
-		# self.search_type = 'fields_per_doc'
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
 
-		# # get field names
-		# if self.request:
-		# 	field_names = self.request.GET.getlist('field_names')
-		# 	self.fields = field_names
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = self.query.count()
 
-		# # initiate es query
-		# self.query = Search(using=es_handle, index=self.es_index)
-
-		# # get total document count, pre-filtering
-		# self.DToutput['recordsTotal'] = self.query.count()
-
-		# # apply filtering to ES query
+		# apply filtering to ES query
 		# self.filter()
 
-		# # apply sorting to ES query
+		# apply sorting to ES query
 		# self.sort()
 
-		# # self.sort()
-		# self.paginate()
+		# self.sort()
+		self.paginate()
 
-		# # get document count, post-filtering
-		# self.DToutput['recordsFiltered'] = self.query.count()
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = self.query.count()
 
-		# # execute and retrieve search
-		# self.query_results = self.query.execute()
+		# execute and retrieve search
+		self.query_results = self.query.execute()
 
-		# # loop through hits
-		# for hit in self.query_results.hits:
+		# loop through hits
+		for hit in self.query_results.hits:
 
-		# 	# get combine record
-		# 	record = Record.objects.get(pk=int(hit.db_id))
+			# get combine record
+			record = Record.objects.get(pk=int(hit.db_id))
 
-		# 	# loop through rows, add to list while handling data types
-		# 	row_data = []
-		# 	for field in self.fields:
-		# 		field_value = getattr(hit, field, None)
+			# loop through rows, add to list while handling data types
+			row_data = []
+			for field in self.fields:
+				field_value = getattr(hit, field, None)
 
-		# 		# handle ES lists
-		# 		if type(field_value) == AttrList:
-		# 			row_data.append(str(field_value))
+				# handle ES lists
+				if type(field_value) == AttrList:
+					row_data.append(str(field_value))
 
-		# 		# all else, append
-		# 		else:
-		# 			row_data.append(field_value)
+				# all else, append
+				else:
+					row_data.append(field_value)
 
-		# 	# place record's org_id, record_group_id, and job_id in front
-		# 	row_data = [
-		# 			record.job.record_group.organization.id,
-		# 			record.job.record_group.id,
-		# 			record.job.id
-		# 			] + row_data
+			# place record's org_id, record_group_id, and job_id in front
+			row_data = [
+					record.job.record_group.organization.id,
+					record.job.record_group.id,
+					record.job.id
+					] + row_data
 
-		# 	# add list to object
-		# 	self.DToutput['data'].append(row_data)	
+			# add list to object
+			self.DToutput['data'].append(row_data)	
 		
 
 

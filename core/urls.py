@@ -86,7 +86,7 @@ urlpatterns = [
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/indexing_failures_dt_json$', views.DTIndexingFailuresJson.as_view(), name='indexing_failures_dt_json'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_validation_scenario_failures_json/(?P<job_validation_id>[0-9]+)$', views.DTJobValidationScenarioFailuresJson.as_view(), name='job_validation_scenario_failures_json'),
 	url(r'^datatables/es/index/(?P<es_index>.+)/(?P<search_type>.+)/records_es_field_dt_json$', DTElasticFieldSearch.as_view(), name='records_es_field_dt_json'),
-	url(r'^datatables/es/index/(?P<es_index>.+)/(?P<search_type>.+)/records_es_generic_dt_json$', DTElasticGenericSearch.as_view(), name='records_es_generic_dt_json'),
+	url(r'^datatables/es/search$', DTElasticGenericSearch.as_view(), name='records_es_generic_dt_json'),
 
 	# Analysis
 	url(r'^analysis$', views.analysis, name='analysis'),
