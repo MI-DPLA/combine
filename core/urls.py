@@ -77,6 +77,9 @@ urlpatterns = [
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
 
+	# Global Search
+	url(r'^search$', views.search, name='search'),
+
 	# Datatables Endpoints
 	url(r'^datatables/all_records/records_dt_json$', views.DTRecordsJson.as_view(), name='all_records_dt_json'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/records_dt_json$', views.DTRecordsJson.as_view(), name='records_dt_json'),

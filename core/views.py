@@ -66,6 +66,11 @@ def breadcrumb_parser(path):
 	if config_m:		
 		crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
 
+	# search
+	config_m = re.match(r'(.+?/search)', path)
+	if config_m:		
+		crumbs.append(("<span class='font-weight-bold'>Search</span>", reverse('search')))
+
 	# configurations/test_validation_scenario
 	config_m = re.match(r'(.+?/configuration/test_validation_scenario)', path)
 	if config_m:		
@@ -1766,6 +1771,22 @@ def oai(request):
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')
+
+
+
+####################################################################
+# Global Search													   #
+####################################################################
+
+def search(request):
+
+	'''
+	Global search of Records
+	'''	
+
+	return render(request, 'core/search.html', {
+			'breadcrumbs':breadcrumb_parser(request.path)
+		})
 
 
 
