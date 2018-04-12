@@ -8,6 +8,8 @@ The name "Combine", pronounced /kämˌbīn/, is a nod to the [combine harvester 
 
 ## Documentation
 
+[![Documentation Status](https://readthedocs.org/projects/combine/badge/?version=master)](http://combine.readthedocs.io/en/master/?badge=master)
+
 Documentation is available at [Read the Docs](http://combine.readthedocs.io/).
 
 ## Installation
