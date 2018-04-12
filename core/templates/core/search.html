@@ -8,4 +8,70 @@
 		</div>
 	</div>
 
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Records</h4>			
+			
+			<table id='dt_field_analysis' class="table table-bordered table-hover">
+				<thead>
+					<th>DB ID</th>
+					<th>Combine ID</th>
+					<th>Record ID</th>					
+				</thead>
+				<tbody></tbody>
+			</table>
+
+			<script>
+
+				$(document).ready(function() {
+				    var oTable = $('#dt_field_analysis').DataTable({
+				        "processing": true,
+				        "serverSide": true,
+				        "ajax": "{% url 'records_es_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_names={{ field_name }}",
+				        "searchDelay": 1000,
+				        "pageLength": 10,
+				        "order": [[ 1, "desc" ]],
+				        "columns": [
+				            { 
+				            	title: "Field Value",
+				            	"render": function ( data, type, row ) {
+				                    if (data.indexOf('http') !== -1) {
+				                    	return "<a target='_blank' href='"+data+"'>"+data+"</a>";
+				                    }
+				                    else {
+				                    	return data;
+				                    }
+				                }
+			            	},
+				            { 
+				            	title: "Count"		            	
+				            },
+				            {
+				            	title: "Actions",
+				            	"render": function (data, type, row) {
+
+				            		// get search term
+				            		search_term = row[0]
+
+				            		// search term escapes
+				            		escapes = [
+				            			[/;/g, '%3B'], // semicolons
+				            			[/"/g, '\\"'], // double quote
+				            			[/'/g, "\\'"] // single quote
+				            		];
+				            		for (var i = escapes.length - 1; i >= 0; i--) {
+				            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
+				            		};
+				            		return "<a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Records with value</a> / <a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Records without</a>";
+				            	}
+				            }
+				        ],
+				    });
+				});
+
+			</script>
+
+		</div>
+	</div>
+
 {% endblock %}
