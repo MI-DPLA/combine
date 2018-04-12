@@ -3082,7 +3082,8 @@ class CombineJob(object):
 
 		# create DataFrame with django-pands
 		rvf_df = read_frame(rvfs, fieldnames=[
-				'record__id', # Combine record DB ID
+				'record__id', # DB ID
+				'record__combine_id', # Combine ID
 				'record__record_id', # Record string ID
 				'validation_scenario__name',
 				'fail_count',
@@ -3091,7 +3092,8 @@ class CombineJob(object):
 
 		# rename columns to more human readable format
 		col_mapping = {
-			'record__id':'Combine ID',
+			'record__id':'DB ID',
+			'record__combine_id':'Combine ID',
 			'record__record_id':'Record ID',
 			'validation_scenario__name':'Validation Scenario',
 			'fail_count':'Test Failure Count',
@@ -3100,20 +3102,20 @@ class CombineJob(object):
 		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
 
 		# loop through requests mapped fields, add to dataframe
-		if mapped_field_include:
+		if mapped_field_include:			
 
 			# prepare dictionary
 			field_values_dict = { field:[] for field in mapped_field_include }
 			
 			# establish chunking
-			tlen = rvf_df['Record ID'].count()
+			tlen = rvf_df['Combine ID'].count()
 			start = 0
 			end = start + chunk_size
 
 			while start < tlen:				
 
 				# get doc chunks from es
-				chunk = list(rvf_df['Record ID'].iloc[start:end])
+				chunk = list(rvf_df['Combine ID'].iloc[start:end])
 				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']				
 				
 				# grab values and add to dictionary

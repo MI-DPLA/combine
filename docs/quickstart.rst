@@ -86,7 +86,7 @@ try a more explicit version of that command:
     source /usr/local/anaconda/bin/activate combine
 
 **Note:** Most commands in this QuickStart guide require you to be in
-this environment!
+this environment.
 
 Starting / Stopping Combine
 ===========================
@@ -155,6 +155,18 @@ http://192.168.45.10/combine/livy_sessions. The important column is
 ``start new session`` link near the top. Takes anywhere from 10-20
 seconds to become ``idle``.
 
+.. figure:: img/livy_none.png
+   :alt: No livy session img
+   :target: _images/livy_none.png
+
+   Livy session page, with no active Livy session
+
+.. figure:: img/livy_idle.png
+   :alt: Idle livy session
+   :target: _images/livy_idle.png
+
+   Idle Livy session
+
 You can check the status of the Livy session at a glance from the
 Combine navigation, which should read ``Livy/Spark Session (idle)`` and
 have a green background if active.
@@ -167,7 +179,7 @@ Organization
 
 The highest level of organization in Combine is an **Organization**.
 Organizations are intended to group and organize records at the level of
-an institution or organization, hence the name!
+an institution or organization, hence the name.
 
 You can create a new Organization from the Organizations page at
 `Organizations page <http://192.168.45.10/combine/organizations>`__, or by clicking
@@ -194,6 +206,12 @@ click on the Organization "Amazing University" from the table. From the
 following Organiation page for "Amazing University" you can create a new
 RecordGroup. Let's call it "Fedora Repository"; again, no other fields
 are required beyond ``name``.
+
+.. figure:: img/qs_org_and_rg.png
+   :alt: Organization and Record Group table
+   :target: _images/qs_org_and_rg.png
+
+   Demo Organization "Amazing University" and demo Record Group "Fedora Repository"
 
 Finally, click into the newly created RecordGroup "Fedora Repository" to
 see the RecordGroup's page, where we can begin to run Jobs.
@@ -282,11 +300,28 @@ can run a **static XML** harvest on some demo data included with
 Combine.
 
 From the RecordGroup screen, near the bottom and under "Harvest", click
-"Static XML". You will be presented with a screen to run a harvest job
-of static XML files from disk.
+"Static XML". 
+
+.. figure:: img/run_new_job.png
+   :alt: Area to initiate new Jobs from the Record Group page
+   :target: _images/run_new_job.png
+
+   Area to initiate new Jobs from the Record Group page
+
+
+You will be presented with a screen to run a harvest job
+of static XML files from disk:
+
+.. figure:: img/static_harvest_job.png
+   :alt: Static Harvest Job screen
+   :target: _images/static_harvest_job.png
+
+   Static Harvest Job screen
 
 Many fields are optional -- e.g. Name, Description -- but we will need
-to tell the Harvest Job where to find the files. For the form field
+to tell the Harvest Job where to find the files. 
+
+First, click the tab "Filesystem", then for the form field
 ``Location of XML files on disk:``, enter the following, which points to
 a directory of 250 MODS files (this was created during bootstrapping):
 
@@ -295,14 +330,16 @@ a directory of 250 MODS files (this was created during bootstrapping):
     /tmp/combine/qs/mods
 
 Next, we need to provide an XPath query that locates each discrete
-record within the providedd MODS file. For the form field
-``XPath for metadata document root``, enter the following:
+record within the provided MODS file. Under the section "Locate Document", for the 
+form field ``XPath for metadata document root``, enter the following:
 
 ::
 
     /mods:mods
 
-For the time being, we can ignore the other form fields.
+For the time being, we can ignore the section "Locate Identifier in Document" 
+which would allow us to find a unique identifier via XPath in the document.  By 
+default, it will assign a random identifier based on a hash of the document string.
 
 Next, we can select the **Index Mapping** we will use for this job. The
 default "Generic XPath based mapper" will work for now, with more
@@ -321,13 +358,19 @@ table. A static job of this size should not take long, refresh the page
 in 10-20 seconds, and hopefully, you should see the Job status switch to
 ``available``.
 
+.. figure:: img/static_harvest_status.png
+   :alt: Status of Static Harvest job, also showing Job failed some Validations
+   :target: _images/static_harvest_status.png
+
+   Status of Static Harvest job, also showing Job failed some Validations
+
 This table represents all Jobs run for this RecordGroup, and will grow
 as we run some more. You may also note that the ``Is Valid`` column is
 red and shows ``False``, meaning some records have failed the Validation
 Scenarios we optionally ran for this Job. We will return to this later.
 
 For now, let's continue by running an XSLT Transformation on these
-records!
+records.
 
 Transforming Records
 ====================
@@ -352,6 +395,12 @@ An input Job can be selected for this Transform Job by clicking the
 radio button next to the job in the table of Jobs (at this stage, we
 likely only have the one Harvest Job we just ran).
 
+.. figure:: img/select_input_job.png
+   :alt: Input Job selection screen
+   :target: _images/select_input_job.png
+
+   Input Job selection screen
+
 Next, we must select a **Transformation Scenario** to apply to the
 records from the input Job. We have a Transformation Scenario prepared
 for us from the QuickStart bootstrapping, but this is where you might
@@ -370,12 +419,29 @@ configurable for each Job that is run. We can leave the defaults again,
 double checking that the two Validation Scenarios -- *DPLA minimum* and
 *Date checker* -- are both checked.
 
-Finally, click "Transform" at the bottom.
+We also have the ability to select records based on whether or not they
+passed validation tests.  In the box in the lower-right, you can select
+*all*, *valid*, or *invalid* records.  This will be reflected in the 
+Jobs screen, indicating how many records are passed from one Job to another.
+
+.. figure:: img/record_validity_valve.png
+   :alt: "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
+   :target: _images/record_validity_valve.png
+
+   "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
+
+For this walkthrough, we can just select "All."  Finally, click "Transform" at the bottom!
 
 Again, we are kicked back to the RecordGroup screen, and should
 hopefully see a Transform job with the status ``running``. **Note:** The
 graph on this page near the top, now with two Jobs, indicates the
 original Harvest Job was the *input* for this new Transform Job.
+
+.. figure:: img/transform_job_status.png
+   :alt: Graph showing Transform Job with Harvest as Input, and All records sent
+   :target: _images/transform_job_status.png
+
+   Graph showing Transform Job with Harvest as Input, and All records sent
 
 Transforms can take a bit longer than harvests, particularly with the
 additional Validation Scenarios we are running; but still a small job,
@@ -413,6 +479,18 @@ include:
 -  Validation results - results of validation scenarios run
 -  Indexed fields analysis - table of fields mapped from Record XML,
    stored in ElasticSearch
+
+.. figure:: img/job_details_1.png
+   :alt: Job Details (1) - Input Jobs, Overview, and part of the Records table
+   :target: _images/job_details_1.png
+
+   Job Details (1) - Input Jobs, Overview, and part of the Records table
+
+.. figure:: img/job_details_2.png
+   :alt: Job Details (2) - Validation results, and part of the Indexed fields table
+   :target: _images/job_details_2.png
+
+   Job Details (2) - Validation results, and part of the Indexed fields table
 
 Records table
 -------------
@@ -494,6 +572,12 @@ Records -- 11 of them -- that *do not* have the field
 particularly true with fields that might represent titles, identifiers,
 or other required information.
 
+.. figure:: img/mods_subject_without.png
+   :alt: Row from Indexed fields showing that 11 Records do not have this particular field
+   :target: _images/mods_subject_without.png
+
+   Row from Indexed fields showing that 11 Records do not have this particular field
+
 Clicking on the button "Show field analysis explanation" will reveal
 some information about other columns from this table.
 
@@ -514,29 +598,27 @@ individual Record. From the Record table at the top, click on the
 ``Record ID`` of any individual Record. At this point, you are presented
 with the details of that particular Record.
 
+.. figure:: img/record_details_header.png
+   :alt: Top of Record details page, showing some overview information
+   :target: _images/record_details_header.png
+
+   Top of Record details page, showing some overview information
+
 Similar to a Job's details, this page has a few major sections:
 
--  `Record validation <#record-validation>`_
 -  `Record stages <#record-stages>`_
+-  `Record validation <#record-validation>`_
 -  `Indexed Fields <#record-fields>`_
 -  `Record document <#record-document>`_
 
-Record validation
-~~~~~~~~~~~~~~~~~
-
-This area shows all the Validation scenarios that were run for this Job,
-and how this specific record fared. In all likelihood, if you've been
-following this guide with the provided demo data, and you are viewing a
-Record from the original Harvest, you should see that it failed
-validation for the Validation scenario, *DPLA minimum*. It will show a
-row in this table for *each* rule form the Validation Scenario the
-Record failed, as a single Validation Scenario -- schematron or python
--- may contain multiples rules / tests. You can click "Run Validation"
-to re-run and see the results of that Validation Scenario run against
-this Record's XML document.
-
 Record stages
 ~~~~~~~~~~~~~
+
+.. figure:: img/record_states.png
+   :alt: Showing stages of Record across Jobs
+   :target: _images/record_states.png
+
+   Showing stages of Record across Jobs
 
 This table represents the various "stages", aka Jobs, this Record exists
 in. This is good insight into how Records move through Combine. We
@@ -551,8 +633,36 @@ For any stage in this table, you may view the Record Document (raw
 Record XML), the associated, mapped ElasticSearch document (JSON), or
 click into the Job details for that Record stage.
 
+
+Record validation
+~~~~~~~~~~~~~~~~~
+
+.. figure:: img/record_validation.png
+   :alt: Showing results of Validation Scenarios applied to this Record
+   :target: _images/record_validation.png
+
+   Showing results of Validation Scenarios applied to this Record
+
+This area shows all the Validation scenarios that were run for this Job,
+and how this specific record fared. In all likelihood, if you've been
+following this guide with the provided demo data, and you are viewing a
+Record from the original Harvest, you should see that it failed
+validation for the Validation scenario, *DPLA minimum*. It will show a
+row in this table for *each* rule form the Validation Scenario the
+Record failed, as a single Validation Scenario -- schematron or python
+-- may contain multiples rules / tests. You can click "Run Validation"
+to re-run and see the results of that Validation Scenario run against
+this Record's XML document.
+
+
 Indexed fields
 ~~~~~~~~~~~~~~
+
+.. figure:: img/record_indexed_fields.png
+   :alt: Part of table showing indexed fields for Record
+   :target: _images/record_indexed_fields.png
+
+   Part of table showing indexed fields for Record
 
 This table shows the individual fields in ElasticSearch that were mapped
 from the Record's XML metadata. This can further reveal how this mapping
@@ -590,8 +700,14 @@ If all goes well, when you identify the indexed field in Combine that
 contains your item's actual online URL, and map to ``isShownAt`` from
 the dropdown, the page will reload and fire a query to the DPLA API and
 attempt to match the record. If it finds a match, a new section will
-appear at the top called "DPLA API Item match", which contains the
+appear called "DPLA API Item match", which contains the
 metadata from the DPLA API that matches this record.
+
+.. figure:: img/dpla_item_match.png
+   :alt: After isShownAt linked to indexed field, results of successful DPLA API query
+   :target: _images/dpla_item_match.png
+
+   After isShownAt linked to indexed field, results of successful DPLA API query
 
 This is an area still under development. Though the ``isShownAt`` field
 is usually very reliable for matching a Combine record to its live DPLA
@@ -608,7 +724,7 @@ this Record. **Note:** As mentioned, regardless of how fields are mapped
 in Combine to ElasticSearch, the Record's XML or "document" is always
 left intact, and is used for any downstream Jobs. Combine provides
 mapping and analysis of Records through mapping to ElasticSearch, but
-the Record's XML document is stored as plain, LONGTEXT in MySQL for each
+the Record's XML document is stored as plain, ``LONGTEXT`` in MySQL for each
 Job.
 
 Duplicating and Merging Jobs
@@ -662,9 +778,33 @@ Here is a visual representation of this scenario, taken directly from
 the RecordGroup page:
 
 .. figure:: img/merge_example.png
-   :alt: alt text
+   :alt: Merge example
+   :target: _images/merge_example.png
 
-   alt text
+   Merge example
+
+Look for duplicates in Jobs
+---------------------------
+
+A more specific case might be looking for duplicates between two Jobs.
+In this scenario, there were two OAI endpoints with nearly the same records,
+but not identical.  Combine allowed
+
+  1. Harvesting both
+  2. Merging and looking for duplicates in the Record table
+
+.. figure:: img/merge_for_dupes.png
+   :alt: Merge Job combing two Jobs of interest
+   :target: _images/merge_for_dupes.png
+
+   Merge Job combing two Jobs of interest
+
+.. figure:: img/dupes_found.png
+   :alt: Analysis of Records from Merge Job shows duplicates
+   :target: _images/dupes_found.png
+
+   Analysis of Records from Merge Job shows duplicates
+
 
 Publishing Records
 ==================
@@ -705,6 +845,12 @@ To run a Publish Job and publish a RecordGroup, navigate to the
 RecordGroup page, and near the top click the "Publish" button inside the
 top-most, small table.
 
+.. figure:: img/unpublished_rg.png
+   :alt: Record Group has not yet been published...
+   :target: _images/unpublished_rg.png
+
+   Record Group has not yet been published...
+
 You will be presented with a familiar Job creation screen.
 
 Near the top, there are some fields for entering information about an
@@ -714,6 +860,12 @@ OAI set identifier used in the **outgoing** Combine OAI-PMH server.
 Let's give it a new, simple identifier: ``fedora``, representing that
 this RecordGroup is a workspace for Jobs and Records from our Fedora
 repository.
+
+.. figure:: img/setting_publish_id.png
+   :alt: Section to provide a new publis identifier, or select a pre-existing one
+   :target: _images/setting_publish_id.png
+
+   Section to provide a new publis identifier, or select a pre-existing one
 
 Then, from the table below, select the Job (again, think as a *stage* of
 the same records) that will be published for this RecordGroup. Let's
@@ -729,6 +881,14 @@ data from the Job that served as input.
 In a few seconds you should be able to refresh the page and see this Job
 status switch to ``available``, indicating the publishing is complete.
 
+Near the top, you can now see this Record Group is published:
+
+.. figure:: img/published_rg.png
+   :alt: Published Record Group
+   :target: _images/published_rg.png
+
+   Published Record Group
+
 Let's confirm and see them as published records...
 
 Viewing published records
@@ -742,6 +902,12 @@ At the very top is a section "Published Sets". These show all
 **RecordGroups** that have been published, with the corresponding OAI
 set identifier. This also provides a button to unpublish a RecordGroup
 (also doable from the RecordGroup page).
+
+.. figure:: img/published_sets.png
+   :alt: Currently published Record Groups, with their publish set identifier
+   :target: _images/published_sets.png
+
+   Currently published Record Groups, with their publish set identifier
 
 Below that is a table -- similar to the table from a single Job details
 -- showing all **Records** that are published, spanning all RecordGroups
@@ -826,23 +992,9 @@ by:
 
     MySQL server has gone away
 
-This can be fixed by [restarting the Livy session[(#livy-sessions).
+This can be fixed by `restarting the Livy session <#livy-sessions>`_.
 
 Cannot start a Livy session
 ---------------------------
 
-If a Livy session will not settle to an ``idle`` status, it might be
-worth checking the YARN container manager which is used to manage Livy
-sessions. A link to the YARN container for the failed Livy session can
-be found under the ``YARN Application GUI`` from the `Livy sessions
-page <http://192.168.45.10/combine/livy_sessions>`__. **Note:** Yet
-unresolved, this link is generated from hostnames that Spark / YARN are
-using internally, and might contain ``combine`` instead of
-``192.168.45.10``. Either set your hosts file to point ``combine`` to
-``192.168.45.10``, or manually change the links as need be.
-
-Once in the YARN GUI, look for the "RM Home" link at the left. In the
-resulting table you should see all attempts, successful and failed, for
-starting a container for Livy. This might help diagnose why the Livy
-session was not starting. A successful Livy session should have the
-state as ``RUNNING`` and the ``FinalStatus`` as ``UNDEFINED``.
+Information for diagnosing can be found in the Livy logs at ``/var/log/livy/livy.stderr``.
