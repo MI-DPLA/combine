@@ -157,11 +157,13 @@ seconds to become ``idle``.
 
 .. figure:: img/livy_none.png
    :alt: No livy session img
+   :target: _images/livy_none.png
 
    Livy session page, with no active Livy session
 
 .. figure:: img/livy_idle.png
    :alt: Idle livy session
+   :target: _images/livy_idle.png
 
    Idle Livy session
 
@@ -207,6 +209,7 @@ are required beyond ``name``.
 
 .. figure:: img/qs_org_and_rg.png
    :alt: Organization and Record Group table
+   :target: _images/qs_org_and_rg.png
 
    Demo Organization "Amazing University" and demo Record Group "Fedora Repository"
 
@@ -301,6 +304,7 @@ From the RecordGroup screen, near the bottom and under "Harvest", click
 
 .. figure:: img/run_new_job.png
    :alt: Area to initiate new Jobs from the Record Group page
+   :target: _images/run_new_job.png
 
    Area to initiate new Jobs from the Record Group page
 
@@ -310,6 +314,7 @@ of static XML files from disk:
 
 .. figure:: img/static_harvest_job.png
    :alt: Static Harvest Job screen
+   :target: _images/static_harvest_job.png
 
    Static Harvest Job screen
 
@@ -355,6 +360,7 @@ in 10-20 seconds, and hopefully, you should see the Job status switch to
 
 .. figure:: img/static_harvest_status.png
    :alt: Status of Static Harvest job, also showing Job failed some Validations
+   :target: _images/static_harvest_status.png
 
    Status of Static Harvest job, also showing Job failed some Validations
 
@@ -391,6 +397,7 @@ likely only have the one Harvest Job we just ran).
 
 .. figure:: img/select_input_job.png
    :alt: Input Job selection screen
+   :target: _images/select_input_job.png
 
    Input Job selection screen
 
@@ -419,6 +426,7 @@ Jobs screen, indicating how many records are passed from one Job to another.
 
 .. figure:: img/record_validity_valve.png
    :alt: "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
+   :target: _images/record_validity_valve.png
 
    "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
 
@@ -431,6 +439,7 @@ original Harvest Job was the *input* for this new Transform Job.
 
 .. figure:: img/transform_job_status.png
    :alt: Graph showing Transform Job with Harvest as Input, and All records sent
+   :target: _images/transform_job_status.png
 
    Graph showing Transform Job with Harvest as Input, and All records sent
 
@@ -473,11 +482,13 @@ include:
 
 .. figure:: img/job_details_1.png
    :alt: Job Details (1) - Input Jobs, Overview, and part of the Records table
+   :target: _images/job_details_1.png
 
    Job Details (1) - Input Jobs, Overview, and part of the Records table
 
 .. figure:: img/job_details_2.png
    :alt: Job Details (2) - Validation results, and part of the Indexed fields table
+   :target: _images/job_details_2.png
 
    Job Details (2) - Validation results, and part of the Indexed fields table
 
@@ -563,6 +574,7 @@ or other required information.
 
 .. figure:: img/mods_subject_without.png
    :alt: Row from Indexed fields showing that 11 Records do not have this particular field
+   :target: _images/mods_subject_without.png
 
    Row from Indexed fields showing that 11 Records do not have this particular field
 
@@ -588,6 +600,7 @@ with the details of that particular Record.
 
 .. figure:: img/record_details_header.png
    :alt: Top of Record details page, showing some overview information
+   :target: _images/record_details_header.png
 
    Top of Record details page, showing some overview information
 
@@ -603,6 +616,7 @@ Record stages
 
 .. figure:: img/record_states.png
    :alt: Showing stages of Record across Jobs
+   :target: _images/record_states.png
 
    Showing stages of Record across Jobs
 
@@ -625,6 +639,7 @@ Record validation
 
 .. figure:: img/record_validation.png
    :alt: Showing results of Validation Scenarios applied to this Record
+   :target: _images/record_validation.png
 
    Showing results of Validation Scenarios applied to this Record
 
@@ -645,6 +660,7 @@ Indexed fields
 
 .. figure:: img/record_indexed_fields.png
    :alt: Part of table showing indexed fields for Record
+   :target: _images/record_indexed_fields.png
 
    Part of table showing indexed fields for Record
 
@@ -689,6 +705,7 @@ metadata from the DPLA API that matches this record.
 
 .. figure:: img/dpla_item_match.png
    :alt: After isShownAt linked to indexed field, results of successful DPLA API query
+   :target: _images/dpla_item_match.png
 
    After isShownAt linked to indexed field, results of successful DPLA API query
 
@@ -762,6 +779,7 @@ the RecordGroup page:
 
 .. figure:: img/merge_example.png
    :alt: Merge example
+   :target: _images/merge_example.png
 
    Merge example
 
@@ -777,11 +795,13 @@ but not identical.  Combine allowed
 
 .. figure:: img/merge_for_dupes.png
    :alt: Merge Job combing two Jobs of interest
+   :target: _images/merge_for_dupes.png
 
    Merge Job combing two Jobs of interest
 
 .. figure:: img/dupes_found.png
    :alt: Analysis of Records from Merge Job shows duplicates
+   :target: _images/dupes_found.png
 
    Analysis of Records from Merge Job shows duplicates
 
@@ -827,6 +847,7 @@ top-most, small table.
 
 .. figure:: img/unpublished_rg.png
    :alt: Record Group has not yet been published...
+   :target: _images/unpublished_rg.png
 
    Record Group has not yet been published...
 
@@ -842,6 +863,7 @@ repository.
 
 .. figure:: img/setting_publish_id.png
    :alt: Section to provide a new publis identifier, or select a pre-existing one
+   :target: _images/setting_publish_id.png
 
    Section to provide a new publis identifier, or select a pre-existing one
 
@@ -863,6 +885,7 @@ Near the top, you can now see this Record Group is published:
 
 .. figure:: img/published_rg.png
    :alt: Published Record Group
+   :target: _images/published_rg.png
 
    Published Record Group
 
@@ -882,6 +905,7 @@ set identifier. This also provides a button to unpublish a RecordGroup
 
 .. figure:: img/published_sets.png
    :alt: Currently published Record Groups, with their publish set identifier
+   :target: _images/published_sets.png
 
    Currently published Record Groups, with their publish set identifier
 
