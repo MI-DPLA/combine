@@ -48,7 +48,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 # breadcrumb parser
-def breadcrumb_parser(path):
+def breadcrumb_parser(request):
 	
 	'''
 	Rudimentary breadcrumbs parser
@@ -57,42 +57,69 @@ def breadcrumb_parser(path):
 	crumbs = []
 
 	# livy/spark
-	config_m = re.match(r'(.+?/livy_sessions)', path)
-	if config_m:		
+	regex_match = re.match(r'(.+?/livy_sessions)', request.path)
+	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>Livy/Spark</span>", reverse('livy_sessions')))
 
 	# configurations
-	config_m = re.match(r'(.+?/configuration)', path)
-	if config_m:		
+	regex_match = re.match(r'(.+?/configuration)', request.path)
+	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
 
+	# search
+	regex_match = re.match(r'(.+?/search)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>Search</span>", reverse('search')))
+
 	# configurations/test_validation_scenario
-	config_m = re.match(r'(.+?/configuration/test_validation_scenario)', path)
-	if config_m:		
+	regex_match = re.match(r'(.+?/configuration/test_validation_scenario)', request.path)
+	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>Test Validation Scenario</span>", reverse('test_validation_scenario')))
 
 	# all jobs
-	config_m = re.match(r'(.+?/jobs/all)', path)
-	if config_m:		
+	regex_match = re.match(r'(.+?/jobs/all)', request.path)
+	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>All Jobs</span>", reverse('all_jobs')))
 
 	# analysis
-	config_m = re.match(r'(.+?/analysis)', path)
-	if config_m:		
+	regex_match = re.match(r'(.+?/analysis)', request.path)
+	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
 
+	# field analysis	
+	regex_match = re.match(r'(.+?/analysis/es/index/j([0-9]+)/field_analysis.*)', request.path)
+	if regex_match:
+
+		# get job
+		j = models.Job.objects.get(pk=int(regex_match.group(2)))
+
+		# get field for analysis
+		field_name = request.GET.get('field_name', None)
+
+		# append crumbs
+		if j.record_group.organization.for_analysis:
+			logger.debug("breadcrumbs: org is for analysis, skipping")			
+		else:
+			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % j.record_group.organization.name, reverse('organization', kwargs={'org_id':j.record_group.organization.id})))
+		if j.record_group.for_analysis:
+			logger.debug("breadcrumbs: rg is for analysis, skipping")
+		else:
+			crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % j.record_group.name, reverse('record_group', kwargs={'org_id':j.record_group.organization.id, 'record_group_id':j.record_group.id})))
+		crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, reverse('job_details', kwargs={'org_id':j.record_group.organization.id, 'record_group_id':j.record_group.id, 'job_id':j.id})))
+		crumbs.append(("<span class='font-weight-bold'>Field Analysis - <code>%s</code></span>" % field_name, '%s?%s' % (regex_match.group(1), request.META['QUERY_STRING'])))
+
 	# published
-	pub_m = re.match(r'(.+?/published)', path)
+	pub_m = re.match(r'(.+?/published)', request.path)
 	if pub_m:		
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
 
 	# organization
-	pub_m = re.match(r'(.+?/organization/.*)', path)
+	pub_m = re.match(r'(.+?/organization/.*)', request.path)
 	if pub_m:		
 		crumbs.append(("<span class='font-weight-bold'>Organizations</span>", reverse('organizations')))
 
 	# org
-	org_m = re.match(r'(.+?/organization/([0-9]+))', path)
+	org_m = re.match(r'(.+?/organization/([0-9]+))', request.path)
 	if org_m:
 		org = models.Organization.objects.get(pk=int(org_m.group(2)))
 		if org.for_analysis:
@@ -102,7 +129,7 @@ def breadcrumb_parser(path):
 			crumbs.append(("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
 	# record_group
-	rg_m = re.match(r'(.+?/record_group/([0-9]+))', path)
+	rg_m = re.match(r'(.+?/record_group/([0-9]+))', request.path)
 	if rg_m:
 		rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
 		if rg.for_analysis:
@@ -111,7 +138,7 @@ def breadcrumb_parser(path):
 			crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % rg.name, rg_m.group(1)))
 
 	# job
-	j_m = re.match(r'(.+?/job/([0-9]+))', path)
+	j_m = re.match(r'(.+?/job/([0-9]+))', request.path)
 	if j_m:
 		j = models.Job.objects.get(pk=int(j_m.group(2)))
 		if j.record_group.for_analysis:
@@ -120,7 +147,7 @@ def breadcrumb_parser(path):
 			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
 	# record
-	r_m = re.match(r'(.+?/record/([0-9]+))', path)
+	r_m = re.match(r'(.+?/record/([0-9]+))', request.path)
 	if r_m:
 		r = models.Record.objects.get(pk=int(r_m.group(2)))
 		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
@@ -181,7 +208,7 @@ def livy_sessions(request):
 	# return
 	return render(request, 'core/livy_sessions.html', {
 		'livy_session':livy_session,
-		'breadcrumbs':breadcrumb_parser(request.path)
+		'breadcrumbs':breadcrumb_parser(request)
 	})
 
 
@@ -250,7 +277,7 @@ def organizations(request):
 		# render page
 		return render(request, 'core/organizations.html', {
 				'orgs':orgs,
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 
@@ -281,7 +308,7 @@ def organization(request, org_id):
 	return render(request, 'core/organization.html', {
 			'org':org,
 			'record_groups':record_groups,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -384,7 +411,7 @@ def record_group(request, org_id, record_group_id):
 			'job_lineage_json':json.dumps(job_lineage),
 			'publish_set_ids':publish_set_ids,
 			'record_groups':record_groups,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -454,7 +481,7 @@ def all_jobs(request):
 			'jobs':jobs,
 			'record_groups':record_groups,
 			'job_lineage_json':json.dumps(ld),
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -562,7 +589,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
 			'es_index':cjob.esi.es_index,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -580,7 +607,7 @@ def job_errors(request, org_id, record_group_id, job_id):
 	return render(request, 'core/job_errors.html', {
 			'cjob':cjob,
 			'job_errors':job_errors,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -687,7 +714,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 	# if POST, submit job
@@ -779,7 +806,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 
@@ -914,7 +941,7 @@ def job_transform(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 	# if POST, submit job
@@ -1019,7 +1046,7 @@ def job_merge(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 	# if POST, submit job
@@ -1116,7 +1143,7 @@ def job_publish(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
 				'publish_set_ids':publish_set_ids,
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 	# if POST, submit job
@@ -1198,7 +1225,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		return render(request, 'core/job_reports_create_validation.html', {
 				'cjob':cjob,
 				'field_counts':field_counts,
-				'breadcrumbs':breadcrumb_parser(request.path)
+				'breadcrumbs':breadcrumb_parser(request)
 			})
 
 
@@ -1296,7 +1323,7 @@ def field_analysis(request, es_index):
 			'esi':esi,
 			'field_name':field_name,
 			'field_metrics':field_metrics,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1312,7 +1339,7 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# return
 	return render(request, 'core/job_indexing_failures.html', {
 			'cjob':cjob,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1388,7 +1415,7 @@ def field_analysis_docs(request, es_index, filter_type):
 			'analysis_scenario':analysis_scenario,
 			'msg':None,
 			'dt_get_params_string':dt_get_params_string,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1405,7 +1432,7 @@ def job_validation_scenario_failures(request, org_id, record_group_id, job_id, j
 	return render(request, 'core/job_validation_scenario_failures.html', {
 			'cjob':cjob,
 			'jv':jv,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1459,7 +1486,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 			'job_details':job_details,
 			'dpla_api_doc':dpla_api_doc,
 			'dpla_api_json':dpla_api_json,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1546,7 +1573,7 @@ def configuration(request):
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
 			'rits':rits,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1617,7 +1644,7 @@ def test_validation_scenario(request):
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
 			'validation_scenarios':validation_scenarios,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 	# If POST, provide raw result of validation test
@@ -1688,7 +1715,7 @@ def test_rits(request):
 		# return
 		return render(request, 'core/test_rits.html', {
 			'rits':rits,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 	# If POST, provide raw result of validation test
@@ -1745,7 +1772,7 @@ def published(request):
 			'published':published,
 			'field_counts':field_counts,
 			'es_index':published.esi.es_index,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
@@ -1766,6 +1793,23 @@ def oai(request):
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')
+
+
+
+####################################################################
+# Global Search													   #
+####################################################################
+
+def search(request):
+
+	'''
+	Global search of Records
+	'''	
+
+	return render(request, 'core/search.html', {
+			'breadcrumbs':breadcrumb_parser(request),
+			'page_title':' | Search'
+		})
 
 
 
@@ -1802,7 +1846,7 @@ def analysis(request):
 			'jobs':analysis_jobs,
 			'job_lineage_json':json.dumps(analysis_job_lineage),
 			'for_analysis':True,
-			'breadcrumbs':breadcrumb_parser(request.path)
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 

@@ -7,79 +7,80 @@
 	{% include 'core/field_analysis_explanation.html' %}
 
 	<div class="col-md-12">
-		<p>
-			<table id="index_analysis" class="table table-bordered table-hover">
-				<thead>
+		<table id="index_analysis" class="table table-bordered table-hover">
+			<thead>
+				<tr>
+					<th>Field Name</th>
+					{% if cjob %}
+						<th>DPLA Mapped Field</th>
+						<th>Map DPLA Field</th>
+					{% endif %}
+					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+					<th>Documents without</th>
+					<th>Count of Total Values for Field</th>
+					<th>Count of Distinct Values for Field</th>
+					<th>Percentage of Field Values that are Unique</th>
+					<th>Instance of Field in Total Indexed Records</th>
+				</tr>
+			</thead>
+			<tbody>
+				{% for field in field_counts.fields %}
 					<tr>
-						<th>Field Name</th>
+						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+
 						{% if cjob %}
-							<th>DPLA Mapped Field</th>
-							<th>Map DPLA Field</th>
-						{% endif %}
-						<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
-						<th>Documents without</th>
-						<th>Count of Total Values for Field</th>
-						<th>Count of Distinct Values for Field</th>
-						<th>Percentage of Field Values that are Unique</th>
-						<th>Instance of Field in Total Indexed Records</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for field in field_counts.fields %}
-						<tr>
-							<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 
-							{% if cjob %}
-
-								<!-- show mapped DPLA field if exists -->
-								{% if cjob.job.dpla_mapping %}
-									{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
-										<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
-									{% else %}
-										<td></td>
-									{% endif %}
+							<!-- show mapped DPLA field if exists -->
+							{% if cjob.job.dpla_mapping %}
+								{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
+									<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
 								{% else %}
 									<td></td>
 								{% endif %}
-
-								<!-- provide in-place form for mapping field -->
-								<td>
-									<form method="POST" action="{% url 'job_dpla_field_map' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-										{% csrf_token %}
-										<div class="form-group" style="margin-bottom:0rem;">
-											<select class="form-control form-control-sm" name='dpla_field' onchange="this.form.submit()">
-												<option value="">Select DPLA field</option>
-												<option value="">None</option>
-												{% for field_name in cjob.job.dpla_mapping.all_fields %}									
-													<option value="{{ field_name }}">{{ field_name }}</option>
-												{% endfor %}
-											</select>
-										</div>
-										<input type="hidden" name="es_field" value="{{ field.field_name }}"></input>
-									</form>
-								</td>
-
+							{% else %}
+								<td></td>
 							{% endif %}
 
-							<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
-							<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
-							<td>{{ field.val_instances }}</td>
-							<td>{{ field.distinct }}</td>
-							<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-							<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#index_analysis').DataTable({
-				    	"pageLength": 100,
-				    	"lengthMenu": [ 10, 25, 100, 500 ]
-				    });
-				} );
-			</script>
-		</p>
+							<!-- provide in-place form for mapping field -->
+							<td>
+								<form method="POST" action="{% url 'job_dpla_field_map' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+									{% csrf_token %}
+									<div class="form-group" style="margin-bottom:0rem;">
+										<select class="form-control form-control-sm" name='dpla_field' onchange="this.form.submit()">
+											<option value="">Select DPLA field</option>
+											<option value="">None</option>
+											{% for field_name in cjob.job.dpla_mapping.all_fields %}									
+												<option value="{{ field_name }}">{{ field_name }}</option>
+											{% endfor %}
+										</select>
+									</div>
+									<input type="hidden" name="es_field" value="{{ field.field_name }}"></input>
+								</form>
+							</td>
+
+						{% endif %}
+
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
+						<td>{{ field.val_instances }}</td>
+						<td>{{ field.distinct }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+					</tr>
+				{% endfor %}
+			</tbody>
+		</table>			
+		<script>
+			$(document).ready(function() {
+			    $('#index_analysis').DataTable({
+			    	"pageLength": 100,
+			    	"lengthMenu": [ 10, 25, 100, 500 ],
+					"columnDefs": [
+						{ "searchable": false, "targets": 2 }
+					]
+			    });
+			} );
+		</script>
 	</div>
 </div>
 

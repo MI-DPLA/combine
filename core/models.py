@@ -38,6 +38,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.core.urlresolvers import reverse
 from django.db import connection, models
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
@@ -1378,6 +1379,34 @@ class Record(models.Model):
 
 		# return as pretty printed string
 		return etree.tostring(self.parse_document_xml(), pretty_print=True)
+
+
+	def get_lineage_url_paths(self):
+
+		'''
+		get paths of Record, Record Group, and Organzation
+		'''
+
+		record_lineage_urls = {
+			'record':{
+					'name':self.record_id,
+					'path':reverse('record', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id, 'record_id':self.id})
+				},
+			'job':{
+					'name':self.job.name,
+					'path':reverse('job_details', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id})
+				},
+			'record_group':{
+					'name':self.job.record_group.name,
+					'path':reverse('record_group', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id})
+				},
+			'organization':{
+					'name':self.job.record_group.organization.name,
+					'path':reverse('organization', kwargs={'org_id':self.job.record_group.organization.id})
+				}
+		}
+
+		return record_lineage_urls
 
 
 
@@ -4206,10 +4235,12 @@ class AnalysisJob(CombineJob):
 
 
 ####################################################################
-# ElasticSearch DataTables connector 							   #
+# ElasticSearch DataTables connectors 							   #
 ####################################################################
 
-class DTElasticSearch(View):
+
+
+class DTElasticFieldSearch(View):
 
 	'''
 	Model to query ElasticSearch and return DataTables ready JSON.
@@ -4239,7 +4270,7 @@ class DTElasticSearch(View):
 				- sets parameters
 		'''
 
-		logger.debug('initiating DTElasticSearch connector')
+		logger.debug('initiating DTElasticFieldSearch connector')
 
 		# fields to retrieve from index
 		self.fields = fields
@@ -4339,7 +4370,7 @@ class DTElasticSearch(View):
 		'''
 		Sort based on DTinput parameters.
 
-		Note: Sorting is different for the different types of requests made to DTElasticSearch.
+		Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
 
 		Args:
 			None
@@ -4461,7 +4492,7 @@ class DTElasticSearch(View):
 			self.values_per_field()
 
 		# end time
-		logger.debug('DTElasticSearch calc time: %s' % (time.time()-stime))
+		logger.debug('DTElasticFieldSearch calc time: %s' % (time.time()-stime))
 
 		# for all search types, build and return response
 		return JsonResponse(self.DToutput)
@@ -4605,6 +4636,241 @@ class DTElasticSearch(View):
 
 			# add list to object
 			self.DToutput['data'].append(row_data)
+
+
+
+class DTElasticGenericSearch(View):
+
+	'''
+	Model to query ElasticSearch and return DataTables ready JSON.
+	This model is a Django Class-based view.
+	This model is located in core.models, as it still may function seperate from a Django view.
+	'''
+
+	def __init__(self,
+			fields=['db_id','combine_id','record_id'],
+			es_index='j*',
+			DTinput={
+				'draw':None,
+				'start':0,
+				'length':10
+			}):
+
+		'''
+		Args:
+			fields (list): list of fields to return from ES index
+			es_index (str): ES index
+			DTinput (dict): DataTables formatted GET parameters as dictionary
+
+		Returns:
+			None
+				- sets parameters
+		'''
+
+		logger.debug('initiating DTElasticGenericSearch connector')
+
+		# fields to retrieve from index
+		self.fields = fields
+
+		# ES index
+		self.es_index = es_index
+
+		# dictionary INPUT DataTables ajax
+		self.DTinput = DTinput
+
+		# placeholder for query to build
+		self.query = None
+
+		# request
+		self.request = None
+
+		# dictionary OUTPUT to DataTables
+		# self.DToutput = DTResponse().__dict__
+		self.DToutput = {
+			'draw': None,
+			'recordsTotal': None,
+			'recordsFiltered': None,
+			'data': []
+		}
+		self.DToutput['draw'] = DTinput['draw']
+
+
+	def filter(self):
+
+		'''
+		Filter based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''		
+
+		logger.debug('DTElasticGenericSearch: filtering')
+
+		# get search string if present
+		search_term = self.request.GET.get('search[value]')
+
+		if search_term != '':
+			logger.debug('searching ES for: %s' % search_term)			
+			self.query = self.query.query('match', _all="'%s'" % search_term.replace("'","\'"))
+
+
+	def sort(self):
+		
+		'''
+		Sort based on DTinput parameters.
+
+		Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query_results
+		'''
+
+		# if using deep paging, will need to implement some sorting to search_after
+		self.query = self.query.sort('record_id.keyword','db_id')
+
+
+	def paginate(self):
+
+		'''
+		Paginate based on DTinput paramters
+
+		Args:
+			None
+
+		Returns:
+			None
+				- modifies self.query
+		'''
+		
+		# using offset (start) and limit (length)
+		start = int(self.DTinput['start'])
+		length = int(self.DTinput['length'])
+		self.query = self.query[start : (start + length)]
+		
+		# use search_after for "deep paging"
+		'''
+		This will require capturing current sorts from the DT table, and applying last
+		value here
+		'''
+		# self.query = self.query.extra(search_after=['036182a450f31181cf678197523e2023',1182966])
+
+
+	def to_json(self):
+
+		'''
+		Return DToutput as JSON
+
+		Returns:
+			(json)
+		'''
+
+		return json.dumps(self.DToutput)
+
+
+	def get(self, request):
+
+		'''
+		Django Class-based view, GET request.		
+
+		Args:
+			request (django.request): request object
+			es_index (str): ES index
+		'''
+
+		# save parameters to self
+		self.request = request		
+		self.DTinput = self.request.GET
+
+		# time respond build
+		stime = time.time()
+		
+		# execute search
+		self.search()		
+
+		# end time
+		logger.debug('DTElasticGenericSearch: response time %s' % (time.time()-stime))
+
+		# for all search types, build and return response
+		return JsonResponse(self.DToutput)
+
+
+	def search(self):
+
+		'''
+		Execute search
+		'''
+
+		# initiate es query
+		self.query = Search(using=es_handle, index=self.es_index)
+
+		# get total document count, pre-filtering
+		self.DToutput['recordsTotal'] = self.query.count()
+
+		# apply filtering to ES query
+		self.filter()
+
+		# apply sorting to ES query
+		self.sort()
+
+		# self.sort()
+		self.paginate()
+
+		# get document count, post-filtering
+		self.DToutput['recordsFiltered'] = self.query.count()
+
+		# execute and retrieve search
+		self.query_results = self.query.execute()
+
+		# loop through hits
+		for hit in self.query_results.hits:
+
+			# get combine record
+			record = Record.objects.get(pk=int(hit.db_id))
+
+			# loop through rows, add to list while handling data types
+			row_data = []
+			for field in self.fields:
+				field_value = getattr(hit, field, None)
+
+				# handle ES lists
+				if type(field_value) == AttrList:
+					row_data.append(str(field_value))
+
+				# all else, append
+				else:
+					row_data.append(field_value)
+
+			# add record lineage in front
+			row_data = self._prepare_record_hierarchy_links(record, row_data)
+
+			# add list to object			
+			self.DToutput['data'].append(row_data)
+
+
+	def _prepare_record_hierarchy_links(self, record, row_data):
+
+		'''
+		Method to prepare links based on the hierarchy of the Record
+		'''
+
+		urls = record.get_lineage_url_paths()
+
+		to_append = [
+			'<a href="%s" target="_blank">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
+			'<a href="%s" target="_blank">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
+			'<a href="%s" target="_blank"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
+			urls['record']['path'],
+		]
+
+		return to_append + row_data
 		
 
 
