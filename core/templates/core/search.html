@@ -4,7 +4,8 @@
 	
 	<div class="row">
 		<div class="col-md-12">
-			<h2>Search</h2>		
+			<h2>Search Records</h2>
+			<p>This table allows searching of all Records, across all Jobs, currently held in Combine.</p>
 		</div>
 	</div>
 
@@ -33,7 +34,9 @@
 				        "ajax": "{% url 'records_es_generic_dt_json' %}",
 				        "searchDelay": 2000,
 				        "pageLength": 10,
-				        "order": [[ 1, "desc" ]],
+				        "pagingType": "full_numbers",
+				        // "order": [[ 1, "desc" ]],
+				        "ordering":false,
 				        "columns": [
 				            { 
 				            	title: "DB ID",

@@ -4733,54 +4733,8 @@ class DTElasticGenericSearch(View):
 				- modifies self.query_results
 		'''
 
-		pass
-
-		# # get sort params from DTinput
-		# sorting_cols = 0
-		# sort_key = 'order[%s][column]' % (sorting_cols)
-		# while sort_key in self.DTinput:
-		# 	sorting_cols += 1
-		# 	sort_key = 'order[%s][column]' % (sorting_cols)
-
-		# for i in range(sorting_cols):
-		# 	# sorting column
-		# 	sort_dir = 'asc'
-		# 	sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
-		# 	# sorting order
-		# 	sort_dir = self.DTinput.get('order[%s][dir]' % (i))
-
-		# 	logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
-		
-		# # field per doc (ES Search Results)
-		# if self.search_type == 'fields_per_doc':
-			
-		# 	# determine if field is sortable
-		# 	if sort_col < len(self.fields):
-
-		# 		# if db_id, do not add keyword
-		# 		if self.fields[sort_col] == 'db_id':
-		# 			sort_field_string = self.fields[sort_col]
-		# 		# else, add .keyword
-		# 		else:
-		# 			sort_field_string = "%s.keyword" % self.fields[sort_col]
-
-		# 		if sort_dir == 'desc':
-		# 			sort_field_string = "-%s" % sort_field_string
-		# 		logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
-		# 	else:
-		# 		logger.debug("cannot sort by column %s" % sort_col)
-
-		# 	# apply sorting to query
-		# 	self.query = self.query.sort(sort_field_string)
-
-		# # value per field (DataFrame)
-		# if self.search_type == 'values_per_field':
-
-		# 	if sort_col < len(self.query_results.columns):
-		# 		asc = True
-		# 		if sort_dir == 'desc':
-		# 			asc = False
-		# 		self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
+		# if using deep paging, will need to implement some sorting to search_after
+		self.query = self.query.sort('record_id.keyword','db_id')
 
 
 	def paginate(self):
@@ -4800,6 +4754,13 @@ class DTElasticGenericSearch(View):
 		start = int(self.DTinput['start'])
 		length = int(self.DTinput['length'])
 		self.query = self.query[start : (start + length)]
+		
+		# use search_after for "deep paging"
+		'''
+		This will require capturing current sorts from the DT table, and applying last
+		value here
+		'''
+		# self.query = self.query.extra(search_after=['036182a450f31181cf678197523e2023',1182966])
 
 
 	def to_json(self):
@@ -4905,7 +4866,7 @@ class DTElasticGenericSearch(View):
 		to_append = [
 			'<a href="%s" target="_blank">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
 			'<a href="%s" target="_blank">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
-			'<a href="%s" target="_blank">%s</a>' % (urls['job']['path'], urls['job']['name']),
+			'<a href="%s" target="_blank"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
 			urls['record']['path'],
 		]
 
