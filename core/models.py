@@ -38,6 +38,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.core.urlresolvers import reverse
 from django.db import connection, models
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
@@ -1378,6 +1379,34 @@ class Record(models.Model):
 
 		# return as pretty printed string
 		return etree.tostring(self.parse_document_xml(), pretty_print=True)
+
+
+	def get_lineage_url_paths(self):
+
+		'''
+		get paths of Record, Record Group, and Organzation
+		'''
+
+		record_lineage_urls = {
+			'record':{
+					'name':self.record_id,
+					'path':reverse('record', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id, 'record_id':self.id})
+				},
+			'job':{
+					'name':self.job.name,
+					'path':reverse('job_details', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id})
+				},
+			'record_group':{
+					'name':self.job.record_group.name,
+					'path':reverse('record_group', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id})
+				},
+			'organization':{
+					'name':self.job.record_group.organization.name,
+					'path':reverse('organization', kwargs={'org_id':self.job.record_group.organization.id})
+				}
+		}
+
+		return record_lineage_urls
 
 
 
@@ -4677,60 +4706,16 @@ class DTElasticGenericSearch(View):
 		Returns:
 			None
 				- modifies self.query
-		'''
+		'''		
 
-		# filtering applied before DataTables input
-		filter_type = self.request.GET.get('filter_type', None)
+		logger.debug('DTElasticGenericSearch: filtering')
 
-		# equals filtering
-		if filter_type == 'equals':
-			logger.debug('equals type filtering')
+		# get search string if present
+		search_term = self.request.GET.get('search[value]')
 
-			# get fields for filtering
-			filter_field = self.request.GET.get('filter_field', None)
-			filter_value = self.request.GET.get('filter_value', None)
-			
-			# determine if including or excluding
-			matches = self.request.GET.get('matches', None)
-			if matches and matches.lower() == 'true':
-				matches = True
-			else:
-				matches = False
-
-			# filter query
-			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
-
-			if matches:
-				# filter where filter_field == filter_value
-				logger.debug('filtering to matches')
-				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-			else:
-				# filter where filter_field == filter_value AND filter_field exists
-				logger.debug('filtering to non-matches')
-				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-				self.query = self.query.filter(Q('exists', field=filter_field))
-
-		# exists filtering
-		elif filter_type == 'exists':
-			logger.debug('exists type filtering')
-
-			# get field for filtering
-			filter_field = self.request.GET.get('filter_field', None)
-
-			# determine if including or excluding
-			exists = self.request.GET.get('exists', None)
-			if exists and exists.lower() == 'true':
-				exists = True
-			else:
-				exists = False
-
-			# filter query
-			if exists:
-				logger.debug('filtering to exists')
-				self.query = self.query.filter(Q('exists', field=filter_field))
-			else:
-				logger.debug('filtering to non-exists')
-				self.query = self.query.exclude(Q('exists', field=filter_field))
+		if search_term != '':
+			logger.debug('searching ES for: %s' % search_term)			
+			self.query = self.query.query('match', _all="'%s'" % search_term.replace("'","\'"))
 
 
 	def sort(self):
@@ -4748,52 +4733,54 @@ class DTElasticGenericSearch(View):
 				- modifies self.query_results
 		'''
 
-		# get sort params from DTinput
-		sorting_cols = 0
-		sort_key = 'order[%s][column]' % (sorting_cols)
-		while sort_key in self.DTinput:
-			sorting_cols += 1
-			sort_key = 'order[%s][column]' % (sorting_cols)
+		pass
 
-		for i in range(sorting_cols):
-			# sorting column
-			sort_dir = 'asc'
-			sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
-			# sorting order
-			sort_dir = self.DTinput.get('order[%s][dir]' % (i))
+		# # get sort params from DTinput
+		# sorting_cols = 0
+		# sort_key = 'order[%s][column]' % (sorting_cols)
+		# while sort_key in self.DTinput:
+		# 	sorting_cols += 1
+		# 	sort_key = 'order[%s][column]' % (sorting_cols)
 
-			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
+		# for i in range(sorting_cols):
+		# 	# sorting column
+		# 	sort_dir = 'asc'
+		# 	sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
+		# 	# sorting order
+		# 	sort_dir = self.DTinput.get('order[%s][dir]' % (i))
+
+		# 	logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
 		
-		# field per doc (ES Search Results)
-		if self.search_type == 'fields_per_doc':
+		# # field per doc (ES Search Results)
+		# if self.search_type == 'fields_per_doc':
 			
-			# determine if field is sortable
-			if sort_col < len(self.fields):
+		# 	# determine if field is sortable
+		# 	if sort_col < len(self.fields):
 
-				# if db_id, do not add keyword
-				if self.fields[sort_col] == 'db_id':
-					sort_field_string = self.fields[sort_col]
-				# else, add .keyword
-				else:
-					sort_field_string = "%s.keyword" % self.fields[sort_col]
+		# 		# if db_id, do not add keyword
+		# 		if self.fields[sort_col] == 'db_id':
+		# 			sort_field_string = self.fields[sort_col]
+		# 		# else, add .keyword
+		# 		else:
+		# 			sort_field_string = "%s.keyword" % self.fields[sort_col]
 
-				if sort_dir == 'desc':
-					sort_field_string = "-%s" % sort_field_string
-				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
-			else:
-				logger.debug("cannot sort by column %s" % sort_col)
+		# 		if sort_dir == 'desc':
+		# 			sort_field_string = "-%s" % sort_field_string
+		# 		logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
+		# 	else:
+		# 		logger.debug("cannot sort by column %s" % sort_col)
 
-			# apply sorting to query
-			self.query = self.query.sort(sort_field_string)
+		# 	# apply sorting to query
+		# 	self.query = self.query.sort(sort_field_string)
 
-		# value per field (DataFrame)
-		if self.search_type == 'values_per_field':
+		# # value per field (DataFrame)
+		# if self.search_type == 'values_per_field':
 
-			if sort_col < len(self.query_results.columns):
-				asc = True
-				if sort_dir == 'desc':
-					asc = False
-				self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
+		# 	if sort_col < len(self.query_results.columns):
+		# 		asc = True
+		# 		if sort_dir == 'desc':
+		# 			asc = False
+		# 		self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
 
 
 	def paginate(self):
@@ -4830,8 +4817,7 @@ class DTElasticGenericSearch(View):
 	def get(self, request):
 
 		'''
-		Django Class-based view, GET request.
-		Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
+		Django Class-based view, GET request.		
 
 		Args:
 			request (django.request): request object
@@ -4839,8 +4825,7 @@ class DTElasticGenericSearch(View):
 		'''
 
 		# save parameters to self
-		self.request = request
-		# self.es_index = es_index
+		self.request = request		
 		self.DTinput = self.request.GET
 
 		# time respond build
@@ -4850,7 +4835,7 @@ class DTElasticGenericSearch(View):
 		self.search()		
 
 		# end time
-		logger.debug('DTElasticGenericSearch calc time: %s' % (time.time()-stime))
+		logger.debug('DTElasticGenericSearch: response time %s' % (time.time()-stime))
 
 		# for all search types, build and return response
 		return JsonResponse(self.DToutput)
@@ -4869,10 +4854,10 @@ class DTElasticGenericSearch(View):
 		self.DToutput['recordsTotal'] = self.query.count()
 
 		# apply filtering to ES query
-		# self.filter()
+		self.filter()
 
 		# apply sorting to ES query
-		# self.sort()
+		self.sort()
 
 		# self.sort()
 		self.paginate()
@@ -4902,15 +4887,29 @@ class DTElasticGenericSearch(View):
 				else:
 					row_data.append(field_value)
 
-			# place record's org_id, record_group_id, and job_id in front
-			row_data = [
-					record.job.record_group.organization.id,
-					record.job.record_group.id,
-					record.job.id
-					] + row_data
+			# add record lineage in front
+			row_data = self._prepare_record_hierarchy_links(record, row_data)
 
-			# add list to object
-			self.DToutput['data'].append(row_data)	
+			# add list to object			
+			self.DToutput['data'].append(row_data)
+
+
+	def _prepare_record_hierarchy_links(self, record, row_data):
+
+		'''
+		Method to prepare links based on the hierarchy of the Record
+		'''
+
+		urls = record.get_lineage_url_paths()
+
+		to_append = [
+			'<a href="%s" target="_blank">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
+			'<a href="%s" target="_blank">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
+			'<a href="%s" target="_blank">%s</a>' % (urls['job']['path'], urls['job']['name']),
+			urls['record']['path'],
+		]
+
+		return to_append + row_data
 		
 
 

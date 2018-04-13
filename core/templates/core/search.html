@@ -16,7 +16,10 @@
 				<thead>
 					<th>DB ID</th>
 					<th>Combine ID</th>
-					<th>Record ID</th>					
+					<th>Record ID</th>
+					<th>Organization</th>
+					<th>Record Group</th>
+					<th>Job</th>
 				</thead>
 				<tbody></tbody>
 			</table>
@@ -28,28 +31,46 @@
 				        "processing": true,
 				        "serverSide": true,
 				        "ajax": "{% url 'records_es_generic_dt_json' %}",
-				        "searchDelay": 1000,
+				        "searchDelay": 2000,
 				        "pageLength": 10,
 				        "order": [[ 1, "desc" ]],
 				        "columns": [
 				            { 
 				            	title: "DB ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[3] + "</a>";
+				                    return "<a target='_blank' href='"+row[3]+"'>" + row[4] + "</a>";
 				                }
 			            	},
 				            { 
 				            	title: "Combine ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[4] + "</a>";
+				                    return "<a target='_blank' href='"+row[3]+"'>" + row[5] + "</a>";
 				                }
 			            	},
 				            { 
 				            	title: "Record ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='/combine/organization/"+row[0]+"/record_group/"+row[1]+"/job/"+row[2]+"/record/"+row[3]+"'>" + row[5] + "</a>";
+				                    return "<a target='_blank' href='"+row[3]+"'>" + row[6] + "</a>";
 				                }
-				            }				            
+				            },
+				            { 
+				            	title: "Organization",
+				            	"render": function ( data, type, row ) {
+				                    return row[0];
+				                }
+				            },
+				            { 
+				            	title: "Record Group",
+				            	"render": function ( data, type, row ) {
+				                    return row[1];
+				                }
+				            },
+				            { 
+				            	title: "Job",
+				            	"render": function ( data, type, row ) {
+				                    return row[2];
+				                }
+				            }
 				        ],
 				    });
 				});
