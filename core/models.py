@@ -5182,8 +5182,8 @@ class ServiceHubBulkData(object):
 		bulk_reader = self.get_bulk_reader()		
 
 		# index using streaming
-		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record')), chunk_size=500):
-			logger.debug(i)
+		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record')), chunk_size=500):			
+			continue
 
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
 
