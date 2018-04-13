@@ -59,6 +59,9 @@ from elasticsearch_dsl.utils import AttrList
 from core.spark.es import BaseMapper
 from core.spark.utils import PythonUDFRecord
 
+# AWS
+import boto3
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -5080,8 +5083,82 @@ class RITSClient(object):
 		return json.dumps(self.__dict__)
 
 
+####################################################################
+# DPLA Service Hub												   #
+####################################################################
+
+class ServiceHub(object):
+
+	'''
+	Class to represent the DPLA Service Hub
+
+	TODO:
+		- consider making a Django Model
+			- could save path of dowload
+			- would provide ID
+			- multiple downloads
+			- name for download
+			- timestamp
+			- could save information about indexing status, etc.
+	'''
+
+	def __init__(self):
+
+		self.service_hub_prefix = settings.SERVICE_HUB_PREFIX
+		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER
+		self.dpla_s3_bucket = settings.DPLA_S3_BUCKET
+		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+		self.bulk_compressed_filename = 'bulk.json.gz'
+		self.bulk_uncompressed_filename = 'bulk.json'
 
 
+
+	def download_bulk_data(self, file_key):
+
+		'''
+		Method to bulk download a service hub's data from DPLA's S3 bucket
+		'''
+
+		# create bulk directory if not already present		
+		if not os.path.exists(self.bulk_dir):
+			os.mkdir(self.bulk_dir)
+
+		# download
+		s3 = boto3.resource('s3')
+		s3_bucket = s3.Bucket('%s' % self.dpla_s3_bucket)
+		download_results = s3_bucket.download_file(file_key, '%s/%s' % (self.bulk_dir, self.bulk_compressed_filename))
+
+		# return
+		return download_results
+
+
+	def get_bulk_reader(self):
+
+		'''
+		Return instance of BulkJSONReader with file loaded
+		'''
+
+		return BulkJSONReader('%s/%s' % (self.bulk_dir, self.bulk_uncompressed_filename))
+
+
+
+class BulkJSONReader(object):
+
+
+	def __init__(self, input_file):
+
+		self.input_file = input_file
+		self.file_handle = open(self.input_file,'rb')
+
+		# bump file handle
+		next(self.file_handle)
+		self.records_gen = self.file_handle
+
+
+	def get_next(self):
+
+		r_string = next(self.file_handle).decode('utf-8').lstrip(',')
+		return r_string
 
 
 
