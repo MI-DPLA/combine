@@ -8,6 +8,7 @@ import gc
 import hashlib
 import inspect
 import json
+from json import JSONDecodeError
 import logging
 from lxml import etree, isoschematron
 import os
@@ -52,6 +53,7 @@ from livy.client import HttpClient
 
 # import elasticsearch and handles
 from core.es import es_handle
+import elasticsearch as es
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
@@ -5087,7 +5089,7 @@ class RITSClient(object):
 # DPLA Service Hub												   #
 ####################################################################
 
-class ServiceHub(object):
+class ServiceHubBulkData(object):
 
 	'''
 	Class to represent the DPLA Service Hub
@@ -5110,6 +5112,9 @@ class ServiceHub(object):
 		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
 		self.bulk_compressed_filename = 'bulk.json.gz'
 		self.bulk_uncompressed_filename = 'bulk.json'
+
+		# ES
+		self.es_handle = es_handle
 
 
 
@@ -5135,14 +5140,56 @@ class ServiceHub(object):
 	def get_bulk_reader(self):
 
 		'''
-		Return instance of BulkJSONReader with file loaded
+		Return instance of BulkDataJSONReader
 		'''
 
-		return BulkJSONReader('%s/%s' % (self.bulk_dir, self.bulk_uncompressed_filename))
+		return BulkDataJSONReader('%s/%s' % (self.bulk_dir, self.bulk_uncompressed_filename))
+
+
+	def get_sample_record(self):
+
+		return self.get_bulk_reader().get_next_record()
+
+
+	def index_to_es(self, limit=False):
+
+		'''
+		Use streaming bulk indexer:
+		http://elasticsearch-py.readthedocs.io/en/master/helpers.html
+		'''
+
+		stime = time.time()
+
+		##  prepare index
+
+		# get single record to get index name
+		record = self.get_bulk_reader().get_next_record()
+		index_name = record.dpla_es_index
+		# if exists, delete
+		if es_handle.indices.exists(index_name):
+			es_handle.indices.delete(index_name)
+		mapping = {
+			'mappings':{
+				'item':{
+					'date_detection':False					
+				}
+			}
+		}
+		# create index
+		self.es_handle.indices.create(index_name, body=json.dumps(mapping))
+
+		# get instance of bulk reader
+		bulk_reader = self.get_bulk_reader()		
+
+		# index using streaming
+		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record')), chunk_size=500):
+			logger.debug(i)
+
+		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
 
 
 
-class BulkJSONReader(object):
+class BulkDataJSONReader(object):
 
 
 	def __init__(self, input_file):
@@ -5155,13 +5202,65 @@ class BulkJSONReader(object):
 		self.records_gen = self.file_handle
 
 
-	def get_next(self):
+	def get_next_record(self):
 
 		r_string = next(self.file_handle).decode('utf-8').lstrip(',')
-		return r_string
+		return DPLARecord(r_string)
+
+
+	def get_record_generator(self, limit=False, attr=None):
+
+		i = 0
+		while True:
+			i += 1
+			try:
+				# if attr provided, return attribute of record
+				if attr:
+					yield getattr(self.get_next_record(), attr)
+				# else, return whole record
+				else:
+					yield self.get_next_record()
+				if limit and i >= limit:
+					break
+			except JSONDecodeError:
+				break
+
+
+	def es_doc_generator(self, rec_gen):
+
+		for r in rec_gen:
+			for f in ['_id','_rev','originalRecord']:
+				try:
+					r['_source'].pop(f)
+				except:
+					pass
+			yield r
 
 
 
+class DPLARecord(object):
+
+
+	def __init__(self, record):
+
+		'''
+		expecting dictionary or json of record
+		'''
+
+		if type(record) in [dict, OrderedDict]:
+			self.record = record
+		elif type(record) == str:
+			self.record = json.loads(record)
+
+		# capture convenience values
+		self.pre_hash_record_id = self.record['_id']
+		self.dpla_id = self.record['_source']['id']
+		self.dpla_url = self.record['_source']['@id']
+		self.dpla_es_index = self.record['_index']
+		self.original_metadata = self.record['_source']['originalRecord']['metadata']
+		self.metadata_string = str(self.original_metadata)		
+
+		
 
 
 
