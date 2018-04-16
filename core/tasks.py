@@ -27,4 +27,24 @@ def job_delete(job_id):
 
 	except:
 		logger.debug('could not retrieve Job ID %s, aborting' % job_id)
-		return False	
+		return False
+
+
+@background(schedule=1)
+def bulk_data_download():
+
+	'''
+	Background task to download bulk DPLA data from S3 via boto3
+	'''
+
+	pass
+
+
+@background(schedule=1)
+def bulk_data_index():
+
+	'''
+	Background task to index bulk download data to ElasticSearch (ES)
+	'''
+
+	pass

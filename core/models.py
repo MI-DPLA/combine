@@ -1853,7 +1853,7 @@ class IndexMappers(object):
 class RecordIdentifierTransformationScenario(models.Model):
 
 	'''
-	Model to manage transformation scenarios for Record's record_ids
+	Model to manage transformation scenarios for Record's record_ids (RITS)
 	'''
 
 	name = models.CharField(max_length=255)
@@ -1872,6 +1872,16 @@ class RecordIdentifierTransformationScenario(models.Model):
 
 	def __str__(self):
 		return '%s, RITS: #%s' % (self.name, self.id)
+
+
+
+class DPLABulkDataDownload(models.Model):
+
+	'''
+	Model to handle the management of DPLA bulk data downloads
+	'''
+
+	pass
 
 
 
@@ -5085,36 +5095,36 @@ class RITSClient(object):
 		return json.dumps(self.__dict__)
 
 
+
 ####################################################################
-# DPLA Service Hub												   #
+# DPLA Service Hub and Bulk Data								   #
 ####################################################################
 
-class ServiceHubBulkData(object):
+class DPLABulkDataClient(object):
 
 	'''
-	Class to represent the DPLA Service Hub
-
-	TODO:
-		- consider making a Django Model
-			- could save path of dowload
-			- would provide ID
-			- multiple downloads
-			- name for download
-			- timestamp
-			- could save information about indexing status, etc.
+	Client to faciliate browsing, downloading, and indexing of bulk DPLA data	
 	'''
 
 	def __init__(self):
 
 		self.service_hub_prefix = settings.SERVICE_HUB_PREFIX
-		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER
-		self.dpla_s3_bucket = settings.DPLA_S3_BUCKET
+		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER		
 		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
 		self.bulk_compressed_filename = 'bulk.json.gz'
 		self.bulk_uncompressed_filename = 'bulk.json'
 
 		# ES
 		self.es_handle = es_handle
+
+		# S3
+		self.s3 = boto3.resource('s3')
+
+		# DPLA bucket
+		self.dpla_bucket = self.s3.Bucket(settings.DPLA_S3_BUCKET)
+
+		# boto3 client
+		self.boto_client = boto3.client('s3')
 
 
 
@@ -5162,12 +5172,13 @@ class ServiceHubBulkData(object):
 
 		##  prepare index
 
-		# get single record to get index name
-		record = self.get_bulk_reader().get_next_record()
-		index_name = record.dpla_es_index
+		# get single, sample record to retrieve ES index name
+		sample_record = self.get_sample_record()
+		index_name = sample_record.dpla_es_index
 		# if exists, delete
 		if es_handle.indices.exists(index_name):
 			es_handle.indices.delete(index_name)
+		# set mapping
 		mapping = {
 			'mappings':{
 				'item':{
@@ -5188,8 +5199,53 @@ class ServiceHubBulkData(object):
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
 
 
+	def retrieve_keys(self):
+
+		'''
+		Method to retrieve and parse key structure from S3 bucket
+
+		Note: boto3 only returns 1000 objects from a list_objects
+			- as such, need to add delimiters and prefixes to walk keys
+			- OR, use bucket.objects.all() --> iterator
+		'''
+
+		stime = time.time()
+
+		# get and return list of all keys		
+		keys = []
+		for obj in self.dpla_bucket.objects.all():
+			key = {
+				'key':obj.key,
+				'year':obj.key.split('/')[0],
+				'month':obj.key.split('/')[1],
+				'size':self._sizeof_fmt(int(obj.size))
+			}
+			keys.append(key)
+
+		# return
+		logger.debug('retrieved %s keys in %s' % (len(keys), time.time()-stime))
+		return keys
+
+
+	def _sizeof_fmt(self, num, suffix='B'):
+
+		'''
+		https://stackoverflow.com/a/1094933/1196358
+		'''
+
+		for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+			if abs(num) < 1024.0:
+				return "%3.1f%s%s" % (num, unit, suffix)
+			num /= 1024.0
+		return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
 
 class BulkDataJSONReader(object):
+
+	'''
+	Class to handle the reading of DPLA bulk data
+	'''
 
 
 	def __init__(self, input_file):
@@ -5240,11 +5296,14 @@ class BulkDataJSONReader(object):
 
 class DPLARecord(object):
 
+	'''
+	Small class to model a parsed DPLA JSON record
+	'''
 
 	def __init__(self, record):
 
 		'''
-		expecting dictionary or json of record
+		Expecting dictionary or json of record
 		'''
 
 		if type(record) in [dict, OrderedDict]:

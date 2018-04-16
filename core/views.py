@@ -1751,6 +1751,25 @@ def test_rits(request):
 			return JsonResponse({'results':str(e), 'success':False})
 
 
+@login_required
+def dpla_bulk_data_download(request):
+
+	'''
+	View to support the downloading of DPLA bulk data
+	'''
+
+	# get keys from DPLA bulk download
+	dbdc = models.DPLABulkDataClient()
+	bulk_data_keys = dbdc.retrieve_keys()
+
+	# return
+	return render(request, 'core/dpla_bulk_data_download.html', {
+		'bulk_data_keys':bulk_data_keys,
+		'breadcrumbs':breadcrumb_parser(request)
+	})
+
+
+
 ####################################################################
 # Published 													   #
 ####################################################################
@@ -2198,11 +2217,12 @@ class DTPublishedJson(BaseDatatableView):
 						Q(id=search)						
 					)
 				else:
+					# very slow to include the job's publish set id - removing from search
 					qs = qs.filter(
 						Q(record_id__contains=search) | 
-						Q(document__contains=search) | 
-						Q(job__record_group__publish_set_id=search)
+						Q(document__contains=search)						
 					)
+
 
 			return qs
 

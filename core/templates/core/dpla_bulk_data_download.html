@@ -1,0 +1,25 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+	
+	<div class="row">
+		<div class="col-md-8">
+			<h2>Download Bulk DPLA Data</h2>			
+		</div>
+	</div>
+
+
+	<div class="row">
+		<div class="col-md-6">
+			<div class="form-group">
+				<label for="verb">Select Bulk Data to download and index</label>
+				<select class="form-control" id="verb" name="verb">
+					{% for key in bulk_data_keys %}
+						<option data-year="{{key.year}}" data-month="{{key.month}}" value="{{key.key}}">{{key.key}} ({{key.size}})</option>
+					{% endfor %}
+				</select>
+			</div>
+		</div>
+	</div>
+
+{% endblock %}
