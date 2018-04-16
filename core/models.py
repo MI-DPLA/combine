@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 import datetime
 import gc
+import gzip
 import hashlib
 import inspect
 import json
@@ -47,6 +48,9 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
 from django.views import View
+
+# import background tasks
+from core import tasks
 
 # Livy
 from livy.client import HttpClient
@@ -1890,12 +1894,15 @@ class DPLABulkDataDownload(models.Model):
 		max_length=255,
 		choices=[
 			('init','Initiating'),
-			('downloading','Downloading to Local Filesystem'),
-			('indexing','Indexing to ElasticSearch'),
+			('downloading','Downloading'),
+			('indexing','Indexing'),
 			('finished','Downloaded and Indexed')
 		],
 		default='init'
 	)
+
+	def __str__(self):
+		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
 
 	
 
@@ -5120,15 +5127,16 @@ class DPLABulkDataClient(object):
 
 	'''
 	Client to faciliate browsing, downloading, and indexing of bulk DPLA data	
+
+	Args:
+		filepath (str): optional filepath for downloaded bulk data on disk
 	'''
 
 	def __init__(self):
 
 		self.service_hub_prefix = settings.SERVICE_HUB_PREFIX
 		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER		
-		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
-		self.bulk_compressed_filename = 'bulk.json.gz'
-		self.bulk_uncompressed_filename = 'bulk.json'
+		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]		
 
 		# ES
 		self.es_handle = es_handle
@@ -5144,7 +5152,7 @@ class DPLABulkDataClient(object):
 
 
 
-	def download_bulk_data(self, object_key):
+	def download_bulk_data(self, object_key, filepath):
 
 		'''
 		Method to bulk download a service hub's data from DPLA's S3 bucket
@@ -5157,29 +5165,28 @@ class DPLABulkDataClient(object):
 			os.mkdir(self.bulk_dir)
 
 		# download
-		s3 = boto3.resource('s3')
-		s3_bucket = s3.Bucket('%s' % self.dpla_s3_bucket)
-		download_results = s3_bucket.download_file(object_key, '%s/%s' % (self.bulk_dir, self.bulk_compressed_filename))
+		s3 = boto3.resource('s3')		
+		download_results = self.dpla_bucket.download_file(object_key, filepath)
 
 		# return
 		return download_results
 
 
-	def get_bulk_reader(self):
+	def get_bulk_reader(self, filepath, compressed=True):
 
 		'''
 		Return instance of BulkDataJSONReader
 		'''
 
-		return BulkDataJSONReader('%s/%s' % (self.bulk_dir, self.bulk_uncompressed_filename))
+		return BulkDataJSONReader(filepath, compressed=compressed)
 
 
-	def get_sample_record(self):
+	def get_sample_record(self, filepath):
 
-		return self.get_bulk_reader().get_next_record()
+		return self.get_bulk_reader(filepath).get_next_record()
 
 
-	def index_to_es(self, limit=False):
+	def index_to_es(self, filepath, limit=False):
 
 		'''
 		Use streaming bulk indexer:
@@ -5191,7 +5198,7 @@ class DPLABulkDataClient(object):
 		##  prepare index
 
 		# get single, sample record to retrieve ES index name
-		sample_record = self.get_sample_record()
+		sample_record = self.get_sample_record(filepath)
 		index_name = sample_record.dpla_es_index
 		# if exists, delete
 		if es_handle.indices.exists(index_name):
@@ -5208,13 +5215,16 @@ class DPLABulkDataClient(object):
 		self.es_handle.indices.create(index_name, body=json.dumps(mapping))
 
 		# get instance of bulk reader
-		bulk_reader = self.get_bulk_reader()		
+		bulk_reader = self.get_bulk_reader(filepath)		
 
 		# index using streaming
 		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record')), chunk_size=500):			
 			continue
 
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
+
+		# return
+		return index_name
 
 
 	def retrieve_keys(self):
@@ -5282,9 +5292,12 @@ class DPLABulkDataClient(object):
 		# save 
 		dbdd.save()
 
-		# hand off to background task
+		# hand off to background tasks
+		bg_task = tasks.download_and_index_bulk_data(dbdd.id)
+		logger.debug('bulk data download as background task: %s' % bg_task.task_hash)
 
 		# return
+		return bg_task.task_hash
 
 
 
@@ -5294,11 +5307,18 @@ class BulkDataJSONReader(object):
 	Class to handle the reading of DPLA bulk data
 	'''
 
+	def __init__(self, input_file, compressed=True):
 
-	def __init__(self, input_file):
+		self.input_file = input_file		
+		self.compressed = compressed
 
-		self.input_file = input_file
-		self.file_handle = open(self.input_file,'rb')
+		# not compressed
+		if not self.compressed:
+			self.file_handle = open(self.input_file,'rb')
+
+		# compressed
+		if self.compressed:
+			self.file_handle = gzip.open(self.input_file, 'rb')
 
 		# bump file handle
 		next(self.file_handle)

@@ -1806,9 +1806,6 @@ def dpla_bulk_data_download(request):
 
 		logger.debug('initiating bulk data download')
 
-		# DEBUG
-		logger.debug(request.POST)
-
 		# get DPLABulkDataClient
 		dbdc = models.DPLABulkDataClient()
 

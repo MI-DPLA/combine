@@ -4,7 +4,7 @@ from background_task import background
 import logging
 logger = logging.getLogger(__name__)
 
-from core.models import Job
+from core import models
 
 '''
 This file provides background tasks that are performed with Django-Background-Tasks
@@ -19,7 +19,7 @@ def job_delete(job_id):
 	
 	try:
 		# get job
-		job = Job.objects.get(pk=job_id)
+		job = models.Job.objects.get(pk=job_id)
 		logger.debug('retrieved Job ID %s, deleting' % job_id)
 		
 		# delete
@@ -31,41 +31,35 @@ def job_delete(job_id):
 
 
 @background(schedule=1)
-def bulk_data_download(dbdd):
+def download_and_index_bulk_data(dbdd_id):
 
 	'''
-	Background task to download bulk DPLA data from S3 via boto3
-
-	Note: this will likely call bulk_data_index() below
+	Background task driver to manage downloading and indexing of bulk data
 
 	Args:
-		dbdd (core.models.DPLABulkdDataDownload): DPLABulkdDataDownload instance
+		dbdd_id (int): ID of DPLABulkDataDownload (dbdd) instance
 	'''
 
-	# set status to `downloading`
+	# init bulk download instance
+	dbdd = models.DPLABulkDataDownload.objects.get(pk=dbdd_id)
 
-	# download bulk data
+	# init data client with filepath
+	dbdc = models.DPLABulkDataClient()
 
-	# update status to downloaded
+	# download data
+	logger.debug('downloading %s' % dbdd.s3_key)
+	dbdd.status = 'downloading'
+	dbdd.save()
+	download_results = dbdc.download_bulk_data(dbdd.s3_key, dbdd.filepath)	
 
-	# when finished, init indexing
-	bulk_data_index(dbdd)
+	# index data
+	logger.debug('indexing %s' % dbdd.filepath)
+	dbdd.status = 'indexing'
+	dbdd.save()
+	es_index = dbdc.index_to_es(dbdd.filepath)	
 
+	# update and return
+	dbdd.es_index = es_index
+	dbdd.status = 'finished'
+	dbdd.save()
 
-@background(schedule=1)
-def bulk_data_index():
-
-	'''
-	Background task to index bulk download data to ElasticSearch (ES)
-
-	Args:
-		dbdd (core.models.DPLABulkdDataDownload): DPLABulkdDataDownload instance
-	'''
-
-	# set status to `indexing`
-
-
-
-	# set status to `finished`
-
-	pass
