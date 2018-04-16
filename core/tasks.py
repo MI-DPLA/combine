@@ -56,7 +56,7 @@ def download_and_index_bulk_data(dbdd_id):
 	logger.debug('indexing %s' % dbdd.filepath)
 	dbdd.status = 'indexing'
 	dbdd.save()
-	es_index = dbdc.index_to_es(dbdd.filepath)	
+	es_index = dbdc.index_to_es(dbdd.s3_key, dbdd.filepath)	
 
 	# update and return
 	dbdd.es_index = es_index

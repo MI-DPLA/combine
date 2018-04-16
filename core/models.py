@@ -5203,7 +5203,7 @@ class DPLABulkDataClient(object):
 		return self.get_bulk_reader(filepath).get_next_record()
 
 
-	def index_to_es(self, filepath, limit=False):
+	def index_to_es(self, object_key, filepath, limit=False):
 
 		'''
 		Use streaming bulk indexer:
@@ -5215,8 +5215,12 @@ class DPLABulkDataClient(object):
 		##  prepare index
 
 		# get single, sample record to retrieve ES index name
-		sample_record = self.get_sample_record(filepath)
-		index_name = sample_record.dpla_es_index
+		# sample_record = self.get_sample_record(filepath)
+		# index_name = sample_record.dpla_es_index
+
+		index_name = hashlib.md5(object_key.encode('utf-8')).hexdigest()
+		logger.debug('indexing to %s' % index_name)
+
 		# if exists, delete
 		if es_handle.indices.exists(index_name):
 			es_handle.indices.delete(index_name)
@@ -5235,7 +5239,8 @@ class DPLABulkDataClient(object):
 		bulk_reader = self.get_bulk_reader(filepath)		
 
 		# index using streaming
-		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record')), chunk_size=500):			
+		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
+			# logger.debug(i)
 			continue
 
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
@@ -5366,14 +5371,27 @@ class BulkDataJSONReader(object):
 				break
 
 
-	def es_doc_generator(self, rec_gen):
+	def es_doc_generator(self, rec_gen, index_name=str(uuid.uuid4())):
+
+		'''
+		Create generator for explicit purpose of indexing to ES
+			- pops _id and _rev from _source
+			- writes custom _index
+		'''
 
 		for r in rec_gen:
+
+			# pop values
 			for f in ['_id','_rev','originalRecord']:
 				try:
 					r['_source'].pop(f)
 				except:
 					pass
+
+			# write new index
+			r['_index'] = index_name
+
+			# yield
 			yield r
 
 

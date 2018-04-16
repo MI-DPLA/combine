@@ -1765,36 +1765,8 @@ def dpla_bulk_data_download(request):
 	if request.method == 'GET':
 
 		# get DPLABulkDataClient and keys from DPLA bulk download
-		# dbdc = models.DPLABulkDataClient()
-		# bulk_data_keys = dbdc.retrieve_keys()
-
-		# DEBUG (to prevent S3 calls each time during creation)
-		bulk_data_keys = [
-			{'key': '2018/04/maryland.json.gz',
-			'month': '04',
-			'size': '15.0MiB',
-			'year': '2018'},
-			{'key': '2018/04/mdl.json.gz',
-			'month': '04',
-			'size': '214.1MiB',
-			'year': '2018'},
-			{'key': '2018/04/michigan.json.gz',
-			'month': '04',
-			'size': '53.5MiB',
-			'year': '2018'},
-			{'key': '2018/04/missouri_hub.json.gz',
-			'month': '04',
-			'size': '57.9MiB',
-			'year': '2018'},
-			{'key': '2018/04/montana.json.gz',
-			'month': '04',
-			'size': '17.9MiB',
-			'year': '2018'},
-			{'key': '2018/04/mwdl.json.gz',
-			'month': '04',
-			'size': '375.2MiB',
-			'year': '2018'},
-		]
+		dbdc = models.DPLABulkDataClient()
+		bulk_data_keys = dbdc.retrieve_keys()
 
 		# return
 		return render(request, 'core/dpla_bulk_data_download.html', {
