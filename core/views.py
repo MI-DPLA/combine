@@ -1567,12 +1567,16 @@ def configuration(request):
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
 
+	# get all bulk downloads
+	bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
 			'rits':rits,
+			'bulk_downloads':bulk_downloads,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -1809,6 +1813,7 @@ def dpla_bulk_data_download(request):
 		dbdc = models.DPLABulkDataClient()
 
 		# initiate download
+		dbdc.download_and_index_bulk_data(request.POST.get('object_key', None))
 
 		# return to configuration screen
 		return redirect('configuration')

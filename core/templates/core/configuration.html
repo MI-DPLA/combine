@@ -151,13 +151,21 @@
 			<table class="table table-bordered table-hover">
 				<thead>
 					<tr>
-						<th>???????????</th>							
+						<th>S3 Bucket Key</th>
+						<th>Uploaded to S3</th>
+						<th>Downloaded to Combine</th>
+						<th>Filepath</th>
 					</tr>
 				</thead>
 				<tbody>
-					<tr>
-						<td>???????????????</td>
-					</tr>
+					{% for bd in bulk_downloads %}
+						<tr>
+							<td><code>{{bd.s3_key}}</code></td>
+							<td>{{bd.uploaded_timestamp}}</td>
+							<td>{{bd.downloaded_timestamp}}</td>
+							<td><code>{{bd.filepath}}</code></td>
+						</tr>
+					{% endfor %}
 				</tbody>
 			</table>
 			<p><a href="{% url 'dpla_bulk_data_download' %}"><button type="button" class="btn btn-success btn-sm">Download Bulk Data</button></a></p>

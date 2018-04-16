@@ -31,15 +31,25 @@ def job_delete(job_id):
 
 
 @background(schedule=1)
-def bulk_data_download():
+def bulk_data_download(dbdd):
 
 	'''
 	Background task to download bulk DPLA data from S3 via boto3
 
 	Note: this will likely call bulk_data_index() below
+
+	Args:
+		dbdd (core.models.DPLABulkdDataDownload): DPLABulkdDataDownload instance
 	'''
 
-	pass
+	# set status to `downloading`
+
+	# download bulk data
+
+	# update status to downloaded
+
+	# when finished, init indexing
+	bulk_data_index(dbdd)
 
 
 @background(schedule=1)
@@ -47,6 +57,15 @@ def bulk_data_index():
 
 	'''
 	Background task to index bulk download data to ElasticSearch (ES)
+
+	Args:
+		dbdd (core.models.DPLABulkdDataDownload): DPLABulkdDataDownload instance
 	'''
+
+	# set status to `indexing`
+
+
+
+	# set status to `finished`
 
 	pass

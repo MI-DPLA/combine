@@ -1882,17 +1882,19 @@ class DPLABulkDataDownload(models.Model):
 	'''
 
 	s3_key = models.CharField(max_length=255)
-	download_timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	filepath = models.CharField(max_length=255)
-	es_index = models.CharField(max_length=255)
-	data_dump_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	filepath = models.CharField(max_length=255, null=True, default=None)
+	es_index = models.CharField(max_length=255, null=True, default=None)
+	uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	status = models.CharField(
 		max_length=255,
 		choices=[
+			('init','Initiating'),
 			('downloading','Downloading to Local Filesystem'),
 			('indexing','Indexing to ElasticSearch'),
 			('finished','Downloaded and Indexed')
-		]
+		],
+		default='init'
 	)
 
 	
@@ -5142,7 +5144,7 @@ class DPLABulkDataClient(object):
 
 
 
-	def download_bulk_data(self, file_key):
+	def download_bulk_data(self, object_key):
 
 		'''
 		Method to bulk download a service hub's data from DPLA's S3 bucket
@@ -5157,7 +5159,7 @@ class DPLABulkDataClient(object):
 		# download
 		s3 = boto3.resource('s3')
 		s3_bucket = s3.Bucket('%s' % self.dpla_s3_bucket)
-		download_results = s3_bucket.download_file(file_key, '%s/%s' % (self.bulk_dir, self.bulk_compressed_filename))
+		download_results = s3_bucket.download_file(object_key, '%s/%s' % (self.bulk_dir, self.bulk_compressed_filename))
 
 		# return
 		return download_results
@@ -5254,6 +5256,35 @@ class DPLABulkDataClient(object):
 				return "%3.1f%s%s" % (num, unit, suffix)
 			num /= 1024.0
 		return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
+	def download_and_index_bulk_data(self, object_key):
+
+		'''
+		Method to init background tasks of downloading and indexing bulk data
+		'''
+
+		# get object
+		obj = self.s3.Object(self.dpla_bucket.name, object_key)
+
+		# init DPLABulkDataDownload (dbdd) instance
+		dbdd = DPLABulkDataDownload()
+
+		# set key
+		dbdd.s3_key = object_key
+
+		# set filepath
+		dbdd.filepath = '%s/%s' % (self.bulk_dir, object_key.replace('/','_'))
+
+		# set bulk data timestamp (when it was uploaded to S3 from DPLA)
+		dbdd.uploaded_timestamp = obj.last_modified
+
+		# save 
+		dbdd.save()
+
+		# hand off to background task
+
+		# return
 
 
 
