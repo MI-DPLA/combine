@@ -1881,7 +1881,21 @@ class DPLABulkDataDownload(models.Model):
 	Model to handle the management of DPLA bulk data downloads
 	'''
 
-	pass
+	s3_key = models.CharField(max_length=255)
+	download_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	filepath = models.CharField(max_length=255)
+	es_index = models.CharField(max_length=255)
+	data_dump_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	status = models.CharField(
+		max_length=255,
+		choices=[
+			('downloading','Downloading to Local Filesystem'),
+			('indexing','Indexing to ElasticSearch'),
+			('finished','Downloaded and Indexed')
+		]
+	)
+
+	
 
 
 
@@ -5132,6 +5146,8 @@ class DPLABulkDataClient(object):
 
 		'''
 		Method to bulk download a service hub's data from DPLA's S3 bucket
+
+		Note: Move to background task...
 		'''
 
 		# create bulk directory if not already present		

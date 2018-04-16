@@ -35,6 +35,8 @@ def bulk_data_download():
 
 	'''
 	Background task to download bulk DPLA data from S3 via boto3
+
+	Note: this will likely call bulk_data_index() below
 	'''
 
 	pass

@@ -11,14 +11,19 @@
 
 	<div class="row">
 		<div class="col-md-6">
-			<div class="form-group">
-				<label for="verb">Select Bulk Data to download and index</label>
-				<select class="form-control" id="verb" name="verb">
-					{% for key in bulk_data_keys %}
-						<option data-year="{{key.year}}" data-month="{{key.month}}" value="{{key.key}}">{{key.key}} ({{key.size}})</option>
-					{% endfor %}
-				</select>
-			</div>
+			<form method="POST" action="{% url 'dpla_bulk_data_download' %}">
+				{% csrf_token %}
+				<div class="form-group">
+					<label for="bucket_key">Select Bulk Data to download and index</label>
+					<select class="form-control" id="bucket_key" name="bucket_key">
+						{% for key in bulk_data_keys %}
+							<option data-year="{{key.year}}" data-month="{{key.month}}" value="{{key.key}}">{{key.key}} ({{key.size}})</option>
+						{% endfor %}
+					</select>
+				</div>
+
+				<p><button type="submit" class="btn btn-primary btn-sm">Download Bulk Data</button></p>
+			</form>
 		</div>
 	</div>
 

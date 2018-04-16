@@ -1758,16 +1758,60 @@ def dpla_bulk_data_download(request):
 	View to support the downloading of DPLA bulk data
 	'''
 
-	# get keys from DPLA bulk download
-	dbdc = models.DPLABulkDataClient()
-	bulk_data_keys = dbdc.retrieve_keys()
+	if request.method == 'GET':
 
-	# return
-	return render(request, 'core/dpla_bulk_data_download.html', {
-		'bulk_data_keys':bulk_data_keys,
-		'breadcrumbs':breadcrumb_parser(request)
-	})
+		# get DPLABulkDataClient and keys from DPLA bulk download
+		# dbdc = models.DPLABulkDataClient()
+		# bulk_data_keys = dbdc.retrieve_keys()
 
+		# DEBUG (to prevent S3 calls each time during creation)
+		bulk_data_keys = [
+			{'key': '2018/04/maryland.json.gz',
+			'month': '04',
+			'size': '15.0MiB',
+			'year': '2018'},
+			{'key': '2018/04/mdl.json.gz',
+			'month': '04',
+			'size': '214.1MiB',
+			'year': '2018'},
+			{'key': '2018/04/michigan.json.gz',
+			'month': '04',
+			'size': '53.5MiB',
+			'year': '2018'},
+			{'key': '2018/04/missouri_hub.json.gz',
+			'month': '04',
+			'size': '57.9MiB',
+			'year': '2018'},
+			{'key': '2018/04/montana.json.gz',
+			'month': '04',
+			'size': '17.9MiB',
+			'year': '2018'},
+			{'key': '2018/04/mwdl.json.gz',
+			'month': '04',
+			'size': '375.2MiB',
+			'year': '2018'},
+		]
+
+		# return
+		return render(request, 'core/dpla_bulk_data_download.html', {
+			'bulk_data_keys':bulk_data_keys,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	if request.method == 'POST':
+
+		logger.debug('initiating bulk data download')
+
+		# DEBUG
+		logger.debug(request.POST)
+
+		# get DPLABulkDataClient
+		dbdc = models.DPLABulkDataClient()
+
+		# initiate download
+
+		# return to configuration screen
+		return redirect('configuration')
 
 
 ####################################################################
