@@ -151,6 +151,7 @@
 			<table class="table table-bordered table-hover">
 				<thead>
 					<tr>
+						<th>ID</th>
 						<th>S3 Bucket Key</th>
 						<th>Status</th>
 						<th>Uploaded to S3</th>
@@ -162,11 +163,12 @@
 				<tbody>
 					{% for bd in bulk_downloads %}
 						<tr>
+							<td>{{bd.id}}</td>
 							<td><code>{{bd.s3_key}}</code></td>
 							<td>{{bd.get_status_display}}</td>
 							<td>{{bd.uploaded_timestamp}}</td>
 							<td>{{bd.downloaded_timestamp}}</td>
-							<td><a href="http://{{APP_HOST}}:9200/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a></td>
+							<td>{% if bd.es_index %}<a href="http://{{APP_HOST}}:9200/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a>{% endif %}</td>
 							<td><code>{{bd.filepath}}</code></td>
 						</tr>
 					{% endfor %}

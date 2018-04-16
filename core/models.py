@@ -2182,6 +2182,23 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 	instance.filepath = filepath
 
 
+@receiver(models.signals.pre_delete, sender=DPLABulkDataDownload)
+def delete_dbdd_pre_delete(sender, instance, **kwargs):
+
+	# remove download from disk
+	if os.path.exists(instance.filepath):
+		logger.debug('removing %s from disk' % instance.filepath)
+		os.remove(instance.filepath)
+
+	# remove ES index if exists
+	try:
+		if es_handle.indices.exists(instance.es_index):
+			logger.debug('removing ES index: %s' % instance.es_index)
+			es_handle.indices.delete(instance.es_index)
+	except:
+		logger.debug('could not remove ES index: %s' % instance.es_index)
+
+
 
 ####################################################################
 # Apahce livy 													   #
