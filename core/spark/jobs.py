@@ -46,7 +46,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
 
 
@@ -158,8 +158,11 @@ class CombineSparkJob(object):
 			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
-		# run record identifier transformation scenario is provided
+		# run record identifier transformation scenario if provided
 		records_df = self.run_rits(records_df)
+
+		# run comparison against bulk data if provided
+		records_df = self.bulk_data_compare(records_df)
 
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
@@ -442,6 +445,49 @@ class CombineSparkJob(object):
 			return records_df
 
 		# else return dataframe untouched
+		else:
+			return records_df
+
+
+	def bulk_data_compare(self, records_df):
+
+		'''
+		Method to compare against bulk data if provided
+		'''
+
+		self.logger.info('running bulk data compare')
+
+		# get dbdd instance
+		# get dbdd ID from kwargs
+		dbdd_id = self.kwargs.get('dbdd', False)
+
+		# if rits id provided
+		if dbdd_id and dbdd_id != None:
+
+			self.logger.info('DBDD id provided, retrieving and running...')
+
+			# get dbdd instance
+			dbdd = DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
+			self.logger.info('DBDD retrieved: %s @ ES index %s' % (dbdd.s3_key, dbdd.es_index))
+
+			# get bulk data as DF from ES
+			dpla_rdd = self.spark.sparkContext.newAPIHadoopRDD(
+				inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+				keyClass="org.apache.hadoop.io.NullWritable",
+				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+				conf={ "es.resource" : "%s/item" % dbdd.es_index }
+			)
+			dpla_df = dpla_rdd.toDF()
+			
+			# check if records from job are in bulk data DF
+			in_dpla = records_df.join(dpla_df, records_df['record_id'] == dpla_df['_1'], 'leftsemi')
+			self.logger.info('%s Records were found in the DBDD' % in_dpla.count())
+			self.logger.info('currently, not doing anything with this information')
+
+			# return
+			return records_df
+
+		# else, return untouched
 		else:
 			return records_df
 

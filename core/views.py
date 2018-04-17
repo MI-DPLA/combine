@@ -1981,10 +1981,15 @@ def job_analysis(request):
 		# handle requested record_id transform
 		rits = request.POST.get('rits', None)
 		if rits == '':
-			rits = None		
+			rits = None
 
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
+
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None		
 
 		# initiate job
 		cjob = models.AnalysisJob(
@@ -1995,7 +2000,8 @@ def job_analysis(request):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status

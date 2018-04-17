@@ -4,10 +4,10 @@
 		<div class="col-md-12">
 			<div class="gray_box">
 				<h5>DPLA Bulk Data Compare</h5>
-				<p>If bulk DPLA data dumps have been <a target="_blank" href="{% url 'configuration' %}#validations_anchor">downloaded and indexed</a>, check the existence of Record identifiers from this Job against those in the selected data dump to see if they exist.  If they do, it can be assumed that Record existed in DPLA at the time of the data dump.</p>
+				<p>If bulk DPLA data dumps have been <a target="_blank" href="{% url 'configuration' %}#dbdd_anchor">downloaded and indexed</a>, check the existence of Record identifiers from this Job against those in the selected data dump to see if they exist.  If they do, it can be assumed that Record existed in DPLA at the time of the data dump.</p>
 				
 				<div class="form-group">
-					<select class="form-control" id="rits" name="rits">
+					<select class="form-control" id="dbdd" name="dbdd">
 						<option value=''>Select a ...</option>
 						{% for bd in bulk_downloads %}
 							<option value='{{ bd.id }}'>{{ bd.s3_key }}</option>
