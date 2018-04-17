@@ -22,7 +22,13 @@
 						<!-- optional job details -->
 						{% include 'core/job_optional_details.html' %}
 
-						<!-- OAI endpoint -->						
+						<!-- OAI endpoint -->
+						<div class="alert alert-success alert-dismissible fade show" role="alert">
+							The following are <strong>required</strong> parameters for this Job
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
 						<div class="form-group">
 							<label for="oai_endpoint_id">Select <a target="_blank" href="{% url 'configuration' %}#oai_endpoints_anchor">pre-existing OAI endpoint</a> to use for harvest</label>
 							<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
@@ -34,8 +40,13 @@
 						</div>
 
 						<!-- optional OAI endpoint defaults overrides -->				
-						<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
-							<p class="text-danger font-weight-bold">Below are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job</p>
+						<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">							
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								The following are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
 							
 							<div class="form-group">
 								<label for="endpoint">OAI endpoint</label>
