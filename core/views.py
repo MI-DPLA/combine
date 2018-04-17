@@ -758,6 +758,11 @@ def job_harvest_oai(request, org_id, record_group_id):
 		if rits == '':
 			rits = None
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -768,7 +773,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			overrides=overrides,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -885,6 +891,11 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		if rits == '':
 			rits = None	
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -894,7 +905,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			index_mapper=index_mapper,
 			payload_dict=payload_dict,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -996,6 +1008,11 @@ def job_transform(request, org_id, record_group_id):
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -1007,7 +1024,8 @@ def job_transform(request, org_id, record_group_id):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -1101,6 +1119,11 @@ def job_merge(request, org_id, record_group_id):
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -1111,7 +1134,8 @@ def job_merge(request, org_id, record_group_id):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status

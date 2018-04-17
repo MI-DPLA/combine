@@ -8,7 +8,7 @@
 				
 				<div class="form-group">
 					<select class="form-control" id="dbdd" name="dbdd">
-						<option value=''>Select a ...</option>
+						<option value=''>Select a DPLA Bulk Data Download to compare against...</option>
 						{% for bd in bulk_downloads %}
 							<option value='{{ bd.id }}'>{{ bd.s3_key }}</option>
 						{% endfor %}					

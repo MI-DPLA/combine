@@ -3338,7 +3338,8 @@ class HarvestOAIJob(HarvestJob):
 		oai_endpoint=None,
 		overrides=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		dbdd=None):
 
 		'''
 		Args:
@@ -3374,6 +3375,7 @@ class HarvestOAIJob(HarvestJob):
 			self.overrides = overrides
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.dbdd = dbdd
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3404,7 +3406,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -3414,7 +3416,8 @@ class HarvestOAIJob(HarvestJob):
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3449,7 +3452,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		index_mapper=None,
 		payload_dict=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		dbdd=None):
 
 		'''
 		Args:
@@ -3500,6 +3504,9 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# rits
 			self.rits = rits
+
+			# dbdd
+			self.dbdd = dbdd
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3672,7 +3679,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -3681,7 +3688,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3716,7 +3724,8 @@ class TransformJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all'):
+		input_validity_valve='all',
+		dbdd=None):
 
 		'''
 		Args:
@@ -3754,6 +3763,7 @@ class TransformJob(CombineJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
+			self.dbdd = dbdd
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3812,7 +3822,7 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
@@ -3820,7 +3830,8 @@ class TransformJob(CombineJob):
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve
+				'input_validity_valve':self.input_validity_valve,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3861,7 +3872,8 @@ class MergeJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all'):
+		input_validity_valve='all',
+		dbdd=None):
 
 		'''
 		Args:
@@ -3897,6 +3909,7 @@ class MergeJob(CombineJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
+			self.dbdd = dbdd
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3954,14 +3967,15 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve
+				'input_validity_valve':self.input_validity_valve,
+				'dbdd':self.dbdd
 			}
 		}
 
