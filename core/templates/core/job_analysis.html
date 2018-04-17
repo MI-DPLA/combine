@@ -23,12 +23,21 @@
 					</div>
 				</div>
 
-				<div class="row">
-					<div class="col-md-12">
-						<!-- Job Select -->
-						{% include 'core/job_input_select.html' %}
+				{% if analysis_type != 'published' %}
+					<div class="row">
+						<div class="col-md-12">
+							<!-- Job Select -->
+							{% include 'core/job_input_select.html' %}
+						</div>
 					</div>
-				</div>
+				{% else %}
+					<div class="row">
+						<div class="col-md-12">
+							<h3 style="text-align:center; color:red;">ANALYZING ALL PUBLISHED RECORDS</h3>
+							<input type="hidden" name="input_job_id" value="published" />
+						</div>
+					</div>
+				{% endif %}
 
 				<div class="row">
 					<div class="col-md-6">

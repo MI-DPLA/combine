@@ -1896,7 +1896,10 @@ def job_analysis(request):
 
 	# if GET, prepare form
 	if request.method == 'GET':
-		
+
+		# check if published analysis
+		analysis_type = request.GET.get('type', None)
+
 		# retrieve all jobs
 		input_jobs = models.Job.objects.all()
 
@@ -1919,6 +1922,7 @@ def job_analysis(request):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'analysis_type':analysis_type,
 				'job_lineage_json':json.dumps(ld)				
 			})
 
@@ -1958,25 +1962,27 @@ def job_analysis(request):
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
 
-		# initiate job
-		cjob = models.AnalysisJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,			
-			input_jobs=input_jobs,
-			index_mapper=index_mapper,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			input_validity_valve=input_validity_valve
-		)
+		pdb.set_trace()
 		
-		# start job and update status
-		job_status = cjob.start_job()
+		# # initiate job
+		# cjob = models.AnalysisJob(
+		# 	job_name=job_name,
+		# 	job_note=job_note,
+		# 	user=request.user,			
+		# 	input_jobs=input_jobs,
+		# 	index_mapper=index_mapper,
+		# 	validation_scenarios=validation_scenarios,
+		# 	rits=rits,
+		# 	input_validity_valve=input_validity_valve
+		# )
+		
+		# # start job and update status
+		# job_status = cjob.start_job()
 
-		# if job_status is absent, report job status as failed
-		if job_status == False:
-			cjob.job.status = 'failed'
-			cjob.job.save()
+		# # if job_status is absent, report job status as failed
+		# if job_status == False:
+		# 	cjob.job.status = 'failed'
+		# 	cjob.job.save()
 
 		return redirect('analysis')
 
