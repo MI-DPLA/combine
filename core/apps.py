@@ -3,6 +3,7 @@ from __future__ import unicode_literals
 
 # generic
 import logging
+import os
 
 # combine
 from django.apps import AppConfig
@@ -44,7 +45,14 @@ class CoreConfig(AppConfig):
 		at ~/.aws/credentials
 		'''
 
-		with open('/home/combine/.aws/credentials', 'w') as f:
+		# aws credentials dir
+		aws_creds_dir = '/home/combine/.aws'
+
+		# check if directory exists
+		if not os.path.exists(aws_creds_dir):
+			os.makedirs(aws_creds_dir)
+
+		with open('%s/credentials' % aws_creds_dir, 'w') as f:
 			f.write('''[default]
 aws_access_key_id = %s
 aws_secret_access_key = %s
