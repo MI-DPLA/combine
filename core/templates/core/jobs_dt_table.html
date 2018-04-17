@@ -123,16 +123,16 @@
 				    	"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[8] == 'False'){
-		                    	$('td:nth-child(9)', row).addClass('invalid_job');
+		                    if (data[9] == 'False'){
+		                    	$('td:nth-child(10)', row).addClass('invalid_job');
 		                    }
 			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[7] == 'False'){                    	
-		                    	$('td:nth-child(8)', row).addClass('invalid_job');
+		                    if (data[8] == 'False'){                    	
+		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
 			            },
 		            {% endif %}

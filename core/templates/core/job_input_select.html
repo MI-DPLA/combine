@@ -11,6 +11,7 @@
 						<th>Select</th>
 						<th>Job ID</th>
 						<th>Name</th>
+						<th>Organization</th>
 						<th>Record Group</th>
 						<th>Job Type</th>
 						<th>Status</th>
@@ -33,6 +34,7 @@
 						{% endif %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.organization.name }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.name }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
@@ -55,16 +57,17 @@
 					<tr>
 						<th></th>
 						<th></th>
+						<th></th>
+						<th>Organization</th>
 						<th>Record Group</th>
 						<th>Job Type</th>
 						<th>Status</th>
 						<th>Finished</th>
+						<th>Valid</th>
 						<th></th>
 						<th></th>
 						<th></th>
-						<th></th>
-						<th></th>
-						<th></th>
+						<th></th>						
 					</tr>
 				</tfoot>
 			</table>
@@ -75,13 +78,13 @@
 				    	lengthMenu: [ 10, 25, 100, 500 ],
 				    	createdRow: function( row, data, dataIndex){				    		
 		                    $('td', row).addClass(data[4]);
-		                    if (data[7] == 'False'){                    	
-		                    	$('td:nth-child(8)', row).addClass('invalid_job');
+		                    if (data[8] == 'False'){                    	
+		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
 			            },
 			            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
 			            initComplete: function () {
-				            this.api().columns([3,4,5,6]).every( function () {
+				            this.api().columns([3,4,5,6,7,8]).every( function () {
 				                var column = this;
 				                var select = $('<select><option value="">All</option></select>')
 				                    .appendTo( $(column.footer()).empty() )
@@ -90,12 +93,9 @@
 				                        column.search( val ? '^'+val+'$' : '', true, false ).draw();
 				                    } );
 				 
-				                column.data().unique().sort().each( function ( d, j ) {
-				                	if (column.index() == 4){				                		
-				                		d = $(d).html();			                		
-				                	}
+				                column.data().unique().sort().each( function ( d, j ) {				                	
 				                    select.append( '<option value="'+d+'">'+d+'</option>' )
-				                } );
+				                });
 				            } );
 				        }
 				    });
