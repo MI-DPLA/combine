@@ -11,9 +11,9 @@
 					<th>Job ID</th>
 					<th>Timestamp</th>
 					<th>Name</th>
-					<th>Organization</th>
-					{# Jinja logic for including RecordGroups #}
+					{# Jinja logic for including Organization and RecordGroups #}					
 					{% if not for_analysis %}
+						<th>Organization</th>
 						<th>Record Group</th>
 					{% endif %}
 					<th>Job Type</th>
@@ -46,10 +46,10 @@
 								<button type="submit" class="btn btn-primary btn-sm">Update</button>
 							</form>
 						</div>
-					</td>
-                                        <td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>
-					{# Jinja logic for including RecordGroups #}
+					</td>                    
+					{# Jinja logic for including Organization and RecordGroups #}
 					{% if not for_analysis %}
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>

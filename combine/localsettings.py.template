@@ -89,9 +89,10 @@ COMBINE_DATABASE = {
 DPLA_API_KEY = None
 
 
-# S3 Credentials
+# AWS S3 Credentials
 AWS_ACCESS_KEY_ID = None
 AWS_SECRET_ACCESS_KEY = None
+DPLA_S3_BUCKET = 'dpla-provider-export'
 
 
 # Analysis Jobs Org and Record Group
