@@ -1960,7 +1960,6 @@ class DTRecordsJson(BaseDatatableView):
 		columns = [
 			'id',
 			'combine_id',
-			'organization_id',
 			'record_id',
 			'job',
 			'oai_set',
@@ -1979,7 +1978,6 @@ class DTRecordsJson(BaseDatatableView):
 		order_columns = [
 			'id',
 			'combine_id',
-			'organization_id',
 			'record_id',
 			'job',
 			'oai_set',
@@ -2028,14 +2026,6 @@ class DTRecordsJson(BaseDatatableView):
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.combine_id)
-
-			# handle organization_id
-			if column == 'organization_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'organization_id':row.id
-					}), row.organization_id)
 
 			# handle record_id
 			if column == 'record_id':
