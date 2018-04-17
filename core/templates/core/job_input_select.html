@@ -69,11 +69,12 @@
 				</tfoot>
 			</table>
 			<script>
+
 				$(document).ready(function() {
 				    jobs_table = $('#jobs_table').DataTable({
 				    	pageLength: 100,
 				    	lengthMenu: [ 10, 25, 100, 500 ],
-				    	createdRow: function( row, data, dataIndex){				    		
+				    	createdRow: function( row, data, dataIndex){
 		                    $('td', row).addClass(data[4]);
 		                    if (data[7] == 'False'){                    	
 		                    	$('td:nth-child(8)', row).addClass('invalid_job');

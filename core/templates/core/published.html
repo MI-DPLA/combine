@@ -9,12 +9,12 @@
 </div>
 
 <div class="row">
-	<div class="col-md-8">
+	<div class="col-md-6">
 		<h4>Published Sets</h4>
 		
 		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
-		<table border="1" cellpadding="10">
+		<table class="table table-bordered table-hover">
 
 			<tr>
 				<th>Record Group</th>
@@ -81,6 +81,13 @@
 		</table>
 
 	</div>
+
+	<div class="col-md-6">
+		<h4>Analysis</h4>
+		<p>Run Analysis over all Published Records.  This may be useful for double checking uniqueness, record validity, or checking existence in previous DPLA bulk data sets.</p>
+		<a href="#"><button type="submit" class="btn btn-success btn-sm">Run Analysis</button></a>
+	</div>
+
 </div>
 
 <div class="row">
@@ -90,7 +97,7 @@
 
 		<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
 
-		<table id='published_records'>
+		<table id="published_records" class="table table-hover">
 			<thead>
 				<th>ID</th>
 				<th>Record ID</th>

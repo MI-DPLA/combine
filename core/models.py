@@ -5418,7 +5418,10 @@ class DPLARecord(object):
 		self.dpla_id = self.record['_source']['id']
 		self.dpla_url = self.record['_source']['@id']
 		self.dpla_es_index = self.record['_index']
-		self.original_metadata = self.record['_source']['originalRecord']['metadata']
+		try:
+			self.original_metadata = self.record['_source']['originalRecord']['metadata']
+		except:
+			self.original_metadata = False
 		self.metadata_string = str(self.original_metadata)		
 
 		
