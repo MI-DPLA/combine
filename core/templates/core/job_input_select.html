@@ -3,8 +3,8 @@
 	<!-- optional job lineage network node graph -->
 	{% include 'core/job_lineage_network.html' %}
 
-	<div class="row">
-		<div class="col-md-12">
+	<div class="row" {% if analysis_type == 'published' %}style="display:none;"{% endif %}>
+		<div class="col-md-12">			
 			<table id="jobs_table" class="table table-bordered table-hover">
 				<thead>
 					<tr>
@@ -94,8 +94,19 @@
 				                        column.search( val ? '^'+val+'$' : '', true, false ).draw();
 				                    } );
 				 
-				                column.data().unique().sort().each( function ( d, j ) {				                	
-				                    select.append( '<option value="'+d+'">'+d+'</option>' )
+				                column.data().unique().sort().each( function ( d, j ) {
+				                	{% if analysis_type == 'published' %}
+					                	if (d == 'PublishJob'){
+					                		select.append( '<option selected value="'+d+'">'+d+'</option>' )
+					                		column.search( 'PublishJob' ? '^PublishJob$' : '', true, false ).draw();
+					                	}
+					                	else {
+					                		select.append( '<option value="'+d+'">'+d+'</option>' )	
+					                	}
+				                	{% else %}
+				                		select.append( '<option value="'+d+'">'+d+'</option>' )	
+				                	{% endif %}
+				                    
 				                });
 				            } );
 				        }
@@ -106,10 +117,17 @@
 					    update_lineage_on_filter();
 					} );
 
+				    // special case behavior for selectin publish jobs only
+					{% if analysis_type == 'published' %}
+						update_lineage_on_filter();
+						$("#jobs_table input").prop('checked', true);
+					{% endif %}
+
 				} );
 
 			</script>
 		</div>
 	</div>
+
 
 {% endblock %}

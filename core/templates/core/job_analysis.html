@@ -3,7 +3,7 @@
 {% block content %}
 
 	<div class="row">
-		<div class="col-md-12">			
+		<div class="col-md-12">
 			<h3>New Job: <span class="font-weight-bold">Analysis</span></h3>
 
 			<p>Run a new analysis job based on previously run jobs.</p>
@@ -23,21 +23,20 @@
 					</div>
 				</div>
 
-				{% if analysis_type != 'published' %}
-					<div class="row">
-						<div class="col-md-12">
-							<!-- Job Select -->
-							{% include 'core/job_input_select.html' %}
-						</div>
+				<div class="row">
+					<div class="col-md-12">
+						{% if analysis_type == 'published' %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Automatically filtering and selecting <strong>all Published Jobs</strong> for analysis, continue with other analysis options below...
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% endif %}
+						<!-- Job Select -->
+						{% include 'core/job_input_select.html' %}						
 					</div>
-				{% else %}
-					<div class="row">
-						<div class="col-md-12">
-							<h3 style="text-align:center; color:red;">ANALYZING ALL PUBLISHED RECORDS</h3>
-							<input type="hidden" name="input_job_id" value="published" />
-						</div>
-					</div>
-				{% endif %}
+				</div>
 
 				<div class="row">
 					<div class="col-md-6">
