@@ -219,17 +219,15 @@
 			<table class="table table-bordered table-hover">
 				<thead>
 					<tr>
-						<th>Total records for indexing</th>
-						<th>Indexed</th>
-						<th>Percentage of total records</th>
+						<th>Total Records for Job</th>
+						<th>Successfully Indexed</th>						
 						<th>Actions</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr>
 						<td>{{ record_count_details.records }}</td>
-						<td>{{ field_counts.total_docs }}</td>
-						<td>{{ field_counts.indexed_percentage }}</td>
+						<td>{{ field_counts.total_docs }}</td>						
 						<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
 					</tr>
 				</tbody>

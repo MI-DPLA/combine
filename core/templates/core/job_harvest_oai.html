@@ -22,9 +22,9 @@
 						<!-- optional job details -->
 						{% include 'core/job_optional_details.html' %}
 
-						<!-- OAI endpoint -->
+						<!-- OAI endpoint -->						
 						<div class="form-group">
-							<label for="oai_endpoint_id">Select OAI endpoint to use</label>
+							<label for="oai_endpoint_id">Select <a target="_blank" href="{% url 'configuration' %}#oai_endpoints_anchor">pre-existing OAI endpoint</a> to use for harvest</label>
 							<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
 								<option value="">Select an oai endpoint...</option>
 								{% for oai_endpoint in oai_endpoints %}
@@ -73,23 +73,10 @@
 							</div>
 						</div>
 					</div>
-				</div>
+				</div>				
 
-				<div class="row">
-					<div class="col-md-6">
-						<!-- Indexing Mapping Selection -->
-						{% include 'core/index_mapping_select.html' %}
-
-						<!-- Record Validation Selection -->
-						{% include 'core/record_validation_select.html' %}
-					</div>
-					<div class="col-md-6">
-
-						<!-- Record Identifier Transformation -->
-						{% include 'core/record_identifier_transform.html' %}
-						
-					</div>
-				</div>
+				<!-- Optional Job Processing -->
+				{% include 'core/job_optional_processing.html' %}
 
 				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 

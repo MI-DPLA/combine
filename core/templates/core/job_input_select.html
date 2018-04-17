@@ -95,6 +95,8 @@
 				                    } );
 				 
 				                column.data().unique().sort().each( function ( d, j ) {
+
+				                	{# handle analysis of published records differently #}
 				                	{% if analysis_type == 'published' %}
 					                	if (d == 'PublishJob'){
 					                		select.append( '<option selected value="'+d+'">'+d+'</option>' )

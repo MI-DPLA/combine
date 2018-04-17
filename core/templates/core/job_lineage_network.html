@@ -1,5 +1,5 @@
 {% block content %}
-<div class="row">
+<div class="row" {% if analysis_type == 'published' %}style="display:none;"{% endif %}>
 	<div class="col-md-12">		
 		<div id="job_family_diagram_container">
 			<div id="job_family_diagram"></div>
