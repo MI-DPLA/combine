@@ -707,6 +707,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
@@ -714,6 +717,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -796,6 +800,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
+
+	# get all bulk downloads
+	bulk_downloads = models.DPLABulkDataDownload.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -806,6 +813,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -931,6 +939,9 @@ def job_transform(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_transform.html', {
 				'job_select_type':'single',
@@ -941,6 +952,7 @@ def job_transform(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1037,6 +1049,9 @@ def job_merge(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
@@ -1046,6 +1061,7 @@ def job_merge(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1135,6 +1151,9 @@ def job_publish(request, org_id, record_group_id):
 		# get all currently applied publish set ids
 		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
@@ -1143,6 +1162,7 @@ def job_publish(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
 				'publish_set_ids':publish_set_ids,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1915,6 +1935,9 @@ def job_analysis(request):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_analysis.html', {
 				'job_select_type':'multiple',				
@@ -1923,6 +1946,7 @@ def job_analysis(request):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'analysis_type':analysis_type,
+				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
 			})
 

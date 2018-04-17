@@ -19,6 +19,9 @@
 					<a class="nav-link active" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
 				</li>
 				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#bulk_download_check">DPLA Bulk Data Compare</a>
+				</li>
+				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#index_mapping_tab">Index Mapping</a>
 				</li>
 				<li class="nav-item">
@@ -36,6 +39,11 @@
 				<div id="validation_tests_tab" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Record Validation Selection #}
 					{% include 'core/record_validation_select.html' %}
+				</div>
+
+				<div id="bulk_download_check" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+					{# Bulk Data Download Comparison #}
+					{% include 'core/bulk_download_compare_select.html' %}
 				</div>
 
 				<div id="index_mapping_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
