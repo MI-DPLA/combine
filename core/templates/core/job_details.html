@@ -109,16 +109,14 @@
 			<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Input Job Name</th>
-					<th>Job Type Family</th>
+					<th>Input Job Name</th>					
 					<th>Job Type</th>
 					<th>Record Input Type</th>
 					<th>Record Count</th>
 				</tr>
 				{% for input_job in cjob.job.jobinput_set.all %}
 				<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
-					<td>{{ input_job.input_job.job_type_family }}</td>
+					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>					
 					<td>{{ input_job.input_job.job_type }}</td>
 					<td>{{ input_job.get_input_validity_valve_display }}</td>
 					<td>
@@ -149,23 +147,19 @@
 			<p>The following table shows details about input records, successes, and failures.</p>
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Job Name</th>
-					<th>Job Type Family</th>
+					<th>Job Name</th>					
 					<th>Job Type</th>
 					<th>Total Input Records</th>
 					<th>Successfully Processed</th>
-					<th>Error in Processing</th>					
-					<th>Valid Records</th>
-					<th>Invalid Records</th>					
+					<th>Error in Processing</th>										
+					<th>Failed Validation</th>
 				</tr>
 				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-					<td>{{ cjob.job.name }}</td>
-					<td>{{ cjob.job.job_type_family }}</td>
+					<td>{{ cjob.job.name }}</td>					
 					<td>{{ cjob.job.job_type }}</td>
 					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 					<td>{{ record_count_details.records }}</td>
-					<td>{{ record_count_details.errors }}</td>
-					<td>{{ cjob.job.validation_results.passed_count }}</td>
+					<td>{{ record_count_details.errors }}</td>					
 					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
 			</table>
