@@ -32,7 +32,7 @@ except:
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf, regexp_replace
+from pyspark.sql.functions import udf, regexp_replace, lit
 from pyspark.sql.window import Window
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -161,9 +161,6 @@ class CombineSparkJob(object):
 		# run record identifier transformation scenario if provided
 		records_df = self.run_rits(records_df)
 
-		# run comparison against bulk data if provided
-		records_df = self.bulk_data_compare(records_df)
-
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
 			pyspark_sql_functions.count('record_id')\
@@ -224,6 +221,9 @@ class CombineSparkJob(object):
 			# update `valid` column for Records based on results of ValidationScenarios
 			cursor = connection.cursor()
 			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+			# run comparison against bulk data if provided
+			db_records = self.bulk_data_compare(db_records)
 
 			# return db_records DataFrame
 			return db_records
@@ -449,7 +449,7 @@ class CombineSparkJob(object):
 			return records_df
 
 
-	def bulk_data_compare(self, records_df):
+	def bulk_data_compare(self, db_records):
 
 		'''
 		Method to compare against bulk data if provided
@@ -480,16 +480,29 @@ class CombineSparkJob(object):
 			dpla_df = dpla_rdd.toDF()
 			
 			# check if records from job are in bulk data DF
-			in_dpla = records_df.join(dpla_df, records_df['record_id'] == dpla_df['_1'], 'leftsemi')
-			self.logger.info('%s Records were found in the DBDD' % in_dpla.count())
-			self.logger.info('currently, not doing anything with this information')
+			# in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select?????????
+
+			# check if records from job are in bulk data DF
+			in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select(db_records['id'])
+
+			# prepare matches DF
+			dbdd_id = dbdd.id
+			matches_to_write = in_dpla.withColumn('record_id', in_dpla['id']).withColumn('match', lit(1)).withColumn('dbdd_id', lit(dbdd_id)).select('match', 'record_id', 'dbdd_id')
+			
+			# write to DPLABulkDataMatch table
+			matches_to_write.write.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_dplabulkdatamatch',
+				properties=settings.COMBINE_DATABASE,
+				mode='append'
+			)
 
 			# return
-			return records_df
+			return db_records
 
 		# else, return untouched
 		else:
-			return records_df
+			return db_records
 
 
 

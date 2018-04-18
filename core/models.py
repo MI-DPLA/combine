@@ -1811,10 +1811,12 @@ class RecordValidation(models.Model):
 
 	'''
 	Model to manage validation tests associated with a Record	
+
+		- what is the performance hit of the FK?
+
 	'''
 
 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	# what kind of performance hit is this FK?
 	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
 	valid = models.BooleanField(default=1)
 	results_payload = models.TextField(null=True, default=None)
@@ -1904,7 +1906,21 @@ class DPLABulkDataDownload(models.Model):
 	def __str__(self):
 		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
 
-	
+
+
+class DPLABulkDataMatch(models.Model):
+
+	'''
+	Class to record DPLA bulk data matches (DBDM)
+	'''
+
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
+	match = models.BooleanField(default=True)
+
+
+	def __str__(self):
+		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
 
 
 
