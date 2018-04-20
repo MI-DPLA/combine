@@ -59,7 +59,11 @@ label {
 	border: 1px solid #c3c3c3;
 }
 
-/* Navbar */
+/* Tabbed Content */
+.full_width_tab {
+	margin: 20px 0px 20px 0px;
+	width: 100%;
+}
 
 
 /* Jobs */
@@ -84,14 +88,17 @@ label {
 .grayed_dt_row {
 	background-color: #ececec;
 	color: #949494;
+	display:none; /* hiding entirely, but can remove this to only gray out */
 }
 div.grayed_dt_row, td.grayed_dt_row {
 	background-color: #ececec;
 	color: #949494;
+	display:none; /* hiding entirely, but can remove this to only gray out */
 }
 .grayed_dt_row a {
 	background-color: #ececec;
 	color: #949494;
+	display:none; /* hiding entirely, but can remove this to only gray out */
 }
 .invalid_job {
 	background-color:#ff9898;

@@ -106,30 +106,30 @@
 			<!-- Navigation -->
 			<ul class="nav nav-tabs">				
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#io_tab">Input / Outputs</a>
+					<a class="nav-link active" data-toggle="tab" href="#io_tab">Input / Results</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#records_tab">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validations</a>
+					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown">Metadata Fields Breakdown</a>
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown">Field Analysis</a>
 				</li>
 			</ul>
 
 			<!-- Tabbed Content -->
 			<div class="tab-content">			
 
-				<div id="io_tab" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				<div id="io_tab" class="tab-pane container active full_width_tab">
 					<div class="row">
 		
 						<!-- Job Inputs -->
 						{% if cjob.job.job_type_family != 'HarvestJob' %}
-						<div class="col-md-6">
+						<div class="col-md-12">
 							<h4>Input Jobs</h4>
-							<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
+							<p>The following Jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
 							<table class="table table-bordered table-hover">
 								<tr>
 									<th>Input Job Name</th>					
@@ -165,7 +165,7 @@
 						{% endif %}
 
 						<!-- Job Results -->
-						<div class="col-md-6">
+						<div class="col-md-12">
 							<h4>Results</h4>
 							<p>The following table shows details about input records, successes, and failures.</p>
 							<table class="table table-bordered table-hover">
@@ -191,17 +191,21 @@
 					</div>
 				</div>
 
-				<div id="records_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-					<!-- Indexing Records DT Table -->
-					{% include 'core/records_dt_table.html' %}
+				<div id="records_tab" class="tab-pane container full_width_tab">
+					<div class="row">		
+						<div class="col-md-12">
+							<!-- Indexing Records DT Table -->
+							{% include 'core/records_dt_table.html' %}
+						</div>
+					</div>
 				</div>
 
-				<div id="validation_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				<div id="validation_tab" class="tab-pane container full_width_tab">
 					{% if cjob.job.jobvalidation_set.count > 0 %}
 					<div class="row">		
-						<div class="col-md-6">
+						<div class="col-md-12">
 							<h3>Validation Scenarios</h3>
-							<p>The following validation scenarios were run for this job:</p>
+							<p>The following Validation Scenarios were run for this job:</p>
 							<table class="table table-bordered table-hover">
 								<thead>
 									<tr>
@@ -225,13 +229,20 @@
 							<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
 						</div>
 					</div>
+					{% else %}
+					<div class="row">		
+						<div class="col-md-12">
+							<p>No Validations were run for this Job.</p>
+						</div>
+					</div>
+
 					{% endif %}
 				</div>
 
-				<div id="field_breakdown" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				<div id="field_breakdown" class="tab-pane container full_width_tab">
 					<div class="row">
 						<div class="col-md-12">
-							<h3>Indexed Field Analysis</h3>
+							<h3>Field Analysis</h3>
 							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
 						</div>
 						<div class="col-md-6">

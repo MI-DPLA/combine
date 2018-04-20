@@ -2058,8 +2058,7 @@ class DTRecordsJson(BaseDatatableView):
 			'record_id',
 			'job',
 			'oai_set',
-			'unique',
-			'success',
+			'unique',			
 			'document',
 			'error',
 			'valid'
@@ -2076,8 +2075,7 @@ class DTRecordsJson(BaseDatatableView):
 			'record_id',
 			'job',
 			'oai_set',
-			'unique',
-			'success',
+			'unique',			
 			'document',
 			'error',
 			'valid'
