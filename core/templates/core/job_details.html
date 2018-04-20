@@ -318,6 +318,7 @@
 									<thead>
 										<tr>
 											<th>DPLA Bulk Data Download</th>
+											<th>Total Records in Job</th>
 											<th>Matches</th>
 											<th>Misses</th>
 										</tr>
@@ -325,6 +326,7 @@
 									<tbody>
 										<tr>
 											<td><code>{{ dpla_bulk_data_matches.dbdd.s3_key }}</code></td>
+											<td>{{ record_count_details.records }}</td>
 											<td><a href="#">{{ dpla_bulk_data_matches.matches.count }}</a></td>
 											<td><a href="#">{{ dpla_bulk_data_matches.misses.count }}</a></td>
 									</tbody>
