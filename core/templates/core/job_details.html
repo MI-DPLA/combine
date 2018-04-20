@@ -134,7 +134,7 @@
 			</div>
 
 			<!-- Navigation -->
-			<ul class="nav nav-tabs">								
+			<ul id="tabs" class="nav nav-tabs">								
 				<li class="nav-item">
 					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
 				</li>
@@ -149,7 +149,7 @@
 				</li>
 				{% if dpla_bulk_data_matches %}
 					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab">DPLA Bulk Data Matches</a>
+						<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
 					</li>
 				{% endif %}
 			</ul>
@@ -313,7 +313,7 @@
 						
 						<div class="row">
 							<div class="col-md-12">
-								<p>The following table shows matches based on the Record Identifier as run against the downloaded and indexed DPLA Bulk Data dump.</p>
+								<p>The following tables shows matches and misses based on the Record's Identifier as run against the selected DPLA Bulk Data dump.</p>
 								<table class="table table-bordered table-hover">
 									<thead>
 										<tr>
@@ -335,6 +335,7 @@
 						<!-- DataTable of DPLA Matches -->	
 						<div class="row">
 							<div class="col-md-12">
+								<h4>Matches</h4>
 								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover">
 									<thead>
 										<th>DB ID</th>
@@ -342,34 +343,13 @@
 									</thead>
 									<tbody></tbody>
 								</table>
-
-								<script>
-
-									$(document).ready(function() {
-									    var oTable = $('#dpla_bulk_data_matches_table').dataTable({
-									        "processing": true,
-									        "serverSide": true,
-									        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
-									        "searchDelay": 1000,
-									        "pageLength": 10,
-									        "order": [[ 1, "desc" ]],
-									        "columns": [
-									            { 
-									            	title: "DB ID"
-								            	},
-									            { 
-									            	title: "Record ID"
-									            }									            
-									        ],
-									    });
-									});
-								</script>
 							</div>
 						</div>
 
 						<!-- DataTable of DPLA Misses -->	
 						<div class="row">
 							<div class="col-md-12">
+								<h4>Misses</h4>
 								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover">
 									<thead>
 										<th>DB ID</th>
@@ -377,30 +357,60 @@
 									</thead>
 									<tbody></tbody>
 								</table>
-
-								<script>
-
-									$(document).ready(function() {
-									    var oTable = $('#dpla_bulk_data_misses_table').dataTable({
-									        "processing": true,
-									        "serverSide": true,
-									        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
-									        "searchDelay": 1000,
-									        "pageLength": 10,
-									        "order": [[ 1, "desc" ]],
-									        "columns": [
-									            { 
-									            	title: "DB ID"
-								            	},
-									            { 
-									            	title: "Record ID"
-									            }									            
-									        ],
-									    });
-									});
-								</script>
 							</div>
 						</div>
+
+						<script>
+
+							// Matches Datatable
+							$(document).ready(function() {
+							    matches_table = $('#dpla_bulk_data_matches_table').dataTable({
+							        "processing": true,
+							        "serverSide": true,
+							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
+							        "searchDelay": 1000,
+							        "pageLength": 10,
+							        "order": [[ 1, "desc" ]],
+							        "columns": [
+							            { 
+							            	title: "DB ID"
+						            	},
+							            { 
+							            	title: "Record ID"
+							            }									            
+							        ],
+							    });
+							});
+
+
+
+							// Misses Datatable
+							$(document).ready(function() {
+							    misses_table = $('#dpla_bulk_data_misses_table').dataTable({
+							        "processing": true,
+							        "serverSide": true,
+							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
+							        "searchDelay": 1000,
+							        "pageLength": 10,
+							        "order": [[ 1, "desc" ]],
+							        "columns": [
+							            { 
+							            	title: "DB ID"
+						            	},
+							            { 
+							            	title: "Record ID"
+							            }									            
+							        ],
+							    });
+							});
+
+						
+							function update_table_widths() {
+								matches_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
+								misses_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
+							}							
+						
+						</script>
 
 					</div>
 				{% endif %}
