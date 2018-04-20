@@ -102,14 +102,44 @@
 
 	<div class="row">
 		<div class="col-md-12">
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>Job Name</th>					
+					<th>Job Type</th>
+					<th>Total Input Records</th>
+					<th>Successfully Processed</th>
+					<th>Error in Processing</th>										
+					<th>Failed Validation</th>
+				</tr>
+				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
+					<td>{{ cjob.job.name }}</td>					
+					<td>{{ cjob.job.job_type }}</td>
+					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
+					<td>{{ record_count_details.records }}</td>
+					<td>{{ record_count_details.errors }}</td>					
+					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
+				</tr>
+			</table>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+				The following tabs provide additional information about this Job
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
 
 			<!-- Navigation -->
-			<ul class="nav nav-tabs">				
+			<ul class="nav nav-tabs">								
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#io_tab">Input / Results</a>
+					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#records_tab">Records</a>
+					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
@@ -122,7 +152,16 @@
 			<!-- Tabbed Content -->
 			<div class="tab-content">			
 
-				<div id="io_tab" class="tab-pane container active full_width_tab">
+				<div id="records_tab" class="tab-pane container full_width_tab active">
+					<div class="row">		
+						<div class="col-md-12">
+							<!-- Indexing Records DT Table -->
+							{% include 'core/records_dt_table.html' %}
+						</div>
+					</div>
+				</div>
+
+				<div id="io_tab" class="tab-pane container full_width_tab">
 					<div class="row">
 		
 						<!-- Job Inputs -->
@@ -162,10 +201,14 @@
 								</tr>
 							</table>
 						</div>
+						{% else %}
+						<div class="col-md-12">
+							<p>No Jobs were used as iput for this Job.</p>
+						</div>
 						{% endif %}
 
 						<!-- Job Results -->
-						<div class="col-md-12">
+						<!-- <div class="col-md-12">
 							<h4>Results</h4>
 							<p>The following table shows details about input records, successes, and failures.</p>
 							<table class="table table-bordered table-hover">
@@ -186,17 +229,8 @@
 									<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 								</tr>
 							</table>
-						</div>
+						</div> -->
 
-					</div>
-				</div>
-
-				<div id="records_tab" class="tab-pane container full_width_tab">
-					<div class="row">		
-						<div class="col-md-12">
-							<!-- Indexing Records DT Table -->
-							{% include 'core/records_dt_table.html' %}
-						</div>
 					</div>
 				</div>
 
