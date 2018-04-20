@@ -582,12 +582,16 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
 
+	# get dpla_bulk_data_match
+	dpla_bulk_data_matches = cjob.job.get_dpla_bulk_data_matches()	
+
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
+			'dpla_bulk_data_matches':dpla_bulk_data_matches,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2460,7 +2464,89 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 
 
+class DTDPLABulkDataMatches(BaseDatatableView):
 
+		'''
+		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id'			
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'record_id'			
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
+			# get DPLA misses / matches
+			dpla_bulk_data_matches = job.get_dpla_bulk_data_matches()
+
+			# return queryset
+			if self.kwargs['match_type'] == 'matches':
+				return dpla_bulk_data_matches['matches']
+			elif self.kwargs['match_type'] == 'misses':
+				return dpla_bulk_data_matches['misses']
+
+
+		def render_column(self, row, column):
+
+			# handle record id
+			if column == 'id':
+				# get target record from row
+				target_record = row
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.id)
+
+			# handle record record_id
+			elif column == 'record_id':
+				# get target record from row
+				target_record = row
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.record_id)
+
+			# handle all else
+			else:
+				return super(DTDPLABulkDataMatches, self).render_column(row, column)
+
+
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
+
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
+
+		# 	# return
+		# 	return qs
 
 
 

@@ -940,6 +940,35 @@ class Job(models.Model):
 			return results
 
 
+	def get_dpla_bulk_data_matches(self):
+
+		'''
+		Method to generate a QuerySet of DPLABulkDataMatch
+		'''
+
+		stime = time.time()
+		
+		# attempt matches for this job
+		matches = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
+
+		# if matches more than zero, get associated dbdd
+		if matches.count() > 0:
+
+			# get records from job
+			records = self.get_records()
+
+			logger.debug('get DPLA bulk data matches elapsed: %s' % (time.time()-stime))
+			return {
+				'dbdd':matches.first().dbdd,
+				'matches':records.filter(id__in=matches.values_list('record_id')),
+				'misses': records.exclude(id__in=matches.values_list('record_id'))
+			}
+
+		else:
+			logger.debug('get DPLA bulk data matches elapsed: %s' % (time.time()-stime))
+			return False
+
+
 
 class JobTrack(models.Model):
 
@@ -1416,6 +1445,15 @@ class Record(models.Model):
 		}
 
 		return record_lineage_urls
+
+
+	def get_dpla_bulk_data_match(self):
+
+		'''
+		Method to return single DPLA Bulk Data Match
+		'''
+
+		return DPLABulkDataMatch.objects.filter(record=self)
 
 
 
