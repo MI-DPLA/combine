@@ -1808,9 +1808,15 @@ def dpla_bulk_data_download(request):
 
 	if request.method == 'GET':
 
-		# get DPLABulkDataClient and keys from DPLA bulk download
-		dbdc = models.DPLABulkDataClient()
-		bulk_data_keys = dbdc.retrieve_keys()
+		# if S3 credentials set
+		if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY and settings.AWS_ACCESS_KEY_ID != None and settings.AWS_SECRET_ACCESS_KEY != None:
+
+			# get DPLABulkDataClient and keys from DPLA bulk download
+			dbdc = models.DPLABulkDataClient()
+			bulk_data_keys = dbdc.retrieve_keys()
+
+		else:
+			bulk_data_keys = False
 
 		# return
 		return render(request, 'core/dpla_bulk_data_download.html', {
