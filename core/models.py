@@ -4459,15 +4459,13 @@ class DTElasticFieldSearch(View):
 
 		# filtering applied before DataTables input
 		filter_type = self.request.GET.get('filter_type', None)
+		filter_field = self.request.GET.get('filter_field', None)
+		filter_value = self.request.GET.get('filter_value', None)
 
 		# equals filtering
 		if filter_type == 'equals':
 			logger.debug('equals type filtering')
 
-			# get fields for filtering
-			filter_field = self.request.GET.get('filter_field', None)
-			filter_value = self.request.GET.get('filter_value', None)
-			
 			# determine if including or excluding
 			matches = self.request.GET.get('matches', None)
 			if matches and matches.lower() == 'true':
@@ -4491,9 +4489,6 @@ class DTElasticFieldSearch(View):
 		elif filter_type == 'exists':
 			logger.debug('exists type filtering')
 
-			# get field for filtering
-			filter_field = self.request.GET.get('filter_field', None)
-
 			# determine if including or excluding
 			exists = self.request.GET.get('exists', None)
 			if exists and exists.lower() == 'true':
@@ -4512,7 +4507,6 @@ class DTElasticFieldSearch(View):
 		# further filter by DT provided keyword
 		if self.DTinput['search[value]'] != '':
 			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
-
 
 
 	def sort(self):
