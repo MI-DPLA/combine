@@ -139,19 +139,17 @@
 					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
 				</li>
 				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Field Analysis</a>
+				</li>
+				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
-				</li>
+				</li>								
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Field Analysis</a>
-				</li>
-				{% if dpla_bulk_data_matches %}
-					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
-					</li>
-				{% endif %}
+					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
+				</li>				
 			</ul>
 
 			<!-- Tabbed Content -->
@@ -308,9 +306,10 @@
 					{% include 'core/indexed_fields_dt_table.html' %}
 				</div>
 
-				{% if dpla_bulk_data_matches %}
-					<div id="dpla_bulk_data_tab" class="tab-pane container full_width_tab">
-						
+				<div id="dpla_bulk_data_tab" class="tab-pane container full_width_tab">
+					
+					{% if dpla_bulk_data_matches %}
+
 						<div class="row">
 							<div class="col-md-12">
 								<p>The following tables shows matches and misses based on the Record's Identifier as run against the selected DPLA Bulk Data dump.</p>
@@ -414,8 +413,16 @@
 						
 						</script>
 
-					</div>
-				{% endif %}
+					{% else %}
+
+						<div class="row">
+							<div class="col-md-12">
+								<p>No DPLA Bulk Data Comparisons were made, or no matches found.</p>
+							</div>
+						</div>
+
+					{% endif %}
+				</div>
 
 			</div>
 

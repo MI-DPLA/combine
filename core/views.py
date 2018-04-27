@@ -585,7 +585,7 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get dpla_bulk_data_match
 	dpla_bulk_data_matches = cjob.job.get_dpla_bulk_data_matches()	
 
-	# return
+	# return	
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
 			'record_count_details':record_count_details,

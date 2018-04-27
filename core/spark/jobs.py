@@ -477,10 +477,7 @@ class CombineSparkJob(object):
 				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 				conf={ "es.resource" : "%s/item" % dbdd.es_index }
 			)
-			dpla_df = dpla_rdd.toDF()
-			
-			# check if records from job are in bulk data DF
-			# in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select?????????
+			dpla_df = dpla_rdd.toDF()			
 
 			# check if records from job are in bulk data DF
 			in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select(db_records['id'])

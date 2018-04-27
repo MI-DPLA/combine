@@ -946,8 +946,6 @@ class Job(models.Model):
 		Method to generate a QuerySet of DPLABulkDataMatch
 		'''
 
-		stime = time.time()
-		
 		# get match checks
 		t_stime = time.time()		
 		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
@@ -981,7 +979,7 @@ class Job(models.Model):
 			}
 
 		else:
-			logger.debug('get DPLA bulk data matches elapsed: %s' % (time.time()-stime))
+			logger.debug('DPLA Bulk comparison not run, or no matches found.')
 			return False
 
 
