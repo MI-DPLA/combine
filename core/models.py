@@ -948,20 +948,36 @@ class Job(models.Model):
 
 		stime = time.time()
 		
-		# attempt matches for this job
-		matches = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
+		# get match checks
+		t_stime = time.time()		
+		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
+		logger.debug('match attempts returned: %s' % (time.time() - t_stime))
 
-		# if matches more than zero, get associated dbdd
-		if matches.count() > 0:
+		# if match_attempts more than zero, get associated dbdd
+		if match_attempts.count() > 0:
 
 			# get records from job
 			records = self.get_records()
 
-			logger.debug('get DPLA bulk data matches elapsed: %s' % (time.time()-stime))
+			# get the dbdd
+			t_stime = time.time()
+			dbdd = match_attempts.first().dbdd
+			logger.debug('dbdd returned: %s' % (time.time() - t_stime))
+
+			# get matches
+			t_stime = time.time()
+			matches = records.filter(id__in=match_attempts.values_list('record_id'))
+			logger.debug('matches returned: %s' % (time.time() - t_stime))
+
+			# get misses
+			t_stime = time.time()
+			misses = records.exclude(id__in=match_attempts.values_list('record_id'))
+			logger.debug('misses returned: %s' % (time.time() - t_stime))		
+			
 			return {
-				'dbdd':matches.first().dbdd,
-				'matches':records.filter(id__in=matches.values_list('record_id')),
-				'misses': records.exclude(id__in=matches.values_list('record_id'))
+				'dbdd':dbdd,
+				'matches':matches,
+				'misses': misses
 			}
 
 		else:

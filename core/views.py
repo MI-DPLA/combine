@@ -1895,9 +1895,19 @@ def search(request):
 
 	'''
 	Global search of Records
-	'''	
+	'''
+
+	# if search term present, use
+	q = request.GET.get('q', None)
+	if q:
+		search_params = json.dumps({'q':q})
+		logger.debug(search_params)
+	else:
+		search_params = None
 
 	return render(request, 'core/search.html', {
+			'search_string':q,
+			'search_params':search_params,
 			'breadcrumbs':breadcrumb_parser(request),
 			'page_title':' | Search'
 		})
@@ -2537,18 +2547,45 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 				return super(DTDPLABulkDataMatches, self).render_column(row, column)
 
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def get_context_data(self, *args, **kwargs):
+			stime = time.time()		
+			try:
+				self.initialize(*args, **kwargs)
 
-		# 	# handle search
-		# 	search = self.request.GET.get(u'search[value]', None)
-		# 	if search:
-		# 		qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
+				qs = self.get_initial_queryset()
 
-		# 	# return
-		# 	return qs
+				# number of records before filtering
+				total_records = qs.count()
 
+				qs = self.filter_queryset(qs)
 
+				# number of records after filtering
+				total_display_records = qs.count()
+
+				qs = self.ordering(qs)
+				qs = self.paging(qs)
+
+				# prepare output data
+				if self.pre_camel_case_notation:
+					aaData = self.prepare_results(qs)
+
+					ret = {'sEcho': int(self._querydict.get('sEcho', 0)),
+						   'iTotalRecords': total_records,
+						   'iTotalDisplayRecords': total_display_records,
+						   'aaData': aaData
+						   }
+				else:
+					data = self.prepare_results(qs)
+
+					ret = {'draw': int(self._querydict.get('draw', 0)),
+						   'recordsTotal': total_records,
+						   'recordsFiltered': total_display_records,
+						   'data': data
+						   }
+				logger.debug('context data total %s' % (time.time() - stime))
+				return ret
+			except Exception as e:
+				return self.handle_exception(e)
 
 
 
