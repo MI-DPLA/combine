@@ -585,6 +585,9 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get dpla_bulk_data_match
 	dpla_bulk_data_matches = cjob.job.get_dpla_bulk_data_matches()	
 
+	# check if limiting to one, pre-existing record
+	q = request.GET.get('q', None)
+
 	# return	
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
@@ -592,6 +595,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
+			'q':q,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -1693,8 +1697,12 @@ def test_validation_scenario(request):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
+			'q':q,
 			'validation_scenarios':validation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2193,7 +2201,7 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+				qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs

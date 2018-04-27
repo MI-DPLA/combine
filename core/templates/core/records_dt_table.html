@@ -23,9 +23,19 @@
 	*/
 	$(document).ready(function() {
 
+		// check for record limiter				
+    	{% if q %}
+	    	q = {{ q }};
+	    {% else %}
+	    	q = '';
+    	{% endif %}
+
 		records_datatable = $('#datatables_records').dataTable({
 			"processing": true,
 			"serverSide": true,
+			"search": {
+			    "search": q					    
+			},
 
 			{# if cjob is present, limit to Job records only #}
 			{% if cjob %}
@@ -53,7 +63,14 @@
 					"visible": false
 				},
 				{% endif %}
-			]
+			],
+			"initComplete": function(settings, json){
+
+				// check if view specific function defined
+				if (typeof run_view_specific_dt_draw === "function"){
+					run_view_specific_dt_draw(this);	
+				}				
+			}
 		});
 	});
 
