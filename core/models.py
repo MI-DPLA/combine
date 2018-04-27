@@ -4441,7 +4441,7 @@ class DTElasticFieldSearch(View):
 			'recordsFiltered': None,
 			'data': []
 		}
-		self.DToutput['draw'] = DTinput['draw']
+		self.DToutput['draw'] = DTinput['draw']		
 
 
 	def filter(self):
@@ -4478,10 +4478,9 @@ class DTElasticFieldSearch(View):
 			# filter query
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
 
-			if matches:
-				# filter where filter_field == filter_value
+			if matches:				
 				logger.debug('filtering to matches')
-				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))				
 			else:
 				# filter where filter_field == filter_value AND filter_field exists
 				logger.debug('filtering to non-matches')
@@ -4509,6 +4508,11 @@ class DTElasticFieldSearch(View):
 			else:
 				logger.debug('filtering to non-exists')
 				self.query = self.query.exclude(Q('exists', field=filter_field))
+
+		# further filter by DT provided keyword
+		if self.DTinput['search[value]'] != '':
+			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
+
 
 
 	def sort(self):
@@ -4624,7 +4628,7 @@ class DTElasticFieldSearch(View):
 		# save parameters to self
 		self.request = request
 		self.es_index = es_index
-		self.DTinput = self.request.GET
+		self.DTinput = self.request.GET		
 
 		# time respond build
 		stime = time.time()
