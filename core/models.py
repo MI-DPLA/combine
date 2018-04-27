@@ -58,6 +58,7 @@ from livy.client import HttpClient
 # import elasticsearch and handles
 from core.es import es_handle
 import elasticsearch as es
+from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
@@ -1258,8 +1259,12 @@ class Record(models.Model):
 		s = s.query('match', _id=self.combine_id)
 
 		# execute search and capture as dictionary
-		sr = s.execute()
-		sr_dict = sr.to_dict()
+		try:
+			sr = s.execute()
+			sr_dict = sr.to_dict()
+		except NotFoundError:
+			logger.debug('ES query 404')
+			return {}
 
 		# return
 		try:
@@ -4764,11 +4769,7 @@ class DTElasticFieldSearch(View):
 		# paginate
 		self.paginate()
 
-		# loop through field values
-		'''
-		example row from ES:
-		{'doc_count': 3, 'key': 'Frock Coats'}
-		'''
+		# loop through field values		
 		for index, row in self.query_results.iterrows():
 
 			# iterate through columns and place in list

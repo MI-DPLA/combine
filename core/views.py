@@ -1497,7 +1497,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	'''
 	Single Record page
 	'''
-
+	
 	# get single record based on Combine record DB id
 	record = models.Record.objects.get(pk=int(record_id))
 
@@ -1532,14 +1532,14 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# return
 	return render(request, 'core/record.html', {
-			'record_id':record_id,
-			'record':record,
-			'record_stages':record_stages,
-			'job_details':job_details,
-			'dpla_api_doc':dpla_api_doc,
-			'dpla_api_json':dpla_api_json,
-			'breadcrumbs':breadcrumb_parser(request)
-		})
+		'record_id':record_id,
+		'record':record,
+		'record_stages':record_stages,
+		'job_details':job_details,
+		'dpla_api_doc':dpla_api_doc,
+		'dpla_api_json':dpla_api_json,
+		'breadcrumbs':breadcrumb_parser(request)
+	})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):

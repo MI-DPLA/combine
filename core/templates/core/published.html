@@ -42,7 +42,7 @@
 
 						<!-- NEW -->
 						<td>
-							<a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
+							<a href="#" onclick="$(this).next().fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
 							<div id="publish_set_id_update" style="display:none; margin-top:10px;">
 								<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">
 									{% csrf_token %}
