@@ -3031,6 +3031,7 @@ class CombineJob(object):
 		headers = submit.headers
 
 		# update job in DB
+		self.job.response = json.dumps(response)
 		self.job.spark_code = job_code
 		self.job.job_id = int(response['id'])
 		self.job.status = response['state']
