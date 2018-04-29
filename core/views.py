@@ -1555,6 +1555,20 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 	return HttpResponse(record.document, content_type='text/xml')
 
 
+def record_indexed_document(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View indexed, ES document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return ES document as JSON
+	return JsonResponse(record.get_es_doc())
+	
+
+
 def record_error(request, org_id, record_group_id, job_id, record_id):
 
 	'''

@@ -205,6 +205,7 @@
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Indexed Fields</h4>
+							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank">View ElasticSearch document</a></p>
 
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>

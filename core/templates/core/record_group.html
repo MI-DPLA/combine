@@ -71,17 +71,25 @@
 		</div>		
 	</div>
 
-	<!-- <div class="row">		
-		<div class="col-md-12">		
-			<h4>Jobs</h4>
+	{% if jobs|length > 0 %}
+
+		<!-- optional job lineage network node graph -->
+		{% include 'core/job_lineage_network.html' %}
+
+		<!-- job datatable -->
+		{% include 'core/jobs_dt_table.html' %}
+	{% else %}
+		<div class="row">
+			<div class="col-md-12">
+				<div class="alert alert-warning alert-dismissible fade show" role="alert">
+					No Jobs were found or yet run for this Record Group, start one below!
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			</div>
 		</div>
-	</div> -->
-
-	<!-- optional job lineage network node graph -->
-	{% include 'core/job_lineage_network.html' %}
-
-	<!-- job datatable -->
-	{% include 'core/jobs_dt_table.html' %}
+	{% endif %}
 
 	</div>
 
