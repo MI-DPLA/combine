@@ -1,6 +1,7 @@
 appnope==0.1.0
 avro-python3==1.8.2
 backports.shutil-get-terminal-size==1.0.0
+boto3
 certifi==2017.7.27.1
 chardet==3.0.4
 cloudpickle==0.4.0
