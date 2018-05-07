@@ -1713,30 +1713,31 @@ def test_transformation_scenario(request):
 		# get record
 		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))		
 
-		# try:
-		# init new transformation scenario
-		trans = models.Transformation(
-			name='temp_trans_%s' % str(uuid.uuid4()),
-			payload=request.POST.get('trans_payload'),
-			transformation_type=request.POST.get('trans_type')				
-		)
-		trans.save()
+		try:
+			
+			# init new transformation scenario
+			trans = models.Transformation(
+				name='temp_trans_%s' % str(uuid.uuid4()),
+				payload=request.POST.get('trans_payload'),
+				transformation_type=request.POST.get('trans_type')				
+			)
+			trans.save()
 
-		# validate with record
-		trans_results = trans.transform_record(record)
+			# validate with record
+			trans_results = trans.transform_record(record)
 
-		# delete temporary trans
-		trans.delete()
+			# delete temporary trans
+			trans.delete()
 
-		return HttpResponse(trans_results, content_type="text/xml")			
+			return HttpResponse(trans_results, content_type="text/xml")			
 			
 
-		# except Exception as e:
+		except Exception as e:
 
-		# 	logger.debug('test validation scenario was unsucessful, deleting temporary vs')
-		# 	trans.delete()
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			trans.delete()
 
-		# 	return HttpResponse(str(e), content_type="text/plain")
+			return HttpResponse(str(e), content_type="text/plain")
 
 
 def validation_scenario_payload(request, vs_id):

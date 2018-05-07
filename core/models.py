@@ -29,6 +29,9 @@ import uuid
 import xmltodict
 import zipfile
 
+# pyjxslt
+import pyjxslt
+
 # pandas
 import pandas as pd
 
@@ -1095,12 +1098,12 @@ class Transformation(models.Model):
 	def transform_record(self, row):
 
 		'''
-		Method to test validation against a single record.
+		Method to test transformation against a single record.
 
-		Note: The code for self._validate_schematron() and self._validate_python() are similar, if not identical,
-		to staticmethods found in core.spark.record_validation.py.  However, because those are running on spark workers,
+		Note: The code for self._transform_xslt() and self._transform_python() are similar,
+		to staticmethods found in core.spark.jobs.py.  However, because those are running on spark workers,
 		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
-		validations are effectively defined twice.
+		transformations are recreated here.
 
 		Args:
 			row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
@@ -1108,14 +1111,59 @@ class Transformation(models.Model):
 
 		logger.debug('transforming single record: %s' % row)
 
-		# run appropriate validation based on type
-		# if self.validation_type == 'sch':
-		# 	result = self._validate_schematron(row)
-		# if self.validation_type == 'python':
-		# 	result = self._validate_python(row)
+		# run appropriate validation based on transformation type
+		if self.transformation_type == 'xslt':
+			result = self._transform_xslt(row)
+		if self.transformation_type == 'python':
+			result = self._transform_python(row)
 
 		# return result
-		return "<ele>Hello Fake World!</ele>"
+		return result
+
+	
+	def _transform_xslt(self, row):
+
+		try:
+			
+			# transform with pyjxslt gateway
+			gw = pyjxslt.Gateway(6767)
+			gw.add_transform('xslt_transform', self.payload)
+			result = gw.transform('xslt_transform', row.document)
+			gw.drop_transform('xslt_transform')
+
+			# return
+			return result
+		
+		except Exception as e:
+			return str(e)
+
+
+	def _transform_python(self, row):
+			
+		try:
+
+			# prepare row as parsed document with PythonUDFRecord class
+			prtb = PythonUDFRecord(row)
+
+			# get python function from Transformation Scenario
+			temp_pyts = ModuleType('temp_pyts')
+			exec(self.payload, temp_pyts.__dict__)
+
+			# run transformation
+			trans_result = temp_pyts.python_record_transformation(prtb)
+
+			# convert any possible byte responses to string
+			if trans_result[2] == True:
+				if type(trans_result[0]) == bytes:
+					trans_result[0] = trans_result[0].decode('utf-8')
+				return trans_result[0]
+			if trans_result[2] == False:
+				if type(trans_result[1]) == bytes:
+					trans_result[1] = trans_result[1].decode('utf-8')
+				return trans_result[1]
+
+		except Exception as e:			
+			return str(e)
 
 
 
@@ -2238,9 +2286,6 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 
 		# update filepath
 		instance.filepath = filepath
-
-	else:
-		logger.debug('currently only xslt style transformations accepted')
 
 
 @receiver(models.signals.pre_save, sender=ValidationScenario)

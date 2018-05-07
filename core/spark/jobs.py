@@ -855,7 +855,7 @@ class TransformSpark(CombineSparkJob):
 		'''
 
 		# define udf function for transformation
-		def transform_xml_udf(job_id, row, xslt_string):
+		def transform_xslt_udf(job_id, row, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
@@ -890,7 +890,7 @@ class TransformSpark(CombineSparkJob):
 
 		# transform via rdd.map and return
 		job_id = self.job.id
-		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
+		records_trans = records.rdd.map(lambda row: transform_xslt_udf(job_id, row, xslt_string))
 		return records_trans
 
 
@@ -914,7 +914,7 @@ class TransformSpark(CombineSparkJob):
 		'''
 
 		# define udf function for python transformation
-		def transform_xml_udf(job_id, row, python_code):
+		def transform_python_udf(job_id, row, python_code):
 			
 			try:
 				# prepare row as parsed document with PythonUDFRecord class
@@ -951,7 +951,7 @@ class TransformSpark(CombineSparkJob):
 		# transform via rdd.map and return
 		job_id = self.job.id			
 		transformation_payload = transformation.payload
-		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, transformation_payload))
+		records_trans = records.rdd.map(lambda row: transform_python_udf(job_id, row, transformation_payload))
 		return records_trans
 
 
