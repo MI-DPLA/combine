@@ -112,7 +112,7 @@
 
 				if (this.value != ''){
 
-					// get vs info
+					// get trans info
 					var trans_info = this.value.split('|');
 
 					// update validation dropdown type
@@ -153,7 +153,7 @@
 				// get trans_type
 				var trans_type = $("#trans_type").val();
 
-				// issue ajax request and get raw validation results
+				// issue ajax request and get transformation results
 				$.ajax({
 					type: "POST",
 					url: "{% url 'test_transformation_scenario' %}",
@@ -161,8 +161,7 @@
 						'db_id':db_id,
 						'trans_payload':trans_payload,
 						'trans_type':trans_type,
-						'vs_name':'temp_vs',
-						'vs_results_format':'raw',
+						'trans_name':'temp_trans',						
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
@@ -191,7 +190,7 @@
 			})
 		});
 
-		// run post records DT table draw specific to validation testing
+		// run post records DT table draw specific to transformation testing
 		function run_view_specific_dt_draw(dt){
 
 			// if search term provided AND only one result, select
