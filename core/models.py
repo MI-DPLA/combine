@@ -1092,6 +1092,32 @@ class Transformation(models.Model):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
 
+	def transform_record(self, row):
+
+		'''
+		Method to test validation against a single record.
+
+		Note: The code for self._validate_schematron() and self._validate_python() are similar, if not identical,
+		to staticmethods found in core.spark.record_validation.py.  However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		validations are effectively defined twice.
+
+		Args:
+			row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
+		'''
+
+		logger.debug('transforming single record: %s' % row)
+
+		# run appropriate validation based on type
+		# if self.validation_type == 'sch':
+		# 	result = self._validate_schematron(row)
+		# if self.validation_type == 'python':
+		# 	result = self._validate_python(row)
+
+		# return result
+		return "<ele>Hello Fake World!</ele>"
+
+
 
 class OAITransaction(models.Model):
 
