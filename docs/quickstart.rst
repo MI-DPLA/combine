@@ -2,7 +2,7 @@
 QuickStart
 **********
 
-    **Update 4/11/2018:** *In migrating from Markdown to reStructuredText, some of the formatting has gone a little sideways.  And, there are new features to include in this quickstart guide.  Thanks for your patience while those updates are made!*
+    *This QuickStart guide provides a high level walkthrough of harvesting records from static files, transforming those records with XSLT, and publishing via Combine's built-in OAI server.  Though it lays the groundwork, this guide does NOT cover much in the way of analysis, an important, and arguably more fun, component of Combine.*
 
 Sometimes you can't beat kicking the tires to see how an application
 works. This "QuickStart" guide will walkthrough the harvesting,
@@ -13,7 +13,7 @@ Demo data from unit tests will be reused here to avoid the need to
 provide actual OAI-PMH endpoints, Transformation or Validation
 scenarios, or other configurations unique to a DPLA Service Hub.
 
-This QuickStart guide will walk through the following areas of Combine,
+This guide will walk through the following areas of Combine,
 and it's recommended to do so in order:
 
 -  `sshing into server <#sshing-into-server>`__
@@ -330,20 +330,26 @@ form field ``XPath for metadata document root``, enter the following:
 
     /mods:mods
 
-For the time being, we can ignore the section "Locate Identifier in Document" 
-which would allow us to find a unique identifier via XPath in the document.  By 
-default, it will assign a random identifier based on a hash of the document string.
+For the time being, we can ignore the section "Locate Identifier in Document" which would allow us to find a unique identifier via XPath in the document.  By default, it will assign a random identifier based on a hash of the document string.
 
-Next, we can select the **Index Mapping** we will use for this job. The
-default "Generic XPath based mapper" will work for now, with more
-discussion on Index Mapping later.
+Next, we can apply some optional parameters that are present for all jobs in Combine.  This looks like the following:
 
-Next, we can select Validation Scenarios to run for all Records in this
-Job. If you bootstrapped the demo configurations from steps above, you
-should see two options, *DPLA minimum* and *Date checker*; make sure
-both are checked.
+.. figure:: img/job_optional_params.png
+   :alt: Optional Job parameters
+   :target: _images/job_optional_params.png
 
-Finally, click "Harvest Static Files" at the bottom!
+   Optional Job parameters
+
+Different parameter types can be found under the various tabs, such as:
+
+  * Validation Tests
+  * Index Mapping
+  * Transform Identifier
+  * etc.
+
+One optional parameter we'll want to check and set for this initial job are Validations to perform on the records.  These can be found under the "Validation Tests" tab. If you bootstrapped the demo configurations from steps above, you should see two options, *DPLA minimum* and *Date checker*; make sure both are checked.
+
+Finally, click "Run Job" at the bottom. 
 
 This should return you to the RecordGroup page, where a new Job has
 appeared and is ``running`` under the ``Status`` column in the Job
@@ -402,20 +408,22 @@ While only one Transformation Scenario can be applied to a single
 Transform job, multiple Transformation Scenarios can be prepared and
 saved in advance for use by all users, ready for different needs.
 
-For our purposes here, select ``MODS to Service Hub profile / xslt``
-from the dropdown.
+For our purposes here, select ``MODS to Service Hub profile (xslt)``
+from the dropdown:
+
+.. figure:: img/required_select_transform.png
+   :alt: Select Transformation Scenario to use
+   :target: _images/required_select_transform.png
+
+   Select Transformation Scenario to use
 
 Once the input Job (radio button from table) and Transformation Scenario
-(dropdown) are selected, we are presented with the same Index Mapping
-and Validation Scenario options. As will become apparent, these are
-configurable for each Job that is run. We can leave the defaults again,
+(dropdown) are selected, we are presented with the same optional parameters as we saw in the previous, Harvest Job.  We can leave the defaults again,
 double checking that the two Validation Scenarios -- *DPLA minimum* and
-*Date checker* -- are both checked.
+*Date checker* -- are both checked under the "Validation Tests" tab.
 
 We also have the ability to select records based on whether or not they
-passed validation tests.  In the box in the lower-right, you can select
-*all*, *valid*, or *invalid* records.  This will be reflected in the 
-Jobs screen, indicating how many records are passed from one Job to another.
+previously passed validation tests.  Under the tab "Record Input Validity", you can select *All records*, *Passed validation*, or *Faled validation* records.  This will be reflected in the Jobs screen, indicating how many records are passed from one Job to another.
 
 .. figure:: img/record_validity_valve.png
    :alt: "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
@@ -423,7 +431,9 @@ Jobs screen, indicating how many records are passed from one Job to another.
 
    "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
 
-For this walkthrough, we can just select "All."  Finally, click "Transform" at the bottom!
+For this walkthrough, we can just select "All records".
+
+Finally, click "Run Job" at the bottom.
 
 Again, we are kicked back to the RecordGroup screen, and should
 hopefully see a Transform job with the status ``running``. **Note:** The
@@ -461,61 +471,45 @@ served as inputs.
 Job Details
 -----------
 
-Here, you will find details about a specific Job. Major sections
-include:
+This page provides details about a specific Job. 
 
--  Job lineage graph - similar to what is seen on RecordGroup page, but
-   limited to the "lineage" of this job only
--  Notes - user entered notes about the job
--  Records table - sortable, searchable table that searches Records as
-   stored in DB
--  Validation results - results of validation scenarios run
--  Indexed fields analysis - table of fields mapped from Record XML,
-   stored in ElasticSearch
+.. figure:: img/job_details.png
+   :alt: Screenshot of Job details page
+   :target: _images/job_details.png
 
-.. figure:: img/job_details_1.png
-   :alt: Job Details (1) - Input Jobs, Overview, and part of the Records table
-   :target: _images/job_details_1.png
+   Screenshot of Job details page
 
-   Job Details (1) - Input Jobs, Overview, and part of the Records table
+Major sections can be found behind the various tabs, and include:
 
-.. figure:: img/job_details_2.png
-   :alt: Job Details (2) - Validation results, and part of the Indexed fields table
-   :target: _images/job_details_2.png
+  - Records
 
-   Job Details (2) - Validation results, and part of the Indexed fields table
+    - *a table of all records contained in this Job*
 
-Records table
--------------
+  - Field Analysis
+
+    - *statistical breakdown of indexed fields*
+
+  - Input Jobs
+
+    - *what Jobs were used as inputs for this Job*
+
+  - Validation
+
+    - *shows all Validations run for this Job, with reporting*
+
+  - DPLA Bulk Data Matches
+
+    - *if run and configured, shows matches with DPLA bulk data sets*
+
+Records
+-------
 
 Sortable, searchable, this shows all the individual, discrete Records
 for this Job. This is *one*, but not the only, entry point for viewing
 the details about a single Record. It is also helpful for determining if
 the Record is unique *with respect to other Records from this Job*.
 
-Validation results
-------------------
-
-This table shows all the Validation Scenarios that were run for this
-job, including any/all failures for each scenario.
-
-For our example Harvest, under *DPLA minimum*, we can see that there
-were 250 Records that failed validation. For the *Date checker*
-validation, all records passed. We can click "See Failures" link to get
-the specific Records that failed, with some information about which
-tests within that Validation Scenario they failed.
-
-Additionally, we can click "Run validation results report" to generate
-an Excel or .csv output of the validation results. From that screen, you
-are able to select:
-
--  which Validation Scenarios to include in report
--  any mapped fields (see below for an explanation of them) that would
-   be helpful to include in the report as columns
-
-More information about `Validation Scenarios <.>`__.
-
-Indexed Fields
+Field Analysis
 --------------
 
 This table represents individual fields as mapped from a Record's source
@@ -583,11 +577,34 @@ downstream transformations or publishing. The only exception being where
 Combine attempts to query the DPLA API to match records, which is based
 on these mapped fields, but more on that later.
 
+Validation
+----------
+
+This table shows all the Validation Scenarios that were run for this
+job, including any/all failures for each scenario.
+
+For our example Harvest, under *DPLA minimum*, we can see that there
+were 250 Records that failed validation. For the *Date checker*
+validation, all records passed. We can click "See Failures" link to get
+the specific Records that failed, with some information about which
+tests within that Validation Scenario they failed.
+
+Additionally, we can click "Run validation results report" to generate
+an Excel or .csv output of the validation results. From that screen, you
+are able to select:
+
+-  which Validation Scenarios to include in report
+-  any mapped fields (see below for an explanation of them) that would
+   be helpful to include in the report as columns
+
+More information about `Validation Scenarios <.>`__.
+
+
 Record Details
 --------------
 
 Next, we can drill down one more level and view the details of an
-individual Record. From the Record table at the top, click on the
+individual Record. From the Record table tab, click on the
 ``Record ID`` of any individual Record. At this point, you are presented
 with the details of that particular Record.
 
@@ -597,58 +614,23 @@ with the details of that particular Record.
 
    Top of Record details page, showing some overview information
 
-Similar to a Job's details, this page has a few major sections:
+Similar to a Job's details, a Record details page has tabs that house the following sections:
 
--  `Record stages <#record-stages>`_
--  `Record validation <#record-validation>`_
--  `Indexed Fields <#record-fields>`_
--  `Record document <#record-document>`_
-
-Record stages
-~~~~~~~~~~~~~
-
-.. figure:: img/record_states.png
-   :alt: Showing stages of Record across Jobs
-   :target: _images/record_states.png
-
-   Showing stages of Record across Jobs
-
-This table represents the various "stages", aka Jobs, this Record exists
-in. This is good insight into how Records move through Combine. We
-should see two stages of this Record in this table: one for the original
-Harvest Job (bolded, as that is the version of the Record we are
-currently looking at), and one as it exists in the "downstream"
-Transform Job. We could optionally click the ``ID`` column for a
-downstream Record, which would take us to that *stage* of the Record,
-but let's hold off on that for now.
-
-For any stage in this table, you may view the Record Document (raw
-Record XML), the associated, mapped ElasticSearch document (JSON), or
-click into the Job details for that Record stage.
+  - Record XML
+  - Indexed Fields
+  - Record stages
+  - Validation
+  - DPLA Link
+  - Job Type Specific
 
 
-Record validation
-~~~~~~~~~~~~~~~~~
+Record XML
+~~~~~~~~~~
 
-.. figure:: img/record_validation.png
-   :alt: Showing results of Validation Scenarios applied to this Record
-   :target: _images/record_validation.png
-
-   Showing results of Validation Scenarios applied to this Record
-
-This area shows all the Validation scenarios that were run for this Job,
-and how this specific record fared. In all likelihood, if you've been
-following this guide with the provided demo data, and you are viewing a
-Record from the original Harvest, you should see that it failed
-validation for the Validation scenario, *DPLA minimum*. It will show a
-row in this table for *each* rule form the Validation Scenario the
-Record failed, as a single Validation Scenario -- schematron or python
--- may contain multiples rules / tests. You can click "Run Validation"
-to re-run and see the results of that Validation Scenario run against
-this Record's XML document.
+The raw XML document for this Record. **Note:** As mentioned, regardless of how fields are mapped in Combine to ElasticSearch, the Record's XML or "document" is always left intact, and is used for any downstream Jobs. Combine provides mapping and analysis of Records through mapping to ElasticSearch, but the Record's XML document is stored as plain, ``LONGTEXT`` in MySQL for each Job.
 
 
-Indexed fields
+Indexed Fields
 ~~~~~~~~~~~~~~
 
 .. figure:: img/record_indexed_fields.png
@@ -709,16 +691,55 @@ between harvests. Some kind of unique identifier might be even better,
 but there are problems there as well a bit outside the scope of this
 QuickStart guide.
 
-Record document
-~~~~~~~~~~~~~~~
 
-And finally, at the very bottom, you will find the raw XML document for
-this Record. **Note:** As mentioned, regardless of how fields are mapped
-in Combine to ElasticSearch, the Record's XML or "document" is always
-left intact, and is used for any downstream Jobs. Combine provides
-mapping and analysis of Records through mapping to ElasticSearch, but
-the Record's XML document is stored as plain, ``LONGTEXT`` in MySQL for each
-Job.
+Record stages
+~~~~~~~~~~~~~
+
+.. figure:: img/record_states.png
+   :alt: Showing stages of Record across Jobs
+   :target: _images/record_states.png
+
+   Showing stages of Record across Jobs
+
+This table represents the various "stages", aka Jobs, this Record exists
+in. This is good insight into how Records move through Combine. We
+should see two stages of this Record in this table: one for the original
+Harvest Job (bolded, as that is the version of the Record we are
+currently looking at), and one as it exists in the "downstream"
+Transform Job. We could optionally click the ``ID`` column for a
+downstream Record, which would take us to that *stage* of the Record,
+but let's hold off on that for now.
+
+For any stage in this table, you may view the Record Document (raw
+Record XML), the associated, mapped ElasticSearch document (JSON), or
+click into the Job details for that Record stage.
+
+**Note:** Behind the scenes, a Record's ``combine_id`` field is used for linking across Jobs.  Formerly, the ``record_id`` was used, but it became evident that the ability to transform a Record's identifier used for publishing would be important.  The ``combine_id`` is not shown in this table, but can be viewed at the top of the Record details page.  These are UUID4 in format.
+
+
+Validation
+~~~~~~~~~~
+
+.. figure:: img/record_validation.png
+   :alt: Showing results of Validation Scenarios applied to this Record
+   :target: _images/record_validation.png
+
+   Showing results of Validation Scenarios applied to this Record
+
+This area shows all the Validation scenarios that were run for this Job,
+and how this specific record fared. In all likelihood, if you've been
+following this guide with the provided demo data, and you are viewing a
+Record from the original Harvest, you should see that it failed
+validation for the Validation scenario, *DPLA minimum*. It will show a
+row in this table for *each* rule form the Validation Scenario the
+Record failed, as a single Validation Scenario -- schematron or python
+-- may contain multiples rules / tests. You can click "Run Validation"
+to re-run and see the results of that Validation Scenario run against
+this Record's XML document.
+
+
+
+
 
 Duplicating and Merging Jobs
 ============================
@@ -726,10 +747,7 @@ Duplicating and Merging Jobs
 This QuickStart guide won't focus on Duplicating / Merging Jobs, but it
 worth knowing this is possible. If you were to click "Duplicate / Merge"
 link at the bottom of the RecordGroup page, you would be presented with
-what hopefully is a relatively familiar Job creation screen, with one
-key difference: when selecting you input jobs, the radio buttons have
-been replaced by checkboxes, indicating your can select **multiple**
-jobs as input. Or, you can select a **single** Job as well.
+a familiar Job creation screen, with one key difference: when selecting you input jobs, the radio buttons have been replaced by checkboxes, indicating your can select **multiple** jobs as input. Or, you can select a **single** Job as well.
 
 The use cases are still emerging when this could be helpful, but here
 are a couple of examples...
@@ -821,11 +839,9 @@ Overview
 
 Publishing is done at the **RecordGroup** level, giving more weight to
 the idea of a RecordGroup as a meaningful, intellectual group of
-records. When a RecordGroup is published, it can be given a "OAI set
-identifier", which translates directly to an OAI-PMH **set**. **Note:**
+records. When a RecordGroup is published, it can be given a "Publish Set ID", which translates directly to an OAI-PMH **set**. **Note:**
 It is possible to publish multiple, distinct RecordGroups with the same
-OAI set identifier, which allows for publishing multiple RecordGroups
-under the same OAI-PMH set.
+publish ID, which has the effect of allowing multiple RecordGroups to be published under the same OAI-PMH set.
 
 Combine comes with an `OAI-PMH server baked
 in <http://192.168.45.10/combine/oai?verb=Identify>`__ that serves all
@@ -844,21 +860,20 @@ top-most, small table.
 
    Record Group has not yet been published...
 
-You will be presented with a familiar Job creation screen.
+You will be presented with a new Job creation screen.
 
 Near the top, there are some fields for entering information about an
-OAI set identifier. You can either select a previously used OAI set
-identifier from the dropdown, or create a new one; this will become the
-OAI set identifier used in the **outgoing** Combine OAI-PMH server.
-Let's give it a new, simple identifier: ``fedora``, representing that
-this RecordGroup is a workspace for Jobs and Records from our Fedora
+Publish set identifier. You can either select a previously used Publish set
+identifier from the dropdown, or create a new one.  Remember, this will become the OAI set identifier used in the **outgoing** Combine OAI-PMH server.
+
+Let's give it a new, simple identifier: ``fedora``, representing that this RecordGroup is a workspace for Jobs and Records from our Fedora
 repository.
 
 .. figure:: img/setting_publish_id.png
    :alt: Section to provide a new publis identifier, or select a pre-existing one
    :target: _images/setting_publish_id.png
 
-   Section to provide a new publis identifier, or select a pre-existing one
+   Section to provide a new publish identifier, or select a pre-existing one
 
 Then, from the table below, select the Job (again, think as a *stage* of
 the same records) that will be published for this RecordGroup. Let's
@@ -901,6 +916,8 @@ set identifier. This also provides a button to unpublish a RecordGroup
    :target: _images/published_sets.png
 
    Currently published Record Groups, with their publish set identifier
+
+To the right is an area that says, "Analysis."  Clicking this button will fire a new Analysis Job -- which has not yet been covered, but is essentially an isolated Job that takes 1+ Jobs from any Organization, and RecordGroup, for the purpose of analysis -- with all the Published Jobs automatically selected.  This provides a single point of analysis for all Records published from Combine.
 
 Below that is a table -- similar to the table from a single Job details
 -- showing all **Records** that are published, spanning all RecordGroups
