@@ -197,8 +197,7 @@
 								{% endfor %}
 								<tr>
 									<td></td>
-									<td></td>
-									<td></td>
+									<td></td>									
 									<td><strong>Total:</strong></td>
 									<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
 								</tr>
@@ -209,30 +208,6 @@
 							<p>No Jobs were used as input for this Job.</p>
 						</div>
 						{% endif %}
-
-						<!-- Job Results -->
-						<!-- <div class="col-md-12">
-							<h4>Results</h4>
-							<p>The following table shows details about input records, successes, and failures.</p>
-							<table class="table table-bordered table-hover">
-								<tr>
-									<th>Job Name</th>					
-									<th>Job Type</th>
-									<th>Total Input Records</th>
-									<th>Successfully Processed</th>
-									<th>Error in Processing</th>										
-									<th>Failed Validation</th>
-								</tr>
-								<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-									<td>{{ cjob.job.name }}</td>					
-									<td>{{ cjob.job.job_type }}</td>
-									<td>{{ record_count_details.input_jobs.total_input_records }}</td>
-									<td>{{ record_count_details.records }}</td>
-									<td>{{ record_count_details.errors }}</td>					
-									<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
-								</tr>
-							</table>
-						</div> -->
 
 					</div>
 				</div>
@@ -256,7 +231,7 @@
 									{% for jv in cjob.job.jobvalidation_set.all %}			
 										<tr>
 											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.validation_type }}</td>
+											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
 											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
 											<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
 										</tr>

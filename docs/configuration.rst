@@ -23,3 +23,19 @@ Python Code Snippet
 -------------------
 
 Python transformations are performed via a Spark user defined function (UDF).  
+
+
+Validation Scenario
+===================
+
+
+Record Identifier Transformation Scenario
+=========================================
+
+
+Combine OAI-PMH Server
+======================
+
+
+DPLA Bulk Data Downloads
+========================

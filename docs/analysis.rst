@@ -2,6 +2,8 @@
 Analysis
 ********
 
+In addition to supporting the actual harvesting, transformation, and publishing of metadata for aggregation purposes, Combine strives to also support the analysis of groups of Records.  Analysis may include looking at the use of metadata fields across Records, or viewing the results of Validation tests performed across Records.
+
 This section will describe some areas of Combine related to analysis.  This includes Analysis Jobs proper, a particular kind of Job in Combine, and analysis more broadly when looking at the results of Jobs and their Records.
 
 
@@ -93,8 +95,59 @@ Clicking into a subject like "fairy tales", we get the following screen:
 At this level, we have the option to click into individual Records.
 
 
+Validation Tests Results
+========================
 
+Results for Validation Tests run on a particular Job are communicated in the following ways:
 
+  - in the Records Table from a Job's details page
+  - a quick overview of all tests performed, and number passed, from a Job's details page
+  - exported as an Excel or .csv from a Job's details page
+  - results for each Validation test on a Record's details page
+
+When a Record fails *any* Validation applied to its Job, it is considered "failed".  When selecting an input Job for another Job, users have the options of selecting all Records, those that passed all validations tests, or those that may have failed one or more.
+
+The following is a screenshot from a Job Details page, showing that one Validation Scenario was run, and 761 Records failed validation:
+
+.. figure:: img/job_details_validation_results.png
+   :alt: All Validation Tests run for this Job
+   :target: _images/job_details_validation_results.png
+
+   Results of all Validation Tests run for this Job
+
+Clicking into "See Failures" brings up the resulting screen:
+
+.. figure:: img/validation_failures_table.png
+   :alt: Table of all Validation failures, for a particular Validation, for a Job
+   :target: _images/validation_failures_table.png
+
+   Table of all Validation failures, for a particular Validation, for a Job
+
+The column ``Validation Results Payload`` contains the message from the Validation Test (results may be generated from Schematron, or Python, and there may be multiple results), and the ``Failure Count`` column shows how many specific tests were failed for that Record (a single Validation Scenario may contain multiple individual tests).
+
+Clicking into a single Record from this table will reveal the Record details page, which has its own area dedicated to what Validation Tests it may have failed:
+
+.. figure:: img/record_validation_results.png
+   :alt: Record's Validation Results tab
+   :target: _images/record_validation_results.png
+
+   Record's Validation Results tab
+
+From this screen, it is possible to Run the Validation and recieve the raw results from the "Run Validation" link:
+
+.. figure:: img/raw_schematron_results.png
+   :alt: Raw Schematron validation results
+   :target: _images/raw_schematron_results.png
+
+   Raw Schematron validation results
+
+Or, a user can send this single Record to the Validation testing area to re-run validation scenarios, or test new ones, by clicking the "Test Validation Scenario on this Record" button.  From this page, it is possible select pre-existing Validation Scenarios to apply to this Record in realtime, users can then edit those to test, or try completely new ones:
+
+.. figure:: img/validation_testing.png
+   :alt: Validation Scenario testing screen
+   :target: _images/validation_testing.png
+
+   Validation Scenario testing screen
 
 
 

@@ -4,6 +4,13 @@ Workflows and Viewing Results
 
 This section will describe different parts of workflows for running Jobs, and viewing detailed results of Jobs and their Records.
 
+Sub-sections include:
+
+  - `Record Versioning <#record-versioning>`__
+  - `Running Jobs <#running-jobs>`__
+  - `Viewing Job Details <#viewing-job-details>`__
+  - `Viewing Record Details <#viewing-record-details>`__
+
 
 Record Versioning
 =================
@@ -49,32 +56,292 @@ These options are split across various tabs, and include:
   - `Record Input Validity <#record-input-validity-valve>`_
   - `DPLA Bulk Data Compare <#dpla-bulk-data-compare>`_
 
+For the most part, a user is required to pre-configure these in the `Configurations section <configuration.html>`_, and then select which optional parameters to apply during runtime for Jobs.
+
+
 Validation Tests
 ~~~~~~~~~~~~~~~~
+
+One of the most commonly used optional parameters would be what Validation Scenarios to apply for this Job.  Validation Scenarios are `pre-configured validations <configuration.html#validation-scenario>`_ that will run for *each* Record in the Job.  When viewing a Job's or Record's details, the result of each validation run will be shown.
+
+The Validation Tests selection looks like this for a Job, with the dropdown populated by pre-configured Validation Scenarios:
+
+.. figure:: img/select_validations.png
+   :alt: Selecting Validations Tests for Job
+   :target: _images/select_validations.png
+
+   Selecting Validations Tests for Job
+
 
 Index Mapping
 ~~~~~~~~~~~~~
 
+How, and why, metadata fields are indexed is `covered in more detail here <analysis.html#analyzing-indexed-fields>`_.
+
+When running a Job, users can select what index mapper to use.  This defaults to "Generic XPath based mapper":
+
+.. figure:: img/select_index_mapper.png
+   :alt: Selecting Index Mapper for Job
+   :target: _images/select_index_mapper.png
+
+   Selecting Index Mapper for Job
+
+
 Transform Identifier
 ~~~~~~~~~~~~~~~~~~~~
+
+When running a Job, users can optionally select a `Record Identifier Transformation Scenario (RITS) <configuration.html#record-identifier-transformation-scenario>`_ that will modify the Record Identifier for each Record in the Job.
+
+.. figure:: img/select_rits.png
+   :alt: Selecting Record Identifier Transformation Scenario (RITS) for Job
+   :target: _images/select_rits.png
+
+   Selecting Record Identifier Transformation Scenario (RITS) for Job
+
 
 Record Input Validity Valve
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+When running a Job, with respect to *all* input Jobs selected, users can select if **all**, **valid**, or **invalid** Records should be included.  This is referred to as a "Validity Valve" because it very much feels like a valve that is applied to the input Job for the Job that is about to be run.
+
+.. figure:: img/select_input_validity.png
+   :alt: Selecting Record Input Validity Valve for Job
+   :target: _images/select_input_validity.png
+
+   Selecting Record Input Validity Valve for Job
+
+Below is an example of how those valves can be applied and utilized with Merge Jobs to select only only valid or invalid records:
+
+.. figure:: img/merge_valid_shunt.png
+   :alt: Example of shunting Records based on validity, and eventually merging all valid Records
+   :target: _images/merge_valid_shunt.png
+
+   Example of shunting Records based on validity, and eventually merging all valid Records
+
+
 DPLA Bulk Data Compare
 ~~~~~~~~~~~~~~~~~~~~~~
+
+One somewhat experimental feature is the ability to compare the Record's from a Job against a downloaded and indexed bulk data dump from DPLA.  These DPLA bulk data downloads can be `managed in Configurations here <configuration.html#dpla-bulk-data-downloads>`_.
+
+When running a Job, a user may optionally select what bulk data download to compare against:
+
+.. figure:: img/select_dbdd.png
+   :alt: Selecting DPLA Bulk Data Download comparison for Job
+   :target: _images/select_dbdd.png
+
+   Selecting DPLA Bulk Data Download comparison for Job
 
 
 Viewing Job Details
 ===================
 
+One of the most detail rich screens are the results and details from a Job run.  This section outlines the major areas.  This is often referred to as the "Job Details" page.
+
+At the very top of an Job Details page, a user is presented with a "lineage" of input Jobs that relate to this Job:
+
+.. figure:: img/job_details_top_lineage.png
+   :alt: Lineage of input Jobs for a Job
+   :target: _images/job_details_top_lineage.png
+
+   Lineage of input Jobs for a Job
+
+Also in this area is a button "Job Notes" which will reveal a panel for reading / writing notes for this Job.  These notes will also show up in the Record Group's Jobs table.
+
+Below that are tabs that organize the various parts of the Job Details page:
+
+  - Records
+  - Field Analysis
+  - Input Jobs
+  - Validation
+  - DPLA Bulk Data Matches
+
+
+Records
+-------
+
+.. figure:: img/job_details_records_table.png
+   :alt: Table of all Records from a Job
+   :target: _images/job_details_records_table.png
+
+   Table of all Records from a Job
+
+This table shows all Records for this Job.  It is sortable and searchable (though limited to what fields), and contains the following fields:
+
+  - ``DB ID`` - Record's Primary Key in MySQL
+  - ``Combine ID`` - identifier assigned to Record on creation, sticks with Record through all stages and Jobs
+  - ``Record ID`` - Record identifier that is acquired, or created, on Record creation, and is used for publishing downsteram.  This may be modified across Jobs, unlike the ``Combine ID``.
+  - ``Originating OAI set`` - what OAI set this record was harvested as part of
+  - ``Unique`` - True/False if the ``Record ID`` is unique in this Job
+  - ``Document`` - link to the Record's raw, XML document, blank if error
+  - ``Error`` - explanation for error, if any, otherwise blank
+  - ``Validation Results`` - True/False if the Record passed *all* Validation Tests, True if none run for this Job
+
+In many ways, this is the most direct and primary route to access Records from a Job.
+
+
+Field Analysis
+--------------
+
+This tab provides a table of all indexed fields for this job, the nature of which `is covered in more detail here <analysis.html#analyzing-indexed-fields>`_.
+
+
+Input Jobs
+----------
+
+This table shows all Jobs that were used as *input* Jobs for this Job.
+
+.. figure:: img/job_details_input_jobs.png
+   :alt: Table of Input Jobs used for this Job
+   :target: _images/job_details_input_jobs.png
+
+   Table of Input Jobs used for this Job
+
+Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attemps to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in `localsettings.py`) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
+
+The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.  
+
+**Note:** When this is applied to a single Record, that mapping is then applied to the Job as a whole.  Viewing another Record from this Job will reflect the same mappings.  These mappings can also be applied at the Job or Record level.
+
+
+Validation
+----------
+
+This tab shows the results of all Validation tests run for this Job:
+
+.. figure:: img/job_details_validation_results.png
+   :alt: All Validation Tests run for this Job
+   :target: _images/job_details_validation_results.png
+
+   Results of all Validation Tests run for this Job
+
+For each Validation Scenario run, the table shows the name, type, count of records that failed, and a link to see the failures in more detail.
+
+More information about `Validation Results can be found here <analysis.html#validation-tests-results>`_.
+
+
+DPLA Bulk Data Matches
+----------------------
+
+If a DPLA bulk data download was selected to compare against for this Job, the results will be shown in this tab.
+
+The following screenshot gives a sense of what this looks like for a Job containing about 250k records, that was compared against a DPLA bulk data download of comparable size:
+
+.. figure:: img/dbdd_compare.png
+   :alt: Results of DPLA Bulk Data Download comparison
+   :target: _images/dbdd_compare.png
+
+   Results of DPLA Bulk Data Download comparison
+
+This feature is still somewhat exploratory, but Combine provides an ideal environment and "moment in time" within the greater metadata aggregation ecosysytem for this kind of comparison.
+
+In this example, we are seeing that 185k Records were found in the DPLA data dump, and that 38k Records appear to be new.  Without an example at hand, it is difficult to show, but it's conceivable that by leaving Jobs in Combine, and then comparing against a later DPLA data dump, one would have the ability to confirm that all records do indeed show up in the DPLA data.
+
 
 Viewing Record Details
 ======================
 
+At the most granular level of `Combine's data model <data_mode.html>`_ is the Record.  This section will outline the various areas of the Record details page.
+
+The table at the top of a Record details page provides identifier information:
+
+.. figure:: img/record_details_top.png
+   :alt: Top of Record details page
+   :target: _images/record_details_top.png
+
+   Top of Record details page
+
+Similar to a Job details page, the following tabs breakdown other major sections of this Record details.
+
+Record XML
+----------
+
+This tab provides a glimpse at the raw, XML for a Record:
+
+.. figure:: img/record_details_xml.png
+   :alt: Record's document
+   :target: _images/record_details_xml.png
+
+   Record's document
+
+
+Indexed Fields
+--------------
+
+This tab provides a table of all indexed fields in ElasticSearch for this Record:
+
+.. figure:: img/record_details_indexed_fields.png
+   :alt: Indexed fields for a Record
+   :target: _images/record_details_indexed_fields.png
+
+   Indexed fields for a Record
+
+Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attemps to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in `localsettings.py`) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
+
+The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.  
+
+**Note:** When this is applied to a single Record, that mapping is then applied to the Job as a whole.  Viewing another Record from this Job will reflect the same mappings.  These mappings can also be applied at the Job or Record level.
+
+In the example above, the indexed field ``mods_location_url_@usage_primary`` has been mapped to the DPLA field ``isShownAt`` which provides a reliable linkage at the Record level.
+
+
+Record Stages
+-------------
+
+This table show the various "stages" of a Record, which is effectively what Jobs the Record also exists in:
+
+.. figure:: img/record_details_stages.png
+   :alt: Record stages across other Jobs
+   :target: _images/record_details_stages.png
+
+   Record stages across other Jobs
+
+Records are connected by their Combine ID (``combine_id``).  From this table, it is possible to jump to other, earlier (upstream) or later (downstream), versions of the same Record.
+
+
+Validation
+----------
+
+This tab shows all Validation Tests that were run for this Job, and how this Record fared:
+
+.. figure:: img/record_validation_results.png
+   :alt: Record's Validation Results tab
+   :target: _images/record_validation_results.png
+
+   Record's Validation Results tab
+
+More information about `Validation Results can be found here <analysis.html#validation-tests-results>`_.
+
+
+DPLA Link
+---------
+
+When a mapping has been made to the DPLA ``isShownAt`` field from the Indexed Fields tab (or at the Job level), and if a DPLA API query is successful, a result will be shown here:
+
+.. figure:: img/record_details_dpla_link.png
+   :alt: Indexed fields for a Record
+   :target: _images/record_details_dpla_link.png
+
+   Indexed fields for a Record
+
+Results from the DPLA API are parsed and presented here, with the full API JSON response at the bottom (not pictured here).  This can be useful for:
+
+  - confirming existence, yes or no, of a Record in DPLA
+  - easily retrieving detailed DPLA API metadata about the item
+  - confirming that changes and transformations are propogating as expected
 
 
 
+Job Type Specific
+-----------------
+
+This tab shows any details specific to the Job type: Harvest, Transform, Merge / Duplicate, Publish, or Analysis.  Below is an example of a Record that was part of a Transformation Job, showing what Transformation was applied to this Record:
+
+.. figure:: img/record_details_trans_specific.png
+   :alt: Indexed fields for a Record
+   :target: _images/record_details_trans_specific.png
+
+   Indexed fields for a Record
 
 
 
