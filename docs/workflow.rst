@@ -1,9 +1,8 @@
-*********
-Workflows
-*********
+*****************************
+Workflows and Viewing Results
+*****************************
 
-
-
+This section will describe different parts of workflows for running Jobs, and viewing detailed results of Jobs and their Records.
 
 
 Record Versioning
@@ -64,3 +63,26 @@ Record Input Validity Valve
 
 DPLA Bulk Data Compare
 ~~~~~~~~~~~~~~~~~~~~~~
+
+
+Viewing Job Details
+===================
+
+
+Viewing Record Details
+======================
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -68,4 +68,4 @@ class Command(BaseCommand):
 
 
 		# return
-		self.stdout.write(self.style.SUCCESS('Demo Transformation and Validation Scenarios created.'))
+		self.stdout.write(self.style.SUCCESS('Quickstart bootstrapping complete.'))
