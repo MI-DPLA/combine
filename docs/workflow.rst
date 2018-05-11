@@ -37,6 +37,56 @@ Running Jobs
 
 **Note:** For all Jobs in Combine, confirm that an `active Livy session is up and running <spark_and_livy.html#livy-session>`_ before proceeding.
 
+All Jobs are tied to, and initiated from, a `Record Group <data_model.html#record-group>`_.  From the Record Group page, at the bottom you will find buttons for starting new jobs:
+
+.. figure:: img/running_jobs_buttons.png
+   :alt: Buttons on a Record Group to begin a Job
+   :target: _images/running_jobs_buttons.png
+
+   Buttons on a Record Group to begin a Job
+
+Once you work through initiating the Job, and configuring the optional parameters outlined below, you will be returned to the Record Group screen and presented with the following job lineage "graph" and a table showing all Jobs for the Record Group:
+
+.. figure:: img/record_group_jobs.png
+   :alt: Job "lineage" graph at the top, table with Jobs at the bottom
+   :target: _images/record_group_jobs.png
+
+   Job "lineage" graph at the top, table with Jobs at the bottom
+
+The graph at the top shows all Jobs for this Record Group, and their relationships to one another.  The edges between nodes show how many Records were used as input for the target Job, and whether or not they were "all", "valid", or "invalid" Records.
+
+This graph is zoomable and clickable.  This graph is designed to provide some insight and context at a glance, but the table below is designed to be more functional.
+
+The table shows all Jobs, with optional filters and a search box in the upper-right.  The columns include:
+
+  - ``Job ID`` - Numerical Job ID in Combine
+  - ``Timestamp`` - When the Job was started
+  - ``Name`` - Clickable name for Job that leads to Job details, optionally given one by user, or a default is generated.  This is editable anytime.  
+  - ``Organization`` - Clickable link to the Organization this Job falls under
+  - ``Record Group`` - Clickable link to the Record Group this Job falls under (as this table is reused throughout Combine, it can sometimes contain Jobs from other Record Groups)
+  - ``Job Type`` - Harvest, Transform, Merge, Publish, or Analysis
+  - ``Livy Status`` - This is the status of the Job in Livy
+
+    - ``gone`` - Livy has been restarted or stopped, and no information about this Job is available
+    - ``available`` - Livy reports the Job as complete and available
+    - ``waiting`` - The Job is queued behind others in Livy
+    - ``running`` - The Job is currently running in Livy
+
+  - ``Finished`` - Though Livy does the majority of the Job processing, this indicates the Job is finished in the context of Combine
+  - ``Is Valid`` - True/False, True if no validations were run or *all* Records passed validation, False if any Records failed any validations
+  - ``Elapsed`` - How long the Job has been running, or took
+  - ``Input`` - All input Jobs used for this Job
+  - ``Notes`` - Optional notes field that can be filled out by User here, or in Job Details
+  - ``Total Record Count`` - Total number of successfully processed Records
+  - ``Monitor`` - Links for more details about the Job.  See `Spark and Livy documentation <spark_and_livy.html>`_ for more information.
+  - ``Actions`` - Link for Job details
+
+To **move** Jobs from one Record Group to another, select the Jobs from the table with their checkboxes and then in the table at the bottom, select the target Record Group and click "Move Selected Jobs".
+
+To **delete** Jobs, select Jobs via their checkboxes and click "Delete Selected Jobs" from the bottom management pane.
+
+As Jobs can contain hundreds of thousands, even millions of rows, this process can take some time.  Combine has background running tasks that handle some long running actions such as this, where using Spark is not appropriate.  When a Job is deleted it will be grayed out and marked as "DELETED" while it is removed in the background.
+
 Optional Parameters
 -------------------
 
