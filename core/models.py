@@ -1047,7 +1047,7 @@ class OAIEndpoint(models.Model):
 
 	name = models.CharField(max_length=255)
 	endpoint = models.CharField(max_length=255)
-	verb = models.CharField(max_length=128)
+	verb = models.CharField(max_length=128, null=True, default='ListRecords')
 	metadataPrefix = models.CharField(max_length=128)
 	scope_type = models.CharField(max_length=128) # expecting one of setList, whiteList, blackList
 	scope_value = models.CharField(max_length=1024)
