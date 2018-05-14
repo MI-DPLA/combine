@@ -1,0 +1,207 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+	
+	<div class="row">
+		<div class="col-md-8">
+			<h2>Test Validation Scenario</h2>
+			<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#validation_instructions').toggle();">Instructions</button></p>
+
+			<div id="validation_instructions" style="display:none;">
+
+				<h5>Overview</h5>
+				<p>Here you can test Transformation Scenarios...</p>
+
+			</div>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<!-- All Records DT table -->
+			{% include 'core/records_dt_table.html' %}
+		</div>
+	</div>
+
+
+	<!-- input paylaod -->
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Transformation Payload</h3>
+			<p>Paste/edit your XSLT or python script in the textbox below, or select from a pre-existing Transformation Scenario to test:</p>
+			
+			<!-- pre-existing Validation Scenario -->
+			<div class="row">
+				<div class="col-md-4">
+					<div class="form-group">
+						<label for="trans_exists">Select a pre-existing Validation Scenario</label>
+						<select id="trans_exists" class="form-control">
+							<option value=''></option>
+							{% for trans in transformation_scenarios %}
+								<option value="{{trans.id}}|{{trans.transformation_type}}">{{trans.name}}</option>
+							{% endfor %}
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validation Scenario payload -->
+			<div class="row">
+				<div class="col-md-12">
+					<div class="form-group">				
+						<textarea id="trans_payload" class="form-control" rows="15"></textarea>
+					</div>
+				</div>
+			</div>
+
+			<!-- Validation Scenario type -->
+			<div class="row">
+				<div class="col-md-4">
+					<div class="form-group">
+						<label for="trans_type">Select Transformation Scenario type</label>
+						<select id="trans_type" class="form-control">
+							<option value=''></option>
+							<option value="xslt">XSLT</option>
+							<option value="python">Python code</option>
+						</select>
+					</div>
+				</div>
+			</div>
+			
+			<button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
+		</div>
+	</div>
+
+	<!-- validation results -->
+	<div class="row">		
+		<div class="col-md-12">
+			<h4>Transformation Results</h4>
+			<div class="form-group">
+				<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Results will show here...</code></pre>
+			</div>
+		</div>
+	</div>
+
+	<script>
+
+		// global variables
+		var sel_row_id;
+
+		// capture clicked row
+		$(document).ready(function() {
+			$("#datatables_records tbody").on( 'click', 'tr', function () {
+
+				// loop through and remove other selections
+				$("#datatables_records tbody tr.selected").each(function(i, block){
+					$(block).removeClass('selected');
+				});
+
+				// show selection
+				$(this).toggleClass('selected');
+
+				// get record id
+			    sel_row = $(this).children(":first");
+			    sel_row_id = sel_row.find('code').html()
+			} );
+		});
+
+		// capture pre-existing validation scenarios and paste
+		$(document).ready(function(){
+			$("#trans_exists").change(function(){
+
+				if (this.value != ''){
+
+					// get trans info
+					var trans_info = this.value.split('|');
+
+					// update validation dropdown type
+					$("#trans_type").val(trans_info[1]);
+
+					// get payload
+					$.ajax({
+						type: "GET",
+						url: "/combine/configuration/transformation/TRANS_ID/payload".replace('TRANS_ID', trans_info[0]),
+						dataType:'text',
+						success: function(data){
+							$("#trans_payload").val(data);
+						}			
+					});	
+				}
+
+				else {
+					
+					// clear validation dropdown type
+					$("#trans_type").val(this.value);
+
+					// clear payload box
+					$("#trans_payload").val('');
+				}
+
+			})
+		});
+
+		$(document).ready(function(){
+			$("#test_trans").click(function(){				
+
+				// change this to dynamically grab from selected rows in records table
+				var db_id = sel_row_id;
+
+				// get trans_payload
+				var trans_payload = $("#trans_payload").val();
+
+				// get trans_type
+				var trans_type = $("#trans_type").val();
+
+				// issue ajax request and get transformation results
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_transformation_scenario' %}",
+					data: {
+						'db_id':db_id,
+						'trans_payload':trans_payload,
+						'trans_type':trans_type,
+						'trans_name':'temp_trans',						
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'text',
+					success: function(data){
+
+						// add raw data to div
+						$("#trans_results").html(escapeHtmlEntities(data));
+
+						// init hljs						
+						$("#trans_results").each(function(i, block) {
+							hljs.highlightBlock(block);
+						});
+					}			
+				});
+
+				// https://stackoverflow.com/a/10825766/1196358
+				function escapeHtmlEntities (str) {
+				  // No jQuery, so use string replace.
+				  return str
+				    .replace(/&/g, '&amp;')
+				    .replace(/>/g, '&gt;')
+				    .replace(/</g, '&lt;')
+				    .replace(/"/g, '&quot;');
+				}
+
+			})
+		});
+
+		// run post records DT table draw specific to transformation testing
+		function run_view_specific_dt_draw(dt){
+
+			// if search term provided AND only one result, select
+			{% if q %}
+				if (dt.api.length == 1){
+					$("tr").click();
+				}
+			{% endif %}
+			
+		}
+		
+	</script>
+
+{% endblock %}

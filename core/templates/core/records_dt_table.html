@@ -6,8 +6,7 @@
 		<th>Record ID</th>
 		<th>Job</th>
 		<th>Originating OAI set</th>
-		<th>Unique</th>
-		<th>Success</th>
+		<th>Unique</th>		
 		<th>Document</th>
 		<th>Error</th>
 		<th>Validation Results</th>
@@ -24,9 +23,19 @@
 	*/
 	$(document).ready(function() {
 
-		var oTable = $('#datatables_records').dataTable({
+		// check for record limiter				
+    	{% if q %}
+	    	q = {{ q }};
+	    {% else %}
+	    	q = '';
+    	{% endif %}
+
+		records_datatable = $('#datatables_records').dataTable({
 			"processing": true,
 			"serverSide": true,
+			"search": {
+			    "search": q					    
+			},
 
 			{# if cjob is present, limit to Job records only #}
 			{% if cjob %}
@@ -45,7 +54,7 @@
             },
             "columnDefs": [
 	            {
-					"targets": 9,
+					"targets": 8,
 					"orderable": true
 				},
 				{% if cjob %}
@@ -54,7 +63,14 @@
 					"visible": false
 				},
 				{% endif %}
-			]
+			],
+			"initComplete": function(settings, json){
+
+				// check if view specific function defined
+				if (typeof run_view_specific_dt_draw === "function"){
+					run_view_specific_dt_draw(this);	
+				}				
+			}
 		});
 	});
 

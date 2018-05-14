@@ -90,15 +90,20 @@
 				            		// get search term
 				            		search_term = row[0]
 
-				            		// search term escapes
+				            		// encode search term with encodeURI
+				            		search_term = encodeURIComponent(search_term);
+
+				            		// manually search term escapes
 				            		escapes = [
 				            			[/;/g, '%3B'], // semicolons
-				            			[/"/g, '\\"'], // double quote
-				            			[/'/g, "\\'"] // single quote
+				            			[/"/g, '%22'], // double quote
+				            			[/'/g, "%27"], // single quote
+				            			[/ /g, "%20"], // space
 				            		];
 				            		for (var i = escapes.length - 1; i >= 0; i--) {
 				            			search_term = search_term.replace(escapes[i][0], escapes[i][1]);
 				            		};
+
 				            		return "<a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Records with value</a> / <a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Records without</a>";
 				            	}
 				            }

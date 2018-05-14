@@ -9,16 +9,16 @@
 </div>
 
 <div class="row">
-	<div class="col-md-8">
+	<div class="col-md-6">
 		<h4>Published Sets</h4>
 		
-		<p>All published Record Groups.  One job from each Record Group may be published, taking the <code>publish_set_id</code> from that Record Group as the OAI set ID.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
+		<p>Showing all published Record Groups, where one Job from each Record Group may be published with an optional <code>Publish Set ID</code>.  This <code>Publish Set ID</code> is used during publishing for the outgoing OAI set.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
-		<table border="1" cellpadding="10">
+		<table class="table table-bordered table-hover">
 
 			<tr>
-				<th>Record Group</th>
-				<th>OAI Set</th>
+				<th>Publish Set ID</th>
+				<th>Record Group</th>				
 				<th>Published Job</th>
 				<th>Record Count</th>
 				<th>Action</th>
@@ -28,7 +28,6 @@
 			{% for set, jobs in published.sets.items %}
 				{% for job in jobs %}
 					<tr>
-						<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 						<td>
 							{% if job.record_group.publish_set_id %}
 								<a href="{% url 'oai' %}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
@@ -36,13 +35,14 @@
 								<span style="color:red;"><strong>Not set</strong></span>
 							{% endif %}
 						</td>
+						<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 						<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 						<td>{{ job.record_count }}</td>
 						<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
 
 						<!-- NEW -->
 						<td>
-							<a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
+							<a href="#" onclick="$(this).next().fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
 							<div id="publish_set_id_update" style="display:none; margin-top:10px;">
 								<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">
 									{% csrf_token %}
@@ -81,6 +81,13 @@
 		</table>
 
 	</div>
+
+	<div class="col-md-6">
+		<h4>Analysis</h4>
+		<p>Run Analysis over all Published Records.  This may be useful for double checking uniqueness, record validity, or checking existence in previous DPLA bulk data sets.</p>
+		<a href="{% url 'job_analysis' %}?type=published"><button type="submit" class="btn btn-success btn-sm">Run Analysis for Published Records</button></a>
+	</div>
+
 </div>
 
 <div class="row">
@@ -90,7 +97,7 @@
 
 		<p>The table belows shows all published records, across all Record Groups and OAI sets.</p>
 
-		<table id='published_records'>
+		<table id="published_records" class="table table-hover">
 			<thead>
 				<th>ID</th>
 				<th>Record ID</th>

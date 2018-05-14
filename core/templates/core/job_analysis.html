@@ -3,7 +3,7 @@
 {% block content %}
 
 	<div class="row">
-		<div class="col-md-12">			
+		<div class="col-md-12">
 			<h3>New Job: <span class="font-weight-bold">Analysis</span></h3>
 
 			<p>Run a new analysis job based on previously run jobs.</p>
@@ -25,31 +25,30 @@
 
 				<div class="row">
 					<div class="col-md-12">
+
+						{% if analysis_type == 'published' %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Automatically filtering and selecting <strong>all Published Jobs</strong> for analysis, continue with other analysis options below...
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% else %}
+						<div class="alert alert-warning alert-dismissible fade show" role="alert">
+							Showing <strong>all</strong> Jobs from <strong>all</strong> Record Groups.  To view Jobs from a particular Organization or Record Group, use the dropdown filters in the table below
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
+						{% endif %}
+
 						<!-- Job Select -->
-						{% include 'core/job_input_select.html' %}
+						{% include 'core/job_input_select.html' %}						
 					</div>
 				</div>
 
-				<div class="row">
-					<div class="col-md-6">
-
-						<!-- Indexing Mapping Selection -->
-						{% include 'core/index_mapping_select.html' %}
-
-						<!-- Record Validation Selection -->
-						{% include 'core/record_validation_select.html' %}
-
-					</div>
-					<div class="col-md-6">
-
-						<!-- Record Identifier Transformation -->
-						{% include 'core/record_identifier_transform.html' %}
-
-						<!-- Input Job Valid Record Valve -->
-						{% include 'core/record_valid_valve_select.html' %}
-						
-					</div>
-				</div>
+				<!-- Optional Job Processing -->
+				{% include 'core/job_optional_processing.html' %}
 
 				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 

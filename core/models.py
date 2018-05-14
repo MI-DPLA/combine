@@ -5,9 +5,11 @@ from __future__ import unicode_literals
 from collections import OrderedDict
 import datetime
 import gc
+import gzip
 import hashlib
 import inspect
 import json
+from json import JSONDecodeError
 import logging
 from lxml import etree, isoschematron
 import os
@@ -26,6 +28,9 @@ import urllib.parse
 import uuid
 import xmltodict
 import zipfile
+
+# pyjxslt
+import pyjxslt
 
 # pandas
 import pandas as pd
@@ -47,17 +52,25 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
 from django.views import View
 
+# import background tasks
+from core import tasks
+
 # Livy
 from livy.client import HttpClient
 
 # import elasticsearch and handles
 from core.es import es_handle
+import elasticsearch as es
+from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
 # import ElasticSearch BaseMapper
 from core.spark.es import BaseMapper
 from core.spark.utils import PythonUDFRecord
+
+# AWS
+import boto3
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -931,6 +944,49 @@ class Job(models.Model):
 			return results
 
 
+	def get_dpla_bulk_data_matches(self):
+
+		'''
+		Method to generate a QuerySet of DPLABulkDataMatch
+		'''
+
+		# get match checks
+		t_stime = time.time()		
+		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
+		logger.debug('match attempts returned: %s' % (time.time() - t_stime))
+
+		# if match_attempts more than zero, get associated dbdd
+		if match_attempts.count() > 0:
+
+			# get records from job
+			records = self.get_records()
+
+			# get the dbdd
+			t_stime = time.time()
+			dbdd = match_attempts.first().dbdd
+			logger.debug('dbdd returned: %s' % (time.time() - t_stime))
+
+			# get matches
+			t_stime = time.time()
+			matches = records.filter(id__in=match_attempts.values_list('record_id'))
+			logger.debug('matches returned: %s' % (time.time() - t_stime))
+
+			# get misses
+			t_stime = time.time()
+			misses = records.exclude(id__in=match_attempts.values_list('record_id'))
+			logger.debug('misses returned: %s' % (time.time() - t_stime))		
+			
+			return {
+				'dbdd':dbdd,
+				'matches':matches,
+				'misses': misses
+			}
+
+		else:
+			logger.debug('DPLA Bulk comparison not run, or no matches found.')
+			return False
+
+
 
 class JobTrack(models.Model):
 
@@ -991,7 +1047,7 @@ class OAIEndpoint(models.Model):
 
 	name = models.CharField(max_length=255)
 	endpoint = models.CharField(max_length=255)
-	verb = models.CharField(max_length=128)
+	verb = models.CharField(max_length=128, null=True, default='ListRecords')
 	metadataPrefix = models.CharField(max_length=128)
 	scope_type = models.CharField(max_length=128) # expecting one of setList, whiteList, blackList
 	scope_value = models.CharField(max_length=1024)
@@ -1037,6 +1093,77 @@ class Transformation(models.Model):
 
 	def __str__(self):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
+
+
+	def transform_record(self, row):
+
+		'''
+		Method to test transformation against a single record.
+
+		Note: The code for self._transform_xslt() and self._transform_python() are similar,
+		to staticmethods found in core.spark.jobs.py.  However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		transformations are recreated here.
+
+		Args:
+			row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
+		'''
+
+		logger.debug('transforming single record: %s' % row)
+
+		# run appropriate validation based on transformation type
+		if self.transformation_type == 'xslt':
+			result = self._transform_xslt(row)
+		if self.transformation_type == 'python':
+			result = self._transform_python(row)
+
+		# return result
+		return result
+
+	
+	def _transform_xslt(self, row):
+
+		try:
+			
+			# transform with pyjxslt gateway
+			gw = pyjxslt.Gateway(6767)
+			gw.add_transform('xslt_transform', self.payload)
+			result = gw.transform('xslt_transform', row.document)
+			gw.drop_transform('xslt_transform')
+
+			# return
+			return result
+		
+		except Exception as e:
+			return str(e)
+
+
+	def _transform_python(self, row):
+			
+		try:
+
+			# prepare row as parsed document with PythonUDFRecord class
+			prtb = PythonUDFRecord(row)
+
+			# get python function from Transformation Scenario
+			temp_pyts = ModuleType('temp_pyts')
+			exec(self.payload, temp_pyts.__dict__)
+
+			# run transformation
+			trans_result = temp_pyts.python_record_transformation(prtb)
+
+			# convert any possible byte responses to string
+			if trans_result[2] == True:
+				if type(trans_result[0]) == bytes:
+					trans_result[0] = trans_result[0].decode('utf-8')
+				return trans_result[0]
+			if trans_result[2] == False:
+				if type(trans_result[1]) == bytes:
+					trans_result[1] = trans_result[1].decode('utf-8')
+				return trans_result[1]
+
+		except Exception as e:			
+			return str(e)
 
 
 
@@ -1206,8 +1333,12 @@ class Record(models.Model):
 		s = s.query('match', _id=self.combine_id)
 
 		# execute search and capture as dictionary
-		sr = s.execute()
-		sr_dict = sr.to_dict()
+		try:
+			sr = s.execute()
+			sr_dict = sr.to_dict()
+		except NotFoundError:
+			logger.debug('ES query 404')
+			return {}
 
 		# return
 		try:
@@ -1407,6 +1538,15 @@ class Record(models.Model):
 		}
 
 		return record_lineage_urls
+
+
+	def get_dpla_bulk_data_match(self):
+
+		'''
+		Method to return single DPLA Bulk Data Match
+		'''
+
+		return DPLABulkDataMatch.objects.filter(record=self)
 
 
 
@@ -1802,10 +1942,12 @@ class RecordValidation(models.Model):
 
 	'''
 	Model to manage validation tests associated with a Record	
+
+		- what is the performance hit of the FK?
+
 	'''
 
 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	# what kind of performance hit is this FK?
 	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
 	valid = models.BooleanField(default=1)
 	results_payload = models.TextField(null=True, default=None)
@@ -1848,7 +1990,7 @@ class IndexMappers(object):
 class RecordIdentifierTransformationScenario(models.Model):
 
 	'''
-	Model to manage transformation scenarios for Record's record_ids
+	Model to manage transformation scenarios for Record's record_ids (RITS)
 	'''
 
 	name = models.CharField(max_length=255)
@@ -1867,6 +2009,49 @@ class RecordIdentifierTransformationScenario(models.Model):
 
 	def __str__(self):
 		return '%s, RITS: #%s' % (self.name, self.id)
+
+
+
+class DPLABulkDataDownload(models.Model):
+
+	'''
+	Model to handle the management of DPLA bulk data downloads
+	'''
+
+	s3_key = models.CharField(max_length=255)
+	downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	filepath = models.CharField(max_length=255, null=True, default=None)
+	es_index = models.CharField(max_length=255, null=True, default=None)
+	uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	status = models.CharField(
+		max_length=255,
+		choices=[
+			('init','Initiating'),
+			('downloading','Downloading'),
+			('indexing','Indexing'),
+			('finished','Downloaded and Indexed')
+		],
+		default='init'
+	)
+
+	def __str__(self):
+		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
+
+
+
+class DPLABulkDataMatch(models.Model):
+
+	'''
+	Class to record DPLA bulk data matches (DBDM)
+	'''
+
+	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
+	match = models.BooleanField(default=True)
+
+
+	def __str__(self):
+		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
 
 
 
@@ -2102,9 +2287,6 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 		# update filepath
 		instance.filepath = filepath
 
-	else:
-		logger.debug('currently only xslt style transformations accepted')
-
 
 @receiver(models.signals.pre_save, sender=ValidationScenario)
 def save_validation_scenario_to_disk(sender, instance, **kwargs):
@@ -2142,6 +2324,23 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 
 	# update filepath
 	instance.filepath = filepath
+
+
+@receiver(models.signals.pre_delete, sender=DPLABulkDataDownload)
+def delete_dbdd_pre_delete(sender, instance, **kwargs):
+
+	# remove download from disk
+	if os.path.exists(instance.filepath):
+		logger.debug('removing %s from disk' % instance.filepath)
+		os.remove(instance.filepath)
+
+	# remove ES index if exists
+	try:
+		if es_handle.indices.exists(instance.es_index):
+			logger.debug('removing ES index: %s' % instance.es_index)
+			es_handle.indices.delete(instance.es_index)
+	except:
+		logger.debug('could not remove ES index: %s' % instance.es_index)
 
 
 
@@ -2903,6 +3102,7 @@ class CombineJob(object):
 		headers = submit.headers
 
 		# update job in DB
+		self.job.response = json.dumps(response)
 		self.job.spark_code = job_code
 		self.job.job_id = int(response['id'])
 		self.job.status = response['state']
@@ -3283,7 +3483,8 @@ class HarvestOAIJob(HarvestJob):
 		oai_endpoint=None,
 		overrides=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		dbdd=None):
 
 		'''
 		Args:
@@ -3319,6 +3520,7 @@ class HarvestOAIJob(HarvestJob):
 			self.overrides = overrides
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
+			self.dbdd = dbdd
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3349,7 +3551,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -3359,7 +3561,8 @@ class HarvestOAIJob(HarvestJob):
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3394,7 +3597,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		index_mapper=None,
 		payload_dict=None,
 		validation_scenarios=[],
-		rits=None):
+		rits=None,
+		dbdd=None):
 
 		'''
 		Args:
@@ -3445,6 +3649,9 @@ class HarvestStaticXMLJob(HarvestJob):
 
 			# rits
 			self.rits = rits
+
+			# dbdd
+			self.dbdd = dbdd
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -3617,7 +3824,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -3626,7 +3833,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits
+				'rits':self.rits,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3661,7 +3869,8 @@ class TransformJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all'):
+		input_validity_valve='all',
+		dbdd=None):
 
 		'''
 		Args:
@@ -3699,6 +3908,7 @@ class TransformJob(CombineJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
+			self.dbdd = dbdd
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3757,7 +3967,7 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
@@ -3765,7 +3975,8 @@ class TransformJob(CombineJob):
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve
+				'input_validity_valve':self.input_validity_valve,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -3806,7 +4017,8 @@ class MergeJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all'):
+		input_validity_valve='all',
+		dbdd=None):
 
 		'''
 		Args:
@@ -3842,6 +4054,7 @@ class MergeJob(CombineJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
+			self.dbdd = dbdd
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3899,14 +4112,15 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve
+				'input_validity_valve':self.input_validity_valve,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -4057,7 +4271,8 @@ class AnalysisJob(CombineJob):
 		index_mapper=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all'):
+		input_validity_valve='all',
+		dbdd=None):
 
 		'''
 		Args:
@@ -4090,6 +4305,7 @@ class AnalysisJob(CombineJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
+			self.dbdd = dbdd
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4209,14 +4425,15 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s").spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve
+				'input_validity_valve':self.input_validity_valve,
+				'dbdd':self.dbdd
 			}
 		}
 
@@ -4295,7 +4512,7 @@ class DTElasticFieldSearch(View):
 			'recordsFiltered': None,
 			'data': []
 		}
-		self.DToutput['draw'] = DTinput['draw']
+		self.DToutput['draw'] = DTinput['draw']		
 
 
 	def filter(self):
@@ -4313,15 +4530,13 @@ class DTElasticFieldSearch(View):
 
 		# filtering applied before DataTables input
 		filter_type = self.request.GET.get('filter_type', None)
+		filter_field = self.request.GET.get('filter_field', None)
+		filter_value = self.request.GET.get('filter_value', None)
 
 		# equals filtering
 		if filter_type == 'equals':
 			logger.debug('equals type filtering')
 
-			# get fields for filtering
-			filter_field = self.request.GET.get('filter_field', None)
-			filter_value = self.request.GET.get('filter_value', None)
-			
 			# determine if including or excluding
 			matches = self.request.GET.get('matches', None)
 			if matches and matches.lower() == 'true':
@@ -4332,10 +4547,9 @@ class DTElasticFieldSearch(View):
 			# filter query
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
 
-			if matches:
-				# filter where filter_field == filter_value
+			if matches:				
 				logger.debug('filtering to matches')
-				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))				
 			else:
 				# filter where filter_field == filter_value AND filter_field exists
 				logger.debug('filtering to non-matches')
@@ -4345,9 +4559,6 @@ class DTElasticFieldSearch(View):
 		# exists filtering
 		elif filter_type == 'exists':
 			logger.debug('exists type filtering')
-
-			# get field for filtering
-			filter_field = self.request.GET.get('filter_field', None)
 
 			# determine if including or excluding
 			exists = self.request.GET.get('exists', None)
@@ -4363,6 +4574,10 @@ class DTElasticFieldSearch(View):
 			else:
 				logger.debug('filtering to non-exists')
 				self.query = self.query.exclude(Q('exists', field=filter_field))
+
+		# further filter by DT provided keyword
+		if self.DTinput['search[value]'] != '':
+			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
 
 
 	def sort(self):
@@ -4478,7 +4693,7 @@ class DTElasticFieldSearch(View):
 		# save parameters to self
 		self.request = request
 		self.es_index = es_index
-		self.DTinput = self.request.GET
+		self.DTinput = self.request.GET		
 
 		# time respond build
 		stime = time.time()
@@ -4624,11 +4839,7 @@ class DTElasticFieldSearch(View):
 		# paginate
 		self.paginate()
 
-		# loop through field values
-		'''
-		example row from ES:
-		{'doc_count': 3, 'key': 'Frock Coats'}
-		'''
+		# loop through field values		
 		for index, row in self.query_results.iterrows():
 
 			# iterate through columns and place in list
@@ -5081,10 +5292,295 @@ class RITSClient(object):
 
 
 
+####################################################################
+# DPLA Service Hub and Bulk Data								   #
+####################################################################
+
+class DPLABulkDataClient(object):
+
+	'''
+	Client to faciliate browsing, downloading, and indexing of bulk DPLA data	
+
+	Args:
+		filepath (str): optional filepath for downloaded bulk data on disk
+	'''
+
+	def __init__(self):
+
+		self.service_hub_prefix = settings.SERVICE_HUB_PREFIX
+		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER		
+		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]		
+
+		# ES
+		self.es_handle = es_handle
+
+		# S3
+		self.s3 = boto3.resource('s3')
+
+		# DPLA bucket
+		self.dpla_bucket = self.s3.Bucket(settings.DPLA_S3_BUCKET)
+
+		# boto3 client
+		self.boto_client = boto3.client('s3')
 
 
 
+	def download_bulk_data(self, object_key, filepath):
 
+		'''
+		Method to bulk download a service hub's data from DPLA's S3 bucket
+
+		Note: Move to background task...
+		'''
+
+		# create bulk directory if not already present		
+		if not os.path.exists(self.bulk_dir):
+			os.mkdir(self.bulk_dir)
+
+		# download
+		s3 = boto3.resource('s3')		
+		download_results = self.dpla_bucket.download_file(object_key, filepath)
+
+		# return
+		return download_results
+
+
+	def get_bulk_reader(self, filepath, compressed=True):
+
+		'''
+		Return instance of BulkDataJSONReader
+		'''
+
+		return BulkDataJSONReader(filepath, compressed=compressed)
+
+
+	def get_sample_record(self, filepath):
+
+		return self.get_bulk_reader(filepath).get_next_record()
+
+
+	def index_to_es(self, object_key, filepath, limit=False):
+
+		'''
+		Use streaming bulk indexer:
+		http://elasticsearch-py.readthedocs.io/en/master/helpers.html
+		'''
+
+		stime = time.time()
+
+		##  prepare index
+
+		# get single, sample record to retrieve ES index name
+		# sample_record = self.get_sample_record(filepath)
+		# index_name = sample_record.dpla_es_index
+
+		index_name = hashlib.md5(object_key.encode('utf-8')).hexdigest()
+		logger.debug('indexing to %s' % index_name)
+
+		# if exists, delete
+		if es_handle.indices.exists(index_name):
+			es_handle.indices.delete(index_name)
+		# set mapping
+		mapping = {
+			'mappings':{
+				'item':{
+					'date_detection':False					
+				}
+			}
+		}
+		# create index
+		self.es_handle.indices.create(index_name, body=json.dumps(mapping))
+
+		# get instance of bulk reader
+		bulk_reader = self.get_bulk_reader(filepath)		
+
+		# index using streaming
+		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
+			# logger.debug(i)
+			continue
+
+		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
+
+		# return
+		return index_name
+
+
+	def retrieve_keys(self):
+
+		'''
+		Method to retrieve and parse key structure from S3 bucket
+
+		Note: boto3 only returns 1000 objects from a list_objects
+			- as such, need to add delimiters and prefixes to walk keys
+			- OR, use bucket.objects.all() --> iterator
+		'''
+
+		stime = time.time()
+
+		# get and return list of all keys		
+		keys = []
+		for obj in self.dpla_bucket.objects.all():
+			key = {
+				'key':obj.key,
+				'year':obj.key.split('/')[0],
+				'month':obj.key.split('/')[1],
+				'size':self._sizeof_fmt(int(obj.size))
+			}
+			keys.append(key)
+
+		# return
+		logger.debug('retrieved %s keys in %s' % (len(keys), time.time()-stime))
+		return keys
+
+
+	def _sizeof_fmt(self, num, suffix='B'):
+
+		'''
+		https://stackoverflow.com/a/1094933/1196358
+		'''
+
+		for unit in ['','Ki','Mi','Gi','Ti','Pi','Ei','Zi']:
+			if abs(num) < 1024.0:
+				return "%3.1f%s%s" % (num, unit, suffix)
+			num /= 1024.0
+		return "%.1f%s%s" % (num, 'Yi', suffix)
+
+
+	def download_and_index_bulk_data(self, object_key):
+
+		'''
+		Method to init background tasks of downloading and indexing bulk data
+		'''
+
+		# get object
+		obj = self.s3.Object(self.dpla_bucket.name, object_key)
+
+		# init DPLABulkDataDownload (dbdd) instance
+		dbdd = DPLABulkDataDownload()
+
+		# set key
+		dbdd.s3_key = object_key
+
+		# set filepath
+		dbdd.filepath = '%s/%s' % (self.bulk_dir, object_key.replace('/','_'))
+
+		# set bulk data timestamp (when it was uploaded to S3 from DPLA)
+		dbdd.uploaded_timestamp = obj.last_modified
+
+		# save 
+		dbdd.save()
+
+		# hand off to background tasks
+		bg_task = tasks.download_and_index_bulk_data(dbdd.id)
+		logger.debug('bulk data download as background task: %s' % bg_task.task_hash)
+
+		# return
+		return bg_task.task_hash
+
+
+
+class BulkDataJSONReader(object):
+
+	'''
+	Class to handle the reading of DPLA bulk data
+	'''
+
+	def __init__(self, input_file, compressed=True):
+
+		self.input_file = input_file		
+		self.compressed = compressed
+
+		# not compressed
+		if not self.compressed:
+			self.file_handle = open(self.input_file,'rb')
+
+		# compressed
+		if self.compressed:
+			self.file_handle = gzip.open(self.input_file, 'rb')
+
+		# bump file handle
+		next(self.file_handle)
+		self.records_gen = self.file_handle
+
+
+	def get_next_record(self):
+
+		r_string = next(self.file_handle).decode('utf-8').lstrip(',')
+		return DPLARecord(r_string)
+
+
+	def get_record_generator(self, limit=False, attr=None):
+
+		i = 0
+		while True:
+			i += 1
+			try:
+				# if attr provided, return attribute of record
+				if attr:
+					yield getattr(self.get_next_record(), attr)
+				# else, return whole record
+				else:
+					yield self.get_next_record()
+				if limit and i >= limit:
+					break
+			except JSONDecodeError:
+				break
+
+
+	def es_doc_generator(self, rec_gen, index_name=str(uuid.uuid4())):
+
+		'''
+		Create generator for explicit purpose of indexing to ES
+			- pops _id and _rev from _source
+			- writes custom _index
+		'''
+
+		for r in rec_gen:
+
+			# pop values
+			for f in ['_id','_rev','originalRecord']:
+				try:
+					r['_source'].pop(f)
+				except:
+					pass
+
+			# write new index
+			r['_index'] = index_name
+
+			# yield
+			yield r
+
+
+
+class DPLARecord(object):
+
+	'''
+	Small class to model a parsed DPLA JSON record
+	'''
+
+	def __init__(self, record):
+
+		'''
+		Expecting dictionary or json of record
+		'''
+
+		if type(record) in [dict, OrderedDict]:
+			self.record = record
+		elif type(record) == str:
+			self.record = json.loads(record)
+
+		# capture convenience values
+		self.pre_hash_record_id = self.record['_id']
+		self.dpla_id = self.record['_source']['id']
+		self.dpla_url = self.record['_source']['@id']
+		self.dpla_es_index = self.record['_index']
+		try:
+			self.original_metadata = self.record['_source']['originalRecord']['metadata']
+		except:
+			self.original_metadata = False
+		self.metadata_string = str(self.original_metadata)		
+
+		
 
 
 

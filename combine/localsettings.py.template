@@ -89,6 +89,12 @@ COMBINE_DATABASE = {
 DPLA_API_KEY = None
 
 
+# AWS S3 Credentials
+AWS_ACCESS_KEY_ID = None
+AWS_SECRET_ACCESS_KEY = None
+DPLA_S3_BUCKET = 'dpla-provider-export'
+
+
 # Analysis Jobs Org and Record Group
 '''
 This dictionary provides the name of the Organization and Record Group that Analysis Jobs will be created under.

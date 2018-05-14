@@ -28,15 +28,28 @@
 			<script>
 
 				$(document).ready(function() {
-				    var oTable = $('#search_results').DataTable({
+
+					// get search string if present
+			    	{% if search_params %}
+				    	search_params = JSON.parse('{{ search_params|safe }}')					    	
+				    	q = search_params.q;
+				    {% else %}
+				    	q = '';
+			    	{% endif %}
+
+					// DataTable
+				    table = $('#search_results').DataTable({
 				        "processing": true,
 				        "serverSide": true,
 				        "ajax": "{% url 'records_es_generic_dt_json' %}",
-				        "searchDelay": 2000,
+				        "searchDelay": 1000,
 				        "pageLength": 10,
-				        "pagingType": "full_numbers",
-				        // "order": [[ 1, "desc" ]],
+				        "pagingType": "full_numbers",				        
 				        "ordering":false,
+				        "search": {
+						    "search": q,
+						    "smart": false
+						},
 				        "columns": [
 				            { 
 				            	title: "DB ID",
@@ -74,9 +87,13 @@
 				                    return row[2];
 				                }
 				            }
-				        ],
+				        ]			        
 				    });
 				});
+
+
+
+
 
 			</script>
 

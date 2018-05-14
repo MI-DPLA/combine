@@ -24,6 +24,12 @@
 				<!-- static payload -->
 				<div class="row">
 					<div class="col-md-6">
+						<div class="alert alert-success alert-dismissible fade show" role="alert">
+							The following are <strong>required</strong> parameters for this Job
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
 						{% csrf_token %}						
 
 						<!-- payload -->
@@ -134,21 +140,8 @@
 
 				</div>				
 				
-				<div class="row">					
-					<div class="col-md-6">
-						<!-- Indexing Mapping Selection -->
-						{% include 'core/index_mapping_select.html' %}
-
-						<!-- Record Validation Selection -->
-						{% include 'core/record_validation_select.html' %}
-					</div>
-					<div class="col-md-6">
-
-						<!-- Record Identifier Transformation -->
-						{% include 'core/record_identifier_transform.html' %}
-						
-					</div>
-				</div>
+				<!-- Optional Job Processing -->
+				{% include 'core/job_optional_processing.html' %}
 
 				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
 

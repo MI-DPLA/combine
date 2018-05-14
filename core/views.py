@@ -582,12 +582,20 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
 
-	# return
+	# get dpla_bulk_data_match
+	dpla_bulk_data_matches = cjob.job.get_dpla_bulk_data_matches()	
+
+	# check if limiting to one, pre-existing record
+	q = request.GET.get('q', None)
+
+	# return	
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
+			'dpla_bulk_data_matches':dpla_bulk_data_matches,
+			'q':q,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -707,6 +715,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get index mappers
 		index_mappers = models.IndexMappers.get_mappers()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_harvest_oai.html', {
 				'record_group':record_group,
@@ -714,6 +725,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -754,6 +766,11 @@ def job_harvest_oai(request, org_id, record_group_id):
 		if rits == '':
 			rits = None
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.HarvestOAIJob(			
 			job_name=job_name,
@@ -764,7 +781,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			overrides=overrides,
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -796,6 +814,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
+
+	# get all bulk downloads
+	bulk_downloads = models.DPLABulkDataDownload.objects.all()
 	
 	# if GET, prepare form
 	if request.method == 'GET':
@@ -806,6 +827,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -877,6 +899,11 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		if rits == '':
 			rits = None	
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.HarvestStaticXMLJob(			
 			job_name=job_name,
@@ -886,7 +913,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			index_mapper=index_mapper,
 			payload_dict=payload_dict,
 			validation_scenarios=validation_scenarios,
-			rits=rits
+			rits=rits,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -931,6 +959,9 @@ def job_transform(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_transform.html', {
 				'job_select_type':'single',
@@ -941,6 +972,7 @@ def job_transform(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -984,6 +1016,11 @@ def job_transform(request, org_id, record_group_id):
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.TransformJob(
 			job_name=job_name,
@@ -995,7 +1032,8 @@ def job_transform(request, org_id, record_group_id):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -1037,6 +1075,9 @@ def job_merge(request, org_id, record_group_id):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_merge.html', {
 				'job_select_type':'multiple',
@@ -1046,6 +1087,7 @@ def job_merge(request, org_id, record_group_id):
 				'rits':rits,
 				'index_mappers':index_mappers,
 				'job_lineage_json':json.dumps(ld),
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1085,6 +1127,11 @@ def job_merge(request, org_id, record_group_id):
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
 
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None	
+
 		# initiate job
 		cjob = models.MergeJob(
 			job_name=job_name,
@@ -1095,7 +1142,8 @@ def job_merge(request, org_id, record_group_id):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -1135,6 +1183,9 @@ def job_publish(request, org_id, record_group_id):
 		# get all currently applied publish set ids
 		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_publish.html', {
 				'job_select_type':'single',
@@ -1143,6 +1194,7 @@ def job_publish(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
 				'publish_set_ids':publish_set_ids,
+				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1445,7 +1497,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	'''
 	Single Record page
 	'''
-
+	
 	# get single record based on Combine record DB id
 	record = models.Record.objects.get(pk=int(record_id))
 
@@ -1480,14 +1532,14 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# return
 	return render(request, 'core/record.html', {
-			'record_id':record_id,
-			'record':record,
-			'record_stages':record_stages,
-			'job_details':job_details,
-			'dpla_api_doc':dpla_api_doc,
-			'dpla_api_json':dpla_api_json,
-			'breadcrumbs':breadcrumb_parser(request)
-		})
+		'record_id':record_id,
+		'record':record,
+		'record_stages':record_stages,
+		'job_details':job_details,
+		'dpla_api_doc':dpla_api_doc,
+		'dpla_api_json':dpla_api_json,
+		'breadcrumbs':breadcrumb_parser(request)
+	})
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
@@ -1501,6 +1553,20 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 
 	# return document as XML
 	return HttpResponse(record.document, content_type='text/xml')
+
+
+def record_indexed_document(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	View indexed, ES document for record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# return ES document as JSON
+	return JsonResponse(record.get_es_doc())
+	
 
 
 def record_error(request, org_id, record_group_id, job_id, record_id):
@@ -1567,12 +1633,16 @@ def configuration(request):
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
 
+	# get all bulk downloads
+	bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
 			'rits':rits,
+			'bulk_downloads':bulk_downloads,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -1612,6 +1682,64 @@ def transformation_scenario_payload(request, trans_id):
 		return HttpResponse(transformation.payload, content_type='text/plain')
 
 
+
+def test_transformation_scenario(request):
+
+	'''
+	View to live test transformation scenarios
+	'''
+
+	# If GET, serve transformation test screen
+	if request.method == 'GET':
+
+		# get validation scenarios
+		transformation_scenarios = models.Transformation.objects.all()
+
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
+		# return
+		return render(request, 'core/test_transformation_scenario.html', {
+			'q':q,
+			'transformation_scenarios':transformation_scenarios,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	# If POST, provide raw result of validation test
+	if request.method == 'POST':
+
+		logger.debug('running test transformation and returning')		
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))		
+
+		try:
+			
+			# init new transformation scenario
+			trans = models.Transformation(
+				name='temp_trans_%s' % str(uuid.uuid4()),
+				payload=request.POST.get('trans_payload'),
+				transformation_type=request.POST.get('trans_type')				
+			)
+			trans.save()
+
+			# validate with record
+			trans_results = trans.transform_record(record)
+
+			# delete temporary trans
+			trans.delete()
+
+			return HttpResponse(trans_results, content_type="text/xml")			
+			
+
+		except Exception as e:
+
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			trans.delete()
+
+			return HttpResponse(str(e), content_type="text/plain")
+
+
 def validation_scenario_payload(request, vs_id):
 
 	'''
@@ -1641,8 +1769,12 @@ def test_validation_scenario(request):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
+			'q':q,
 			'validation_scenarios':validation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -1751,6 +1883,45 @@ def test_rits(request):
 			return JsonResponse({'results':str(e), 'success':False})
 
 
+@login_required
+def dpla_bulk_data_download(request):
+
+	'''
+	View to support the downloading of DPLA bulk data
+	'''
+
+	if request.method == 'GET':
+
+		# if S3 credentials set
+		if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY and settings.AWS_ACCESS_KEY_ID != None and settings.AWS_SECRET_ACCESS_KEY != None:
+
+			# get DPLABulkDataClient and keys from DPLA bulk download
+			dbdc = models.DPLABulkDataClient()
+			bulk_data_keys = dbdc.retrieve_keys()
+
+		else:
+			bulk_data_keys = False
+
+		# return
+		return render(request, 'core/dpla_bulk_data_download.html', {
+			'bulk_data_keys':bulk_data_keys,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	if request.method == 'POST':
+
+		logger.debug('initiating bulk data download')
+
+		# get DPLABulkDataClient
+		dbdc = models.DPLABulkDataClient()
+
+		# initiate download
+		dbdc.download_and_index_bulk_data(request.POST.get('object_key', None))
+
+		# return to configuration screen
+		return redirect('configuration')
+
+
 ####################################################################
 # Published 													   #
 ####################################################################
@@ -1804,9 +1975,19 @@ def search(request):
 
 	'''
 	Global search of Records
-	'''	
+	'''
+
+	# if search term present, use
+	q = request.GET.get('q', None)
+	if q:
+		search_params = json.dumps({'q':q})
+		logger.debug(search_params)
+	else:
+		search_params = None
 
 	return render(request, 'core/search.html', {
+			'search_string':q,
+			'search_params':search_params,
 			'breadcrumbs':breadcrumb_parser(request),
 			'page_title':' | Search'
 		})
@@ -1859,7 +2040,10 @@ def job_analysis(request):
 
 	# if GET, prepare form
 	if request.method == 'GET':
-		
+
+		# check if published analysis
+		analysis_type = request.GET.get('type', None)
+
 		# retrieve all jobs
 		input_jobs = models.Job.objects.all()
 
@@ -1875,6 +2059,9 @@ def job_analysis(request):
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# render page
 		return render(request, 'core/job_analysis.html', {
 				'job_select_type':'multiple',				
@@ -1882,6 +2069,8 @@ def job_analysis(request):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
+				'analysis_type':analysis_type,
+				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
 			})
 
@@ -1916,10 +2105,15 @@ def job_analysis(request):
 		# handle requested record_id transform
 		rits = request.POST.get('rits', None)
 		if rits == '':
-			rits = None		
+			rits = None
 
 		# capture input record validity valve
 		input_validity_valve = request.POST.get('input_validity_valve', None)
+
+		# handle requested record_id transform
+		dbdd = request.POST.get('dbdd', None)
+		if dbdd == '':
+			dbdd = None		
 
 		# initiate job
 		cjob = models.AnalysisJob(
@@ -1930,7 +2124,8 @@ def job_analysis(request):
 			index_mapper=index_mapper,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve
+			input_validity_valve=input_validity_valve,
+			dbdd=dbdd
 		)
 		
 		# start job and update status
@@ -1963,8 +2158,7 @@ class DTRecordsJson(BaseDatatableView):
 			'record_id',
 			'job',
 			'oai_set',
-			'unique',
-			'success',
+			'unique',			
 			'document',
 			'error',
 			'valid'
@@ -1981,8 +2175,7 @@ class DTRecordsJson(BaseDatatableView):
 			'record_id',
 			'job',
 			'oai_set',
-			'unique',
-			'success',
+			'unique',			
 			'document',
 			'error',
 			'valid'
@@ -2080,7 +2273,7 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+				qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
 
 			# return
 			return qs
@@ -2198,11 +2391,12 @@ class DTPublishedJson(BaseDatatableView):
 						Q(id=search)						
 					)
 				else:
+					# very slow to include the job's publish set id - removing from search
 					qs = qs.filter(
 						Q(record_id__contains=search) | 
-						Q(document__contains=search) | 
-						Q(job__record_group__publish_set_id=search)
+						Q(document__contains=search)						
 					)
+
 
 			return qs
 
@@ -2360,9 +2554,118 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 
 
+class DTDPLABulkDataMatches(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id'			
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'record_id'			
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
 
 
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
+			# get DPLA misses / matches
+			dpla_bulk_data_matches = job.get_dpla_bulk_data_matches()
+
+			# return queryset
+			if self.kwargs['match_type'] == 'matches':
+				return dpla_bulk_data_matches['matches']
+			elif self.kwargs['match_type'] == 'misses':
+				return dpla_bulk_data_matches['misses']
+
+
+		def render_column(self, row, column):
+
+			# handle record id
+			if column == 'id':
+				# get target record from row
+				target_record = row
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.id)
+
+			# handle record record_id
+			elif column == 'record_id':
+				# get target record from row
+				target_record = row
+				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+						'org_id':target_record.job.record_group.organization.id,
+						'record_group_id':target_record.job.record_group.id,
+						'job_id':target_record.job.id,
+						'record_id':target_record.id
+					}), target_record.record_id)
+
+			# handle all else
+			else:
+				return super(DTDPLABulkDataMatches, self).render_column(row, column)
+
+
+		def get_context_data(self, *args, **kwargs):
+			stime = time.time()		
+			try:
+				self.initialize(*args, **kwargs)
+
+				qs = self.get_initial_queryset()
+
+				# number of records before filtering
+				total_records = qs.count()
+
+				qs = self.filter_queryset(qs)
+
+				# number of records after filtering
+				total_display_records = qs.count()
+
+				qs = self.ordering(qs)
+				qs = self.paging(qs)
+
+				# prepare output data
+				if self.pre_camel_case_notation:
+					aaData = self.prepare_results(qs)
+
+					ret = {'sEcho': int(self._querydict.get('sEcho', 0)),
+						   'iTotalRecords': total_records,
+						   'iTotalDisplayRecords': total_display_records,
+						   'aaData': aaData
+						   }
+				else:
+					data = self.prepare_results(qs)
+
+					ret = {'draw': int(self._querydict.get('draw', 0)),
+						   'recordsTotal': total_records,
+						   'recordsFiltered': total_display_records,
+						   'data': data
+						   }
+				logger.debug('context data total %s' % (time.time() - stime))
+				return ret
+			except Exception as e:
+				return self.handle_exception(e)
 
 
 

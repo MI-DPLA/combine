@@ -16,7 +16,7 @@
 		<!-- DataTables -->
 		<link rel="stylesheet" type="text/css" href="{% static 'core/datatables.min.css' %}">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
-		<script type="text/javascript" charset="utf8" src="{% static 'core/fnFindCellRowIndexes.js' %}"></script>		
+		<script type="text/javascript" charset="utf8" src="{% static 'core/fnFindCellRowIndexes.js' %}"></script>
 		
 		<!-- Bootstrap JS -->
 		<script src="{% static 'core/bootstrap-4.0.0/js/bootstrap.min.js' %}"></script>
@@ -67,8 +67,8 @@
 	            <a class="nav-link {% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}" href="{% url 'livy_sessions' %}">Livy/Spark session</a>
 	          </li>
 	        </ul>
-	        <form class="form-inline mt-2 mt-md-0">
-	          <input class="form-control mr-sm-2" type="text" placeholder="Not yet functional..." aria-label="Search">
+	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
+	          <input class="form-control mr-sm-2" type="text" name="q" placeholder="Search all records..." aria-label="Search" {% if search_string %}value="{{ search_string }}"{% endif %} />
 	          <button class="btn btn-outline-success my-2 my-sm-0" type="submit">Search</button>
 	        </form>
 	      </div>

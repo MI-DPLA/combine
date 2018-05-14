@@ -32,7 +32,7 @@ except:
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf, regexp_replace
+from pyspark.sql.functions import udf, regexp_replace, lit
 from pyspark.sql.window import Window
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -46,7 +46,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation
+from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
 
 
@@ -158,7 +158,7 @@ class CombineSparkJob(object):
 			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
-		# run record identifier transformation scenario is provided
+		# run record identifier transformation scenario if provided
 		records_df = self.run_rits(records_df)
 
 		# check uniqueness (overwrites if column already exists)	
@@ -221,6 +221,9 @@ class CombineSparkJob(object):
 			# update `valid` column for Records based on results of ValidationScenarios
 			cursor = connection.cursor()
 			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+			# run comparison against bulk data if provided
+			db_records = self.bulk_data_compare(db_records)
 
 			# return db_records DataFrame
 			return db_records
@@ -444,6 +447,59 @@ class CombineSparkJob(object):
 		# else return dataframe untouched
 		else:
 			return records_df
+
+
+	def bulk_data_compare(self, db_records):
+
+		'''
+		Method to compare against bulk data if provided
+		'''
+
+		self.logger.info('running bulk data compare')
+
+		# get dbdd instance
+		# get dbdd ID from kwargs
+		dbdd_id = self.kwargs.get('dbdd', False)
+
+		# if rits id provided
+		if dbdd_id and dbdd_id != None:
+
+			self.logger.info('DBDD id provided, retrieving and running...')
+
+			# get dbdd instance
+			dbdd = DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
+			self.logger.info('DBDD retrieved: %s @ ES index %s' % (dbdd.s3_key, dbdd.es_index))
+
+			# get bulk data as DF from ES
+			dpla_rdd = self.spark.sparkContext.newAPIHadoopRDD(
+				inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+				keyClass="org.apache.hadoop.io.NullWritable",
+				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+				conf={ "es.resource" : "%s/item" % dbdd.es_index }
+			)
+			dpla_df = dpla_rdd.toDF()			
+
+			# check if records from job are in bulk data DF
+			in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select(db_records['id'])
+
+			# prepare matches DF
+			dbdd_id = dbdd.id
+			matches_to_write = in_dpla.withColumn('record_id', in_dpla['id']).withColumn('match', lit(1)).withColumn('dbdd_id', lit(dbdd_id)).select('match', 'record_id', 'dbdd_id')
+			
+			# write to DPLABulkDataMatch table
+			matches_to_write.write.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_dplabulkdatamatch',
+				properties=settings.COMBINE_DATABASE,
+				mode='append'
+			)
+
+			# return
+			return db_records
+
+		# else, return untouched
+		else:
+			return db_records
 
 
 
@@ -799,7 +855,7 @@ class TransformSpark(CombineSparkJob):
 		'''
 
 		# define udf function for transformation
-		def transform_xml_udf(job_id, row, xslt_string):
+		def transform_xslt_udf(job_id, row, xslt_string):
 
 			# attempt transformation and save out put to 'document'
 			try:
@@ -834,7 +890,7 @@ class TransformSpark(CombineSparkJob):
 
 		# transform via rdd.map and return
 		job_id = self.job.id
-		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, xslt_string))
+		records_trans = records.rdd.map(lambda row: transform_xslt_udf(job_id, row, xslt_string))
 		return records_trans
 
 
@@ -858,7 +914,7 @@ class TransformSpark(CombineSparkJob):
 		'''
 
 		# define udf function for python transformation
-		def transform_xml_udf(job_id, row, python_code):
+		def transform_python_udf(job_id, row, python_code):
 			
 			try:
 				# prepare row as parsed document with PythonUDFRecord class
@@ -895,7 +951,7 @@ class TransformSpark(CombineSparkJob):
 		# transform via rdd.map and return
 		job_id = self.job.id			
 		transformation_payload = transformation.payload
-		records_trans = records.rdd.map(lambda row: transform_xml_udf(job_id, row, transformation_payload))
+		records_trans = records.rdd.map(lambda row: transform_python_udf(job_id, row, transformation_payload))
 		return records_trans
 
 

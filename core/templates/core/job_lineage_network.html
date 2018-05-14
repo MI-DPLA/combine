@@ -1,12 +1,22 @@
 {% block content %}
-<div class="row">
-	<div class="col-md-12">
+<div class="row" {% if analysis_type == 'published' %}style="display:none;"{% endif %}>
+	<div class="col-md-12">		
 		<div id="job_family_diagram_container">
 			<div id="job_family_diagram"></div>
 			<script type="text/javascript">
 
 				// parse job lineage json
 				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+
+				// if analyzing published, show only published nodes
+				{% if analysis_type == 'published' %}
+					for (var i = job_lineage.nodes.length - 1; i >= 0; i--) {
+						node = job_lineage.nodes[i];
+						if (node.job_type != 'PublishJob'){
+							job_lineage.nodes.splice(i,1);
+						}
+					}
+				{% endif %}
 
 				// style edges and init
 				$(job_lineage.edges).each(function(){

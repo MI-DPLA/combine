@@ -101,144 +101,309 @@
 	</div>
 
 	<div class="row">
-		
-		<!-- Job Inputs -->
-		{% if cjob.job.job_type_family != 'HarvestJob' %}
-		<div class="col-md-6">
-			<h4>Input Jobs</h4>
-			<p>The following jobs were used as direct input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
+		<div class="col-md-12">
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Input Job Name</th>
-					<th>Job Type Family</th>
-					<th>Job Type</th>
-					<th>Record Input Type</th>
-					<th>Record Count</th>
-				</tr>
-				{% for input_job in cjob.job.jobinput_set.all %}
-				<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-					<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
-					<td>{{ input_job.input_job.job_type_family }}</td>
-					<td>{{ input_job.input_job.job_type }}</td>
-					<td>{{ input_job.get_input_validity_valve_display }}</td>
-					<td>
-						{% if input_job.input_validity_valve == 'all' %}
-							{{ input_job.input_job.record_count }}
-						{% elif input_job.input_validity_valve == 'valid' %}
-							{{ input_job.input_job.validation_results.passed_count }}
-						{% elif input_job.input_validity_valve == 'invalid' %}
-							{{ input_job.input_job.validation_results.failure_count }}
-						{% endif %}
-					</td>
-				</tr>
-				{% endfor %}
-				<tr>
-					<td></td>
-					<td></td>
-					<td></td>
-					<td><strong>Total:</strong></td>
-					<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
-				</tr>
-			</table>
-		</div>
-		{% endif %}
-
-		<!-- Job Results -->
-		<div class="col-md-6">
-			<h4>Results</h4>
-			<p>The following table shows details about input records, successes, and failures.</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>Job Name</th>
-					<th>Job Type Family</th>
+					<th>Job Name</th>					
 					<th>Job Type</th>
 					<th>Total Input Records</th>
 					<th>Successfully Processed</th>
-					<th>Error in Processing</th>					
-					<th>Valid Records</th>
-					<th>Invalid Records</th>					
+					<th>Error in Processing</th>										
+					<th>Failed Validation</th>
 				</tr>
 				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-					<td>{{ cjob.job.name }}</td>
-					<td>{{ cjob.job.job_type_family }}</td>
+					<td>{{ cjob.job.name }}</td>					
 					<td>{{ cjob.job.job_type }}</td>
 					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 					<td>{{ record_count_details.records }}</td>
-					<td>{{ record_count_details.errors }}</td>
-					<td>{{ cjob.job.validation_results.passed_count }}</td>
+					<td>{{ record_count_details.errors }}</td>					
 					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
 			</table>
 		</div>
-
 	</div>
-
-	<div style="margin-top:20px;"/>
-
-	<!-- Indexing Records DT Table -->
-	{% include 'core/records_dt_table.html' %}
-
-	<div style="margin-top:20px;"/>
-
-	{% if cjob.job.jobvalidation_set.count > 0 %}	
-	<div class="row">		
-		<div class="col-md-6">
-			<h3>Validation Scenarios</h3>
-			<p>The following validation scenarios were run for this job:</p>
-			<table class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Validation Name</th>
-						<th>Validation Type</th>
-						<th>Record Validation Failure Count</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for jv in cjob.job.jobvalidation_set.all %}			
-						<tr>
-							<td>{{ jv.validation_scenario.name }}</td>
-							<td>{{ jv.validation_scenario.validation_type }}</td>
-							<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
-							<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-			<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
-		</div>
-	</div>
-	{% endif %}
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Indexed Field Analysis</h3>
-			<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
-		</div>
-		<div class="col-md-6">
-			<table class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Total records for indexing</th>
-						<th>Indexed</th>
-						<th>Percentage of total records</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>{{ record_count_details.records }}</td>
-						<td>{{ field_counts.total_docs }}</td>
-						<td>{{ field_counts.indexed_percentage }}</td>
-						<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-	</div>
 
-	<!-- Indexed Fields Analysis DT Table -->
-	{% include 'core/indexed_fields_dt_table.html' %}
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+				The following tabs provide additional information about this Job
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+
+			<!-- Navigation -->
+			<ul id="tabs" class="nav nav-tabs">								
+				<li class="nav-item">
+					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Field Analysis</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
+				</li>								
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
+				</li>				
+			</ul>
+
+			<!-- Tabbed Content -->
+			<div class="tab-content">			
+
+				<div id="records_tab" class="tab-pane container full_width_tab active">
+					<div class="row">		
+						<div class="col-md-12">
+							<!-- Indexing Records DT Table -->
+							{% include 'core/records_dt_table.html' %}
+						</div>
+					</div>
+				</div>
+
+				<div id="io_tab" class="tab-pane container full_width_tab">
+					<div class="row">
+		
+						<!-- Job Inputs -->
+						{% if cjob.job.job_type_family != 'HarvestJob' %}
+						<div class="col-md-12">
+							<h4>Input Jobs</h4>
+							<p>The following Jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
+							<table class="table table-bordered table-hover">
+								<tr>
+									<th>Input Job Name</th>					
+									<th>Job Type</th>
+									<th>Record Input Type</th>
+									<th>Record Count</th>
+								</tr>
+								{% for input_job in cjob.job.jobinput_set.all %}
+								<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
+									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>					
+									<td>{{ input_job.input_job.job_type }}</td>
+									<td>{{ input_job.get_input_validity_valve_display }}</td>
+									<td>
+										{% if input_job.input_validity_valve == 'all' %}
+											{{ input_job.input_job.record_count }}
+										{% elif input_job.input_validity_valve == 'valid' %}
+											{{ input_job.input_job.validation_results.passed_count }}
+										{% elif input_job.input_validity_valve == 'invalid' %}
+											{{ input_job.input_job.validation_results.failure_count }}
+										{% endif %}
+									</td>
+								</tr>
+								{% endfor %}
+								<tr>
+									<td></td>
+									<td></td>									
+									<td><strong>Total:</strong></td>
+									<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
+								</tr>
+							</table>
+						</div>
+						{% else %}
+						<div class="col-md-12">
+							<p>No Jobs were used as input for this Job.</p>
+						</div>
+						{% endif %}
+
+					</div>
+				</div>
+
+				<div id="validation_tab" class="tab-pane container full_width_tab">
+					{% if cjob.job.jobvalidation_set.count > 0 %}
+					<div class="row">		
+						<div class="col-md-12">
+							<h3>Validation Scenarios</h3>
+							<p>The following Validation Scenarios were run for this job:</p>
+							<table class="table table-bordered table-hover">
+								<thead>
+									<tr>
+										<th>Validation Name</th>
+										<th>Validation Type</th>
+										<th>Record Validation Failure Count</th>
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									{% for jv in cjob.job.jobvalidation_set.all %}			
+										<tr>
+											<td>{{ jv.validation_scenario.name }}</td>
+											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
+											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+											<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+							<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
+						</div>
+					</div>
+					{% else %}
+					<div class="row">		
+						<div class="col-md-12">
+							<p>No Validations were run for this Job.</p>
+						</div>
+					</div>
+
+					{% endif %}
+				</div>
+
+				<div id="field_breakdown_tab" class="tab-pane container full_width_tab">
+					<div class="row">
+						<div class="col-md-12">
+							<h3>Field Analysis</h3>
+							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.  The field names should suggest that corresponding metadata field from the original XML.</p>
+						</div>
+						<div class="col-md-6">
+							<table class="table table-bordered table-hover">
+								<thead>
+									<tr>
+										<th>Total Records for Job</th>
+										<th>Successfully Indexed</th>						
+										<th>Actions</th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>{{ record_count_details.records }}</td>
+										<td>{{ field_counts.total_docs }}</td>						
+										<td><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank">Browse Index</a> / <a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">View Errors</a></td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+
+					<!-- Indexed Fields Analysis DT Table -->
+					{% include 'core/indexed_fields_dt_table.html' %}
+				</div>
+
+				<div id="dpla_bulk_data_tab" class="tab-pane container full_width_tab">
+					
+					{% if dpla_bulk_data_matches %}
+
+						<div class="row">
+							<div class="col-md-12">
+								<p>The following tables shows matches and misses based on the Record's Identifier as run against the selected DPLA Bulk Data dump.</p>
+								<table class="table table-bordered table-hover">
+									<thead>
+										<tr>
+											<th>DPLA Bulk Data Download</th>
+											<th>Total Records in Job</th>
+											<th>Matches</th>
+											<th>Misses</th>
+										</tr>
+									</thead>
+									<tbody>
+										<tr>
+											<td><code>{{ dpla_bulk_data_matches.dbdd.s3_key }}</code></td>
+											<td>{{ record_count_details.records }}</td>
+											<td><a href="#">{{ dpla_bulk_data_matches.matches.count }}</a></td>
+											<td><a href="#">{{ dpla_bulk_data_matches.misses.count }}</a></td>
+									</tbody>
+								</table>
+							</div>
+						</div>
+
+						<!-- DataTable of DPLA Matches -->	
+						<div class="row">
+							<div class="col-md-12">
+								<h4>Matches</h4>
+								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover">
+									<thead>
+										<th>DB ID</th>
+										<th>Record ID</th>										
+									</thead>
+									<tbody></tbody>
+								</table>
+							</div>
+						</div>
+
+						<!-- DataTable of DPLA Misses -->	
+						<div class="row">
+							<div class="col-md-12">
+								<h4>Misses</h4>
+								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover">
+									<thead>
+										<th>DB ID</th>
+										<th>Record ID</th>										
+									</thead>
+									<tbody></tbody>
+								</table>
+							</div>
+						</div>
+
+						<script>
+
+							// Matches Datatable
+							$(document).ready(function() {
+							    matches_table = $('#dpla_bulk_data_matches_table').dataTable({
+							        "processing": true,
+							        "serverSide": true,
+							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
+							        "searchDelay": 1000,
+							        "pageLength": 10,
+							        "order": [[ 1, "desc" ]],
+							        "columns": [
+							            { 
+							            	title: "DB ID"
+						            	},
+							            { 
+							            	title: "Record ID"
+							            }									            
+							        ],
+							    });
+							});
+
+
+
+							// Misses Datatable
+							$(document).ready(function() {
+							    misses_table = $('#dpla_bulk_data_misses_table').dataTable({
+							        "processing": true,
+							        "serverSide": true,
+							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
+							        "searchDelay": 1000,
+							        "pageLength": 10,
+							        "order": [[ 1, "desc" ]],
+							        "columns": [
+							            { 
+							            	title: "DB ID"
+						            	},
+							            { 
+							            	title: "Record ID"
+							            }									            
+							        ],
+							    });
+							});
+
+						
+							function update_table_widths() {
+								matches_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
+								misses_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
+							}							
+						
+						</script>
+
+					{% else %}
+
+						<div class="row">
+							<div class="col-md-12">
+								<p>No DPLA Bulk Data Comparisons were made, or no matches found.</p>
+							</div>
+						</div>
+
+					{% endif %}
+				</div>
+
+			</div>
+
+		</div>
+	</div>	
+
 
 {% endblock %}
 
