@@ -414,7 +414,7 @@ To use this function, S3 credentials must but added to the ``combine/localsettin
 
    Downloaded and Indexed DPLA Bulk Data Download (DBDD)
 
-Comparison can be triggered from any `Job's optional parameters <workflow.html#optional-parameters>`_ under the tab `DPLA Bulk Data Compare <workflow.html#dpla-bulk-data-compare>`_.  Comparison is performed by attempting to match a Record's Record Identifier to the ``_id`` field in the DPLA Item document.
+Comparison can be triggered from any `Job's optional parameters <workflow.html#optional-parameters>`_ under the tab `DPLA Bulk Data Compare <workflow.html#dpla-bulk-data-matches>`_.  Comparison is performed by attempting to match a Record's Record Identifier to the ``_id`` field in the DPLA Item document.
 
 Because this comparison is using the Record Identifier for matching, this is a great example of where a Record Identifier Transformation Scenario (RITS) can be a powerful tool to emulate or recreate a known or previous identifier pattern.  So much so, it's conceivable that passing a RITS along with the DPLA Bulk Data Compare -- just to temporarily transform the Record Identifier for comparison's sake, but not in the Combine Record itself -- might make sense.
 
