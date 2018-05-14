@@ -16,7 +16,7 @@ From the Merge Job page, you may notice there are no required parameters!  Howev
 
    Showing possible input Jobs from all Organizations and Record Groups
 
-There not many Jobs here, but this could get intimidating if lots of Jobs were present in Combine!  Both the Job "lineage graph" -- visual graph near the top -- or the table of Jobs can be useful for limiting.
+There not many Jobs in this instance, but this could get intimidating if lots of Jobs were present in Combine.  Both the Job "lineage graph" -- visual graph near the top -- or the table of Jobs can be useful for limiting.
 
 Clicking on a single Job in the lineage graph will filter the table to include only **that** Job, and all Jobs there **input** for that Job, and graying out Jobs in the lineage graph to represent the same.  Clicking outside of a Job will clear the filter.
 
@@ -38,7 +38,7 @@ Also of note, you can select **multiple** Jobs for Merge / Duplicate Jobs.  When
 
 Select desired Jobs to merge or duplicate -- which can be a single Job -- and click "Run Job".
 
-The following screenshot shows a Merge Job with *two* input Jobs from the Record Group screen:
+The following screenshot shows the results of a Merge Job with *two* input Jobs from the Record Group screen:
 
 .. figure:: img/merge_two_input_jobs.png
    :alt: Merging two Jobs into one
@@ -50,7 +50,13 @@ The following screenshot shows a Merge Job with *two* input Jobs from the Record
 Why Merge or Duplicate Records?
 ===============================
 
-With the flexibility of the ``Organization --> Record Group --> Job --> Record`` model, comes some complexity in execution.
+With the flexibility of the data model,
+
+.. code-block:: text
+
+    Organization --> Record Group --> Job --> Record
+
+comes some complexity in execution.
 
 Merge Jobs have a variety of possible use cases:
 
@@ -63,7 +69,7 @@ Merge Jobs have a variety of possible use cases:
 As mentioned above, one possible use of Merge / Duplicating Jobs would be to utilize the "Record Input Validity Valve" option to shunt valid or invalid Records into a new Job.  In this possible scenario, you could:
 
   - from ``Job A``, select only *invalid* Records to create ``Job B``
-  - merge *valid* Records from ``Job A`` with *valid* Records from ``Job B`` to create ``Job C``
+  - assuming ``Job B`` fixed those validation problems, merge *valid* Records from ``Job A`` with now *valid* Records from ``Job B`` to create ``Job C``
 
 This can be helpful if ``Job A`` is quite large, but only has a few Records that need further transformation, *or*, the Transformation that will fix invalid Records, would break -- invalidate -- other perfectly good Records from ``Job A``.  Here is a visual sense of this possible workflow, notice the record counts for each edge:
 

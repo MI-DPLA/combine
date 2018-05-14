@@ -6,7 +6,7 @@ Combine relies heavily on front-loading configuration, so that the process of ru
 
 This section will outline configuration options and associated configuration pages.
 
-**Note:** Currently, Combine leverages Django's built-in admin interface for actually editing and creating model instances -- transformations, validations, and other scenarios -- below.  This will likely evolve into more tailored CRUDs for each, but for the time being, there is a link to the Django admin panel on the Configuration screen.
+**Note:** Currently, Combine leverages Django's built-in admin interface for editing and creating model instances -- transformations, validations, and other scenarios -- below.  This will likely evolve into more tailored CRUDs for each, but for the time being, there is a link to the Django admin panel on the Configuration screen.
 
 **Note:** What settings are not configurable via the GUI in Combine, are configurable in the file ``combine/localsettings.py``.
 
@@ -18,26 +18,26 @@ Configuring OAI endpoints is the first step for harvesting from OAI endpoints.
 
 To configure a new OAI endpoint, navigate to the Django admin screen, under the section "Core" select ``Oai endpoints``.
 
-This model is unique among other Combine models in that these values are sent directly to the DPLA Ingestion 3 OAI harvesting codebase.  More `information on these fields can be found here <https://digitalpubliclibraryofamerica.atlassian.net/wiki/spaces/TECH/pages/87658172/Spark+OAI+Harvester>`_.
+This model is unique among other Combine models in that these values are sent almost untouched to the DPLA Ingestion 3 OAI harvesting codebase.  More `information on these fields can be found here <https://digitalpubliclibraryofamerica.atlassian.net/wiki/spaces/TECH/pages/87658172/Spark+OAI+Harvester>`_.
 
 The following fields are all required:
 
   - ``Name`` - Human readable name for OAI endpoint, used in dropdown menu when running harvest
-  - ``Endpoint`` - URL for OAI server endpoint.  This should include the full URL up until, but not including, GET paremeters that begin with a question mark ``?``.
+  - ``Endpoint`` - URL for OAI server endpoint.  This should include the full URL up until, but not including, GET parameters that begin with a question mark ``?``.
   - ``Verb`` - This pertains to the OAI-PMH verb that will be used for harvesting.  Almost always, ``ListRecords`` is the required verb here.  So much, this will default to ``ListRecords`` if left blank.
   - ``MetadataPrefix`` - Another OAI-PMH term, the metadata prefix that will be used during harvesting.
   - ``Scope type`` - Not an OAI term, this refers to what kind of harvesting should be performed.  Possible values include:
 
-    - ``setList`` - This will harvest the comma seperated sets provided for ``Scope value``.
+    - ``setList`` - This will harvest the comma separated sets provided for ``Scope value``.
     - ``harvestAllSets`` - The most performant option, this will harvest all sets from the OAI endpoint.  If this is set, the ``Scope value`` field must be set to ``true``.
-    - ``blacklist`` - Comma seperated list of OAI sets to **exclude** from harvesting.
+    - ``blacklist`` - Comma separated list of OAI sets to **exclude** from harvesting.
 
   - ``Scope value`` - String to be used in conjunction with ``Scope type`` outline above.
 
-    - If ``setList`` is used, provide a comma seperated string of OAI sets to harvest
+    - If ``setList`` is used, provide a comma separated string of OAI sets to harvest
     - If ``harvestAllSets``, provide just the single string ``true``.
 
- Once the OAI endpoint has been added in the Django admin, from the configurations page you are presented with a table showing all configured OAI endpoints.  The last column includes a link to issue a command to view all OAI sets from that endopint.
+ Once the OAI endpoint has been added in the Django admin, from the configurations page you are presented with a table showing all configured OAI endpoints.  The last column includes a link to issue a command to view all OAI sets from that endpoint.
 
 
 Transformation Scenario
@@ -45,14 +45,14 @@ Transformation Scenario
 
 Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of transformation supported: XSLT and Python code snippets.  These are described in more detail below.
 
-It is worth considering, when thinking about Transformations of Records in Combine, that Combine allows for multiple transformations of the same Record.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a seperate Transformation Scenario, and would be run as seperate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
+It is worth considering, when thinking about Transformations of Records in Combine, that Combine allows for multiple transformations of the same Record.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a separate Transformation Scenario, and would be run as separate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
 
 All Transformations require the following information:
 
   - ``Name`` - Human readable name for Transformation Scenario
   - ``Payload`` - This is where the actual transformation code is added (more on the different types below)
   - ``Transformation Type`` - ``xslt`` for XSLT transformations, or ``python`` for python code snippets
-  - ``Filepath`` - *This may be ignored* (in some cases, transformation payloads were written to disk to be used, but likely depracated moving forward)
+  - ``Filepath`` - *This may be ignored* (in some cases, transformation payloads were written to disk to be used, but likely deprecated moving forward)
 
 .. figure:: img/config_add_transform.png
    :alt: Adding Transformation Scenario in Django admin screen
@@ -77,29 +77,31 @@ In this screenshot, a few things are happening:
 
   - at the very bottom, you can see the immediate results of the Transformation as applied to the selected Record
 
-Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for realtime testing of Transformation Scenarios.
+Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for real-time testing of Transformation Scenarios.
 
 XSLT
 ----
 
-XSLT transformations are performed by a small XSLT processor servlet called via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  Pyjxslt uses a built-in Saxon HE XSLT processor that supports XSLT 2.0.  Currently, XSLT stylesheets that **import** other stylesheets -- either locally or remotely -- are not supported.  There are designs to incorporate `Elsevier's "spark-xml-utils" <https://github.com/elsevierlabs-os/spark-xml-utils>`_ Spark library for XSLT transformations, which would address this issue, but this has not been implemented at this time.
+XSLT transformations are performed by a small XSLT processor servlet called via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  Pyjxslt uses a built-in Saxon HE XSLT processor that supports XSLT 2.0.
+
+**Note:** Currently, XSLT stylesheets that **import** other stylesheets -- either locally or remotely -- are not supported.  There are designs to incorporate `Elsevier's "spark-xml-utils" <https://github.com/elsevierlabs-os/spark-xml-utils>`_ Spark library for XSLT transformations, which would address this issue, but this has not been implemented at this time.
 
 
 Python Code Snippet
 -------------------
 
-An alternative to XSLT transformations are created Transformation Scenarios that use python code snippets to transform the Record.  The key to making a successful python Transformation Scenario is to add code matches the pattern Combine is looking for from a python Transformation.  This requires a bit of explanation about how Records are transformed in Spark.
+An alternative to XSLT transformations are created Transformation Scenarios that use python code snippets to transform the Record.  The key to making a successful python Transformation Scenario is code that adheres to the pattern Combine is looking for from a python Transformation.  This requires a bit of explanation about how Records are transformed in Spark.
 
 For Transformation Jobs in Combine, each Record in the input Job is fed to the Transformation Scenario.  If the ``transformation type`` is ``xslt``, the XSLT stylesheet for that Transformation Scenario is used as-is on the Record's raw XML.  However, if the ``transformation type`` is ``python``, the python code provided for the Transformation Scenario will be used.
 
-The python code snippet may include as many imports or function definitions as needed, but will require one function that each Record will be passed to, and this function must be named ``python_record_transformation``.  Additionally, this function must expect one function argument, a passed instance of what is called a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  In Spark, "UDF" oftens refers to a "User Defined Function"; which is precisely what this parsed Record instance is passed to in the case of a Transformation.  This is a convenience class that parses a Record in Combine for easy interaction within Transformation, Validation, and Record Identifier Transformation Scenarios.   A ``PythonUDFRecord`` instance has the following representations of the Record:
+The python code snippet may include as many imports or function definitions as needed, but will require one function that each Record will be passed to, and this function must be named ``python_record_transformation``.  Additionally, this function must expect one function argument, a passed instance of what is called a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  In Spark, "UDF" often refers to a "User Defined Function"; which is precisely what this parsed Record instance is passed to in the case of a Transformation.  This is a convenience class that parses a Record in Combine for easy interaction within Transformation, Validation, and Record Identifier Transformation Scenarios.   A ``PythonUDFRecord`` instance has the following representations of the Record:
 
   - ``record_id`` - The Record Identifier of the Record
   - ``document`` - raw, XML for the Record (what is passed to XSLT records)
   - ``xml`` - raw XML parsed with lxml's etree, an ``ElementTree`` instance
   - ``nsmap`` - dictionary of namespaces, useful for working with ``self.xml`` instance
 
-Finally, the function ``python_record_transformation`` must return a python **list** with the following, ordered elements: [ transformed XML as a string, any errors if they occurred as a string, True/False for successful transformation ].  For example, a valid return might be, with the middle value a blank string indicating no error:
+Finally, the function ``python_record_transformation`` must return a python **list** with the following, ordered elements: [ *transformed XML as a string*, *any errors if they occurred as a string*, *True/False for successful transformation* ].  For example, a valid return might be, with the middle value a blank string indicating no error:
 
 .. code-block:: python
 
@@ -161,9 +163,9 @@ Validation Scenario
 Validation Scenarios are by which Records in Combine are validated against.  Similar to Transformation Scenarios outlined above, they currently accept two formats: Schematron and python code snippets.  Each Validation Scenario requires the following fields:
 
   - ``Name`` - human readable name for Validation Scenario
-  - ``Payload`` - pasted schematron or python code
+  - ``Payload`` - pasted Schematron or python code
   - ``Validation type`` - ``sch`` for Schematron, or ``python`` for python code snippet
-  - ``Filepath`` - *This may be ignored* (in some cases, validation payloads were written to disk to be used, but likely depracated moving forward)
+  - ``Filepath`` - *This may be ignored* (in some cases, validation payloads were written to disk to be used, but likely deprecated moving forward)
   - ``Default run`` - if checked, this Validation Scenario will be automatically checked when running a new Job
 
 .. figure:: img/config_add_validation.png
@@ -194,7 +196,7 @@ In this screenshot, we an see the following happening:
   - Results are shown at the bottom in two areas:
 
     - ``Parsed Validation Results`` - parsed results of the Validation, showing tests that have **passed**, **failed**, and a **total count** of failures
-    - ``Raw Validation Results`` - raw resutls of Validation Scenario, in this case XML from the Schematron response, but would be a JSON string for a python code snippet Validation Scenario
+    - ``Raw Validation Results`` - raw results of Validation Scenario, in this case XML from the Schematron response, but would be a JSON string for a python code snippet Validation Scenario
 
 As mentioned, two types of Validation Scenarios are currently supported, Schematron and python code snippets, and are detailed below.
 
@@ -289,30 +291,30 @@ An example of an arbitrary Validation Scenario that looks for MODS titles longer
       pass
 
 
-Record Identifier Transformation Scenario (RITS)
-================================================
+Record Identifier Transformation Scenario
+=========================================
 
-Another configurable "Scenario" in Combine is a Record Identifier Transformation Scenario or "RITS" for short.  A RITS allows the transformation of a Record's "Record Identifier".  A Record has `three identifiers in Combine <data_model.html#identifiers>`_, with the Record Identifier (``record_id``) as the only changable, mutable of the three.  The Record ID is what is used for publishing, and for all intents and purposes, the unique identifier for the Record *outside* of Combine.
+Another configurable "Scenario" in Combine is a Record Identifier Transformation Scenario or "RITS" for short.  A RITS allows the transformation of a Record's "Record Identifier".  A Record has `three identifiers in Combine <data_model.html#identifiers>`_, with the Record Identifier (``record_id``) as the only changeable, mutable of the three.  The Record ID is what is used for publishing, and for all intents and purposes, the unique identifier for the Record *outside* of Combine.
 
 Record Identifiers are created during Harvest Jobs, when a Record is first created.  This Record Identifier may come from the OAI server in which the Record was harvested from, it might be derived from an identifier in the Record's XML in the case of a static harvest, or it may be minted as a UUID4 on creation.  Where the Record ID is picked up from OAI or the Record's XML itself, it might not need transformation before publishing, and can "go out" just as it "came in."  However, there are instances where transforming the Record's ID can be quite helpful.
 
-Take the following scenario.  A digital object's metadata is harvested from ``Repository A`` with the ID ``foo``, as part of OAI set ``bar``, by ``Metadata Aggregator A``.  Inside ``Metadata Aggregator A``, which has its own OAI server prefix of ``baz`` considers the full identifier of this record: ``baz:bar:foo``.  Next, ``Metadata Aggregator B`` harvests this record from ``Metadata Aggregator A``, under the OAI set ``scrog``.  ``Metadata Aggregator B`` has its own OAI server prefix of ``tronic``.  Finally, when a terminal harvester like DPLA harvests this record from ``Metadata Aggregator B`` under the set ``goober``, it might have a motely identifier, constructed through all these OAI "hops" of something like: ``tronic:goober:baz:bar:foo``.  
+Take the following scenario.  A digital object's metadata is harvested from ``Repository A`` with the ID ``foo``, as part of OAI set ``bar``, by ``Metadata Aggregator A``.  Inside ``Metadata Aggregator A``, which has its own OAI server prefix of ``baz`` considers the full identifier of this record: ``baz:bar:foo``.  Next, ``Metadata Aggregator B`` harvests this record from ``Metadata Aggregator A``, under the OAI set ``scrog``.  ``Metadata Aggregator B`` has its own OAI server prefix of ``tronic``.  Finally, when a terminal harvester like DPLA harvests this record from ``Metadata Aggregator B`` under the set ``goober``, it might have a motley identifier, constructed through all these OAI "hops" of something like: ``tronic:scrog:goober:baz:bar:foo``.  
 
 If one of these hops were replaced by an instance of Combine, one of the OAI "hops" would be removed, and the dynamically crafted identifier for that same record would change.  Combine allows the ability to transform the identifier -- emulating previous OAI "hops", completely re-writing, or any other transformation -- through a Record Identifier Transformation Scenario (RITS).
 
 RITS are performed, just like Transformation Scenarios or Validation Scenarios, for every Record in the Job.  RITS may be in the form of:
 
-  - Regular Expressions - specifically, python flavored regex
-  - Python code snippet - a snippet of code that will transform the identifier
-  - XPATH expression - given the Record's raw XML, an XPath expression may be given to extract a value to be used as the Record Identifier
+  - **Regular Expressions** - specifically, python flavored regex
+  - **Python code snippet** - a snippet of code that will transform the identifier
+  - **XPATH expression** - given the Record's raw XML, an XPath expression may be given to extract a value to be used as the Record Identifier
 
-All RITS must have the following values:
+All RITS have the following values:
 
   - ``Name`` - Human readable name for RITS
   - ``Transformation type`` - ``regex`` for Regular Expression, ``python`` for Python code snippet, or ``xpath`` for XPath expression
   - ``Transformation target`` - the RITS payload and type may use the pre-existing Record Identifier as input, or the Record's raw, XML record
   - ``Regex match payload`` - If using regex, the regular expression to **match**
-  - ``Regex replace playload`` - If using regex, the regular expression to **replace** that match with (allows values from groups)
+  - ``Regex replace payload`` - If using regex, the regular expression to **replace** that match with (allows values from groups)
   - ``Python payload`` - python code snippet, that will be passed an instance of a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_
   - ``Xpath payload`` - single XPath expression as a string
 
@@ -321,6 +323,8 @@ All RITS must have the following values:
    :target: _images/config_add_rits.png
 
    Adding Record Identifier Transformation Scenario (RITS)
+
+Payloads that do not pertain to the ``Transformation type`` may be left blank (e.g. if using python code snippet, regex match and replace payloads, and xpath payloads, may be left blank).
 
 Similar to Transformation and Validation scenarios, RITS can be tested by clicking the "Test Record Identifier Transformation Scenario" button at the bottom.  You will be presented with a familiar screen of a table of Records, and the ability to select a pre-existing RITS, edit that one, and/or create a new one.  Similarly, without the ability to update or save a new one, merely to test the results of one.
 
@@ -332,7 +336,7 @@ These different types will be outline in a bit more detail below.
 Regular Expression
 ------------------
 
-If transforming the Record ID with regex, two "payloads" are required for the RITS scenario: a match expression, and a replace expression.  Also of note, these regex matche and replace expressions are the python flavor of regex matching, performed with python's ``re.sub()``.
+If transforming the Record ID with regex, two "payloads" are required for the RITS scenario: a match expression, and a replace expression.  Also of note, these regex match and replace expressions are the python flavor of regex matching, performed with python's ``re.sub()``.
 
 The screenshot belows shows an example of a regex match / replace used to replace ``digital.library.wayne.edu`` with ``goober.tronic.org``, also highlighting the ability to use groups:
 
@@ -398,7 +402,7 @@ Combine OAI-PMH Server
 Combine comes with a built-in OAI-PMH server to serve published Records.  Configurations for the OAI server, at this time, are not configured with Django's admin, but may be found in ``combine/localsettings.py``.  These settings include:
 
   - ``OAI_RESPONSE_SIZE`` - How many records to return per OAI paged response
-  - ``COMBINE_OAI_IDENTIFIER`` - It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server. This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimick downstream identifiers
+  - ``COMBINE_OAI_IDENTIFIER`` - It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server. This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimic downstream identifiers
 
 
 DPLA Bulk Data Downloads (DBDD)

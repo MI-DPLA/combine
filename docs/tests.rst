@@ -4,7 +4,7 @@ Tests
 
 Though Combine is by and large a Django application, it has characteristics that do not lend themselves towards using the built-in Django unit tests.  Namely, DB tables that are not managed by Django, and as such, would not be created in the test DB scaffolding that Django tests usually use.
 
-Instead, using out of the box `pytest <https://docs.pytest.org/en/latest/>`_ for unit tests.
+Instead, Combine uses out-of-the-box `pytest <https://docs.pytest.org/en/latest/>`_ for unit tests.
 
 
 Demo data
@@ -23,7 +23,7 @@ Running tests
 
 **Note:** *Because Combine currently only allows one job to run at a time, and these tests are essentially small jobs that will be run, it is important that no other jobs are running in Combine while running tests.*
 
-Tests should be run from the root directory of Combine, if ansible or Vagrant builds, likely at ``/opt/combine``.  Also requires sourcing the anaconda Combine environment with `source activate combine`.
+Tests should be run from the root directory of Combine, if Ansible or Vagrant builds, likely at ``/opt/combine``.  Also requires sourcing the anaconda Combine environment with `source activate combine`.
 
 It is worth noting whether or not there is an active Livy session already for Combine, or if one should be created and destroyed for testing.  Combine, at least at the time of this writing, operates only with a single Livy instance.  By default, tests will create and destroy a Livy session, but this can be skipped in favor of using an active session by including the flag ``--use_active_livy``.
 

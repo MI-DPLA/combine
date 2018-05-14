@@ -37,7 +37,7 @@ The next screen will be a familiar Job running screen, with a red section near t
 
    Create or reuse a Publish Set ID when publishing a Record 
 
-**Note:** When selectin a Publish Set ID, consider that when the Records are later harevested *from* Combine, this Publish Set ID -- at that point, an OAI set ID -- will prefix the Record Identifier to create the OAI identifier.  This behavior is consistent with other OAI-PMH aggregators / servers like REPOX.  It would be wise to consider what OAI sets these Records have been published in the past under, and/or special characters should probably be avoided.
+**Note:** When selecting a Publish Set ID, consider that when the Records are later harvested *from* Combine, this Publish Set ID -- at that point, an OAI set ID -- will prefix the Record Identifier to create the OAI identifier.  This behavior is consistent with other OAI-PMH aggregators / servers like REPOX.  It is good to consider what OAI sets these Records have been published under in the past (thereby effecting their identifiers), and/or special characters should probably be avoided.
 
 Identifiers during metadata aggregation is a complex issue, and will not be addressed here, but it's important to note that the Publish Set ID set during Publishing Records in Combine will have bearing on those considerations.
 
@@ -51,7 +51,7 @@ This should return you to the Record Group screen, where you'll see that the Rec
 
    Record Group indicated as published
 
-You can see the Publish Set ID of ``wsuoai``.  Two buttons are provided for Unpublishing this Record Group, effectively deleting the Publish Job, or simply just changing the Publish Set ID.
+You can see the Publish Set ID of ``wsuoai``.  Two buttons are provided for un-publishing this Record Group, effectively deleting the Publish Job, or changing the Publish Set ID.
 
 
 Viewing Publishing Records
@@ -71,7 +71,7 @@ Similar to the view from a Record Group, a Record Group can also be unpublished 
 
 To the right, is an area called "Analysis" that allows for running an `Analysis Job <analysis.html#analysis-jobs>`_ over *all* published records.  While this would be possible from a manually started Analysis Job, carefully selecting all Publish Jobs throughout Combine, this is a convenience option to begin an Analysis Jobs with all published Records as input.
 
-Below these two sections is a table of all published Records.  Similar to tables of Records from a Job, this table also contains some unique colummns specific to Published Records:
+Below these two sections is a table of all published Records.  Similar to tables of Records from a Job, this table also contains some unique columns specific to Published Records:
 
   - ``Outgoing OAI Set`` - the OAI set, aka the Publish Set ID, that the Record belongs to
   - ``Harvested OAI Set`` - the OAI set that the Record was *harvested* under (empty if not harvested via OAI-PMH)
@@ -93,7 +93,7 @@ Next, there is now hopefully familiar breakdown of indexed fields table, but thi
 
 While helpful in the Job setting, this breakdown can be particularly helpful for analyzing the distribution of metadata across Records that are slated for Publishing.
 
-For example, **determining if all records have a thumbnail image**.  Once the field has been identified as where this information should be, in the case of the screenshot above, it is the field ``mods_location_url_@access_preview``.  We can sort the right-most column, ``Instance of Field in Total Indexed Records`` *and then hold shift for perform a secondary sort* and click the second right-most column ``Percentage of Field Values that are Unique``.  This gives us a "dual" sort that orders by fields with the most values across all records, sorted again by their uniquness.  These two qualities would be critical for things like thumbnail or access URLs, both of which can be seen in the screen shot above.  As a convenience feature, Combine attempts to highlight those fields in Yellow that are both found, and are unique, in all Records.  More on this in `Analyzing Indexed Fields Breakdown <analysis.html#analyzing-indexed-fields>`_.
+For example: **determining if all records have a thumbnail image**.  Once the field has been identified as where this information should be, in the case of the screenshot above, it is the field ``mods_location_url_@access_preview``.  We can sort the right-most column, ``Instance of Field in Total Indexed Records`` *and then hold shift for perform a secondary sort* and click the second right-most column ``Percentage of Field Values that are Unique``.  This gives us a "dual" sort that orders by fields with the most values across all records, sorted again by their uniqueness.  These two qualities would be critical for things like thumbnail or access URLs, both of which can be seen in the screen shot above.  As a convenience feature, Combine attempts to highlight those fields in Yellow that are both found, and are unique, in all Records.  More on this in `Analyzing Indexed Fields Breakdown <analysis.html#analyzing-indexed-fields>`_.
 
 Finally, at the very bottom are some links to Combine's built-in OAI-PMH server that can publish and produce these records for harvesting:
 

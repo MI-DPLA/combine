@@ -17,16 +17,16 @@ Organization
 
 Organizations are the highest level of organization in Combine.  It is loosely based on a "Data Provider" in REPOX, also the highest level of hierarchy.  Organizations contain Record Groups.
 
-Combine was designed to be flexible as to where it exists in a complicated ecosystem of metadata providers and harvesters.  Organizations were meant to be helpful if a single instance of Combine was used to manage metadata from a variety of institutions or organizations.  
+Combine was designed to be flexible as to where it exists in a complicated ecosystem of metadata providers and harvesters.  Organizations are meant to be helpful if a single instance of Combine is used to manage metadata from a variety of institutions or organizations.  
 
 Other than a level of hierarchy, Organizations have virtually no other affordances.
 
-We might imagine a single instance of Combine, with two Orgnizations:
+We might imagine a single instance of Combine, with two Organizations:
 
   * Foo University
   * Bar Historical Society
 
-Foo Univeristy would contain all Record Groups that pertain to Foo University.  One can imagine that Foo University has a Fedora Repository, Omeka, and might even aggregate records for a small historical society or library as well, each of which would fall under the Organization.
+Foo University would contain all Record Groups that pertain to Foo University.  One can imagine that Foo University has a Fedora Repository, Omeka, and might even aggregate records for a small historical society or library as well, each of which would fall under the Organization.
 
 Record Group
 ============
@@ -35,7 +35,7 @@ Record Groups fall under Organizations, and are loosely based on a "Data Set" in
 
 Record Groups are envisioned as the right level of hierarchy for a group of records that are intellectually grouped, come from the same system, or might be managed with the same transformations and validations.
 
-Record Groups are also the level at which a bunch of records are "published" in Combine.  For those familiar with OAI-PMH, it can be convenient to think of a 1:1 between Record Groups and OAI sets (though it is possible to publish multiple Record Groups under the same OAI set identifier).
+Record Groups are also the level at which a bunch of records are `published <publishing.html>`_ in Combine.  For those familiar with OAI-PMH, it can be convenient to think of a 1:1 between Record Groups and OAI sets (though it is possible to publish multiple Record Groups under the same OAI set identifier).
 
 From our Foo University example above, the Fedora Repository, Omeka installs, and the records from a small historical society -- all managed and mediated by Foo University -- might make nice, individual, distinct Record Groups.
 
@@ -45,9 +45,9 @@ Job
 
 Jobs are contained with a Record Group, and contain Records.
 
-This is where the model forks from REPOX, in that a Record Group can, and likely will, contain multiple Jobs.  It is reasonable to also think of a Job as a "stage" of records.
+This is where the model forks from REPOX, in that a Record Group can, and likely will, contain multiple Jobs.  It is reasonable to also think of a Job as a *stage* of records.
 
-Jobs represent Records as they move through the various stages of harvesting, transforming, and publishing.  In a typical Record Group, you may see Jobs that represent a harvest of records, another for transforming the records, perhaps yet another transformation, and finally a publish Job.  In this way, Jobs also provide a sense of versioning of records.
+Jobs represent Records as they move through the various stages of harvesting, transforming, and publishing.  In a typical Record Group, you may see Jobs that represent a harvest of records, another for transforming the records, perhaps yet another transformation, and finally a publish Job.  In this way, Jobs also provide an approach to versioning Records.
 
 Imagine the record ``baz`` that comes with the harvest from ``Job1``.  ``Job2`` is then a transformation style Job that uses ``Job1`` as input.  ``Job3`` might be another transformation, and ``Job4`` a final publishing of the records.   In each Job, the record ``baz`` exists, at those various stages of harvesting and transformation.  Combine errs on the side of duplicating data in the name of lineage and transparency as to how and why a Record "downstream" looks they way it does.
 
@@ -61,7 +61,7 @@ There are five major types of Jobs:
   * Publishing
   * Analysis
 
-Obviously, it is up to the user how to manage Jobs in Combine, but one strategy might be to leave previous harvests, transforms, and merges of Jobs within a RecordGroup for historical purposes.  From an organizational standpoint, this may look like:
+It is up to the user how to manage Jobs in Combine, but one strategy might be to leave previous harvests, transforms, and merges of Jobs within a RecordGroup for historical purposes.  From an organizational standpoint, this may look like:
 
 .. code-block:: text
 
@@ -76,7 +76,7 @@ In this scenario, this Record Group would have **9** total Jobs, but only only t
 Harvest Jobs
 ------------
 
-Harvest Jobs are how Records are initially created in Combine.  This might be through OAI-PMH harvesting, or loading from static files.
+`Harvest Jobs <harvesting.html>`_ are how Records are initially created in Combine.  This might be through OAI-PMH harvesting, or loading from static files.
 
 As the creator of Records, Harvest Jobs do *not* have input Jobs.
 
@@ -84,7 +84,7 @@ As the creator of Records, Harvest Jobs do *not* have input Jobs.
 Transformation Jobs
 -------------------
 
-Transformation style Jobs, unsurprisingly, transform the Recorsd in some way!  Currently, XSLT and python code snippets are supported.
+`Transformation Jobs <transforming.html>`_, unsurprisingly, transform the Records in some way!  Currently, XSLT and python code snippets are supported.
 
 Transformation Jobs allow a **single** input Job, and are limited to Jobs within the same RecordGroup.
 
@@ -92,13 +92,13 @@ Transformation Jobs allow a **single** input Job, and are limited to Jobs within
 Merge / Duplicate Jobs
 ----------------------
 
-Merge / Duplicate Jobs are meant for their namesake: merging Records across multiple Jobs, or duplicating all Records from a single Job, into a new, single Job.
+`Merge / Duplicate Jobs <merging.html>`_ are true to their namesake: merging Records across multiple Jobs, or duplicating all Records from a single Job, into a new, single Job.
 
 
 Publish Jobs
 ------------
 
-Publish Jobs are how Records are "published" in Combine, meaning they are avaialble and destined for systems downstream (e.g. DPLA harvesting).  
+`Publish Jobs <publishing.html>`_ are how Records are "published" in Combine, meaning they are available and destined for systems downstream (e.g. DPLA harvesting).  
 
 Publish Jobs are run at the Record Group level, effectively "publishing" the Record Group when they are run.
 
@@ -106,7 +106,13 @@ Publish Jobs are run at the Record Group level, effectively "publishing" the Rec
 Analysis Jobs
 -------------
 
-Analysis Jobs are Merge / Duplicate Jobs in nature, but exist outside of the normal ``Organization --> Record Group`` hierarchy.  Analysis Jobs are meant as ephemeral, disposable, one-off Jobs for analysis purposes only.
+`Analysis Jobs <analysis.html#analysis-jobs>`_ are Merge / Duplicate Jobs in nature, but exist outside of the normal 
+
+.. code-block:: text
+
+  Organization --> Record Group
+
+hierarchy.  Analysis Jobs are meant as ephemeral, disposable, one-off Jobs for analysis purposes only.
 
 
 
@@ -135,7 +141,7 @@ Additionally, Record's have three important identifiers:
   - **Record ID**
 
     - ``record_id`` (string)
-    - not neccessarily unique for all Records, this is identifier is used for publishing
+    - not necessarily unique for all Records, this is identifier is used for publishing
     - in the case of OAI-PMH harvesting, this is likely populated from the OAI identifier that the Record came in with
     - this can be modified with a Record Identifier Transform when run with a Job
 
@@ -150,7 +156,7 @@ Now, with a single instance of Combine replacing multiple REPOX instances and OA
 
 Or, insert a myriad of other reasons why an identifier may drift or change.
 
-Combine allows for the creation of Record Identifier Transformation Scenarios that allow for the modification of the ``record_id``.  This allows for the emulation of previous configurations or ecosystems, or optionally creating Record Identifiers -- what is used for publishing -- based on information from the Record's XML record with XPath or python code snippets.
+Combine allows for the creation of `Record Identifier Transformation Scenarios <configuration.html#record-identifier-transformation-scenario>`_ that allow for the modification of the ``record_id``.  This allows for the emulation of previous configurations or ecosystems, or optionally creating Record Identifiers -- what is used for publishing -- based on information from the Record's XML record with XPath or python code snippets.
 
 
 
