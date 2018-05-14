@@ -2,7 +2,7 @@
 Transforming Records
 ********************
 
-Transformation type Jobs are how Records are transformed in some way in Combine; all other Jobs merely copy and/or analyze Records, but Transformation Jobs actually alter the Record's XML that is stored in MySQL
+Transformation Jobs are how Records are transformed in some way in Combine; all other Jobs merely copy and/or analyze Records, but Transformation Jobs actually alter the Record's XML that is stored in MySQL
 
 The following will outline specifics for running Transformation Jobs, with more `general information about running Jobs here <workflow.html#running-jobs>`_.
 

@@ -35,7 +35,7 @@ This approach has pros and cons:
 Running Jobs
 ============
 
-**Note:** For all Jobs in Combine, confirm that an `active Livy session is up and running <spark_and_livy.html#livy-session>`_ before proceeding.
+**Note:** For all Jobs in Combine, confirm that an `active Livy session is up and running <spark_and_livy.html#manage-livy-sessions>`_ before proceeding.
 
 All Jobs are tied to, and initiated from, a `Record Group <data_model.html#record-group>`_.  From the Record Group page, at the bottom you will find buttons for starting new jobs:
 
@@ -114,7 +114,7 @@ Validation Tests
 
 One of the most commonly used optional parameters would be what Validation Scenarios to apply for this Job.  Validation Scenarios are `pre-configured validations <configuration.html#validation-scenario>`_ that will run for *each* Record in the Job.  When viewing a Job's or Record's details, the result of each validation run will be shown.
 
-The Validation Tests selection looks like this for a Job, with the dropdown populated by pre-configured Validation Scenarios:
+The Validation Tests selection looks like this for a Job, with checkboxes for each pre-configured Validation Scenarios (additionally, checked if the Validation Scenario is marked to run by default):
 
 .. figure:: img/select_validations.png
    :alt: Selecting Validations Tests for Job
@@ -136,6 +136,8 @@ When running a Job, users can select what index mapper to use.  This defaults to
 
    Selecting Index Mapper for Job
 
+
+The generic mapper is a good, safe bet until the need for a more custom mapper is needed.
 
 Transform Identifier
 ~~~~~~~~~~~~~~~~~~~~
@@ -168,11 +170,12 @@ Below is an example of how those valves can be applied and utilized with Merge J
 
    Example of shunting Records based on validity, and eventually merging all valid Records
 
+Keep in mind, if multiple Validation Scenarios were run for a particular Job, it only requires failing one test, within one Validation Scenario, for the Record to be considered "invalid" as a whole.
 
 DPLA Bulk Data Compare
 ~~~~~~~~~~~~~~~~~~~~~~
 
-One somewhat experimental feature is the ability to compare the Record's from a Job against a downloaded and indexed bulk data dump from DPLA.  These DPLA bulk data downloads can be `managed in Configurations here <configuration.html#dpla-bulk-data-downloads>`_.
+One somewhat experimental feature is the ability to compare the Record's from a Job against a downloaded and indexed bulk data dump from DPLA.  These DPLA bulk data downloads can be `managed in Configurations here <configuration.html#dpla-bulk-data-downloads-dbdd>`_.
 
 When running a Job, a user may optionally select what bulk data download to compare against:
 
@@ -200,11 +203,11 @@ Also in this area is a button "Job Notes" which will reveal a panel for reading 
 
 Below that are tabs that organize the various parts of the Job Details page:
 
-  - Records
-  - Field Analysis
-  - Input Jobs
-  - Validation
-  - DPLA Bulk Data Matches
+  - `Records <#records>`__
+  - `Field Analysis <#field-analysis>`__
+  - `Input Jobs <#input-jobs>`__
+  - `Validation <#validation>`__
+  - `DPLA Bulk Data Matches <#dpla-bulk-data-matches>`__
 
 
 Records
@@ -220,7 +223,7 @@ This table shows all Records for this Job.  It is sortable and searchable (thoug
 
   - ``DB ID`` - Record's Primary Key in MySQL
   - ``Combine ID`` - identifier assigned to Record on creation, sticks with Record through all stages and Jobs
-  - ``Record ID`` - Record identifier that is acquired, or created, on Record creation, and is used for publishing downsteram.  This may be modified across Jobs, unlike the ``Combine ID``.
+  - ``Record ID`` - Record identifier that is acquired, or created, on Record creation, and is used for publishing downstream.  This may be modified across Jobs, unlike the ``Combine ID``.
   - ``Originating OAI set`` - what OAI set this record was harvested as part of
   - ``Unique`` - True/False if the ``Record ID`` is unique in this Job
   - ``Document`` - link to the Record's raw, XML document, blank if error
@@ -233,7 +236,13 @@ In many ways, this is the most direct and primary route to access Records from a
 Field Analysis
 --------------
 
-This tab provides a table of all indexed fields for this job, the nature of which `is covered in more detail here <analysis.html#analyzing-indexed-fields>`_.
+This tab provides a table of all indexed fields for this job, the nature of which `is covered in more detail here <analysis.html#analyzing-indexed-fields>`_:
+
+.. figure:: img/job_field_analysis.png
+   :alt: Indexed field analysis for a Job, across all Records
+   :target: _images/job_field_analysis.png
+
+   Indexed field analysis for a Job, across all Records
 
 
 Input Jobs
@@ -246,12 +255,6 @@ This table shows all Jobs that were used as *input* Jobs for this Job.
    :target: _images/job_details_input_jobs.png
 
    Table of Input Jobs used for this Job
-
-Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attemps to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in `localsettings.py`) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
-
-The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.  
-
-**Note:** When this is applied to a single Record, that mapping is then applied to the Job as a whole.  Viewing another Record from this Job will reflect the same mappings.  These mappings can also be applied at the Job or Record level.
 
 
 Validation
@@ -283,7 +286,7 @@ The following screenshot gives a sense of what this looks like for a Job contain
 
    Results of DPLA Bulk Data Download comparison
 
-This feature is still somewhat exploratory, but Combine provides an ideal environment and "moment in time" within the greater metadata aggregation ecosysytem for this kind of comparison.
+This feature is still somewhat exploratory, but Combine provides an ideal environment and "moment in time" within the greater metadata aggregation ecosystem for this kind of comparison.
 
 In this example, we are seeing that 185k Records were found in the DPLA data dump, and that 38k Records appear to be new.  Without an example at hand, it is difficult to show, but it's conceivable that by leaving Jobs in Combine, and then comparing against a later DPLA data dump, one would have the ability to confirm that all records do indeed show up in the DPLA data.
 
@@ -326,7 +329,7 @@ This tab provides a table of all indexed fields in ElasticSearch for this Record
 
    Indexed fields for a Record
 
-Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attemps to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in `localsettings.py`) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
+Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attempts to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in ``localsettings.py``) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
 
 The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.  
 
@@ -346,7 +349,7 @@ This table show the various "stages" of a Record, which is effectively what Jobs
 
    Record stages across other Jobs
 
-Records are connected by their Combine ID (``combine_id``).  From this table, it is possible to jump to other, earlier (upstream) or later (downstream), versions of the same Record.
+Records are connected by their Combine ID (``combine_id``).  From this table, it is possible to jump to other, earlier "upstream" or later "downstream", versions of the same Record.
 
 
 Validation
@@ -376,9 +379,9 @@ When a mapping has been made to the DPLA ``isShownAt`` field from the Indexed Fi
 
 Results from the DPLA API are parsed and presented here, with the full API JSON response at the bottom (not pictured here).  This can be useful for:
 
-  - confirming existence, yes or no, of a Record in DPLA
+  - confirming existence of a Record in DPLA
   - easily retrieving detailed DPLA API metadata about the item
-  - confirming that changes and transformations are propogating as expected
+  - confirming that changes and transformations are propagating as expected
 
 
 
@@ -393,7 +396,7 @@ This tab shows any details specific to the Job type: Harvest, Transform, Merge /
 
    Indexed fields for a Record
 
-
+This tab is under-developed at the moment, but would be the appropriate place for Job type specific information as deemed necessary or helpful.
 
 
 
