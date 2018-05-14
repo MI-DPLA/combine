@@ -395,6 +395,44 @@ Finally, a single XPath expression may be used to extract a new Record Identifie
 Combine OAI-PMH Server
 ======================
 
+Combine comes with a built-in OAI-PMH server to serve published Records.  Configurations for the OAI server, at this time, are not configured with Django's admin, but may be found in ``combine/localsettings.py``.  These settings include:
 
-DPLA Bulk Data Downloads
-========================
+  - ``OAI_RESPONSE_SIZE`` - How many records to return per OAI paged response
+  - ``COMBINE_OAI_IDENTIFIER`` - It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server. This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimick downstream identifiers
+
+
+DPLA Bulk Data Downloads (DBDD)
+===============================
+
+One of the more experimental features of Combine is to compare the Records from a Job (or, of course, multiple Jobs if they are `Merged into one <merging.html>`_) against a `bulk data download from DPLA <https://pro.dp.la/developers/bulk-download>`_.
+
+To use this function, S3 credentials must but added to the ``combine/localsettings.py`` settings file that allow for downloading of bulk data downloads from S3.  Once added, and Combine restarted, it is possible to download previous bulk data dumps.  This can be done from the configuration page by clicking on "Download and Index Bulk Data", then selecting a bulk data download from the long dropdown.  When the button is clicked, this data set will be downloaded and indexed locally in ElasticSearch, all as a background task.  This will be reflected in the table on the Configuration page as complete when the row reads "Downloaded and Indexed":
+
+.. figure:: img/dbdd_done.png
+   :alt: Downloaded and Indexed DPLA Bulk Data Download (DBDD)
+   :target: _images/dbdd_done.png
+
+   Downloaded and Indexed DPLA Bulk Data Download (DBDD)
+
+Comparison can be triggered from any `Job's optional parameters <workflow.html#optional-parameters>`_ under the tab `DPLA Bulk Data Compare <workflow.html#dpla-bulk-data-compare>`_.  Comparison is performed by attempting to match a Record's Record Identifier to the ``_id`` field in the DPLA Item document.
+
+Because this comparison is using the Record Identifier for matching, this is a great example of where a Record Identifier Transformation Scenario (RITS) can be a powerful tool to emulate or recreate a known or previous identifier pattern.  So much so, it's conceivable that passing a RITS along with the DPLA Bulk Data Compare -- just to temporarily transform the Record Identifier for comparison's sake, but not in the Combine Record itself -- might make sense.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
