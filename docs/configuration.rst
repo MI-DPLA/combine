@@ -43,22 +43,251 @@ The following fields are all required:
 Transformation Scenario
 =======================
 
-Transformation Scenarios are configured and saved payloads that are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of transformation supported: XSLT and Python code snippets.  These are described in more detail below.
+Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of transformation supported: XSLT and Python code snippets.  These are described in more detail below.
+
+It is worth considering, when thinking about Transformations of Records in Combine, that Combine allows for multiple transformations of the same Record.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a seperate Transformation Scenario, and would be run as seperate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
+
+All Transformations require the following information:
+
+  - ``Name`` - Human readable name for Transformation Scenario
+  - ``Payload`` - This is where the actual transformation code is added (more on the different types below)
+  - ``Transformation Type`` - ``xslt`` for XSLT transformations, or ``python`` for python code snippets
+  - ``Filepath`` - *This may be ignored* (in some cases, transformation payloads were written to disk to be used, but likely depracated moving forward)
+
+.. figure:: img/config_add_transform.png
+   :alt: Adding Transformation Scenario in Django admin screen
+   :target: _images/config_add_transform.png
+
+   Adding Transformation Scenario in Django admin screen
+
+Finally, Transformation Scenarios may be tested within Combine over a pre-existing Record.  This is done by clicking the "Test Transformation Scenario" button from Configuration page.  This will take you to a screen that is similarly used for testing Transformations, Validations, and Record Identifier Transformations.  For Transformations, it looks like the following:
+
+.. figure:: img/test_transform_screen.png
+   :alt: Testing Transformation Scenario with pre-existing Record
+   :target: _images/test_transform_screen.png
+
+   Testing Transformation Scenario with pre-existing Record
+
+In this screenshot, a few things are happening:
+
+  - a single Record has been clicked from the sortable, searchable table, indicating it will be used for the Transformation testing
+  - a *pre-existing* Transformation Scenario has been selected from the dropdown menu, automatically populating the payload and transformation type inputs
+
+    - however, a user may also add or edit the payload and transformation types live here, for testing purposes
+
+  - at the very bottom, you can see the immediate results of the Transformation as applied to the selected Record
+
+Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for realtime testing of Transformation Scenarios.
 
 XSLT
 ----
 
-XSLT transformations are performed by Spark, via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  However, there are perform XSLT transformations in a more Spark friendly approach.
+XSLT transformations are performed by a small XSLT processor servlet called via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  Pyjxslt uses a built-in Saxon HE XSLT processor that supports XSLT 2.0.  Currently, XSLT stylesheets that **import** other stylesheets -- either locally or remotely -- are not supported.  There are designs to incorporate `Elsevier's "spark-xml-utils" <https://github.com/elsevierlabs-os/spark-xml-utils>`_ Spark library for XSLT transformations, which would address this issue, but this has not been implemented at this time.
 
 
 Python Code Snippet
 -------------------
 
-Python transformations are performed via a Spark user defined function (UDF).  
+An alternative to XSLT transformations are created Transformation Scenarios that use python code snippets to transform the Record.  The key to making a successful python Transformation Scenario is to add code matches the pattern Combine is looking for from a python Transformation.  This requires a bit of explanation about how Records are transformed in Spark.
+
+For Transformation Jobs in Combine, each Record in the input Job is fed to the Transformation Scenario.  If the ``transformation type`` is ``xslt``, the XSLT stylesheet for that Transformation Scenario is used as-is on the Record's raw XML.  However, if the ``transformation type`` is ``python``, the python code provided for the Transformation Scenario will be used.
+
+The python code snippet may include as many imports or function definitions as needed, but will require one function that each Record will be passed to, and this function must be named ``python_record_transformation``.  Additionally, this function must expect one function argument, a passed instance of what is called a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  In Spark, "UDF" oftens refers to a "User Defined Function"; which is precisely what this parsed Record instance is passed to in the case of a Transformation.  This is a convenience class that parses a Record in Combine for easy interaction within Transformation, Validation, and Record Identifier Transformation Scenarios.   A ``PythonUDFRecord`` instance has the following representations of the Record:
+
+  - ``record_id`` - The Record Identifier of the Record
+  - ``document`` - raw, XML for the Record (what is passed to XSLT records)
+  - ``xml`` - raw XML parsed with lxml's etree, an ``ElementTree`` instance
+  - ``nsmap`` - dictionary of namespaces, useful for working with ``self.xml`` instance
+
+Finally, the function ``python_record_transformation`` must return a python **list** with the following, ordered elements: [ transformed XML as a string, any errors if they occurred as a string, True/False for successful transformation ].  For example, a valid return might be, with the middle value a blank string indicating no error:
+
+.. code-block:: python
+
+    [ "<xml>....</xml>", "", True ]
+
+A full example of a python code snippet transformation might look like the following.  In this example, a ``<mods:accessCondition>`` element is added or updated.  Note the imports, the comments, the use of the ``PythonUDFRecord`` as the single argument for the function ``python_record_transformation``, all fairly commonplace python code:
+
+.. code-block:: python
+
+    # NOTE: ability to import libraries as needed
+    from lxml import etree
+
+    def python_record_transformation(record):
+
+      '''
+      Python transformation to add / update <mods:accessCondition> element
+      '''
+
+      # check for <mods:accessCondition type="use and reproduction">
+      # NOTE: not built-in record.xml, parsed Record document as etree instance
+      # NOTE: not built-in record.nsmap that comes with record instance
+      ac_ele_query = record.xml.xpath('mods:accessCondition', namespaces=record.nsmap)
+
+      # if single <mods:accessCondition> present
+      if len(ac_ele_query) == 1:
+
+        # get single instance
+        ac_ele = ac_ele_query[0]
+
+        # confirm type attribute
+        if 'type' in ac_ele.attrib.keys():
+
+          # if present, but not 'use and reproduction', update
+          if ac_ele.attrib['type'] != 'use and reproduction':
+            ac_ele.attrib['type'] = 'use and reproduction'
+
+
+      # if <mods:accessCondition> not present at all, create
+      elif len(ac_ele_query) == 0:
+        
+        # build element
+        rights = etree.Element('{http://www.loc.gov/mods/v3}accessCondition')
+        rights.attrib['type'] = 'use and reproduction'
+        rights.text = 'Here is a blanket rights statement for our institution in the absence of a record specific one.'
+
+        # append
+        record.xml.append(rights)
+
+
+      # finally, serialize and return as required list [document, error, success (bool)]
+      return [etree.tostring(record.xml), '', True]
+
+In many if not most cases, XSLT will fit the bill and provide the needed transformation in Combine.  But the ability to write python code for transformation opens up the door to complex and/or precise transformations if needed.
 
 
 Validation Scenario
 ===================
+
+Validation Scenarios are by which Records in Combine are validated against.  Similar to Transformation Scenarios outlined above, they currently accept two formats: Schematron and python code snippets.  Each Validation Scenario requires the following fields:
+
+  - ``Name`` - human readable name for Validation Scenario
+  - ``Payload`` - pasted schematron or python code
+  - ``Validation type`` - ``sch`` for Schematron, or ``python`` for python code snippet
+  - ``Filepath`` - *This may be ignored* (in some cases, validation payloads were written to disk to be used, but likely depracated moving forward)
+  - ``Default run`` - if checked, this Validation Scenario will be automatically checked when running a new Job
+
+.. figure:: img/config_add_validation.png
+   :alt: Adding Validation Scenario in Django admin
+   :target: _images/config_add_validation.png
+
+   Adding Validation Scenario in Django admin
+
+When running a Job, **multiple** Validation Scenarios may be applied to the Job, each of which will run for every Record.  Validation Scenarios -- Schematron or python code snippets -- may include multiple tests or "rules" with a single scenario.  So, for example, ``Validation A`` may contain ``Test 1`` and ``Test 2``.  If run for a Job, and ``Record Foo`` fails ``Test 2`` for the ``Validation A``, the results will show the failure for that Validation Scenario as a whole.  
+
+When thinking about creating Validation Scenarios, there is flexibility in how many tests to put in a single Validation Scenario, versus splitting up those tests between distinct Validation Scenarios, recalling that **multiple** Validation Scenarios may be run for a single Job.  It is worth pointing out, multiple Validation Scenarios for a Job will likely degrade performance *more* than a multiple tests within a single Scenario, though this has not been testing thoroughly, just speculation based on how Records are passed to Validation Scenarios in Spark in Combine.
+
+Like Transformation Scenarios, Validation Scenarios may also be tested in Combine.  This is done by clicking the button, "Test Validation Scenario", resulting in the following screen:
+
+.. figure:: img/test_validation_screen.png
+   :alt: Testing Validation Scenario
+   :target: _images/test_validation_screen.png
+
+   Testing Validation Scenario
+
+In this screenshot, we an see the following happening:
+
+  - a single Record has been clicked from the sortable, searchable table, indicating it will be used for the Validation testing
+  - a pre-existing Validation Scenario -- ``DPLA minimum``, a Schematron validation -- has been selected, automatically populating the payload and validation type inputs
+
+    - However, a user may choose to edit or input their own validation payload here, understanding that editing and saving cannot currently be done from this screen, only testing
+
+  - Results are shown at the bottom in two areas:
+
+    - ``Parsed Validation Results`` - parsed results of the Validation, showing tests that have **passed**, **failed**, and a **total count** of failures
+    - ``Raw Validation Results`` - raw resutls of Validation Scenario, in this case XML from the Schematron response, but would be a JSON string for a python code snippet Validation Scenario
+
+As mentioned, two types of Validation Scenarios are currently supported, Schematron and python code snippets, and are detailed below.
+
+Schematron
+----------
+
+A valid `Schematron XML <http://schematron.com/>`_ document may be used as the Validation Scenario payload, and will validate the Record's raw XML.  Schematron validations are rule-based, and can be configured to return the validation results as XML, which is the case in Combine.  This XML is parsed, and each distinct, defined test is noted and parsed by Combine.
+
+Below is an example of a small Schematron validation that looks for some required fields in an XML document that would help make it DPLA compliant:
+
+.. code-block:: xml
+
+    <?xml version="1.0" encoding="UTF-8"?>
+    <schema xmlns="http://purl.oclc.org/dsdl/schematron" xmlns:mods="http://www.loc.gov/mods/v3">
+      <ns prefix="mods" uri="http://www.loc.gov/mods/v3"/>
+      <!-- Required top level Elements for all records record -->
+      <pattern>
+        <title>Required Elements for Each MODS record</title>
+        <rule context="mods:mods">
+          <assert test="mods:titleInfo">There must be a title element</assert>
+          <assert test="count(mods:location/mods:url[@usage='primary'])=1">There must be a url pointing to the item</assert>
+          <assert test="count(mods:location/mods:url[@access='preview'])=1">There must be a url pointing to a thumnail version of the item</assert>
+          <assert test="count(mods:accessCondition[@type='use and reproduction'])=1">There must be a rights statement</assert>
+        </rule>
+      </pattern>
+       
+      <!-- Additional Requirements within Required Elements -->
+      <pattern>
+        <title>Subelements and Attributes used in TitleInfo</title>
+        <rule context="mods:mods/mods:titleInfo">
+          <assert test="*">TitleInfo must contain child title elements</assert>
+        </rule>
+        <rule context="mods:mods/mods:titleInfo/*">
+          <assert test="normalize-space(.)">The title elements must contain text</assert>
+        </rule>
+      </pattern>
+      
+      <pattern>
+        <title>Additional URL requirements</title>
+        <rule context="mods:mods/mods:location/mods:url">
+          <assert test="normalize-space(.)">The URL field must contain text</assert>
+        </rule> 
+      </pattern>
+      
+    </schema>
+
+
+Python Code Snippet
+-------------------
+
+Similar to Transformation Scenarios, python code may also be used for the Validation Scenarios payload.  When a Validation is run for a Record, and a python code snippet type is detected, all defined function names that begin with ``test_`` will be used as separate, distinct Validation tests.  This very similar to how `pytest <https://docs.pytest.org/en/latest/contents.html>`_ looks for function names prefixed with ``test_``.  It is not perfect, but relatively simple and effective.
+
+These functions must expect two arguments.  The first is an instance of a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  As detailed above, ``PythonUDFRecord`` instances are a parsed, convenient way to interact with Combine Records.  A ``PythonUDFRecord`` instance has the following representations of the Record:
+
+  - ``record_id`` - The Record Identifier of the Record
+  - ``document`` - raw, XML for the Record (what is passed to XSLT records)
+  - ``xml`` - raw XML parsed with lxml's etree, an ``ElementTree`` instance
+  - ``nsmap`` - dictionary of namespaces, useful for working with ``self.xml`` instance
+
+The second argument is named and must be called ``test_message``.  The string value for the ``test_message`` argument will be used for reporting if that particular test if failed; this is the human readable name of the validation test.
+
+All validation tests, recalling the name of the function must be prefixed with ``test_``, must return ``True`` or ``False`` to indicate if the Record passed the validation test.
+
+An example of an arbitrary Validation Scenario that looks for MODS titles longer than 30 characters might look like the following:
+
+.. code-block:: python
+
+    # note the ability to import (just for demonstration, not actually used below)
+    import re
+
+
+    def test_title_length_30(record, test_message="check for title length > 30"):
+
+      # using PythonUDFRecord's parsed instance of Record with .xml attribute, and namespaces from .nsmap
+      titleInfo_elements = record.xml.xpath('//mods:titleInfo', namespaces=record.nsmap)
+      if len(titleInfo_elements) > 0:
+        title = titleInfo_elements[0].text
+        if len(title) > 30:
+          # returning False fails the validation test
+          return False
+        else:
+          # returning True, passes
+          return True
+
+
+    # note ability to define other functions
+    def other_function():
+      pass
+
+
+    def another_function();
+      pass
+
 
 
 Record Identifier Transformation Scenario
