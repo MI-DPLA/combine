@@ -289,9 +289,107 @@ An example of an arbitrary Validation Scenario that looks for MODS titles longer
       pass
 
 
+Record Identifier Transformation Scenario (RITS)
+================================================
 
-Record Identifier Transformation Scenario
-=========================================
+Another configurable "Scenario" in Combine is a Record Identifier Transformation Scenario or "RITS" for short.  A RITS allows the transformation of a Record's "Record Identifier".  A Record has `three identifiers in Combine <data_model.html#identifiers>`_, with the Record Identifier (``record_id``) as the only changable, mutable of the three.  The Record ID is what is used for publishing, and for all intents and purposes, the unique identifier for the Record *outside* of Combine.
+
+Record Identifiers are created during Harvest Jobs, when a Record is first created.  This Record Identifier may come from the OAI server in which the Record was harvested from, it might be derived from an identifier in the Record's XML in the case of a static harvest, or it may be minted as a UUID4 on creation.  Where the Record ID is picked up from OAI or the Record's XML itself, it might not need transformation before publishing, and can "go out" just as it "came in."  However, there are instances where transforming the Record's ID can be quite helpful.
+
+Take the following scenario.  A digital object's metadata is harvested from ``Repository A`` with the ID ``foo``, as part of OAI set ``bar``, by ``Metadata Aggregator A``.  Inside ``Metadata Aggregator A``, which has its own OAI server prefix of ``baz`` considers the full identifier of this record: ``baz:bar:foo``.  Next, ``Metadata Aggregator B`` harvests this record from ``Metadata Aggregator A``, under the OAI set ``scrog``.  ``Metadata Aggregator B`` has its own OAI server prefix of ``tronic``.  Finally, when a terminal harvester like DPLA harvests this record from ``Metadata Aggregator B`` under the set ``goober``, it might have a motely identifier, constructed through all these OAI "hops" of something like: ``tronic:goober:baz:bar:foo``.  
+
+If one of these hops were replaced by an instance of Combine, one of the OAI "hops" would be removed, and the dynamically crafted identifier for that same record would change.  Combine allows the ability to transform the identifier -- emulating previous OAI "hops", completely re-writing, or any other transformation -- through a Record Identifier Transformation Scenario (RITS).
+
+RITS are performed, just like Transformation Scenarios or Validation Scenarios, for every Record in the Job.  RITS may be in the form of:
+
+  - Regular Expressions - specifically, python flavored regex
+  - Python code snippet - a snippet of code that will transform the identifier
+  - XPATH expression - given the Record's raw XML, an XPath expression may be given to extract a value to be used as the Record Identifier
+
+All RITS must have the following values:
+
+  - ``Name`` - Human readable name for RITS
+  - ``Transformation type`` - ``regex`` for Regular Expression, ``python`` for Python code snippet, or ``xpath`` for XPath expression
+  - ``Transformation target`` - the RITS payload and type may use the pre-existing Record Identifier as input, or the Record's raw, XML record
+  - ``Regex match payload`` - If using regex, the regular expression to **match**
+  - ``Regex replace playload`` - If using regex, the regular expression to **replace** that match with (allows values from groups)
+  - ``Python payload`` - python code snippet, that will be passed an instance of a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_
+  - ``Xpath payload`` - single XPath expression as a string
+
+.. figure:: img/config_add_rits.png
+   :alt: Adding Record Identifier Transformation Scenario (RITS)
+   :target: _images/config_add_rits.png
+
+   Adding Record Identifier Transformation Scenario (RITS)
+
+Similar to Transformation and Validation scenarios, RITS can be tested by clicking the "Test Record Identifier Transformation Scenario" button at the bottom.  You will be presented with a familiar screen of a table of Records, and the ability to select a pre-existing RITS, edit that one, and/or create a new one.  Similarly, without the ability to update or save a new one, merely to test the results of one.
+
+
+
+These different types will be outline in a bit more detail below.
+
+
+Regular Expression
+------------------
+
+If transforming the Record ID with regex, two "payloads" are required for the RITS scenario: a match expression, and a replace expression.  Also of note, these regex matche and replace expressions are the python flavor of regex matching, performed with python's ``re.sub()``.
+
+The screenshot belows shows an example of a regex match / replace used to replace ``digital.library.wayne.edu`` with ``goober.tronic.org``, also highlighting the ability to use groups:
+
+.. figure:: img/test_rits_regex.png
+   :alt: Example of RITS with Regular Expression
+   :target: _images/test_rits_regex.png
+
+   Example of RITS with Regular Expression
+
+A contrived example, this shows a regex expression applied to the input Record identifier of ``oai:digital.library.wayne.edu:wayne:Livingto1876b22354748```.  
+
+
+Python Code Snippet
+-------------------
+
+Python code snippets for RITS operate similarly to Transformation and Validation scenarios in that the python code snippet is given an instance of a PythonUDFRecord for each Record.  However, it differs slightly in that if the RITS ``Transformation target`` is the Record ID only, the PythonUDFRecord will have only the ``.record_id`` attribute to work with.
+
+For a python code snippet RITS, a function named ``transform_identifier`` is required, with a single unnamed, passed argument of a PythonUDFRecord instance.  An example may look like the following:
+
+.. code-block:: python
+
+    # ability to import modules as needed (just for demonstration)
+    import re
+    import time
+
+    # function named `transform_identifier`, with single passed argument of PythonUDFRecord instance
+    def transform_identifier(record):
+      
+      '''
+      In this example, a string replacement is performed on the record identifier,
+      but this could be much more complex, using a combination of the Record's parsed
+      XML and/or the Record Identifier.  This example is meant ot show the structure of a 
+      python based RITS only.
+      '''
+
+      # function must return string of new Record Identifier  
+        return record.record_id.replace('digital.library.wayne.edu','goober.tronic.org')
+
+And a screenshot of this RITS in action:
+
+.. figure:: img/test_rits_python.png
+   :alt: Example of RITS with Python code snippet
+   :target: _images/test_rits_python.png
+
+   Example of RITS with Python code snippet
+
+
+XPath Expression
+----------------
+
+Finally, a single XPath expression may be used to extract a new Record Identifier from the Record's XML record.  **Note:** The input must be the Record's Document, not the current Record Identifier, as the XPath must have valid XML to retrieve a value from.  Below is a an example screenshot:
+
+.. figure:: img/test_rits_xpath.png
+   :alt: Example of RITS with XPath expression
+   :target: _images/test_rits_xpath.png
+
+   Example of RITS with XPath expression
 
 
 Combine OAI-PMH Server
