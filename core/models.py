@@ -1124,6 +1124,12 @@ class Transformation(models.Model):
 	def _transform_xslt(self, row):
 
 		try:
+
+			# attempt to parse xslt prior to submitting to pyjxslt
+			try:
+				parsed_xml = etree.fromstring(self.payload.encode('utf-8'))
+			except Exception as e:
+				return str(e)
 			
 			# transform with pyjxslt gateway
 			gw = pyjxslt.Gateway(6767)
