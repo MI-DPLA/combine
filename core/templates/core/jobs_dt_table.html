@@ -12,9 +12,9 @@
 					<th>Timestamp</th>
 					<th>Name</th>
 					{# Jinja logic for including Organization and RecordGroups #}					
-					{% if not for_analysis %}
-						<th>Organization</th>
+					{% if not for_analysis %}						
 						<th>Record Group</th>
+						<th>Organization</th>
 					{% endif %}
 					<th>Job Type</th>
 					<th>Livy Status</th>
@@ -49,8 +49,8 @@
 					</td>                    
 					{# Jinja logic for including Organization and RecordGroups #}
 					{% if not for_analysis %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>				
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
