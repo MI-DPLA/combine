@@ -877,7 +877,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		# map with parse_records_udf 
 		job_id = self.job.id
 		kwargs = self.kwargs
-		ns_regex = re.compile(r'<%s(.+?)>' % self.kwargs['document_element_root'])
+		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.kwargs['document_element_root'])
 		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, kwargs))
 
 		# index records to DB and index to ElasticSearch
