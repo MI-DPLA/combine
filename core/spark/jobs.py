@@ -649,122 +649,6 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		# init job
 		self.init_job()
 
-		# OLD ###########################################################################################################################
-		# # read directory of static files
-		# static_rdd = self.spark.sparkContext.wholeTextFiles(
-		# 		'file://%s' % self.kwargs['static_payload'],
-		# 		minPartitions=settings.SPARK_REPARTITION
-		# 	)
-
-
-		# # parse namespaces
-		# def get_namespaces(xml_node):
-		# 	nsmap = {}
-		# 	for ns in xml_node.xpath('//namespace::*'):
-		# 		if ns[0]:
-		# 			nsmap[ns[0]] = ns[1]
-		# 	return nsmap
-
-
-		# def get_metadata_udf(job_id, row, kwargs):
-
-		# 	# get doc string
-		# 	doc_string = row[1]
-
-		# 	try:
-
-		# 		# parse with lxml
-		# 		xml_root = etree.fromstring(doc_string.encode('utf-8'))
-
-		# 		# get namespaces
-		# 		nsmap = get_namespaces(xml_root)
-
-		# 		# get metadata root
-		# 		if kwargs['xpath_document_root'] != '':
-		# 			meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=nsmap)
-		# 		else:
-		# 			meta_root = xml_root.xpath('/*', namespaces=nsmap)
-		# 		if len(meta_root) == 1:
-		# 			meta_root = meta_root[0]
-		# 		elif len(meta_root) > 1:
-		# 			raise Exception('multiple elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
-		# 		elif len(meta_root) == 0:
-		# 			raise Exception('no elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
-
-		# 		# get unique identifier
-		# 		if kwargs['xpath_record_id'] != '':
-		# 			record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=nsmap)
-		# 			if len(record_id) == 1:
-		# 				record_id = record_id[0].text
-		# 			elif len(meta_root) > 1:
-		# 				raise AmbiguousIdentifier('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
-		# 			elif len(meta_root) == 0:
-		# 				raise AmbiguousIdentifier('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
-		# 		else:
-		# 			record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
-
-		# 		# return success Row
-		# 		return Row(
-		# 			record_id = record_id,
-		# 			document = etree.tostring(meta_root).decode('utf-8'),
-		# 			error = '',
-		# 			job_id = int(job_id),
-		# 			oai_set = '',
-		# 			success = 1
-		# 		)
-
-		# 	# catch missing or ambiguous identifiers
-		# 	except AmbiguousIdentifier as e:
-
-		# 		# hash record string to produce a unique id
-		# 		record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
-
-		# 		# return error Row
-		# 		return Row(
-		# 			record_id = record_id,
-		# 			document = etree.tostring(meta_root).decode('utf-8'),
-		# 			error = str(e),
-		# 			job_id = int(job_id),
-		# 			oai_set = '',
-		# 			success = 0
-		# 		)
-
-		# 	# handle all other exceptions
-		# 	except Exception as e:
-
-		# 		# hash record string to produce a unique id
-		# 		record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
-
-		# 		# return error Row
-		# 		return Row(
-		# 			record_id = record_id,
-		# 			document = '',
-		# 			error = str(e),
-		# 			job_id = int(job_id),
-		# 			oai_set = '',
-		# 			success = 0
-		# 		)
-
-
-		# # map with get_metadata_udf 
-		# job_id = self.job.id
-		# kwargs = self.kwargs
-		# records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
-
-		# # index records to DB and index to ElasticSearch
-		# self.save_records(			
-		# 	records_df=records.toDF(),
-		# 	assign_combine_id=True
-		# )
-
-		# # remove temporary payload directory if static job was upload based, not location on disk
-		# if self.kwargs['static_type'] == 'upload':
-		# 	shutil.rmtree(self.kwargs['static_payload'])
-
-		# OLD ###########################################################################################################################
-
-		# NEW ###########################################################################################################################
-
 		# use Spark-XML's XmlInputFormat to stream globbed files, parsing with user provided `document_element_root`
 		static_rdd = self.spark.sparkContext.newAPIHadoopFile(
 			'file://%s/**' % self.kwargs['static_payload'].rstrip('/'),
@@ -793,9 +677,13 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 			# get doc string
 			doc_string = row[1]
 
-			# if additional namespace declarations passed, add to root element
+			# if optional (additional) namespace declaration provided, use
 			if kwargs['additional_namespace_decs']:
-				doc_string = re.sub(ns_regex, r'<%s\1 %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']), doc_string)
+				doc_string = re.sub(
+					ns_regex,
+					r'<%s %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']),
+					doc_string
+				)	
 
 			try:
 
@@ -807,18 +695,6 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 				# get namespaces
 				nsmap = get_namespaces(xml_root)
-
-				# # get metadata root
-				# if kwargs['xpath_document_root'] != '':
-				# 	meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=nsmap)
-				# else:
-				# 	meta_root = xml_root.xpath('/*', namespaces=nsmap)
-				# if len(meta_root) == 1:
-				# 	meta_root = meta_root[0]
-				# elif len(meta_root) > 1:
-				# 	raise Exception('multiple elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
-				# elif len(meta_root) == 0:
-				# 	raise Exception('no elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
 
 				# get unique identifier
 				if kwargs['xpath_record_id'] != '':
@@ -890,8 +766,6 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		if self.kwargs['static_type'] == 'upload':
 			shutil.rmtree(self.kwargs['static_payload'])
 
-
-		# NEW ###########################################################################################################################
 
 		# close job
 		self.close_job()

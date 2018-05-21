@@ -501,27 +501,7 @@ class GenericMapperVerbose(BaseMapper):
 		# reset flat_elems
 		self.flat_elems = []
 
-		# pre-compile checker for blank spaces
-		blank_check = re.compile(r"[^ \t\n]")
 
-		# walk descendants of root
-		for elem in self.xml_root.iterdescendants():
-
-			# if text value present for element, save to list
-			if elem.text and re.search(blank_check, elem.text) is not None:
-
-				# get xpath
-				xpath = self.xml_tree.getpath(elem)
-
-				# strip index if repeating
-				xpath = re.sub(r'\[[0-9]+\]','', xpath)
-
-				# append
-				self.flat_elems.append({
-						'text':elem.text,
-						'xpath':xpath,
-						'attributes':elem.attrib
-					})
 
 
 	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
@@ -542,64 +522,7 @@ class GenericMapperVerbose(BaseMapper):
 		# reset formatted elems
 		self.formatted_elems = {}
 
-		# loop through flattened elements
-		for elem in self.flat_elems:
 
-			# split on slashes
-			xpath_comps = elem['xpath'].lstrip('/').split('/')
-
-			# proceed if not entirely asterisks
-			if set(xpath_comps) != set('*'):
-
-				# remove namespaces if present
-				for i,comp in enumerate(xpath_comps):
-					if ':' in comp:
-						xpath_comps[i] = comp.split(':')[-1]
-
-				# remove asterisks from xpath_comps, as they are unhelpful
-				xpath_comps = [ c for c in xpath_comps if c != '*' ]
-
-				# if include attributes
-				if include_attributes:
-
-					# convert attributes dictionary to sortable list of tuples
-					attribs = [ (k,v) for k,v in elem['attributes'].items() ]
-
-					# sort alphabetically by attribute name
-					attribs.sort(key=lambda x: x[0])
-
-					for attribute, value in attribs:
-
-						# replace whitespace in attribute or value with underscore
-						attribute = attribute.replace(' ','_')
-						value = value.replace(' ','_')						
-
-						# append to xpath_comps
-						xpath_comps.append('@%s_%s' % (attribute,value))
-
-				# derive flat field name
-				flat_field = '_'.join(xpath_comps)
-
-				# replace any periods in flat field name with underscore
-				flat_field = flat_field.replace('.','_')
-				
-				# if not yet seen, add to dictionary as single element
-				if flat_field not in self.formatted_elems.keys():
-					self.formatted_elems[flat_field] = elem['text']
-
-				# elif, field exists, but not yet list, convert to list and append value
-				elif flat_field in self.formatted_elems.keys() and type(self.formatted_elems[flat_field]) != list:
-					temp_val = self.formatted_elems[flat_field]
-					self.formatted_elems[flat_field] = [temp_val, elem['text']]
-
-				# else, append to already present list
-				else:
-					self.formatted_elems[flat_field].append(elem['text'])
-
-		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
-		for k,v in self.formatted_elems.items():
-			if type(v) == list:
-				self.formatted_elems[k] = tuple(v)
 
 
 	def map_record(self, db_id, combine_id, record_id, record_string, publish_set_id):
