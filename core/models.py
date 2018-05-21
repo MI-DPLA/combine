@@ -3698,121 +3698,121 @@ class HarvestStaticXMLJob(HarvestJob):
 		p = self.payload_dict
 
 		# handle uploads
-		if p['type'] == 'upload':
+		if p['type'] == 'upload':			
 			logger.debug('static harvest, processing upload type')
 
-			# full file path
-			fpath = os.path.join(p['payload_dir'], p['payload_filename'])
+			# # full file path
+			# fpath = os.path.join(p['payload_dir'], p['payload_filename'])
 
-			# handle archive type (zip or tar)
-			if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
-				self._handle_archive_upload(p, fpath)
+			# # handle archive type (zip or tar)
+			# if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
+			# 	self._handle_archive_upload(p, fpath)
 				
-			# handle XML aggregate files
-			if p['content_type'] in ['text/xml', 'application/xml']:
-				self._handle_xml_upload(p, fpath)
+			# # handle XML aggregate files
+			# if p['content_type'] in ['text/xml', 'application/xml']:
+			# 	self._handle_xml_upload(p, fpath)
 
 		# handle disk locations
 		if p['type'] == 'location':
 			logger.debug('static harvest, processing location type')
 
 
-	def _handle_archive_upload(self, p, fpath):
+	# def _handle_archive_upload(self, p, fpath):
 
-		'''
-		Handle uploads of archive files.
-		Decompress to pre-made payload location, and remove archive file
+	# 	'''
+	# 	Handle uploads of archive files.
+	# 	Decompress to pre-made payload location, and remove archive file
 
-		Args:
-			p (dict): payload dictionary 
+	# 	Args:
+	# 		p (dict): payload dictionary 
 
-		Returns:
-			None
-		'''
+	# 	Returns:
+	# 		None
+	# 	'''
 
-		logger.debug('processing archive file: %s' % p['content_type'])
+	# 	logger.debug('processing archive file: %s' % p['content_type'])
 
-		# handle zip
-		if p['content_type'] in ['application/zip']:
-			logger.debug('unzipping file')
+	# 	# handle zip
+	# 	if p['content_type'] in ['application/zip']:
+	# 		logger.debug('unzipping file')
 			
-			# unzip
-			zip_ref = zipfile.ZipFile(fpath, 'r')
-			zip_ref.extractall(p['payload_dir'])
-			zip_ref.close()
+	# 		# unzip
+	# 		zip_ref = zipfile.ZipFile(fpath, 'r')
+	# 		zip_ref.extractall(p['payload_dir'])
+	# 		zip_ref.close()
 
-			# remove original zip
-			os.remove(fpath)
+	# 		# remove original zip
+	# 		os.remove(fpath)
 
-		# handle uncompressed tar
-		if p['content_type'] in ['application/x-tar']:
-			logger.debug('untarring file')		
+	# 	# handle uncompressed tar
+	# 	if p['content_type'] in ['application/x-tar']:
+	# 		logger.debug('untarring file')		
 
-			# untar
-			tar = tarfile.open(fpath)
-			tar.extractall(path=p['payload_dir'])
-			tar.close()
+	# 		# untar
+	# 		tar = tarfile.open(fpath)
+	# 		tar.extractall(path=p['payload_dir'])
+	# 		tar.close()
 
-			# remove original zip
-			os.remove(fpath)
+	# 		# remove original zip
+	# 		os.remove(fpath)
 
-		# handle uncompressed tar
-		if p['content_type'] in ['application/x-gzip']:
-			logger.debug('decompressing gzip')					
+	# 	# handle uncompressed tar
+	# 	if p['content_type'] in ['application/x-gzip']:
+	# 		logger.debug('decompressing gzip')					
 
-			# untar
-			tar = tarfile.open(fpath, 'r:gz')
-			tar.extractall(path=p['payload_dir'])
-			tar.close()
+	# 		# untar
+	# 		tar = tarfile.open(fpath, 'r:gz')
+	# 		tar.extractall(path=p['payload_dir'])
+	# 		tar.close()
 
-			# remove original zip
-			os.remove(fpath)
+	# 		# remove original zip
+	# 		os.remove(fpath)
 
 
-	def _handle_xml_upload(self, p, fpath):
+	# def _handle_xml_upload(self, p, fpath):
 
-		'''
-		Handle upload of single XML file that contains multiple discrete records.
-		Using xpath_document_root query from user, parse records and write to discrete files on disk,
-		then delete the aggregate file.
+	# 	'''
+	# 	Handle upload of single XML file that contains multiple discrete records.
+	# 	Using xpath_document_root query from user, parse records and write to discrete files on disk,
+	# 	then delete the aggregate file.
 
-		Args:
-			p (dict): payload dictionary 
+	# 	Args:
+	# 		p (dict): payload dictionary 
 
-		Returns:
-			None
-		'''
+	# 	Returns:
+	# 		None
+	# 	'''
 
-		logger.debug('handling aggregate XML file')
+	# 	logger.debug('handling aggregate XML file')
 
-		# parse file
-		tree = etree.parse(fpath)
+	# 	# parse file
+	# 	tree = etree.parse(fpath)
 
-		# get xml root 
-		xml_root = tree.getroot()
+	# 	# get xml root 
+	# 	xml_root = tree.getroot()
 
-		# programattically extract namespaces
-		nsmap = {}
-		for ns in xml_root.xpath('//namespace::*'):
-			if ns[0]:
-				nsmap[ns[0]] = ns[1]
+	# 	# programattically extract namespaces
+	# 	nsmap = {}
+	# 	for ns in xml_root.xpath('//namespace::*'):
+	# 		if ns[0]:
+	# 			nsmap[ns[0]] = ns[1]
 
-		# get list of documents as elements
-		doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
+	# 	# get list of documents as elements
+	# 	doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
 
-		# if docs founds, loop through and write to disk as discrete XML files
-		if len(doc_search) > 0:
-			for doc_ele in doc_search:
-				record_string = etree.tostring(doc_ele)
-				filename = hashlib.md5(record_string).hexdigest()
-				with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
-					f.write(record_string.decode('utf-8'))
+	# 	# if docs founds, loop through and write to disk as discrete XML files
+	# 	if len(doc_search) > 0:
+	# 		for doc_ele in doc_search:
+	# 			record_string = etree.tostring(doc_ele)
+	# 			filename = hashlib.md5(record_string).hexdigest()
+	# 			with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
+	# 				f.write(record_string.decode('utf-8'))
 
-		# after parsing file, set xpath_document_root --> '/*'
-		p['xpath_document_root'] = '/*'
+	# 	# after parsing file, set xpath_document_root --> '/*'
+	# 	p['xpath_document_root'] = '/*'
 
-		# remove original zip
-		os.remove(fpath)
+	# 	# remove original zip
+	# 	os.remove(fpath)
 
 
 	def prepare_job(self):
@@ -3830,11 +3830,13 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
 				'xpath_document_root':self.payload_dict['xpath_document_root'],
+				'document_element_root':self.payload_dict['document_element_root'],
+				'additional_namespace_decs':self.payload_dict['additional_namespace_decs'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,

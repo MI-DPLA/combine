@@ -874,8 +874,10 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				f.write(payload_file.read())
 				payload_file.close()
 
-		# include xpath queries
+		# include other information for finding, parsing, and preparing identifiers
 		payload_dict['xpath_document_root'] = request.POST.get('xpath_document_root', None)
+		payload_dict['document_element_root'] = request.POST.get('document_element_root', None)
+		payload_dict['additional_namespace_decs'] = request.POST.get('additional_namespace_decs', None).replace("'",'"')
 		payload_dict['xpath_record_id'] = request.POST.get('xpath_record_id', None)
 
 		# get job name
