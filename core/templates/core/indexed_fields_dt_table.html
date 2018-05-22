@@ -26,7 +26,7 @@
 			<tbody>
 				{% for field in field_counts.fields %}
 					<tr>
-						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank"><code>{{ field.field_name|es_field_name_format }}</code></a></td>
 
 						{% if cjob %}
 
