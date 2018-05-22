@@ -7,6 +7,7 @@ import os
 import re
 import requests
 import sys
+import time
 import xmltodict
 
 # pyjxslt
@@ -58,11 +59,11 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-				row.id,
-				row.combine_id,
-				row.record_id,
-				row.document,
-				job.record_group.publish_set_id
+				record_string=row.document,
+				db_id=row.id,
+				combine_id=row.combine_id,
+				record_id=row.record_id,				
+				publish_set_id=job.record_group.publish_set_id
 			))
 
 		# attempt to write index mapping failures to DB
@@ -366,7 +367,7 @@ class GenericMapper(BaseMapper):
 				self.formatted_elems[k] = tuple(v)
 
 
-	def map_record(self, db_id, combine_id, record_id, record_string, publish_set_id):
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
 
 		'''
 		Map record
@@ -501,7 +502,27 @@ class GenericMapperVerbose(BaseMapper):
 		# reset flat_elems
 		self.flat_elems = []
 
+		# pre-compile checker for blank spaces
+		blank_check = re.compile(r"[^ \t\n]")
 
+		# walk descendants of root
+		for elem in self.xml_root.iterdescendants():
+
+			# if text value present for element, save to list
+			if elem.text and re.search(blank_check, elem.text) is not None:
+
+				# get xpath
+				xpath = self.xml_tree.getpath(elem)
+
+				# strip index if repeating
+				# xpath = re.sub(r'\[[0-9]+\]','', xpath)
+
+				# append
+				self.flat_elems.append({
+						'text':elem.text,
+						'xpath':xpath,
+						'attributes':elem.attrib
+					})
 
 
 	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
@@ -522,10 +543,81 @@ class GenericMapperVerbose(BaseMapper):
 		# reset formatted elems
 		self.formatted_elems = {}
 
+		# loop through flattened elements
+		for elem in self.flat_elems:
+
+			# split on slashes
+			xpath_comps = elem['xpath'].lstrip('/').split('/')
+
+			# proceed if not entirely asterisks
+			if set(xpath_comps) != set('*'):
+
+				# walk parents to develop flat field name
+				self.hops = []
+				node = self.xml_root.xpath(elem['xpath'], namespaces=self.nsmap)[0]
+				self.hops.append(node)
+
+				self.parent_walk(node)
+
+				# reverse order
+				self.hops.reverse()
+
+				# loop through hops to develop field name
+				fn_pieces = []
+				tag_regex = re.compile(r'(\{.+\})?(.*)')
+				for hop in self.hops:
+
+					# add field name, removing etree prefix
+					prefix, tag_name = re.match(tag_regex, hop.tag).groups()
+					fn_pieces.append(tag_name)
+
+					# add attributes
+					attribs = [ (k,v) for k,v in hop.attrib.items() ]
+					attribs.sort(key=lambda x: x[0])
+					for attribute, value in attribs:
+					    attribute = attribute.replace(' ','_')
+					    value = value.replace(' ','_')
+
+					    fn_pieces.append('@%s_%s' % (attribute,value))
+
+			    # derive flat field name
+				flat_field = '_'.join(fn_pieces)
+
+				# replace any periods in flat field name with underscore
+				flat_field = flat_field.replace('.','_')
+				
+				# if not yet seen, add to dictionary as single element
+				if flat_field not in self.formatted_elems.keys():
+					self.formatted_elems[flat_field] = elem['text']
+
+				# elif, field exists, but not yet list, convert to list and append value
+				elif flat_field in self.formatted_elems.keys() and type(self.formatted_elems[flat_field]) != list:
+					temp_val = self.formatted_elems[flat_field]
+					self.formatted_elems[flat_field] = [temp_val, elem['text']]
+
+				# else, append to already present list
+				else:
+					self.formatted_elems[flat_field].append(elem['text'])
+
+		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
+		for k,v in self.formatted_elems.items():
+			if type(v) == list:
+				self.formatted_elems[k] = tuple(v)
 
 
+	def parent_walk(self, node):
 
-	def map_record(self, db_id, combine_id, record_id, record_string, publish_set_id):
+		'''
+		Small method to walk parents of XML node
+		'''
+
+		parent = node.getparent()
+		if parent != self.xml_root:
+			self.hops.append(parent)
+			self.parent_walk(parent)		
+
+
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
 
 		'''
 		Map record
@@ -552,6 +644,9 @@ class GenericMapperVerbose(BaseMapper):
 
 			# get tree
 			self.xml_tree = self.xml_root.getroottree()
+
+			# save namespaces
+			self.get_namespaces()
 
 			# flatten record
 			self.flatten_record()
@@ -588,6 +683,15 @@ class GenericMapperVerbose(BaseMapper):
 					'mapping_error':str(e)
 				}
 			)
+
+
+	# parse namespaces
+	def get_namespaces(self):
+		nsmap = {}
+		for ns in self.xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+		self.nsmap = nsmap
 
 
 
@@ -635,21 +739,7 @@ class MODSMapper(BaseMapper):
 				self.gw.add_transform('xslt_transform', f.read())
 
 
-	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
-
-		'''
-		Map record.
-
-		Args:
-			record_id (str): record id
-			record_string (str): string of record document
-			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
-
-		Returns:
-			(tuple):
-				0 (str): ['success','fail']
-				1 (dict): details from mapping process, success or failure
-		'''
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
 
 		try:
 			
