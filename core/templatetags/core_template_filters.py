@@ -39,3 +39,5 @@ def get_dict_value(dictionary, key):
 
 register.filter('get_obj_attr', get_obj_attr)
 register.filter('get_dict_value', get_dict_value)
+
+
