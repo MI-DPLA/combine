@@ -72,7 +72,7 @@ However, a close inspect reveals this MODS example record does not have the requ
 
     xmlns:mods="http://www.loc.gov/mods/v3"
 
-Which would result in the following, final Record in Combine:
+Which would result in the following, final, valid XML Record in Combine:
 
 .. code-block:: xml
 
@@ -91,12 +91,14 @@ Which would result in the following, final Record in Combine:
    Showing form to provide root XML element for locating Records, and optional XML declarations
 
 
+Once a file has been selected for uploading, and these required parameters are set, click "Run Job" at the bottom to harvest.
+
 Is this altering the XML records that I am providing Combine?
 -------------------------------------------------------------
 
 The short answer is, **yes**.  But, it's important to remember that XML files are often altered in some way when parsed and re-serialized.  Their integrity is not character-by-character similarlity, but what data can be parsed.  This approach only alters the declarations in the root XML element.  
 
-Uploads to Combine that already include namespaces, and all required declarations, at the level of each individual Record, do not require this re-writing and will leave the Record untouched.
+Uploads to Combine that already include namespaces, and all required declarations, at the level of each individual Record, do not require this re-writing and will leave the XML untouched.
 
 
 What kind of files and/or structures can be uploaded?
