@@ -677,9 +677,13 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 			# get doc string
 			doc_string = row[1]
 
-			# if additional namespace declarations passed, add to root element
+			# if optional (additional) namespace declaration provided, use
 			if kwargs['additional_namespace_decs']:
-				doc_string = re.sub(ns_regex, r'<%s\1 %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']), doc_string)
+				doc_string = re.sub(
+					ns_regex,
+					r'<%s %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']),
+					doc_string
+				)	
 
 			try:
 

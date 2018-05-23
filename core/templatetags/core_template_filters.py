@@ -37,5 +37,21 @@ def get_dict_value(dictionary, key):
 	return dictionary.get(key)
 
 
+def es_field_name_format(field_name):
+
+	'''
+	Template filter to convert ES friendly field names
+	into human friendly XML-like paths
+	'''
+
+	# add slashes
+	field_name = re.sub('\|','/',field_name)
+
+	return '/%s' % field_name
+
+
 register.filter('get_obj_attr', get_obj_attr)
 register.filter('get_dict_value', get_dict_value)
+register.filter('es_field_name_format', es_field_name_format)
+
+

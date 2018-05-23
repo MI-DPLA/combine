@@ -7,6 +7,7 @@ import os
 import re
 import requests
 import sys
+import time
 import xmltodict
 
 # pyjxslt
@@ -58,11 +59,11 @@ class ESIndex(object):
 
 		# create rdd from index mapper
 		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-				row.id,
-				row.combine_id,
-				row.record_id,
-				row.document,
-				job.record_group.publish_set_id
+				record_string=row.document,
+				db_id=row.id,
+				combine_id=row.combine_id,
+				record_id=row.record_id,				
+				publish_set_id=job.record_group.publish_set_id
 			))
 
 		# attempt to write index mapping failures to DB
@@ -247,6 +248,11 @@ class GenericMapper(BaseMapper):
 		# empty formatted elems dict, grouping by flat, formatted element
 		self.formatted_elems = {}
 
+		# pre-compiled regex
+		# checker for blank spaces
+		self.blank_check_regex = re.compile(r"[^ \t\n]")
+		# element tag name
+		self.namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
 
 	def flatten_record(self):
 
@@ -265,20 +271,14 @@ class GenericMapper(BaseMapper):
 		# reset flat_elems
 		self.flat_elems = []
 
-		# pre-compile checker for blank spaces
-		blank_check = re.compile(r"[^ \t\n]")
-
 		# walk descendants of root
 		for elem in self.xml_root.iterdescendants():
 
 			# if text value present for element, save to list
-			if elem.text and re.search(blank_check, elem.text) is not None:
+			if elem.text and re.search(self.blank_check_regex, elem.text) is not None:
 
 				# get xpath
 				xpath = self.xml_tree.getpath(elem)
-
-				# strip index if repeating
-				xpath = re.sub(r'\[[0-9]+\]','', xpath)
 
 				# append
 				self.flat_elems.append({
@@ -315,34 +315,37 @@ class GenericMapper(BaseMapper):
 			# proceed if not entirely asterisks
 			if set(xpath_comps) != set('*'):
 
-				# remove namespaces if present
-				for i,comp in enumerate(xpath_comps):
-					if ':' in comp:
-						xpath_comps[i] = comp.split(':')[-1]
+				# walk parents to develop flat field name
+				self.hops = []
+				node = self.xml_root.xpath(elem['xpath'], namespaces=self.nsmap)[0]
+				self.hops.append(node)
 
-				# remove asterisks from xpath_comps, as they are unhelpful
-				xpath_comps = [ c for c in xpath_comps if c != '*' ]
+				self.parent_walk(node)
 
-				# if include attributes
-				if include_attributes:
+				# reverse order
+				self.hops.reverse()
 
-					# convert attributes dictionary to sortable list of tuples
-					attribs = [ (k,v) for k,v in elem['attributes'].items() ]
+				# loop through hops to develop field name
+				fn_pieces = []				
+				for hop in self.hops:
 
-					# sort alphabetically by attribute name
-					attribs.sort(key=lambda x: x[0])
+					# add field name, removing etree prefix
+					prefix, tag_name = re.match(self.namespace_prefix_regex, hop.tag).groups()
+					fn_pieces.append(tag_name)
 
-					for attribute, value in attribs:
-
-						# replace whitespace in attribute or value with underscore
-						attribute = attribute.replace(' ','_')
-						value = value.replace(' ','_')						
-
-						# append to xpath_comps
-						xpath_comps.append('@%s_%s' % (attribute,value))
+					# add attributes if not root node
+					if hop != self.xml_root:					
+						attribs = [ (k,v) for k,v in hop.attrib.items() ]
+						attribs.sort(key=lambda x: x[0])
+						for attribute, value in attribs:						
+							if re.search(self.blank_check_regex, value) is not None:								
+								attribute = attribute.replace(' ','_')
+								prefix, attribute = re.match(self.namespace_prefix_regex, attribute).groups()
+								value = value.replace(' ','_')
+								fn_pieces.append('@%s=%s' % (attribute,value))
 
 				# derive flat field name
-				flat_field = '_'.join(xpath_comps)
+				flat_field = '_'.join(fn_pieces)
 
 				# replace any periods in flat field name with underscore
 				flat_field = flat_field.replace('.','_')
@@ -356,9 +359,10 @@ class GenericMapper(BaseMapper):
 					temp_val = self.formatted_elems[flat_field]
 					self.formatted_elems[flat_field] = [temp_val, elem['text']]
 
-				# else, append to already present list
+				# else, if list, and value not already present, append
 				else:
-					self.formatted_elems[flat_field].append(elem['text'])
+					if elem['text'] not in self.formatted_elems[flat_field]:
+						self.formatted_elems[flat_field].append(elem['text'])
 
 		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
 		for k,v in self.formatted_elems.items():
@@ -366,7 +370,19 @@ class GenericMapper(BaseMapper):
 				self.formatted_elems[k] = tuple(v)
 
 
-	def map_record(self, db_id, combine_id, record_id, record_string, publish_set_id):
+	def parent_walk(self, node):
+
+		'''
+		Small method to walk parents of XML node
+		'''
+
+		parent = node.getparent()
+		if parent != None:
+			self.hops.append(parent)
+			self.parent_walk(parent)
+
+
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
 
 		'''
 		Map record
@@ -393,6 +409,9 @@ class GenericMapper(BaseMapper):
 
 			# get tree
 			self.xml_tree = self.xml_root.getroottree()
+
+			# save namespaces
+			self.get_namespaces()
 
 			# flatten record
 			self.flatten_record()
@@ -429,6 +448,15 @@ class GenericMapper(BaseMapper):
 					'mapping_error':str(e)
 				}
 			)
+
+
+	# parse namespaces
+	def get_namespaces(self):
+		nsmap = {}
+		for ns in self.xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+		self.nsmap = nsmap
 
 
 
@@ -476,21 +504,7 @@ class MODSMapper(BaseMapper):
 				self.gw.add_transform('xslt_transform', f.read())
 
 
-	def map_record(self, combine_db_id, record_id, record_string, publish_set_id):
-
-		'''
-		Map record.
-
-		Args:
-			record_id (str): record id
-			record_string (str): string of record document
-			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
-
-		Returns:
-			(tuple):
-				0 (str): ['success','fail']
-				1 (dict): details from mapping process, success or failure
-		'''
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
 
 		try:
 			
