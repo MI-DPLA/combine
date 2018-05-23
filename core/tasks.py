@@ -1,33 +1,45 @@
 from background_task import background
 
+# generic imports 
+import time
+
 # Get an instance of a logger
 import logging
 logger = logging.getLogger(__name__)
 
-from core import models
+from core import models as models
 
 '''
 This file provides background tasks that are performed with Django-Background-Tasks
 '''
 
 @background(schedule=1)
-def job_delete(job_id):
+def delete_model_instance(instance_model, instance_id):
 
 	'''
-	Background task to perform job deletions
+	Background task to delete generic DB model instance
 	'''
 	
-	try:
-		# get job
-		job = models.Job.objects.get(pk=job_id)
-		logger.debug('retrieved Job ID %s, deleting' % job_id)
-		
-		# delete
-		return job.delete()
+	# try:
 
-	except:
-		logger.debug('could not retrieve Job ID %s, aborting' % job_id)
-		return False
+	# get model		
+	m = getattr(models, instance_model, None)
+
+	if m:
+
+		# get model instance
+		i = m.objects.get(pk=int(instance_id))
+		logger.debug('retrieved %s model, instance ID %s, deleting' % (m.__name__, instance_id))
+	
+		# delete		
+		return i.delete()
+
+	else:
+		logger.debug('Combine model %s not found, aborting' % (instance_model))	
+
+	# except:
+	# 	logger.debug('could not retrieve %s model, instance ID %s, aborting' % (instance_model, instance_id))
+	# 	return False
 
 
 @background(schedule=1)

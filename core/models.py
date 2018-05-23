@@ -2139,6 +2139,39 @@ def save_job(sender, instance, created, **kwargs):
 		djm.save()
 
 
+@receiver(models.signals.pre_delete, sender=Organization)
+def delete_org_pre_delete(sender, instance, **kwargs):
+
+	# mark child record groups as deleted
+	logger.debug('marking all child Record Groups as deleting')
+	for record_group in instance.recordgroup_set.all():
+
+		record_group.name = "%s (DELETING)" % record_group.name
+		record_group.save()
+
+		# mark child jobs as deleted
+		logger.debug('marking all child Jobs as deleting')
+		for job in record_group.job_set.all():
+
+			job.name = "%s (DELETING)" % job.name	
+			job.deleted = True
+			job.status = 'deleting'
+			job.save()
+
+
+@receiver(models.signals.pre_delete, sender=RecordGroup)
+def delete_record_group_pre_delete(sender, instance, **kwargs):
+
+	# mark child jobs as deleted
+	logger.debug('marking all child Jobs as deleting')
+	for job in instance.job_set.all():
+
+		job.name = "%s (DELETING)" % job.name	
+		job.deleted = True
+		job.status = 'deleting'
+		job.save()
+
+
 @receiver(models.signals.pre_delete, sender=Job)
 def delete_job_pre_delete(sender, instance, **kwargs):
 
