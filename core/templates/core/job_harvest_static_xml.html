@@ -71,42 +71,36 @@
 
 				<div class="row">
 
-					<!-- xpath for documents -->
+					<!-- start and end tags -->
 					<div class="col-md-6">
-						<h5>Locate Documents</h5>
-						<p>Next, to identify discrete documents, an XPath expression is needed to help located the records.  Here are some examples of how to provide an XPath expression for locating documents.</p>
-						<table class="table table-bordered table-hover">
-							<thead>
-								<tr>
-									<th>Static content type</th>
-									<th>XPath needed</th>
-									<th>Example</th>
-								</tr>
-							</thead>
+						<h5>Find and Parse XML Records</h5>
+						<p>To locate and parse XML records from the provided file(s), additional information is needed: the root XML element for each record, and if needed, additional XML namespace declarations.</p>
+
+						<table class="table table-bordered table-hover">							
 							<tbody>
 								<tr>
-									<td>Archive (<code>.zip</code>, <code>.tar</code>) file of discrete XML files</td>
-									<td>XPath that drills down to metadata record, for each file</td>
-									<td><code>//mods:mods</code></td>
+									<th>Root XML element</th>
+									<td>Because static XML harvests may be looping through many files, directories, archives, or single XML files, a <span class="font-weight-bold">root XML element</span> is needed to locate XML documents that should be parsed and used.  Unlike XPath, only the element name is needed.  For example, a <code>mods:mods</code> would be sufficient for MODS records with a namespace, or <code>oai_dc</code> for OAI Dublin Core records.</td>
 								</tr>
 								<tr>
-									<td>Aggregate XML file with multiple records</td>
-									<td>XPath that drills down to metadata record within large XML file</td>
-									<td><code>//metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']</code></td>
-								</tr>
-								<tr>
-									<td>Location on disk</td>
-									<td>Assuming directory of multiple files, XPath that drills down to metadata record, for each file</td>
-									<td><code>/</code> (a single slash might be sufficient, indicating the metadata record is at the root of the file)</td>
+									<th>Re-write XML root element declarations</th>
+									<td>Because Combine does not use XPath to parse the records, it is possible that records will be retrieved without required namespaces (often only declared at the root element).  Here, you may optionally rewrite the declaration for each Record.  For example, if providing the XML root <code>mods:mods</code> results in root XML nodes that look like <code>&lt;mods:mods&gt;</code>, the declaration </code> <code>xmlns:mods="http://www.loc.gov/mods/v3"</code> could be passed and will be added to each record resulting in <code>&lt;mods:mods xmlns:mods="http://www.loc.gov/mods/v3"&gt;</code>, which is valid XML.</td>
 								</tr>
 							</tbody>
 						</table>
 
 						<div class="form-group">
-							<label for="xpath_document_root">XPath for metadata document root (default <code>/*</code>):</label>
-							<input type="text" class="form-control" id="xpath_document_root" name="xpath_document_root" placeholder="e.g. //mods:mods or //metadata/*[namespace-uri()='http://www.loc.gov/mods/v3']">
+							<label for="document_element_root">Root XML Element:</label>
+							<input type="text" class="form-control" id="document_element_root" name="document_element_root" placeholder="e.g. mods:mods, oai_dc, etc.">
 						</div>
+
+						<div class="form-group">
+							<label for="additional_namespace_decs">Re-write Root XML Declaration (if needed):</label>
+							<input type="text" class="form-control" id="additional_namespace_decs" name="additional_namespace_decs" placeholder='e.g. xmlns:mods="http://www.loc.gov/mods/v3"'>
+						</div>
+
 					</div>
+
 
 					<!-- xpath for identifiers -->
 					<div class="col-md-6">

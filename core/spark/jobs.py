@@ -649,13 +649,20 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		# init job
 		self.init_job()
 
-		# read directory of static files
-		static_rdd = self.spark.sparkContext.wholeTextFiles(
-				'file://%s' % self.kwargs['static_payload'],
-				minPartitions=settings.SPARK_REPARTITION
-			)
+		# use Spark-XML's XmlInputFormat to stream globbed files, parsing with user provided `document_element_root`
+		static_rdd = self.spark.sparkContext.newAPIHadoopFile(
+			'file://%s/**' % self.kwargs['static_payload'].rstrip('/'),
+			'com.databricks.spark.xml.XmlInputFormat',
+			'org.apache.hadoop.io.LongWritable',
+			'org.apache.hadoop.io.Text',
+			conf = {
+				'xmlinput.start':'<%s>' % self.kwargs['document_element_root'],
+				'xmlinput.end':'</%s>' % self.kwargs['document_element_root'],
+				'xmlinput.encoding': 'utf-8'
+			}
+		)
 
-
+		
 		# parse namespaces
 		def get_namespaces(xml_node):
 			nsmap = {}
@@ -665,39 +672,38 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 			return nsmap
 
 
-		def get_metadata_udf(job_id, row, kwargs):
+		def parse_records_udf(job_id, row, kwargs):
 
 			# get doc string
 			doc_string = row[1]
 
+			# if optional (additional) namespace declaration provided, use
+			if kwargs['additional_namespace_decs']:
+				doc_string = re.sub(
+					ns_regex,
+					r'<%s %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']),
+					doc_string
+				)	
+
 			try:
 
 				# parse with lxml
-				xml_root = etree.fromstring(doc_string.encode('utf-8'))
+				try:
+					xml_root = etree.fromstring(doc_string.encode('utf-8'))
+				except Exception as e:
+					raise Exception('Could not parse record XML: %s' % str(e))
 
 				# get namespaces
 				nsmap = get_namespaces(xml_root)
 
-				# get metadata root
-				if kwargs['xpath_document_root'] != '':
-					meta_root = xml_root.xpath(kwargs['xpath_document_root'], namespaces=nsmap)
-				else:
-					meta_root = xml_root.xpath('/*', namespaces=nsmap)
-				if len(meta_root) == 1:
-					meta_root = meta_root[0]
-				elif len(meta_root) > 1:
-					raise Exception('multiple elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
-				elif len(meta_root) == 0:
-					raise Exception('no elements found for metadata root xpath: %s' % kwargs['xpath_document_root'])
-
 				# get unique identifier
 				if kwargs['xpath_record_id'] != '':
-					record_id = meta_root.xpath(kwargs['xpath_record_id'], namespaces=nsmap)
+					record_id = xml_root.xpath(kwargs['xpath_record_id'], namespaces=nsmap)
 					if len(record_id) == 1:
 						record_id = record_id[0].text
-					elif len(meta_root) > 1:
+					elif len(xml_root) > 1:
 						raise AmbiguousIdentifier('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
-					elif len(meta_root) == 0:
+					elif len(xml_root) == 0:
 						raise AmbiguousIdentifier('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
 				else:
 					record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
@@ -705,7 +711,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				# return success Row
 				return Row(
 					record_id = record_id,
-					document = etree.tostring(meta_root).decode('utf-8'),
+					document = etree.tostring(xml_root).decode('utf-8'),
 					error = '',
 					job_id = int(job_id),
 					oai_set = '',
@@ -721,7 +727,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					document = etree.tostring(meta_root).decode('utf-8'),
+					document = etree.tostring(xml_root).decode('utf-8'),
 					error = str(e),
 					job_id = int(job_id),
 					oai_set = '',
@@ -744,11 +750,11 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					success = 0
 				)
 
-
-		# map with get_metadata_udf 
+		# map with parse_records_udf 
 		job_id = self.job.id
 		kwargs = self.kwargs
-		records = static_rdd.map(lambda row: get_metadata_udf(job_id, row, kwargs))
+		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.kwargs['document_element_root'])
+		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, kwargs))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
