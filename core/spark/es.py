@@ -252,7 +252,7 @@ class GenericMapper(BaseMapper):
 		# checker for blank spaces
 		self.blank_check_regex = re.compile(r"[^ \t\n]")
 		# element tag name
-		self.tag_name_regex = re.compile(r'(\{.+\})?(.*)')
+		self.namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
 
 	def flatten_record(self):
 
@@ -330,21 +330,22 @@ class GenericMapper(BaseMapper):
 				for hop in self.hops:
 
 					# add field name, removing etree prefix
-					prefix, tag_name = re.match(self.tag_name_regex, hop.tag).groups()
-					fn_pieces.append('|%s' % tag_name)
+					prefix, tag_name = re.match(self.namespace_prefix_regex, hop.tag).groups()
+					fn_pieces.append(tag_name)
 
 					# add attributes if not root node
 					if hop != self.xml_root:					
 						attribs = [ (k,v) for k,v in hop.attrib.items() ]
 						attribs.sort(key=lambda x: x[0])
 						for attribute, value in attribs:						
-							if re.search(self.blank_check_regex, value) is not None:
+							if re.search(self.blank_check_regex, value) is not None:								
 								attribute = attribute.replace(' ','_')
+								prefix, attribute = re.match(self.namespace_prefix_regex, attribute).groups()
 								value = value.replace(' ','_')
 								fn_pieces.append('@%s=%s' % (attribute,value))
 
 				# derive flat field name
-				flat_field = ''.join(fn_pieces).lstrip('|')
+				flat_field = '_'.join(fn_pieces)
 
 				# replace any periods in flat field name with underscore
 				flat_field = flat_field.replace('.','_')
@@ -358,9 +359,10 @@ class GenericMapper(BaseMapper):
 					temp_val = self.formatted_elems[flat_field]
 					self.formatted_elems[flat_field] = [temp_val, elem['text']]
 
-				# else, append to already present list
+				# else, if list, and value not already present, append
 				else:
-					self.formatted_elems[flat_field].append(elem['text'])
+					if elem['text'] not in self.formatted_elems[flat_field]:
+						self.formatted_elems[flat_field].append(elem['text'])
 
 		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
 		for k,v in self.formatted_elems.items():

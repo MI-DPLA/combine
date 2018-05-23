@@ -37,7 +37,12 @@ def get_dict_value(dictionary, key):
 	return dictionary.get(key)
 
 
-def es_field_name_format(field_name):	
+def es_field_name_format(field_name):
+
+	'''
+	Template filter to convert ES friendly field names
+	into human friendly XML-like paths
+	'''
 
 	# add slashes
 	field_name = re.sub('\|','/',field_name)
