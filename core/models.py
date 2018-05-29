@@ -3297,15 +3297,15 @@ class CombineJob(object):
 		Returns:
 			(str): hash shared by all avro files within a job's output
 		'''
-
+		
 		# get list of avro files
 		job_output_dir = self.job.job_output.split('file://')[-1]
 
 		try:
-			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
+			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]		
 
 			if len(avros) > 0:
-				job_output_filename_hash = re.match(r'part-r-[0-9]+-(.+?)\.avro', avros[0]).group(1)
+				job_output_filename_hash = re.match(r'part-[0-9]+-(.+?)\.avro', avros[0]).group(1)
 				logger.debug('job output filename hash: %s' % job_output_filename_hash)
 				return job_output_filename_hash
 

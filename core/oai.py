@@ -258,7 +258,6 @@ class OAIProvider(object):
 				ot = ot_query.first()
 
 				# set args and start and chunk_size
-				# self.args = json.loads(ot.args)
 				self.start = ot.start
 				self.chunk_size = ot.chunk_size
 				self.publish_set_id = ot.publish_set_id
