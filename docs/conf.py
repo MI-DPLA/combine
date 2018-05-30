@@ -153,3 +153,11 @@ texinfo_documents = [
      author, 'Combine', 'One line description of project.',
      'Miscellaneous'),
 ]
+
+# -- Custom Setup for CSS ----------------------------------------------
+
+def setup(app):
+    app.add_stylesheet('css/custom.css')
+
+
+    

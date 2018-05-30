@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 # generic imports
 from collections import OrderedDict
 import datetime
+import difflib
 import gc
 import gzip
 import hashlib
@@ -1555,6 +1556,40 @@ class Record(models.Model):
 		return DPLABulkDataMatch.objects.filter(record=self)
 
 
+	def get_input_record_diff(self):
+
+		'''
+		Method to return a string diff of this record versus the input record
+			- this is primarily helpful for Records from Transform Jobs
+			- use self.get_record_stages(input_record_only=True)[0]
+
+		Args:
+
+		Returns:
+			(str|list): results of Record documents diff, line-by-line
+		'''		
+
+		# check if Record has input Record
+		irq = self.get_record_stages(input_record_only=True)
+		if len(irq) == 1:
+			logger.debug('single, input Record found: %s' % irq[0])
+
+			# get input record
+			ir = irq[0]
+
+			# perform diff
+			line_diffs = difflib.unified_diff(
+				ir.document.splitlines(),
+				self.document.splitlines()
+			)
+
+			# return
+			return line_diffs
+
+		else:
+			return False
+
+
 
 class IndexMappingFailure(models.Model):
 
@@ -2137,6 +2172,39 @@ def save_job(sender, instance, created, **kwargs):
 			job = instance
 		)
 		djm.save()
+
+
+@receiver(models.signals.pre_delete, sender=Organization)
+def delete_org_pre_delete(sender, instance, **kwargs):
+
+	# mark child record groups as deleted
+	logger.debug('marking all child Record Groups as deleting')
+	for record_group in instance.recordgroup_set.all():
+
+		record_group.name = "%s (DELETING)" % record_group.name
+		record_group.save()
+
+		# mark child jobs as deleted
+		logger.debug('marking all child Jobs as deleting')
+		for job in record_group.job_set.all():
+
+			job.name = "%s (DELETING)" % job.name	
+			job.deleted = True
+			job.status = 'deleting'
+			job.save()
+
+
+@receiver(models.signals.pre_delete, sender=RecordGroup)
+def delete_record_group_pre_delete(sender, instance, **kwargs):
+
+	# mark child jobs as deleted
+	logger.debug('marking all child Jobs as deleting')
+	for job in instance.job_set.all():
+
+		job.name = "%s (DELETING)" % job.name	
+		job.deleted = True
+		job.status = 'deleting'
+		job.save()
 
 
 @receiver(models.signals.pre_delete, sender=Job)
@@ -3264,15 +3332,15 @@ class CombineJob(object):
 		Returns:
 			(str): hash shared by all avro files within a job's output
 		'''
-
+		
 		# get list of avro files
 		job_output_dir = self.job.job_output.split('file://')[-1]
 
 		try:
-			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
+			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]		
 
 			if len(avros) > 0:
-				job_output_filename_hash = re.match(r'part-r-[0-9]+-(.+?)\.avro', avros[0]).group(1)
+				job_output_filename_hash = re.match(r'part-[0-9]+-(.+?)\.avro', avros[0]).group(1)
 				logger.debug('job output filename hash: %s' % job_output_filename_hash)
 				return job_output_filename_hash
 
