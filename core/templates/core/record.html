@@ -362,26 +362,41 @@
 								<!-- TransformJob -->			
 								{% if record.job.job_type_family == 'TransformJob' %}
 									{% if job_details.transformation.id %}										
-										<h3>Transformation Used</h3>
-										<table class="table table-bordered table-hover">
-											<tr>
-												<th>ID</th>
-												<th>Name</th>
-												<th>Type</th>
-												<th>Path on disk</th>
-												<th>Transformation Payload</th>
-												<th>Input Document</th>
-											</tr>
-											<tr>
-												<td>{{job_details.transformation.id}}</td>
-												<td>{{job_details.transformation.name}}</td>
-												<td>{{job_details.transformation.transformation_type}}</td>
-												<td><code>{{job_details.transformation.filepath}}</code></td>
-												<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
-												<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
-											</tr>
-										</table>
+										<div class="row">
+											<div class="col-md-12">
+												<h3>Transformation Used</h3>
+												<table class="table table-bordered table-hover">
+													<tr>
+														<th>ID</th>
+														<th>Name</th>
+														<th>Type</th>
+														<th>Path on disk</th>
+														<th>Transformation Payload</th>
+														<th>Input Document</th>
+													</tr>
+													<tr>
+														<td>{{job_details.transformation.id}}</td>
+														<td>{{job_details.transformation.name}}</td>
+														<td>{{job_details.transformation.transformation_type}}</td>
+														<td><code>{{job_details.transformation.filepath}}</code></td>
+														<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
+														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+													</tr>
+												</table>
+											</div>
+										</div>
 									{% endif %}
+
+									<div class="row">
+										<div class="col-md-12">
+
+											<h3>Record Changes</h3>
+											<div>
+												<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="color:red;">{% elif line_diff|first == '+' %}<span style="color:green;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+											</div>
+										</div>
+									</div>
+
 								{% endif %}
 
 								<!-- MergeJob -->

@@ -388,7 +388,15 @@ Results from the DPLA API are parsed and presented here, with the full API JSON 
 Job Type Specific
 -----------------
 
-This tab shows any details specific to the Job type: Harvest, Transform, Merge / Duplicate, Publish, or Analysis.  Below is an example of a Record that was part of a Transformation Job, showing what Transformation was applied to this Record:
+This tab shows any details specific to the Job type: Harvest, Transform, Merge / Duplicate, Publish, or Analysis.
+
+
+Transformation Job Details
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Records that are part of Transformation Jobs, becuase they may have been modified in some way, lend themselves to additional details.  This tab will show what transformation was applied, and the a diff of changes to the record.
+
+The following shows what Transformation was applied to this Record:
 
 .. figure:: img/record_details_trans_specific.png
    :alt: Indexed fields for a Record
@@ -396,7 +404,15 @@ This tab shows any details specific to the Job type: Harvest, Transform, Merge /
 
    Indexed fields for a Record
 
-This tab is under-developed at the moment, but would be the appropriate place for Job type specific information as deemed necessary or helpful.
+The following is an example showing changes to a Record (just a space added between dates, but the diff could be much more complex and verbose):
+
+.. figure:: img/record_details_trans_diff.png
+   :alt: Diff of changes to Record during Transformation Job
+   :target: _images/record_details_trans_diff.png
+
+   Diff of changes to Record during Transformation Job
+
+
 
 
 

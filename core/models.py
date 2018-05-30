@@ -4,6 +4,7 @@ from __future__ import unicode_literals
 # generic imports
 from collections import OrderedDict
 import datetime
+import difflib
 import gc
 import gzip
 import hashlib
@@ -1553,6 +1554,40 @@ class Record(models.Model):
 		'''
 
 		return DPLABulkDataMatch.objects.filter(record=self)
+
+
+	def get_input_record_diff(self):
+
+		'''
+		Method to return a string diff of this record versus the input record
+			- this is primarily helpful for Records from Transform Jobs
+			- use self.get_record_stages(input_record_only=True)[0]
+
+		Args:
+
+		Returns:
+			(str|list): results of Record documents diff, line-by-line
+		'''		
+
+		# check if Record has input Record
+		irq = self.get_record_stages(input_record_only=True)
+		if len(irq) == 1:
+			logger.debug('single, input Record found: %s' % irq[0])
+
+			# get input record
+			ir = irq[0]
+
+			# perform diff
+			line_diffs = difflib.unified_diff(
+				ir.document.splitlines(),
+				self.document.splitlines()
+			)
+
+			# return
+			return line_diffs
+
+		else:
+			return False
 
 
 
