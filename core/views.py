@@ -951,8 +951,16 @@ def job_transform(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs
-		input_jobs = record_group.job_set.all()	
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()
 
 		# get all transformation scenarios
 		transformations = models.Transformation.objects.all()
@@ -977,6 +985,7 @@ def job_transform(request, org_id, record_group_id):
 				'job_select_type':'single',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
@@ -1069,9 +1078,17 @@ def job_merge(request, org_id, record_group_id):
 	
 	# if GET, prepare form
 	if request.method == 'GET':
-		
-		# retrieve all jobs
-		input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1093,6 +1110,7 @@ def job_merge(request, org_id, record_group_id):
 				'job_select_type':'multiple',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
@@ -1180,9 +1198,16 @@ def job_publish(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs for this record group		
-		input_jobs = models.Job.objects.filter(record_group=record_group).all()
-		# input_jobs = models.Job.objects.filter(record_group=record_group).exclude(job_type='PublishJob').all()
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()		
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1201,6 +1226,7 @@ def job_publish(request, org_id, record_group_id):
 				'job_select_type':'single',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
 				'publish_set_ids':publish_set_ids,
