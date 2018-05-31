@@ -103,14 +103,3 @@ class PythonUDFRecord(object):
 			except:
 				pass
 			self.nsmap = _nsmap
-
-
-
-
-
-
-
-
-
-
-

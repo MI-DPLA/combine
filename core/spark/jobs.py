@@ -32,7 +32,7 @@ except:
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf, regexp_replace, lit
+from pyspark.sql.functions import udf, regexp_replace, lit, crc32
 from pyspark.sql.window import Window
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -80,7 +80,8 @@ class CombineRecordSchema(object):
 				StructField('unique', BooleanType(), False),
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
-				StructField('success', BooleanType(), False)				
+				StructField('success', BooleanType(), False),
+				StructField('fingerprint', IntegerType(), False)				
 			]
 		)
 
@@ -160,6 +161,9 @@ class CombineSparkJob(object):
 
 		# run record identifier transformation scenario if provided
 		records_df = self.run_rits(records_df)
+
+		# fingerprint Record document
+		records_df = records_df.withColumn('fingerprint', crc32(records_df.document))
 
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (

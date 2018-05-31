@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+import binascii
 from collections import OrderedDict
 import datetime
 import difflib
@@ -1216,6 +1217,7 @@ class Record(models.Model):
 	success = models.BooleanField(default=1)
 	published = models.BooleanField(default=0)
 	valid = models.BooleanField(default=1)
+	fingerprint = models.IntegerField(null=True, default=None)
 
 
 	# this model is managed outside of Django
@@ -1588,6 +1590,21 @@ class Record(models.Model):
 
 		else:
 			return False
+
+
+	def calc_fingerprint(self, update_db=False):
+		
+		'''
+		Generate fingerprint hash with binascii.crc32()
+		'''
+
+		fingerprint = binascii.crc32(self.document.encode('utf-8'))
+
+		if update_db:
+			self.fingerprint = fingerprint
+			self.save()
+
+		return fingerprint
 
 
 
