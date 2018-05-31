@@ -391,9 +391,13 @@
 										<div class="col-md-12">
 
 											<h3>Record Changes</h3>
-											<div>
-												<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="color:red;">{% elif line_diff|first == '+' %}<span style="color:green;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
-											</div>
+											{% if input_record_diffs %}
+												<div>
+													<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="color:red;">{% elif line_diff|first == '+' %}<span style="color:green;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+												</div>
+											{% else %}
+												<p>During Transformation, no changes were detected for this Record.</p>
+											{% endif %}
 										</div>
 									</div>
 

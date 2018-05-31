@@ -1540,6 +1540,9 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	else:
 		dpla_api_json = None
 
+	# retrieve diffs, if any, from input record
+	input_record_diffs = record.get_input_record_diff()
+
 	# return
 	return render(request, 'core/record.html', {
 		'record_id':record_id,
@@ -1548,6 +1551,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'job_details':job_details,
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
+		'input_record_diffs':input_record_diffs,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 

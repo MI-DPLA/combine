@@ -1579,14 +1579,24 @@ class Record(models.Model):
 			# get input record
 			ir = irq[0]
 
-			# perform diff
-			line_diffs = difflib.unified_diff(
-				ir.document.splitlines(),
-				self.document.splitlines()
-			)
+			# check if fingerprints the same
+			if self.fingerprint != ir.fingerprint:
 
-			# return
-			return line_diffs
+				logger.debug('fingerprint mismatch, returning diffs')
+
+				# perform diff
+				line_diffs = difflib.unified_diff(
+					ir.document.splitlines(),
+					self.document.splitlines()
+				)
+
+				# return
+				return line_diffs
+
+			# else, return None
+			else:
+				logger.debug('fingerprint match, returning None')
+				return None
 
 		else:
 			return False
