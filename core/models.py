@@ -6,6 +6,7 @@ import binascii
 from collections import OrderedDict
 import datetime
 import difflib
+import django
 import gc
 import gzip
 import hashlib
@@ -67,9 +68,11 @@ from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
-# import ElasticSearch BaseMapper
-from core.spark.es import BaseMapper
-from core.spark.utils import PythonUDFRecord
+# import ElasticSearch BaseMapper and PythonUDFRecord
+# hasattr(django, apps) check --> skips if imported from pyspark context
+if not hasattr(django, 'apps'):
+	from core.spark.es import BaseMapper
+	from core.spark.utils import PythonUDFRecord
 
 # AWS
 import boto3
