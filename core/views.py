@@ -1712,9 +1712,13 @@ def test_transformation_scenario(request):
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
 
+		# check for pre-requested transformation scenario
+		tsid = request.GET.get('transformation_scenario', None)
+
 		# return
 		return render(request, 'core/test_transformation_scenario.html', {
 			'q':q,
+			'tsid':tsid,
 			'transformation_scenarios':transformation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})

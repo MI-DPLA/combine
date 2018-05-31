@@ -364,25 +364,26 @@
 									{% if job_details.transformation.id %}										
 										<div class="row">
 											<div class="col-md-12">
-												<h3>Transformation Used</h3>
+												<h3>Transformation Scenario Used</h3>
 												<table class="table table-bordered table-hover">
 													<tr>
 														<th>ID</th>
 														<th>Name</th>
 														<th>Type</th>
-														<th>Path on disk</th>
 														<th>Transformation Payload</th>
 														<th>Input Document</th>
 													</tr>
 													<tr>
 														<td>{{job_details.transformation.id}}</td>
 														<td>{{job_details.transformation.name}}</td>
-														<td>{{job_details.transformation.transformation_type}}</td>
-														<td><code>{{job_details.transformation.filepath}}</code></td>
+														<td>{{job_details.transformation.get_transformation_type_display}}</td>
 														<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
-														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View</a></td>
+														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View (Record #{{ job_details.input_record.id }})</a></td>
 													</tr>
 												</table>
+											</div>
+											<div class="col-md-12">
+												<p><a href="{% url 'test_transformation_scenario' %}?q={{ job_details.input_record.id }}&transformation_scenario={{ job_details.transformation.id }}|{{job_details.transformation.transformation_type}}"><button type="button" class="btn btn-success btn-sm">Re-run Transformation on Input Record</button></a></p>
 											</div>
 										</div>
 									{% endif %}
