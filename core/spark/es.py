@@ -63,7 +63,8 @@ class ESIndex(object):
 				db_id=row.id,
 				combine_id=row.combine_id,
 				record_id=row.record_id,				
-				publish_set_id=job.record_group.publish_set_id
+				publish_set_id=job.record_group.publish_set_id,
+				fingerprint=row.fingerprint
 			))
 
 		# attempt to write index mapping failures to DB
@@ -104,7 +105,7 @@ class ESIndex(object):
 					'record':{
 						'date_detection':False,
 						'properties':{
-							'combine_db_id':{'type':'integer'}
+							'combine_db_id':{'type':'integer'},
 						}
 					}
 				}
@@ -382,7 +383,7 @@ class GenericMapper(BaseMapper):
 			self.parent_walk(parent)
 
 
-	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None, fingerprint=None):
 
 		'''
 		Map record
@@ -433,6 +434,9 @@ class GenericMapper(BaseMapper):
 
 			# add record's Combine DB id
 			self.formatted_elems['db_id'] = db_id
+
+			# add record's crc32 document hash, aka "fingerprint"
+			self.formatted_elems['fingerprint'] = fingerprint
 
 			return (
 					'success',
@@ -504,7 +508,7 @@ class MODSMapper(BaseMapper):
 				self.gw.add_transform('xslt_transform', f.read())
 
 
-	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None):
+	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None, fingerprint=None):
 
 		try:
 			
@@ -540,6 +544,9 @@ class MODSMapper(BaseMapper):
 
 			# add record's Combine DB id
 			mapped_dict['db_id'] = db_id
+
+			# add record's crc32 document hash, aka "fingerprint"
+			self.formatted_elems['fingerprint'] = db_id
 
 			return (
 				'success',

@@ -68,20 +68,22 @@ from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
-# import ElasticSearch BaseMapper and PythonUDFRecord
-# hasattr(django, apps) check --> skips if imported from pyspark context
-if not hasattr(django, 'apps'):
-	from core.spark.es import BaseMapper
-	from core.spark.utils import PythonUDFRecord
-
-# AWS
-import boto3
-
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
+# import ElasticSearch BaseMapper and PythonUDFRecord
+# hasattr(django, apps) check --> skips if imported from pyspark context
+try:
+	from core.spark.es import BaseMapper
+	from core.spark.utils import PythonUDFRecord
+except:
+	logger.debug('core.models could import BaseMapper or PythonUDFRecord')
+
+# AWS
+import boto3
 
 
 

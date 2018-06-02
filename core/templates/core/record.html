@@ -47,7 +47,7 @@
 			<!-- Navigation -->
 			<ul class="nav nav-tabs">				
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#xml_tab">Record XML</a>
+					<a class="nav-link active" data-toggle="tab" href="#document_tab">Record Document</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#indexed_fields_tab">Indexed Fields</a>
@@ -62,19 +62,22 @@
 					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA Link</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">Job Type Specific</a>
+					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{{record.job.job_type_family}} Details</a>
 				</li>
 			</ul>
 
 			<!-- Tabbed Content -->
 			<div class="tab-content">
 
-				<div id="xml_tab" class="tab-pane container full_width_tab active">
+				<div id="document_tab" class="tab-pane container full_width_tab active">
 					<div class="row">
 						<div class="col-md-12">
 							<div id="record_document">
-								<h4>Record XML</h4>
-								<p>The following is the raw, stored XML for this Record, <a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank">view in a new tab</a>.</p>
+								<h4>Record Document</h4>
+								<p>This tab previews and provides information about the document stored for this Record.  Below is the raw, stored document for this Record, or see the buttons for more options.
+
+								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Document in new Tab</button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
+								
 								{% if record.document != '' %}
 									<div>
 										<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document_pretty_print }}</code></pre>
@@ -205,7 +208,7 @@
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Indexed Fields</h4>
-							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank">View ElasticSearch document</a></p>
+							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></p>
 
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>
@@ -363,6 +366,9 @@
 								{% if record.job.job_type_family == 'TransformJob' %}
 									{% if job_details.transformation.id %}										
 										<div class="row">
+											<div class="col-md-12">
+												<p>The following are details specific to the Transformation that created this record.</p>
+											</div>
 											<div class="col-md-12">
 												<h3>Transformation Scenario Used</h3>
 												<table class="table table-bordered table-hover">
