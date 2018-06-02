@@ -97,8 +97,8 @@ Useful Commands
 
 .. code-block:: python
 
-    # import Combine module utils from core.spark
-    from core.spark import utils
+    # import some convenience variables, classes, and functions from core.spark.console
+    from core.spark.console import *
 
     # retrieve Records from MySQL as pyspark DataFrame
     '''
@@ -106,7 +106,7 @@ Useful Commands
     Also of note, must pass spark instance as first argument to convenience method,
     which is provided by pyspark context
     '''
-    job_df = utils.get_job_as_df(spark, 308)
+    job_df = get_job_as_df(spark, 308)
 
     # confirm retrieval okay
     job_df.count()

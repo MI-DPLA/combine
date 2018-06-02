@@ -75,12 +75,8 @@ logger = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 # import ElasticSearch BaseMapper and PythonUDFRecord
-# hasattr(django, apps) check --> skips if imported from pyspark context
-try:
-	from core.spark.es import BaseMapper
-	from core.spark.utils import PythonUDFRecord
-except:
-	logger.debug('core.models could import BaseMapper or PythonUDFRecord')
+from core.spark.es import BaseMapper
+from core.spark.utils import PythonUDFRecord
 
 # AWS
 import boto3
