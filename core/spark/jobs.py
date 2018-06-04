@@ -773,13 +773,16 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.kwargs['document_element_root'])
 		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, kwargs))
 
+		# convert back to DF
+		records = records.toDF()
+
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)
 		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
-			records_df=records.toDF(),
+			records_df=records,
 			assign_combine_id=True
 		)
 
@@ -902,6 +905,10 @@ class TransformSpark(CombineSparkJob):
 				gw.add_transform('xslt_transform', xslt_string)
 				result = gw.transform('xslt_transform', row.document)
 				gw.drop_transform('xslt_transform')
+
+				# attempt XML parse to confirm well-formedness
+				# error will bubble up in try/except
+				valid_xml = etree.fromstring(result.encode('utf-8'))
 
 				# set trans_result tuple
 				trans_result = (result, '', 1)
