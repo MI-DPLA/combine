@@ -62,7 +62,7 @@
 					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA Link</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{{record.job.job_type_family}} Details</a>
+					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{% if record.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif record.job.job_type_family == 'TransformJob' %}Transform Details{% elif record.job.job_type_family == 'MergeJob' %}Merge / Duplciate Details{% elif record.job.job_type_family == 'PublishJob' %}Publish Details{% elif record.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
 				</li>
 			</ul>
 

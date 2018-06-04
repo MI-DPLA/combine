@@ -2713,3 +2713,76 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
 
 
+class JobRecordDiffs(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records that were
+		transformed during a Transformation Job
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id',
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		order_columns = [
+			'id',			
+			'record_id'			
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+			job_records = job.get_records()
+
+			# filter for records that were transformed
+			return job_records.filter(transformed=True)
+
+
+		def render_column(self, row, column):
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.id)
+
+			# handle record_id
+			if column == 'record_id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.record_id)
+
+			else:
+				return super(DTRecordsJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+
+			# return
+			return qs
+
