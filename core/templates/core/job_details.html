@@ -149,7 +149,10 @@
 				</li>								
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
-				</li>				
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge / Duplciate Details{% elif cjob.job.job_type_family == 'PublishJob' %}Publish Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
+				</li>
 			</ul>
 
 			<!-- Tabbed Content -->
@@ -312,7 +315,7 @@
 						<div class="row">
 							<div class="col-md-12">
 								<h4>Matches</h4>
-								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover">
+								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
 										<th>Record ID</th>										
@@ -326,7 +329,7 @@
 						<div class="row">
 							<div class="col-md-12">
 								<h4>Misses</h4>
-								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover">
+								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
 										<th>Record ID</th>										
@@ -358,8 +361,6 @@
 							    });
 							});
 
-
-
 							// Misses Datatable
 							$(document).ready(function() {
 							    misses_table = $('#dpla_bulk_data_misses_table').dataTable({
@@ -379,12 +380,6 @@
 							        ],
 							    });
 							});
-
-						
-							function update_table_widths() {
-								matches_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
-								misses_table.css('width', '100%').dataTable().fnAdjustColumnSizing();
-							}							
 						
 						</script>
 
@@ -399,10 +394,87 @@
 					{% endif %}
 				</div>
 
+				<div id="job_type_specific_tab" class="tab-pane container full_width_tab">
+					<!-- Details specific to Job Type -->
+					<div class="row">
+						<div class="col-md-12">
+							<div id="job_type_specific">
+
+								<!-- HarvestJob -->
+								{% if cjob.job.job_type_family == 'HarvestJob' %}
+									<p>No additional information at this time for Harvest jobs.</p>
+								{% endif %}
+
+								<!-- TransformJob -->			
+								{% if cjob.job.job_type_family == 'TransformJob' %}									
+									<p>See below for a table of all records that were altered in some way during this Transform Job.  Click into a Record and then click the tab <strong>"Transform Details"</strong> to view detailed changes for that Record.</p>									
+
+									<!-- Record Diff table -->
+									<table id='job_record_diffs' class="table table-bordered table-hover dt_table">
+										<thead>
+											<th>DB ID</th>
+											<th>Record ID</th>
+										</thead>
+										<tbody></tbody>
+									</table>
+
+									<script>
+										// Matches Datatable
+										$(document).ready(function() {
+										    matches_table = $('#job_record_diffs').dataTable({
+										        "processing": true,
+										        "serverSide": true,
+										        "ajax": "{% url 'job_record_diffs' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+										        "searchDelay": 1000,
+										        "pageLength": 10,
+										        "order": [[ 1, "desc" ]],
+										        "columns": [
+										            { 
+										            	title: "DB ID"
+									            	},
+										            { 
+										            	title: "Record ID"
+										            }									            
+										        ],
+										    });
+										});
+									</script>
+
+
+								{% endif %}
+
+								<!-- MergeJob -->
+								{% if cjob.job.job_type_family == 'MergeJob' %}
+									<p>No additional information at this time for Duplicate / Merge / Analysis jobs.</p>
+								{% endif %}
+
+								<!-- PublishJob -->
+								{% if cjob.job.job_type_family == 'PublishJob' %}
+									<p>No additional information at this time for Publish jobs.</p>
+								{% endif %}
+
+								<!-- AnalysisJob -->
+								{% if cjob.job.job_type_family == 'AnalysisJob' %}
+									<p>No additional information at this time for Analysis jobs.</p>
+								{% endif %}
+
+							</div>
+						</div>
+					</div>
+				</div>
+
 			</div>
 
 		</div>
-	</div>	
+	</div>
+
+	<script>
+
+		function update_table_widths() {			
+			$(".dt_table").css('width', '100%').dataTable().fnAdjustColumnSizing();
+		}
+
+	</script>
 
 
 {% endblock %}

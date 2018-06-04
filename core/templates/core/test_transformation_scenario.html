@@ -191,6 +191,11 @@
 					$("tr").click();
 				}
 			{% endif %}
+
+			// if transformation scenario requested, select from dropdown
+			{% if tsid %}
+				$("#trans_exists").val("{{ tsid }}").change();				
+			{% endif %}
 			
 		}
 		
