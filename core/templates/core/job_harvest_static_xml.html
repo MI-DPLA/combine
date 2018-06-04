@@ -36,17 +36,17 @@
 						<h5>Provide Static Content</h5>
 						<p>For static harvests, optionally upload content, or provide a folder location on the filesystem where content can be found.</p>
 
+						<div class="alert alert-warning alert-dismissible fade show" role="alert">
+							<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
 						<ul class="nav nav-tabs">
 							<li class="nav-item">
 								<a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload</a>
 							</li>
-							<li class="nav-item">
-								<div class="alert alert-danger alert-dismissible fade show" role="alert">
-									<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
-									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-									<span aria-hidden="true">&times;</span>
-									</button>
-								</div>
+							<li class="nav-item">								
 								<a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
 							</li>					
 						</ul>
