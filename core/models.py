@@ -1219,7 +1219,7 @@ class Record(models.Model):
 	published = models.BooleanField(default=0)
 	valid = models.BooleanField(default=1)
 	fingerprint = models.IntegerField(null=True, default=None)
-
+	transformed = models.BooleanField(default=0)
 
 
 	# this model is managed outside of Django

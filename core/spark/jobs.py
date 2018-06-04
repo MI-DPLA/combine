@@ -163,9 +163,6 @@ class CombineSparkJob(object):
 		# run record identifier transformation scenario if provided
 		records_df = self.run_rits(records_df)
 
-		# fingerprint Record document
-		# records_df = records_df.withColumn('fingerprint', crc32(records_df.document))
-
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
 			pyspark_sql_functions.count('record_id')\
@@ -507,6 +504,17 @@ class CombineSparkJob(object):
 			return db_records
 
 
+	def fingerprint_records(self, df):
+
+		'''
+		Method to generate a crc32 hash "fingerprint" for each Record
+		'''
+
+		# fingerprint Record document
+		df = df.withColumn('fingerprint', crc32(df.document))
+		return df
+
+
 
 class HarvestOAISpark(CombineSparkJob):
 
@@ -599,6 +607,10 @@ class HarvestOAISpark(CombineSparkJob):
 		# add blank error column
 		error = udf(lambda id: '', StringType())
 		records = records.withColumn('error', error(records.id))
+
+		# fingerprint records and set transformed
+		records = self.fingerprint_records(records)
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -761,6 +773,10 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.kwargs['document_element_root'])
 		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, kwargs))
 
+		# fingerprint records and set transformed
+		records = self.fingerprint_records(records)
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
+
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
 			records_df=records.toDF(),
@@ -844,10 +860,10 @@ class TransformSpark(CombineSparkJob):
 		records_trans = records_trans.toDF()
 
 		# fingerprint Record document
-		records_trans = records_trans.withColumn('fingerprint', crc32(records_trans.document))
+		records_trans = self.fingerprint_records(records_trans)
 
 		# write `transformed` column based on new fingerprint
-		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.fingerprint == records_trans.fingerprint, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(pyspark_sql_functions.isnull(pyspark_sql_functions.col('input_records.fingerprint')), pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.col('records_trans.transformed')).alias('transformed'))
+		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.fingerprint == records_trans.fingerprint, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(pyspark_sql_functions.isnull(pyspark_sql_functions.col('input_records.fingerprint')), pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
 
 
 		# index records to DB and index to ElasticSearch
@@ -1062,6 +1078,9 @@ class MergeSpark(CombineSparkJob):
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
 
+		# set transformed column to False		
+		agg_df = agg_df.withColumn('transformed', pyspark_sql_functions.lit(0))
+
 		# if Analysis Job, do not write avro
 		if self.job.job_type == 'AnalysisJob':
 			write_avro = False
@@ -1130,6 +1149,9 @@ class PublishSpark(CombineSparkJob):
 		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
+
+		# set transformed column to False		
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(0))
 
 		# write job output to avro
 		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(self.job.job_output)
