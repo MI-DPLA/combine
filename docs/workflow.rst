@@ -352,6 +352,11 @@ This tab provides a glimpse at the raw, XML for a Record:
 
    Record's document
 
+Note also two buttons for this tab:
+
+  - ``View Document in New Tab`` This will show the raw XML in a new browser tab
+  - ``Search for Matching Documents``: This will search all Records in Combine for other Records with an *identical* XML document
+
 
 Indexed Fields
 --------------
