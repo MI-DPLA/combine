@@ -291,6 +291,41 @@ This feature is still somewhat exploratory, but Combine provides an ideal enviro
 In this example, we are seeing that 185k Records were found in the DPLA data dump, and that 38k Records appear to be new.  Without an example at hand, it is difficult to show, but it's conceivable that by leaving Jobs in Combine, and then comparing against a later DPLA data dump, one would have the ability to confirm that all records do indeed show up in the DPLA data.
 
 
+Job Type Details - Jobs
+~~~~~~~~~~~~~~~~~~~~~~~
+
+For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, ``Publish``, and ``Analysis`` -- the Job details screen provides a tab with information specific to that Job type.
+
+**Harvest Jobs**
+
+No additional information at this time for Harvest Jobs.
+
+**Transform Jobs**
+
+The "Transform Details" tab shows Records that were transformed during the Job in some way.  For some Transformation Scenarios, it might be assumed that all Records will be transformed, but others, may only target a few Records.  This allows for viewing what Records were altered.
+
+.. figure:: img/transformed_records_table.png
+   :alt: Table showing transformed Records for a Job
+   :target: _images/transformed_records_table.png
+
+   Table showing transformed Records for a Job
+
+Clicking into a Record, and then clicking the "Transform Details" tab at the Record level, will show detailed changes for that Record (see below for more information).
+
+**Merge/Duplicate Jobs**
+
+No additional information at this time for Merge/Duplicate Jobs.
+
+**Publish Jobs**
+
+No additional information at this time for Publish Jobs.
+
+**Analysis Jobs**
+
+No additional information at this time for Analysis Jobs.
+
+
+
 Viewing Record Details
 ======================
 
@@ -384,11 +419,56 @@ Results from the DPLA API are parsed and presented here, with the full API JSON 
   - confirming that changes and transformations are propagating as expected
 
 
+Job Type Details - Records
+~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Job Type Specific
------------------
+For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, ``Publish``, and ``Analysis`` -- the Record details screen provides a tab with information specific to that Job type.
 
-This tab shows any details specific to the Job type: Harvest, Transform, Merge / Duplicate, Publish, or Analysis.
+**Harvest Jobs**
+
+No additional information at this time for Harvest Jobs.
+
+**Transform Jobs**
+
+This tab will show Transformation details specific to this Record.
+
+The first section shows the Transformation Scenario used, including the transformation itself, and the "input" or "upsteram" Record that was used for the transformation:
+
+.. figure:: img/trans_record_details_table.png
+   :alt: Information about Input Record and Transformation Scenario used for this Record
+   :target: _images/trans_record_details_table.png
+
+   Information about Input Record and Transformation Scenario used for this Record
+
+Clicking the "Re-run Transformation on Input Record" button will send you to the Transformation Scenario preview page, with the Transformation Scenario and Input Record automatically selected.
+
+Further down, is a detailed diff between the **input** and **output** document for this Record.  In this minimal example, you can observe that ``Juvenile`` was changed to ``Youth`` in the Transformation, resulting in only a couple of isolated changes:
+
+.. figure:: img/trans_record_details_smalldiff.png
+   :alt: Record transformation diff, small change
+   :target: _images/trans_record_details_smalldiff.png
+
+   Record transformation diff, small change
+
+For transformations where the Record is largely re-written, the changes will be lengthier and more complex:
+
+.. figure:: img/trans_record_details_largediff.png
+   :alt: Snippet of Record transformation diff, many changes
+   :target: _images/trans_record_details_largediff.png
+
+   Snippet of Record transformation diff, many changes
+
+**Merge/Duplicate Jobs**
+
+No additional information at this time for Merge/Duplicate Jobs.
+
+**Publish Jobs**
+
+No additional information at this time for Publish Jobs.
+
+**Analysis Jobs**
+
+No additional information at this time for Analysis Jobs.
 
 
 Transformation Job Details
