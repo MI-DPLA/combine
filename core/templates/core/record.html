@@ -89,8 +89,7 @@
 							<script>
 								// highlight raw document after loaded
 								$(document).ready(function(){
-									$("#record_document_raw").each(function(i, block) {
-										console.log(block);
+									$("#record_document_raw").each(function(i, block) {										
 										hljs.highlightBlock(block);
 									});
 								});
@@ -261,7 +260,10 @@
 								$(document).ready(function() {
 								    $('#record_fields').DataTable({
 								    	"pageLength": 100,
-								    	"lengthMenu": [ 10, 25, 100, 500 ]
+								    	"lengthMenu": [ 10, 25, 100, 500 ],
+								    	"columnDefs": [
+											{ "searchable": false, "targets": 2 }
+										]
 								    });
 								} );
 							</script>

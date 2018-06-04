@@ -138,6 +138,9 @@
 
 				// change this to dynamically grab from selected rows in records table
 				var db_id = sel_row_id;
+				if (typeof db_id == 'undefined') {
+					alert('Click a row from the table at the top to run a Transformation Test against...');
+				}
 
 				// get trans_payload
 				var trans_payload = $("#trans_payload").val();
