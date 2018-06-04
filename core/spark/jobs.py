@@ -906,6 +906,10 @@ class TransformSpark(CombineSparkJob):
 				result = gw.transform('xslt_transform', row.document)
 				gw.drop_transform('xslt_transform')
 
+				# attempt XML parse to confirm well-formedness
+				# error will bubble up in try/except
+				valid_xml = etree.fromstring(result.encode('utf-8'))
+
 				# set trans_result tuple
 				trans_result = (result, '', 1)
 
