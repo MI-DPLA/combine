@@ -42,12 +42,21 @@
 
 				<div class="row">
 					<div class="col-md-12">
-						<div class="alert alert-warning alert-dismissible fade show" role="alert">
-							Showing <strong>all</strong> Jobs from <strong>all</strong> Record Groups.  To view Jobs only from this Record Group, <strong>{{record_group.name}}</strong>, use the dropdown filters in the table below
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
+						{% if input_job_scope == None %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Showing Jobs from <span class="font-weight-bold">Record Group only</span>.  <a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}?scope=all_jobs">Click here to show Jobs from <span class="font-weight-bold">all Record Groups</span>.</a>
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% else %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Showing Jobs from <span class="font-weight-bold">All Record Groups</span>.  <a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}">Click here to show Jobs from <span class="font-weight-bold">this Record Group only</span>.</a>
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% endif %}
 						<!-- Job Select -->
 						{% include 'core/job_input_select.html' %}
 					</div>

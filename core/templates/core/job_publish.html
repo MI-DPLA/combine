@@ -62,6 +62,21 @@
 
 				<div class="row">
 					<div class="col-md-12">
+						{% if input_job_scope == None %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Showing Jobs from <span class="font-weight-bold">Record Group only</span>.  <a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}?scope=all_jobs">Click here to show Jobs from <span class="font-weight-bold">all Record Groups</span>.</a>
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% else %}
+							<div class="alert alert-warning alert-dismissible fade show" role="alert">
+								Showing Jobs from <span class="font-weight-bold">All Record Groups</span>.  <a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}">Click here to show Jobs from <span class="font-weight-bold">this Record Group only</span>.</a>
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+						{% endif %}
 						<!-- Job Select -->
 						{% include 'core/job_input_select.html' %}
 					</div>
