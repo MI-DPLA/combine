@@ -81,7 +81,8 @@ class CombineRecordSchema(object):
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False),
-				StructField('fingerprint', IntegerType(), False)				
+				StructField('fingerprint', IntegerType(), False),
+				StructField('transformed', BooleanType(), False)				
 			]
 		)
 
@@ -163,7 +164,7 @@ class CombineSparkJob(object):
 		records_df = self.run_rits(records_df)
 
 		# fingerprint Record document
-		records_df = records_df.withColumn('fingerprint', crc32(records_df.document))
+		# records_df = records_df.withColumn('fingerprint', crc32(records_df.document))
 
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
@@ -819,6 +820,9 @@ class TransformSpark(CombineSparkJob):
 			)
 		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
+		# fork as input_records
+		input_records = records
+
 		# filter based on record validity
 		records = self.record_validity_valve(records)
 
@@ -838,6 +842,13 @@ class TransformSpark(CombineSparkJob):
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
+
+		# fingerprint Record document
+		records_trans = records_trans.withColumn('fingerprint', crc32(records_trans.document))
+
+		# write `transformed` column based on new fingerprint
+		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.fingerprint == records_trans.fingerprint, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(pyspark_sql_functions.isnull(pyspark_sql_functions.col('input_records.fingerprint')), pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.col('records_trans.transformed')).alias('transformed'))
+
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -892,7 +903,9 @@ class TransformSpark(CombineSparkJob):
 					error = trans_result[1],
 					job_id = int(job_id),
 					oai_set = row.oai_set,
-					success = trans_result[2]
+					success = trans_result[2],
+					fingerprint = row.fingerprint,
+					transformed = row.transformed
 				)
 
 		# get XSLT transformation as string		
@@ -955,7 +968,9 @@ class TransformSpark(CombineSparkJob):
 				error = trans_result[1],
 				job_id = int(job_id),
 				oai_set = row.oai_set,
-				success = trans_result[2]
+				success = trans_result[2],
+				fingerprint = row.fingerprint,
+				transformed = row.transformed
 			)
 
 		# transform via rdd.map and return
