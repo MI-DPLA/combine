@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+# generic
 import hashlib
+import io
 import json
 import logging
 from lxml import etree, isoschematron
@@ -15,6 +17,7 @@ from types import ModuleType
 from urllib.parse import urlencode
 import uuid
 
+# django
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
@@ -38,6 +41,10 @@ from core import tasks
 
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
+
+# sxsdiff 
+from sxsdiff import DiffCalculator
+from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -951,8 +958,16 @@ def job_transform(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs
-		input_jobs = record_group.job_set.all()	
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()
 
 		# get all transformation scenarios
 		transformations = models.Transformation.objects.all()
@@ -977,6 +992,7 @@ def job_transform(request, org_id, record_group_id):
 				'job_select_type':'single',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
@@ -1069,9 +1085,17 @@ def job_merge(request, org_id, record_group_id):
 	
 	# if GET, prepare form
 	if request.method == 'GET':
-		
-		# retrieve all jobs
-		input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1093,6 +1117,7 @@ def job_merge(request, org_id, record_group_id):
 				'job_select_type':'multiple',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'index_mappers':index_mappers,
@@ -1180,9 +1205,16 @@ def job_publish(request, org_id, record_group_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 		
-		# retrieve all jobs for this record group		
-		input_jobs = models.Job.objects.filter(record_group=record_group).all()
-		# input_jobs = models.Job.objects.filter(record_group=record_group).exclude(job_type='PublishJob').all()
+		# get scope of input jobs and retrieve
+		input_job_scope = request.GET.get('scope', None)
+
+		# if all jobs, retrieve all jobs
+		if input_job_scope == 'all_jobs':			
+			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+
+		# else, limit to RecordGroup
+		else:
+			input_jobs = record_group.job_set.all()		
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1201,6 +1233,7 @@ def job_publish(request, org_id, record_group_id):
 				'job_select_type':'single',
 				'record_group':record_group,
 				'input_jobs':input_jobs,
+				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'job_lineage_json':json.dumps(ld),
 				'publish_set_ids':publish_set_ids,
@@ -1540,6 +1573,9 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	else:
 		dpla_api_json = None
 
+	# retrieve diffs, if any, from input record
+	input_record_diffs = record.get_input_record_diff()
+
 	# return
 	return render(request, 'core/record.html', {
 		'record_id':record_id,
@@ -1548,6 +1584,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'job_details':job_details,
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
+		'input_record_diffs':input_record_diffs,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 
@@ -1622,6 +1659,41 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 
 		# return
 		return JsonResponse(vs_result['parsed'], safe=False)
+
+
+def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	Return detailed diff of Record against Input Record
+		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# get input record
+	irq = record.get_record_stages(input_record_only=True)
+	logger.debug(irq)
+	if len(irq) == 1:
+		logger.debug('side-by-side diff: single, input Record found: %s' % irq[0])
+
+		# get input record
+		ir = irq[0]
+
+		# check if fingerprints the same
+		if record.fingerprint != ir.fingerprint:
+
+			logger.debug('side-by-side diff: fingerprint mismatch, returning diffs')
+
+			# perform diff
+			sxsdiff_result = DiffCalculator().run(ir.document, record.document)
+			sio = io.StringIO()
+			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+			sio.seek(0)
+			html = sio.read()
+
+			# return document as XML
+			return HttpResponse(html, content_type='text/html')
 
 
 ####################################################################
@@ -1708,9 +1780,13 @@ def test_transformation_scenario(request):
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
 
+		# check for pre-requested transformation scenario
+		tsid = request.GET.get('transformation_scenario', None)
+
 		# return
 		return render(request, 'core/test_transformation_scenario.html', {
 			'q':q,
+			'tsid':tsid,
 			'transformation_scenarios':transformation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2678,4 +2754,77 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 				return self.handle_exception(e)
 
 
+
+class JobRecordDiffs(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records that were
+		transformed during a Transformation Job
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'record_id',
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		order_columns = [
+			'id',			
+			'record_id'			
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering
+			
+			# get job
+			job = models.Job.objects.get(pk=self.kwargs['job_id'])
+			job_records = job.get_records()
+
+			# filter for records that were transformed
+			return job_records.filter(transformed=True)
+
+
+		def render_column(self, row, column):
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.id)
+
+			# handle record_id
+			if column == 'record_id':
+				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':row.id
+					}), row.record_id)
+
+			else:
+				return super(DTRecordsJson, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+
+			# return
+			return qs
 

@@ -20,15 +20,18 @@ CREATE TABLE `core_record` (
   `unique` tinyint(1) NOT NULL,
   `unique_published` tinyint(1) DEFAULT NULL,
   `job_id` int(11) NOT NULL,
-  `published` tinyint(1) NOT NULL DEFAULT 0,
+  `published` tinyint(1) DEFAULT 0,
   `oai_set` varchar(255) DEFAULT NULL,
-  `success` tinyint(1) DEFAULT 1 NOT NULL,
-  `valid` tinyint(1) DEFAULT 1 NOT NULL,  
+  `success` tinyint(1) DEFAULT 1,
+  `valid` tinyint(1) DEFAULT 1,
+  `fingerprint` bigint(64) DEFAULT NULL,
+  `transformed` tinyint(1) DEFAULT 0,  
   PRIMARY KEY (`id`),
   INDEX `core_record_job_id_idx` (`job_id`),
   INDEX `core_record_job_success_idx` (`success`),
   INDEX `core_record_job_valid_idx` (`valid`),
-  INDEX `core_record_job_published_idx` (`published`)
+  INDEX `core_record_job_published_idx` (`published`),
+  INDEX `core_record_job_fingerprint_idx` (`fingerprint`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 

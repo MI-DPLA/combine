@@ -2,9 +2,11 @@
 from __future__ import unicode_literals
 
 # generic imports
+import binascii
 from collections import OrderedDict
 import datetime
 import difflib
+import django
 import gc
 import gzip
 import hashlib
@@ -66,18 +68,18 @@ from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
-# import ElasticSearch BaseMapper
-from core.spark.es import BaseMapper
-from core.spark.utils import PythonUDFRecord
-
-# AWS
-import boto3
-
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
+# import ElasticSearch BaseMapper and PythonUDFRecord
+from core.spark.es import BaseMapper
+from core.spark.utils import PythonUDFRecord
+
+# AWS
+import boto3
 
 
 
@@ -1216,6 +1218,8 @@ class Record(models.Model):
 	success = models.BooleanField(default=1)
 	published = models.BooleanField(default=0)
 	valid = models.BooleanField(default=1)
+	fingerprint = models.IntegerField(null=True, default=None)
+	transformed = models.BooleanField(default=0)
 
 
 	# this model is managed outside of Django
@@ -1363,10 +1367,13 @@ class Record(models.Model):
 			None
 
 		Returns:
-			(lxml.etree._Element)
+			(tuple): ((bool) result of XML parsing, (lxml.etree._Element) parsed document)
 		'''
-
-		return etree.fromstring(self.document.encode('utf-8'))
+		try:
+			return (True, etree.fromstring(self.document.encode('utf-8')))
+		except Exception as e:
+			logger.debug(str(e))
+			return (False, str(e))
 
 
 	def dpla_mapped_field_values(self):
@@ -1516,7 +1523,11 @@ class Record(models.Model):
 		'''
 
 		# return as pretty printed string
-		return etree.tostring(self.parse_document_xml(), pretty_print=True)
+		parsed_doc = self.parse_document_xml()
+		if parsed_doc[0]:
+			return etree.tostring(parsed_doc[1], pretty_print=True)
+		else:
+			return "Could not parse Record document:\n%s" % parsed_doc[1]
 
 
 	def get_lineage_url_paths(self):
@@ -1577,17 +1588,42 @@ class Record(models.Model):
 			# get input record
 			ir = irq[0]
 
-			# perform diff
-			line_diffs = difflib.unified_diff(
-				ir.document.splitlines(),
-				self.document.splitlines()
-			)
+			# check if fingerprints the same
+			if self.fingerprint != ir.fingerprint:
 
-			# return
-			return line_diffs
+				logger.debug('fingerprint mismatch, returning diffs')
+
+				# perform diff
+				line_diffs = difflib.unified_diff(
+					ir.document.splitlines(),
+					self.document.splitlines()
+				)
+
+				# return
+				return line_diffs
+
+			# else, return None
+			else:
+				logger.debug('fingerprint match, returning None')
+				return None
 
 		else:
 			return False
+
+
+	def calc_fingerprint(self, update_db=False):
+		
+		'''
+		Generate fingerprint hash with binascii.crc32()
+		'''
+
+		fingerprint = binascii.crc32(self.document.encode('utf-8'))
+
+		if update_db:
+			self.fingerprint = fingerprint
+			self.save()
+
+		return fingerprint
 
 
 
