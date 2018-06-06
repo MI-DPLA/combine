@@ -1,7 +1,9 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
+# generic
 import hashlib
+import io
 import json
 import logging
 from lxml import etree, isoschematron
@@ -15,6 +17,7 @@ from types import ModuleType
 from urllib.parse import urlencode
 import uuid
 
+# django
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.core import serializers
@@ -38,6 +41,10 @@ from core import tasks
 
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
+
+# sxsdiff 
+from sxsdiff import DiffCalculator
+from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -1652,6 +1659,41 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 
 		# return
 		return JsonResponse(vs_result['parsed'], safe=False)
+
+
+def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	Return detailed diff of Record against Input Record
+		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# get input record
+	irq = record.get_record_stages(input_record_only=True)
+	logger.debug(irq)
+	if len(irq) == 1:
+		logger.debug('side-by-side diff: single, input Record found: %s' % irq[0])
+
+		# get input record
+		ir = irq[0]
+
+		# check if fingerprints the same
+		if record.fingerprint != ir.fingerprint:
+
+			logger.debug('side-by-side diff: fingerprint mismatch, returning diffs')
+
+			# perform diff
+			sxsdiff_result = DiffCalculator().run(ir.document, record.document)
+			sio = io.StringIO()
+			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+			sio.seek(0)
+			html = sio.read()
+
+			# return document as XML
+			return HttpResponse(html, content_type='text/html')
 
 
 ####################################################################

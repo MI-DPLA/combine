@@ -463,6 +463,21 @@ For transformations where the Record is largely re-written, the changes will be 
 
    Snippet of Record transformation diff, many changes
 
+Users may also click the button "View Side-by-Side Changes" for a GitHub-esque, side-by-side diff of the Input Record and the Current Record (made possible by the `sxsdiff <https://github.com/timonwong/sxsdiff>`_ library):
+
+.. figure:: img/sxsdiff_small.png
+   :alt: Side-by-side diff, minimal changes
+   :target: _images/sxsdiff_small.png
+
+   Side-by-side diff, minimal changes
+
+.. figure:: img/sxsdiff_large.png
+   :alt: Side-by-side diff, many changes
+   :target: _images/sxsdiff_large.png
+
+   Side-by-side diff, many changes
+
+
 **Merge/Duplicate Jobs**
 
 No additional information at this time for Merge/Duplicate Jobs.

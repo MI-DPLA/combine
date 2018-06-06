@@ -386,7 +386,7 @@
 														<td>{{job_details.transformation.name}}</td>
 														<td>{{job_details.transformation.get_transformation_type_display}}</td>
 														<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
-														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id%}" target="_blank">View (Record #{{ job_details.input_record.id }})</a></td>
+														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id %}" target="_blank">View (Record #{{ job_details.input_record.id }})</a></td>
 													</tr>
 												</table>
 											</div>
@@ -399,8 +399,9 @@
 									<div class="row">
 										<div class="col-md-12">
 
-											<h3>Record Changes</h3>
+											<h3>Record Changes</h3>											
 											{% if input_record_diffs %}
+												<p><a target="_blank" href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Side-by-Side Changes</button></a></p>
 												<div>
 													<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
 												</div>

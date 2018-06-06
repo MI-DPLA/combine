@@ -39,7 +39,7 @@
 						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
 								{% csrf_token %}
-								<div class="form-group">
+								<div class="form-group" style="min-width: 200px;">
 									<label for="job_name">Enter new job name</label>
 									<input class="form-control" type="text" id="job_name" name="job_name" size=40 placeholder="e.g. 'New Job Name'"/>
 								</div>								
@@ -59,11 +59,18 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
 					
 					{% if job.jobinput_set.all|length > 0 %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% for input_job in job.jobinput_set.all %}
-							<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-								<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+
+							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Show Input Jobs</button>
+
+							<div id="input_jobs_column" style="margin-top:10px; display:none;">
+								{% for input_job in job.jobinput_set.all %}
+									<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+										<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+									</div>
+								{% endfor %}
 							</div>
-							{% endfor %}
+
 						</td>
 					{% else %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>

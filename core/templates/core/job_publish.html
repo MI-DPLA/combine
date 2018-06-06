@@ -34,7 +34,7 @@
 				</div>
 
 				<div class="row">
-					<div class="col-md-6" style="margin-left:15px; padding:20px; border-radius:10px; background-color:#ffe7f4;">
+					<div class="col-md-6">
 
 						<p>The next step is to assign a <span class="font-weight-bold">Publish Set ID</span> for this Record Group.  <span class="font-italic"><span class="font-weight-bold">Note:</span> This will translate to an OAI set for the outbound Combine OAI-PMH server.</span></p>
 
@@ -77,6 +77,12 @@
 								</button>
 							</div>
 						{% endif %}
+						<div class="alert alert-danger alert-dismissible fade show" role="alert">
+							For a <strong>Publish</strong> Job, a <strong>single input</strong> Job is required.  Select from the table below.
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>
 						<!-- Job Select -->
 						{% include 'core/job_input_select.html' %}
 					</div>
