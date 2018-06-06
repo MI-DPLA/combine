@@ -294,9 +294,9 @@ def organizations(request):
 		# create new org
 		logger.debug(request.POST)
 		f = forms.OrganizationForm(request.POST)
-		f.save()	
+		new_org = f.save()
 
-		return redirect('organizations')
+		return redirect('organization', org_id=new_org.id)
 
 
 def organization(request, org_id):
@@ -360,10 +360,10 @@ def record_group_new(request, org_id):
 		# create new record group
 		logger.debug(request.POST)
 		f = forms.RecordGroupForm(request.POST)
-		f.save()
+		new_rg = f.save()
 
 		# redirect to organization page
-		return redirect('organization', org_id=org_id)
+		return redirect('record_group', org_id=org_id, record_group_id=new_rg.id)
 
 
 
