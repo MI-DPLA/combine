@@ -2,6 +2,7 @@ from background_task import background
 
 # generic imports 
 import time
+import uuid
 
 # Get an instance of a logger
 import logging
@@ -14,7 +15,7 @@ This file provides background tasks that are performed with Django-Background-Ta
 '''
 
 @background(schedule=1)
-def delete_model_instance(instance_model, instance_id):
+def delete_model_instance(instance_model, instance_id, unique_hash=uuid.uuid4().urn):
 
 	'''
 	Background task to delete generic DB model instance
@@ -39,7 +40,7 @@ def delete_model_instance(instance_model, instance_id):
 
 
 @background(schedule=1)
-def download_and_index_bulk_data(dbdd_id):
+def download_and_index_bulk_data(dbdd_id, unique_hash=uuid.uuid4().urn):
 
 	'''
 	Background task driver to manage downloading and indexing of bulk data
@@ -73,7 +74,7 @@ def download_and_index_bulk_data(dbdd_id):
 
 
 @background(schedule=1)
-def test_bg_task(duration=5):
+def test_bg_task(duration=5, unique_hash=uuid.uuid4().urn):
 
 	logger.debug('preparing to sleep for: %s' % duration)
 	time.sleep(duration)
