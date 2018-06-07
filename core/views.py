@@ -2853,9 +2853,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'id',
 			'cbgt_name',
 			'cbgt_type',
-			'started',
-			'status',
-			'dbgt_task_hash'
+			'cbgt_verbose_name'
 		]
 
 		# define column names that will be used in sorting
@@ -2867,9 +2865,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'id',
 			'cbgt_name',
 			'cbgt_type',
-			'started',
-			'status',
-			'dbgt_task_hash'
+			'cbgt_verbose_name'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
@@ -2885,14 +2881,14 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			if column == 'started':
-				return row.start_timestamp
+			# if column == 'started':
+			# 	return row.start_timestamp
 
-			if column == 'status':
-				return row.dbgt_status
+			# if column == 'status':
+			# 	return row.dbgt_status
 
-			if column == 'dbgt_task_hash':
-				return '<code>%s</code>' % row.dbgt_task_hash
+			if column == 'cbgt_verbose_name':
+				return '<code>%s</code>' % row.cbgt_verbose_name
 
 			else:
 				return super(CombineBackgroundTasksDT, self).render_column(row, column)

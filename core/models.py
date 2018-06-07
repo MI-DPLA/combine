@@ -2143,8 +2143,8 @@ class CombineBackgroundTask(models.Model):
 	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
 	'''
 
-	cbgt_name = models.CharField(max_length=255, null=True, default=None)
-	cbgt_type = models.CharField(
+	name = models.CharField(max_length=255, null=True, default=None)
+	task_type = models.CharField(
 		max_length=255,
 		choices=[
 			('job_delete','Job Deletion'),
@@ -2155,26 +2155,99 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
-	cbgt_verbose_name = models.CharField(max_length=128, null=True, default=None)
+	verbose_name = models.CharField(max_length=128, null=True, default=uuid.uuid4().urn)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
 	
 	# instance of Task if retrieved
-	dbgt_task = None # placeholder for Task/CompletedTask Instance
+	task = None # placeholder for Task/CompletedTask Instance
 
 
 	def __str__(self):
-		return 'CombineBackgroundTask: %s, %s, #%s' % (self.cbgt_name, self.cbgt_verbose_name, self.id)
+		return 'CombineBackgroundTask: %s, %s, #%s' % (self.name, self.verbose_name, self.id)
 
 
-	def get_task(self):
+	def update(self):
 
 		'''
-		Method to retrieve associated task from running or completed Django-Background-Tasks tables		
+		Method to update completed status, and affix task to instance
+		'''
+
+		logger.debug('updating %s' % self)
+
+		# if completed, retrieve completed task
+		if self.completed:
+			self._get_completed_task()
+
+		# else, determine if running or completed and get task
+		else:
+
+			# check if running
+			task = self._get_running_task()
+
+			# if not found, check if completed
+			if not task:				
+				task = self._get_completed_task()
+				
+				if task:
+					# update completed status
+					self.completed = True
+
+					# set finish timestamp
+					self.finish_timestamp = task.locked_at
+
+					# save
+					self.save()
+				
+				else:					
+					self.task = False
+
+
+	def _get_completed_task(self):
+
+		'''
+		Method to check for, and return, completed task
+		'''
+
+
+		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
+		if completed.count() == 1:
+			self.task = completed.first()
+			return self.task
+		elif completed.count() > 1:
+			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
+			self._handle_multiple_tasks_found
+		else:
+			return False
+
+
+	def _get_running_task(self):
+
+		'''
+		Method to check for, and return, running/queued task
+		'''
+
+		running = Task.objects.filter(verbose_name=self.verbose_name)
+		if running.count() == 1:
+			self.task = running.first()
+			return self.task
+		elif running.count() > 1:
+			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
+			self._handle_multiple_tasks_found
+		else:
+			return False
+
+
+	def _handle_multiple_tasks_found(self):
+
+		'''
+		Method to handle multiple tasks found with same verbose_name
 		'''
 
 		pass
+
+
 
 
 ####################################################################
@@ -2503,46 +2576,7 @@ def background_task_post_init(sender, instance, **kwargs):
 
 	# if exists already
 	if instance.id:
-		
-		logger.debug('Retrieving %s' % instance)
-
-		# look for Django-Background-Tasks task via verbose_name, retrieve
-		logger.debug('looking for background task with verbose_name: %s' % instance.cbgt_verbose_name)		
-
-		# save flag
-		to_save = False
-
-		# check running tasks
-		running = Task.objects.filter(verbose_name=instance.cbgt_verbose_name)
-		if running.count() == 1:
-			logger.debug('task is running')
-			instance.dbgt_task = running.first()
-			instance.dbgt_status = 'running'
-
-		# check completed tasks
-		completed = CompletedTask.objects.filter(verbose_name=instance.cbgt_verbose_name)
-		if completed.count() == 1:
-			logger.debug('task is complete')
-			instance.dbgt_task = completed.first()
-
-			# if status not updated, update now
-			if not instance.completed:
-				instance.completed = True
-				to_save = True
-
-			# if finish timestamp not set, set now
-			if not instance.finish_timestamp:
-				logger.debug('setting finished timestamp')
-				instance.finish_timestamp = instance.dbgt_task.locked_at
-				to_save = True
-
-		# save if flagged
-		if to_save:
-			instance.save()
-
-		# else
-		if not instance.dbgt_task:
-			logger.debug('could not find background task with hash: %s' % instance.cbgt_verbose_name)
+		instance.update()	
 
 
 
