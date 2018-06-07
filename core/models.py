@@ -2155,26 +2155,23 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
+	cbgt_verbose_name = models.CharField(max_length=128, null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	completed = models.BooleanField(default=False)
 	
-	# the following are direct from background_task.models_completed.CompletedTask, background_task.models.Task
-	dbgt_task_hash = models.CharField(max_length=128, null=True, default=None)
-	# dbgt_task_name = models.CharField(max_length=1024, null=True, default=None)	
-	# dbgt_task_function = models.CharField(max_length=1024, null=True, default=None)
+	# instance of Task if retrieved
 	dbgt_task = None # placeholder for Task/CompletedTask Instance
-	dbgt_status = None
 
 
 	def __str__(self):
-		return 'CombineBackgroundTask: %s, #%s' % (self.cbgt_name, self.id)
+		return 'CombineBackgroundTask: %s, %s, #%s' % (self.cbgt_name, self.cbgt_verbose_name, self.id)
 
 
 	def get_task(self):
 
 		'''
-		Method to retrieve task from running or completed Django-Background-Tasks tables
-		Todo: Should this get fired with a signal?
+		Method to retrieve associated task from running or completed Django-Background-Tasks tables		
 		'''
 
 		pass
@@ -2506,34 +2503,46 @@ def background_task_post_init(sender, instance, **kwargs):
 
 	# if exists already
 	if instance.id:
+		
 		logger.debug('Retrieving %s' % instance)
 
-		# look for Django-Background-Tasks task via hash, retrieve
-		logger.debug('looking for background task with hash: %s' % instance.dbgt_task_hash)		
+		# look for Django-Background-Tasks task via verbose_name, retrieve
+		logger.debug('looking for background task with verbose_name: %s' % instance.cbgt_verbose_name)		
+
+		# save flag
+		to_save = False
 
 		# check running tasks
-		running = Task.objects.filter(task_hash=instance.dbgt_task_hash)
+		running = Task.objects.filter(verbose_name=instance.cbgt_verbose_name)
 		if running.count() == 1:
 			logger.debug('task is running')
 			instance.dbgt_task = running.first()
 			instance.dbgt_status = 'running'
 
 		# check completed tasks
-		completed = CompletedTask.objects.filter(task_hash=instance.dbgt_task_hash)
+		completed = CompletedTask.objects.filter(verbose_name=instance.cbgt_verbose_name)
 		if completed.count() == 1:
 			logger.debug('task is complete')
 			instance.dbgt_task = completed.first()
-			instance.dbgt_status = 'completed'
+
+			# if status not updated, update now
+			if not instance.completed:
+				instance.completed = True
+				to_save = True
 
 			# if finish timestamp not set, set now
 			if not instance.finish_timestamp:
 				logger.debug('setting finished timestamp')
 				instance.finish_timestamp = instance.dbgt_task.locked_at
-				instance.save()
+				to_save = True
+
+		# save if flagged
+		if to_save:
+			instance.save()
 
 		# else
 		if not instance.dbgt_task:
-			logger.debug('could not find background task with hash: %s' % instance.dbgt_task_hash)
+			logger.debug('could not find background task with hash: %s' % instance.cbgt_verbose_name)
 
 
 

@@ -15,7 +15,7 @@ This file provides background tasks that are performed with Django-Background-Ta
 '''
 
 @background(schedule=1)
-def delete_model_instance(instance_model, instance_id, unique_hash=uuid.uuid4().urn):
+def delete_model_instance(instance_model, instance_id, verbose_name=uuid.uuid4().urn):
 
 	'''
 	Background task to delete generic DB model instance
@@ -40,7 +40,7 @@ def delete_model_instance(instance_model, instance_id, unique_hash=uuid.uuid4().
 
 
 @background(schedule=1)
-def download_and_index_bulk_data(dbdd_id, unique_hash=uuid.uuid4().urn):
+def download_and_index_bulk_data(dbdd_id, verbose_name=uuid.uuid4().urn):
 
 	'''
 	Background task driver to manage downloading and indexing of bulk data
@@ -74,7 +74,7 @@ def download_and_index_bulk_data(dbdd_id, unique_hash=uuid.uuid4().urn):
 
 
 @background(schedule=1)
-def test_bg_task(duration=5, unique_hash=uuid.uuid4().urn):
+def test_bg_task(duration=5):
 
 	logger.debug('preparing to sleep for: %s' % duration)
 	time.sleep(duration)
