@@ -15,8 +15,9 @@
 				<thead>
 					<th>DB ID</th>
 					<th>Name</th>
-					<th>Type</th>
+					<th>Type</th>					
 					<th>Task ID</th>
+					<th>Status</th>
 				</thead>
 				<tbody></tbody>
 			</table>
@@ -29,7 +30,7 @@
 				        "serverSide": true,
 				        "ajax": "{% url 'bg_tasks_dt' %}",
 				        "searchDelay": 1000,
-				        "pageLength": 20,
+				        "pageLength": 10,
 				    });
 				});
 			</script>

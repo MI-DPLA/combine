@@ -2155,7 +2155,7 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
-	verbose_name = models.CharField(max_length=128, null=True, default=uuid.uuid4().urn)
+	verbose_name = models.CharField(max_length=128, null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
@@ -2173,8 +2173,6 @@ class CombineBackgroundTask(models.Model):
 		'''
 		Method to update completed status, and affix task to instance
 		'''
-
-		logger.debug('updating %s' % self)
 
 		# if completed, retrieve completed task
 		if self.completed:
@@ -2574,9 +2572,13 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 @receiver(models.signals.post_init, sender=CombineBackgroundTask)
 def background_task_post_init(sender, instance, **kwargs):
 
-	# if exists already
+	# if exists already, update status
 	if instance.id:
-		instance.update()	
+		instance.update()
+
+	# else, assign random uuid
+	else:
+		instance.verbose_name = uuid.uuid4().urn
 
 
 

@@ -2851,9 +2851,10 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 		# define the columns that will be returned
 		columns = [
 			'id',
-			'cbgt_name',
-			'cbgt_type',
-			'cbgt_verbose_name'
+			'name',
+			'task_type',
+			'verbose_name',
+			'completed'
 		]
 
 		# define column names that will be used in sorting
@@ -2863,9 +2864,10 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
 			'id',
-			'cbgt_name',
-			'cbgt_type',
-			'cbgt_verbose_name'
+			'name',
+			'task_type',
+			'verbose_name',
+			'completed'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
@@ -2881,14 +2883,17 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# if column == 'started':
-			# 	return row.start_timestamp
+			if column == 'task_type':				
+				return row.get_task_type_display()
 
-			# if column == 'status':
-			# 	return row.dbgt_status
+			elif column == 'verbose_name':
+				return '<code>%s</code>' % row.verbose_name
 
-			if column == 'cbgt_verbose_name':
-				return '<code>%s</code>' % row.cbgt_verbose_name
+			elif column == 'completed':
+				if row.completed:
+					return "<span style='color:green;'>Finished</span>"
+				else:
+					return "<span style='color:orange;'>Running</span>"
 
 			else:
 				return super(CombineBackgroundTasksDT, self).render_column(row, column)
