@@ -2826,7 +2826,7 @@ class JobRecordDiffs(BaseDatatableView):
 					}), row.record_id)
 
 			else:
-				return super(DTRecordsJson, self).render_column(row, column)
+				return super(JobRecordDiffs, self).render_column(row, column)
 
 
 		def filter_queryset(self, qs):
@@ -2840,4 +2840,63 @@ class JobRecordDiffs(BaseDatatableView):
 
 			# return
 			return qs
+
+
+class CombineBackgroundTasksDT(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records table in Job Details
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'cbgt_name',
+			'cbgt_type',
+			'dbgt_task_hash'
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'cbgt_name',
+			'cbgt_type',
+			'dbgt_task_hash'
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering			
+			return models.CombineBackgroundTask.objects
+
+
+		def render_column(self, row, column):
+
+			# handle db_id
+			if column == 'dbgt_task_hash':
+				return '<code>%s</code>' % row.dbgt_task_hash
+
+			else:
+				return super(CombineBackgroundTasksDT, self).render_column(row, column)
+
+
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
+
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+
+		# 	# return
+		# 	return qs
 

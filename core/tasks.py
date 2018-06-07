@@ -37,10 +37,6 @@ def delete_model_instance(instance_model, instance_id):
 	else:
 		logger.debug('Combine model %s not found, aborting' % (instance_model))	
 
-	# except:
-	# 	logger.debug('could not retrieve %s model, instance ID %s, aborting' % (instance_model, instance_id))
-	# 	return False
-
 
 @background(schedule=1)
 def download_and_index_bulk_data(dbdd_id):
@@ -74,4 +70,22 @@ def download_and_index_bulk_data(dbdd_id):
 	dbdd.es_index = es_index
 	dbdd.status = 'finished'
 	dbdd.save()
+
+
+@background(schedule=1)
+def test_bg_task(duration=5):
+
+	logger.debug('preparing to sleep for: %s' % duration)
+	time.sleep(duration)
+	return "we had a good nap"
+
+
+
+
+
+
+
+
+
+
 

@@ -9,4 +9,32 @@
 		</div>
 	</div>
 
+	<div class="row">
+		<div class="col-md-12">
+			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
+				<thead>
+					<th>ID</th>
+					<th>Name</th>
+					<th>Type</th>
+					<th>Hash</th>
+				</thead>
+				<tbody></tbody>
+			</table>
+
+			<script>
+				// Matches Datatable
+				$(document).ready(function() {
+				    matches_table = $('#bg_tasks_dt').dataTable({
+				        "processing": true,
+				        "serverSide": true,
+				        "ajax": "{% url 'bg_tasks_dt' %}",
+				        "searchDelay": 1000,
+				        "pageLength": 20,
+				    });
+				});
+			</script>
+
+		</div>
+	</div>
+
 {% endblock %}

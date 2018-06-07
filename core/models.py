@@ -2132,6 +2132,49 @@ class DPLABulkDataMatch(models.Model):
 
 
 
+class CombineBackgroundTask(models.Model):
+
+	'''
+	Model for long running, background tasks
+		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)	
+
+	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
+	'''
+
+	cbgt_name = models.CharField(max_length=255, null=True, default=None)
+	cbgt_type = models.CharField(
+		max_length=255,
+		choices=[
+			('job_delete','Job Deletion'),
+			('record_group_delete','Record Group Deletion'),
+			('org_delete','Organization Deletion'),
+			('validation_report','Validation Report Generation')
+		],
+		default=None,
+		null=True
+	)
+	
+	# the following are direct from background_task.models_completed.CompletedTask, background_task.models.Task
+	dbgt_task_hash = models.CharField(max_length=128, null=True, default=None)
+	# dbgt_task_name = models.CharField(max_length=1024, null=True, default=None)	
+	# dbgt_task_function = models.CharField(max_length=1024, null=True, default=None)
+	dbgt_task = None # placeholder for Task/CompletedTask Instance
+
+
+	def __str__(self):
+		return 'CombineBackgroundTask: %s, #%s' % (self.cbgt_name, self.id)
+
+
+	def get_task(self):
+
+		'''
+		Method to retrieve task from running or completed Django-Background-Tasks tables
+		Todo: Should this get fired with a signal?
+		'''
+
+		pass
+
+
 ####################################################################
 # Signals Handlers                                                 # 
 ####################################################################
@@ -2451,6 +2494,21 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 			es_handle.indices.delete(instance.es_index)
 	except:
 		logger.debug('could not remove ES index: %s' % instance.es_index)
+
+
+@receiver(models.signals.post_init, sender=CombineBackgroundTask)
+def background_task_post_init(sender, instance, **kwargs):
+
+	# if exists already
+	if instance.id:
+		logger.debug('Retrieving %s' % instance)
+
+		# look for Django-Background-Tasks task via hash, retrieve
+		logger.debug('looking for background task with hash: %s' % instance.dbgt_task_hash)
+		from background_task.models_completed import CompletedTask
+		comps = CompletedTask.objects.all()
+		comp = comps.last()
+		instance.dbgt_task = comp		
 
 
 
