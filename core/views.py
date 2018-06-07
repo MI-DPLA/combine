@@ -2851,6 +2851,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 		# define the columns that will be returned
 		columns = [
 			'id',
+			'start_timestamp',
 			'name',
 			'task_type',
 			'verbose_name',
@@ -2864,6 +2865,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
 			'id',
+			'start_timestamp',
 			'name',
 			'task_type',
 			'verbose_name',
