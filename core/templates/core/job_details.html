@@ -126,7 +126,7 @@
 	<div class="row">
 		<div class="col-md-12">
 
-			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+			<div class="alert alert-info alert-dismissible fade show" role="alert">
 				The following tabs provide additional information about this Job
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
@@ -152,6 +152,9 @@
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge / Duplciate Details{% elif cjob.job.job_type_family == 'PublishJob' %}Publish Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
 				</li>
 			</ul>
 
@@ -459,6 +462,23 @@
 								{% endif %}
 
 							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="export_tab" class="tab-pane container full_width_tab">
+					<div class="row">		
+						<div class="col-md-12">
+							<h3>Job Export</h3>
+							<p>Jobs are comprised of Records, and Records exist in two forms:
+								<ul>
+									<li><strong>Documents (XML)</strong>: The actual XML documents for each Record, as harvested and/or transformed.</li>
+									<li><strong>Mapped Fields (tabular)</strong>: Records are also <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">indexed into ElasticSearch</a>, resulting in a flat, tabular format of the data from the Records.</li>
+								</ul>
+							</p>
+							<p>This area allows you to export all Records from a Job as XML documents, or Records flattend as tabular data from ElasticSearch.</p>
+							<p><button type="button" class="btn btn-success btn-sm">Export Records as XML</button></p>
+							<p><button type="button" class="btn btn-success btn-sm">Export Records as Mapped Fields</button></p>
 						</div>
 					</div>
 				</div>
