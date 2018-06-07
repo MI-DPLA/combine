@@ -2853,6 +2853,8 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'id',
 			'cbgt_name',
 			'cbgt_type',
+			'started',
+			'status',
 			'dbgt_task_hash'
 		]
 
@@ -2865,6 +2867,8 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'id',
 			'cbgt_name',
 			'cbgt_type',
+			'started',
+			'status',
 			'dbgt_task_hash'
 		]
 
@@ -2881,7 +2885,12 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle db_id
+			if column == 'started':
+				return row.start_timestamp
+
+			if column == 'status':
+				return row.dbgt_status
+
 			if column == 'dbgt_task_hash':
 				return '<code>%s</code>' % row.dbgt_task_hash
 

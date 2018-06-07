@@ -57,6 +57,8 @@ from django.views import View
 
 # import background tasks
 from core import tasks
+from background_task.models_completed import CompletedTask
+from background_task.models import Task
 
 # Livy
 from livy.client import HttpClient
@@ -2153,12 +2155,15 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
+	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	
 	# the following are direct from background_task.models_completed.CompletedTask, background_task.models.Task
 	dbgt_task_hash = models.CharField(max_length=128, null=True, default=None)
 	# dbgt_task_name = models.CharField(max_length=1024, null=True, default=None)	
 	# dbgt_task_function = models.CharField(max_length=1024, null=True, default=None)
 	dbgt_task = None # placeholder for Task/CompletedTask Instance
+	dbgt_status = None
 
 
 	def __str__(self):
@@ -2504,11 +2509,31 @@ def background_task_post_init(sender, instance, **kwargs):
 		logger.debug('Retrieving %s' % instance)
 
 		# look for Django-Background-Tasks task via hash, retrieve
-		logger.debug('looking for background task with hash: %s' % instance.dbgt_task_hash)
-		from background_task.models_completed import CompletedTask
-		comps = CompletedTask.objects.all()
-		comp = comps.last()
-		instance.dbgt_task = comp		
+		logger.debug('looking for background task with hash: %s' % instance.dbgt_task_hash)		
+
+		# check running tasks
+		running = Task.objects.filter(task_hash=instance.dbgt_task_hash)
+		if running.count() == 1:
+			logger.debug('task is running')
+			instance.dbgt_task = running.first()
+			instance.dbgt_status = 'running'
+
+		# check completed tasks
+		completed = CompletedTask.objects.filter(task_hash=instance.dbgt_task_hash)
+		if completed.count() == 1:
+			logger.debug('task is complete')
+			instance.dbgt_task = completed.first()
+			instance.dbgt_status = 'completed'
+
+			# if finish timestamp not set, set now
+			if not instance.finish_timestamp:
+				logger.debug('setting finished timestamp')
+				instance.finish_timestamp = instance.dbgt_task.locked_at
+				instance.save()
+
+		# else
+		if not instance.dbgt_task:
+			logger.debug('could not find background task with hash: %s' % instance.dbgt_task_hash)
 
 
 
