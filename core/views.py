@@ -2227,6 +2227,19 @@ def job_analysis(request):
 
 
 ####################################################################
+# Background Tasks												   #
+####################################################################
+
+@login_required
+def bg_tasks(request):
+
+	logger.debug('retrieving background tasks')
+
+	return render(request, 'core/bg_tasks.html')
+
+
+
+####################################################################
 # Datatables endpoints 											   #
 # https://bitbucket.org/pigletto/django-datatables-view/overview   #
 ####################################################################

@@ -98,6 +98,9 @@ urlpatterns = [
 	url(r'^analysis$', views.analysis, name='analysis'),
 	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),
 
+	# Background Tasks
+	url(r'^background_tasks$', views.bg_tasks, name='bg_tasks'),
+
 	# general views
 	url(r'^login$', auth_views.login, name='login'),
 	url(r'^logout$', auth_views.logout, name='logout'),

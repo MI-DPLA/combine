@@ -2480,7 +2480,8 @@ class LivyClient(object):
 	@classmethod
 	def http_request(self,
 			http_method,
-			url, data=None,
+			url,
+			data=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -2632,7 +2633,7 @@ class LivyClient(object):
 
 
 	@classmethod
-	def submit_job(self, session_id, python_code):
+	def submit_job(self, session_id, python_code, stream=False):
 
 		'''
 		Submit job via HTTP request to /statements
@@ -2648,7 +2649,7 @@ class LivyClient(object):
 		logger.debug(python_code)
 		
 		# statement
-		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
 		logger.debug(job.json())
 		logger.debug(job.headers)
 		return job
@@ -3191,7 +3192,7 @@ class CombineJob(object):
 			return False
 
 
-	def submit_job_to_livy(self, job_code, job_output):
+	def submit_job_to_livy(self, job_code):
 
 		'''
 		Using LivyClient, submit actual job code to Spark.  For the most part, Combine Jobs have the heavy lifting of 
@@ -3199,7 +3200,6 @@ class CombineJob(object):
 
 		Args:
 			job_code (str): String of python code to submit to Spark
-			job_output (str): location for job output (NOTE: No longer used)
 
 		Returns:
 			None
@@ -3777,25 +3777,8 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		'''
 		Method to prepare static files for spark processing
-
-		Target final structure:
-			/foo/bar <-- self.static_payload
-				baz1.xml <-- record at self.xpath_query within file
-				baz2.xml
-				baz3.xml
-
-		Accepts three scenarios:
-			- zip / tar file with discrete files, one record per file
-			- aggregate XML file, containing multiple records
-			- location of directory on disk, with files pre-arranged to match structure above
-
-		Args:
-			see HarvestStaticXMLJob.__init__() above
-
-		########################################################################################################
-		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
-		Job will not start until this is finished...
-		########################################################################################################
+		Note: Simplified greatly after utilizing Spark-XML for reading input.
+			- leaving scaffolding here in case needed in future, but doing very little now
 		'''
 
 		# payload dictionary handle
@@ -3805,118 +3788,9 @@ class HarvestStaticXMLJob(HarvestJob):
 		if p['type'] == 'upload':			
 			logger.debug('static harvest, processing upload type')
 
-			# # full file path
-			# fpath = os.path.join(p['payload_dir'], p['payload_filename'])
-
-			# # handle archive type (zip or tar)
-			# if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
-			# 	self._handle_archive_upload(p, fpath)
-				
-			# # handle XML aggregate files
-			# if p['content_type'] in ['text/xml', 'application/xml']:
-			# 	self._handle_xml_upload(p, fpath)
-
 		# handle disk locations
 		if p['type'] == 'location':
 			logger.debug('static harvest, processing location type')
-
-
-	# def _handle_archive_upload(self, p, fpath):
-
-	# 	'''
-	# 	Handle uploads of archive files.
-	# 	Decompress to pre-made payload location, and remove archive file
-
-	# 	Args:
-	# 		p (dict): payload dictionary 
-
-	# 	Returns:
-	# 		None
-	# 	'''
-
-	# 	logger.debug('processing archive file: %s' % p['content_type'])
-
-	# 	# handle zip
-	# 	if p['content_type'] in ['application/zip']:
-	# 		logger.debug('unzipping file')
-			
-	# 		# unzip
-	# 		zip_ref = zipfile.ZipFile(fpath, 'r')
-	# 		zip_ref.extractall(p['payload_dir'])
-	# 		zip_ref.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-	# 	# handle uncompressed tar
-	# 	if p['content_type'] in ['application/x-tar']:
-	# 		logger.debug('untarring file')		
-
-	# 		# untar
-	# 		tar = tarfile.open(fpath)
-	# 		tar.extractall(path=p['payload_dir'])
-	# 		tar.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-	# 	# handle uncompressed tar
-	# 	if p['content_type'] in ['application/x-gzip']:
-	# 		logger.debug('decompressing gzip')					
-
-	# 		# untar
-	# 		tar = tarfile.open(fpath, 'r:gz')
-	# 		tar.extractall(path=p['payload_dir'])
-	# 		tar.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-
-	# def _handle_xml_upload(self, p, fpath):
-
-	# 	'''
-	# 	Handle upload of single XML file that contains multiple discrete records.
-	# 	Using xpath_document_root query from user, parse records and write to discrete files on disk,
-	# 	then delete the aggregate file.
-
-	# 	Args:
-	# 		p (dict): payload dictionary 
-
-	# 	Returns:
-	# 		None
-	# 	'''
-
-	# 	logger.debug('handling aggregate XML file')
-
-	# 	# parse file
-	# 	tree = etree.parse(fpath)
-
-	# 	# get xml root 
-	# 	xml_root = tree.getroot()
-
-	# 	# programattically extract namespaces
-	# 	nsmap = {}
-	# 	for ns in xml_root.xpath('//namespace::*'):
-	# 		if ns[0]:
-	# 			nsmap[ns[0]] = ns[1]
-
-	# 	# get list of documents as elements
-	# 	doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
-
-	# 	# if docs founds, loop through and write to disk as discrete XML files
-	# 	if len(doc_search) > 0:
-	# 		for doc_ele in doc_search:
-	# 			record_string = etree.tostring(doc_ele)
-	# 			filename = hashlib.md5(record_string).hexdigest()
-	# 			with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
-	# 				f.write(record_string.decode('utf-8'))
-
-	# 	# after parsing file, set xpath_document_root --> '/*'
-	# 	p['xpath_document_root'] = '/*'
-
-	# 	# remove original zip
-	# 	os.remove(fpath)
 
 
 	def prepare_job(self):
