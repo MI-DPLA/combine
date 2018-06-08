@@ -1,6 +1,7 @@
 from background_task import background
 
 # generic imports 
+import json
 import time
 import uuid
 
@@ -88,12 +89,29 @@ def create_validation_report(ct_id):
 	'''
 
 	# get CombineTask (ct)
-
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.debug('using %s' % ct)
 
 	# test task params
 	logger.debug(ct.task_params)
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+	# run report generation
+	report_output = cjob.generate_validation_report(
+		report_format=ct.task_params['report_format'],
+		validation_scenarios=ct.task_params['validation_scenarios'],
+		mapped_field_include=ct.task_params['mapped_field_include']
+	)
+	logger.debug('validation report output: %s' % report_output)
+
+	# save validation report output to Combine Task output
+	ct.task_output_json = json.dumps({
+		'report_format':ct.task_params['report_format'],
+		'report_output':report_output	
+	})
+	ct.save()
 
 	# OLD ###################################################################################################
 	# logger.debug('generating validation results report')

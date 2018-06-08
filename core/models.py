@@ -2157,6 +2157,7 @@ class CombineBackgroundTask(models.Model):
 	)
 	verbose_name = models.CharField(max_length=128, null=True, default=None)
 	task_params_json = models.TextField(null=True, default=None)
+	task_output_json = models.TextField(null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
@@ -2270,7 +2271,25 @@ class CombineBackgroundTask(models.Model):
 		Property to return JSON params as dict
 		'''
 
-		return json.loads(self.task_params_json)
+		if self.task_params_json:
+			return json.loads(self.task_params_json)
+		else:
+			return {}
+
+
+	@property
+	def task_output(self):
+
+		'''
+		Property to return JSON output as dict
+		'''
+
+		if self.task_output_json:
+			return json.loads(self.task_output_json)
+		else:
+			return {}
+
+
 
 
 

@@ -13,18 +13,18 @@
 			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
 				<thead>
 					<tr>
-						<th>Task ID</th>
 						<th>Type</th>
 						<th>Started</th>
 						<th>Duration</th>
+						<th>Task ID</th>
 					</tr>
 				</thead>
 				<tbody>
 					<tr>
-						<td><code>{{ ct.verbose_name }}</code></td>
 						<td>{{ ct.get_task_type_display }}</td>
 						<td>{{ ct.start_timestamp }}</td>
 						<td>{{ ct.calc_elapsed_as_string }}</td>
+						<td><code>{{ ct.verbose_name }}</code></td>
 					</tr>
 				</tbody>
 			</table>
@@ -34,6 +34,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h3>Task Details</h3>
+
 			<div class="row">
 				<div class="col-md-12">
 
@@ -54,6 +55,19 @@
 
 			<div class="row">
 				<div class="col-md-12">
+					<h4>Task Output</h4>
+					<pre><code id="task_output_parsed" class="json">Task params will go here....</code></pre>
+					<script>
+						$("#task_output_parsed").html(JSON.stringify({{ ct.task_output|safe }}, null, 2));
+						$("#task_output_parsed").each(function(i, block) {
+							hljs.highlightBlock(block);
+						});
+					</script>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
 					<h4>Task Parameters</h4>
 					<pre><code id="task_params_parsed" class="json">Task params will go here....</code></pre>
 					<script>
@@ -64,10 +78,9 @@
 					</script>
 				</div>
 			</div>
+
 		</div>
 	</div>
-
-
 	
 
 {% endblock %}

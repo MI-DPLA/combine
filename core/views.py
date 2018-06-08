@@ -1336,11 +1336,20 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		else:
 			combine_task_name = "Validation Report: %s" % report_name
 
+		# handle POST params and save as Combine task params
+		task_params = {
+			'job_id':cjob.job.id,
+			'report_name':report_name,
+			'report_format':request.POST.get('report_format'),
+			'validation_scenarios':request.POST.getlist('validation_scenario', []),
+			'mapped_field_include':request.POST.getlist('mapped_field_include', [])
+		}
+
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = combine_task_name,
 			task_type = 'validation_report',
-			task_params_json = json.dumps(request.POST)
+			task_params_json = json.dumps(task_params)
 		)
 		ct.save()
 
