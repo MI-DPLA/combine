@@ -128,6 +128,11 @@ def job_export_mapped_fields(ct_id):
 		'job_id':cjob.job.id,
 		'export_output':export_output
 	}
+
+	# handle kibana style
+	if ct.task_params['kibana_style']:
+		cmd += ' -k'
+
 	logger.debug(cmd)
 	os.system(cmd)
 

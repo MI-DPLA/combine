@@ -478,28 +478,27 @@
 									<li><strong>Documents (XML)</strong>: The actual XML documents for each Record, as harvested and/or transformed.</li>
 									<li><strong>Mapped Fields (tabular)</strong>: Records are also <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">indexed into ElasticSearch</a>, resulting in a flat, tabular format of the data from the Records.</li>
 								</ul>
-							</p>							
+							</p>
+
+							<div class="alert alert-info alert-dismissible fade show" role="alert">
+								Select a tab below to export Records as Documents, or their Mapped Fields
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
 							
 							<ul id="export_tabs" class="nav nav-tabs">								
 								<li class="nav-item">
-									<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Records as Documents</a>
+									<a class="nav-link active" data-toggle="tab" href="#export_mapped_fields">Export Records as Mapped Fields</a>
 								</li>
 								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Records as Mapped Fields</a>
-								</li>
+									<a class="nav-link" data-toggle="tab" href="#export_documents">Export Records as Documents</a>
+								</li>								
 							</ul>
 
 							<div class="tab-content">			
 
-								<div id="export_documents" class="tab-pane container full_width_tab active">
-									<div class="row">		
-										<div class="col-md-12">
-											<p>Stay Tuned.</p>
-										</div>
-									</div>
-								</div>
-
-								<div id="export_mapped_fields" class="tab-pane container full_width_tab">
+								<div id="export_mapped_fields" class="tab-pane container full_width_tab active">
 									<div class="row">		
 										<div class="col-md-6">
 
@@ -508,18 +507,26 @@
 
 												{% csrf_token %}
 
-												<div class="form-group">
+												<!-- consider not allowing custom report name -->
+												<!-- <div class="form-group">
 													<label for="export_name">Export Job Name</label>
 													<input type="text" class="form-control" name="export_name" id="export_name" placeholder="Post-Transform Analysis">
 													<small id="export_name_help" class="form-text text-muted">Optional</small>
-												</div>
+												</div> -->
 
 												<div class="form-group">
 													<div class="form-check">
-														<input class="form-check-input" type="checkbox" value="{{ vs.id }}" id="kibana_style" name="kibana_style">
+														<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style">
 														<label class="form-check-label" for="validation_scenario_{{ vs.id }}">
-															Check this box to export repeating fields "Kibana style"
+															Check this box to export repeating fields "Kibana style" <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 														</label>
+													</div>
+													<div id="kibana_style_info" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+														<p>"Kibana style" is referring to the <a href="https://www.elastic.co/products/kibana">Kibana application</a> for visualize and analyzing ElasticSearch indexes, and addresses fields that have <strong>multiple values</strong>.</p>
+
+														<p>For example, consider an ElasticSearch field called <code>mods_subject_topic</code>, with multiple values of <code>history</code>, <code>boating</code>, and <code>typing</code>.  If Kibana style is <strong>not</strong> checked/used -- which is the default behavior -- this would result in three distinct columns in the generated .csv file with a number affixed to the field name: <code>mods_subject_topic.0</code> with the value <code>historyM</code>, <code>mods_subject_topic.1</code> with the value <code>boating</code>, and <code>mods_subject_topic.2</code> with the value <code>typing</code>.  This can handy for analysis, as distinct values for this field are in distinct columns.</p>
+
+														<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.
 													</div>
 												</div>
 
@@ -527,6 +534,14 @@
 
 											</form>
 
+										</div>
+									</div>
+								</div>
+
+								<div id="export_documents" class="tab-pane container full_width_tab">
+									<div class="row">		
+										<div class="col-md-12">
+											<p>Stay Tuned.</p>
 										</div>
 									</div>
 								</div>
