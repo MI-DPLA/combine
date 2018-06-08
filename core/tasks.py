@@ -108,8 +108,8 @@ def create_validation_report(ct_id):
 
 	# save validation report output to Combine Task output
 	ct.task_output_json = json.dumps({
-		'report_format':ct.task_params['report_format'],
-		'report_output':report_output	
+		'report_format':ct.task_params['report_format'],		
+		'report_output':report_output
 	})
 	ct.save()
 

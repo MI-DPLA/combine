@@ -42,7 +42,7 @@
 					
 					{% if ct.task_type == 'validation_report' %}
 						<p>Click the button below to download the generated Validation Report:</p>
-						<button type="button" class="btn btn-success btn-sm">Download Validation Report</button>
+						<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
 					
 					{% elif ct.task_type == 'mapped_fields_export' %}
 
