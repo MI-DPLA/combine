@@ -1303,6 +1303,30 @@ def job_publish(request, org_id, record_group_id):
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
+def job_lineage_json(request, org_id, record_group_id, job_id):
+
+	'''
+	Return job lineage as JSON
+	'''
+
+	# get job
+	job = models.Job.objects.get(pk=int(job_id))
+
+	# get lineage
+	job_lineage = job.get_lineage()
+
+	return JsonResponse({
+		'job_id_list':[ node['id'] for node in job_lineage['nodes'] ],
+		'nodes':job_lineage['nodes'],
+		'edges':job_lineage['edges']
+		})
+
+
+
+####################################################################
+# Job Validation Report       									   #
+####################################################################
+
 @login_required
 def job_reports_create_validation(request, org_id, record_group_id, job_id):
 
@@ -1412,28 +1436,51 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		# OLD ###################################################################################################
 
 
-@login_required
-def job_reports_create_audit(request, org_id, record_group_id, job_id):
-	pass
+####################################################################
+# Job Validation Report       									   #
+####################################################################
 
-
-def job_lineage_json(request, org_id, record_group_id, job_id):
+def document_download(request):
 
 	'''
-	Return job lineage as JSON
+	Args (GET params):
+		file_location: location on disk for file
+		file_download_name: desired download name
+		content_type: ContentType Headers
 	'''
 
-	# get job
-	job = models.Job.objects.get(pk=int(job_id))
+	# known download format params
+	download_format_hash = {
+		'excel':{
+			'extension':'.xlsx',
+			'content_type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		},
+		'csv':{
+			'extension':'.csv',
+			'content_type':'text/plain'
+		}
+	}
 
-	# get lineage
-	job_lineage = job.get_lineage()
+	# get params
+	download_format = request.GET.get('download_format', None)
+	filepath = request.GET.get('filepath', None)
+	name = request.GET.get('name', 'download')
+	content_type = request.GET.get('content_type', 'text/plain')
 
-	return JsonResponse({
-		'job_id_list':[ node['id'] for node in job_lineage['nodes'] ],
-		'nodes':job_lineage['nodes'],
-		'edges':job_lineage['edges']
-		})
+	# if known download format, use hash and overwrite provided or defaults
+	if download_format and download_format in download_format_hash.keys():
+
+		format_params = download_format_hash[download_format]
+		name = '%s%s' % (name, format_params['extension'])
+		content_type = format_params['content_type']
+
+	# open file and prepare as attachment
+	with open(filepath, 'rb') as fhand:
+
+		# prepare and return response
+		response = HttpResponse(fhand, content_type=content_type)
+		response['Content-Disposition'] = 'attachment; filename="%s"' % name
+		return response
 
 
 ####################################################################
