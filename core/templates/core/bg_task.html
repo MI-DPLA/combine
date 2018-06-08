@@ -1,0 +1,34 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Combine Background Task: <code>{{ ct.name }}</code></h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
+				<thead>
+					<tr>
+						<th>Task ID</th>
+						<th>Type</th>
+						<th>Started</th>
+						<th>Duration</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td><code>{{ ct.verbose_name }}</code></td>
+						<td>{{ ct.get_task_type_display }}</td>
+						<td>{{ ct.start_timestamp }}</td>
+						<td>{{ ct.calc_elapsed_as_string }}</td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+{% endblock %}

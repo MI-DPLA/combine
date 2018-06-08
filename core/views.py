@@ -2268,6 +2268,17 @@ def bg_tasks_delete_all(request):
 	return redirect('bg_tasks')
 
 
+def bg_task(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('retrieving task: %s' % ct)	
+
+	return render(request, 'core/bg_task.html', {
+			'ct':ct
+		})
+
+
 def bg_task_delete(request, task_id):
 
 	# get task
@@ -2943,23 +2954,14 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 					return "<span style='color:orange;'>Running</span>"
 
 			elif column == 'duration':
-				
-				# determine time elapsed in seconds
-				if row.completed:
-					# use finish timestamp
-					seconds_elapsed = (row.finish_timestamp.replace(tzinfo=None) - row.start_timestamp.replace(tzinfo=None)).seconds
-				else:
-					seconds_elapsed = (datetime.datetime.now() - row.start_timestamp.replace(tzinfo=None)).seconds
-
-				# return as string
-				m, s = divmod(seconds_elapsed, 60)
-				h, m = divmod(m, 60)
-				
-				return "%d:%02d:%02d" % (h, m, s)
+				return row.calc_elapsed_as_string()
 				
 
 			elif column == 'actions':
-				return '<button type="button" class="btn btn-success btn-sm">Results</button> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>' % (reverse(bg_task_delete, kwargs={'task_id':row.id}))
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results</button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>' % (
+					reverse(bg_task, kwargs={'task_id':row.id}),
+					reverse(bg_task_delete, kwargs={'task_id':row.id})
+				)
 
 			else:
 				return super(CombineBackgroundTasksDT, self).render_column(row, column)

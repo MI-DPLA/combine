@@ -2246,6 +2246,22 @@ class CombineBackgroundTask(models.Model):
 		pass
 
 
+	def calc_elapsed_as_string(self):
+
+		# determine time elapsed in seconds
+		if self.completed:
+			# use finish timestamp
+			seconds_elapsed = (self.finish_timestamp.replace(tzinfo=None) - self.start_timestamp.replace(tzinfo=None)).seconds
+		else:
+			seconds_elapsed = (datetime.datetime.now() - self.start_timestamp.replace(tzinfo=None)).seconds
+
+		# return as string
+		m, s = divmod(seconds_elapsed, 60)
+		h, m = divmod(m, 60)
+		
+		return "%d:%02d:%02d" % (h, m, s)
+
+
 
 
 ####################################################################
