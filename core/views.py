@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic
+import datetime
 import hashlib
 import io
 import json
@@ -2896,6 +2897,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'task_type',
 			'verbose_name',
 			'completed',
+			'duration',
 			'actions'
 		]
 
@@ -2911,6 +2913,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'task_type',
 			'verbose_name',
 			'completed',
+			'duration',
 			'actions'
 		]
 
@@ -2938,6 +2941,22 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 					return "<span style='color:green;'>Finished</span>"
 				else:
 					return "<span style='color:orange;'>Running</span>"
+
+			elif column == 'duration':
+				
+				# determine time elapsed in seconds
+				if row.completed:
+					# use finish timestamp
+					seconds_elapsed = (row.finish_timestamp.replace(tzinfo=None) - row.start_timestamp.replace(tzinfo=None)).seconds
+				else:
+					seconds_elapsed = (datetime.datetime.now() - row.start_timestamp.replace(tzinfo=None)).seconds
+
+				# return as string
+				m, s = divmod(seconds_elapsed, 60)
+				h, m = divmod(m, 60)
+				
+				return "%d:%02d:%02d" % (h, m, s)
+				
 
 			elif column == 'actions':
 				return '<button type="button" class="btn btn-success btn-sm">Results</button> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>' % (reverse(bg_task_delete, kwargs={'task_id':row.id}))
