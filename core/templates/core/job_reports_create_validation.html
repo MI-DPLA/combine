@@ -18,7 +18,7 @@
 			<h3>New Report</h3>
 		</div>
 
-		<div class="col-md-12" style="padding:20px; background-color:#efefef; border-radius:5px;">
+		<div class="col-md-12">
 
 			<form id="report_form" method="POST" action="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 

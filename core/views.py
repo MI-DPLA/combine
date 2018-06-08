@@ -341,9 +341,22 @@ def organization_delete(request, org_id):
 	org.name = "%s (DELETING)" % org.name
 	org.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('Organization', org.id)
-	logger.debug('organization scheduled for delete as background task: %s' % bg_task.task_hash)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete Organization: #%s' % org.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':org.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'Organization',
+		org.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	return redirect('organizations')
 
@@ -385,9 +398,22 @@ def record_group_delete(request, org_id, record_group_id):
 	record_group.name = "%s (DELETING)" % record_group.name
 	record_group.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('RecordGroup', record_group.id)
-	logger.debug('record group scheduled for delete as background task: %s' % bg_task.task_hash)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete RecordGroup: #%s' % record_group.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':record_group.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'RecordGroup',
+		record_group.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	# redirect to organization page
 	return redirect('organization', org_id=org_id)
@@ -521,9 +547,26 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job.status = 'deleting'
 	job.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('Job', job.id)
-	logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+	# remove via background tasks	
+	# bg_task = tasks.delete_model_instance('Job', job.id)
+	# logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete Job: #%s' % job.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':job.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'Job',
+		job.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	# redirect
 	return redirect(request.META.get('HTTP_REFERER'))
@@ -551,9 +594,22 @@ def delete_jobs(request):
 		job.status = 'deleting'
 		job.save()
 
-		# remove via background tasks
-		bg_task = tasks.delete_model_instance('Job', job.id)
-		logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Delete Job: #%s' % job.name,
+			task_type = 'job_delete',
+			task_params_json = json.dumps({
+				'model':'Job',
+				'job_id':job.id	
+			})
+		)
+		ct.save()
+		bg_task = tasks.delete_model_instance(
+			'Job',
+			job.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
 
 	# return
 	return JsonResponse({'results':True})
@@ -1466,6 +1522,7 @@ def document_download(request):
 	filepath = request.GET.get('filepath', None)
 	name = request.GET.get('name', 'download')
 	content_type = request.GET.get('content_type', 'text/plain')
+	preview = request.GET.get('preview', False)
 
 	# if known download format, use hash and overwrite provided or defaults
 	if download_format and download_format in download_format_hash.keys():
@@ -1479,7 +1536,8 @@ def document_download(request):
 
 		# prepare and return response
 		response = HttpResponse(fhand, content_type=content_type)
-		response['Content-Disposition'] = 'attachment; filename="%s"' % name
+		if not preview:
+			response['Content-Disposition'] = 'attachment; filename="%s"' % name
 		return response
 
 

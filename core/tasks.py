@@ -92,9 +92,6 @@ def create_validation_report(ct_id):
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.debug('using %s' % ct)
 
-	# test task params
-	logger.debug(ct.task_params)
-
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 

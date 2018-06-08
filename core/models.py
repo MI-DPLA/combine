@@ -3757,8 +3757,7 @@ class HarvestJob(CombineJob):
 				job_id = None,
 				status = 'initializing',
 				url = None,
-				headers = None,
-				job_output = None
+				headers = None
 			)
 			self.job.save()
 
@@ -3865,7 +3864,7 @@ class HarvestOAIJob(HarvestJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4013,7 +4012,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4100,7 +4099,6 @@ class TransformJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'transformation':
 						{
@@ -4155,7 +4153,7 @@ class TransformJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4246,7 +4244,6 @@ class MergeJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4299,7 +4296,7 @@ class MergeJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4371,7 +4368,6 @@ class PublishJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4413,7 +4409,7 @@ class PublishJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4500,7 +4496,6 @@ class AnalysisJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4612,7 +4607,7 @@ class AnalysisJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):

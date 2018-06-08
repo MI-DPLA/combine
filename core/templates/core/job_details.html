@@ -244,7 +244,9 @@
 									{% endfor %}
 								</tbody>
 							</table>
-							<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
+							{% if cjob.job.validation_results.verdict == False %}							
+								<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Run validation results report</button></a></p>
+							{% endif %}
 						</div>
 					</div>
 					{% else %}
