@@ -95,6 +95,53 @@ def create_validation_report(ct_id):
 	# test task params
 	logger.debug(ct.task_params)
 
+	# OLD ###################################################################################################
+	# logger.debug('generating validation results report')
+
+	# # debug form
+	# logger.debug(request.POST)
+
+	# # get job name
+	# report_name = request.POST.get('report_name')
+	# if report_name == '':
+	# 	report_name = 'Validation Report'
+
+	# # get report output format
+	# report_format = request.POST.get('report_format')
+
+	# # get requested validation scenarios to include in report
+	# validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+	# # get mapped fields to include
+	# mapped_field_include = request.POST.getlist('mapped_field_include', [])
+
+	# # run report generation
+	# report_output = cjob.generate_validation_report(
+	# 		report_format=report_format,
+	# 		validation_scenarios=validation_scenarios,
+	# 		mapped_field_include=mapped_field_include
+	# 	)
+
+	# # response is to download file from disk
+	# with open(report_output, 'rb') as fhand:
+		
+	# 	# csv
+	# 	if report_format == 'csv':
+	# 		content_type = 'text/plain'
+	# 		attachment_filename = '%s.csv' % report_name
+		
+	# 	# excel
+	# 	if report_format == 'excel':
+	# 		content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+	# 		# content_type = 'text/plain'
+	# 		attachment_filename = '%s.xlsx' % report_name
+
+	# 	# prepare and return response
+	# 	response = HttpResponse(fhand, content_type=content_type)
+	# 	response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
+	# 	return response
+	# OLD ###################################################################################################
+
 
 
 @background(schedule=1)
