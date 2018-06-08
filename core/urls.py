@@ -101,6 +101,8 @@ urlpatterns = [
 
 	# Background Tasks
 	url(r'^background_tasks$', views.bg_tasks, name='bg_tasks'),
+	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
+	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
 
 	# general views
 	url(r'^login$', auth_views.login, name='login'),

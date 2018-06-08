@@ -29,6 +29,10 @@ from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
+# Django Background Tasks
+from background_task.models_completed import CompletedTask
+from background_task.models import Task
+
 # import models
 from core import models, forms
 from core.es import es_handle
@@ -2230,12 +2234,48 @@ def job_analysis(request):
 # Background Tasks												   #
 ####################################################################
 
-@login_required
 def bg_tasks(request):
 
 	logger.debug('retrieving background tasks')
 
+	# update all tasks not marked as complete
+	nc_tasks = models.CombineBackgroundTask.objects.filter(completed=False)
+	for task in nc_tasks:
+		task.update()
+
 	return render(request, 'core/bg_tasks.html')
+
+
+def bg_tasks_delete_all(request):
+
+	logger.debug('deleting all background tasks')
+
+	# delete all Combine Background Tasks
+	cts = models.CombineBackgroundTask.objects.all()
+	for ct in cts:
+		ct.delete()
+
+	# delete all Django Background Tasks
+	running = Task.objects.all()
+	for task in running:
+		task.delete()
+
+	completed = CompletedTask.objects.all()
+	for task in completed:
+		task.delete()
+
+	return redirect('bg_tasks')
+
+
+def bg_task_delete(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('deleting task: %s' % ct)
+
+	ct.delete()
+
+	return redirect('bg_tasks')
 
 
 
@@ -2855,7 +2895,8 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'name',
 			'task_type',
 			'verbose_name',
-			'completed'
+			'completed',
+			'actions'
 		]
 
 		# define column names that will be used in sorting
@@ -2869,7 +2910,8 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'name',
 			'task_type',
 			'verbose_name',
-			'completed'
+			'completed',
+			'actions'
 		]
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
@@ -2897,18 +2939,21 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 				else:
 					return "<span style='color:orange;'>Running</span>"
 
+			elif column == 'actions':
+				return '<button type="button" class="btn btn-success btn-sm">Results</button> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>' % (reverse(bg_task_delete, kwargs={'task_id':row.id}))
+
 			else:
 				return super(CombineBackgroundTasksDT, self).render_column(row, column)
 
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-		# 	# handle search
-		# 	search = self.request.GET.get(u'search[value]', None)
-		# 	if search:
-		# 		qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(id__contains=search) | Q(name__contains=search) | Q(verbose_name__contains=search))
 
-		# 	# return
-		# 	return qs
+			# return
+			return qs
 

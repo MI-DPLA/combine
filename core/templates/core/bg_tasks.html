@@ -19,6 +19,7 @@
 					<th>Type</th>					
 					<th>Task ID</th>
 					<th>Status</th>
+					<th>Actions</th>
 				</thead>
 				<tbody></tbody>
 			</table>
@@ -32,10 +33,18 @@
 				        "ajax": "{% url 'bg_tasks_dt' %}",
 				        "searchDelay": 1000,
 				        "pageLength": 10,
+				        "order": [[ 5, "asc" ], [ 1, "desc" ]]
 				    });
 				});
 			</script>
 
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Manage Tasks</h4>
+			<p><a href="{% url 'bg_tasks_delete_all' %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove all background tasks?  This action cannot be undone.');">Remove All Tasks</button></a></p>
 		</div>
 	</div>
 
