@@ -2156,6 +2156,7 @@ class CombineBackgroundTask(models.Model):
 		null=True
 	)
 	verbose_name = models.CharField(max_length=128, null=True, default=None)
+	task_params_json = models.TextField(null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
@@ -2260,6 +2261,16 @@ class CombineBackgroundTask(models.Model):
 		h, m = divmod(m, 60)
 		
 		return "%d:%02d:%02d" % (h, m, s)
+
+
+	@property
+	def task_params(self):
+
+		'''
+		Property to return JSON params as dict
+		'''
+
+		return json.loads(self.task_params_json)
 
 
 
@@ -2596,6 +2607,20 @@ def background_task_post_init(sender, instance, **kwargs):
 	else:
 		instance.verbose_name = uuid.uuid4().urn
 
+
+@receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
+def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
+
+	# remove verbose_name from Django Background Task tables
+	running = Task.objects.filter(verbose_name=instance.verbose_name)
+	if running.count() > 0:
+		for task in running:
+			task.delete()
+
+	completed = CompletedTask.objects.filter(verbose_name=instance.verbose_name)
+	if completed.count() > 0:
+		for task in completed:
+			task.delete()
 
 
 ####################################################################

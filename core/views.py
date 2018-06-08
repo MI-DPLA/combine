@@ -1313,13 +1313,11 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
 
-	# field analysis
-	field_counts = cjob.count_indexed_fields()
-
 	# if GET, prepare form
 	if request.method == 'GET':
 
-		# get validation scenarios run for this job
+		# field analysis
+		field_counts = cjob.count_indexed_fields()
 
 		# render page
 		return render(request, 'core/job_reports_create_validation.html', {
@@ -1328,54 +1326,81 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
-
 	# if POST, generate report
 	if request.method == 'POST':
-		
-		logger.debug('generating validation results report')
 
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
+		# get job name for Combine Task
 		report_name = request.POST.get('report_name')
 		if report_name == '':
-			report_name = 'Validation Report'
+			combine_task_name = "Validation Report: %s" % cjob.job.name
+		else:
+			combine_task_name = "Validation Report: %s" % report_name
 
-		# get report output format
-		report_format = request.POST.get('report_format')
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = combine_task_name,
+			task_type = 'validation_report',
+			task_params_json = json.dumps(request.POST)
+		)
+		ct.save()
 
-		# get requested validation scenarios to include in report
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
+		# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
+		# and setting creator and verbose_name params
+		bt = tasks.create_validation_report(
+			ct.id,
+			verbose_name = ct.verbose_name,
+			creator = ct
+		)
 
-		# get mapped fields to include
-		mapped_field_include = request.POST.getlist('mapped_field_include', [])
+		# redirect to Background Tasks
+		return redirect('bg_tasks')
+		
+		# OLD ###################################################################################################
+		# logger.debug('generating validation results report')
 
-		# run report generation
-		report_output = cjob.generate_validation_report(
-				report_format=report_format,
-				validation_scenarios=validation_scenarios,
-				mapped_field_include=mapped_field_include
-			)
+		# # debug form
+		# logger.debug(request.POST)
 
-		# response is to download file from disk
-		with open(report_output, 'rb') as fhand:
+		# # get job name
+		# report_name = request.POST.get('report_name')
+		# if report_name == '':
+		# 	report_name = 'Validation Report'
+
+		# # get report output format
+		# report_format = request.POST.get('report_format')
+
+		# # get requested validation scenarios to include in report
+		# validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+		# # get mapped fields to include
+		# mapped_field_include = request.POST.getlist('mapped_field_include', [])
+
+		# # run report generation
+		# report_output = cjob.generate_validation_report(
+		# 		report_format=report_format,
+		# 		validation_scenarios=validation_scenarios,
+		# 		mapped_field_include=mapped_field_include
+		# 	)
+
+		# # response is to download file from disk
+		# with open(report_output, 'rb') as fhand:
 			
-			# csv
-			if report_format == 'csv':
-				content_type = 'text/plain'
-				attachment_filename = '%s.csv' % report_name
+		# 	# csv
+		# 	if report_format == 'csv':
+		# 		content_type = 'text/plain'
+		# 		attachment_filename = '%s.csv' % report_name
 			
-			# excel
-			if report_format == 'excel':
-				content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-				# content_type = 'text/plain'
-				attachment_filename = '%s.xlsx' % report_name
+		# 	# excel
+		# 	if report_format == 'excel':
+		# 		content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		# 		# content_type = 'text/plain'
+		# 		attachment_filename = '%s.xlsx' % report_name
 
-			# prepare and return response
-			response = HttpResponse(fhand, content_type=content_type)
-			response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
-			return response
+		# 	# prepare and return response
+		# 	response = HttpResponse(fhand, content_type=content_type)
+		# 	response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
+		# 	return response
+		# OLD ###################################################################################################
 
 
 @login_required

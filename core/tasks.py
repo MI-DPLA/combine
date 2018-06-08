@@ -73,6 +73,30 @@ def download_and_index_bulk_data(dbdd_id, verbose_name=uuid.uuid4().urn):
 	dbdd.save()
 
 
+
+@background(schedule=1)
+def create_validation_report(ct_id):
+
+	'''
+	Function to generate a Validation Report for a Job as a bg task
+
+	Args:
+		request (django.request): request object with parameters needed for report generation
+
+	Returns:
+		location on disk
+	'''
+
+	# get CombineTask (ct)
+
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.debug('using %s' % ct)
+
+	# test task params
+	logger.debug(ct.task_params)
+
+
+
 @background(schedule=1)
 def test_bg_task(duration=5):
 
