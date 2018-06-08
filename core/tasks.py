@@ -2,6 +2,7 @@ from background_task import background
 
 # generic imports 
 import json
+import os
 import time
 import uuid
 
@@ -90,7 +91,6 @@ def create_validation_report(ct_id):
 
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-	logger.debug('using %s' % ct)
 
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -109,6 +109,46 @@ def create_validation_report(ct_id):
 		'report_output':report_output
 	})
 	ct.save()
+
+
+@background(schedule=1)
+def job_export_mapped_fields(ct_id):
+
+	# get CombineTask (ct)
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+	# set output filename
+	export_output = '/tmp/job_%s_mapped_fields.csv' % cjob.job.id
+
+	# issue es2csv as os command
+	cmd = "es2csv -q '*' -i 'j%(job_id)s' -D 'record' -o '%(export_output)s'" % {
+		'job_id':cjob.job.id,
+		'export_output':export_output
+	}
+	logger.debug(cmd)
+	os.system(cmd)
+
+	# save validation report output to Combine Task output
+	ct.task_output_json = json.dumps({		
+		'export_output':export_output,
+		'name':export_output.split('/')[-1]
+	})
+	ct.save()
+
+
+# @background(schedule=1)
+# def job_export_documents(ct_id):
+
+# 	# get CombineTask (ct)
+# 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+# 	logger.debug('using %s' % ct)
+
+# 	# get CombineJob
+# 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
 
 
 @background(schedule=1)

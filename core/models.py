@@ -2150,7 +2150,9 @@ class CombineBackgroundTask(models.Model):
 			('job_delete','Job Deletion'),
 			('record_group_delete','Record Group Deletion'),
 			('org_delete','Organization Deletion'),
-			('validation_report','Validation Report Generation')
+			('validation_report','Validation Report Generation'),
+			('job_export_mapped_fields','Job Export Mapped Fields'),
+			('job_export_documents','Job Export Documents')
 		],
 		default=None,
 		null=True

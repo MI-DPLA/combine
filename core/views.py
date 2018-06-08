@@ -343,7 +343,7 @@ def organization_delete(request, org_id):
 	
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
-		name = 'Delete Organization: #%s' % org.name,
+		name = 'Delete Organization: %s' % org.name,
 		task_type = 'job_delete',
 		task_params_json = json.dumps({
 			'model':'Job',
@@ -400,7 +400,7 @@ def record_group_delete(request, org_id, record_group_id):
 	
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
-		name = 'Delete RecordGroup: #%s' % record_group.name,
+		name = 'Delete RecordGroup: %s' % record_group.name,
 		task_type = 'job_delete',
 		task_params_json = json.dumps({
 			'model':'Job',
@@ -553,7 +553,7 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
-		name = 'Delete Job: #%s' % job.name,
+		name = 'Delete Job: %s' % job.name,
 		task_type = 'job_delete',
 		task_params_json = json.dumps({
 			'model':'Job',
@@ -2221,6 +2221,45 @@ def search(request):
 			'breadcrumbs':breadcrumb_parser(request),
 			'page_title':' | Search'
 		})
+
+
+
+####################################################################
+# Export                   										   #
+####################################################################
+
+def job_export_mapped_fields(request, org_id, record_group_id, job_id):
+
+	logger.debug('exporting mapped fields from Job')
+	logger.debug(request.POST)
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
+		task_type = 'job_export_mapped_fields',
+		task_params_json = json.dumps({			
+			'job_id':cjob.job.id
+		})
+	)
+	ct.save()
+	bg_task = tasks.job_export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def job_export_documents(request, org_id, record_group_id, job_id):
+
+	logger.debug('exporting mapped fields from Job')
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
 
 
 
