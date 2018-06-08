@@ -2238,6 +2238,8 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 
 	# check for Kibana check
 	kibana_style = request.POST.get('kibana_style', False)
+	if kibana_style:
+		kibana_style = True
 
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
