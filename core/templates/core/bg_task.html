@@ -31,4 +31,23 @@
 		</div>
 	</div>
 
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Task Details</h3>
+
+			<!-- handle different task types below -->
+			
+			{% if ct.task_type == 'validation_report' %}
+				<p>Click the button below to download the generated Validation Report:</p>
+				<button type="button" class="btn btn-success btn-sm">Download Validation Report</button>
+			
+			{% elif ct.task_type == 'mapped_fields_export' %}
+
+			{% else %}
+				<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
+			{% endif %}
+
+		</div>
+	</div>
+
 {% endblock %}
