@@ -2273,10 +2273,34 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 
 def job_export_documents(request, org_id, record_group_id, job_id):
 
-	logger.debug('exporting mapped fields from Job')
+	logger.debug('exporting documents from Job')
+	logger.debug(request.POST)
 
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', 500)
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Documents for Job: %s' % cjob.job.name,
+		task_type = 'job_export_documents',
+		task_params_json = json.dumps({			
+			'job_id':cjob.job.id
+		})
+	)
+	ct.save()
+	bg_task = tasks.job_export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
 
 
 

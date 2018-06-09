@@ -144,15 +144,17 @@ def job_export_mapped_fields(ct_id):
 	ct.save()
 
 
-# @background(schedule=1)
-# def job_export_documents(ct_id):
+@background(schedule=1)
+def job_export_documents(ct_id):
 
-# 	# get CombineTask (ct)
-# 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-# 	logger.debug('using %s' % ct)
+	# get CombineTask (ct)
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.debug('using %s' % ct)
 
-# 	# get CombineJob
-# 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+	
 
 
 

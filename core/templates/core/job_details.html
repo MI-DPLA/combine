@@ -540,8 +540,29 @@
 
 								<div id="export_documents" class="tab-pane container full_width_tab">
 									<div class="row">		
-										<div class="col-md-12">
-											<p>Stay Tuned.</p>
+										<div class="col-md-6">
+											<!-- form for Job mapped fields export -->
+											<form method="POST" action="{% url 'job_export_documents' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+
+												{% csrf_token %}
+
+												<div class="form-group">
+													<label for="records_per_file">XML Records per file</label>
+													<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
+													<small id="records_per_file_help" class="form-text text-muted">Optional</small>
+												</div>
+
+												<div class="form-group">
+													<label for="archive_type">Select archive file type</label>
+													<select class="form-control" id="archive_type" name="archive_type" required>
+														<option value="zip">Zip file</option>
+														<option value="tar">Tar file</option>
+													</select>
+												</div>
+
+												<button type="submit" class="btn btn-success btn-sm">Export Documents</button>
+
+											</form>
 										</div>
 									</div>
 								</div>
