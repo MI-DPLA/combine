@@ -4,6 +4,7 @@ from background_task import background
 import json
 import math
 import os
+import polling
 import time
 import uuid
 
@@ -163,10 +164,6 @@ def job_export_documents(ct_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# submit livy job
-	# submit = LivyClient().submit_job(cjob.livy_session.session_id, {'code':'x = 2 * 444\nprint(x)'})
-	# df.select('document').rdd.repartition(math.ceil(df.count()/perpage)).map(lambda row: row.document.replace('<?xml version="1.0" encoding="UTF-8"?>','')).saveAsTextFile('file:///home/combine/%s' % str(uuid.uuid4()))
-
 	# generate spark code
 	output_path = str(uuid.uuid4())
 
@@ -175,12 +172,17 @@ def job_export_documents(ct_id):
 		'output_path':output_path,
 		'records_per_file':ct.task_params['records_per_file']
 	}
-	logger.debug('###############################')
 	logger.debug(spark_code)
-	logger.debug('###############################')
 
 	# submit to livy
 	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+
+	# poll until complete
+	def spark_job_done(response):
+		return response['state'] == 'available'
+
+	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+	logger.debug(results)
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
