@@ -111,7 +111,8 @@ def create_validation_report(ct_id):
 	# save validation report output to Combine Task output
 	ct.task_output_json = json.dumps({
 		'report_format':ct.task_params['report_format'],		
-		'report_output':report_output
+		'report_output':report_output,
+		'export_dir':"/".join(report_output.split('/')[:-1])
 	})
 	ct.save()
 
@@ -126,7 +127,9 @@ def job_export_mapped_fields(ct_id):
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 	# set output filename
-	export_output = '/tmp/job_%s_mapped_fields.csv' % cjob.job.id
+	output_path = '/tmp/%s' % uuid.uuid4().hex
+	os.mkdir(output_path)
+	export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
 
 	# issue es2csv as os command
 	cmd = "es2csv -q '*' -i 'j%(job_id)s' -D 'record' -o '%(export_output)s'" % {
@@ -144,7 +147,8 @@ def job_export_mapped_fields(ct_id):
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
 		'export_output':export_output,
-		'name':export_output.split('/')[-1]
+		'name':export_output.split('/')[-1],
+		'export_dir':"/".join(export_output.split('/')[:-1])
 	})
 	ct.save()
 
@@ -237,7 +241,8 @@ def job_export_documents(ct_id):
 		ct.task_output_json = json.dumps({		
 			'export_output':export_output_archive,
 			'name':export_output_archive.split('/')[-1],
-			'content_type':content_type
+			'content_type':content_type,
+			'export_dir':"/".join(export_output_archive.split('/')[:-1])
 		})
 		ct.save()
 		logger.debug(ct.task_output_json)

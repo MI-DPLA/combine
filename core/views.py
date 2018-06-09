@@ -1423,6 +1423,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		# get job name for Combine Task
 		report_name = request.POST.get('report_name')
 		if report_name == '':
+			report_name = 'j_%s_validation_report' % cjob.job.id
 			combine_task_name = "Validation Report: %s" % cjob.job.name
 		else:
 			combine_task_name = "Validation Report: %s" % report_name

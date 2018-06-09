@@ -94,6 +94,12 @@
 				</div>
 			</div>
 
+			<div class="row">
+				<div class="col-md-12">
+					<p><a href="{% url 'bg_task_delete' task_id=ct.id %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task</button></a></p>
+				</div>
+			</div>
+
 		</div>
 	</div>
 	

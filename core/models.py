@@ -2643,6 +2643,14 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 		for task in completed:
 			task.delete()
 
+	# if export dir exists in task_output, delete as well
+	if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
+		try:
+			logger.debug('removing task export dir: %s' % instance.task_output['export_dir'])
+			shutil.rmtree(instance.task_output['export_dir'])
+		except:
+			logger.debug('could not parse task output as JSON')
+
 
 ####################################################################
 # Apahce livy 													   #
@@ -3677,16 +3685,17 @@ class CombineJob(object):
 		else:
 
 			# create filename
-			filename = uuid.uuid4().hex
+			output_path = '/tmp/%s' % uuid.uuid4().hex
+			os.mkdir(output_path)
 
 			# output csv
 			if report_format == 'csv':
-				full_path = '/tmp/%s.csv' % (filename)
+				full_path = '%s/validation_report.csv' % (output_path)
 				rvf_df.to_csv(full_path, encoding='utf-8')
 
 			# output excel
 			if report_format == 'excel':
-				full_path = '/tmp/%s.xlsx' % (filename)
+				full_path = '%s/validation_report.xlsx' % (output_path)
 				rvf_df.to_excel(full_path, encoding='utf-8')
 
 			# return
