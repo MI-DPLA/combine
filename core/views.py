@@ -164,6 +164,17 @@ def breadcrumb_parser(request):
 		r = models.Record.objects.get(pk=int(r_m.group(2)))
 		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
+	# background tasks
+	regex_match = re.match(r'(.+?/background_tasks)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>Background Tasks</span>", reverse('bg_tasks')))
+
+	# background task
+	regex_match = re.match(r'(.+?/background_tasks/task/([0-9]+))', request.path)
+	if regex_match:
+		bg_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
+		crumbs.append(("<span class='font-weight-bold'>Task - <code>%s</code></span>" % (bg_task.name), reverse('bg_tasks')))
+
 	# return
 	return crumbs
 
@@ -2428,7 +2439,9 @@ def bg_tasks(request):
 	for task in nc_tasks:
 		task.update()
 
-	return render(request, 'core/bg_tasks.html')
+	return render(request, 'core/bg_tasks.html', {
+		'breadcrumbs':breadcrumb_parser(request)
+		})
 
 
 def bg_tasks_delete_all(request):
@@ -2459,7 +2472,8 @@ def bg_task(request, task_id):
 	logger.debug('retrieving task: %s' % ct)	
 
 	return render(request, 'core/bg_task.html', {
-			'ct':ct
+			'ct':ct,
+			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 
