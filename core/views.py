@@ -2290,7 +2290,9 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 		name = 'Export Documents for Job: %s' % cjob.job.name,
 		task_type = 'job_export_documents',
 		task_params_json = json.dumps({			
-			'job_id':cjob.job.id
+			'job_id':cjob.job.id,
+			'records_per_file':int(records_per_file),
+			'archive_type':archive_type
 		})
 	)
 	ct.save()

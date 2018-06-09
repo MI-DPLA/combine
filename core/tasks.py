@@ -2,6 +2,7 @@ from background_task import background
 
 # generic imports 
 import json
+import math
 import os
 import time
 import uuid
@@ -136,7 +137,7 @@ def job_export_mapped_fields(ct_id):
 	logger.debug(cmd)
 	os.system(cmd)
 
-	# save validation report output to Combine Task output
+	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
 		'export_output':export_output,
 		'name':export_output.split('/')[-1]
@@ -147,6 +148,14 @@ def job_export_mapped_fields(ct_id):
 @background(schedule=1)
 def job_export_documents(ct_id):
 
+	'''
+	- submit livy job and poll until complete
+		- use livy session from cjob (works, but awkward way to get this)
+	- add wrapper element to file parts
+	- rename file parts
+	- tar/zip together
+	'''
+
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.debug('using %s' % ct)
@@ -154,8 +163,31 @@ def job_export_documents(ct_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	
+	# submit livy job
+	# submit = LivyClient().submit_job(cjob.livy_session.session_id, {'code':'x = 2 * 444\nprint(x)'})
+	# df.select('document').rdd.repartition(math.ceil(df.count()/perpage)).map(lambda row: row.document.replace('<?xml version="1.0" encoding="UTF-8"?>','')).saveAsTextFile('file:///home/combine/%s' % str(uuid.uuid4()))
 
+	# generate spark code
+	output_path = str(uuid.uuid4())
+
+	spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file:///tmp/%(output_path)s')" % {
+		'job_id':cjob.job.id,
+		'output_path':output_path,
+		'records_per_file':ct.task_params['records_per_file']
+	}
+	logger.debug('###############################')
+	logger.debug(spark_code)
+	logger.debug('###############################')
+
+	# submit to livy
+	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+
+	# save export output to Combine Task output
+	ct.task_output_json = json.dumps({		
+		'export_output':'/tmp/%s' % output_path,
+		'name':'THIS WILL BE THE ARCHIVE FILE'
+	})
+	ct.save()
 
 
 @background(schedule=1)
