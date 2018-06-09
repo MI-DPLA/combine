@@ -2280,7 +2280,9 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(int(job_id))
 
 	# get records per file
-	records_per_file = request.POST.get('records_per_file', 500)
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
 
 	# get archive type
 	archive_type = request.POST.get('archive_type')

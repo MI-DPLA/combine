@@ -158,38 +158,57 @@ def job_export_documents(ct_id):
 	'''
 
 	# get CombineTask (ct)
-	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-	logger.debug('using %s' % ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
 
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# generate spark code
-	output_path = str(uuid.uuid4())
+		# generate spark code
+		output_path = str(uuid.uuid4())
 
-	spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file:///tmp/%(output_path)s')" % {
-		'job_id':cjob.job.id,
-		'output_path':output_path,
-		'records_per_file':ct.task_params['records_per_file']
-	}
-	logger.debug(spark_code)
+		spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file:///tmp/%(output_path)s')" % {
+			'job_id':cjob.job.id,
+			'output_path':output_path,
+			'records_per_file':ct.task_params['records_per_file']
+		}
+		logger.debug(spark_code)
 
-	# submit to livy
-	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+		# submit to livy
+		if cjob.livy_session.session_id:
+			submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+		else:
+			raise Exception('No Livy session found, cannot export records')
 
-	# poll until complete
-	def spark_job_done(response):
-		return response['state'] == 'available'
+		# poll until complete
+		def spark_job_done(response):
+			return response['state'] == 'available'
 
-	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
-	logger.debug(results)
+		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+		logger.debug(results)
 
-	# save export output to Combine Task output
-	ct.task_output_json = json.dumps({		
-		'export_output':'/tmp/%s' % output_path,
-		'name':'THIS WILL BE THE ARCHIVE FILE'
-	})
-	ct.save()
+		# wrap documents in root element
+
+		# zip together as archive, save to output
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'export_output':'/tmp/%s' % output_path,
+			'name':'THIS WILL BE THE ARCHIVE FILE'
+		})
+		ct.save()
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
+
 
 
 @background(schedule=1)
