@@ -1,12 +1,14 @@
 from background_task import background
 
 # generic imports 
+import glob
 import json
 import math
 import os
 import polling
 import time
 import uuid
+from zipfile import ZipFile
 
 # Get an instance of a logger
 import logging
@@ -166,9 +168,9 @@ def job_export_documents(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# generate spark code
-		output_path = str(uuid.uuid4())
+		output_path = '/tmp/%s' % str(uuid.uuid4())
 
-		spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file:///tmp/%(output_path)s')" % {
+		spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
 			'job_id':cjob.job.id,
 			'output_path':output_path,
 			'records_per_file':ct.task_params['records_per_file']
@@ -176,10 +178,8 @@ def job_export_documents(ct_id):
 		logger.debug(spark_code)
 
 		# submit to livy
-		if cjob.livy_session.session_id:
-			submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
-		else:
-			raise Exception('No Livy session found, cannot export records')
+		logger.debug('submitting code to Spark')
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
 		# poll until complete
 		def spark_job_done(response):
@@ -188,16 +188,48 @@ def job_export_documents(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
 
-		# wrap documents in root element
+		# loop through parts, group XML docs with rool XML element, and save as new XML file
+		logger.debug('grouping documents in XML files')
 
-		# zip together as archive, save to output
+		export_parts = glob.glob('%s/part*' % output_path)
+		logger.debug('found %s documents to write as XML' % len(export_parts))
+		for part in export_parts:
+			with open('%s.xml' % part, 'w') as f:
+				f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
+				with open(part) as f_part:
+					f.write(f_part.read())
+				f.write('</documents>')
+
+		# save file list pre-archive for cleanup
+		pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
+
+		# create archive file of loose XML files
+		archive_filename_root = 'j_%s_documents' % cjob.job.id
+
+		# zip
+		if ct.task_params['archive_type'] == 'zip':
+			logger.debug('creating zip archive')
+			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
+			with ZipFile(export_output_archive,'w') as zip:
+				for f in glob.glob('%s/*.xml' % output_path):
+					zip.write(f, os.path.basename(f))
+			
+			# cleanup directory
+			logger.debug('cleaning up: %s' % pre_archive_files)
+			for f in pre_archive_files:
+				os.remove(f)
+
+		# tar
+		if ct.task_params['archive_type'] == 'tar':
+			logger.debug('creating tar archive')
+			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
-			'export_output':'/tmp/%s' % output_path,
-			'name':'THIS WILL BE THE ARCHIVE FILE'
+			'export_output':export_output_archive
 		})
 		ct.save()
+		logger.debug(ct.task_output_json)
 
 	except Exception as e:
 
