@@ -6,6 +6,7 @@ import json
 import math
 import os
 import polling
+import tarfile
 import time
 import uuid
 from zipfile import ZipFile
@@ -214,15 +215,19 @@ def job_export_documents(ct_id):
 				for f in glob.glob('%s/*.xml' % output_path):
 					zip.write(f, os.path.basename(f))
 			
-			# cleanup directory
-			logger.debug('cleaning up: %s' % pre_archive_files)
-			for f in pre_archive_files:
-				os.remove(f)
-
 		# tar
 		if ct.task_params['archive_type'] == 'tar':
 			logger.debug('creating tar archive')
 			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
+
+			with tarfile.open(export_output_archive, 'w') as tar:
+				for f in glob.glob('%s/*.xml' % output_path):
+					tar.add(f, arcname=os.path.basename(f))
+
+		# cleanup directory
+		logger.debug('cleaning up: %s' % pre_archive_files)
+		for f in pre_archive_files:
+			os.remove(f)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
