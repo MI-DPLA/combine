@@ -3649,7 +3649,9 @@ class CombineJob(object):
 			start = 0
 			end = start + chunk_size
 
-			while start < tlen:				
+			while start < tlen:
+
+				logger.debug('working on chunk_start: %s' % start)			
 
 				# get doc chunks from es
 				chunk = list(rvf_df['Combine ID'].iloc[start:end])
