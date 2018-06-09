@@ -50,6 +50,9 @@
 					{% elif ct.task_type == 'job_export_mapped_fields' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields .csv</button></a>
 
+					{% elif ct.task_type == 'job_export_documents' %}
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive</button></a>
+
 					{% else %}
 						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
 					{% endif %}

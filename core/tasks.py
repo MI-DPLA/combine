@@ -183,9 +183,12 @@ def job_export_documents(ct_id):
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
 		# poll until complete
+		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+		# to prevent infinite polling
 		def spark_job_done(response):
 			return response['state'] == 'available'
 
+		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
 
@@ -209,6 +212,7 @@ def job_export_documents(ct_id):
 
 		# zip
 		if ct.task_params['archive_type'] == 'zip':
+			content_type = 'application/zip'
 			logger.debug('creating zip archive')
 			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
 			with ZipFile(export_output_archive,'w') as zip:
@@ -217,6 +221,7 @@ def job_export_documents(ct_id):
 			
 		# tar
 		if ct.task_params['archive_type'] == 'tar':
+			content_type = 'application/tar'
 			logger.debug('creating tar archive')
 			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
 
@@ -225,13 +230,14 @@ def job_export_documents(ct_id):
 					tar.add(f, arcname=os.path.basename(f))
 
 		# cleanup directory
-		logger.debug('cleaning up: %s' % pre_archive_files)
 		for f in pre_archive_files:
 			os.remove(f)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
-			'export_output':export_output_archive
+			'export_output':export_output_archive,
+			'name':export_output_archive.split('/')[-1],
+			'content_type':content_type
 		})
 		ct.save()
 		logger.debug(ct.task_output_json)
