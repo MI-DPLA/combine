@@ -1,0 +1,58 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Background Tasks</h2>
+			<p>Some tasks in Combine are long running and must be run in the background.  This includes <strong>Job Deletion</strong>, <strong>Validation Reports</strong>, <strong>Exports</strong>, among other things.  See the table below for the status of these tasks, and any further actions that be taken such as downloading or viewing results.</p>
+			<div class="alert alert-info alert-dismissible fade show" role="alert">
+				Hold <strong>Shift</strong> while clicking a column header to sort by multiple columns
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
+				<thead>
+					<th>DB ID</th>
+					<th>Started</th>
+					<th>Name</th>
+					<th>Type</th>					
+					<th>Task ID</th>
+					<th>Status</th>
+					<th>Duration</th>
+					<th>Actions</th>
+				</thead>
+				<tbody></tbody>
+			</table>
+
+			<script>
+				// Matches Datatable
+				$(document).ready(function() {
+				    matches_table = $('#bg_tasks_dt').dataTable({
+				        "processing": true,
+				        "serverSide": true,
+				        "ajax": "{% url 'bg_tasks_dt' %}",
+				        "searchDelay": 1000,
+				        "pageLength": 10,
+				        "order": [[ 5, "asc" ], [ 1, "desc" ]]
+				    });
+				});
+			</script>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Manage Tasks</h4>
+			<p><a href="{% url 'bg_tasks_delete_all' %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove all background tasks?  This action cannot be undone.');">Remove All Tasks</button></a></p>
+		</div>
+	</div>
+
+{% endblock %}

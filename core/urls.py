@@ -37,8 +37,9 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/publish/new$', views.job_publish, name='job_publish'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/reports/create_validation_report$', views.job_reports_create_validation, name='job_reports_create_validation'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/reports/create_audit_report$', views.job_reports_create_audit, name='job_reports_create_audit'),
 	url(r'^organization/(?P<org_id>([0-9]|(DYNAMIC_ORG_ID))+)/record_group/(?P<record_group_id>([0-9]|(DYNAMIC_RG_ID))+)/job/(?P<job_id>([0-9]|(DYNAMIC_ID))+)/job_lineage_json$', views.job_lineage_json, name='job_lineage_json'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/mapped_fields$', views.job_export_mapped_fields, name='job_export_mapped_fields'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/documents$', views.job_export_documents, name='job_export_documents'),
 
 	# Job Record Validation Scenarios
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_validation_scenario_failures/(?P<job_validation_id>[0-9]+)$', views.job_validation_scenario_failures, name='job_validation_scenario_failures'),
@@ -91,6 +92,7 @@ urlpatterns = [
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_validation_scenario_failures_json/(?P<job_validation_id>[0-9]+)$', views.DTJobValidationScenarioFailuresJson.as_view(), name='job_validation_scenario_failures_json'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/dpla_bulk_data/(?P<match_type>.*)$', views.DTDPLABulkDataMatches.as_view(), name='dpla_bulk_data_matches'),
 	url(r'^datatables/organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record_diffs$', views.JobRecordDiffs.as_view(), name='job_record_diffs'),
+	url(r'^datatables/background_tasks$', views.CombineBackgroundTasksDT.as_view(), name='bg_tasks_dt'),
 	url(r'^datatables/es/index/(?P<es_index>.+)/(?P<search_type>.+)/records_es_field_dt_json$', DTElasticFieldSearch.as_view(), name='records_es_field_dt_json'),
 	url(r'^datatables/es/search$', DTElasticGenericSearch.as_view(), name='records_es_generic_dt_json'),
 
@@ -98,7 +100,16 @@ urlpatterns = [
 	url(r'^analysis$', views.analysis, name='analysis'),
 	url(r'^analysis/new$', views.job_analysis, name='job_analysis'),
 
-	# general views
+	# Background Tasks
+	url(r'^background_tasks$', views.bg_tasks, name='bg_tasks'),
+	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
+	url(r'^background_tasks/task/(?P<task_id>[0-9]+)$', views.bg_task, name='bg_task'),
+	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
+
+	# Documente Download
+	url(r'^document_download$', views.document_download, name='document_download'),
+
+	# General
 	url(r'^login$', auth_views.login, name='login'),
 	url(r'^logout$', auth_views.logout, name='logout'),
 	url(r'^', views.index, name='combine_home'),

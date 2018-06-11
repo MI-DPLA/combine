@@ -58,17 +58,25 @@ class ESIndex(object):
 		index_mapper_handle = globals()[index_mapper]
 
 		# create rdd from index mapper
-		mapped_records_rdd = records_df.rdd.map(lambda row: index_mapper_handle().map_record(
-				record_string=row.document,
-				db_id=row.id,
-				combine_id=row.combine_id,
-				record_id=row.record_id,				
-				publish_set_id=job.record_group.publish_set_id,
-				fingerprint=row.fingerprint
-			))
+		def es_mapper_pt_udf(pt):
+
+			# init mapper once per partition
+			mapper = index_mapper_handle()
+
+			for row in pt:
+
+				yield mapper.map_record(
+					record_string=row.document,
+					db_id=row.id,
+					combine_id=row.combine_id,
+					record_id=row.record_id,				
+					publish_set_id=job.record_group.publish_set_id,
+					fingerprint=row.fingerprint
+				)
+
+		mapped_records_rdd = records_df.rdd.mapPartitions(es_mapper_pt_udf)
 
 		# attempt to write index mapping failures to DB
-
 		# filter our failures
 		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
 
@@ -255,6 +263,7 @@ class GenericMapper(BaseMapper):
 		# element tag name
 		self.namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
 
+
 	def flatten_record(self):
 
 		'''
@@ -383,7 +392,14 @@ class GenericMapper(BaseMapper):
 			self.parent_walk(parent)
 
 
-	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None, fingerprint=None):
+	def map_record(self,
+			record_string=None,
+			db_id=None,
+			combine_id=None,
+			record_id=None,
+			publish_set_id=None,
+			fingerprint=None
+		):
 
 		'''
 		Map record
@@ -508,7 +524,14 @@ class MODSMapper(BaseMapper):
 				self.gw.add_transform('xslt_transform', f.read())
 
 
-	def map_record(self, record_string=None, db_id=None, combine_id=None, record_id=None, publish_set_id=None, fingerprint=None):
+	def map_record(self,
+			record_string=None,
+			db_id=None,
+			combine_id=None,
+			record_id=None,
+			publish_set_id=None,
+			fingerprint=None
+		):
 
 		try:
 			

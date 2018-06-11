@@ -894,32 +894,31 @@ class TransformSpark(CombineSparkJob):
 			records_trans (rdd): transformed records as RDD
 		'''
 
-		# define udf function for transformation
-		def transform_xslt_udf(job_id, row, xslt_string):
+		def transform_xslt_pt_udf(pt):
 
-			# attempt transformation and save out put to 'document'
-			try:
+			# transform with pyjxslt gateway
+			gw = pyjxslt.Gateway(6767)
+			gw.add_transform('xslt_transform', xslt_string)
+
+			# loop through rows in partition
+			for row in pt:
 				
-				# transform with pyjxslt gateway
-				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('xslt_transform', xslt_string)
-				result = gw.transform('xslt_transform', row.document)
-				gw.drop_transform('xslt_transform')
+				try:
+					result = gw.transform('xslt_transform', row.document)
+					# attempt XML parse to confirm well-formedness
+					# error will bubble up in try/except
+					valid_xml = etree.fromstring(result.encode('utf-8'))
 
-				# attempt XML parse to confirm well-formedness
-				# error will bubble up in try/except
-				valid_xml = etree.fromstring(result.encode('utf-8'))
+					# set trans_result tuple
+					trans_result = (result, '', 1)
 
-				# set trans_result tuple
-				trans_result = (result, '', 1)
+				# catch transformation exception and save exception to 'error'
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e), 0)
 
-			# catch transformation exception and save exception to 'error'
-			except Exception as e:
-				# set trans_result tuple
-				trans_result = ('', str(e), 0)
-
-			# return Row
-			return Row(
+				# yield each Row in mapPartition
+				yield Row(
 					combine_id = row.combine_id,
 					record_id = row.record_id,
 					document = trans_result[0],
@@ -931,12 +930,17 @@ class TransformSpark(CombineSparkJob):
 					transformed = row.transformed
 				)
 
+			# drop transform
+			gw.drop_transform('xslt_transform')
+
 		# get XSLT transformation as string		
 		xslt_string = transformation.payload
 
 		# transform via rdd.map and return
 		job_id = self.job.id
-		records_trans = records.rdd.map(lambda row: transform_xslt_udf(job_id, row, xslt_string))
+
+		# perform transformations a la mapPartitions
+		records_trans = records.rdd.mapPartitions(transform_xslt_pt_udf)
 		return records_trans
 
 
@@ -959,47 +963,50 @@ class TransformSpark(CombineSparkJob):
 			records_trans (rdd): transformed records as RDD
 		'''
 
-		# define udf function for python transformation
-		def transform_python_udf(job_id, row, python_code):
-			
-			try:
-				# prepare row as parsed document with PythonUDFRecord class
-				prtb = PythonUDFRecord(row)
+		# define udf function for python transformation	
+		def transform_python_pt_udf(pt):
 
-				# get python function from Transformation Scenario
-				temp_pyts = ModuleType('temp_pyts')
-				exec(python_code, temp_pyts.__dict__)
+			# get python function from Transformation Scenario
+			temp_pyts = ModuleType('temp_pyts')
+			exec(python_code, temp_pyts.__dict__)
 
-				# run transformation
-				trans_result = temp_pyts.python_record_transformation(prtb)
+			for row in pt:
 
-				# convert any possible byte responses to string
-				if type(trans_result[0]) == bytes:
-					trans_result[0] = trans_result[0].decode('utf-8')
-				if type(trans_result[1]) == bytes:
-					trans_result[1] = trans_result[1].decode('utf-8')
+				try:
 
-			except Exception as e:
-				# set trans_result tuple
-				trans_result = ('', str(e), 0)
+					# prepare row as parsed document with PythonUDFRecord class
+					prtb = PythonUDFRecord(row)
 
-			# return Row
-			return Row(
-				combine_id = row.combine_id,
-				record_id = row.record_id,
-				document = trans_result[0],
-				error = trans_result[1],
-				job_id = int(job_id),
-				oai_set = row.oai_set,
-				success = trans_result[2],
-				fingerprint = row.fingerprint,
-				transformed = row.transformed
-			)
+					# run transformation
+					trans_result = temp_pyts.python_record_transformation(prtb)
+
+					# convert any possible byte responses to string
+					if type(trans_result[0]) == bytes:
+						trans_result[0] = trans_result[0].decode('utf-8')
+					if type(trans_result[1]) == bytes:
+						trans_result[1] = trans_result[1].decode('utf-8')
+
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e), 0)
+
+				# return Row
+				yield Row(
+					combine_id = row.combine_id,
+					record_id = row.record_id,
+					document = trans_result[0],
+					error = trans_result[1],
+					job_id = int(job_id),
+					oai_set = row.oai_set,
+					success = trans_result[2],
+					fingerprint = row.fingerprint,
+					transformed = row.transformed
+				)
 
 		# transform via rdd.map and return
 		job_id = self.job.id			
-		transformation_payload = transformation.payload
-		records_trans = records.rdd.map(lambda row: transform_python_udf(job_id, row, transformation_payload))
+		python_code = transformation.payload
+		records_trans = records.rdd.mapPartitions(transform_python_pt_udf)
 		return records_trans
 
 

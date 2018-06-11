@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic
+import datetime
 import hashlib
 import io
 import json
@@ -28,6 +29,10 @@ from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render, redirect
 from django.views import View
+
+# Django Background Tasks
+from background_task.models_completed import CompletedTask
+from background_task.models import Task
 
 # import models
 from core import models, forms
@@ -158,6 +163,17 @@ def breadcrumb_parser(request):
 	if r_m:
 		r = models.Record.objects.get(pk=int(r_m.group(2)))
 		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
+
+	# background tasks
+	regex_match = re.match(r'(.+?/background_tasks)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>Background Tasks</span>", reverse('bg_tasks')))
+
+	# background task
+	regex_match = re.match(r'(.+?/background_tasks/task/([0-9]+))', request.path)
+	if regex_match:
+		bg_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
+		crumbs.append(("<span class='font-weight-bold'>Task - <code>%s</code></span>" % (bg_task.name), reverse('bg_tasks')))
 
 	# return
 	return crumbs
@@ -294,9 +310,9 @@ def organizations(request):
 		# create new org
 		logger.debug(request.POST)
 		f = forms.OrganizationForm(request.POST)
-		f.save()	
+		new_org = f.save()
 
-		return redirect('organizations')
+		return redirect('organization', org_id=new_org.id)
 
 
 def organization(request, org_id):
@@ -336,9 +352,22 @@ def organization_delete(request, org_id):
 	org.name = "%s (DELETING)" % org.name
 	org.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('Organization', org.id)
-	logger.debug('organization scheduled for delete as background task: %s' % bg_task.task_hash)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete Organization: %s' % org.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':org.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'Organization',
+		org.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	return redirect('organizations')
 
@@ -360,10 +389,10 @@ def record_group_new(request, org_id):
 		# create new record group
 		logger.debug(request.POST)
 		f = forms.RecordGroupForm(request.POST)
-		f.save()
+		new_rg = f.save()
 
 		# redirect to organization page
-		return redirect('organization', org_id=org_id)
+		return redirect('record_group', org_id=org_id, record_group_id=new_rg.id)
 
 
 
@@ -380,9 +409,22 @@ def record_group_delete(request, org_id, record_group_id):
 	record_group.name = "%s (DELETING)" % record_group.name
 	record_group.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('RecordGroup', record_group.id)
-	logger.debug('record group scheduled for delete as background task: %s' % bg_task.task_hash)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete RecordGroup: %s' % record_group.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':record_group.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'RecordGroup',
+		record_group.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	# redirect to organization page
 	return redirect('organization', org_id=org_id)
@@ -516,9 +558,26 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job.status = 'deleting'
 	job.save()
 	
-	# remove via background tasks
-	bg_task = tasks.delete_model_instance('Job', job.id)
-	logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+	# remove via background tasks	
+	# bg_task = tasks.delete_model_instance('Job', job.id)
+	# logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Delete Job: %s' % job.name,
+		task_type = 'job_delete',
+		task_params_json = json.dumps({
+			'model':'Job',
+			'job_id':job.id	
+		})
+	)
+	ct.save()
+	bg_task = tasks.delete_model_instance(
+		'Job',
+		job.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	# redirect
 	return redirect(request.META.get('HTTP_REFERER'))
@@ -546,9 +605,22 @@ def delete_jobs(request):
 		job.status = 'deleting'
 		job.save()
 
-		# remove via background tasks
-		bg_task = tasks.delete_model_instance('Job', job.id)
-		logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Delete Job: #%s' % job.name,
+			task_type = 'job_delete',
+			task_params_json = json.dumps({
+				'model':'Job',
+				'job_id':job.id	
+			})
+		)
+		ct.save()
+		bg_task = tasks.delete_model_instance(
+			'Job',
+			job.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
 
 	# return
 	return JsonResponse({'results':True})
@@ -1298,86 +1370,6 @@ def job_publish(request, org_id, record_group_id):
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
 
-@login_required
-def job_reports_create_validation(request, org_id, record_group_id, job_id):
-
-	'''
-	Generate job report based on validation results
-	'''
-
-	# retrieve job
-	cjob = models.CombineJob.get_combine_job(int(job_id))
-
-	# field analysis
-	field_counts = cjob.count_indexed_fields()
-
-	# if GET, prepare form
-	if request.method == 'GET':
-
-		# get validation scenarios run for this job
-
-		# render page
-		return render(request, 'core/job_reports_create_validation.html', {
-				'cjob':cjob,
-				'field_counts':field_counts,
-				'breadcrumbs':breadcrumb_parser(request)
-			})
-
-
-	# if POST, generate report
-	if request.method == 'POST':
-		
-		logger.debug('generating validation results report')
-
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		report_name = request.POST.get('report_name')
-		if report_name == '':
-			report_name = 'Validation Report'
-
-		# get report output format
-		report_format = request.POST.get('report_format')
-
-		# get requested validation scenarios to include in report
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# get mapped fields to include
-		mapped_field_include = request.POST.getlist('mapped_field_include', [])
-
-		# run report generation
-		report_output = cjob.generate_validation_report(
-				report_format=report_format,
-				validation_scenarios=validation_scenarios,
-				mapped_field_include=mapped_field_include
-			)
-
-		# response is to download file from disk
-		with open(report_output, 'rb') as fhand:
-			
-			# csv
-			if report_format == 'csv':
-				content_type = 'text/plain'
-				attachment_filename = '%s.csv' % report_name
-			
-			# excel
-			if report_format == 'excel':
-				content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-				# content_type = 'text/plain'
-				attachment_filename = '%s.xlsx' % report_name
-
-			# prepare and return response
-			response = HttpResponse(fhand, content_type=content_type)
-			response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
-			return response
-
-
-@login_required
-def job_reports_create_audit(request, org_id, record_group_id, job_id):
-	pass
-
-
 def job_lineage_json(request, org_id, record_group_id, job_id):
 
 	'''
@@ -1395,6 +1387,170 @@ def job_lineage_json(request, org_id, record_group_id, job_id):
 		'nodes':job_lineage['nodes'],
 		'edges':job_lineage['edges']
 		})
+
+
+
+####################################################################
+# Job Validation Report       									   #
+####################################################################
+
+@login_required
+def job_reports_create_validation(request, org_id, record_group_id, job_id):
+
+	'''
+	Generate job report based on validation results
+	'''
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# if GET, prepare form
+	if request.method == 'GET':
+
+		# field analysis
+		field_counts = cjob.count_indexed_fields()
+
+		# render page
+		return render(request, 'core/job_reports_create_validation.html', {
+				'cjob':cjob,
+				'field_counts':field_counts,
+				'breadcrumbs':breadcrumb_parser(request)
+			})
+
+	# if POST, generate report
+	if request.method == 'POST':
+
+		# get job name for Combine Task
+		report_name = request.POST.get('report_name')
+		if report_name == '':
+			report_name = 'j_%s_validation_report' % cjob.job.id
+			combine_task_name = "Validation Report: %s" % cjob.job.name
+		else:
+			combine_task_name = "Validation Report: %s" % report_name
+
+		# handle POST params and save as Combine task params
+		task_params = {
+			'job_id':cjob.job.id,
+			'report_name':report_name,
+			'report_format':request.POST.get('report_format'),
+			'validation_scenarios':request.POST.getlist('validation_scenario', []),
+			'mapped_field_include':request.POST.getlist('mapped_field_include', [])
+		}
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = combine_task_name,
+			task_type = 'validation_report',
+			task_params_json = json.dumps(task_params)
+		)
+		ct.save()
+
+		# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
+		# and setting creator and verbose_name params
+		bt = tasks.create_validation_report(
+			ct.id,
+			verbose_name = ct.verbose_name,
+			creator = ct
+		)
+
+		# redirect to Background Tasks
+		return redirect('bg_tasks')
+		
+		# OLD ###################################################################################################
+		# logger.debug('generating validation results report')
+
+		# # debug form
+		# logger.debug(request.POST)
+
+		# # get job name
+		# report_name = request.POST.get('report_name')
+		# if report_name == '':
+		# 	report_name = 'Validation Report'
+
+		# # get report output format
+		# report_format = request.POST.get('report_format')
+
+		# # get requested validation scenarios to include in report
+		# validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+		# # get mapped fields to include
+		# mapped_field_include = request.POST.getlist('mapped_field_include', [])
+
+		# # run report generation
+		# report_output = cjob.generate_validation_report(
+		# 		report_format=report_format,
+		# 		validation_scenarios=validation_scenarios,
+		# 		mapped_field_include=mapped_field_include
+		# 	)
+
+		# # response is to download file from disk
+		# with open(report_output, 'rb') as fhand:
+			
+		# 	# csv
+		# 	if report_format == 'csv':
+		# 		content_type = 'text/plain'
+		# 		attachment_filename = '%s.csv' % report_name
+			
+		# 	# excel
+		# 	if report_format == 'excel':
+		# 		content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		# 		# content_type = 'text/plain'
+		# 		attachment_filename = '%s.xlsx' % report_name
+
+		# 	# prepare and return response
+		# 	response = HttpResponse(fhand, content_type=content_type)
+		# 	response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
+		# 	return response
+		# OLD ###################################################################################################
+
+
+####################################################################
+# Job Validation Report       									   #
+####################################################################
+
+def document_download(request):
+
+	'''
+	Args (GET params):
+		file_location: location on disk for file
+		file_download_name: desired download name
+		content_type: ContentType Headers
+	'''
+
+	# known download format params
+	download_format_hash = {
+		'excel':{
+			'extension':'.xlsx',
+			'content_type':'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+		},
+		'csv':{
+			'extension':'.csv',
+			'content_type':'text/plain'
+		}
+	}
+
+	# get params
+	download_format = request.GET.get('download_format', None)
+	filepath = request.GET.get('filepath', None)
+	name = request.GET.get('name', 'download')
+	content_type = request.GET.get('content_type', 'text/plain')
+	preview = request.GET.get('preview', False)
+
+	# if known download format, use hash and overwrite provided or defaults
+	if download_format and download_format in download_format_hash.keys():
+
+		format_params = download_format_hash[download_format]
+		name = '%s%s' % (name, format_params['extension'])
+		content_type = format_params['content_type']
+
+	# open file and prepare as attachment
+	with open(filepath, 'rb') as fhand:
+
+		# prepare and return response
+		response = HttpResponse(fhand, content_type=content_type)
+		if not preview:
+			response['Content-Disposition'] = 'attachment; filename="%s"' % name
+		return response
 
 
 ####################################################################
@@ -2081,6 +2237,79 @@ def search(request):
 
 
 ####################################################################
+# Export                   										   #
+####################################################################
+
+def job_export_mapped_fields(request, org_id, record_group_id, job_id):
+
+	logger.debug('exporting mapped fields from Job')
+	logger.debug(request.POST)
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# check for Kibana check
+	kibana_style = request.POST.get('kibana_style', False)
+	if kibana_style:
+		kibana_style = True
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
+		task_type = 'job_export_mapped_fields',
+		task_params_json = json.dumps({			
+			'job_id':cjob.job.id,
+			'kibana_style':kibana_style
+		})
+	)
+	ct.save()
+	bg_task = tasks.job_export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def job_export_documents(request, org_id, record_group_id, job_id):
+
+	logger.debug('exporting documents from Job')
+	logger.debug(request.POST)
+
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Documents for Job: %s' % cjob.job.name,
+		task_type = 'job_export_documents',
+		task_params_json = json.dumps({			
+			'job_id':cjob.job.id,
+			'records_per_file':int(records_per_file),
+			'archive_type':archive_type
+		})
+	)
+	ct.save()
+	bg_task = tasks.job_export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+
+####################################################################
 # Analysis  													   #
 ####################################################################
 
@@ -2223,6 +2452,69 @@ def job_analysis(request):
 			cjob.job.save()
 
 		return redirect('analysis')
+
+
+
+####################################################################
+# Background Tasks												   #
+####################################################################
+
+def bg_tasks(request):
+
+	logger.debug('retrieving background tasks')
+
+	# update all tasks not marked as complete
+	nc_tasks = models.CombineBackgroundTask.objects.filter(completed=False)
+	for task in nc_tasks:
+		task.update()
+
+	return render(request, 'core/bg_tasks.html', {
+		'breadcrumbs':breadcrumb_parser(request)
+		})
+
+
+def bg_tasks_delete_all(request):
+
+	logger.debug('deleting all background tasks')
+
+	# delete all Combine Background Tasks
+	cts = models.CombineBackgroundTask.objects.all()
+	for ct in cts:
+		ct.delete()
+
+	# delete all Django Background Tasks
+	running = Task.objects.all()
+	for task in running:
+		task.delete()
+
+	completed = CompletedTask.objects.all()
+	for task in completed:
+		task.delete()
+
+	return redirect('bg_tasks')
+
+
+def bg_task(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('retrieving task: %s' % ct)	
+
+	return render(request, 'core/bg_task.html', {
+			'ct':ct,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+
+def bg_task_delete(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('deleting task: %s' % ct)
+
+	ct.delete()
+
+	return redirect('bg_tasks')
 
 
 
@@ -2813,7 +3105,7 @@ class JobRecordDiffs(BaseDatatableView):
 					}), row.record_id)
 
 			else:
-				return super(DTRecordsJson, self).render_column(row, column)
+				return super(JobRecordDiffs, self).render_column(row, column)
 
 
 		def filter_queryset(self, qs):
@@ -2824,6 +3116,91 @@ class JobRecordDiffs(BaseDatatableView):
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
 				qs = qs.filter(Q(id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+
+			# return
+			return qs
+
+
+class CombineBackgroundTasksDT(BaseDatatableView):
+
+		'''
+		Prepare and return Datatables JSON for Records table in Job Details
+		'''
+
+		# define the columns that will be returned
+		columns = [
+			'id',
+			'start_timestamp',
+			'name',
+			'task_type',
+			'verbose_name',
+			'completed',
+			'duration',
+			'actions'
+		]
+
+		# define column names that will be used in sorting
+		# order is important and should be same as order of columns
+		# displayed by datatables. For non sortable columns use empty
+		# value like ''
+		# order_columns = ['number', 'user', 'state', '', '']
+		order_columns = [
+			'id',
+			'start_timestamp',
+			'name',
+			'task_type',
+			'verbose_name',
+			'completed',
+			'duration',
+			'actions'
+		]
+
+		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
+		# and make it return huge amount of data
+		max_display_length = 1000
+
+
+		def get_initial_queryset(self):
+			
+			# return queryset used as base for futher sorting/filtering			
+			return models.CombineBackgroundTask.objects
+
+
+		def render_column(self, row, column):
+
+			if column == 'task_type':				
+				return row.get_task_type_display()
+
+			elif column == 'verbose_name':
+				return '<code>%s</code>' % row.verbose_name
+
+			elif column == 'completed':
+				if row.completed:
+					return "<span style='color:green;'>Finished</span>"
+				else:
+					return "<span style='color:orange;'>Running</span>"
+
+			elif column == 'duration':
+				return row.calc_elapsed_as_string()
+				
+
+			elif column == 'actions':
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results</button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete</button></a>' % (
+					reverse(bg_task, kwargs={'task_id':row.id}),
+					reverse(bg_task_delete, kwargs={'task_id':row.id})
+				)
+
+			else:
+				return super(CombineBackgroundTasksDT, self).render_column(row, column)
+
+
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
+
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				qs = qs.filter(Q(id__contains=search) | Q(name__contains=search) | Q(verbose_name__contains=search))
 
 			# return
 			return qs

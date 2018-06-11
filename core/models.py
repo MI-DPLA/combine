@@ -57,6 +57,8 @@ from django.views import View
 
 # import background tasks
 from core import tasks
+from background_task.models_completed import CompletedTask
+from background_task.models import Task
 
 # Livy
 from livy.client import HttpClient
@@ -2132,6 +2134,168 @@ class DPLABulkDataMatch(models.Model):
 
 
 
+class CombineBackgroundTask(models.Model):
+
+	'''
+	Model for long running, background tasks
+		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)	
+
+	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
+	'''
+
+	name = models.CharField(max_length=255, null=True, default=None)
+	task_type = models.CharField(
+		max_length=255,
+		choices=[
+			('job_delete','Job Deletion'),
+			('record_group_delete','Record Group Deletion'),
+			('org_delete','Organization Deletion'),
+			('validation_report','Validation Report Generation'),
+			('job_export_mapped_fields','Job Export Mapped Fields'),
+			('job_export_documents','Job Export Documents')
+		],
+		default=None,
+		null=True
+	)
+	verbose_name = models.CharField(max_length=128, null=True, default=None)
+	task_params_json = models.TextField(null=True, default=None)
+	task_output_json = models.TextField(null=True, default=None)
+	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	completed = models.BooleanField(default=False)
+	
+	# instance of Task if retrieved
+	task = None # placeholder for Task/CompletedTask Instance
+
+
+	def __str__(self):
+		return 'CombineBackgroundTask: %s, %s, #%s' % (self.name, self.verbose_name, self.id)
+
+
+	def update(self):
+
+		'''
+		Method to update completed status, and affix task to instance
+		'''
+
+		# if completed, retrieve completed task
+		if self.completed:
+			self._get_completed_task()
+
+		# else, determine if running or completed and get task
+		else:
+
+			# check if running
+			task = self._get_running_task()
+
+			# if not found, check if completed
+			if not task:				
+				task = self._get_completed_task()
+				
+				if task:
+					# update completed status
+					self.completed = True
+
+					# set finish timestamp
+					self.finish_timestamp = task.locked_at
+
+					# save
+					self.save()
+				
+				else:					
+					self.task = False
+
+
+	def _get_completed_task(self):
+
+		'''
+		Method to check for, and return, completed task
+		'''
+
+
+		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
+		if completed.count() == 1:
+			self.task = completed.first()
+			return self.task
+		elif completed.count() > 1:
+			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
+			self._handle_multiple_tasks_found
+		else:
+			return False
+
+
+	def _get_running_task(self):
+
+		'''
+		Method to check for, and return, running/queued task
+		'''
+
+		running = Task.objects.filter(verbose_name=self.verbose_name)
+		if running.count() == 1:
+			self.task = running.first()
+			return self.task
+		elif running.count() > 1:
+			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
+			self._handle_multiple_tasks_found
+		else:
+			return False
+
+
+	def _handle_multiple_tasks_found(self):
+
+		'''
+		Method to handle multiple tasks found with same verbose_name
+		'''
+
+		pass
+
+
+	def calc_elapsed_as_string(self):
+
+		# determine time elapsed in seconds
+		if self.completed:
+			# use finish timestamp
+			seconds_elapsed = (self.finish_timestamp.replace(tzinfo=None) - self.start_timestamp.replace(tzinfo=None)).seconds
+		else:
+			seconds_elapsed = (datetime.datetime.now() - self.start_timestamp.replace(tzinfo=None)).seconds
+
+		# return as string
+		m, s = divmod(seconds_elapsed, 60)
+		h, m = divmod(m, 60)
+		
+		return "%d:%02d:%02d" % (h, m, s)
+
+
+	@property
+	def task_params(self):
+
+		'''
+		Property to return JSON params as dict
+		'''
+
+		if self.task_params_json:
+			return json.loads(self.task_params_json)
+		else:
+			return {}
+
+
+	@property
+	def task_output(self):
+
+		'''
+		Property to return JSON output as dict
+		'''
+
+		if self.task_output_json:
+			return json.loads(self.task_output_json)
+		else:
+			return {}
+
+
+
+
+
+
 ####################################################################
 # Signals Handlers                                                 # 
 ####################################################################
@@ -2453,6 +2617,40 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not remove ES index: %s' % instance.es_index)
 
 
+@receiver(models.signals.post_init, sender=CombineBackgroundTask)
+def background_task_post_init(sender, instance, **kwargs):
+
+	# if exists already, update status
+	if instance.id:
+		instance.update()
+
+	# else, assign random uuid
+	else:
+		instance.verbose_name = uuid.uuid4().urn
+
+
+@receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
+def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
+
+	# remove verbose_name from Django Background Task tables
+	running = Task.objects.filter(verbose_name=instance.verbose_name)
+	if running.count() > 0:
+		for task in running:
+			task.delete()
+
+	completed = CompletedTask.objects.filter(verbose_name=instance.verbose_name)
+	if completed.count() > 0:
+		for task in completed:
+			task.delete()
+
+	# if export dir exists in task_output, delete as well
+	if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
+		try:
+			logger.debug('removing task export dir: %s' % instance.task_output['export_dir'])
+			shutil.rmtree(instance.task_output['export_dir'])
+		except:
+			logger.debug('could not parse task output as JSON')
+
 
 ####################################################################
 # Apahce livy 													   #
@@ -2480,7 +2678,8 @@ class LivyClient(object):
 	@classmethod
 	def http_request(self,
 			http_method,
-			url, data=None,
+			url,
+			data=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -2632,7 +2831,7 @@ class LivyClient(object):
 
 
 	@classmethod
-	def submit_job(self, session_id, python_code):
+	def submit_job(self, session_id, python_code, stream=False):
 
 		'''
 		Submit job via HTTP request to /statements
@@ -2648,7 +2847,7 @@ class LivyClient(object):
 		logger.debug(python_code)
 		
 		# statement
-		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
 		logger.debug(job.json())
 		logger.debug(job.headers)
 		return job
@@ -3191,7 +3390,7 @@ class CombineJob(object):
 			return False
 
 
-	def submit_job_to_livy(self, job_code, job_output):
+	def submit_job_to_livy(self, job_code):
 
 		'''
 		Using LivyClient, submit actual job code to Spark.  For the most part, Combine Jobs have the heavy lifting of 
@@ -3199,7 +3398,6 @@ class CombineJob(object):
 
 		Args:
 			job_code (str): String of python code to submit to Spark
-			job_output (str): location for job output (NOTE: No longer used)
 
 		Returns:
 			None
@@ -3451,7 +3649,9 @@ class CombineJob(object):
 			start = 0
 			end = start + chunk_size
 
-			while start < tlen:				
+			while start < tlen:
+
+				logger.debug('working on chunk_start: %s' % start)			
 
 				# get doc chunks from es
 				chunk = list(rvf_df['Combine ID'].iloc[start:end])
@@ -3487,16 +3687,17 @@ class CombineJob(object):
 		else:
 
 			# create filename
-			filename = uuid.uuid4().hex
+			output_path = '/tmp/%s' % uuid.uuid4().hex
+			os.mkdir(output_path)
 
 			# output csv
 			if report_format == 'csv':
-				full_path = '/tmp/%s.csv' % (filename)
+				full_path = '%s/validation_report.csv' % (output_path)
 				rvf_df.to_csv(full_path, encoding='utf-8')
 
 			# output excel
 			if report_format == 'excel':
-				full_path = '/tmp/%s.xlsx' % (filename)
+				full_path = '%s/validation_report.xlsx' % (output_path)
 				rvf_df.to_excel(full_path, encoding='utf-8')
 
 			# return
@@ -3569,8 +3770,7 @@ class HarvestJob(CombineJob):
 				job_id = None,
 				status = 'initializing',
 				url = None,
-				headers = None,
-				job_output = None
+				headers = None
 			)
 			self.job.save()
 
@@ -3677,7 +3877,7 @@ class HarvestOAIJob(HarvestJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -3777,25 +3977,8 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		'''
 		Method to prepare static files for spark processing
-
-		Target final structure:
-			/foo/bar <-- self.static_payload
-				baz1.xml <-- record at self.xpath_query within file
-				baz2.xml
-				baz3.xml
-
-		Accepts three scenarios:
-			- zip / tar file with discrete files, one record per file
-			- aggregate XML file, containing multiple records
-			- location of directory on disk, with files pre-arranged to match structure above
-
-		Args:
-			see HarvestStaticXMLJob.__init__() above
-
-		########################################################################################################
-		QUESTION: Should this be in Spark?  What if 500k, 1m records provided here?
-		Job will not start until this is finished...
-		########################################################################################################
+		Note: Simplified greatly after utilizing Spark-XML for reading input.
+			- leaving scaffolding here in case needed in future, but doing very little now
 		'''
 
 		# payload dictionary handle
@@ -3805,118 +3988,9 @@ class HarvestStaticXMLJob(HarvestJob):
 		if p['type'] == 'upload':			
 			logger.debug('static harvest, processing upload type')
 
-			# # full file path
-			# fpath = os.path.join(p['payload_dir'], p['payload_filename'])
-
-			# # handle archive type (zip or tar)
-			# if p['content_type'] in ['application/zip', 'application/x-tar', 'application/x-gzip']:
-			# 	self._handle_archive_upload(p, fpath)
-				
-			# # handle XML aggregate files
-			# if p['content_type'] in ['text/xml', 'application/xml']:
-			# 	self._handle_xml_upload(p, fpath)
-
 		# handle disk locations
 		if p['type'] == 'location':
 			logger.debug('static harvest, processing location type')
-
-
-	# def _handle_archive_upload(self, p, fpath):
-
-	# 	'''
-	# 	Handle uploads of archive files.
-	# 	Decompress to pre-made payload location, and remove archive file
-
-	# 	Args:
-	# 		p (dict): payload dictionary 
-
-	# 	Returns:
-	# 		None
-	# 	'''
-
-	# 	logger.debug('processing archive file: %s' % p['content_type'])
-
-	# 	# handle zip
-	# 	if p['content_type'] in ['application/zip']:
-	# 		logger.debug('unzipping file')
-			
-	# 		# unzip
-	# 		zip_ref = zipfile.ZipFile(fpath, 'r')
-	# 		zip_ref.extractall(p['payload_dir'])
-	# 		zip_ref.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-	# 	# handle uncompressed tar
-	# 	if p['content_type'] in ['application/x-tar']:
-	# 		logger.debug('untarring file')		
-
-	# 		# untar
-	# 		tar = tarfile.open(fpath)
-	# 		tar.extractall(path=p['payload_dir'])
-	# 		tar.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-	# 	# handle uncompressed tar
-	# 	if p['content_type'] in ['application/x-gzip']:
-	# 		logger.debug('decompressing gzip')					
-
-	# 		# untar
-	# 		tar = tarfile.open(fpath, 'r:gz')
-	# 		tar.extractall(path=p['payload_dir'])
-	# 		tar.close()
-
-	# 		# remove original zip
-	# 		os.remove(fpath)
-
-
-	# def _handle_xml_upload(self, p, fpath):
-
-	# 	'''
-	# 	Handle upload of single XML file that contains multiple discrete records.
-	# 	Using xpath_document_root query from user, parse records and write to discrete files on disk,
-	# 	then delete the aggregate file.
-
-	# 	Args:
-	# 		p (dict): payload dictionary 
-
-	# 	Returns:
-	# 		None
-	# 	'''
-
-	# 	logger.debug('handling aggregate XML file')
-
-	# 	# parse file
-	# 	tree = etree.parse(fpath)
-
-	# 	# get xml root 
-	# 	xml_root = tree.getroot()
-
-	# 	# programattically extract namespaces
-	# 	nsmap = {}
-	# 	for ns in xml_root.xpath('//namespace::*'):
-	# 		if ns[0]:
-	# 			nsmap[ns[0]] = ns[1]
-
-	# 	# get list of documents as elements
-	# 	doc_search = xml_root.xpath(p['xpath_document_root'], namespaces=nsmap)
-
-	# 	# if docs founds, loop through and write to disk as discrete XML files
-	# 	if len(doc_search) > 0:
-	# 		for doc_ele in doc_search:
-	# 			record_string = etree.tostring(doc_ele)
-	# 			filename = hashlib.md5(record_string).hexdigest()
-	# 			with open(os.path.join(p['payload_dir'],'%s.xml' % filename), 'w') as f:
-	# 				f.write(record_string.decode('utf-8'))
-
-	# 	# after parsing file, set xpath_document_root --> '/*'
-	# 	p['xpath_document_root'] = '/*'
-
-	# 	# remove original zip
-	# 	os.remove(fpath)
 
 
 	def prepare_job(self):
@@ -3951,7 +4025,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4038,7 +4112,6 @@ class TransformJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'transformation':
 						{
@@ -4093,7 +4166,7 @@ class TransformJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4184,7 +4257,6 @@ class MergeJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4237,7 +4309,7 @@ class MergeJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4309,7 +4381,6 @@ class PublishJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4351,7 +4422,7 @@ class PublishJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):
@@ -4438,7 +4509,6 @@ class AnalysisJob(CombineJob):
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_output = None,
 				job_details = json.dumps(
 					{'publish':
 						{
@@ -4550,7 +4620,7 @@ class AnalysisJob(CombineJob):
 		}
 
 		# submit job
-		self.submit_job_to_livy(job_code, self.job.job_output)
+		self.submit_job_to_livy(job_code)
 
 
 	def get_job_errors(self):

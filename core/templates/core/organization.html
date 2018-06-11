@@ -11,40 +11,49 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h4>Record Groups</h4>
-			<table class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Record Group ID</th>
-						<th>Name</th>
-						<th>Description</th>
-						<th>Published?</th>
-						<th>Publish Set ID</th>
-						<th>Created</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for record_group in record_groups %}
+			{% if record_groups|length > 0 %}
+				<table class="table table-bordered table-hover">
+					<thead>
 						<tr>
-							<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.id }}</a></td>
-							<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.name }}</a></td>
-							<td>{{ record_group.description }}</td>
-							{% if record_group.is_published %}
-								<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
-							{% else %}
-								<td><span class="text-danger">Not published</span></td>
-							{% endif %}
-							{% if record_group.publish_set_id %}
-								<td>{{ record_group.publish_set_id }}</td>
-							{% else %}
-								<td></td>
-							{% endif %}
-							<td>{{ record_group.timestamp }}</td>
-							<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');"><button type="button" class="btn btn-danger btn-sm">Delete</button></a></td>
+							<th>Record Group ID</th>
+							<th>Name</th>
+							<th>Description</th>
+							<th>Published?</th>
+							<th>Publish Set ID</th>
+							<th>Created</th>
+							<th>Actions</th>
 						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
+					</thead>
+					<tbody>
+						{% for record_group in record_groups %}
+							<tr>
+								<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.id }}</a></td>
+								<td><a href="{% url 'record_group' org_id=record_group.organization.id record_group_id=record_group.id %}">{{ record_group.name }}</a></td>
+								<td>{{ record_group.description }}</td>
+								{% if record_group.is_published %}
+									<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
+								{% else %}
+									<td><span class="text-danger">Not published</span></td>
+								{% endif %}
+								{% if record_group.publish_set_id %}
+									<td>{{ record_group.publish_set_id }}</td>
+								{% else %}
+									<td></td>
+								{% endif %}
+								<td>{{ record_group.timestamp }}</td>
+								<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');"><button type="button" class="btn btn-danger btn-sm">Delete</button></a></td>
+							</tr>
+						{% endfor %}
+					</tbody>
+				</table>
+			{% else %}
+				<div class="alert alert-warning alert-dismissible fade show" role="alert">
+					No Record Groups found!  Create one below...
+					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+					<span aria-hidden="true">&times;</span>
+					</button>
+				</div>
+			{% endif %}
 		</div>
 	</div>
 

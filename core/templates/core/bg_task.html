@@ -1,0 +1,107 @@
+{% extends 'core/base.html' %}
+{% load static %}
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Combine Background Task: <code>{{ ct.name }}</code></h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
+				<thead>
+					<tr>
+						<th>Type</th>
+						<th>Started</th>
+						<th>Duration</th>
+						<th>Task ID</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td>{{ ct.get_task_type_display }}</td>
+						<td>{{ ct.start_timestamp }}</td>
+						<td>{{ ct.calc_elapsed_as_string }}</td>
+						<td><code>{{ ct.verbose_name }}</code></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Task Details</h3>
+
+			<div class="row">
+				<div class="col-md-12">
+
+					<!-- handle different task types below -->
+					
+					{% if ct.task_type == 'validation_report' %}						
+						<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
+
+						{% if ct.task_params.report_format == 'csv' %}
+							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}&preview=true" target="_blank"><button type="button" class="btn btn-success btn-sm">View Raw CSV file in browser</button></a>
+						{% endif %}							
+					
+					{% elif ct.task_type == 'job_export_mapped_fields' %}
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields .csv</button></a>
+
+					{% elif ct.task_type == 'job_export_documents' %}
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive</button></a>
+
+					{% else %}
+						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
+					{% endif %}
+
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
+					<h4>Task Output</h4>
+					{% if ct.task_output_json %}
+						<pre><code id="task_output_parsed" class="json">{{ ct.task_output_json|safe }}</code></pre>
+						<script>
+							$("#task_output_parsed").html(JSON.stringify(JSON.parse(`{{ ct.task_output_json|safe }}`), null, 2));
+							$("#task_output_parsed").each(function(i, block) {
+								hljs.highlightBlock(block);
+							});
+						</script>
+					{% else %}
+						<p style="color:red;">No task output found</p>
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
+					<h4>Task Parameters</h4>
+					{% if ct.task_params_json %}
+						<pre><code id="task_params_parsed" class="json">{{ ct.task_params_json|safe }}</code></pre>
+						<script>
+							$("#task_params_parsed").html(JSON.stringify(JSON.parse(`{{ ct.task_params_json|safe }}`), null, 2));
+							$("#task_params_parsed").each(function(i, block) {
+								hljs.highlightBlock(block);
+							});
+						</script>
+					{% else %}
+						<p style="color:red;">No task parameters found</p>
+					{% endif %}
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
+					<p><a href="{% url 'bg_task_delete' task_id=ct.id %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task</button></a></p>
+				</div>
+			</div>
+
+		</div>
+	</div>
+	
+
+{% endblock %}

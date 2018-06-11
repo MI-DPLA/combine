@@ -143,6 +143,9 @@
 
 				// change this to dynamically grab from selected rows in records table
 				var db_id = sel_row_id;
+				if (typeof db_id == 'undefined') {
+					alert('Click a row from the table at the top to run a Validation Test against...');
+				}
 
 				// get vs_payload
 				var vs_payload = $("#vs_payload").val();
