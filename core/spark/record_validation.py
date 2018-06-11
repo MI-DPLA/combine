@@ -97,7 +97,6 @@ class ValidationScenarioSpark(object):
 					map(lambda row: udf_func(vs_id, vs_filepath, row))\
 					.filter(lambda row: row is not None)
 
-
 			# python based validation scenario
 			elif vs.validation_type == 'python':
 
