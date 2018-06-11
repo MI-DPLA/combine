@@ -894,32 +894,31 @@ class TransformSpark(CombineSparkJob):
 			records_trans (rdd): transformed records as RDD
 		'''
 
-		# define udf function for transformation
-		def transform_xslt_udf(job_id, row, xslt_string):
+		def transform_xslt_pt_udf(pt):
 
-			# attempt transformation and save out put to 'document'
-			try:
+			# transform with pyjxslt gateway
+			gw = pyjxslt.Gateway(6767)
+			gw.add_transform('xslt_transform', xslt_string)
+
+			# loop through rows in partition
+			for row in pt:
 				
-				# transform with pyjxslt gateway
-				gw = pyjxslt.Gateway(6767)
-				gw.add_transform('xslt_transform', xslt_string)
-				result = gw.transform('xslt_transform', row.document)
-				gw.drop_transform('xslt_transform')
+				try:
+					result = gw.transform('xslt_transform', row.document)
+					# attempt XML parse to confirm well-formedness
+					# error will bubble up in try/except
+					valid_xml = etree.fromstring(result.encode('utf-8'))
 
-				# attempt XML parse to confirm well-formedness
-				# error will bubble up in try/except
-				valid_xml = etree.fromstring(result.encode('utf-8'))
+					# set trans_result tuple
+					trans_result = (result, '', 1)
 
-				# set trans_result tuple
-				trans_result = (result, '', 1)
+				# catch transformation exception and save exception to 'error'
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e), 0)
 
-			# catch transformation exception and save exception to 'error'
-			except Exception as e:
-				# set trans_result tuple
-				trans_result = ('', str(e), 0)
-
-			# return Row
-			return Row(
+				# yield each Row in mapPartition
+				yield Row(
 					combine_id = row.combine_id,
 					record_id = row.record_id,
 					document = trans_result[0],
@@ -931,12 +930,17 @@ class TransformSpark(CombineSparkJob):
 					transformed = row.transformed
 				)
 
+			# drop transform
+			gw.drop_transform('xslt_transform')
+
 		# get XSLT transformation as string		
 		xslt_string = transformation.payload
 
 		# transform via rdd.map and return
 		job_id = self.job.id
-		records_trans = records.rdd.map(lambda row: transform_xslt_udf(job_id, row, xslt_string))
+
+		# perform transformations a la mapPartitions
+		records_trans = records.rdd.mapPartitions(transform_xslt_pt_udf)
 		return records_trans
 
 
