@@ -41,13 +41,23 @@
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
+						{% if job.jobinput_set.all|length > 0 %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-							{% for input_job in job.jobinput_set.all %}
-								<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-									<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
-								</div>
-							{% endfor %}
-						</td>						
+
+							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Show Input Jobs</button>
+
+							<div id="input_jobs_column" style="margin-top:10px; display:none;">
+								{% for input_job in job.jobinput_set.all %}
+									<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+										<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+									</div>
+								{% endfor %}
+							</div>
+
+						</td>
+					{% else %}
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
+					{% endif %}						
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.note }}</td>						
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
 					</tr>
