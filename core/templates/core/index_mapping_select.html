@@ -6,7 +6,7 @@
 			<div class="gray_box">
 
 				<h5>Index Mapping</h5>
-				<p>When new records are created in Combine, through Harvest, Transform, Merging, or Publishing, they are also indexed in ElasticSearch for search and analysis.  Using the dropdown below, select a pre-configured scenario for mapping your metadata records to ElasticSearch fields.</p>
+				<p>When new records are created in Combine, through Harvest, Transform, Merging, or Publishing, they are also indexed in ElasticSearch for search and analysis.  Using the dropdown below, select a mapper for mapping XML elements to ElasticSearch fields.</p>
 				
 				<div class="form-group">
 					<select class="form-control" id="index_mapper" name="index_mapper" required>
@@ -14,6 +14,13 @@
 							<option value='{{ im.classname }}'>{{ im.name }}</option>
 						{% endfor %}					
 					</select>
+				</div>
+
+				<div class="form-check">
+				  <input class="form-check-input" type="checkbox" value="true" id="include_attributes" name="include_attributes" {% if INCLUDE_ATTRIBUTES_GENERIC_MAPPER %}checked{% endif %}>
+				  <label class="form-check-label" for="include_attributes">
+				    Include XML element attributes in dynamically mapped fields?
+				  </label>
 				</div>
 
 			</div>

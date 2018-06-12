@@ -4195,6 +4195,7 @@ class MergeJob(CombineJob):
 		input_jobs=None,
 		job_id=None,
 		index_mapper=None,
+		include_attributes=None,
 		validation_scenarios=[],
 		rits=None,
 		input_validity_valve='all',
@@ -4231,6 +4232,7 @@ class MergeJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
 			self.index_mapper = index_mapper
+			self.include_attributes = include_attributes
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
@@ -4291,11 +4293,12 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'index_mapper':self.index_mapper,
+				'include_attributes':self.include_attributes,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'input_validity_valve':self.input_validity_valve,

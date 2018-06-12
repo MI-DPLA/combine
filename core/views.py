@@ -1222,6 +1222,9 @@ def job_merge(request, org_id, record_group_id):
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1247,6 +1250,7 @@ def job_merge(request, org_id, record_group_id):
 			record_group=record_group,
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,

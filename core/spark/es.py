@@ -39,7 +39,7 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, job, records_df, index_mapper):
+	def index_job_to_es_spark(spark, job, records_df, index_mapper, include_attributes):
 
 		'''
 		Method to index records dataframe into ES
@@ -62,7 +62,7 @@ class ESIndex(object):
 		def es_mapper_pt_udf(pt):
 
 			# init mapper once per partition
-			mapper = index_mapper_handle()
+			mapper = index_mapper_handle(include_attributes=include_attributes)
 
 			for row in pt:
 
@@ -503,7 +503,7 @@ class MODSMapper(BaseMapper):
 	name = "Custom MODS mapper"
 
 
-	def __init__(self, xslt_processor='lxml'):
+	def __init__(self, include_attributes=None, xslt_processor='lxml'):
 
 		'''
 		Initiates MODSMapper, with option of what XSLT processor to use.
@@ -608,7 +608,7 @@ class XPathHashMapper(BaseMapper):
 	name = "XPath Hash Mapper"
 
 
-	def __init__(self):
+	def __init__(self, include_attributes=None):
 
 		self.xpath_hash = [
 			('//audit:record/audit:action', 'audit_action'),
