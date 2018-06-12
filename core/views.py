@@ -800,7 +800,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
 		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		index_mappers = models.IndexMappers.get_mappers()		
 
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -811,7 +811,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'index_mappers':index_mappers,				
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -844,6 +844,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -867,6 +870,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			dbdd=dbdd
@@ -897,7 +901,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	validation_scenarios = models.ValidationScenario.objects.all()
 
 	# get index mappers
-	index_mappers = models.IndexMappers.get_mappers()
+	index_mappers = models.IndexMappers.get_mappers()	
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -913,7 +917,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'index_mappers':index_mappers,				
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -979,6 +983,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1000,6 +1007,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			user=request.user,
 			record_group=record_group,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			payload_dict=payload_dict,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
@@ -1048,7 +1056,7 @@ def job_transform(request, org_id, record_group_id):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		index_mappers = models.IndexMappers.get_mappers()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -1068,7 +1076,7 @@ def job_transform(request, org_id, record_group_id):
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'index_mappers':index_mappers,				
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1102,6 +1110,9 @@ def job_transform(request, org_id, record_group_id):
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1128,6 +1139,7 @@ def job_transform(request, org_id, record_group_id):
 			input_job=input_job,
 			transformation=transformation,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,
@@ -1222,6 +1234,9 @@ def job_merge(request, org_id, record_group_id):
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1247,6 +1262,7 @@ def job_merge(request, org_id, record_group_id):
 			record_group=record_group,
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,
@@ -2366,7 +2382,7 @@ def job_analysis(request):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		index_mappers = models.IndexMappers.get_mappers()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -2383,7 +2399,7 @@ def job_analysis(request):
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'index_mappers':index_mappers,				
 				'analysis_type':analysis_type,
 				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
@@ -2413,6 +2429,9 @@ def job_analysis(request):
 
 		# get preferred metadata index mapper
 		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -2437,6 +2456,7 @@ def job_analysis(request):
 			user=request.user,			
 			input_jobs=input_jobs,
 			index_mapper=index_mapper,
+			include_attributes=include_attributes,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,
@@ -2630,9 +2650,9 @@ class DTRecordsJson(BaseDatatableView):
 			# handle unique
 			elif column == 'unique':
 				if row.unique:
-					return '<span style="color:green;">Unique</span>'
+					return '<span style="color:green;">Unique in Job</span>'
 				else:
-					return '<span style="color:red;">Duplicate</span>'
+					return '<span style="color:red;">Duplicate in Job</span>'
 
 			# handle validation_results
 			elif column == 'valid':				
@@ -2786,14 +2806,14 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'mapping_error']
+		columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'mapping_error']
+		order_columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -2812,16 +2832,24 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 
 		def render_column(self, row, column):
+
+			# determine record link
+			target_record = row.record
+			record_link = (reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				}), target_record.record_id)
+
+			if column == 'id':
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
 			
+			if column == 'combine_id':
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.combine_id)
+
 			if column == 'record_id':
-				# get target record from row
-				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
 
 			# handle associated job
 			if column == 'job':
@@ -2832,12 +2860,12 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 
 		def filter_queryset(self, qs):
-			# use parameters passed in GET request to filter queryset
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search))
+				logger.debug('looking for: %s' % search)
+				qs = qs.filter(Q(combine_id = search) | Q(mapping_error__contains = search))
 
 			return qs
 

@@ -3,6 +3,7 @@ import django
 from elasticsearch import Elasticsearch
 import json
 from lxml import etree
+from lxml.etree import _Element, _ElementUnicodeResult
 import os
 import re
 import requests
@@ -38,7 +39,7 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, job, records_df, index_mapper):
+	def index_job_to_es_spark(spark, job, records_df, index_mapper, include_attributes):
 
 		'''
 		Method to index records dataframe into ES
@@ -61,7 +62,7 @@ class ESIndex(object):
 		def es_mapper_pt_udf(pt):
 
 			# init mapper once per partition
-			mapper = index_mapper_handle()
+			mapper = index_mapper_handle(include_attributes=include_attributes)
 
 			for row in pt:
 
@@ -196,14 +197,30 @@ class BaseMapper(object):
 	'''
 	All mappers extend this BaseMapper class.
 
-	Note: Not currently implementing any attributes or methods at this base class,
-	but may in the future.
+	Contains some useful methods and attributes that other mappers may use
 
 	Mappers expected to contain following methods:
-		- map_record():
-			- sets self.mapped_record, and returns instance of self
+		- map_record()
 	'''
 
+	# pre-compiled regex
+	# checker for blank spaces
+	blank_check_regex = re.compile(r"[^ \t\n]")
+	# element tag name
+	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
+
+
+	def get_namespaces(self):
+		
+		'''
+		Method to parse namespaces from XML document and save to self.nsmap
+		'''
+
+		nsmap = {}
+		for ns in self.xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+		self.nsmap = nsmap
 
 
 class GenericMapper(BaseMapper):
@@ -249,7 +266,7 @@ class GenericMapper(BaseMapper):
 	name = "Generic XPath based mapper"
 
 
-	def __init__(self):
+	def __init__(self, include_attributes = None):
 
 		# empty elems list
 		self.flat_elems = []
@@ -257,11 +274,10 @@ class GenericMapper(BaseMapper):
 		# empty formatted elems dict, grouping by flat, formatted element
 		self.formatted_elems = {}
 
-		# pre-compiled regex
-		# checker for blank spaces
-		self.blank_check_regex = re.compile(r"[^ \t\n]")
-		# element tag name
-		self.namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
+		if include_attributes == None:
+			self.include_attributes = settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER
+		else:
+			self.include_attributes = include_attributes
 
 
 	def flatten_record(self):
@@ -298,7 +314,7 @@ class GenericMapper(BaseMapper):
 					})
 
 
-	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
+	def format_record(self):
 
 		'''
 		After elements have been flattened, with text, xpath, and attributes, 
@@ -344,7 +360,7 @@ class GenericMapper(BaseMapper):
 					fn_pieces.append(tag_name)
 
 					# add attributes if not root node
-					if hop != self.xml_root:					
+					if self.include_attributes and hop != self.xml_root:					
 						attribs = [ (k,v) for k,v in hop.attrib.items() ]
 						attribs.sort(key=lambda x: x[0])
 						for attribute, value in attribs:						
@@ -470,15 +486,6 @@ class GenericMapper(BaseMapper):
 			)
 
 
-	# parse namespaces
-	def get_namespaces(self):
-		nsmap = {}
-		for ns in self.xml_root.xpath('//namespace::*'):
-			if ns[0]:
-				nsmap[ns[0]] = ns[1]
-		self.nsmap = nsmap
-
-
 
 class MODSMapper(BaseMapper):
 
@@ -496,7 +503,7 @@ class MODSMapper(BaseMapper):
 	name = "Custom MODS mapper"
 
 
-	def __init__(self, xslt_processor='lxml'):
+	def __init__(self, include_attributes=None, xslt_processor='lxml'):
 
 		'''
 		Initiates MODSMapper, with option of what XSLT processor to use.
@@ -547,6 +554,7 @@ class MODSMapper(BaseMapper):
 				flat_xml = self.gw.transform('xslt_transform', record_string)
 
 			# convert to dictionary
+			print(flat_xml)
 			flat_dict = xmltodict.parse(flat_xml)
 
 			# prepare as flat mapped
@@ -569,7 +577,7 @@ class MODSMapper(BaseMapper):
 			mapped_dict['db_id'] = db_id
 
 			# add record's crc32 document hash, aka "fingerprint"
-			self.formatted_elems['fingerprint'] = db_id
+			mapped_dict['fingerprint'] = db_id
 
 			return (
 				'success',
@@ -585,4 +593,109 @@ class MODSMapper(BaseMapper):
 					'mapping_error':str(e)
 				}
 			)
+
+
+
+class XPathHashMapper(BaseMapper):
+
+	'''
+	Mapper that uses hash of XPath expressions --> ES fields
+	'''
+
+
+	# Index Mapper class attributes (needed for easy access in Django templates)
+	classname = "XPathHashMapper" # must be same as class name
+	name = "XPath Hash Mapper"
+
+
+	def __init__(self, include_attributes=None):
+
+		self.xpath_hash = [
+			('//audit:record/audit:action', 'audit_action'),
+			('/foxml:digitalObject/foxml:datastream/@ID','datastream_id')
+		]
+
+
+	def map_record(self,
+			record_string=None,
+			db_id=None,
+			combine_id=None,
+			record_id=None,
+			publish_set_id=None,
+			fingerprint=None
+		):
+
+		try:
+				
+			# flatten file with XSLT transformation
+			self.xml_root = etree.fromstring(record_string.encode('utf-8'))
+
+			# get tree
+			self.xml_tree = self.xml_root.getroottree()
+
+			# save namespaces
+			self.get_namespaces()
+
+			# establish mapped_dict
+			mapped_dict = {}
+
+			# loop through xpath expressions
+			for mapped_field in self.xpath_hash:
+
+				query_results = self.xml_root.xpath(mapped_field[0], namespaces=self.nsmap)
+
+				# loop through query results and append values
+				values = []				
+				for node in query_results:
+
+					# if element with text value, append value					
+					if type(node) == _Element and node.text and re.search(self.blank_check_regex, node.text) is not None:
+						values.append(node.text)
+
+					# if lxml.etree._ElementUnicodeResult, append
+					elif type(node) == _ElementUnicodeResult and re.search(self.blank_check_regex, node) is not None:
+						values.append(node)
+
+				# add field and list of values to mapped_dict
+				mapped_dict[mapped_field[1]] = values
+
+			# add temporary id field
+			mapped_dict['temp_id'] = combine_id
+
+			# add combine_id field
+			mapped_dict['combine_id'] = combine_id
+
+			# add record_id field
+			mapped_dict['record_id'] = record_id
+
+			# add publish set id
+			mapped_dict['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			mapped_dict['db_id'] = db_id
+
+			# add record's crc32 document hash, aka "fingerprint"
+			mapped_dict['fingerprint'] = db_id
+
+			# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
+			for k,v in mapped_dict.items():
+				if type(v) == list:
+					mapped_dict[k] = tuple(v)
+
+			return (
+				'success',
+				mapped_dict
+			)	
+
+		except Exception as e:
+			
+			return (
+				'fail',
+				{
+					'combine_id':combine_id,
+					'mapping_error':str(e)
+				}
+			)
+
+
 
