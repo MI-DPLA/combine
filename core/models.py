@@ -1310,24 +1310,6 @@ class Record(models.Model):
 		return record_stages
 
 
-	# def derive_dpla_identifier(self):
-
-	# 	'''
-	# 	Method to attempt to derive DPLA identifier based on unique string for service hub, and md5 hash of OAI 
-	# 	identifier.  Experiemental.
-	#	NOTE: If keeping, move to PublishedRecords, as it would require published ID as well
-
-	# 	Args:
-	# 		None
-
-	# 	Returns:
-	# 		(str): Derived DPLA identifier
-	# 	'''
-
-	# 	pre_hash_dpla_id = '%s%s' % (settings.SERVICE_HUB_PREFIX, self.oai_id)
-	# 	return hashlib.md5(pre_hash_dpla_id.encode('utf-8')).hexdigest()
-
-
 	def get_es_doc(self):
 
 		'''
@@ -1626,6 +1608,18 @@ class Record(models.Model):
 			self.save()
 
 		return fingerprint
+
+
+	def map_fields_for_es(self, mapper):
+
+		'''
+		Method for testing how a Record will map given an instance
+		of a mapper from core.spark.es
+		'''
+
+		return mapper.map_record(record_string=self.document)
+
+
 
 
 

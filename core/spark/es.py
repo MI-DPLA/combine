@@ -3,6 +3,7 @@ import django
 from elasticsearch import Elasticsearch
 import json
 from lxml import etree
+from lxml.etree import _Element, _ElementUnicodeResult
 import os
 import re
 import requests
@@ -569,7 +570,7 @@ class MODSMapper(BaseMapper):
 			mapped_dict['db_id'] = db_id
 
 			# add record's crc32 document hash, aka "fingerprint"
-			self.formatted_elems['fingerprint'] = db_id
+			mapped_dict['fingerprint'] = db_id
 
 			return (
 				'success',
@@ -586,3 +587,119 @@ class MODSMapper(BaseMapper):
 				}
 			)
 
+
+class XPathHashMapper(BaseMapper):
+
+	'''
+	Mapper that uses hash of XPath expressions --> ES fields
+	'''
+
+
+	# Index Mapper class attributes (needed for easy access in Django templates)
+	classname = "XPathHashMapper" # must be same as class name
+	name = "XPath Hash Mapper"
+
+
+	def __init__(self):
+
+		'''		
+		'''
+
+		self.xpath_hash = [
+			('//audit:record/audit:action', 'audit_action'),
+			('/foxml:digitalObject/foxml:datastream/@ID','datastream_id')
+		]
+
+		# checker for blank spaces
+		self.blank_check_regex = re.compile(r"[^ \t\n]")
+
+
+	def map_record(self,
+			record_string=None,
+			db_id=None,
+			combine_id=None,
+			record_id=None,
+			publish_set_id=None,
+			fingerprint=None
+		):
+
+		try:
+				
+			# flatten file with XSLT transformation
+			self.xml_root = etree.fromstring(record_string.encode('utf-8'))
+
+			# get tree
+			self.xml_tree = self.xml_root.getroottree()
+
+			# save namespaces
+			self.get_namespaces()
+
+			# establish mapped_dict
+			mapped_dict = {}
+
+			# loop through xpath expressions
+			for mapped_field in self.xpath_hash:
+
+				query_results = self.xml_root.xpath(mapped_field[0], namespaces=self.nsmap)
+
+				# loop through query results and append values
+				values = []				
+				for node in query_results:
+
+					# if element with text value, append value					
+					if type(node) == _Element and node.text and re.search(self.blank_check_regex, node.text) is not None:
+						values.append(node.text)
+
+					# if lxml.etree._ElementUnicodeResult, append
+					elif type(node) == _ElementUnicodeResult and re.search(self.blank_check_regex, node) is not None:
+						values.append(node)
+
+				# add field and list of values to mapped_dict
+				mapped_dict[mapped_field[1]] = values
+
+			# add temporary id field
+			mapped_dict['temp_id'] = combine_id
+
+			# add combine_id field
+			mapped_dict['combine_id'] = combine_id
+
+			# add record_id field
+			mapped_dict['record_id'] = record_id
+
+			# add publish set id
+			mapped_dict['publish_set_id'] = publish_set_id
+
+			# add record's Combine DB id
+			mapped_dict['db_id'] = db_id
+
+			# add record's crc32 document hash, aka "fingerprint"
+			mapped_dict['fingerprint'] = db_id
+
+			# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
+			for k,v in mapped_dict.items():
+				if type(v) == list:
+					mapped_dict[k] = tuple(v)
+
+			return (
+				'success',
+				mapped_dict
+			)	
+
+		except Exception as e:
+			
+			return (
+				'fail',
+				{
+					'combine_id':combine_id,
+					'mapping_error':str(e)
+				}
+			)
+
+
+	# parse namespaces
+	def get_namespaces(self):
+		nsmap = {}
+		for ns in self.xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+		self.nsmap = nsmap

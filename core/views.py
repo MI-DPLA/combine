@@ -2786,14 +2786,14 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'record_id', 'job', 'mapping_error']
+		columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'record_id', 'job', 'mapping_error']
+		order_columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -2812,16 +2812,24 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 
 		def render_column(self, row, column):
+
+			# determine record link
+			target_record = row.record
+			record_link = (reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				}), target_record.record_id)
+
+			if column == 'id':
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
 			
+			if column == 'combine_id':
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.combine_id)
+
 			if column == 'record_id':
-				# get target record from row
-				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), row.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
 
 			# handle associated job
 			if column == 'job':
@@ -2832,12 +2840,12 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 
 		def filter_queryset(self, qs):
-			# use parameters passed in GET request to filter queryset
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record_id__contains=search))
+				logger.debug('looking for: %s' % search)
+				qs = qs.filter(Q(combine_id = search) | Q(mapping_error__contains = search))
 
 			return qs
 
