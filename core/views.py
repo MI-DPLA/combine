@@ -2650,9 +2650,9 @@ class DTRecordsJson(BaseDatatableView):
 			# handle unique
 			elif column == 'unique':
 				if row.unique:
-					return '<span style="color:green;">Unique</span>'
+					return '<span style="color:green;">Unique in Job</span>'
 				else:
-					return '<span style="color:red;">Duplicate</span>'
+					return '<span style="color:red;">Duplicate in Job</span>'
 
 			# handle validation_results
 			elif column == 'valid':				

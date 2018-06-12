@@ -6,7 +6,7 @@
 			<div class="gray_box">
 
 				<h5>Index Mapping</h5>
-				<p>When new records are created in Combine, through Harvest, Transform, Merging, or Publishing, they are also indexed in ElasticSearch for search and analysis.  Using the dropdown below, select a mapper for mapping XML elements to ElasticSearch fields.</p>
+				<p>When new Records are created in the course of a Job, they are also indexed in ElasticSearch for search and analysis.  To do this, the Record's XML is "flattened" into fields that can be indexed.  Using the dropdown below, select a mapper to perform this process:</p>
 				
 				<div class="form-group">
 					<select class="form-control" id="index_mapper" name="index_mapper" required>
@@ -17,10 +17,43 @@
 				</div>
 
 				<div class="form-check">
-				  <input class="form-check-input" type="checkbox" value="true" id="include_attributes" name="include_attributes" {% if INCLUDE_ATTRIBUTES_GENERIC_MAPPER %}checked{% endif %}>
-				  <label class="form-check-label" for="include_attributes">
-				    Include XML element attributes in dynamically mapped fields?
-				  </label>
+					<input class="form-check-input" type="checkbox" value="true" id="include_attributes" name="include_attributes" {% if INCLUDE_ATTRIBUTES_GENERIC_MAPPER %}checked{% endif %}>
+					<label class="form-check-label" for="include_attributes">
+					Include XML element attributes for dynamically mapped fields?
+					</label>
+					<button style="cursor:pointer;" onclick="$('#include_attributes_help').toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">What does this mean?</button>
+					<div id="include_attributes_help" style="margin-top:10px; display:none;">
+						<p>Combine comes with a built-in mapper -- referred to as the <code>GenericMapper</code> -- for dynamically creating a flat list of fields suitable for ElasticSearch from the potentially hierarchical XML file associated with a Record.  To do this, the mapper uses XPath expressions for each element in tihe XML file.  However, XML elements may contain attributes that qualify these XPath expressions.  By default, the <code>GenericMapper</code> does <strong>not</strong> consider or include these attributes when constructing a list of fields for ElasticSearch.  However, this box may be checked to <strong>include</strong> attributes from XML elements when creating field names.</p>
+						<p>Take for example the following XML:
+							<pre><code id="sample_xml" class="xml">
+&lt;foo&gt;
+	&lt;bar authority="lcsh"&gt;oak tree&lt;/bar&gt;
+	&lt;bar authority="tgn"&gt;elm tree&lt;/bar&gt;
+&lt;/foo&gt;
+							</code></pre>
+							<script>
+								// highlight raw document after loaded
+								$(document).ready(function(){
+									$("#sample_xml").each(function(i, block) {
+										console.log(block);
+										hljs.highlightBlock(block);
+									});
+								});
+							</script>
+						</p>
+						<p>By default, with the checkbox unselected, this XML would map to the following <em>single</em> field in ElasticSearch with multiple values:
+						<pre><code>
+'foo_bar' ---> ['oak tree','elm tree']
+						</code></pre></p>
+						<p>But if attributes are included in the consideration for creating fields, the attribute <code>authority</code> will result in <em>two</em> fields being created, each with a single value:
+						<pre><code>
+'foo_bar@authority=lcsh' ---> 'oak tree',
+'foo_bar@authority=tgn' ---> 'elm tree'
+						</code></pre></p>
+						<p><strong>Which one should I do?</strong></p>
+						<p><strong>Excluding</strong> attributes is a good idea for a getting a sense of the data, and runs very little risk of field name "ballooning" where hundreds, if not thousands, of dynamically created fields are created.  Mapping and indexing fields for a Job will fail if 1000+ dynamically created fields are created.  This might seem unlikely, but is quite easy to do if any XML attributes are <strong>unique</strong> across all Records (e.g. URIs for Linked Data are included).</p>
+						<p><strong>Including</strong> attributes will result in very finely grained fields, allowing for analysis across Records where the attribute is critical to understanding the nature of the field.</p>
+					</div>
 				</div>
 
 			</div>
