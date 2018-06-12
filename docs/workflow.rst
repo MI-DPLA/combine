@@ -2,7 +2,7 @@
 Workflows and Viewing Results
 *****************************
 
-This section will describe different parts of workflows for running Jobs, and viewing detailed results of Jobs and their Records.
+This section will describe different parts of workflows for running, viewing detailed results, and exporting Jobs and Records.
 
 Sub-sections include:
 
@@ -208,6 +208,8 @@ Below that are tabs that organize the various parts of the Job Details page:
   - `Input Jobs <#input-jobs>`__
   - `Validation <#validation>`__
   - `DPLA Bulk Data Matches <#dpla-bulk-data-matches>`__
+  - `Job Type Details - Jobs <#job-type-details-jobs>`__
+  - `Exporting <#export>`__
 
 
 Records
@@ -325,6 +327,65 @@ No additional information at this time for Publish Jobs.
 No additional information at this time for Analysis Jobs.
 
 
+Export
+~~~~~~
+
+Jobs may be exported in two ways:
+
+
+**Record Mapped Fields**
+
+Exporting a Job as Mapped Fields creates a single.csv or Excel file containing all mapped fields stored in ElasticSearch, across all Records, for this Job.
+
+.. figure:: img/job_export_mapped_fields.png
+   :alt: Exporting Mapped Fields for a Job
+   :target: _images/job_export_mapped_fields.png
+
+   Exporting Mapped Fields for a Job
+
+Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Currently, this exported format cannot be *re-imported* into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
+
+If a Record contains a mapped field such as ``mods_subject_topic`` that is repeating, the default export format is to create multiple columns in the export, appending an integer for each instance of that field, e.g.,
+
+.. code-block:: text
+
+    mods_subject_topic.0, mods_subject_topic.1, mods_subject_topic.0
+    history, michigan, snow
+
+But if the checkbox, ``Check this box to export repeating fields "Kibana style"`` is checked, all multi-valued fields will export in the "Kibana style" where a single column is added to the export and the values are comma separated, e.g.,
+
+.. code-block:: text
+
+    mods_subject_topic
+    history,michigan,snow
+
+When a Job is exported as Mapped Fields, this will send users to the `Background Tasks <background_tasks.html>`_ screen where the task can be monitored and viewed.
+
+
+**Record Documents**
+
+Exporting a Job as Documents takes the stored XML documents for each Record, distributes them across a user-defined number of files, exports as XML documents, and compiles them in an archive for easy downloading.  
+
+.. figure:: img/job_export_documents.png
+   :alt: Exporting Mapped Fields for a Job
+   :target: _images/job_export_documents.png
+
+   Exporting Mapped Fields for a Job
+
+For example, 1000 records where a user selects 250 per file, would result in the following structure:
+
+.. code-block:: text
+
+    - archive.zip|tar
+        - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
+        - part00001.xml
+        - part00002.xml
+        - part00003.xml
+
+Why export like this?  Very large XML files can be problematic to work with, particularly for XML parsers that attempt to load the entire document into memory (which is most of them).  Combine is naturally pre-disposed to think in terms of the parts and partitions with the Spark back-end, which makes for convenient writing of all Records from Job in smaller chunks.  The size of the "chunk" can be set by specifying the ``XML Records per file`` input in the export form.  Finally, .zip or .tar files for the resulting export are both supported.
+
+When a Job is exported as Documents, this will send users to the `Background Tasks <background_tasks.html>`_ screen where the task can be monitored and viewed.
+
 
 Viewing Record Details
 ======================
@@ -340,6 +401,13 @@ The table at the top of a Record details page provides identifier information:
    Top of Record details page
 
 Similar to a Job details page, the following tabs breakdown other major sections of this Record details.
+
+  - `Record XML <#record-xml>`__
+  - `Indexed Fields <#indexed-fields>`__
+  - `Record Stages <#record-stages>`__
+  - `Record Validation <#record-validation>`__
+  - `DPLA Link <#dpla-link>`__
+  - `Job Type Details - Records <#job-type-details-records>`__
 
 Record XML
 ----------
@@ -392,8 +460,8 @@ This table show the various "stages" of a Record, which is effectively what Jobs
 Records are connected by their Combine ID (``combine_id``).  From this table, it is possible to jump to other, earlier "upstream" or later "downstream", versions of the same Record.
 
 
-Validation
-----------
+Record Validation
+-----------------
 
 This tab shows all Validation Tests that were run for this Job, and how this Record fared:
 
@@ -489,35 +557,6 @@ No additional information at this time for Publish Jobs.
 **Analysis Jobs**
 
 No additional information at this time for Analysis Jobs.
-
-
-Transformation Job Details
-~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-Records that are part of Transformation Jobs, becuase they may have been modified in some way, lend themselves to additional details.  This tab will show what transformation was applied, and the a diff of changes to the record.
-
-The following shows what Transformation was applied to this Record:
-
-.. figure:: img/record_details_trans_specific.png
-   :alt: Indexed fields for a Record
-   :target: _images/record_details_trans_specific.png
-
-   Indexed fields for a Record
-
-The following is an example showing changes to a Record (just a space added between dates, but the diff could be much more complex and verbose):
-
-.. figure:: img/record_details_trans_diff.png
-   :alt: Diff of changes to Record during Transformation Job
-   :target: _images/record_details_trans_diff.png
-
-   Diff of changes to Record during Transformation Job
-
-
-
-
-
-
-
 
 
 
