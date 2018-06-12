@@ -197,14 +197,30 @@ class BaseMapper(object):
 	'''
 	All mappers extend this BaseMapper class.
 
-	Note: Not currently implementing any attributes or methods at this base class,
-	but may in the future.
+	Contains some useful methods and attributes that other mappers may use
 
 	Mappers expected to contain following methods:
-		- map_record():
-			- sets self.mapped_record, and returns instance of self
+		- map_record()
 	'''
 
+	# pre-compiled regex
+	# checker for blank spaces
+	blank_check_regex = re.compile(r"[^ \t\n]")
+	# element tag name
+	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
+
+
+	def get_namespaces(self):
+		
+		'''
+		Method to parse namespaces from XML document and save to self.nsmap
+		'''
+
+		nsmap = {}
+		for ns in self.xml_root.xpath('//namespace::*'):
+			if ns[0]:
+				nsmap[ns[0]] = ns[1]
+		self.nsmap = nsmap
 
 
 class GenericMapper(BaseMapper):
@@ -257,12 +273,6 @@ class GenericMapper(BaseMapper):
 
 		# empty formatted elems dict, grouping by flat, formatted element
 		self.formatted_elems = {}
-
-		# pre-compiled regex
-		# checker for blank spaces
-		self.blank_check_regex = re.compile(r"[^ \t\n]")
-		# element tag name
-		self.namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
 
 
 	def flatten_record(self):
@@ -471,15 +481,6 @@ class GenericMapper(BaseMapper):
 			)
 
 
-	# parse namespaces
-	def get_namespaces(self):
-		nsmap = {}
-		for ns in self.xml_root.xpath('//namespace::*'):
-			if ns[0]:
-				nsmap[ns[0]] = ns[1]
-		self.nsmap = nsmap
-
-
 
 class MODSMapper(BaseMapper):
 
@@ -548,6 +549,7 @@ class MODSMapper(BaseMapper):
 				flat_xml = self.gw.transform('xslt_transform', record_string)
 
 			# convert to dictionary
+			print(flat_xml)
 			flat_dict = xmltodict.parse(flat_xml)
 
 			# prepare as flat mapped
@@ -588,6 +590,7 @@ class MODSMapper(BaseMapper):
 			)
 
 
+
 class XPathHashMapper(BaseMapper):
 
 	'''
@@ -602,16 +605,10 @@ class XPathHashMapper(BaseMapper):
 
 	def __init__(self):
 
-		'''		
-		'''
-
 		self.xpath_hash = [
 			('//audit:record/audit:action', 'audit_action'),
 			('/foxml:digitalObject/foxml:datastream/@ID','datastream_id')
 		]
-
-		# checker for blank spaces
-		self.blank_check_regex = re.compile(r"[^ \t\n]")
 
 
 	def map_record(self,
@@ -696,10 +693,4 @@ class XPathHashMapper(BaseMapper):
 			)
 
 
-	# parse namespaces
-	def get_namespaces(self):
-		nsmap = {}
-		for ns in self.xml_root.xpath('//namespace::*'):
-			if ns[0]:
-				nsmap[ns[0]] = ns[1]
-		self.nsmap = nsmap
+

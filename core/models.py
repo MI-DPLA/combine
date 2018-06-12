@@ -1617,9 +1617,10 @@ class Record(models.Model):
 		of a mapper from core.spark.es
 		'''
 
-		return mapper.map_record(record_string=self.document)
-
-
+		stime = time.time()
+		mapped_fields = mapper.map_record(record_string=self.document)
+		logger.debug('mapping elapsed: %s' % (time.time()-stime))
+		return mapped_fields
 
 
 
