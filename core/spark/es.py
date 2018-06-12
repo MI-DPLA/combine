@@ -266,13 +266,18 @@ class GenericMapper(BaseMapper):
 	name = "Generic XPath based mapper"
 
 
-	def __init__(self):
+	def __init__(self, include_attributes = None):
 
 		# empty elems list
 		self.flat_elems = []
 
 		# empty formatted elems dict, grouping by flat, formatted element
 		self.formatted_elems = {}
+
+		if include_attributes == None:
+			self.include_attributes = settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER
+		else:
+			self.include_attributes = include_attributes
 
 
 	def flatten_record(self):
@@ -309,7 +314,7 @@ class GenericMapper(BaseMapper):
 					})
 
 
-	def format_record(self, include_attributes=settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER):
+	def format_record(self):
 
 		'''
 		After elements have been flattened, with text, xpath, and attributes, 
@@ -355,7 +360,7 @@ class GenericMapper(BaseMapper):
 					fn_pieces.append(tag_name)
 
 					# add attributes if not root node
-					if hop != self.xml_root:					
+					if self.include_attributes and hop != self.xml_root:					
 						attribs = [ (k,v) for k,v in hop.attrib.items() ]
 						attribs.sort(key=lambda x: x[0])
 						for attribute, value in attribs:						
