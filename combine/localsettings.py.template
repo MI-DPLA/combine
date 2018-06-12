@@ -48,7 +48,7 @@ INDEX_TO_ES = True
 
 
 # ElasticSearch indexing
-INCLUDE_ATTRIBUTES_GENERIC_MAPPER = True
+INCLUDE_ATTRIBUTES_GENERIC_MAPPER = False
 
 
 # ElasticSearch analysis
