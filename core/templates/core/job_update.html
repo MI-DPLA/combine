@@ -6,13 +6,32 @@
 	
 		<div class="row">
 			<div class="col-md-12">
-				{% if update_type == 'reindex' %}
-					<h3>Re-Map and Index Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
-				{% elif update_type == 'validations' %}
-					<h3>Run Validations for Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
-				{% endif %}
+					<h3>Update Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+					<p>While Jobs in Combine cannot be updated in ways that change or transform their Records, as this would affect upstream and downstream Jobs that are connected to those Records, certain aspects can be updated.</p>
 			</div>
 		</div>
+
+		<!-- Re-Map and Index -->
+		{% if update_type == 'reindex' %}
+
+			<div class="row">
+				<div class="col-md-12">
+					<h4>Re-Index Metadata Fields</h4>					
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6">
+					<p>Similar to running a new Job, use the form below to select an metadata field mapper.  The ElasticSearch index for this Job will be dropped, and the Records will be re-mapped and re-indexed.</p>
+
+					<div id="index_mapping_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+						{# Indexing Mapping Selection #}
+						{% include 'core/index_mapping_select.html' %}
+					</div>
+
+				</div>
+			</div>
+		{% endif %}
 
 	{% else %}
 

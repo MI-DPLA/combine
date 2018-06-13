@@ -1486,7 +1486,13 @@ def job_update(request, org_id, record_group_id, job_id):
 	cjob = models.CombineJob.get_combine_job(int(job_id))
 	
 	# if GET, prepare form
-	if request.method == 'GET':		
+	if request.method == 'GET':
+
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
+
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', False)
@@ -1495,6 +1501,8 @@ def job_update(request, org_id, record_group_id, job_id):
 		return render(request, 'core/job_update.html', {
 				'cjob':cjob,
 				'update_type':update_type,
+				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 

@@ -258,13 +258,71 @@ def job_export_documents(ct_id):
 		ct.save()
 
 
-
 @background(schedule=1)
-def test_bg_task(duration=5):
+def job_reindex(ct_id):
 
-	logger.debug('preparing to sleep for: %s' % duration)
-	time.sleep(duration)
-	return "we had a good nap"
+	'''
+	- submit livy job and poll until complete
+		- use livy session from cjob (works, but awkward way to get this)	
+	'''
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		# drop Job's ES index
+		cjob.job.drop_es_index()
+
+	# 	# generate spark code
+	# 	output_path = '/tmp/%s' % str(uuid.uuid4())
+
+	# 	spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
+	# 		'job_id':cjob.job.id,
+	# 		'output_path':output_path,
+	# 		'records_per_file':ct.task_params['records_per_file']
+	# 	}
+	# 	logger.debug(spark_code)
+
+	# 	# submit to livy
+	# 	logger.debug('submitting code to Spark')
+	# 	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+
+	# 	# poll until complete
+	# 	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+	# 	# to prevent infinite polling
+	# 	def spark_job_done(response):
+	# 		return response['state'] == 'available'
+
+	# 	logger.debug('polling for Spark job to complete...')
+	# 	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+	# 	logger.debug(results)
+
+	# 	# save export output to Combine Task output
+	# 	ct.task_output_json = json.dumps({		
+	# 		'export_output':export_output_archive,
+	# 		'name':export_output_archive.split('/')[-1],
+	# 		'content_type':content_type,
+	# 		'export_dir':"/".join(export_output_archive.split('/')[:-1])
+	# 	})
+	# 	ct.save()
+	# 	logger.debug(ct.task_output_json)
+
+	# except Exception as e:
+
+	# 	logger.debug(str(e))
+
+	# 	# attempt to capture error and return for task
+	# 	ct.task_output_json = json.dumps({		
+	# 		'error':str(e)
+	# 	})
+	# 	ct.save()
+
+
+
 
 
 

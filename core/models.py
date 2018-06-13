@@ -992,6 +992,21 @@ class Job(models.Model):
 			return False
 
 
+	def drop_es_index(self):
+
+		'''
+		Method to drop associated ES index
+		'''
+
+		# remove ES index if exists
+		try:
+			if es_handle.indices.exists('j%s' % self.id):
+				logger.debug('removing ES index: j%s' % self.id)
+				es_handle.indices.delete('j%s' % self.id)
+		except:
+			logger.debug('could not remove ES index: j%s' % self.id)
+
+
 
 class JobTrack(models.Model):
 
@@ -2491,12 +2506,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 
 	# remove ES index if exists
-	try:
-		if es_handle.indices.exists('j%s' % instance.id):
-			logger.debug('removing ES index: j%s' % instance.id)
-			es_handle.indices.delete('j%s' % instance.id)
-	except:
-		logger.debug('could not remove ES index: j%s' % instance.id)
+	instance.drop_es_index()
 
 
 @receiver(models.signals.post_delete, sender=Job)
