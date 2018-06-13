@@ -76,7 +76,7 @@
 								<h4>Record Document</h4>
 								<p>This tab previews and provides information about the document stored for this Record.  Below is the raw, stored document for this Record, or see the buttons for more options.
 
-								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Document in new Tab</button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
+								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Document in new Tab</button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
 								
 								{% if record.document != '' %}
 									<div>
@@ -299,15 +299,14 @@
 					<!-- if DPLA API hit -->
 					{% if dpla_api_doc %}
 					
-						<!-- DPLA API match -->
 						<div class="row">
 
 							<div class="col-md-12">
-								<!-- <div style="background-color:#f7deae; padding:10px 10px 10px 10px; border-radius:10px;"> -->
 								<div>
-									<h3>DPLA API Item match</h3>
-									<p>A <a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}">matching DPLA Item</a> was found!  Below is information from the DPLA API response.</p>
+									<h4>DPLA API Item Match</h4>
+									<p>A matching DPLA Item was found!</p>
 									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
+									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
 									<table class="table table-bordered table-hover">
 									{% for field, value in dpla_api_doc.sourceResource.items %}
 										<tr>
@@ -343,11 +342,11 @@
 						
 
 					{% else %}
-						<div class="row">
+
 							<div class="col-md-12">
+								<h4>DPLA API Item Match</h4>
 								<p>No matching DPLA record found.  Try mapping the <code>isShownAt</code> field to your known live URL for the record from the "Indexed Fields" tab...</p>
 							</div>
-						</div>
 
 					{% endif %}
 
@@ -372,7 +371,7 @@
 												<p>The following are details specific to the Transformation that created this record.</p>
 											</div>
 											<div class="col-md-12">
-												<h3>Transformation Scenario Used</h3>
+												<h4>Transformation Scenario Used</h4>
 												<table class="table table-bordered table-hover">
 													<tr>
 														<th>ID</th>
@@ -386,7 +385,7 @@
 														<td>{{job_details.transformation.name}}</td>
 														<td>{{job_details.transformation.get_transformation_type_display}}</td>
 														<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
-														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id %}" target="_blank">View (Record #{{ job_details.input_record.id }})</a></td>
+														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id %}">View (Record #{{ job_details.input_record.id }})</a></td>
 													</tr>
 												</table>
 											</div>
@@ -399,9 +398,9 @@
 									<div class="row">
 										<div class="col-md-12">
 
-											<h3>Record Changes</h3>											
+											<h4>Record Changes</h4>											
 											{% if input_record_diffs %}
-												<p><a target="_blank" href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Side-by-Side Changes</button></a></p>
+												<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Side-by-Side Changes</button></a></p>
 												<div>
 													<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
 												</div>

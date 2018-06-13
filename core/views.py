@@ -2631,29 +2631,24 @@ class DTRecordsJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle db_id
-			if column == 'id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+			# construct record link
+			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
-					}), row.id)
+					})
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
 
 			# handle combine_id
 			if column == 'combine_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.combine_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.combine_id)
 
 			# handle record_id
 			if column == 'record_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.record_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
 			# handle document
 			elif column == 'document':
@@ -2670,10 +2665,10 @@ class DTRecordsJson(BaseDatatableView):
 
 			# handle associated job
 			elif column == 'job':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+				return '<a href="%s"><code>%s</code></a>' % (reverse(job_details, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id
 					}), row.job.name)
 
 			# handle unique
@@ -3145,21 +3140,20 @@ class JobRecordDiffs(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle db_id
-			if column == 'id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+			# record link
+			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
-					}), row.id)
+					})
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
 
 			# handle record_id
 			if column == 'record_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.record_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
 			else:
 				return super(JobRecordDiffs, self).render_column(row, column)
