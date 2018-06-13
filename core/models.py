@@ -583,11 +583,7 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		stime = time.time()
-
 		records = self.record_set.filter(success=1)
-
-		logger.debug('get_records elapsed: %s' % (time.time() - stime))
 
 		# return
 		return records

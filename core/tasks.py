@@ -188,7 +188,7 @@ def job_export_documents(ct_id):
 
 		# poll until complete
 		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling
+		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
 		def spark_job_done(response):
 			return response['state'] == 'available'
 
@@ -291,7 +291,7 @@ def job_reindex(ct_id):
 
 		# poll until complete
 		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling
+		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
 		def spark_job_done(response):
 			return response['state'] == 'available'
 
