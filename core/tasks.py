@@ -275,7 +275,7 @@ def job_reindex(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# drop Job's ES index
-		cjob.job.drop_es_index()
+		# cjob.job.drop_es_index()
 
 	# 	# generate spark code
 	# 	output_path = '/tmp/%s' % str(uuid.uuid4())
@@ -301,29 +301,22 @@ def job_reindex(ct_id):
 	# 	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 	# 	logger.debug(results)
 
-	# 	# save export output to Combine Task output
-	# 	ct.task_output_json = json.dumps({		
-	# 		'export_output':export_output_archive,
-	# 		'name':export_output_archive.split('/')[-1],
-	# 		'content_type':content_type,
-	# 		'export_dir':"/".join(export_output_archive.split('/')[:-1])
-	# 	})
-	# 	ct.save()
-	# 	logger.debug(ct.task_output_json)
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'reindex_results':'INFO WILL GO HERE'
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
 
-	# except Exception as e:
+	except Exception as e:
 
-	# 	logger.debug(str(e))
+		logger.debug(str(e))
 
-	# 	# attempt to capture error and return for task
-	# 	ct.task_output_json = json.dumps({		
-	# 		'error':str(e)
-	# 	})
-	# 	ct.save()
-
-
-
-
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
 
 
 

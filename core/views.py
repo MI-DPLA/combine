@@ -1495,7 +1495,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		index_mappers = models.IndexMappers.get_mappers()
 
 		# get uptdate type from GET params
-		update_type = request.GET.get('update_type', False)
+		update_type = request.GET.get('update_type', None)
 
 		# render page
 		return render(request, 'core/job_update.html', {
@@ -1510,8 +1510,35 @@ def job_update(request, org_id, record_group_id, job_id):
 	if request.method == 'POST':
 
 		logger.debug('updating job')
+		logger.debug(request.POST)
 
-		return redirect('bg_tasks')
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# get update type
+		update_type = request.POST.get('update_type', None)
+		logger.debug('running job update: %s' % update_type)
+
+		# handle re-index
+		if update_type == 'reindex':			
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'Re-Map and Index Job: %s' % cjob.job.name,
+				task_type = 'job_reindex',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_reindex(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
 
 
 ####################################################################

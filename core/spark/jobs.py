@@ -92,7 +92,7 @@ class CombineRecordSchema(object):
 
 
 ####################################################################
-# Spark Jobs           											   #
+# Spark Jobs 		 											   #
 ####################################################################
 
 class CombineSparkJob(object):
@@ -1236,6 +1236,43 @@ class PublishSpark(CombineSparkJob):
 
 		# close job
 		self.close_job()
+
+
+
+####################################################################
+# Combine Spark Patches											   #
+####################################################################
+
+
+class CombineSparkPatch(object):
+
+	'''
+	Base class for Combine Spark Patches.
+		- these are considered categorically "secondary" to the main
+		CombineSparkJobs above, but may be just as long running
+	'''
+
+
+	def __init__(self, spark, **kwargs):
+
+		self.spark = spark
+
+		self.kwargs = kwargs
+
+		# init logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		self.logger = log4jLogger.LogManager.getLogger(__name__)
+
+
+
+
+class ReindexSparkPatch(CombineSparkPatch):
+
+	pass
+
+
+
 
 
 
