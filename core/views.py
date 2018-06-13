@@ -1472,52 +1472,81 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		# redirect to Background Tasks
 		return redirect('bg_tasks')
 		
-		# OLD ###################################################################################################
-		# logger.debug('generating validation results report')
 
-		# # debug form
-		# logger.debug(request.POST)
+@login_required
+def job_update(request, org_id, record_group_id, job_id):
 
-		# # get job name
-		# report_name = request.POST.get('report_name')
-		# if report_name == '':
-		# 	report_name = 'Validation Report'
+	'''
+	Update Job in one of several ways:
+		- re-map and index
+		- run new / different validations
+	'''
 
-		# # get report output format
-		# report_format = request.POST.get('report_format')
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+	
+	# if GET, prepare form
+	if request.method == 'GET':
 
-		# # get requested validation scenarios to include in report
-		# validation_scenarios = request.POST.getlist('validation_scenario', [])
+		# get validation scenarios
+		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# # get mapped fields to include
-		# mapped_field_include = request.POST.getlist('mapped_field_include', [])
+		# get index mappers
+		index_mappers = models.IndexMappers.get_mappers()
 
-		# # run report generation
-		# report_output = cjob.generate_validation_report(
-		# 		report_format=report_format,
-		# 		validation_scenarios=validation_scenarios,
-		# 		mapped_field_include=mapped_field_include
-		# 	)
+		# get uptdate type from GET params
+		update_type = request.GET.get('update_type', None)
 
-		# # response is to download file from disk
-		# with open(report_output, 'rb') as fhand:
-			
-		# 	# csv
-		# 	if report_format == 'csv':
-		# 		content_type = 'text/plain'
-		# 		attachment_filename = '%s.csv' % report_name
-			
-		# 	# excel
-		# 	if report_format == 'excel':
-		# 		content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-		# 		# content_type = 'text/plain'
-		# 		attachment_filename = '%s.xlsx' % report_name
+		# render page
+		return render(request, 'core/job_update.html', {
+				'cjob':cjob,
+				'update_type':update_type,
+				'validation_scenarios':validation_scenarios,
+				'index_mappers':index_mappers,
+				'breadcrumbs':breadcrumb_parser(request)
+			})
 
-		# 	# prepare and return response
-		# 	response = HttpResponse(fhand, content_type=content_type)
-		# 	response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
-		# 	return response
-		# OLD ###################################################################################################
+	# if POST, submit job
+	if request.method == 'POST':
+
+		logger.debug('updating job')
+		logger.debug(request.POST)
+
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# get update type
+		update_type = request.POST.get('update_type', None)
+		logger.debug('running job update: %s' % update_type)
+
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
+
+		# handle re-index
+		if update_type == 'reindex':			
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'Re-Map and Index Job: %s' % cjob.job.name,
+				task_type = 'job_reindex',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'index_mapper':index_mapper,
+					'include_attributes':include_attributes
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_reindex(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
 
 
 ####################################################################

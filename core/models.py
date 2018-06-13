@@ -583,11 +583,7 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		stime = time.time()
-
 		records = self.record_set.filter(success=1)
-
-		logger.debug('get_records elapsed: %s' % (time.time() - stime))
 
 		# return
 		return records
@@ -990,6 +986,21 @@ class Job(models.Model):
 		else:
 			logger.debug('DPLA Bulk comparison not run, or no matches found.')
 			return False
+
+
+	def drop_es_index(self):
+
+		'''
+		Method to drop associated ES index
+		'''
+
+		# remove ES index if exists
+		try:
+			if es_handle.indices.exists('j%s' % self.id):
+				logger.debug('removing ES index: j%s' % self.id)
+				es_handle.indices.delete('j%s' % self.id)
+		except:
+			logger.debug('could not remove ES index: j%s' % self.id)
 
 
 
@@ -2147,7 +2158,9 @@ class CombineBackgroundTask(models.Model):
 			('org_delete','Organization Deletion'),
 			('validation_report','Validation Report Generation'),
 			('job_export_mapped_fields','Job Export Mapped Fields'),
-			('job_export_documents','Job Export Documents')
+			('job_export_documents','Job Export Documents'),
+			('job_reindex','Job Reindex Records'),
+			('job_rerun_validations','Job Re-run Validations')
 		],
 		default=None,
 		null=True
@@ -2491,12 +2504,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 
 	# remove ES index if exists
-	try:
-		if es_handle.indices.exists('j%s' % instance.id):
-			logger.debug('removing ES index: j%s' % instance.id)
-			es_handle.indices.delete('j%s' % instance.id)
-	except:
-		logger.debug('could not remove ES index: j%s' % instance.id)
+	instance.drop_es_index()
 
 
 @receiver(models.signals.post_delete, sender=Job)
