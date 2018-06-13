@@ -22,7 +22,7 @@ import pyjxslt
 try:
 	from es import ESIndex
 	from utils import PythonUDFRecord, refresh_django_db_connection	
-	from record_validation import ValidationScenarioSpark
+	from record_validation import ValidationScenarioSpark	
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
@@ -1265,11 +1265,51 @@ class CombineSparkPatch(object):
 		self.logger = log4jLogger.LogManager.getLogger(__name__)
 
 
+	def get_job_db_bounds(self, job):
+
+		'''
+		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
+		'''	
+
+		records = job.get_records()
+		records = records.order_by('id')
+		start_id = records.first().id
+		end_id = records.last().id
+
+		return {
+			'lowerBound':start_id,
+			'upperBound':end_id
+		}
+
 
 
 class ReindexSparkPatch(CombineSparkPatch):
 
-	pass
+	'''
+	Class to handle Job re-indexing
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job to reindex
+	'''
+
+	def spark_function(self):
+
+		# get records from job as DF
+		input_job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		bounds = self.get_job_db_bounds(input_job)
+		sqldf = self.spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			)
+		records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+
+		
 
 
 
