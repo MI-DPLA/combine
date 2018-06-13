@@ -2,30 +2,38 @@
 
 {% block content %}
 
-	<h3>Indexing Failures: {{ cjob.job.name }}</h3>
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Indexing Failures: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+		</div>
+	</div>
 
-	<table id='datatables_records'>
-		<thead>
-			<th>ID</th>
-			<th>Combine ID</th>
-			<th>Record ID</th>
-			<th>Job</th>
-			<th>Mapping Error</th>
-		</thead>
-		<tbody>
-		</tbody>
-	</table>
+	<div class="row">
+		<div class="col-md-12">
+			<table id='datatables_records'>
+				<thead>
+					<th>ID</th>
+					<th>Combine ID</th>
+					<th>Record ID</th>
+					<th>Job</th>
+					<th>Mapping Error</th>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
 
-	<script>
-		$(document).ready(function() {
-		    var oTable = $('#datatables_records').dataTable({
-		        "processing": true,
-		        "serverSide": true,
-		        "ajax": "{% url 'indexing_failures_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
-		        searchDelay: 1000,
-		        "lengthMenu": [ 10, 25 ]		        
-		    });
-		});
-	</script>
+			<script>
+				$(document).ready(function() {
+				    var oTable = $('#datatables_records').dataTable({
+				        "processing": true,
+				        "serverSide": true,
+				        "ajax": "{% url 'indexing_failures_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+				        searchDelay: 1000,
+				        "lengthMenu": [ 10, 25 ]		        
+				    });
+				});
+			</script>
+		</div>
+	</div>
 
 {% endblock %}

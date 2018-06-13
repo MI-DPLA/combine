@@ -1472,52 +1472,38 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		# redirect to Background Tasks
 		return redirect('bg_tasks')
 		
-		# OLD ###################################################################################################
-		# logger.debug('generating validation results report')
 
-		# # debug form
-		# logger.debug(request.POST)
+@login_required
+def job_update(request, org_id, record_group_id, job_id):
 
-		# # get job name
-		# report_name = request.POST.get('report_name')
-		# if report_name == '':
-		# 	report_name = 'Validation Report'
+	'''
+	Update Job in one of several ways:
+		- re-map and index
+		- run new / different validations
+	'''
 
-		# # get report output format
-		# report_format = request.POST.get('report_format')
+	# retrieve job
+	cjob = models.CombineJob.get_combine_job(int(job_id))
+	
+	# if GET, prepare form
+	if request.method == 'GET':		
 
-		# # get requested validation scenarios to include in report
-		# validation_scenarios = request.POST.getlist('validation_scenario', [])
+		# get uptdate type from GET params
+		update_type = request.GET.get('update_type', False)
 
-		# # get mapped fields to include
-		# mapped_field_include = request.POST.getlist('mapped_field_include', [])
+		# render page
+		return render(request, 'core/job_update.html', {
+				'cjob':cjob,
+				'update_type':update_type,
+				'breadcrumbs':breadcrumb_parser(request)
+			})
 
-		# # run report generation
-		# report_output = cjob.generate_validation_report(
-		# 		report_format=report_format,
-		# 		validation_scenarios=validation_scenarios,
-		# 		mapped_field_include=mapped_field_include
-		# 	)
+	# if POST, submit job
+	if request.method == 'POST':
 
-		# # response is to download file from disk
-		# with open(report_output, 'rb') as fhand:
-			
-		# 	# csv
-		# 	if report_format == 'csv':
-		# 		content_type = 'text/plain'
-		# 		attachment_filename = '%s.csv' % report_name
-			
-		# 	# excel
-		# 	if report_format == 'excel':
-		# 		content_type = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-		# 		# content_type = 'text/plain'
-		# 		attachment_filename = '%s.xlsx' % report_name
+		logger.debug('updating job')
 
-		# 	# prepare and return response
-		# 	response = HttpResponse(fhand, content_type=content_type)
-		# 	response['Content-Disposition'] = 'attachment; filename="%s"' % attachment_filename
-		# 	return response
-		# OLD ###################################################################################################
+		return redirect('bg_tasks')
 
 
 ####################################################################

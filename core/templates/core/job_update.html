@@ -1,0 +1,33 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	{% if update_type %}
+	
+		<div class="row">
+			<div class="col-md-12">
+				{% if update_type == 'reindex' %}
+					<h3>Re-Map and Index Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+				{% elif update_type == 'validations' %}
+					<h3>Run Validations for Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+				{% endif %}
+			</div>
+		</div>
+
+	{% else %}
+
+		<div class="row">
+			<div class="col-md-12">
+				<h3>Update Job</h3>
+				<p>Jobs may be "updated" in the following ways:
+					<ul class="list-inline">
+						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Index Metadata</button></a></li>
+						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run New Validations</button></a></li>
+					</ul>
+				</p>
+			</div>
+		</div>
+
+	{% endif %}
+
+{% endblock %}
