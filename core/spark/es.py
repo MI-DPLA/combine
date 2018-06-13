@@ -553,8 +553,7 @@ class MODSMapper(BaseMapper):
 				# flatten file with XSLT transformation
 				flat_xml = self.gw.transform('xslt_transform', record_string)
 
-			# convert to dictionary
-			print(flat_xml)
+			# convert to dictionary			
 			flat_dict = xmltodict.parse(flat_xml)
 
 			# prepare as flat mapped

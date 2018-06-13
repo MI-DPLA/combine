@@ -66,7 +66,7 @@
 					{% if ct.task_output_json %}
 						<pre><code id="task_output_parsed" class="json">{{ ct.task_output_json|safe }}</code></pre>
 						<script>
-							$("#task_output_parsed").html(JSON.stringify(JSON.parse(`{{ ct.task_output_json|safe }}`), null, 2));
+							$("#task_output_parsed").html( JSON.stringify({{ ct.task_output_json|safe }}, null, 2) );
 							$("#task_output_parsed").each(function(i, block) {
 								hljs.highlightBlock(block);
 							});
@@ -83,7 +83,7 @@
 					{% if ct.task_params_json %}
 						<pre><code id="task_params_parsed" class="json">{{ ct.task_params_json|safe }}</code></pre>
 						<script>
-							$("#task_params_parsed").html(JSON.stringify(JSON.parse(`{{ ct.task_params_json|safe }}`), null, 2));
+							$("#task_params_parsed").html( JSON.stringify({{ ct.task_params_json|safe }}, null, 2) );
 							$("#task_params_parsed").each(function(i, block) {
 								hljs.highlightBlock(block);
 							});
@@ -102,6 +102,5 @@
 
 		</div>
 	</div>
-	
 
 {% endblock %}
