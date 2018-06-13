@@ -1295,9 +1295,11 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 	def spark_function(self):
 
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+
 		# get records from job as DF
-		input_job = Job.objects.get(pk=int(self.kwargs['job_id']))
-		bounds = self.get_job_db_bounds(input_job)
+		bounds = self.get_job_db_bounds(self.job)
 		sqldf = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
 				'core_record',
@@ -1307,9 +1309,16 @@ class ReindexSparkPatch(CombineSparkPatch):
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
 
-		
+		# reindex
+		ESIndex.index_job_to_es_spark(
+			self.spark,
+			job=self.job,
+			records_df=db_records,
+			index_mapper=self.kwargs['index_mapper'],
+			include_attributes=self.kwargs['include_attributes']
+		)
 
 
 

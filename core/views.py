@@ -1519,6 +1519,12 @@ def job_update(request, org_id, record_group_id, job_id):
 		update_type = request.POST.get('update_type', None)
 		logger.debug('running job update: %s' % update_type)
 
+		# get preferred metadata index mapper
+		index_mapper = request.POST.get('index_mapper')
+		include_attributes = request.POST.get('include_attributes', False)
+		if include_attributes and include_attributes == 'true':
+			include_attributes = True
+
 		# handle re-index
 		if update_type == 'reindex':			
 
@@ -1528,6 +1534,8 @@ def job_update(request, org_id, record_group_id, job_id):
 				task_type = 'job_reindex',
 				task_params_json = json.dumps({
 					'job_id':cjob.job.id,
+					'index_mapper':index_mapper,
+					'include_attributes':include_attributes
 				})
 			)
 			ct.save()

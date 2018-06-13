@@ -278,8 +278,10 @@ def job_reindex(ct_id):
 		cjob.job.drop_es_index()
 
 		# generate spark code		
-		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s").spark_function()' % {
-			'job_id':cjob.job.id			
+		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s).spark_function()' % {
+			'job_id':cjob.job.id,
+			'index_mapper':ct.task_params['index_mapper'],
+			'include_attributes':ct.task_params['include_attributes']
 		}
 		logger.debug(spark_code)
 
