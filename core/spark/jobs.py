@@ -22,7 +22,7 @@ import pyjxslt
 try:
 	from es import ESIndex
 	from utils import PythonUDFRecord, refresh_django_db_connection	
-	from record_validation import ValidationScenarioSpark
+	from record_validation import ValidationScenarioSpark	
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
@@ -92,7 +92,7 @@ class CombineRecordSchema(object):
 
 
 ####################################################################
-# Spark Jobs           											   #
+# Spark Jobs 		 											   #
 ####################################################################
 
 class CombineSparkJob(object):
@@ -1236,6 +1236,92 @@ class PublishSpark(CombineSparkJob):
 
 		# close job
 		self.close_job()
+
+
+
+####################################################################
+# Combine Spark Patches											   #
+####################################################################
+
+
+class CombineSparkPatch(object):
+
+	'''
+	Base class for Combine Spark Patches.
+		- these are considered categorically "secondary" to the main
+		CombineSparkJobs above, but may be just as long running
+	'''
+
+
+	def __init__(self, spark, **kwargs):
+
+		self.spark = spark
+
+		self.kwargs = kwargs
+
+		# init logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		self.logger = log4jLogger.LogManager.getLogger(__name__)
+
+
+	def get_job_db_bounds(self, job):
+
+		'''
+		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
+		'''	
+
+		records = job.get_records()
+		records = records.order_by('id')
+		start_id = records.first().id
+		end_id = records.last().id
+
+		return {
+			'lowerBound':start_id,
+			'upperBound':end_id
+		}
+
+
+
+class ReindexSparkPatch(CombineSparkPatch):
+
+	'''
+	Class to handle Job re-indexing
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job to reindex
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+
+		# get records from job as DF
+		bounds = self.get_job_db_bounds(self.job)
+		sqldf = self.spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			)
+		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+
+		# reindex
+		ESIndex.index_job_to_es_spark(
+			self.spark,
+			job=self.job,
+			records_df=db_records,
+			index_mapper=self.kwargs['index_mapper'],
+			include_attributes=self.kwargs['include_attributes']
+		)
+
+
+
 
 
 

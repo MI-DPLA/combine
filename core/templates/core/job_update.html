@@ -1,0 +1,63 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	{% if update_type %}
+	
+		<div class="row">
+			<div class="col-md-12">
+					<h3>Update Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+					<p>While Jobs in Combine cannot be updated in ways that change or transform their Records, as this would affect upstream and downstream Jobs that are connected to those Records, certain aspects can be updated.</p>
+			</div>
+		</div>
+
+		<!-- Re-Map and Index -->
+		{% if update_type == 'reindex' %}
+
+			<div class="row">
+				<div class="col-md-12">
+					<h4>Re-Index Records</h4>					
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6">
+					<p>Similar to running a new Job, use the form below to select an metadata field mapper.  The ElasticSearch index for this Job will be dropped, and the Records will be re-mapped and re-indexed.</p>
+
+					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+
+						{% csrf_token %}
+
+						<div id="index_mapping_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+							{# Indexing Mapping Selection #}
+							{% include 'core/index_mapping_select.html' %}
+						</div>
+
+						<!-- submit job update form -->
+						<input type="hidden" name="update_type" value="reindex" />
+						<button type="submit" class="btn btn-primary btn-sm">Re-Index Job</button>
+
+					</form>
+
+				</div>
+			</div>
+
+		{% endif %}
+
+	{% else %}
+
+		<div class="row">
+			<div class="col-md-12">
+				<h3>Update Job</h3>
+				<p>Jobs may be "updated" in the following ways:
+					<ul class="list-inline">
+						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Index Metadata</button></a></li>
+						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=rerun_validations"><button type="button" class="btn btn-success btn-sm">Run New Validations</button></a></li>
+					</ul>
+				</p>
+			</div>
+		</div>
+
+	{% endif %}
+
+{% endblock %}
