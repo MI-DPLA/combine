@@ -1897,7 +1897,9 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 				sio.seek(0)
 				html = sio.read()
 
-				# if embed flag set, alter CSS				
+				# if embed flag set, alter CSS
+				# these are defaulted in sxsdiff library, currently 
+				# easier to pinpoint and remove these than fork library and alter
 				html = html.replace('<div class="container">', '<div>')
 				html = html.replace('padding-left:30px;', '/*padding-left:30px;*/')
 				html = html.replace('padding-right:30px;', '/*padding-right:30px;*/')

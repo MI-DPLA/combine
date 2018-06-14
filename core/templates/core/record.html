@@ -37,12 +37,12 @@
 	<div class="row">
 		<div class="col-md-12">
 
-			<div class="alert alert-info alert-dismissible fade show" role="alert">
+			<!-- <div class="alert alert-info alert-dismissible fade show" role="alert">
 				The following tabs provide additional information about this Record
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
-			</div>
+			</div> -->
 
 			<!-- Navigation -->
 			<ul class="nav nav-tabs">				
@@ -50,7 +50,7 @@
 					<a class="nav-link active" data-toggle="tab" href="#document_tab">Record Document</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#indexed_fields_tab">Indexed Fields</a>
+					<a class="nav-link" data-toggle="tab" href="#mapped_fields_tab">Mapped Fields</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#stages_tab">Record Stages</a>
@@ -202,11 +202,11 @@
 					</div>
 				</div>
 
-				<div id="indexed_fields_tab" class="tab-pane full_width_tab">
+				<div id="mapped_fields_tab" class="tab-pane full_width_tab">
 					<!-- Indexed Fields -->
 					<div class="row">
 						<div class="col-md-12">
-							<h4>Indexed Fields</h4>
+							<h4>Mapped Fields</h4>
 							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></p>
 
 							<table id="record_fields" class="table table-bordered table-hover">
@@ -436,7 +436,7 @@
 														<div class="row">
 															<div class="col-md-12">
 
-																<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
+																<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}" target="_blank"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
 																
 																<div id="side_by_side_html">
 																	<p><pre><code>loading...</code></pre></p>
@@ -485,7 +485,6 @@
 		sbs_loaded = false;
 		
 		function retrieve_side_by_side_diff(){
-
 			if (!sbs_loaded) {
 				$.ajax({
 					type: "GET",
@@ -493,20 +492,16 @@
 					data: {},
 					dataType:'text',
 					success: function(data){
-
 						// push results to page
 						$("#side_by_side_html").html(data);
-
 						// set flag
 						sbs_loaded = true;
-
 					}			
 				});	
 			}
 			else {
 				console.log('side_by_side comparison already loaded!');
 			}
-			
 		}
 
 	</script>

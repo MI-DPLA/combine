@@ -136,10 +136,10 @@
 			<!-- Navigation -->
 			<ul id="tabs" class="nav nav-tabs">								
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
+					<a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Field Analysis</a>
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Field Analysis</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
@@ -477,7 +477,7 @@
 
 				<div id="export_tab" class="tab-pane full_width_tab">
 					<div class="row">		
-						<div class="col-md-12">
+						<div class="col-md-6">
 
 							<p>Jobs may be exported in two ways (<a href="#">see documentation for more information</a>):
 								<ul>
@@ -506,19 +506,12 @@
 
 								<div id="export_mapped_fields" class="tab-pane full_width_tab active">
 									<div class="row">		
-										<div class="col-md-6">
+										<div class="col-md-12">
 
 											<!-- form for Job mapped fields export -->
 											<form method="POST" action="{% url 'job_export_mapped_fields' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
 												{% csrf_token %}
-
-												<!-- consider not allowing custom report name -->
-												<!-- <div class="form-group">
-													<label for="export_name">Export Job Name</label>
-													<input type="text" class="form-control" name="export_name" id="export_name" placeholder="Post-Transform Analysis">
-													<small id="export_name_help" class="form-text text-muted">Optional</small>
-												</div> -->
 
 												<div class="form-group">
 													<div class="form-check">
@@ -546,7 +539,7 @@
 
 								<div id="export_documents" class="tab-pane full_width_tab">
 									<div class="row">		
-										<div class="col-md-6">
+										<div class="col-md-12">
 											<!-- form for Job mapped fields export -->
 											<form method="POST" action="{% url 'job_export_documents' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
@@ -583,15 +576,6 @@
 
 		</div>
 	</div>
-
-	<script>
-
-		function update_table_widths() {			
-			$(".dt_table").css('width', '100%').dataTable().fnAdjustColumnSizing();
-		}
-
-	</script>
-
 
 {% endblock %}
 

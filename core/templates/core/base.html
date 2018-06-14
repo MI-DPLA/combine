@@ -100,4 +100,24 @@
 		</main>
 
 	</body>
+
+	<!-- global JS -->
+	<script>
+
+		// listener to navigate to tab when included in URL
+		$(document).ready(function(){
+			// Javascript to enable link to tab
+			var url = document.location.toString();
+			if (url.match('#')) {				
+			    $('.nav-tabs a[href="#' + url.split('#')[1] + '"]').tab('show');
+			} 
+		})
+
+		// helper function to extend tables when loaded in tabs
+		function update_table_widths() {			
+			$(".dt_table").css('width', '100%').dataTable().fnAdjustColumnSizing();
+		}
+
+	</script>
+	
 </html>
