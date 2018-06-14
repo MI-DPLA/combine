@@ -64,6 +64,9 @@
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{% if record.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif record.job.job_type_family == 'TransformJob' %}Transform Details{% elif record.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif record.job.job_type_family == 'PublishJob' %}Publish Details{% elif record.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
 				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#run_scenarios_with_record">Run/Test Scenarios for this Record</a>
+				</li>
 			</ul>
 
 			<!-- Tabbed Content -->
@@ -194,10 +197,6 @@
 								<p>No Validations were run for this Job.</p>
 							</div>
 						{% endif %}
-
-						<div class="col-md-12">
-							<p><a href="{% url 'test_validation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario on this Record</button></a></p>
-						</div>
 
 					</div>
 				</div>
@@ -469,6 +468,23 @@
 								{% endif %}
 
 							</div>
+						</div>
+					</div>
+				</div>
+
+				<div id="run_scenarios_with_record" class="tab-pane full_width_tab">
+					<div class="row">
+						<div class="col-md-12">
+
+							<p>Combine transforms, validates, and otherwise modifies Records by applying various "Scenarios" against them.  These can be seen in more detail on the the Configuration page.  Each of these Scenarios allows for testing against Records, where a Record is searched for and used.  However, you can also navigate to the testing areas for these Scenarios with this particular Record pre-selected using the buttons below:</p>
+							
+							<p>
+								<ul class="list-inline">
+									<li style="display:inline;"><a href="{% url 'test_transformation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Transformation for this Record</button></a></li>
+									<li style="display:inline;"><a href="{% url 'test_validation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario for this Record</button></a></li>									
+								</ul>
+							</p>
+
 						</div>
 					</div>
 				</div>
