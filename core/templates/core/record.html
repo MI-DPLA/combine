@@ -504,7 +504,7 @@
 			if (!sbs_loaded) {
 				$.ajax({
 					type: "GET",
-					url: "{% url 'record_combined_diff_html' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}?embed=true",
+					url: "{% url 'record_side_by_side_diff_html' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}?embed=true",
 					data: {},
 					dataType:'text',
 					success: function(data){

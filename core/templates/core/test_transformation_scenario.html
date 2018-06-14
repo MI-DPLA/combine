@@ -88,21 +88,17 @@
 			<div class="tab-content">
 
 				<div id="raw_transform" class="tab-pane full_width_tab active">
-					<div class="form-group">
+					<div>
 						<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Transformed document will show here...</code></pre>
 					</div>
 				</div>
 
 				<div id="combined_diff" class="tab-pane full_width_tab">
-					<div class="form-group">
-						<pre><code id="combined_diff_results" style="padding:10px; border-radius:10px;" class="xml">Combined document differences will show here...</code></pre>
-					</div>
+					<div id="combined_diff_results"></div>
 				</div>
 
 				<div id="side_by_side_diff" class="tab-pane full_width_tab">
-					<div class="form-group">
-						<pre><code id="side_by_side_diff_results" style="padding:10px; border-radius:10px;" class="xml">Combined document differences will show here...</code></pre>
-					</div>
+					<div id="side_by_side_diff_results"></div>
 				</div>
 
 			</div>
@@ -191,7 +187,8 @@
 						'db_id':db_id,
 						'trans_payload':trans_payload,
 						'trans_type':trans_type,
-						'trans_name':'temp_trans',						
+						'trans_name':'temp_trans',
+						'response_type':'transformed_doc',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
@@ -204,6 +201,44 @@
 						$("#trans_results").each(function(i, block) {
 							hljs.highlightBlock(block);
 						});
+					}			
+				});
+
+				// issue ajax request and get combined diff
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_transformation_scenario' %}",
+					data: {
+						'db_id':db_id,
+						'trans_payload':trans_payload,
+						'trans_type':trans_type,
+						'trans_name':'temp_trans',
+						'response_type':'combined_html',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'text',
+					success: function(data){
+						// add raw data to div
+						$("#combined_diff_results").html(data);
+					}			
+				});
+
+				// issue ajax request and get side_by_side diff
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_transformation_scenario' %}",
+					data: {
+						'db_id':db_id,
+						'trans_payload':trans_payload,
+						'trans_type':trans_type,
+						'trans_name':'temp_trans',
+						'response_type':'side_by_side_html',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'text',
+					success: function(data){
+						// add raw data to div
+						$("#side_by_side_diff_results").html(data);
 					}			
 				});
 

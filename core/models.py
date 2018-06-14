@@ -1567,7 +1567,7 @@ class Record(models.Model):
 		return DPLABulkDataMatch.objects.filter(record=self)
 
 
-	def get_input_record_diff(self, output='all'):
+	def get_input_record_diff(self, output='all', combined_as_html=False):
 
 		'''
 		Method to return a string diff of this record versus the input record
@@ -1590,7 +1590,11 @@ class Record(models.Model):
 			if self.fingerprint != ir.fingerprint:
 
 				logger.debug('fingerprint mismatch, returning diffs')
-				return self.get_record_diff(input_record=ir, output=output)
+				return self.get_record_diff(
+						input_record=ir,
+						output=output,
+						combined_as_html=combined_as_html
+					)
 
 			# else, return None
 			else:
@@ -1601,7 +1605,7 @@ class Record(models.Model):
 			return False
 
 
-	def get_record_diff(self, input_record=None, xml_string=None, output='all'):
+	def get_record_diff(self, input_record=None, xml_string=None, output='all', combined_as_html=False):
 
 		'''
 		Method to return diff of document XML strings
@@ -1630,21 +1634,29 @@ class Record(models.Model):
 
 		# include combine generator in output
 		if output in ['all','combined_gen']:
+			
 			# get generator of differences
 			combined_gen = difflib.unified_diff(
 				input_xml_string.splitlines(),
 				self.document.splitlines()
 			)
+
+			# return as HTML
+			if combined_as_html:
+				combined_gen = self._return_combined_diff_gen_as_html(combined_gen)
+
 		else:
 			combined_gen = None
 
 		# include side_by_side html in output
-		if output in ['all','side_by_side_html']:			
+		if output in ['all','side_by_side_html']:		
+
 			sxsdiff_result = DiffCalculator().run(input_xml_string, self.document)
 			sio = io.StringIO()
 			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
 			sio.seek(0)
 			side_by_side_html = sio.read()
+			
 		else:
 			side_by_side_html = None
 
@@ -1652,6 +1664,27 @@ class Record(models.Model):
 			'combined_gen':combined_gen,
 			'side_by_side_html':side_by_side_html
 		}
+
+
+	def _return_combined_diff_gen_as_html(self, combined_gen):
+
+		'''
+		Small method to return combined diff generated as pre-compiled HTML
+		'''
+
+		html = '<pre><code>'
+		for line in combined_gen:
+			if line.startswith('-'):
+				html += '<span style="background-color:#ffeef0;">'
+			elif line.startswith('+'):
+				html += '<span style="background-color:#e6ffed;">'
+			else:
+				html += '<span>'			
+			html += line.replace('<','&lt;').replace('>','&gt;')
+			html += '</span><br>'
+		html += '</code></pre>'
+
+		return html
 
 
 	def calc_fingerprint(self, update_db=False):
