@@ -1630,6 +1630,7 @@ class Record(models.Model):
 
 		# include combine generator in output
 		if output in ['all','combined_gen']:
+			# get generator of differences
 			combined_gen = difflib.unified_diff(
 				input_xml_string.splitlines(),
 				self.document.splitlines()

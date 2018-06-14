@@ -1858,10 +1858,47 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 		return JsonResponse(vs_result['parsed'], safe=False)
 
 
-def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
+def record_combined_diff_html(request, org_id, record_group_id, job_id, record_id):
 
 	'''
-	Return detailed diff of Record against Input Record
+	Return combined diff of Record against Input Record
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# get side_by_side diff as HTML
+	diff_dict = record.get_input_record_diff(output='combined_gen')
+
+	if diff_dict:
+
+		# get combined generator from output
+		combined_gen = diff_dict['combined_gen']
+
+		# convert combined diff generator to HTML suitable for page / ajax load
+		html = '<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">'
+		for line in combined_gen:
+			if line.startswith('-'):
+				html += '<span style="background-color:#ffeef0;">'
+			elif line.startswith('+'):
+				html += '<span style="background-color:#e6ffed;">'
+			else:
+				html += '<span>'			
+			html += line.replace('<','&lt;').replace('>','&gt;')
+			html += '</span><br>'
+		html += '</code></pre>'
+
+		# return document as HTML
+		return HttpResponse(html, content_type='text/html')
+	
+	else:
+		return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
+
+
+def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	Return side_by_side diff of Record against Input Record
 		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
 		- if embed == true, strip some uncessary HTML and return
 	'''
@@ -1872,10 +1909,13 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 	# check for embed flag
 	embed = request.GET.get('embed', False)
 
-	# get diff as HTML
-	html = record.get_input_record_diff(output='side_by_side_html')['side_by_side_html']
+	# get side_by_side diff as HTML
+	diff_dict = record.get_input_record_diff(output='side_by_side_html')
 
-	if html:
+	if diff_dict:
+
+		# get side_by_side html from output
+		html = diff_dict['side_by_side_html']
 
 		# if embed flag set, alter CSS
 		# these are defaulted in sxsdiff library, currently 
@@ -1889,6 +1929,7 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 	
 	else:
 		return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
+
 
 
 ####################################################################

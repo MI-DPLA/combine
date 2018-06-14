@@ -422,7 +422,7 @@
 														<div class="row">
 															<div class="col-md-12">
 																<div>
-																	<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in input_record_diffs.combined_gen %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}</span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+																	<pre><code style="padding:10px; border-radius:10px;" class="text">{% for line_diff in input_record_diffs.combined_gen %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
 																</div>
 															</div>
 														</div>
@@ -435,10 +435,10 @@
 														<div class="row">
 															<div class="col-md-12">
 
-																<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}" target="_blank"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
+																<p><a href="{% url 'record_side_by_side_diff_html' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}" target="_blank"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
 																
 																<div id="side_by_side_html">
-																	<p><pre><code>loading...</code></pre></p>
+																	<p>loading...</p>
 																</div>
 
 															</div>
@@ -504,7 +504,7 @@
 			if (!sbs_loaded) {
 				$.ajax({
 					type: "GET",
-					url: "{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}?embed=true",
+					url: "{% url 'record_combined_diff_html' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}?embed=true",
 					data: {},
 					dataType:'text',
 					success: function(data){
@@ -512,7 +512,7 @@
 						$("#side_by_side_html").html(data);
 						// set flag
 						sbs_loaded = true;
-					}			
+					}
 				});	
 			}
 			else {
