@@ -2063,6 +2063,12 @@ def test_transformation_scenario(request):
 			if diff_dict:
 				diff_html = diff_dict['side_by_side_html']
 
+				# strip some CSS
+				diff_html = diff_html.replace('<div class="container">', '<div>')
+				diff_html = diff_html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+				diff_html = diff_html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+
+
 			return HttpResponse(diff_html, content_type="text/xml")
 			
 
