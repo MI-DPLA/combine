@@ -41,3 +41,4 @@ If you just want to kick the tires, the `QuickStart guide <quickstart.html>`_ pr
    background_tasks
    tests
    command_line
+   installing
