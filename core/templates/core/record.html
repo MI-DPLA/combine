@@ -422,7 +422,7 @@
 														<div class="row">
 															<div class="col-md-12">
 																<div>
-																	<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in input_record_diffs %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}</span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+																	<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in input_record_diffs.combined_gen %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}</span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
 																</div>
 															</div>
 														</div>

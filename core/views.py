@@ -1771,7 +1771,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# retrieve diffs, if any, from input record
 	# request only combined diff at this point
-	input_record_diffs = record.get_input_record_diff(output='combined_gen')['combined_gen']
+	input_record_diffs = record.get_input_record_diff(output='combined_gen')	
 
 	# return
 	return render(request, 'core/record.html', {
