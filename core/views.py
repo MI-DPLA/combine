@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 # generic
 import datetime
 import hashlib
-import io
 import json
 import logging
 from lxml import etree, isoschematron
@@ -46,10 +45,6 @@ from core import tasks
 
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
-
-# sxsdiff 
-from sxsdiff import DiffCalculator
-from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -1775,7 +1770,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		dpla_api_json = None
 
 	# retrieve diffs, if any, from input record
-	input_record_diffs = record.get_input_record_diff()
+	# request only combined diff at this point
+	input_record_diffs = record.get_input_record_diff(output='combined_gen')['combined_gen']
 
 	# return
 	return render(request, 'core/record.html', {
@@ -1876,44 +1872,23 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 	# check for embed flag
 	embed = request.GET.get('embed', False)
 
-	# get input record
-	irq = record.get_record_stages(input_record_only=True)	
-	if len(irq) == 1:
-		logger.debug('side-by-side diff: single, input Record found: %s' % irq[0])
+	# get diff as HTML
+	html = record.get_input_record_diff(output='side_by_side_html')['side_by_side_html']
 
-		# get input record
-		ir = irq[0]
+	if html:
 
-		# check if fingerprints the same
-		if record.fingerprint != ir.fingerprint:
+		# if embed flag set, alter CSS
+		# these are defaulted in sxsdiff library, currently 
+		# easier to pinpoint and remove these than fork library and alter
+		html = html.replace('<div class="container">', '<div>')
+		html = html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+		html = html.replace('padding-right:30px;', '/*padding-right:30px;*/')
 
-			logger.debug('side-by-side diff: fingerprint mismatch, returning diffs')
-
-			try:
-				# perform diff
-				sxsdiff_result = DiffCalculator().run(ir.document, record.document)
-				sio = io.StringIO()
-				GitHubStyledGenerator(file=sio).run(sxsdiff_result)
-				sio.seek(0)
-				html = sio.read()
-
-				# if embed flag set, alter CSS
-				# these are defaulted in sxsdiff library, currently 
-				# easier to pinpoint and remove these than fork library and alter
-				html = html.replace('<div class="container">', '<div>')
-				html = html.replace('padding-left:30px;', '/*padding-left:30px;*/')
-				html = html.replace('padding-right:30px;', '/*padding-right:30px;*/')
-
-			except Exception as e:
-				html = "<p>An error was had:<br>%s</p>" % str(e)
-
-			# return document as XML
-			return HttpResponse(html, content_type='text/html')
-
-		# if not, return False
-		else:
-			return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
-
+		# return document as HTML
+		return HttpResponse(html, content_type='text/html')
+	
+	else:
+		return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
 
 
 ####################################################################

@@ -11,6 +11,7 @@ import gc
 import gzip
 import hashlib
 import inspect
+import io
 import json
 from json import JSONDecodeError
 import logging
@@ -69,6 +70,10 @@ import elasticsearch as es
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
+
+# sxsdiff 
+from sxsdiff import DiffCalculator
+from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -1562,14 +1567,12 @@ class Record(models.Model):
 		return DPLABulkDataMatch.objects.filter(record=self)
 
 
-	def get_input_record_diff(self):
+	def get_input_record_diff(self, output='all'):
 
 		'''
 		Method to return a string diff of this record versus the input record
 			- this is primarily helpful for Records from Transform Jobs
 			- use self.get_record_stages(input_record_only=True)[0]
-
-		Args:
 
 		Returns:
 			(str|list): results of Record documents diff, line-by-line
@@ -1587,15 +1590,7 @@ class Record(models.Model):
 			if self.fingerprint != ir.fingerprint:
 
 				logger.debug('fingerprint mismatch, returning diffs')
-
-				# perform diff
-				line_diffs = difflib.unified_diff(
-					ir.document.splitlines(),
-					self.document.splitlines()
-				)
-
-				# return
-				return line_diffs
+				return self.get_record_diff(input_record=ir, output=output)
 
 			# else, return None
 			else:
@@ -1604,6 +1599,58 @@ class Record(models.Model):
 
 		else:
 			return False
+
+
+	def get_record_diff(self, input_record=None, xml_string=None, output='all'):
+
+		'''
+		Method to return diff of document XML strings
+
+		Args;
+			input_record (core.models.Record): use another Record instance to compare diff
+			xml_string (str): provide XML string to provide diff on
+
+		Returns:
+			(dict): {
+				'combined_gen' : generator of diflibb
+				'side_by_side_html' : html output of sxsdiff lib
+			}
+				 
+		'''
+
+		if input_record:
+			input_xml_string = input_record.document
+
+		elif xml_string:
+			input_xml_string = xml_string
+
+		else:
+			logger.debug('input record or XML string required, returning false')
+			return False
+
+		# include combine generator in output
+		if output in ['all','combined_gen']:
+			combined_gen = difflib.unified_diff(
+				input_xml_string.splitlines(),
+				self.document.splitlines()
+			)
+		else:
+			combined_gen = None
+
+		# include side_by_side html in output
+		if output in ['all','side_by_side_html']:			
+			sxsdiff_result = DiffCalculator().run(input_xml_string, self.document)
+			sio = io.StringIO()
+			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+			sio.seek(0)
+			side_by_side_html = sio.read()
+		else:
+			side_by_side_html = None
+
+		return {
+			'combined_gen':combined_gen,
+			'side_by_side_html':side_by_side_html
+		}
 
 
 	def calc_fingerprint(self, update_db=False):
