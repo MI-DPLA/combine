@@ -1770,8 +1770,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		dpla_api_json = None
 
 	# retrieve diffs, if any, from input record
-	# request only combined diff at this point
-	input_record_diffs = record.get_input_record_diff(output='combined_gen')	
+	# request only combined diff at this point	
+	record_diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
 
 	# return
 	return render(request, 'core/record.html', {
@@ -1781,7 +1781,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'job_details':job_details,
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
-		'input_record_diffs':input_record_diffs,
+		'record_diff_dict':record_diff_dict,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 

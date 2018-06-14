@@ -1653,7 +1653,7 @@ class Record(models.Model):
 			)
 
 			# return as HTML
-			if combined_as_html:
+			if combined_as_html:				
 				combined_gen = self._return_combined_diff_gen_as_html(combined_gen)
 
 		else:

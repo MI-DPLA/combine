@@ -395,7 +395,7 @@
 										<div class="col-md-12">
 
 											<h4>Changes to Record during Transformation</h4>											
-											{% if input_record_diffs %}
+											{% if record_diff_dict %}
 
 												<p>Using the tabs below, select different views of changes for the Record after Transformation:</p>
 
@@ -422,7 +422,7 @@
 														<div class="row">
 															<div class="col-md-12">
 																<div>
-																	<pre><code style="padding:10px; border-radius:10px;" class="text">{% for line_diff in input_record_diffs.combined_gen %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+																	{{record_diff_dict.combined_gen|safe}}
 																</div>
 															</div>
 														</div>
