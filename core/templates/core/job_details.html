@@ -161,7 +161,7 @@
 			<!-- Tabbed Content -->
 			<div class="tab-content">			
 
-				<div id="records_tab" class="tab-pane container full_width_tab active">
+				<div id="records_tab" class="tab-pane full_width_tab active">
 					<div class="row">		
 						<div class="col-md-12">
 							<!-- Indexing Records DT Table -->
@@ -170,7 +170,7 @@
 					</div>
 				</div>
 
-				<div id="io_tab" class="tab-pane container full_width_tab">
+				<div id="io_tab" class="tab-pane full_width_tab">
 					<div class="row">
 		
 						<!-- Job Inputs -->
@@ -218,7 +218,7 @@
 					</div>
 				</div>
 
-				<div id="validation_tab" class="tab-pane container full_width_tab">
+				<div id="validation_tab" class="tab-pane full_width_tab">
 					{% if cjob.job.jobvalidation_set.count > 0 %}
 					<div class="row">		
 						<div class="col-md-12">
@@ -259,7 +259,7 @@
 					{% endif %}
 				</div>
 
-				<div id="field_breakdown_tab" class="tab-pane container full_width_tab">
+				<div id="field_breakdown_tab" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-6">
 							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p>
@@ -296,7 +296,7 @@
 					{% include 'core/indexed_fields_dt_table.html' %}
 				</div>
 
-				<div id="dpla_bulk_data_tab" class="tab-pane container full_width_tab">
+				<div id="dpla_bulk_data_tab" class="tab-pane full_width_tab">
 					
 					{% if dpla_bulk_data_matches %}
 
@@ -406,7 +406,7 @@
 					{% endif %}
 				</div>
 
-				<div id="job_type_specific_tab" class="tab-pane container full_width_tab">
+				<div id="job_type_specific_tab" class="tab-pane full_width_tab">
 					<!-- Details specific to Job Type -->
 					<div class="row">
 						<div class="col-md-12">
@@ -475,7 +475,7 @@
 					</div>
 				</div>
 
-				<div id="export_tab" class="tab-pane container full_width_tab">
+				<div id="export_tab" class="tab-pane full_width_tab">
 					<div class="row">		
 						<div class="col-md-12">
 
@@ -504,7 +504,7 @@
 
 							<div class="tab-content">			
 
-								<div id="export_mapped_fields" class="tab-pane container full_width_tab active">
+								<div id="export_mapped_fields" class="tab-pane full_width_tab active">
 									<div class="row">		
 										<div class="col-md-6">
 
@@ -544,7 +544,7 @@
 									</div>
 								</div>
 
-								<div id="export_documents" class="tab-pane container full_width_tab">
+								<div id="export_documents" class="tab-pane full_width_tab">
 									<div class="row">		
 										<div class="col-md-6">
 											<!-- form for Job mapped fields export -->

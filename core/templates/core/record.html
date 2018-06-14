@@ -69,7 +69,7 @@
 			<!-- Tabbed Content -->
 			<div class="tab-content">
 
-				<div id="document_tab" class="tab-pane container full_width_tab active">
+				<div id="document_tab" class="tab-pane full_width_tab active">
 					<div class="row">
 						<div class="col-md-12">
 							<div id="record_document">
@@ -98,7 +98,7 @@
 					</div>
 				</div>
 
-				<div id="stages_tab" class="tab-pane container full_width_tab">
+				<div id="stages_tab" class="tab-pane full_width_tab">
 					<div class="row">
 
 						<!-- Record Stages -->
@@ -148,7 +148,7 @@
 					</div>
 				</div>
 
-				<div id="validation_tab" class="tab-pane container full_width_tab">
+				<div id="validation_tab" class="tab-pane full_width_tab">
 					<div class="row">
 
 						<!-- Record Validations -->
@@ -202,7 +202,7 @@
 					</div>
 				</div>
 
-				<div id="indexed_fields_tab" class="tab-pane container full_width_tab">
+				<div id="indexed_fields_tab" class="tab-pane full_width_tab">
 					<!-- Indexed Fields -->
 					<div class="row">
 						<div class="col-md-12">
@@ -294,7 +294,7 @@
 
 				</div>
 
-				<div id="dpla_link_tab" class="tab-pane container full_width_tab">
+				<div id="dpla_link_tab" class="tab-pane full_width_tab">
 
 					<!-- if DPLA API hit -->
 					{% if dpla_api_doc %}
@@ -331,8 +331,7 @@
 								<script>
 									// highlight raw document after loaded
 									$(document).ready(function(){
-										$("#dpla_api_result_json").each(function(i, block) {
-											console.log(block);
+										$("#dpla_api_result_json").each(function(i, block) {											
 											hljs.highlightBlock(block);
 										});
 									});
@@ -352,7 +351,7 @@
 
 				</div>
 
-				<div id="job_type_specific_tab" class="tab-pane container full_width_tab">
+				<div id="job_type_specific_tab" class="tab-pane full_width_tab">
 					<!-- Details specific to Job Type -->
 					<div class="row">
 						<div class="col-md-12">
@@ -365,11 +364,9 @@
 
 								<!-- TransformJob -->			
 								{% if record.job.job_type_family == 'TransformJob' %}
+
 									{% if job_details.transformation.id %}										
-										<div class="row">
-											<div class="col-md-12">
-												<p>The following are details specific to the Transformation that created this record.</p>
-											</div>
+										<div class="row">											
 											<div class="col-md-12">
 												<h4>Transformation Scenario Used</h4>
 												<table class="table table-bordered table-hover">
@@ -398,15 +395,64 @@
 									<div class="row">
 										<div class="col-md-12">
 
-											<h4>Record Changes</h4>											
+											<h4>Changes to Record during Transformation</h4>											
 											{% if input_record_diffs %}
-												<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Side-by-Side Changes</button></a></p>
-												<div>
-													<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}<span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+
+												<p>Using the tabs below, select different views of changes for the Record after Transformation:</p>
+
+												<div class="row">
+													<div class="col-md-12">
+
+														<ul class="nav nav-tabs">				
+															<li class="nav-item">
+																<a class="nav-link active" data-toggle="tab" href="#combined_diff">Combined Diff</a>
+															</li>
+															<li class="nav-item">
+																<a class="nav-link" data-toggle="tab" href="#side_by_side_diff" onclick="retrieve_side_by_side_diff(); return false;">Side-by-Side Comparison</a>
+															</li>
+														</ul>
+
+													</div>
 												</div>
+
+												<div class="tab-content">
+
+													<!-- Combined Diff -->
+													<div id="combined_diff" class="tab-pane full_width_tab active">
+
+														<div class="row">
+															<div class="col-md-12">
+																<div>
+																	<pre><code id="record_diff" style="padding:10px; border-radius:10px;" class="text">{% for line_diff in record.get_input_record_diff %}{% if line_diff|first == '-' %}<span style="background-color:#ffeef0;">{% elif line_diff|first == '+' %}<span style="background-color:#e6ffed;">{% else %}</span>{% endif %}{{line_diff}}<br></span>{% endfor %}</code></pre>
+																</div>
+															</div>
+														</div>
+
+													</div>
+
+													<!-- Side-by-Side Comparison -->
+													<div id="side_by_side_diff" class="tab-pane full_width_tab">
+
+														<div class="row">
+															<div class="col-md-12">
+
+																<p><a href="{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
+																
+																<div id="side_by_side_html">
+																	<p><pre><code>loading...</code></pre></p>
+																</div>
+
+															</div>
+														</div>
+
+													</div>
+
+												</div>
+
 											{% else %}
 												<p>During Transformation, no changes were detected for this Record.</p>
 											{% endif %}
+
 										</div>
 									</div>
 
@@ -433,6 +479,37 @@
 
 	</div>
 
-	
+	<script>
+
+		// function to load side_by_side diff
+		sbs_loaded = false;
+		
+		function retrieve_side_by_side_diff(){
+
+			if (!sbs_loaded) {
+				$.ajax({
+					type: "GET",
+					url: "{% url 'record_detailed_diff' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}?embed=true",
+					data: {},
+					dataType:'text',
+					success: function(data){
+
+						// push results to page
+						$("#side_by_side_html").html(data);
+
+						// set flag
+						sbs_loaded = true;
+
+					}			
+				});	
+			}
+			else {
+				console.log('side_by_side comparison already loaded!');
+			}
+			
+		}
+
+	</script>
+
 
 {% endblock %}

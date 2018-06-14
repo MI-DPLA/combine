@@ -1867,14 +1867,17 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 	'''
 	Return detailed diff of Record against Input Record
 		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
+		- if embed == true, strip some uncessary HTML and return
 	'''
 
 	# get record
 	record = models.Record.objects.get(pk=int(record_id))
 
+	# check for embed flag
+	embed = request.GET.get('embed', False)
+
 	# get input record
-	irq = record.get_record_stages(input_record_only=True)
-	logger.debug(irq)
+	irq = record.get_record_stages(input_record_only=True)	
 	if len(irq) == 1:
 		logger.debug('side-by-side diff: single, input Record found: %s' % irq[0])
 
@@ -1886,15 +1889,29 @@ def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
 
 			logger.debug('side-by-side diff: fingerprint mismatch, returning diffs')
 
-			# perform diff
-			sxsdiff_result = DiffCalculator().run(ir.document, record.document)
-			sio = io.StringIO()
-			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
-			sio.seek(0)
-			html = sio.read()
+			try:
+				# perform diff
+				sxsdiff_result = DiffCalculator().run(ir.document, record.document)
+				sio = io.StringIO()
+				GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+				sio.seek(0)
+				html = sio.read()
+
+				# if embed flag set, alter CSS				
+				html = html.replace('<div class="container">', '<div>')
+				html = html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+				html = html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+
+			except Exception as e:
+				html = "<p>An error was had:<br>%s</p>" % str(e)
 
 			# return document as XML
 			return HttpResponse(html, content_type='text/html')
+
+		# if not, return False
+		else:
+			return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
+
 
 
 ####################################################################
