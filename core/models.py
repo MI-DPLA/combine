@@ -1605,7 +1605,13 @@ class Record(models.Model):
 			return False
 
 
-	def get_record_diff(self, input_record=None, xml_string=None, output='all', combined_as_html=False):
+	def get_record_diff(self,
+			input_record=None,
+			xml_string=None,
+			output='all',
+			combined_as_html=False,
+			reverse_direction=False
+		):
 
 		'''
 		Method to return diff of document XML strings
@@ -1632,13 +1638,18 @@ class Record(models.Model):
 			logger.debug('input record or XML string required, returning false')
 			return False
 
+		# prepare input / result
+		docs = [input_xml_string, self.document]
+		if reverse_direction:
+			docs.reverse()
+
 		# include combine generator in output
 		if output in ['all','combined_gen']:
 			
 			# get generator of differences
 			combined_gen = difflib.unified_diff(
-				input_xml_string.splitlines(),
-				self.document.splitlines()
+				docs[0].splitlines(),
+				docs[1].splitlines()
 			)
 
 			# return as HTML
@@ -1651,12 +1662,12 @@ class Record(models.Model):
 		# include side_by_side html in output
 		if output in ['all','side_by_side_html']:		
 
-			sxsdiff_result = DiffCalculator().run(input_xml_string, self.document)
+			sxsdiff_result = DiffCalculator().run(docs[0], docs[1])
 			sio = io.StringIO()
 			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
 			sio.seek(0)
 			side_by_side_html = sio.read()
-			
+
 		else:
 			side_by_side_html = None
 

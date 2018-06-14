@@ -2049,7 +2049,7 @@ def test_transformation_scenario(request):
 		elif response_type == 'combined_html':
 
 			# get combined diff as HTML
-			diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen', combined_as_html=True)
+			diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen', combined_as_html=True, reverse_direction=True)
 			if diff_dict:
 				diff_html = diff_dict['combined_gen']
 
@@ -2059,7 +2059,7 @@ def test_transformation_scenario(request):
 		elif response_type == 'side_by_side_html':
 
 			# get side_by_side diff as HTML
-			diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html')
+			diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html', reverse_direction=True)
 			if diff_dict:
 				diff_html = diff_dict['side_by_side_html']
 
