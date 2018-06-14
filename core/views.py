@@ -2025,59 +2025,58 @@ def test_transformation_scenario(request):
 		# get record
 		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))		
 
-		# try:
+		try:
 			
-		# init new transformation scenario
-		trans = models.Transformation(
-			name='temp_trans_%s' % str(uuid.uuid4()),
-			payload=request.POST.get('trans_payload'),
-			transformation_type=request.POST.get('trans_type')				
-		)
-		trans.save()
+			# init new transformation scenario
+			trans = models.Transformation(
+				name='temp_trans_%s' % str(uuid.uuid4()),
+				payload=request.POST.get('trans_payload'),
+				transformation_type=request.POST.get('trans_type')				
+			)
+			trans.save()
 
-		# validate with record
-		trans_results = trans.transform_record(record)
+			# validate with record
+			trans_results = trans.transform_record(record)
 
-		# delete temporary trans
-		trans.delete()
+			# delete temporary trans
+			trans.delete()
 
-		# if raw transformation results
-		if response_type == 'transformed_doc':
-			return HttpResponse(trans_results, content_type="text/xml")
+			# if raw transformation results
+			if response_type == 'transformed_doc':
+				return HttpResponse(trans_results, content_type="text/xml")
 
-		# get diff of original record as combined results
-		elif response_type == 'combined_html':
+			# get diff of original record as combined results
+			elif response_type == 'combined_html':
 
-			# get combined diff as HTML
-			diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen', combined_as_html=True, reverse_direction=True)
-			if diff_dict:
-				diff_html = diff_dict['combined_gen']
+				# get combined diff as HTML
+				diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen', combined_as_html=True, reverse_direction=True)
+				if diff_dict:
+					diff_html = diff_dict['combined_gen']
 
-			return HttpResponse(diff_html, content_type="text/xml")
+				return HttpResponse(diff_html, content_type="text/xml")
 
-		# get diff of original record as side_by_side
-		elif response_type == 'side_by_side_html':
+			# get diff of original record as side_by_side
+			elif response_type == 'side_by_side_html':
 
-			# get side_by_side diff as HTML
-			diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html', reverse_direction=True)
-			if diff_dict:
-				diff_html = diff_dict['side_by_side_html']
+				# get side_by_side diff as HTML
+				diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html', reverse_direction=True)
+				if diff_dict:
+					diff_html = diff_dict['side_by_side_html']
 
-				# strip some CSS
-				diff_html = diff_html.replace('<div class="container">', '<div>')
-				diff_html = diff_html.replace('padding-left:30px;', '/*padding-left:30px;*/')
-				diff_html = diff_html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+					# strip some CSS
+					diff_html = diff_html.replace('<div class="container">', '<div>')
+					diff_html = diff_html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+					diff_html = diff_html.replace('padding-right:30px;', '/*padding-right:30px;*/')
 
 
-			return HttpResponse(diff_html, content_type="text/xml")
+				return HttpResponse(diff_html, content_type="text/xml")
 			
+		except Exception as e:
 
-		# except Exception as e:
+			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			trans.delete()
 
-		# 	logger.debug('test validation scenario was unsucessful, deleting temporary vs')
-		# 	trans.delete()
-
-		# 	return HttpResponse(str(e), content_type="text/plain")
+			return HttpResponse(str(e), content_type="text/plain")
 
 
 def validation_scenario_payload(request, vs_id):
