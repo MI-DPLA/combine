@@ -69,9 +69,44 @@
 	<div class="row">		
 		<div class="col-md-12">
 			<h4>Transformation Results</h4>
-			<div class="form-group">
-				<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Results will show here...</code></pre>
+			<ul class="nav nav-tabs">				
+				<li class="nav-item">
+					<a class="nav-link active" data-toggle="tab" href="#raw_transform">Transformed XML</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#combined_diff">Combined Diff</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#side_by_side_diff">Side-by-Side Comparison</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+	<div class="row">		
+		<div class="col-md-12">
+
+			<div class="tab-content">
+
+				<div id="raw_transform" class="tab-pane full_width_tab active">
+					<div class="form-group">
+						<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Transformed document will show here...</code></pre>
+					</div>
+				</div>
+
+				<div id="combined_diff" class="tab-pane full_width_tab">
+					<div class="form-group">
+						<pre><code id="combined_diff_results" style="padding:10px; border-radius:10px;" class="xml">Combined document differences will show here...</code></pre>
+					</div>
+				</div>
+
+				<div id="side_by_side_diff" class="tab-pane full_width_tab">
+					<div class="form-group">
+						<pre><code id="side_by_side_diff_results" style="padding:10px; border-radius:10px;" class="xml">Combined document differences will show here...</code></pre>
+					</div>
+				</div>
+
 			</div>
+
 		</div>
 	</div>
 
