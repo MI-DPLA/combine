@@ -2261,7 +2261,8 @@ class CombineBackgroundTask(models.Model):
 			('job_export_mapped_fields','Job Export Mapped Fields'),
 			('job_export_documents','Job Export Documents'),
 			('job_reindex','Job Reindex Records'),
-			('job_new_validations','Job New Validations')
+			('job_new_validations','Job New Validations'),
+			('job_remove_validation','Job Remove Validation')
 		],
 		default=None,
 		null=True

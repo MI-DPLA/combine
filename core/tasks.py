@@ -11,6 +11,9 @@ import time
 import uuid
 from zipfile import ZipFile
 
+# django imports
+from django.db import connection
+
 # Get an instance of a logger
 import logging
 logger = logging.getLogger(__name__)
@@ -380,7 +383,62 @@ def job_new_validations(ct_id):
 		ct.save()
 
 
+@background(schedule=1)
+def job_remove_validation(ct_id):
 
+	'''
+	Task to remove a validation, and all failures, from a Job
+		- potentially expensive in that the full Job must be re-checked for validity
+		- will remove
+	'''
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		##########################################################################################################################################################################
+		
+		# establish cursor
+		cursor = connection.cursor()
+
+		# get Job Validation
+		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
+
+		# delete validation failures associated with validation scenarios		
+		delete_query = cursor.execute("DELETE from core_recordvalidation where validation_scenario_id = %s;" % jv.validation_scenario.id)
+
+		# update `valid` column for Records based on results of ValidationScenarios
+		validity_update_query = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % cjob.job.id)	
+
+		##########################################################################################################################################################################
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'delete_job_validation':str(jv),
+			'job_records_validity_updated':validity_update_query,
+			'validation_failures_removed_':delete_query
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
+
+		# remove job validation link after used for all needed
+		jv.delete()
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
+
+	
 
 
 

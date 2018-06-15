@@ -1566,6 +1566,30 @@ def job_update(request, org_id, record_group_id, job_id):
 
 			return redirect('bg_tasks')
 
+		# handle validation removal
+		if update_type == 'remove_validation':
+
+			# get validation scenario to remove
+			jv_id = request.POST.get('jv_id', False)
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'Remove Validation %s for Job: %s' % (jv_id, cjob.job.name),
+				task_type = 'job_remove_validation',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'jv_id':jv_id
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_remove_validation(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
 
 
 ####################################################################
