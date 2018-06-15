@@ -250,7 +250,6 @@
 														{% if jv.validation_failure_count > 0 %}
 															<li style="display:inline;"><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures</button></a></li>
 														{% endif %}
-														<!-- <li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=remove_validation&jv_id={{jv.id}}"><button type="button" class="btn btn-danger btn-sm">Remove Validation from Job</button></a></li> -->
 														<li style="display:inline;"><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job</button></form></li>
 													</ul>
 												</td>
@@ -259,19 +258,18 @@
 									</tbody>
 								</table>
 								{% if cjob.job.validation_results.verdict == False %}							
-									<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
+									<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
 									{% endif %}
 
 							{% else %}
-								<p>No Validations were run for this Job.</p>							
+								<p>No Validations have been run for this Job.</p>							
 							{% endif %}
 						</div>
 
 					</div>
 
 					<div class="row">
-						<div class="col-md-12">
-							<p>Or, <strong>run additional Validations for this Job</strong>:</p>
+						<div class="col-md-12">							
 							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job</button></a></p>
 						</div>
 					</div>
