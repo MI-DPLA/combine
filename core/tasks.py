@@ -400,8 +400,6 @@ def job_remove_validation(ct_id):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-		##########################################################################################################################################################################
-		
 		# establish cursor
 		cursor = connection.cursor()
 
@@ -418,8 +416,6 @@ def job_remove_validation(ct_id):
 
 		# update `valid` column for Records based on results of ValidationScenarios
 		validity_update_query = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % cjob.job.id)	
-
-		##########################################################################################################################################################################
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
