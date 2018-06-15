@@ -170,8 +170,8 @@
 										{% for failure in rv.failed %}
 											<tr>
 												<td>{{ rv.validation_scenario.name }}</td>
-												<td><code>{{ failure }}</code></td>
-												<td><a target="_blank" href="{% url 'record_validation_scenario' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id job_validation_id=rv.validation_scenario.id %}">Run Validation</a></td>
+												<td><code>{{ failure }}</code></td>												
+												<td><a target="_blank" href="{% url 'test_validation_scenario' %}?q={{record.id}}&validation_scenario={{rv.validation_scenario.id}}|{{rv.validation_scenario.validation_type}}"><button type="button" class="btn btn-info btn-sm">Run Validation</button></a></td>
 											</tr>
 										{% endfor %}
 									{% endfor %}

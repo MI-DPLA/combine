@@ -317,6 +317,67 @@ def job_reindex(ct_id):
 		ct.save()
 
 
+@background(schedule=1)
+def job_new_validations(ct_id):
+
+	'''
+	- submit livy job and poll until complete
+		- use livy session from cjob (works, but awkward way to get this)	
+	'''
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		# write validation links
+		for vs_id in ct.task_params['validation_scenarios']:
+			val_job = models.JobValidation(
+				job=cjob.job,
+				validation_scenario=models.ValidationScenario.objects.get(pk=vs_id)
+			)
+			val_job.save()
+
+		# generate spark code		
+		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
+			'job_id':cjob.job.id,
+			'validation_scenarios':str([ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ]),
+		}
+		logger.debug(spark_code)
+
+		# submit to livy
+		logger.debug('submitting code to Spark')
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+
+		# poll until complete
+		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+		def spark_job_done(response):
+			return response['state'] == 'available'
+
+		logger.debug('polling for Spark job to complete...')
+		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+		logger.debug(results)
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'run_new_validations':results
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
 
 
 

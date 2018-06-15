@@ -9,13 +9,21 @@
 		</div>
 	</div>
 
+	{% if q and tsid %}
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			Record and Transformation Scenario have been automatically loaded, click the "Test Transformation" button below to run Transformation results!
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+	{% endif %}
+
 	<div class="row">
 		<div class="col-md-12">
 			<!-- All Records DT table -->
 			{% include 'core/records_dt_table.html' %}
 		</div>
 	</div>
-
 
 	<!-- input paylaod -->
 	<div class="row">

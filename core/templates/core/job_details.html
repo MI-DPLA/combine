@@ -219,44 +219,59 @@
 				</div>
 
 				<div id="validation_tab" class="tab-pane full_width_tab">
-					{% if cjob.job.jobvalidation_set.count > 0 %}
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 							<h3>Validation Scenarios</h3>
-							<p>The following Validation Scenarios were run for this job:</p>
-							<table class="table table-bordered table-hover">
-								<thead>
-									<tr>
-										<th>Validation Name</th>
-										<th>Validation Type</th>
-										<th>Record Validation Failure Count</th>
-										<th>Actions</th>
-									</tr>
-								</thead>
-								<tbody>
-									{% for jv in cjob.job.jobvalidation_set.all %}			
-										<tr>
-											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
-											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
-											<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
-										</tr>
-									{% endfor %}
-								</tbody>
-							</table>
-							{% if cjob.job.validation_results.verdict == False %}							
-								<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
-							{% endif %}
-						</div>
-					</div>
-					{% else %}
-					<div class="row">		
-						<div class="col-md-12">
-							<p>No Validations were run for this Job.</p>
 						</div>
 					</div>
 
-					{% endif %}
+					<div class="row">
+						<div class="col-md-8">
+
+							{% if cjob.job.jobvalidation_set.count > 0 %}
+								<p>The following Validation Scenarios were run for this job:</p>
+								<table class="table table-bordered table-hover">
+									<thead>
+										<tr>
+											<th>Validation Name</th>
+											<th>Validation Type</th>
+											<th>Record Validation Failure Count</th>
+											<th>Actions</th>
+										</tr>
+									</thead>
+									<tbody>
+										{% for jv in cjob.job.jobvalidation_set.all %}			
+											<tr>
+												<td>{{ jv.validation_scenario.name }}</td>
+												<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
+												<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+												<td>
+													<ul class="list-inline">
+														{% if jv.validation_failure_count > 0 %}
+															<li style="display:inline;"><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures</button></a></li>
+														{% endif %}
+														<li style="display:inline;"><button type="button" class="btn btn-danger btn-sm">Remove Validation from Job</button></li>
+													</ul>
+												</td>
+											</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+								{% if cjob.job.validation_results.verdict == False %}							
+									<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
+									{% endif %}
+
+							{% else %}
+								<p>No Validations were run for this Job.</p>							
+							{% endif %}
+						</div>
+
+						<div class="col-md-4">
+							<p>New Validations can be run for this Job even after complete:</p>
+							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job</button></a></p>
+						</div>
+
+					</div>
 				</div>
 
 				<div id="field_breakdown_tab" class="tab-pane full_width_tab">

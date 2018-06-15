@@ -426,8 +426,15 @@ class Job(models.Model):
 				- updates status, record_count, elapsed (soon)
 		'''
 
+		# if not deleted
 		if not self.deleted:
-			if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
+
+			# if job in various status, and not finished, ping livy
+			if self.status in ['initializing','waiting','pending','starting','running','available','gone']\
+			and self.url != None\
+			and not self.finished:
+
+				logger.debug('pinging Livy for Job status: %s' % self)
 				self.refresh_from_livy(save=False)
 
 			# udpate record count if not already calculated
@@ -533,9 +540,10 @@ class Job(models.Model):
 		# if status_code 404, set as gone
 		if livy_response.status_code == 400:
 			
-			logger.debug(livy_response.json())
-			logger.debug('Livy session likely not active, setting status to gone')
-			self.status = 'gone'
+			# logger.debug(livy_response.json())
+			# logger.debug('Livy session likely not active, setting status to available')
+			self.status = 'available'
+			self.finished = True
 			
 			# update
 			if save:
@@ -544,8 +552,9 @@ class Job(models.Model):
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
 			
-			logger.debug('job/statement not found, setting status to gone')
-			self.status = 'gone'
+			# logger.debug('job/statement not found, setting status to available')
+			self.status = 'available'
+			self.finished = True
 			
 			# update
 			if save:
@@ -559,7 +568,7 @@ class Job(models.Model):
 			
 			# update Livy information
 			self.status = response['state']
-			logger.debug('job/statement found, updating status to %s' % self.status)
+			# logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
@@ -2252,7 +2261,7 @@ class CombineBackgroundTask(models.Model):
 			('job_export_mapped_fields','Job Export Mapped Fields'),
 			('job_export_documents','Job Export Documents'),
 			('job_reindex','Job Reindex Records'),
-			('job_rerun_validations','Job Re-run Validations')
+			('job_new_validations','Job New Validations')
 		],
 		default=None,
 		null=True

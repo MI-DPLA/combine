@@ -1514,14 +1514,14 @@ def job_update(request, org_id, record_group_id, job_id):
 		update_type = request.POST.get('update_type', None)
 		logger.debug('running job update: %s' % update_type)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
-
 		# handle re-index
 		if update_type == 'reindex':			
+
+			# get preferred metadata index mapper
+			index_mapper = request.POST.get('index_mapper')
+			include_attributes = request.POST.get('include_attributes', False)
+			if include_attributes and include_attributes == 'true':
+				include_attributes = True
 
 			# initiate Combine BG Task
 			ct = models.CombineBackgroundTask(
@@ -1535,6 +1535,30 @@ def job_update(request, org_id, record_group_id, job_id):
 			)
 			ct.save()
 			bg_task = tasks.job_reindex(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
+		# handle new validations
+		if update_type == 'validations':
+
+			# get requested validation scenarios
+			validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'New Validations for Job: %s' % cjob.job.name,
+				task_type = 'job_new_validations',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'validation_scenarios':validation_scenarios
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_new_validations(
 				ct.id,
 				verbose_name=ct.verbose_name,
 				creator=ct
@@ -2111,9 +2135,13 @@ def test_validation_scenario(request):
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
 
+		# check for pre-requested transformation scenario
+		vsid = request.GET.get('validation_scenario', None)
+
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
 			'q':q,
+			'vsid':vsid,
 			'validation_scenarios':validation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
