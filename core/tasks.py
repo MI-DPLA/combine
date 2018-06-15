@@ -408,8 +408,13 @@ def job_remove_validation(ct_id):
 		# get Job Validation
 		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
 
-		# delete validation failures associated with validation scenarios		
-		delete_query = cursor.execute("DELETE from core_recordvalidation where validation_scenario_id = %s;" % jv.validation_scenario.id)
+		# delete validation failures associated with Validation Scenario and Job		
+		to_delete = models.RecordValidation.objects.filter(validation_scenario_id=jv.validation_scenario.id, record__job=cjob.job.id)
+		if to_delete.exists():
+			# use private raw delete method
+			delete_results = to_delete._raw_delete(to_delete.db)
+		else:
+			delete_results = 0
 
 		# update `valid` column for Records based on results of ValidationScenarios
 		validity_update_query = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % cjob.job.id)	
@@ -420,7 +425,7 @@ def job_remove_validation(ct_id):
 		ct.task_output_json = json.dumps({		
 			'delete_job_validation':str(jv),
 			'job_records_validity_updated':validity_update_query,
-			'validation_failures_removed_':delete_query
+			'validation_failures_removed_':delete_results
 		})
 		ct.save()
 		logger.debug(ct.task_output_json)

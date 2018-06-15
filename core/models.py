@@ -448,7 +448,7 @@ class Job(models.Model):
 			self.elapsed = self.calc_elapsed()
 
 			# finally, save
-			self.save()
+			# self.save()
 
 
 	def calc_elapsed(self):
