@@ -2420,11 +2420,11 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 		})
 	)
 	ct.save()
-	# bg_task = tasks.job_export_mapped_fields(
-	# 	ct.id,
-	# 	verbose_name=ct.verbose_name,
-	# 	creator=ct
-	# )
+	bg_task = tasks.job_export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
 
 	return redirect('bg_tasks')
 

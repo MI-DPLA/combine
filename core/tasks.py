@@ -6,6 +6,7 @@ import json
 import math
 import os
 import polling
+import subprocess
 import tarfile
 import time
 import uuid
@@ -134,18 +135,47 @@ def job_export_mapped_fields(ct_id):
 	os.mkdir(output_path)
 	export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
 
-	# issue es2csv as os command
-	cmd = "es2csv -q '*' -i 'j%(job_id)s' -D 'record' -o '%(export_output)s'" % {
-		'job_id':cjob.job.id,
-		'export_output':export_output
-	}
+	# OLD #################################################################################
+	# # issue es2csv as os command
+	# cmd = "es2csv -q '*' -i 'j%(job_id)s' -D 'record' -o '%(export_output)s'" % {
+	# 	'job_id':cjob.job.id,
+	# 	'export_output':export_output
+	# }
+
+	# # handle kibana style
+	# if ct.task_params['kibana_style']:
+	# 	cmd += ' -k'
+
+	# logger.debug(cmd)
+	# os.system(cmd)
+	# OLD #################################################################################
+
+	# NEW #################################################################################
+	# build command list
+	cmd = [
+		"es2csv",
+		"-q '*'",
+		"-i 'j%s'" % cjob.job.id,
+		"-D 'record'",
+		"-o '%s'" % export_output
+	]
 
 	# handle kibana style
 	if ct.task_params['kibana_style']:
-		cmd += ' -k'
+		cmd.append('-k')
 
+	# if fields provided, limit
+	if ct.task_params['mapped_field_include']:
+		logger.debug('specific fields selected, adding to es2csv command:')
+		logger.debug(ct.task_params['mapped_field_include'])
+		cmd.append("-f " + " ".join(ct.task_params['mapped_field_include']))
+
+	# debug
 	logger.debug(cmd)
-	os.system(cmd)
+	# cmd_results = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+	# logger.debug(cmd_results)
+	os.system(" ".join(cmd))
+	# NEW #################################################################################
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
