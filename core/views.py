@@ -2406,21 +2406,25 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	if kibana_style:
 		kibana_style = True
 
+	# get selected fields if present
+	mapped_field_include = request.POST.getlist('mapped_field_include',False)
+
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
 		task_type = 'job_export_mapped_fields',
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
-			'kibana_style':kibana_style
+			'kibana_style':kibana_style,
+			'mapped_field_include':mapped_field_include
 		})
 	)
 	ct.save()
-	bg_task = tasks.job_export_mapped_fields(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+	# bg_task = tasks.job_export_mapped_fields(
+	# 	ct.id,
+	# 	verbose_name=ct.verbose_name,
+	# 	creator=ct
+	# )
 
 	return redirect('bg_tasks')
 
