@@ -15,7 +15,10 @@ Why publishing at the Record Group level?  This reinforces the idea that a Recor
 
 When a Record Group is published, a Publish Job is run that works very similar to a Merge / Duplicate Job in that it takes the input Job wholesale, copying the Records and the ElasticSearch documents.  What differentiates a Publish job from other Jobs is that each Record contained in that Job is considered "published" and will get returned through publishing routes.
 
-Currently, the only protocol for publishing Records from Combine is a built-in OAI-PMH server.  But, there are plans for static publishing of Records (i.e. data dumps), and `ResourceSync <http://www.openarchives.org/rs/toc>`_ as well.
+Currently, the the following methods are avaialable for publishing Records from Combine:
+
+  - `OAI-PMH Server <#oai-pmh-server>`__
+  - `Export of Flat Files <#export-flat-files>`__
 
 
 Publishing a Record Group
@@ -95,13 +98,29 @@ While helpful in the Job setting, this breakdown can be particularly helpful for
 
 For example: **determining if all records have a thumbnail image**.  Once the field has been identified as where this information should be, in the case of the screenshot above, it is the field ``mods_location_url_@access_preview``.  We can sort the right-most column, ``Instance of Field in Total Indexed Records`` *and then hold shift for perform a secondary sort* and click the second right-most column ``Percentage of Field Values that are Unique``.  This gives us a "dual" sort that orders by fields with the most values across all records, sorted again by their uniqueness.  These two qualities would be critical for things like thumbnail or access URLs, both of which can be seen in the screen shot above.  As a convenience feature, Combine attempts to highlight those fields in Yellow that are both found, and are unique, in all Records.  More on this in `Analyzing Indexed Fields Breakdown <analysis.html#analyzing-indexed-fields>`_.
 
-Finally, at the very bottom are some links to Combine's built-in OAI-PMH server that can publish and produce these records for harvesting:
 
-.. figure:: img/combine_oai_server_links.png
+OAI-PMH Server
+==============
+
+Combine comes with a built-in OAI-PMH server that serves records directly from the MySQL database via the OAI-PMH protocol.  This can be found under the "Outgoing OAI-PMH Server" tab:
+
+.. figure:: img/publishing_oai_links.png
    :alt: Simple set of links that expose some of Combine's built-in OAI-PMH server routes
-   :target: _images/combine_oai_server_links.png
+   :target: _images/publishing_oai_links.png
 
    Simple set of links that expose some of Combine's built-in OAI-PMH server routes
+
+
+Export Flat Files
+=================
+
+Another way to "publish" or distribute Records from Combine is by exporting flat files of Record XML documents as an archive file.  This can be done by clicking the "Export" tab and then "Export Documents" (if not already selected):
+
+.. figure:: img/publishing_flat_files.png
+   :alt: Exporting Published Records as flat files
+   :target: _images/publishing_flat_files.png
+
+   Exporting Published Records as flat files
 
 
 
