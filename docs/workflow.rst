@@ -382,15 +382,24 @@ Exporting a Job as Documents takes the stored XML documents for each Record, dis
 
    Exporting Mapped Fields for a Job
 
-For example, 1000 records where a user selects 250 per file, would result in the following structure:
+For example, 1000 records where a user selects 250 per file, for Job ``#42``, would result in the following structure:
 
 .. code-block:: text
 
     - archive.zip|tar
-        - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
-        - part00001.xml
-        - part00002.xml
-        - part00003.xml
+        - j42/ # folder for Job
+            - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
+            - part00001.xml
+            - part00002.xml
+            - part00003.xml
+
+The following screenshot shows the actual result of a Job with 1,070 Records, exporting 50 per file, with a zip file and the resulting, unzipped structure:
+
+.. figure:: img/job_export_structure.png
+   :alt: Example structure of an exported Job as XML Documents
+   :target: _images/job_export_structure.png
+
+   Example structure of an exported Job as XML Documents
 
 Why export like this?  Very large XML files can be problematic to work with, particularly for XML parsers that attempt to load the entire document into memory (which is most of them).  Combine is naturally pre-disposed to think in terms of the parts and partitions with the Spark back-end, which makes for convenient writing of all Records from Job in smaller chunks.  The size of the "chunk" can be set by specifying the ``XML Records per file`` input in the export form.  Finally, .zip or .tar files for the resulting export are both supported.
 

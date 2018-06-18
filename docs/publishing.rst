@@ -122,7 +122,13 @@ Another way to "publish" or distribute Records from Combine is by exporting flat
 
    Exporting Published Records as flat files
 
+The Publish Set ID (``publish_id``) for each published Record Group will be used to organzize the exported XML files in the resulting archive file.  For example, if a single Record Group was published under the Publish ID ``foo``, and two Record Groups were published under the Publish ID ``bar``, and the user specified ``100`` Record per file, the resulting export structure would look similar to this:
 
+.. figure:: img/published_export_structure.png
+   :alt: Publish IDs as folder structured in exported Published Records
+   :target: _images/published_export_structure.png
+
+   Publish IDs as folder structured in exported Published Records
 
 
 

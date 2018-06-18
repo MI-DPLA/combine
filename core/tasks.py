@@ -6,6 +6,7 @@ import json
 import math
 import os
 import polling
+import shutil
 import subprocess
 import tarfile
 import time
@@ -223,9 +224,13 @@ def export_documents(ct_id):
 			# set archive filename of loose XML files
 			archive_filename_root = 'j_%s_documents' % cjob.job.id
 
-			spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
-				'job_id':cjob.job.id,
+			# build job_dictionary
+			job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
+			logger.debug(job_dict)
+
+			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
 				'output_path':output_path,
+				'job_dict':job_dict,
 				'records_per_file':ct.task_params['records_per_file']
 			}
 			logger.debug(spark_code)
@@ -263,10 +268,51 @@ def export_documents(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
 
+		################################################################################################################################################################
+		# # loop through parts, group XML docs with rool XML element, and save as new XML file
+		# logger.debug('grouping documents in XML files')
+
+		# export_parts = glob.glob('%s/part*' % output_path)
+		# logger.debug('found %s documents to write as XML' % len(export_parts))
+		# for part in export_parts:
+		# 	with open('%s.xml' % part, 'w') as f:
+		# 		f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
+		# 		with open(part) as f_part:
+		# 			f.write(f_part.read())
+		# 		f.write('</documents>')
+
+		# # save file list pre-archive for cleanup
+		# pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
+
+		# # zip
+		# if ct.task_params['archive_type'] == 'zip':
+		# 	content_type = 'application/zip'
+		# 	logger.debug('creating zip archive')
+		# 	export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
+		# 	with ZipFile(export_output_archive,'w') as zip:
+		# 		for f in glob.glob('%s/*.xml' % output_path):
+		# 			zip.write(f, os.path.basename(f))
+			
+		# # tar
+		# if ct.task_params['archive_type'] == 'tar':
+		# 	content_type = 'application/tar'
+		# 	logger.debug('creating tar archive')
+		# 	export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
+
+		# 	with tarfile.open(export_output_archive, 'w') as tar:
+		# 		for f in glob.glob('%s/*.xml' % output_path):
+		# 			tar.add(f, arcname=os.path.basename(f))
+
+		# # cleanup directory
+		# for f in pre_archive_files:
+		# 	os.remove(f)
+		################################################################################################################################################################
+
+		################################################################################################################################################################
 		# loop through parts, group XML docs with rool XML element, and save as new XML file
 		logger.debug('grouping documents in XML files')
 
-		export_parts = glob.glob('%s/part*' % output_path)
+		export_parts = glob.glob('%s/**/part*' % output_path)
 		logger.debug('found %s documents to write as XML' % len(export_parts))
 		for part in export_parts:
 			with open('%s.xml' % part, 'w') as f:
@@ -275,31 +321,40 @@ def export_documents(ct_id):
 					f.write(f_part.read())
 				f.write('</documents>')
 
-		# save file list pre-archive for cleanup
-		pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
+		# save list of directories to remove
+		pre_archive_dirs = glob.glob('%s/**' % output_path)
 
 		# zip
 		if ct.task_params['archive_type'] == 'zip':
+
+			logger.debug('creating zip archive')			
 			content_type = 'application/zip'
-			logger.debug('creating zip archive')
+
+			# establish output archive file
 			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
+			
 			with ZipFile(export_output_archive,'w') as zip:
-				for f in glob.glob('%s/*.xml' % output_path):
-					zip.write(f, os.path.basename(f))
+				for f in glob.glob('%s/**/*.xml' % output_path):
+					zip.write(f, '/'.join(f.split('/')[-2:]))
 			
 		# tar
 		if ct.task_params['archive_type'] == 'tar':
-			content_type = 'application/tar'
+
 			logger.debug('creating tar archive')
+			content_type = 'application/tar'
+
+			# establish output archive file
 			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
 
 			with tarfile.open(export_output_archive, 'w') as tar:
-				for f in glob.glob('%s/*.xml' % output_path):
-					tar.add(f, arcname=os.path.basename(f))
+				for f in glob.glob('%s/**/*.xml' % output_path):
+					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
 		# cleanup directory
-		for f in pre_archive_files:
-			os.remove(f)
+		for d in pre_archive_dirs:
+			logger.debug('removing dir: %s' % d)
+			shutil.rmtree(d)
+		################################################################################################################################################################
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
