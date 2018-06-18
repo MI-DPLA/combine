@@ -198,6 +198,12 @@ def export_documents(ct_id):
 	- tar/zip together
 	'''
 
+	# poll until complete
+	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+	def spark_job_done(response):
+		return response['state'] == 'available'
+
 	# get CombineTask (ct)
 	try:
 
@@ -233,21 +239,25 @@ def export_documents(ct_id):
 			# get anonymous CombineJob
 			cjob = models.CombineJob()
 
-			spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, None, published=True)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
+			# get published records to determine sets
+			pr = models.PublishedRecords()
+
+			# build job_dictionary
+			job_dict = {}
+			for publish_id, jobs in pr.sets.items():
+				job_dict[publish_id] = [ job.id for job in jobs ]
+			logger.debug(job_dict)
+
+			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
 				'output_path':output_path,
+				'job_dict':job_dict,
 				'records_per_file':ct.task_params['records_per_file']
 			}
 			logger.debug(spark_code)
 
 		# submit to livy
 		logger.debug('submitting code to Spark')
-		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
-
-		# poll until complete
-		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-		def spark_job_done(response):
-			return response['state'] == 'available'
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
 
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)

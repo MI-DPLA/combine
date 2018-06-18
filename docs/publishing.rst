@@ -7,9 +7,9 @@ The following will outline specifics for Publishing a Record Group, with more `g
 How does Publishing work in Combine?
 ====================================
 
-As a tool for aggregating metadata, Combine must also have the ability to serve aggregated Records again.  This is done by "publishing" in Combine, and this happens at the `Record Group level <data_model.html#record-group>`_.  Only **one** Job may be published per Record Group.
+As a tool for aggregating metadata, Combine must also have the ability to serve or distribute aggregated Records again.  This is done by "publishing" in Combine, and this happens at the `Record Group level <data_model.html#record-group>`_.  Only **one** Job may be published per Record Group.
 
-When a Record Group is published, a user may create a "Publish Set Identifier" (``publish_id``) that is used to aggregate and group published Records.  For example, in the built-in OAI-PMH server, this Publish ID becomes the OAI set ID.  Multiple Record Groups can publish under the same Publish Set ID, allowing for grouping of materials in publishing.
+When a Record Group is published, a user may create a "Publish Set Identifier" (``publish_id``) that is used to aggregate and group published Records.  For example, in the built-in OAI-PMH server, this Publish ID becomes the OAI set ID, or for exported flat XML files, the ``publish_id`` is used to create a folder hierarchy.  Multiple Record Groups can publish under the same Publish Set ID, allowing for grouping of materials in publishing.
 
 Why publishing at the Record Group level?  This reinforces the idea that a Record Group is an intellectual group of records, and though it may contain many Jobs of various stages, or previous versions, there should be only one, representative, published body of Records from this intellectual grouping of Records.  This is another instance where `Merge Jobs <merging.html>`_ can be useful, by allowing users to merge all Records / Jobs within a Record Group for publishing.
 
