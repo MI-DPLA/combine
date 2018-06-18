@@ -15,18 +15,21 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 from django.db import connection
 
-from core.models import Job
+from core.models import Job, PublishedRecords
 
-def get_job_db_bounds(job):
+
+def get_job_db_bounds(record_qs):
 
 	'''
 	Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-	'''	
 
-	records = job.get_records()
-	records = records.order_by('id')
-	start_id = records.first().id
-	end_id = records.last().id
+	Args:
+		record_qs(django.models.QuerySet): queryset of records for finding bounds
+	'''
+	
+	record_qs = record_qs.order_by('id')
+	start_id = record_qs.first().id
+	end_id = record_qs.last().id
 
 	return {
 		'lowerBound':start_id,
@@ -34,12 +37,23 @@ def get_job_db_bounds(job):
 	}
 
 
-def get_job_as_df(spark, job_id):
+def get_job_as_df(spark, job_id, published=False):
 
-	# get job
-	input_job = Job.objects.get(pk=int(job_id))
+	'''
+	Convenience method to retrieve set of records as Spark DataFrame
+	'''
 
-	bounds = get_job_db_bounds(input_job)
+	# return published
+	if published:
+		pr = PublishedRecords()
+		record_qs = pr.records
+
+	# if not published
+	else:
+		# get job
+		record_qs = Job.objects.get(pk=int(job_id)).get_records()
+
+	bounds = get_job_db_bounds(record_qs)
 	sqldf = spark.read.jdbc(
 			settings.COMBINE_DATABASE['jdbc_url'],
 			'core_record',
@@ -49,7 +63,10 @@ def get_job_as_df(spark, job_id):
 			upperBound=bounds['upperBound'],
 			numPartitions=settings.JDBC_NUMPARTITIONS
 		)
-	records = sqldf.filter(sqldf.job_id == int(job_id))
+	if published:
+		records = sqldf.filter(sqldf.published == True)
+	else:
+		records = sqldf.filter(sqldf.job_id == int(job_id))
 	return records
 
 

@@ -2258,8 +2258,8 @@ class CombineBackgroundTask(models.Model):
 			('record_group_delete','Record Group Deletion'),
 			('org_delete','Organization Deletion'),
 			('validation_report','Validation Report Generation'),
-			('job_export_mapped_fields','Job Export Mapped Fields'),
-			('job_export_documents','Job Export Documents'),
+			('export_mapped_fields','Export Mapped Fields'),
+			('export_documents','Export Documents'),
 			('job_reindex','Job Reindex Records'),
 			('job_new_validations','Job New Validations'),
 			('job_remove_validation','Job Remove Validation')

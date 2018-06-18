@@ -47,10 +47,10 @@
 							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}&preview=true" target="_blank"><button type="button" class="btn btn-success btn-sm">View Raw CSV file in browser</button></a>
 						{% endif %}							
 					
-					{% elif ct.task_type == 'job_export_mapped_fields' %}
+					{% elif ct.task_type == 'export_mapped_fields' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields .csv</button></a>
 
-					{% elif ct.task_type == 'job_export_documents' %}
+					{% elif ct.task_type == 'export_documents' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive</button></a>
 
 					{% else %}

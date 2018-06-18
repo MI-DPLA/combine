@@ -80,6 +80,8 @@ urlpatterns = [
 	# Publish
 	url(r'^published$', views.published, name='published'),
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
+	url(r'^published/export/mapped_fields$', views.published_export_mapped_fields, name='published_export_mapped_fields'),
+	url(r'^published/export/documents$', views.published_export_documents, name='published_export_documents'),
 
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),

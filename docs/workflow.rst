@@ -335,7 +335,7 @@ Jobs may be exported in two ways:
 
 **Record Mapped Fields**
 
-Exporting a Job as Mapped Fields creates a single.csv or Excel file containing all mapped fields stored in ElasticSearch, across all Records, for this Job.
+Exporting a Job as Mapped Fields creates a single.csv or Excel file mapped fields stored in ElasticSearch, across all Records, for this Job.
 
 .. figure:: img/job_export_mapped_fields.png
    :alt: Exporting Mapped Fields for a Job
@@ -343,7 +343,17 @@ Exporting a Job as Mapped Fields creates a single.csv or Excel file containing a
 
    Exporting Mapped Fields for a Job
 
-Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Currently, this exported format cannot be *re-imported* into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
+By default, **all** mapped fields are included in the export, but a smaller, selected subset is possible by clicking the "Selected Mapped Fields for Export" button:
+
+.. figure:: img/job_export_mapped_fields_select_subset.png
+   :alt: Exporting Mapped Fields, selecting subset of fields to include
+   :target: _images/job_export_mapped_fields_select_subset.png
+
+   Exporting Mapped Fields, selecting subset of fields to include
+
+This is similar to selecting fields to include when generating a report of Validation failures.
+
+Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Please note, this exported format cannot be *re-imported* or "round-tripped" into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
 
 If a Record contains a mapped field such as ``mods_subject_topic`` that is repeating, the default export format is to create multiple columns in the export, appending an integer for each instance of that field, e.g.,
 

@@ -279,12 +279,12 @@
 
 				<div id="field_breakdown_tab" class="tab-pane full_width_tab">
 					<div class="row">
-						<div class="col-md-6">
+						<div class="col-md-8">
 							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p>
 						</div>
 					</div>
 					<div class="row">
-						<div class="col-md-6">
+						<div class="col-md-8">
 							<table class="table table-bordered table-hover">
 								<thead>
 									<tr>
@@ -495,9 +495,9 @@
 
 				<div id="export_tab" class="tab-pane full_width_tab">
 					<div class="row">		
-						<div class="col-md-6">
+						<div class="col-md-12">
 
-							<p>Jobs may be exported in two ways (<a href="#">see documentation for more information</a>):
+							<p>Jobs may be exported in two ways (<a href="https://combine.readthedocs.io/en/master/workflow.html#export">see documentation for more information</a>):
 								<ul>
 									<li><strong>Documents (XML)</strong>: The actual XML documents for each Record, as harvested and/or transformed.</li>
 									<li><strong>Mapped Fields (tabular)</strong>: Records are also <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">indexed into ElasticSearch</a>, resulting in a flat, tabular format of the data from the Records.</li>
@@ -505,7 +505,7 @@
 							</p>
 
 							<div class="alert alert-info alert-dismissible fade show" role="alert">
-								Select a tab below to export Records as Documents, or their Mapped Fields
+								Select a tab below to export Records as <strong>full XML Documents</strong>, or <strong>tabular Mapped Fields</strong>
 								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 								<span aria-hidden="true">&times;</span>
 								</button>
@@ -513,10 +513,10 @@
 							
 							<ul id="export_tabs" class="nav nav-tabs">								
 								<li class="nav-item">
-									<a class="nav-link active" data-toggle="tab" href="#export_mapped_fields">Export Records as Mapped Fields</a>
+									<a class="nav-link active" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
 								</li>
 								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#export_documents">Export Records as Documents</a>
+									<a class="nav-link" data-toggle="tab" href="#export_documents">Export Documents</a>
 								</li>								
 							</ul>
 
@@ -533,8 +533,8 @@
 
 												<div class="form-group">
 													<div class="form-check">
-														<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style">
-														<label class="form-check-label" for="validation_scenario_{{ vs.id }}">
+														<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/>
+														<label class="form-check-label" for="kibana_style">
 															Check this box to export repeating fields "Kibana style" <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 														</label>
 													</div>
@@ -547,11 +547,9 @@
 													</div>
 												</div>
 
-												<!-- ############################################################# -->
-
-												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-warning btn-sm">Include additional, mapped fields from the Records in the report?</button></a></p>
-												<div id="mapped_fields" style="display:none;">
-													<p>From the table below, select mapped fields to include in report, or click button to select all fields (<strong>Note</strong>: this will dramatically increase the size of the report).</p>
+												<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
+												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
+												<div id="mapped_fields" style="display:none;">													
 													<p><button type="button" class="btn btn-primary btn-sm" onclick="return false;" id="select_all_fields">Toggle all fields</button></p>
 													<table id="mapped_field_export_select" class="table table-bordered table-hover">
 														<thead>
@@ -603,11 +601,6 @@
 													<div id="hidden_field_inputs"></div>
 												</div>
 
-												
-
-												<!-- ############################################################# -->
-												
-
 												<button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped Fields</button>
 
 												<script>
@@ -615,14 +608,14 @@
 													$(document).ready(function() {
 
 														// init datatables
-													    table = $('#mapped_field_export_select').DataTable({
+													    mapped_field_export_select_table = $('#mapped_field_export_select').DataTable({
 													    	"pageLength": 10,
 													    	"lengthMenu": [ 10, 25, 100, 500 ]
 													    });
 
 													    // listener for checkboxes
 													    $("#select_all_fields").click(function(){			    	
-														    cells = table.cells().nodes();						    
+														    cells = mapped_field_export_select_table.cells().nodes();						    
 														    $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
 													    });
 
@@ -643,7 +636,7 @@
 													    	});
 
 													    	// write all field checkboxes as temporary, hidden inputs
-													    	cells = table.cells().nodes();
+													    	cells = mapped_field_export_select_table.cells().nodes();
 													    	checkboxes = $(cells).find(':checked');
 													    	checkboxes.each(function(){
 													    		console.log(this);

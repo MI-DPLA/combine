@@ -122,43 +122,47 @@ def create_validation_report(ct_id):
 
 
 @background(schedule=1)
-def job_export_mapped_fields(ct_id):
+def export_mapped_fields(ct_id):
 
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+	# handle single Job
+	if 'job_id' in ct.task_params.keys():
 
-	# set output filename
-	output_path = '/tmp/%s' % uuid.uuid4().hex
-	os.mkdir(output_path)
-	export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# OLD #################################################################################
-	# # issue es2csv as os command
-	# cmd = "es2csv -q '*' -i 'j%(job_id)s' -D 'record' -o '%(export_output)s'" % {
-	# 	'job_id':cjob.job.id,
-	# 	'export_output':export_output
-	# }
+		# set output filename
+		output_path = '/tmp/%s' % uuid.uuid4().hex
+		os.mkdir(output_path)
+		export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
 
-	# # handle kibana style
-	# if ct.task_params['kibana_style']:
-	# 	cmd += ' -k'
+		# build command list
+		cmd = [
+			"es2csv",
+			"-q '*'",
+			"-i 'j%s'" % cjob.job.id,
+			"-D 'record'",
+			"-o '%s'" % export_output
+		]
 
-	# logger.debug(cmd)
-	# os.system(cmd)
-	# OLD #################################################################################
+	# handle published records
+	if 'published' in ct.task_params.keys():
 
-	# NEW #################################################################################
-	# build command list
-	cmd = [
-		"es2csv",
-		"-q '*'",
-		"-i 'j%s'" % cjob.job.id,
-		"-D 'record'",
-		"-o '%s'" % export_output
-	]
+		# set output filename
+		output_path = '/tmp/%s' % uuid.uuid4().hex
+		os.mkdir(output_path)
+		export_output = '%s/published_mapped_fields.csv' % (output_path)
+
+		# build command list
+		cmd = [
+			"es2csv",
+			"-q '*'",
+			"-i 'published'",
+			"-D 'record'",
+			"-o '%s'" % export_output
+		]
 
 	# handle kibana style
 	if ct.task_params['kibana_style']:
@@ -172,10 +176,7 @@ def job_export_mapped_fields(ct_id):
 
 	# debug
 	logger.debug(cmd)
-	# cmd_results = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-	# logger.debug(cmd_results)
 	os.system(" ".join(cmd))
-	# NEW #################################################################################
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
@@ -187,7 +188,7 @@ def job_export_mapped_fields(ct_id):
 
 
 @background(schedule=1)
-def job_export_documents(ct_id):
+def export_documents(ct_id):
 
 	'''
 	- submit livy job and poll until complete
@@ -199,21 +200,44 @@ def job_export_documents(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# get CombineBackgroundTask
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.debug('using %s' % ct)
-
-		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# generate spark code
 		output_path = '/tmp/%s' % str(uuid.uuid4())
 
-		spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
-			'job_id':cjob.job.id,
-			'output_path':output_path,
-			'records_per_file':ct.task_params['records_per_file']
-		}
-		logger.debug(spark_code)
+		# handle single Job
+		if 'job_id' in ct.task_params.keys():
+
+			# get CombineJob
+			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+			# set archive filename of loose XML files
+			archive_filename_root = 'j_%s_documents' % cjob.job.id
+
+			spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, %(job_id)d)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
+				'job_id':cjob.job.id,
+				'output_path':output_path,
+				'records_per_file':ct.task_params['records_per_file']
+			}
+			logger.debug(spark_code)
+
+		# handle published records
+		if 'published' in ct.task_params.keys():
+
+			# set archive filename of loose XML files
+			archive_filename_root = 'published_documents'
+
+			# get anonymous CombineJob
+			cjob = models.CombineJob()
+
+			spark_code = "import math,uuid\nfrom console import *\ndf = get_job_as_df(spark, None, published=True)\ndf.select('document').rdd.repartition(math.ceil(df.count()/%(records_per_file)d)).map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>','')).saveAsTextFile('file://%(output_path)s')" % {
+				'output_path':output_path,
+				'records_per_file':ct.task_params['records_per_file']
+			}
+			logger.debug(spark_code)
 
 		# submit to livy
 		logger.debug('submitting code to Spark')
@@ -243,9 +267,6 @@ def job_export_documents(ct_id):
 
 		# save file list pre-archive for cleanup
 		pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
-
-		# create archive file of loose XML files
-		archive_filename_root = 'j_%s_documents' % cjob.job.id
 
 		# zip
 		if ct.task_params['archive_type'] == 'zip':

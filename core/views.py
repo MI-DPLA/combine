@@ -2396,7 +2396,6 @@ def search(request):
 def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 
 	logger.debug('exporting mapped fields from Job')
-	logger.debug(request.POST)
 
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -2412,7 +2411,7 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
-		task_type = 'job_export_mapped_fields',
+		task_type = 'export_mapped_fields',
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
 			'kibana_style':kibana_style,
@@ -2420,7 +2419,7 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 		})
 	)
 	ct.save()
-	bg_task = tasks.job_export_mapped_fields(
+	bg_task = tasks.export_mapped_fields(
 		ct.id,
 		verbose_name=ct.verbose_name,
 		creator=ct
@@ -2432,7 +2431,6 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 def job_export_documents(request, org_id, record_group_id, job_id):
 
 	logger.debug('exporting documents from Job')
-	logger.debug(request.POST)
 
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -2448,7 +2446,7 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Export Documents for Job: %s' % cjob.job.name,
-		task_type = 'job_export_documents',
+		task_type = 'export_documents',
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
 			'records_per_file':int(records_per_file),
@@ -2456,7 +2454,77 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 		})
 	)
 	ct.save()
-	bg_task = tasks.job_export_documents(
+	bg_task = tasks.export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def published_export_mapped_fields(request):
+
+	logger.debug('exporting mapped fields from Published')
+
+	# get instance of Published model
+	published = models.PublishedRecords()
+
+	# check for Kibana check
+	kibana_style = request.POST.get('kibana_style', False)
+	if kibana_style:
+		kibana_style = True
+
+	# get selected fields if present
+	mapped_field_include = request.POST.getlist('mapped_field_include',False)
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Mapped Fields for Published Records',
+		task_type = 'export_mapped_fields',
+		task_params_json = json.dumps({			
+			'published':True,
+			'kibana_style':kibana_style,
+			'mapped_field_include':mapped_field_include
+		})
+	)
+	ct.save()
+	bg_task = tasks.export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def published_export_documents(request):
+
+	logger.debug('exporting documents from Job')
+
+	# get instance of Published model
+	published = models.PublishedRecords()
+
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Documents for Published Records',
+		task_type = 'export_documents',
+		task_params_json = json.dumps({
+			'published':True,
+			'records_per_file':int(records_per_file),
+			'archive_type':archive_type
+		})
+	)
+	ct.save()
+	bg_task = tasks.export_documents(
 		ct.id,
 		verbose_name=ct.verbose_name,
 		creator=ct
@@ -2866,14 +2934,14 @@ class DTPublishedJson(BaseDatatableView):
 			# handle document metadata
 
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
 
 			if column == 'job__record_group':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record_group, kwargs={
+				return '<a href="%s">%s</a>' % (reverse(record_group, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id						
 					}), row.job.record_group.name)
@@ -2971,21 +3039,21 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 			# determine record link
 			target_record = row.record
-			record_link = (reverse(record, kwargs={
+			record_link = reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
 					'job_id':target_record.job.id,
 					'record_id':target_record.id
-				}), target_record.record_id)
+				})
 
 			if column == 'id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 			
 			if column == 'combine_id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.combine_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.combine_id)
 
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle associated job
 			if column == 'job':
@@ -3051,27 +3119,26 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
+			# determine record link
+			target_record = row.record
+			record_link = reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				})
+
 			# handle record id
 			if column == 'id':
 				# get target record from row
 				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle results_payload
 			elif column == 'results_payload':
@@ -3142,27 +3209,26 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
 		def render_column(self, row, column):
 
+			# determine record link
+			target_record = row.record
+			record_link = reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				})
+
 			# handle record id
 			if column == 'id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
 
 			# handle all else
 			else:
