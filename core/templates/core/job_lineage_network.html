@@ -204,4 +204,25 @@
 		</div>
 	</div>
 </div>
+<div class="row">
+	<div class="col-md-12">
+		<button id="toggle_button" type="btn" class="btn btn-outline-primary btn-sm" onclick="toggle_diagram_height(); return false;">Expand Diagram</button>
+	</div>
+</div>
+<script>	
+
+	function toggle_diagram_height(){
+
+		if ($("#job_family_diagram").height() == 300){
+			$("#job_family_diagram").height($(window).height());
+			$("#toggle_button").html('Collapse Diagram');
+		}
+
+		else {
+			$("#job_family_diagram").height(300);
+			$("#toggle_button").html('Expand Diagram');
+		}
+	}
+	
+</script>
 {% endblock %}

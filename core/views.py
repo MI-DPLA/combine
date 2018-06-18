@@ -4,7 +4,6 @@ from __future__ import unicode_literals
 # generic
 import datetime
 import hashlib
-import io
 import json
 import logging
 from lxml import etree, isoschematron
@@ -46,10 +45,6 @@ from core import tasks
 
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
-
-# sxsdiff 
-from sxsdiff import DiffCalculator
-from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -1519,14 +1514,14 @@ def job_update(request, org_id, record_group_id, job_id):
 		update_type = request.POST.get('update_type', None)
 		logger.debug('running job update: %s' % update_type)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
-
 		# handle re-index
 		if update_type == 'reindex':			
+
+			# get preferred metadata index mapper
+			index_mapper = request.POST.get('index_mapper')
+			include_attributes = request.POST.get('include_attributes', False)
+			if include_attributes and include_attributes == 'true':
+				include_attributes = True
 
 			# initiate Combine BG Task
 			ct = models.CombineBackgroundTask(
@@ -1540,6 +1535,54 @@ def job_update(request, org_id, record_group_id, job_id):
 			)
 			ct.save()
 			bg_task = tasks.job_reindex(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
+		# handle new validations
+		if update_type == 'validations':
+
+			# get requested validation scenarios
+			validation_scenarios = request.POST.getlist('validation_scenario', [])
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'New Validations for Job: %s' % cjob.job.name,
+				task_type = 'job_new_validations',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'validation_scenarios':validation_scenarios
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_new_validations(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
+
+			return redirect('bg_tasks')
+
+		# handle validation removal
+		if update_type == 'remove_validation':
+
+			# get validation scenario to remove
+			jv_id = request.POST.get('jv_id', False)
+
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'Remove Validation %s for Job: %s' % (jv_id, cjob.job.name),
+				task_type = 'job_remove_validation',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'jv_id':jv_id
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_remove_validation(
 				ct.id,
 				verbose_name=ct.verbose_name,
 				creator=ct
@@ -1775,7 +1818,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		dpla_api_json = None
 
 	# retrieve diffs, if any, from input record
-	input_record_diffs = record.get_input_record_diff()
+	# request only combined diff at this point	
+	record_diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
 
 	# return
 	return render(request, 'core/record.html', {
@@ -1785,7 +1829,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'job_details':job_details,
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
-		'input_record_diffs':input_record_diffs,
+		'record_diff_dict':record_diff_dict,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 
@@ -1862,39 +1906,65 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 		return JsonResponse(vs_result['parsed'], safe=False)
 
 
-def record_detailed_diff(request, org_id, record_group_id, job_id, record_id):
+def record_combined_diff_html(request, org_id, record_group_id, job_id, record_id):
 
 	'''
-	Return detailed diff of Record against Input Record
-		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
+	Return combined diff of Record against Input Record
 	'''
 
 	# get record
 	record = models.Record.objects.get(pk=int(record_id))
 
-	# get input record
-	irq = record.get_record_stages(input_record_only=True)
-	logger.debug(irq)
-	if len(irq) == 1:
-		logger.debug('side-by-side diff: single, input Record found: %s' % irq[0])
+	# get side_by_side diff as HTML
+	diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
 
-		# get input record
-		ir = irq[0]
+	if diff_dict:
 
-		# check if fingerprints the same
-		if record.fingerprint != ir.fingerprint:
+		# get combined output as html from output
+		html = diff_dict['combined_gen']
 
-			logger.debug('side-by-side diff: fingerprint mismatch, returning diffs')
+		# return document as HTML
+		return HttpResponse(html, content_type='text/html')
+	
+	else:
+		return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
 
-			# perform diff
-			sxsdiff_result = DiffCalculator().run(ir.document, record.document)
-			sio = io.StringIO()
-			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
-			sio.seek(0)
-			html = sio.read()
 
-			# return document as XML
-			return HttpResponse(html, content_type='text/html')
+def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, record_id):
+
+	'''
+	Return side_by_side diff of Record against Input Record
+		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
+		- if embed == true, strip some uncessary HTML and return
+	'''
+
+	# get record
+	record = models.Record.objects.get(pk=int(record_id))
+
+	# check for embed flag
+	embed = request.GET.get('embed', False)
+
+	# get side_by_side diff as HTML
+	diff_dict = record.get_input_record_diff(output='side_by_side_html')
+
+	if diff_dict:
+
+		# get side_by_side html from output
+		html = diff_dict['side_by_side_html']
+
+		# if embed flag set, alter CSS
+		# these are defaulted in sxsdiff library, currently 
+		# easier to pinpoint and remove these than fork library and alter
+		html = html.replace('<div class="container">', '<div>')
+		html = html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+		html = html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+
+		# return document as HTML
+		return HttpResponse(html, content_type='text/html')
+	
+	else:
+		return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
+
 
 
 ####################################################################
@@ -1995,7 +2065,10 @@ def test_transformation_scenario(request):
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
 
-		logger.debug('running test transformation and returning')		
+		logger.debug('running test transformation and returning')
+
+		# get response type
+		response_type = request.POST.get('response_type', False)
 
 		# get record
 		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))		
@@ -2016,9 +2089,36 @@ def test_transformation_scenario(request):
 			# delete temporary trans
 			trans.delete()
 
-			return HttpResponse(trans_results, content_type="text/xml")			
-			
+			# if raw transformation results
+			if response_type == 'transformed_doc':
+				return HttpResponse(trans_results, content_type="text/xml")
 
+			# get diff of original record as combined results
+			elif response_type == 'combined_html':
+
+				# get combined diff as HTML
+				diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen', combined_as_html=True, reverse_direction=True)
+				if diff_dict:
+					diff_html = diff_dict['combined_gen']
+
+				return HttpResponse(diff_html, content_type="text/xml")
+
+			# get diff of original record as side_by_side
+			elif response_type == 'side_by_side_html':
+
+				# get side_by_side diff as HTML
+				diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html', reverse_direction=True)
+				if diff_dict:
+					diff_html = diff_dict['side_by_side_html']
+
+					# strip some CSS
+					diff_html = diff_html.replace('<div class="container">', '<div>')
+					diff_html = diff_html.replace('padding-left:30px;', '/*padding-left:30px;*/')
+					diff_html = diff_html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+
+
+				return HttpResponse(diff_html, content_type="text/xml")
+			
 		except Exception as e:
 
 			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
@@ -2059,9 +2159,13 @@ def test_validation_scenario(request):
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
 
+		# check for pre-requested transformation scenario
+		vsid = request.GET.get('validation_scenario', None)
+
 		# return
 		return render(request, 'core/test_validation_scenario.html', {
 			'q':q,
+			'vsid':vsid,
 			'validation_scenarios':validation_scenarios,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2128,11 +2232,15 @@ def test_rits(request):
 	# If GET, serve validation test screen
 	if request.method == 'GET':
 
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
 		# return
 		return render(request, 'core/test_rits.html', {
+			'q':q,
 			'rits':rits,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2288,7 +2396,6 @@ def search(request):
 def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 
 	logger.debug('exporting mapped fields from Job')
-	logger.debug(request.POST)
 
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -2298,17 +2405,21 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	if kibana_style:
 		kibana_style = True
 
+	# get selected fields if present
+	mapped_field_include = request.POST.getlist('mapped_field_include',False)
+
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
-		task_type = 'job_export_mapped_fields',
+		task_type = 'export_mapped_fields',
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
-			'kibana_style':kibana_style
+			'kibana_style':kibana_style,
+			'mapped_field_include':mapped_field_include
 		})
 	)
 	ct.save()
-	bg_task = tasks.job_export_mapped_fields(
+	bg_task = tasks.export_mapped_fields(
 		ct.id,
 		verbose_name=ct.verbose_name,
 		creator=ct
@@ -2320,7 +2431,6 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 def job_export_documents(request, org_id, record_group_id, job_id):
 
 	logger.debug('exporting documents from Job')
-	logger.debug(request.POST)
 
 	# retrieve job
 	cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -2336,7 +2446,7 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Export Documents for Job: %s' % cjob.job.name,
-		task_type = 'job_export_documents',
+		task_type = 'export_documents',
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
 			'records_per_file':int(records_per_file),
@@ -2344,7 +2454,77 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 		})
 	)
 	ct.save()
-	bg_task = tasks.job_export_documents(
+	bg_task = tasks.export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def published_export_mapped_fields(request):
+
+	logger.debug('exporting mapped fields from Published')
+
+	# get instance of Published model
+	published = models.PublishedRecords()
+
+	# check for Kibana check
+	kibana_style = request.POST.get('kibana_style', False)
+	if kibana_style:
+		kibana_style = True
+
+	# get selected fields if present
+	mapped_field_include = request.POST.getlist('mapped_field_include',False)
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Mapped Fields for Published Records',
+		task_type = 'export_mapped_fields',
+		task_params_json = json.dumps({			
+			'published':True,
+			'kibana_style':kibana_style,
+			'mapped_field_include':mapped_field_include
+		})
+	)
+	ct.save()
+	bg_task = tasks.export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def published_export_documents(request):
+
+	logger.debug('exporting documents from Job')
+
+	# get instance of Published model
+	published = models.PublishedRecords()
+
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = 'Export Documents for Published Records',
+		task_type = 'export_documents',
+		task_params_json = json.dumps({
+			'published':True,
+			'records_per_file':int(records_per_file),
+			'archive_type':archive_type
+		})
+	)
+	ct.save()
+	bg_task = tasks.export_documents(
 		ct.id,
 		verbose_name=ct.verbose_name,
 		creator=ct
@@ -2631,29 +2811,24 @@ class DTRecordsJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle db_id
-			if column == 'id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+			# construct record link
+			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
-					}), row.id)
+					})
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
 
 			# handle combine_id
 			if column == 'combine_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.combine_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.combine_id)
 
 			# handle record_id
 			if column == 'record_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.record_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
 			# handle document
 			elif column == 'document':
@@ -2670,10 +2845,10 @@ class DTRecordsJson(BaseDatatableView):
 
 			# handle associated job
 			elif column == 'job':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+				return '<a href="%s"><code>%s</code></a>' % (reverse(job_details, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id
 					}), row.job.name)
 
 			# handle unique
@@ -2759,14 +2934,14 @@ class DTPublishedJson(BaseDatatableView):
 			# handle document metadata
 
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
+				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
 					}), row.record_id)
 
 			if column == 'job__record_group':
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record_group, kwargs={
+				return '<a href="%s">%s</a>' % (reverse(record_group, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id						
 					}), row.job.record_group.name)
@@ -2864,21 +3039,21 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 			# determine record link
 			target_record = row.record
-			record_link = (reverse(record, kwargs={
+			record_link = reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
 					'job_id':target_record.job.id,
 					'record_id':target_record.id
-				}), target_record.record_id)
+				})
 
 			if column == 'id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 			
 			if column == 'combine_id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.combine_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.combine_id)
 
 			if column == 'record_id':
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle associated job
 			if column == 'job':
@@ -2944,27 +3119,26 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 		def render_column(self, row, column):
 
+			# determine record link
+			target_record = row.record
+			record_link = reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				})
+
 			# handle record id
 			if column == 'id':
 				# get target record from row
 				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row.record
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle results_payload
 			elif column == 'results_payload':
@@ -3035,27 +3209,26 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
 		def render_column(self, row, column):
 
+			# determine record link
+			target_record = row.record
+			record_link = reverse(record, kwargs={
+					'org_id':target_record.job.record_group.organization.id,
+					'record_group_id':target_record.job.record_group.id,
+					'job_id':target_record.job.id,
+					'record_id':target_record.id
+				})
+
 			# handle record id
 			if column == 'id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (reverse(record, kwargs={
-						'org_id':target_record.job.record_group.organization.id,
-						'record_group_id':target_record.job.record_group.id,
-						'job_id':target_record.job.id,
-						'record_id':target_record.id
-					}), target_record.record_id)
+				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
 
 			# handle all else
 			else:
@@ -3145,21 +3318,20 @@ class JobRecordDiffs(BaseDatatableView):
 
 		def render_column(self, row, column):
 
-			# handle db_id
-			if column == 'id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
+			# record link
+			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id
-					}), row.id)
+					})
+
+			# handle db_id
+			if column == 'id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
 
 			# handle record_id
 			if column == 'record_id':
-				return '<a href="%s" target="_blank"><code>%s</code></a>' % (reverse(record, kwargs={
-						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
-					}), row.record_id)
+				return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
 			else:
 				return super(JobRecordDiffs, self).render_column(row, column)

@@ -335,7 +335,7 @@ Jobs may be exported in two ways:
 
 **Record Mapped Fields**
 
-Exporting a Job as Mapped Fields creates a single.csv or Excel file containing all mapped fields stored in ElasticSearch, across all Records, for this Job.
+Exporting a Job as Mapped Fields creates a single.csv or Excel file mapped fields stored in ElasticSearch, across all Records, for this Job.
 
 .. figure:: img/job_export_mapped_fields.png
    :alt: Exporting Mapped Fields for a Job
@@ -343,7 +343,17 @@ Exporting a Job as Mapped Fields creates a single.csv or Excel file containing a
 
    Exporting Mapped Fields for a Job
 
-Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Currently, this exported format cannot be *re-imported* into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
+By default, **all** mapped fields are included in the export, but a smaller, selected subset is possible by clicking the "Selected Mapped Fields for Export" button:
+
+.. figure:: img/job_export_mapped_fields_select_subset.png
+   :alt: Exporting Mapped Fields, selecting subset of fields to include
+   :target: _images/job_export_mapped_fields_select_subset.png
+
+   Exporting Mapped Fields, selecting subset of fields to include
+
+This is similar to selecting fields to include when generating a report of Validation failures.
+
+Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Please note, this exported format cannot be *re-imported* or "round-tripped" into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
 
 If a Record contains a mapped field such as ``mods_subject_topic`` that is repeating, the default export format is to create multiple columns in the export, appending an integer for each instance of that field, e.g.,
 
@@ -372,15 +382,24 @@ Exporting a Job as Documents takes the stored XML documents for each Record, dis
 
    Exporting Mapped Fields for a Job
 
-For example, 1000 records where a user selects 250 per file, would result in the following structure:
+For example, 1000 records where a user selects 250 per file, for Job ``#42``, would result in the following structure:
 
 .. code-block:: text
 
     - archive.zip|tar
-        - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
-        - part00001.xml
-        - part00002.xml
-        - part00003.xml
+        - j42/ # folder for Job
+            - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
+            - part00001.xml
+            - part00002.xml
+            - part00003.xml
+
+The following screenshot shows the actual result of a Job with 1,070 Records, exporting 50 per file, with a zip file and the resulting, unzipped structure:
+
+.. figure:: img/job_export_structure.png
+   :alt: Example structure of an exported Job as XML Documents
+   :target: _images/job_export_structure.png
+
+   Example structure of an exported Job as XML Documents
 
 Why export like this?  Very large XML files can be problematic to work with, particularly for XML parsers that attempt to load the entire document into memory (which is most of them).  Combine is naturally pre-disposed to think in terms of the parts and partitions with the Spark back-end, which makes for convenient writing of all Records from Job in smaller chunks.  The size of the "chunk" can be set by specifying the ``XML Records per file`` input in the export form.  Finally, .zip or .tar files for the resulting export are both supported.
 

@@ -9,13 +9,21 @@
 		</div>
 	</div>
 
+	{% if q and tsid %}
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			Record and Transformation Scenario have been automatically loaded, click the "<strong>Test Transformation</strong>" button below to run Transformation results!
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+	{% endif %}
+
 	<div class="row">
 		<div class="col-md-12">
 			<!-- All Records DT table -->
 			{% include 'core/records_dt_table.html' %}
 		</div>
 	</div>
-
 
 	<!-- input paylaod -->
 	<div class="row">
@@ -69,9 +77,40 @@
 	<div class="row">		
 		<div class="col-md-12">
 			<h4>Transformation Results</h4>
-			<div class="form-group">
-				<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Results will show here...</code></pre>
+			<ul class="nav nav-tabs">				
+				<li class="nav-item">
+					<a class="nav-link active" data-toggle="tab" href="#raw_transform">Transformed XML</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#combined_diff">Combined Diff</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#side_by_side_diff">Side-by-Side Comparison</a>
+				</li>
+			</ul>
+		</div>
+	</div>
+	<div class="row">		
+		<div class="col-md-12">
+
+			<div class="tab-content">
+
+				<div id="raw_transform" class="tab-pane full_width_tab active">
+					<div>
+						<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Transformed document will show here...</code></pre>
+					</div>
+				</div>
+
+				<div id="combined_diff" class="tab-pane full_width_tab">
+					<div id="combined_diff_results"></div>
+				</div>
+
+				<div id="side_by_side_diff" class="tab-pane full_width_tab">
+					<div id="side_by_side_diff_results"></div>
+				</div>
+
 			</div>
+
 		</div>
 	</div>
 
@@ -156,7 +195,8 @@
 						'db_id':db_id,
 						'trans_payload':trans_payload,
 						'trans_type':trans_type,
-						'trans_name':'temp_trans',						
+						'trans_name':'temp_trans',
+						'response_type':'transformed_doc',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
@@ -169,6 +209,44 @@
 						$("#trans_results").each(function(i, block) {
 							hljs.highlightBlock(block);
 						});
+					}			
+				});
+
+				// issue ajax request and get combined diff
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_transformation_scenario' %}",
+					data: {
+						'db_id':db_id,
+						'trans_payload':trans_payload,
+						'trans_type':trans_type,
+						'trans_name':'temp_trans',
+						'response_type':'combined_html',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'text',
+					success: function(data){
+						// add raw data to div
+						$("#combined_diff_results").html(data);
+					}			
+				});
+
+				// issue ajax request and get side_by_side diff
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_transformation_scenario' %}",
+					data: {
+						'db_id':db_id,
+						'trans_payload':trans_payload,
+						'trans_type':trans_type,
+						'trans_name':'temp_trans',
+						'response_type':'side_by_side_html',
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'text',
+					success: function(data){
+						// add raw data to div
+						$("#side_by_side_diff_results").html(data);
 					}			
 				});
 

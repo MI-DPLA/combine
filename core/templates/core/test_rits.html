@@ -243,6 +243,18 @@
 
 			})
 		});
+
+		// run post records DT table draw specific to transformation testing
+		function run_view_specific_dt_draw(dt){
+
+			// if search term provided AND only one result, select
+			{% if q %}
+				if (dt.api.length == 1){
+					$("tr").click();
+				}
+			{% endif %}
+			
+		}
 		
 	</script>
 

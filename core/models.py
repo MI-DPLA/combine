@@ -11,6 +11,7 @@ import gc
 import gzip
 import hashlib
 import inspect
+import io
 import json
 from json import JSONDecodeError
 import logging
@@ -69,6 +70,10 @@ import elasticsearch as es
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
+
+# sxsdiff 
+from sxsdiff import DiffCalculator
+from sxsdiff.generators.github import GitHubStyledGenerator
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -421,8 +426,15 @@ class Job(models.Model):
 				- updates status, record_count, elapsed (soon)
 		'''
 
+		# if not deleted
 		if not self.deleted:
-			if self.status in ['initializing','waiting','pending','starting','running','available'] and self.url != None:
+
+			# if job in various status, and not finished, ping livy
+			if self.status in ['initializing','waiting','pending','starting','running','available','gone']\
+			and self.url != None\
+			and not self.finished:
+
+				logger.debug('pinging Livy for Job status: %s' % self)
 				self.refresh_from_livy(save=False)
 
 			# udpate record count if not already calculated
@@ -528,9 +540,10 @@ class Job(models.Model):
 		# if status_code 404, set as gone
 		if livy_response.status_code == 400:
 			
-			logger.debug(livy_response.json())
-			logger.debug('Livy session likely not active, setting status to gone')
-			self.status = 'gone'
+			# logger.debug(livy_response.json())
+			# logger.debug('Livy session likely not active, setting status to available')
+			self.status = 'available'
+			self.finished = True
 			
 			# update
 			if save:
@@ -539,8 +552,9 @@ class Job(models.Model):
 		# if status_code 404, set as gone
 		if livy_response.status_code == 404:
 			
-			logger.debug('job/statement not found, setting status to gone')
-			self.status = 'gone'
+			# logger.debug('job/statement not found, setting status to available')
+			self.status = 'available'
+			self.finished = True
 			
 			# update
 			if save:
@@ -554,7 +568,7 @@ class Job(models.Model):
 			
 			# update Livy information
 			self.status = response['state']
-			logger.debug('job/statement found, updating status to %s' % self.status)
+			# logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
@@ -1562,14 +1576,12 @@ class Record(models.Model):
 		return DPLABulkDataMatch.objects.filter(record=self)
 
 
-	def get_input_record_diff(self):
+	def get_input_record_diff(self, output='all', combined_as_html=False):
 
 		'''
 		Method to return a string diff of this record versus the input record
 			- this is primarily helpful for Records from Transform Jobs
 			- use self.get_record_stages(input_record_only=True)[0]
-
-		Args:
 
 		Returns:
 			(str|list): results of Record documents diff, line-by-line
@@ -1587,15 +1599,11 @@ class Record(models.Model):
 			if self.fingerprint != ir.fingerprint:
 
 				logger.debug('fingerprint mismatch, returning diffs')
-
-				# perform diff
-				line_diffs = difflib.unified_diff(
-					ir.document.splitlines(),
-					self.document.splitlines()
-				)
-
-				# return
-				return line_diffs
+				return self.get_record_diff(
+						input_record=ir,
+						output=output,
+						combined_as_html=combined_as_html
+					)
 
 			# else, return None
 			else:
@@ -1604,6 +1612,99 @@ class Record(models.Model):
 
 		else:
 			return False
+
+
+	def get_record_diff(self,
+			input_record=None,
+			xml_string=None,
+			output='all',
+			combined_as_html=False,
+			reverse_direction=False
+		):
+
+		'''
+		Method to return diff of document XML strings
+
+		Args;
+			input_record (core.models.Record): use another Record instance to compare diff
+			xml_string (str): provide XML string to provide diff on
+
+		Returns:
+			(dict): {
+				'combined_gen' : generator of diflibb
+				'side_by_side_html' : html output of sxsdiff lib
+			}
+				 
+		'''
+
+		if input_record:
+			input_xml_string = input_record.document
+
+		elif xml_string:
+			input_xml_string = xml_string
+
+		else:
+			logger.debug('input record or XML string required, returning false')
+			return False
+
+		# prepare input / result
+		docs = [input_xml_string, self.document]
+		if reverse_direction:
+			docs.reverse()
+
+		# include combine generator in output
+		if output in ['all','combined_gen']:
+			
+			# get generator of differences
+			combined_gen = difflib.unified_diff(
+				docs[0].splitlines(),
+				docs[1].splitlines()
+			)
+
+			# return as HTML
+			if combined_as_html:				
+				combined_gen = self._return_combined_diff_gen_as_html(combined_gen)
+
+		else:
+			combined_gen = None
+
+		# include side_by_side html in output
+		if output in ['all','side_by_side_html']:		
+
+			sxsdiff_result = DiffCalculator().run(docs[0], docs[1])
+			sio = io.StringIO()
+			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+			sio.seek(0)
+			side_by_side_html = sio.read()
+
+		else:
+			side_by_side_html = None
+
+		return {
+			'combined_gen':combined_gen,
+			'side_by_side_html':side_by_side_html
+		}
+
+
+	def _return_combined_diff_gen_as_html(self, combined_gen):
+
+		'''
+		Small method to return combined diff generated as pre-compiled HTML
+		'''
+
+		html = '<pre><code>'
+		for line in combined_gen:
+			if line.startswith('-'):
+				html += '<span style="background-color:#ffeef0;">'
+			elif line.startswith('+'):
+				html += '<span style="background-color:#e6ffed;">'
+			else:
+				html += '<span>'			
+			html += line.replace('<','&lt;').replace('>','&gt;')
+			html += '</span><br>'
+		html += '</code></pre>'
+
+		return html
 
 
 	def calc_fingerprint(self, update_db=False):
@@ -2157,10 +2258,11 @@ class CombineBackgroundTask(models.Model):
 			('record_group_delete','Record Group Deletion'),
 			('org_delete','Organization Deletion'),
 			('validation_report','Validation Report Generation'),
-			('job_export_mapped_fields','Job Export Mapped Fields'),
-			('job_export_documents','Job Export Documents'),
+			('export_mapped_fields','Export Mapped Fields'),
+			('export_documents','Export Documents'),
 			('job_reindex','Job Reindex Records'),
-			('job_rerun_validations','Job Re-run Validations')
+			('job_new_validations','Job New Validations'),
+			('job_remove_validation','Job Remove Validation')
 		],
 		default=None,
 		null=True

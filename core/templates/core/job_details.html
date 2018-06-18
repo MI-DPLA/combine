@@ -1,6 +1,7 @@
 {% extends 'core/base.html' %}
 {% load static %}
 {% block content %}
+{% load core_template_filters %}
 
 	<div class="row">
 		<div class="col-md-12">	
@@ -126,20 +127,20 @@
 	<div class="row">
 		<div class="col-md-12">
 
-			<div class="alert alert-info alert-dismissible fade show" role="alert">
+			<!-- <div class="alert alert-info alert-dismissible fade show" role="alert">
 				The following tabs provide additional information about this Job
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
-			</div>
+			</div> -->
 
 			<!-- Navigation -->
 			<ul id="tabs" class="nav nav-tabs">								
 				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
+					<a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Field Analysis</a>
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Field Analysis</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
@@ -161,7 +162,7 @@
 			<!-- Tabbed Content -->
 			<div class="tab-content">			
 
-				<div id="records_tab" class="tab-pane container full_width_tab active">
+				<div id="records_tab" class="tab-pane full_width_tab active">
 					<div class="row">		
 						<div class="col-md-12">
 							<!-- Indexing Records DT Table -->
@@ -170,7 +171,7 @@
 					</div>
 				</div>
 
-				<div id="io_tab" class="tab-pane container full_width_tab">
+				<div id="io_tab" class="tab-pane full_width_tab">
 					<div class="row">
 		
 						<!-- Job Inputs -->
@@ -218,55 +219,72 @@
 					</div>
 				</div>
 
-				<div id="validation_tab" class="tab-pane container full_width_tab">
-					{% if cjob.job.jobvalidation_set.count > 0 %}
-					<div class="row">		
+				<div id="validation_tab" class="tab-pane full_width_tab">
+					<div class="row">
 						<div class="col-md-12">
-							<h3>Validation Scenarios</h3>
-							<p>The following Validation Scenarios were run for this job:</p>
-							<table class="table table-bordered table-hover">
-								<thead>
-									<tr>
-										<th>Validation Name</th>
-										<th>Validation Type</th>
-										<th>Record Validation Failure Count</th>
-										<th>Actions</th>
-									</tr>
-								</thead>
-								<tbody>
-									{% for jv in cjob.job.jobvalidation_set.all %}			
+							<h3>Validation Scenarios</h3>							
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+
+							{% if cjob.job.jobvalidation_set.count > 0 %}
+								<p>The following Validation Scenarios were run for this job:</p>
+								<table class="table table-bordered table-hover">
+									<thead>
 										<tr>
-											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
-											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
-											<td>{% if jv.validation_failure_count > 0 %}<a target="_blank" href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">See Failures{% endif %}</a></td>
+											<th>Validation Name</th>
+											<th>Validation Type</th>
+											<th>Record Validation Failure Count</th>
+											<th>Actions</th>
 										</tr>
-									{% endfor %}
-								</tbody>
-							</table>
-							{% if cjob.job.validation_results.verdict == False %}							
-								<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
+									</thead>
+									<tbody>
+										{% for jv in cjob.job.jobvalidation_set.all %}			
+											<tr>
+												<td>{{ jv.validation_scenario.name }}</td>
+												<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
+												<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+												<td>
+													<ul class="list-inline">
+														{% if jv.validation_failure_count > 0 %}
+															<li style="display:inline;"><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures</button></a></li>
+														{% endif %}
+														<li style="display:inline;"><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job</button></form></li>
+													</ul>
+												</td>
+											</tr>
+										{% endfor %}
+									</tbody>
+								</table>
+								{% if cjob.job.validation_results.verdict == False %}							
+									<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
+									{% endif %}
+
+							{% else %}
+								<p>No Validations have been run for this Job.</p>							
 							{% endif %}
 						</div>
+
 					</div>
-					{% else %}
-					<div class="row">		
-						<div class="col-md-12">
-							<p>No Validations were run for this Job.</p>
+
+					<div class="row">
+						<div class="col-md-12">							
+							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job</button></a></p>
 						</div>
 					</div>
 
-					{% endif %}
 				</div>
 
-				<div id="field_breakdown_tab" class="tab-pane container full_width_tab">
+				<div id="field_breakdown_tab" class="tab-pane full_width_tab">
 					<div class="row">
-						<div class="col-md-6">
+						<div class="col-md-8">
 							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p>
 						</div>
 					</div>
 					<div class="row">
-						<div class="col-md-6">
+						<div class="col-md-8">
 							<table class="table table-bordered table-hover">
 								<thead>
 									<tr>
@@ -296,7 +314,7 @@
 					{% include 'core/indexed_fields_dt_table.html' %}
 				</div>
 
-				<div id="dpla_bulk_data_tab" class="tab-pane container full_width_tab">
+				<div id="dpla_bulk_data_tab" class="tab-pane full_width_tab">
 					
 					{% if dpla_bulk_data_matches %}
 
@@ -406,7 +424,7 @@
 					{% endif %}
 				</div>
 
-				<div id="job_type_specific_tab" class="tab-pane container full_width_tab">
+				<div id="job_type_specific_tab" class="tab-pane full_width_tab">
 					<!-- Details specific to Job Type -->
 					<div class="row">
 						<div class="col-md-12">
@@ -475,11 +493,11 @@
 					</div>
 				</div>
 
-				<div id="export_tab" class="tab-pane container full_width_tab">
+				<div id="export_tab" class="tab-pane full_width_tab">
 					<div class="row">		
 						<div class="col-md-12">
 
-							<p>Jobs may be exported in two ways (<a href="#">see documentation for more information</a>):
+							<p>Jobs may be exported in two ways (<a href="https://combine.readthedocs.io/en/master/workflow.html#export">see documentation for more information</a>):
 								<ul>
 									<li><strong>Documents (XML)</strong>: The actual XML documents for each Record, as harvested and/or transformed.</li>
 									<li><strong>Mapped Fields (tabular)</strong>: Records are also <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">indexed into ElasticSearch</a>, resulting in a flat, tabular format of the data from the Records.</li>
@@ -487,7 +505,7 @@
 							</p>
 
 							<div class="alert alert-info alert-dismissible fade show" role="alert">
-								Select a tab below to export Records as Documents, or their Mapped Fields
+								Select a tab below to export Records as <strong>full XML Documents</strong>, or <strong>tabular Mapped Fields</strong>
 								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 								<span aria-hidden="true">&times;</span>
 								</button>
@@ -495,35 +513,28 @@
 							
 							<ul id="export_tabs" class="nav nav-tabs">								
 								<li class="nav-item">
-									<a class="nav-link active" data-toggle="tab" href="#export_mapped_fields">Export Records as Mapped Fields</a>
+									<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
 								</li>
 								<li class="nav-item">
-									<a class="nav-link" data-toggle="tab" href="#export_documents">Export Records as Documents</a>
+									<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
 								</li>								
 							</ul>
 
 							<div class="tab-content">			
 
-								<div id="export_mapped_fields" class="tab-pane container full_width_tab active">
+								<div id="export_mapped_fields" class="tab-pane full_width_tab">
 									<div class="row">		
-										<div class="col-md-6">
+										<div class="col-md-12">
 
 											<!-- form for Job mapped fields export -->
-											<form method="POST" action="{% url 'job_export_mapped_fields' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+											<form method="POST" id="export_mapped_form" action="{% url 'job_export_mapped_fields' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
 												{% csrf_token %}
 
-												<!-- consider not allowing custom report name -->
-												<!-- <div class="form-group">
-													<label for="export_name">Export Job Name</label>
-													<input type="text" class="form-control" name="export_name" id="export_name" placeholder="Post-Transform Analysis">
-													<small id="export_name_help" class="form-text text-muted">Optional</small>
-												</div> -->
-
 												<div class="form-group">
 													<div class="form-check">
-														<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style">
-														<label class="form-check-label" for="validation_scenario_{{ vs.id }}">
+														<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/>
+														<label class="form-check-label" for="kibana_style">
 															Check this box to export repeating fields "Kibana style" <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 														</label>
 													</div>
@@ -536,7 +547,109 @@
 													</div>
 												</div>
 
-												<button type="submit" class="btn btn-success btn-sm">Export Mapped Fields</button>
+												<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
+												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
+												<div id="mapped_fields" style="display:none;">													
+													<p><button type="button" class="btn btn-primary btn-sm" onclick="return false;" id="select_all_fields">Toggle all fields</button></p>
+													<table id="mapped_field_export_select" class="table table-bordered table-hover">
+														<thead>
+															<tr>
+																<th>Field Name</th>
+																{% if cjob %}
+																	<th>DPLA Mapped Field</th>						
+																{% endif %}
+																<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
+																<th>Documents without</th>
+																<th>Count of Total Values for Field</th>
+																<th>Count of Distinct Values for Field</th>
+																<th>Percentage of Field Values that are Unique</th>
+																<th>Instance of Field in Total Indexed Records</th>
+																<th>Include in Report</th>
+															</tr>
+														</thead>
+														<tbody>
+															{% for field in field_counts.fields %}
+																<tr>
+																	<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=cjob.esi.es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+
+																	{% if cjob %}
+
+																		<!-- show mapped DPLA field if exists -->
+																		{% if cjob.job.dpla_mapping %}
+																			{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
+																				<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
+																			{% else %}
+																				<td></td>
+																			{% endif %}
+																		{% else %}
+																			<td></td>
+																		{% endif %}
+
+																	{% endif %}
+
+																	<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+																	<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
+																	<td>{{ field.val_instances }}</td>
+																	<td>{{ field.distinct }}</td>
+																	<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
+																	<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+																	<td><input type="checkbox" name="mapped_field_include_dynamic" value="{{ field.field_name }}"/></td>
+																</tr>
+															{% endfor %}
+														</tbody>
+													</table>
+													<div id="hidden_field_inputs"></div>
+												</div>
+
+												<button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped Fields</button>
+
+												<script>
+
+													$(document).ready(function() {
+
+														// init datatables
+													    mapped_field_export_select_table = $('#mapped_field_export_select').DataTable({
+													    	"pageLength": 10,
+													    	"lengthMenu": [ 10, 25, 100, 500 ]
+													    });
+
+													    // listener for checkboxes
+													    $("#select_all_fields").click(function(){			    	
+														    cells = mapped_field_export_select_table.cells().nodes();						    
+														    $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
+													    });
+
+														// submit form via javascript
+													    /*
+													    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
+													    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
+													    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
+													    
+													    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
+													    DataTable.
+													    */
+													    $("#form_submit_button").click(function(){
+
+													    	// remove any pre-existing temp, hidden inputs
+													    	$("#hidden_field_inputs input").each(function(){
+													    		$(this).remove();
+													    	});
+
+													    	// write all field checkboxes as temporary, hidden inputs
+													    	cells = mapped_field_export_select_table.cells().nodes();
+													    	checkboxes = $(cells).find(':checked');
+													    	checkboxes.each(function(){
+													    		console.log(this);
+													    		$("#hidden_field_inputs").append("<input class='hidden_input' type='hidden' name='mapped_field_include' value='"+$(this).attr('value')+"'/>")
+													    	});
+
+													    	// submit form
+													    	$("#export_mapped_form").submit();
+
+													    });
+												    });
+
+												</script>
 
 											</form>
 
@@ -544,7 +657,7 @@
 									</div>
 								</div>
 
-								<div id="export_documents" class="tab-pane container full_width_tab">
+								<div id="export_documents" class="tab-pane full_width_tab active">
 									<div class="row">		
 										<div class="col-md-6">
 											<!-- form for Job mapped fields export -->
@@ -583,15 +696,6 @@
 
 		</div>
 	</div>
-
-	<script>
-
-		function update_table_widths() {			
-			$(".dt_table").css('width', '100%').dataTable().fnAdjustColumnSizing();
-		}
-
-	</script>
-
 
 {% endblock %}
 

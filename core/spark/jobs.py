@@ -1322,6 +1322,49 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 
 
+class RunNewValidationsSpark(CombineSparkPatch):
+
+	'''
+	Class to handle Job re-indexing
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job to reindex
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+
+		# get records from job as DF
+		bounds = self.get_job_db_bounds(self.job)
+		sqldf = self.spark.read.jdbc(
+				settings.COMBINE_DATABASE['jdbc_url'],
+				'core_record',
+				properties=settings.COMBINE_DATABASE,
+				column='id',
+				lowerBound=bounds['lowerBound'],
+				upperBound=bounds['upperBound'],
+				numPartitions=settings.JDBC_NUMPARTITIONS
+			)
+		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+
+		# run Validation Scenarios
+		if 'validation_scenarios' in self.kwargs.keys():
+			vs = ValidationScenarioSpark(
+				spark=self.spark,
+				job=self.job,
+				records_df=db_records,
+				validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+			)
+			vs.run_record_validation_scenarios()
+
+		# update `valid` column for Records based on results of ValidationScenarios
+		cursor = connection.cursor()
+		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+
 
 
 
