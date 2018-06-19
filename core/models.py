@@ -1116,7 +1116,11 @@ class Transformation(models.Model):
 	payload = models.TextField()
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+		choices=[
+			('xslt','XSLT Stylesheet'),
+			('python','Python Code Snippet'),
+			('openrefine','Open Refine Actions')
+		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	

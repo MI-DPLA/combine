@@ -104,6 +104,9 @@ class PythonUDFRecord(object):
 				pass
 			self.nsmap = _nsmap
 
+			# set inverted nsmap
+			self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+
 
 
 

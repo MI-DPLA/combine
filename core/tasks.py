@@ -173,7 +173,7 @@ def export_mapped_fields(ct_id):
 	if ct.task_params['mapped_field_include']:
 		logger.debug('specific fields selected, adding to es2csv command:')
 		logger.debug(ct.task_params['mapped_field_include'])
-		cmd.append("-f " + " ".join(ct.task_params['mapped_field_include']))
+		cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
 
 	# debug
 	logger.debug(cmd)

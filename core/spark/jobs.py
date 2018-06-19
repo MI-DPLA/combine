@@ -860,6 +860,10 @@ class TransformSpark(CombineSparkJob):
 		if transformation.transformation_type == 'python':
 			records_trans = self.transform_python(transformation, records)
 
+		# if OpenRefine type transformation
+		if transformation.transformation_type == 'openrefine':
+			records_trans = self.transform_openrefineactions(transformation, records)
+
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
 
@@ -1004,11 +1008,135 @@ class TransformSpark(CombineSparkJob):
 					transformed = row.transformed
 				)
 
-		# transform via rdd.map and return
+		# transform via rdd.mapPartitions and return
 		job_id = self.job.id			
 		python_code = transformation.payload
 		records_trans = records.rdd.mapPartitions(transform_python_pt_udf)
 		return records_trans
+
+
+	def transform_openrefineactions(self, transformation, records):
+
+		'''
+		Transform records per OpenRefine Actions JSON		
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs (dict): kwargs from parent job
+			job: job from parent job
+			transformation: Transformation Scenario from parent job
+			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
+
+		Return:
+			records_trans (rdd): transformed records as RDD
+		'''
+
+		# define udf function for python transformation	
+		def transform_openrefine_pt_udf(pt):
+
+			# parse OpenRefine actions JSON
+			or_actions = json.loads(or_actions_json)
+
+			# loop through rows
+			for row in pt:
+
+				try:
+
+					# prepare row as parsed document with PythonUDFRecord class
+					prtb = PythonUDFRecord(row)
+
+					# loop through actions
+					for event in or_actions:
+
+						if event['op'] == 'core/mass-edit':
+
+							# for each column, reconstitue columnName --> XPath	
+							field_name = event['columnName']
+							field_parts = field_name.split('_')[1:] # skip root element
+
+							# loop through pieces and build xpath
+							on_attrib = False
+							xpath = '/' # begin with single slash, will get appended to
+
+							for part in field_parts:
+
+								# if not attribute, assume node hop
+								if not part.startswith('@'):
+
+									# handle closing attrib if present
+									if on_attrib:
+										xpath += ']/'
+
+									# close previous element
+									else:
+										xpath += '/'
+								
+									# replace pipe with colon for prefix
+									part = part.replace('|',':')
+
+									# append to xpath string
+									xpath += '%s' % part
+
+								# if attribute, assume part of previous element and build
+								else:
+
+									# handle attribute
+									attrib, value = part.split('=')
+
+									# if not on_attrib, open xpath for attribute inclusion
+									if not on_attrib:
+										xpath += "[%s='%s'" % (attrib, value)
+
+									# else, currently in attribute write block, continue
+									else:
+										xpath += " and %s='%s'" % (attrib, value)
+
+									# set on_attrib flag for followup
+									on_attrib = True
+							
+							# find elements for potential edits
+							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+							# loop through elements
+							for ele in eles:				
+
+								# loop through edits
+								for edit in event['edits']:
+
+									# check if element text in from, change
+									if ele.text in edit['from']:
+										ele.text = edit['to']
+
+					# re-serialize as trans_result
+					trans_result = (etree.tostring(prtb.xml).decode('utf-8'), '', 1)
+
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e), 0)
+
+				# return Row
+				yield Row(
+					combine_id = row.combine_id,
+					record_id = row.record_id,
+					document = trans_result[0],
+					error = trans_result[1],
+					job_id = int(job_id),
+					oai_set = row.oai_set,
+					success = trans_result[2],
+					fingerprint = row.fingerprint,
+					transformed = row.transformed
+				)
+
+
+		# transform via rdd.mapPartitions and return
+		job_id = self.job.id			
+		or_actions_json = transformation.payload
+		records_trans = records.rdd.mapPartitions(transform_openrefine_pt_udf)
+		return records_trans
+
+
+
+
 
 
 
