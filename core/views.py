@@ -2034,6 +2034,10 @@ def transformation_scenario_payload(request, trans_id):
 	if transformation.transformation_type == 'python':
 		return HttpResponse(transformation.payload, content_type='text/plain')
 
+	# return transformation as Python
+	if transformation.transformation_type == 'openrefine':
+		return HttpResponse(transformation.payload, content_type='text/plain')
+
 
 
 def test_transformation_scenario(request):

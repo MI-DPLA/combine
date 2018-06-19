@@ -1150,6 +1150,8 @@ class Transformation(models.Model):
 			result = self._transform_xslt(row)
 		if self.transformation_type == 'python':
 			result = self._transform_python(row)
+		if self.transformation_type == 'openrefine':
+			result = self._transform_openrefine(row)
 
 		# return result
 		return result
@@ -1203,6 +1205,86 @@ class Transformation(models.Model):
 				return trans_result[1]
 
 		except Exception as e:			
+			return str(e)
+
+
+	def _transform_openrefine(self, row):
+			
+		try:
+
+			# parse or_actions
+			or_actions = json.loads(self.payload)
+
+			# load record as prtb
+			prtb = PythonUDFRecord(row)
+
+			# loop through actions
+			for event in or_actions:
+
+				if event['op'] == 'core/mass-edit':
+
+					# for each column, reconstitue columnName --> XPath	
+					field_name = event['columnName']
+					field_parts = field_name.split('_')[1:] # skip root element
+
+					# loop through pieces and build xpath
+					on_attrib = False
+					xpath = '/' # begin with single slash, will get appended to
+
+					for part in field_parts:
+
+						# if not attribute, assume node hop
+						if not part.startswith('@'):
+
+							# handle closing attrib if present
+							if on_attrib:
+								xpath += ']/'
+
+							# close previous element
+							else:
+								xpath += '/'
+						
+							# replace pipe with colon for prefix
+							part = part.replace('|',':')
+
+							# append to xpath string
+							xpath += '%s' % part
+
+						# if attribute, assume part of previous element and build
+						else:
+
+							# handle attribute
+							attrib, value = part.split('=')
+
+							# if not on_attrib, open xpath for attribute inclusion
+							if not on_attrib:
+								xpath += "[%s='%s'" % (attrib, value)
+
+							# else, currently in attribute write block, continue
+							else:
+								xpath += " and %s='%s'" % (attrib, value)
+
+							# set on_attrib flag for followup
+							on_attrib = True
+					
+					# find elements for potential edits
+					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+					# loop through elements
+					for ele in eles:				
+
+						# loop through edits
+						for edit in event['edits']:
+
+							# check if element text in from, change
+							if ele.text in edit['from']:
+								ele.text = edit['to']
+
+			# re-serialize as trans_result
+			return etree.tostring(prtb.xml).decode('utf-8')
+
+		except Exception as e:
+			# set trans_result tuple
 			return str(e)
 
 
