@@ -135,6 +135,21 @@ Ansible-based Installation (remote server)
          "ping": "pong"
          }
 
+
+   - If the response indicates a failure, it might look something like below. This below type of failure indicates that it could successfully connect to the server, but that it didn't find Python 2.7 installed on the remote server. This is fine. The important part is that it could connect to the server. The ansible playbook will automatically install Python 2.7 when it begins, so you should be fine to proceed to the next step(s).
+
+      ::
+
+         192.168.44.10 | FAILED! => {
+         "changed": false,
+         "failed": true,
+         "module_stderr": "Warning: Permanently added '192.168.44.10' (ECDSA) to the list of known hosts.\r\n/bin/sh: 1: /usr/bin/python: not found\n",
+         "module_stdout": "",
+         "msg": "MODULE FAILURE",
+         "rc": 127
+         }
+
+
 -  Clone the following Github repository: `combine-playbook <https://github.com/WSULib/combine-playbook>`_
 
 -  Navigate to the repository in your favorite terminal/shell/command
