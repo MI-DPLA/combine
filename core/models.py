@@ -1288,11 +1288,8 @@ class Transformation(models.Model):
 							if ele.text in edit['from']:
 								ele.text = edit['to']
 
-
 				# handle jython				
-				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):
-
-					logger.debug('firing jython')
+				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):					
 
 					# fire up temp module
 					temp_pyts = ModuleType('temp_pyts')
