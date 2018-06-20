@@ -1255,6 +1255,12 @@ class Transformation(models.Model):
 					# set on_attrib flag for followup
 					on_attrib = True
 
+			# cleanup after loop
+			if on_attrib:
+
+				# close attrib brackets
+				xpath += ']'
+
 			# return 
 			return xpath
 			
@@ -6003,6 +6009,96 @@ class DPLARecord(object):
 
 		
 
+####################################################################
+# OpenRefine Actions Client 									   #
+####################################################################
+
+class OpenRefineActionsClient(object):
+
+	'''
+	This class / client is to handle the transformation of Record documents (XML)
+	using the history of actions JSON output from OpenRefine.
+	'''
+
+	def __init__(self, or_actions=None):
+
+		'''
+		Args:
+			or_actions_json (str|dict): raw json or dictionary
+		'''
+
+		# handle or_actions
+		if type(or_actions) == str:
+			logger.debug('parsing or_actions as JSON string')
+			self.or_actions_json = or_actions
+			self.or_actions = json.loads(or_actions)
+		elif type(or_actions) == dict:
+			logger.debug('parsing or_actions as dictionary')
+			self.or_actions_json = json.dumps(or_actions)
+			self.or_actions = or_actions
+		else:
+			logger.debug('not parsing or_actions, storing as-is')
+			self.or_actions = or_actions
+
+
+	@staticmethod
+	def get_xpath_from_col_name(col_name):
+
+		'''
+		Method to derive 
+		'''
+
+		# for each column, reconstitue columnName --> XPath				
+		col_parts = col_name.split('_')[1:] # skip root element
+
+		# loop through pieces and build xpath
+		on_attrib = False
+		xpath = '/' # begin with single slash, will get appended to
+
+		for part in col_parts:
+
+			# if not attribute, assume node hop
+			if not part.startswith('@'):
+
+				# handle closing attrib if present
+				if on_attrib:
+					xpath += ']/'
+
+				# close previous element
+				else:
+					xpath += '/'
+			
+				# replace pipe with colon for prefix
+				part = part.replace('|',':')
+
+				# append to xpath string
+				xpath += '%s' % part
+
+			# if attribute, assume part of previous element and build
+			else:
+
+				# handle attribute
+				attrib, value = part.split('=')
+
+				# if not on_attrib, open xpath for attribute inclusion
+				if not on_attrib:
+					xpath += "[%s='%s'" % (attrib, value)
+
+				# else, currently in attribute write block, continue
+				else:
+					xpath += " and %s='%s'" % (attrib, value)
+
+				# set on_attrib flag for followup
+				on_attrib = True
+
+		# cleanup after loop
+		if on_attrib:
+
+			# close attrib brackets
+			xpath += ']'
+
+		# return 
+		return xpath
 
 
 

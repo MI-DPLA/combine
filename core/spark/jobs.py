@@ -1077,6 +1077,12 @@ class TransformSpark(CombineSparkJob):
 					# set on_attrib flag for followup
 					on_attrib = True
 
+			# cleanup after loop
+			if on_attrib:
+
+				# close attrib brackets
+				xpath += ']'
+
 			# return 
 			return xpath
 
