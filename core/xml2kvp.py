@@ -103,7 +103,11 @@ class XML2kvp(object):
 
 			hop_len = len(hops)
 			for d in in_v:
+
+				# recurse
 				self.xml_dict_parser(None, d, hops=hops)
+				
+				# drop hops back one
 				hops = hops[:hop_len]
 
 		elif type(in_v) in [str,int]:
@@ -135,6 +139,10 @@ class XML2kvp(object):
 			k = self.node_delim.join(hops[1:])
 		else:	
 			k = self.node_delim.join(hops)
+
+		# handle copy_to mixins
+		if self.copy_to and k in self.copy_to.keys():
+			k = self.copy_to[k]
 
 		# new key, new value
 		if k not in self.kvp_dict.keys():
@@ -171,11 +179,9 @@ class XML2kvp(object):
 		xml_input,
 		xml_attribs=True,
 		node_delim='_',
-		ns_prefix_delim='|',
-		mixins = {
-			'copy_to':None,
-			'literals':None
-		},
+		ns_prefix_delim='|',		
+		copy_to = None,
+		literals = None,
 		skip_root=False,
 		skip_repeating_values=True,
 		error_on_delims_collision=False,
@@ -188,6 +194,8 @@ class XML2kvp(object):
 				xml_attribs=xml_attribs,
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,
+				copy_to=copy_to,
+				literals=literals,
 				skip_root=skip_root,
 				skip_repeating_values=skip_repeating_values,
 				error_on_delims_collision=error_on_delims_collision)
@@ -202,8 +210,8 @@ class XML2kvp(object):
 		handler.xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
-		if mixins['literals']:
-			for k,v in mixins['literals'].items():
+		if handler.literals:
+			for k,v in handler.literals.items():
 				handler.kvp_dict[k] = v
 
 		# return
@@ -339,23 +347,6 @@ class XML2kvp(object):
 			return handler.k_xpath_dict
 
 
-
-	@staticmethod
-	def run_tests():
-
-		# return handler of xml_to_kvp
-		logger.debug('running tests with test XML...')
-		logger.debug(XML2kvp.test_xml)
-
-		# parse to kvp
-		logger.debug('converting xml to kvp, default options...')
-		h = XML2kvp.xml_to_kvp(XML2kvp.test_xml, return_handler=True)
-		logger.debug(pformat(h.kvp_dict))
-
-		# parse to kvp
-		logger.debug('converting xml to kvp, default options...')
-		h = XML2kvp.xml_to_kvp(XML2kvp.test_xml, return_handler=True)
-		logger.debug(pformat(h.kvp_dict))
 
 		
 
