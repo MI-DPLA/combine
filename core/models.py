@@ -56,6 +56,9 @@ from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
 from django.views import View
 
+# import xml2kvp
+from core.xml2kvp import XML2kvp
+
 # import background tasks
 from core import tasks
 from background_task.models_completed import CompletedTask
@@ -6041,64 +6044,6 @@ class OpenRefineActionsClient(object):
 			self.or_actions = or_actions
 
 
-	@staticmethod
-	def get_xpath_from_col_name(col_name):
-
-		'''
-		Method to derive 
-		'''
-
-		# for each column, reconstitue columnName --> XPath				
-		col_parts = col_name.split('_')[1:] # skip root element
-
-		# loop through pieces and build xpath
-		on_attrib = False
-		xpath = '/' # begin with single slash, will get appended to
-
-		for part in col_parts:
-
-			# if not attribute, assume node hop
-			if not part.startswith('@'):
-
-				# handle closing attrib if present
-				if on_attrib:
-					xpath += ']/'
-
-				# close previous element
-				else:
-					xpath += '/'
-			
-				# replace pipe with colon for prefix
-				part = part.replace('|',':')
-
-				# append to xpath string
-				xpath += '%s' % part
-
-			# if attribute, assume part of previous element and build
-			else:
-
-				# handle attribute
-				attrib, value = part.split('=')
-
-				# if not on_attrib, open xpath for attribute inclusion
-				if not on_attrib:
-					xpath += "[%s='%s'" % (attrib, value)
-
-				# else, currently in attribute write block, continue
-				else:
-					xpath += " and %s='%s'" % (attrib, value)
-
-				# set on_attrib flag for followup
-				on_attrib = True
-
-		# cleanup after loop
-		if on_attrib:
-
-			# close attrib brackets
-			xpath += ']'
-
-		# return 
-		return xpath
 
 
 
