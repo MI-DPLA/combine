@@ -64,6 +64,7 @@ class XML2kvp(object):
 		self.node_delim = '_'
 		self.ns_prefix_delim = '|'
 		self.error_on_delims_collision = False
+		self.skip_root = False
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
@@ -130,7 +131,10 @@ class XML2kvp(object):
 		'''
 
 		# gen key
-		k = self.node_delim.join(hops)
+		if self.skip_root:
+			k = self.node_delim.join(hops[1:])
+		else:	
+			k = self.node_delim.join(hops)
 
 		# new key, new value
 		if k not in self.kvp_dict.keys():
@@ -172,6 +176,7 @@ class XML2kvp(object):
 			'copy_to':None,
 			'literals':None
 		},
+		skip_root=False,
 		skip_repeating_values=True,
 		error_on_delims_collision=False,
 		handler=None,
@@ -183,6 +188,7 @@ class XML2kvp(object):
 				xml_attribs=xml_attribs,
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,
+				skip_root=skip_root,
 				skip_repeating_values=skip_repeating_values,
 				error_on_delims_collision=error_on_delims_collision)
 
@@ -229,17 +235,24 @@ class XML2kvp(object):
 		if not handler:
 			handler = XML2kvp(			
 				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim)
+				ns_prefix_delim=ns_prefix_delim,
+				skip_root=skip_root)
 
 		# for each column, reconstitue columnName --> XPath				
 		k_parts = k.split(handler.node_delim)
-		if skip_root:
+		if handler.skip_root:
 			k_parts = k_parts[1:]
 
-		# loop through pieces and build xpath
+		# set initial on_attrib flag
 		on_attrib = False
-		xpath = '/' # begin with single slash, will get appended to
 
+		# init path string
+		if not handler.skip_root:
+			xpath = ''
+		else:
+			xpath = '/' # begin with single slash, will get appended to
+
+		# loop through pieces and build xpath
 		for part in k_parts:
 
 			# if not attribute, assume node hop
@@ -298,6 +311,7 @@ class XML2kvp(object):
 		kvp,
 		node_delim='_',
 		ns_prefix_delim='|',
+		skip_root=False,
 		handler=None,
 		return_handler=False):
 
@@ -305,7 +319,8 @@ class XML2kvp(object):
 		if not handler:
 			handler = XML2kvp(			
 				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim)
+				ns_prefix_delim=ns_prefix_delim,
+				skip_root=skip_root)
 
 		# handle forms of kvp
 		if type(kvp) == str:
