@@ -222,6 +222,9 @@ class BaseMapper(object):
 				nsmap[ns[0]] = ns[1]
 		self.nsmap = nsmap
 
+		# set inverted nsmap
+		self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+
 
 class GenericMapper(BaseMapper):
 
@@ -355,9 +358,18 @@ class GenericMapper(BaseMapper):
 				fn_pieces = []				
 				for hop in self.hops:
 
-					# add field name, removing etree prefix
+					# OLD
+					# # add field name, removing etree prefix
+					# prefix, tag_name = re.match(self.namespace_prefix_regex, hop.tag).groups()
+					# fn_pieces.append(tag_name)
+
+					# NEW 
+					# add field name with prefix, e.g. mods|subject
 					prefix, tag_name = re.match(self.namespace_prefix_regex, hop.tag).groups()
-					fn_pieces.append(tag_name)
+					try:
+						fn_pieces.append('%s|%s' % (self.nsmap_inv[prefix.strip('{}')], tag_name))
+					except:
+						fn_pieces.append(tag_name)
 
 					# add attributes if not root node
 					if self.include_attributes and hop != self.xml_root:					

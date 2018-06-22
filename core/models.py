@@ -47,6 +47,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import connection, models
 from django.db.models import Count
@@ -55,6 +56,9 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
 from django.views import View
+
+# import xml2kvp
+from core.xml2kvp import XML2kvp
 
 # import background tasks
 from core import tasks
@@ -1116,7 +1120,11 @@ class Transformation(models.Model):
 	payload = models.TextField()
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+		choices=[
+			('xslt','XSLT Stylesheet'),
+			('python','Python Code Snippet'),
+			('openrefine','Open Refine Actions')
+		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	
@@ -1146,6 +1154,8 @@ class Transformation(models.Model):
 			result = self._transform_xslt(row)
 		if self.transformation_type == 'python':
 			result = self._transform_python(row)
+		if self.transformation_type == 'openrefine':
+			result = self._transform_openrefine(row)
 
 		# return result
 		return result
@@ -1199,6 +1209,123 @@ class Transformation(models.Model):
 				return trans_result[1]
 
 		except Exception as e:			
+			return str(e)
+
+
+	def _transform_openrefine(self, row):
+
+		def _field_name_to_xpath(field_name):
+
+			# for each column, reconstitue columnName --> XPath				
+			field_parts = field_name.split('_')[1:] # skip root element
+
+			# loop through pieces and build xpath
+			on_attrib = False
+			xpath = '/' # begin with single slash, will get appended to
+
+			for part in field_parts:
+
+				# if not attribute, assume node hop
+				if not part.startswith('@'):
+
+					# handle closing attrib if present
+					if on_attrib:
+						xpath += ']/'
+
+					# close previous element
+					else:
+						xpath += '/'
+				
+					# replace pipe with colon for prefix
+					part = part.replace('|',':')
+
+					# append to xpath string
+					xpath += '%s' % part
+
+				# if attribute, assume part of previous element and build
+				else:
+
+					# handle attribute
+					attrib, value = part.split('=')
+
+					# if not on_attrib, open xpath for attribute inclusion
+					if not on_attrib:
+						xpath += "[%s='%s'" % (attrib, value)
+
+					# else, currently in attribute write block, continue
+					else:
+						xpath += " and %s='%s'" % (attrib, value)
+
+					# set on_attrib flag for followup
+					on_attrib = True
+
+			# cleanup after loop
+			if on_attrib:
+
+				# close attrib brackets
+				xpath += ']'
+
+			# return 
+			return xpath
+			
+		try:
+
+			# parse or_actions
+			or_actions = json.loads(self.payload)
+
+			# load record as prtb
+			prtb = PythonUDFRecord(row)
+
+			# loop through actions
+			for event in or_actions:
+
+				# handle core/mass-edit
+				if event['op'] == 'core/mass-edit':
+
+					# get xpath
+					xpath = _field_name_to_xpath(event['columnName'])
+					
+					# find elements for potential edits
+					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+					# loop through elements
+					for ele in eles:				
+
+						# loop through edits
+						for edit in event['edits']:
+
+							# check if element text in from, change
+							if ele.text in edit['from']:
+								ele.text = edit['to']
+
+				# handle jython				
+				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):					
+
+					# fire up temp module
+					temp_pyts = ModuleType('temp_pyts')
+
+					# parse code
+					code = event['expression'].split('jython:')[1]
+
+					# wrap in function and write to temp module
+					code = 'def temp_func(value):\n%s' % textwrap.indent(code, prefix='    ')					
+					exec(code, temp_pyts.__dict__)
+
+					# get xpath
+					xpath = _field_name_to_xpath(event['columnName'])
+					
+					# find elements for potential edits
+					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+					# loop through elements
+					for ele in eles:
+						ele.text = temp_pyts.temp_func(ele.text)
+
+			# re-serialize as trans_result
+			return etree.tostring(prtb.xml).decode('utf-8')
+
+		except Exception as e:
+			# set trans_result tuple
 			return str(e)
 
 
@@ -3432,7 +3559,11 @@ class CombineJob(object):
 		'''
 
 		# get job from db
-		j = Job.objects.get(pk=job_id)
+		try:
+			j = Job.objects.get(pk=job_id)
+		except ObjectDoesNotExist:
+			logger.debug('Job #%s was not found, returning False' % job_id)
+			return False
 
 		# using job_type, return instance of approriate job type
 		return globals()[j.job_type](job_id=job_id)
@@ -5887,6 +6018,38 @@ class DPLARecord(object):
 		self.metadata_string = str(self.original_metadata)		
 
 		
+
+####################################################################
+# OpenRefine Actions Client 									   #
+####################################################################
+
+class OpenRefineActionsClient(object):
+
+	'''
+	This class / client is to handle the transformation of Record documents (XML)
+	using the history of actions JSON output from OpenRefine.
+	'''
+
+	def __init__(self, or_actions=None):
+
+		'''
+		Args:
+			or_actions_json (str|dict): raw json or dictionary
+		'''
+
+		# handle or_actions
+		if type(or_actions) == str:
+			logger.debug('parsing or_actions as JSON string')
+			self.or_actions_json = or_actions
+			self.or_actions = json.loads(or_actions)
+		elif type(or_actions) == dict:
+			logger.debug('parsing or_actions as dictionary')
+			self.or_actions_json = json.dumps(or_actions)
+			self.or_actions = or_actions
+		else:
+			logger.debug('not parsing or_actions, storing as-is')
+			self.or_actions = or_actions
+
 
 
 
