@@ -3167,7 +3167,8 @@ class ESIndex(object):
 	def field_analysis(self,
 			field_name,
 			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
-			metrics_only=False
+			metrics_only=False,
+			terms_limit=10000
 		):
 
 		'''
@@ -3200,7 +3201,7 @@ class ESIndex(object):
 
 		# add agg bucket for field values
 		if not metrics_only:
-			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=terms_limit))
 
 		# return zero
 		s = s[0]
@@ -4881,6 +4882,7 @@ class DTElasticFieldSearch(View):
 
 		# further filter by DT provided keyword
 		if self.DTinput['search[value]'] != '':
+			logger.debug('general type filtering')
 			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
 
 
@@ -5086,7 +5088,7 @@ class DTElasticFieldSearch(View):
 			self.DToutput['data'].append(row_data)
 
 
-	def values_per_field(self):
+	def values_per_field(self, terms_limit=10000):
 
 		'''
 		Perform aggregation-based search to get count of values for single field.
@@ -5109,7 +5111,7 @@ class DTElasticFieldSearch(View):
 		self.query = Search(using=es_handle, index=self.es_index)
 
 		# add agg bucket for field values
-		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=1000000))
+		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=terms_limit))
 
 		# return zero
 		self.query = self.query[0]
