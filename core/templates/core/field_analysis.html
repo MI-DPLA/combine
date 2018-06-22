@@ -47,7 +47,14 @@
 		<div class="col-md-12">
 			<h4>Values</h4>
 
-			<p>The following table shows values for the field <code>{{ field_name }}</code> across all documents for this job's ElasticSearch index, with a count for how many times that value occurs.</p>
+			<p>The following table shows all values for the field <code>{{ field_name }}</code> across all documents for this job's ElasticSearch index, with a count for how many times that value occurs.</p>
+
+			<div id="terms_limit_alert" style="display:none; text-align:center;">
+				<div class="alert alert-danger fade show" role="alert">
+					Results have been limited to top <strong>10,000</strong>, but <strong>sorting</strong> and <strong>searching</strong> will still reveal results not currently shown through pagination
+					</button>
+				</div>
+			</div>
 			
 			<table id='dt_field_analysis' class="table table-bordered table-hover">
 				<thead>
@@ -105,11 +112,34 @@
 				            		};
 
 				            		return "<a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=true&value="+search_term+"'>Records with value</a> / <a href='{% url 'field_analysis_docs' es_index=esi.es_index filter_type='equals' %}?field_name={{ field_name }}&matches=false&value="+search_term+"'>Records without</a>";
-				            	}
+				            	}								
 				            }
 				        ],
+				        initComplete: function(settings, json) {	
+							terms_alert_toggle();
+						},
+						drawCallback: function(settings, json) {	
+							terms_alert_toggle();
+						},
 				    });
+
 				});
+
+				// function to display alert about results
+				function terms_alert_toggle(){
+
+					// get table
+					var table = $('#dt_field_analysis').DataTable();
+					var count = table.page.info().recordsTotal;
+
+					// if 10k results returned, inform user truncated
+					if (count >= 10000){
+						$("#terms_limit_alert").show();
+					}
+					else {
+						$("#terms_limit_alert").hide();	
+					}
+				}
 
 			</script>
 
