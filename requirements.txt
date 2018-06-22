@@ -33,6 +33,7 @@ pandas==0.20.3
 pathlib2==2.3.0
 pexpect==4.2.1
 pickleshare==0.7.4
+polling==0.3.0
 prompt-toolkit==1.0.15
 ptyprocess==0.5.2
 py==1.4.34
@@ -56,6 +57,7 @@ Sphinx==1.7.2
 sphinx-autobuild==0.7.1
 sphinx-rtd-theme==0.3.0
 SQLAlchemy==1.1.13
+sxsdiff==0.3.0
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
