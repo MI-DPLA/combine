@@ -45,6 +45,9 @@ class XML2kvp(object):
 	<nested_attribs type='first'>
 		<another type='second'>paydirt</another>
 	</nested_attribs>
+	<nested>
+		<empty></empty>
+	</nested>
 </root>
 	'''
 
@@ -60,11 +63,13 @@ class XML2kvp(object):
 		'''
 
 		# set overwritable class attributes
+		# TODO: Are these needed if provided as defaults in methods?
 		self.xml_attribs = True
 		self.node_delim = '_'
 		self.ns_prefix_delim = '|'
 		self.error_on_delims_collision = False
 		self.skip_root = False
+		self.skip_attribute_ns_declarations = True
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
@@ -76,7 +81,7 @@ class XML2kvp(object):
 
 
 	
-	def xml_dict_parser(self, in_k, in_v, hops=[]):
+	def _xml_dict_parser(self, in_k, in_v, hops=[]):
 
 		if type(in_v) == OrderedDict:		
 
@@ -89,12 +94,14 @@ class XML2kvp(object):
 
 				else:				
 					if k.startswith('@'):
-						hops.append(self._check_hop('%s=%s' % (k, v)))
+						# hops.append(self._format_hop('attribute', k, v))
+						hops = self._format_and_append_hop(hops, 'attribute', k, v)
 					else:
-						hops.append(self._check_hop(k))
+						# hops.append(self._format_hop('element', k, None))
+						hops = self._format_and_append_hop(hops, 'element', k, None)
 
 						# recurse
-						self.xml_dict_parser(k, v, hops=hops)
+						self._xml_dict_parser(k, v, hops=hops)
 
 						# reset hops
 						hops = hops[:hop_len]
@@ -105,7 +112,7 @@ class XML2kvp(object):
 			for d in in_v:
 
 				# recurse
-				self.xml_dict_parser(None, d, hops=hops)
+				self._xml_dict_parser(None, d, hops=hops)
 				
 				# drop hops back one
 				hops = hops[:hop_len]
@@ -116,15 +123,38 @@ class XML2kvp(object):
 				self._process_kvp(hops, in_v)
 
 
-	def _check_hop(self, hop):
+	def _format_and_append_hop(self, hops, hop_type, k, v):
+
+		# handle elements
+		if hop_type == 'element':
+			
+			# apply namespace delimiter
+			hop = k.replace(':', self.ns_prefix_delim)
+
+		# handle elements
+		if hop_type == 'attribute':
+
+			# skip attribute namespace declarations
+			if self.skip_attribute_ns_declarations:
+				if k.startswith(('@xmlns', '@xsi')):
+					return hops
+			
+			# apply namespace delimiter
+			k = k.replace(':', self.ns_prefix_delim)
+
+			# combine
+			hop = '%s=%s' % (k, v)
 
 		# if erroring on collision
-		if self.error_on_delims_collision:
+		if self.error_on_delims_collision:			
 			if not set([self.node_delim, self.ns_prefix_delim]).isdisjoint(hop):				
-				raise self.DelimiterCollision('collision for key: "%s", collides with configured delimiters: %s' % 
+				raise self.DelimiterCollision('collision for key: "%s", collides with a configured delimiter: %s' % 
 					(hop, {'node_delim':self.node_delim, 'ns_prefix_delim':self.ns_prefix_delim}))
 		
-		return hop
+		# if hop not None/False, append and return
+		if hop:
+			hops.append(hop)
+		return hops
 		
 
 	def _process_kvp(self, hops, value):
@@ -163,15 +193,33 @@ class XML2kvp(object):
 				self.kvp_dict[k].append(value)		
 
 
-	def parse_xml_input(self, xml_input):
+	def _parse_xml_input(self, xml_input):
 
 		# if string, save
 		if type(xml_input) == str:
+			if self.include_xml_prop:
+				self.xml = etree.fromstring(xml_input)
+				self._parse_nsmap()
 			return xml_input
 
 		# if etree object, to string and save
 		if type(xml_input) in [etree._Element, etree._ElementTree]:
+			if self.include_xml_prop:
+				self.xml = xml_input
+				self._parse_nsmap()
 			return etree.tostring(xml_input).decode('utf-8')
+
+
+	def _parse_nsmap(self):
+
+		# get namespace map, popping None values
+		_nsmap = self.xml.nsmap.copy()
+		try:
+			global_ns = _nsmap.pop(None)
+			_nsmap['global_ns'] = ns0
+		except:
+			pass
+		self.nsmap = _nsmap		
 
 
 	@staticmethod
@@ -184,7 +232,10 @@ class XML2kvp(object):
 		literals = None,
 		skip_root=False,
 		skip_repeating_values=True,
+		skip_attribute_ns_declarations=True,
 		error_on_delims_collision=False,
+		include_xml_prop=False,
+		as_tuples=True,
 		handler=None,
 		return_handler=False):
 
@@ -198,21 +249,31 @@ class XML2kvp(object):
 				literals=literals,
 				skip_root=skip_root,
 				skip_repeating_values=skip_repeating_values,
-				error_on_delims_collision=error_on_delims_collision)
+				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
+				error_on_delims_collision=error_on_delims_collision,
+				include_xml_prop=include_xml_prop,
+				as_tuples=as_tuples)
 
 		# parse xml input
-		handler.xml_string = handler.parse_xml_input(xml_input)
+		handler.xml_string = handler._parse_xml_input(xml_input)
 
 		# parse as dictionary
 		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=handler.xml_attribs)
 
 		# walk xmltodict parsed dictionary and reutnr
-		handler.xml_dict_parser(None, handler.xml_dict, hops=[])
+		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
 		if handler.literals:
 			for k,v in handler.literals.items():
 				handler.kvp_dict[k] = v
+
+		# convert list to tuples if flagged
+		if as_tuples:
+			# convert all lists to tuples
+			for k,v in handler.kvp_dict.items():
+				if type(v) == list:
+					handler.kvp_dict[k] = tuple(v)
 
 		# return
 		if return_handler:
@@ -275,7 +336,7 @@ class XML2kvp(object):
 				else:
 					xpath += '/'
 			
-				# replace pipe with colon for prefix
+				# replace delimiter with colon for prefix
 				part = part.replace(handler.ns_prefix_delim,':')
 
 				# append to xpath string
@@ -345,6 +406,33 @@ class XML2kvp(object):
 			return handler
 		else:
 			return handler.k_xpath_dict
+
+
+	def test_kvp_to_xpath_roundtrip(self):
+
+		# http://goodmami.org/2015/11/04/python-xpath-and-default-namespaces.html
+
+		# check for self.xml and self.nsmap
+		if not self.xml:
+			self.xml = etree.fromstring(self.xml_string)
+		if not self.nsmap:
+			self._parse_nsmap()
+
+		# generate xpaths values
+		self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
+
+		for k,v in self.k_xpath_dict.items():
+			#logger.debug('checking xpath: %s' % v)
+			matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
+			values = self.kvp_dict[k]
+			if type(values) == str:
+				values_len = 1
+			elif type(values) == list:
+				values_len = len(values)    
+			if len(matched_elements) != values_len:
+				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k,v,len(matched_elements),values_len))
+
+
 
 
 

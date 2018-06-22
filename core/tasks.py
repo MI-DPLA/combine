@@ -268,47 +268,6 @@ def export_documents(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
 
-		################################################################################################################################################################
-		# # loop through parts, group XML docs with rool XML element, and save as new XML file
-		# logger.debug('grouping documents in XML files')
-
-		# export_parts = glob.glob('%s/part*' % output_path)
-		# logger.debug('found %s documents to write as XML' % len(export_parts))
-		# for part in export_parts:
-		# 	with open('%s.xml' % part, 'w') as f:
-		# 		f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
-		# 		with open(part) as f_part:
-		# 			f.write(f_part.read())
-		# 		f.write('</documents>')
-
-		# # save file list pre-archive for cleanup
-		# pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
-
-		# # zip
-		# if ct.task_params['archive_type'] == 'zip':
-		# 	content_type = 'application/zip'
-		# 	logger.debug('creating zip archive')
-		# 	export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
-		# 	with ZipFile(export_output_archive,'w') as zip:
-		# 		for f in glob.glob('%s/*.xml' % output_path):
-		# 			zip.write(f, os.path.basename(f))
-			
-		# # tar
-		# if ct.task_params['archive_type'] == 'tar':
-		# 	content_type = 'application/tar'
-		# 	logger.debug('creating tar archive')
-		# 	export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
-
-		# 	with tarfile.open(export_output_archive, 'w') as tar:
-		# 		for f in glob.glob('%s/*.xml' % output_path):
-		# 			tar.add(f, arcname=os.path.basename(f))
-
-		# # cleanup directory
-		# for f in pre_archive_files:
-		# 	os.remove(f)
-		################################################################################################################################################################
-
-		################################################################################################################################################################
 		# loop through parts, group XML docs with rool XML element, and save as new XML file
 		logger.debug('grouping documents in XML files')
 
@@ -354,7 +313,6 @@ def export_documents(ct_id):
 		for d in pre_archive_dirs:
 			logger.debug('removing dir: %s' % d)
 			shutil.rmtree(d)
-		################################################################################################################################################################
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
@@ -395,6 +353,14 @@ def job_reindex(ct_id):
 
 		# drop Job's ES index
 		cjob.job.drop_es_index()
+
+		# drop previous indexing failures
+		to_delete = models.IndexMappingFailure.objects.filter(job=cjob.job)
+		if to_delete.exists():
+			# use private raw delete method
+			delete_results = to_delete._raw_delete(to_delete.db)
+		else:
+			delete_results = 0
 
 		# generate spark code		
 		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s).spark_function()' % {

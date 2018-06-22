@@ -5512,9 +5512,9 @@ class DTElasticGenericSearch(View):
 		urls = record.get_lineage_url_paths()
 
 		to_append = [
-			'<a href="%s" target="_blank">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
-			'<a href="%s" target="_blank">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
-			'<a href="%s" target="_blank"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
+			'<a href="%s">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
+			'<a href="%s">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
+			'<a href="%s"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
 			urls['record']['path'],
 		]
 

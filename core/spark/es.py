@@ -31,6 +31,9 @@ if not hasattr(django, 'apps'):
 # import django settings
 from django.conf import settings
 
+# import xml2kvp
+from core.xml2kvp import XML2kvp
+
 
 class ESIndex(object):
 
@@ -224,6 +227,117 @@ class BaseMapper(object):
 
 		# set inverted nsmap
 		self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+
+
+
+class XML2kvpMapper(BaseMapper):
+
+	'''
+	Map XML to ElasticSearch friendly fields with xml2kvp	
+	
+	Args:
+		record_id (str): record id
+		record_string (str): string of record document
+		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+	Returns:
+		(tuple):
+			0 (str): ['success','fail']
+			1 (dict): details from mapping process, success or failure
+	'''
+
+
+	# Index Mapper class attributes (needed for easy access in Django templates)
+	classname = "XML2kvpMapper" # must be same as class name
+	name = "XML2kvp mapper"
+
+
+	def __init__(self, include_attributes = None):		
+
+		if include_attributes == None:
+			self.include_attributes = settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER
+		else:
+			self.include_attributes = include_attributes
+
+
+	def map_record(self,
+			record_string=None,
+			db_id=None,
+			combine_id=None,
+			record_id=None,
+			publish_set_id=None,
+			fingerprint=None
+		):
+
+		'''
+		Map record
+
+		Args:
+			record_id (str): record id
+			record_string (str): string of record document
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+
+		Returns:
+			(tuple):
+				0 (str): ['success','fail']
+				1 (dict): details from mapping process, success or failure
+
+		'''
+
+		try:
+
+			# prepare literals
+			literals = {
+
+				# add temporary id field
+				'temp_id':combine_id,
+
+				# add combine_id field
+				'combine_id':combine_id,
+
+				# add record_id field
+				'record_id':record_id,
+
+				# add publish set id
+				'publish_set_id':publish_set_id,
+
+				# add record's Combine DB id
+				'db_id':db_id,
+
+				# add record's crc32 document hash, aka "fingerprint"
+				'fingerprint':fingerprint,
+
+			}
+
+			# map with XML2kvp
+			kvp_dict = XML2kvp.xml_to_kvp(
+				record_string,
+				xml_attribs=self.include_attributes,
+				node_delim='___',
+				ns_prefix_delim='|',
+				copy_to=None,
+				literals=literals,
+				skip_root=False,
+				skip_repeating_values=True,
+				skip_attribute_ns_declarations=True,
+				error_on_delims_collision=False,
+				include_xml_prop=False)
+
+			return (
+					'success',
+					kvp_dict
+				)
+
+		except Exception as e:
+			
+			return (
+				'fail',
+				{
+					'combine_id':combine_id,
+					'mapping_error':str(e)
+				}
+			)
+
 
 
 class GenericMapper(BaseMapper):

@@ -37,13 +37,6 @@
 	<div class="row">
 		<div class="col-md-12">
 
-			<!-- <div class="alert alert-info alert-dismissible fade show" role="alert">
-				The following tabs provide additional information about this Record
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-				<span aria-hidden="true">&times;</span>
-				</button>
-			</div> -->
-
 			<!-- Navigation -->
 			<ul class="nav nav-tabs">				
 				<li class="nav-item">
@@ -220,7 +213,7 @@
 								<tbody>
 									{% for field_name, field_value in record.get_es_doc.items %}
 									<tr>
-										<td>{{ field_name }}</td>
+										<td><code>{{ field_name }}</code></td>
 
 										<!-- show mapped DPLA field if exists -->
 										{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
