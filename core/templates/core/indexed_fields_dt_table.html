@@ -65,12 +65,12 @@
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>
 						<td>
-							<div class="percentage_div" style="{% if field.distinct_ratio > 0 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.distinct_ratio > 0 %}{% widthratio field.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
+							<div class="percentage_div" style="{% if field.distinct_ratio >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.distinct_ratio > 0 %}{% widthratio field.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
 								<span>{% widthratio field.distinct_ratio 1 100 %}%</span>
 							</div>
 						</td>
 						<td>
-							<div class="percentage_div" style="{% if field.percentage_of_total_records > 0 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.percentage_of_total_records > 0 %}{% widthratio field.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
+							<div class="percentage_div" style="{% if field.percentage_of_total_records >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.percentage_of_total_records > 0 %}{% widthratio field.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
 								<span>{% widthratio field.percentage_of_total_records 1 100 %}%</span>
 							</div>
 						</td>

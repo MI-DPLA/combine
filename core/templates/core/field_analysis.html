@@ -31,13 +31,13 @@
 						<td>{{ field_metrics.metrics.distinct }}</td>
 
 						<td>
-							<div class="percentage_div" style="{% if field_metrics.metrics.distinct_ratio > 0 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.distinct_ratio > 0 %}{% widthratio field_metrics.metrics.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
+							<div class="percentage_div" style="{% if field_metrics.metrics.distinct_ratio >= 0.5 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.distinct_ratio > 0 %}{% widthratio field_metrics.metrics.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
 								<span>{% widthratio field_metrics.metrics.distinct_ratio 1 100 %}%</span>
 							</div>
 						</td>
 
 						<td>
-							<div class="percentage_div" style="{% if field_metrics.metrics.percentage_of_total_records > 0 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.percentage_of_total_records > 0 %}{% widthratio field_metrics.metrics.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
+							<div class="percentage_div" style="{% if field_metrics.metrics.percentage_of_total_records >= 0.5 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.percentage_of_total_records > 0 %}{% widthratio field_metrics.metrics.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
 								<span>{% widthratio field_metrics.metrics.percentage_of_total_records 1 100 %}%</span>
 							</div>
 						</td>
