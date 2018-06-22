@@ -2731,10 +2731,17 @@ def bg_task(request, task_id):
 
 	# get task
 	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
-	logger.debug('retrieving task: %s' % ct)	
+	logger.debug('retrieving task: %s' % ct)
+
+	# include job if mentioned in task params
+	if 'job_id' in ct.task_params:		
+		cjob = models.CombineJob.get_combine_job(ct.task_params['job_id'])
+	else:
+		cjob = None
 
 	return render(request, 'core/bg_task.html', {
 			'ct':ct,
+			'cjob':cjob,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 

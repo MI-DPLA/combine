@@ -47,6 +47,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import connection, models
 from django.db.models import Count
@@ -3557,7 +3558,11 @@ class CombineJob(object):
 		'''
 
 		# get job from db
-		j = Job.objects.get(pk=job_id)
+		try:
+			j = Job.objects.get(pk=job_id)
+		except ObjectDoesNotExist:
+			logger.debug('Job #%s was not found, returning False' % job_id)
+			return False
 
 		# using job_type, return instance of approriate job type
 		return globals()[j.job_type](job_id=job_id)
