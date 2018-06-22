@@ -20,7 +20,7 @@
 						<th>Count of Total Values for Field</th>
 						<th>Count of Distinct Values for Field</th>
 						<th>Percentage of Field Values that are Unique</th>
-						<th>Instance of Field in Total Indexed Records</th>
+						<th>Percentage of Documents with Field</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -29,8 +29,19 @@
 						<td class="bg_light_red"><a href="{% url 'field_analysis_docs' es_index=esi.es_index filter_type='exists' %}?field_name={{ field_name }}&exists=false">{{ field_metrics.metrics.doc_missing }}</a></td>
 						<td>{{ field_metrics.metrics.val_instances }}</td>
 						<td>{{ field_metrics.metrics.distinct }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.distinct_ratio }});">{{ field_metrics.metrics.distinct_ratio }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field_metrics.metrics.percentage_of_total_records }});">{{ field_metrics.metrics.percentage_of_total_records }}</td>
+
+						<td>
+							<div class="percentage_div" style="{% if field_metrics.metrics.distinct_ratio > 0 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.distinct_ratio > 0 %}{% widthratio field_metrics.metrics.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
+								<span>{% widthratio field_metrics.metrics.distinct_ratio 1 100 %}%</span>
+							</div>
+						</td>
+
+						<td>
+							<div class="percentage_div" style="{% if field_metrics.metrics.percentage_of_total_records > 0 %}padding:2px;{% endif %} width:{% if field_metrics.metrics.percentage_of_total_records > 0 %}{% widthratio field_metrics.metrics.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
+								<span>{% widthratio field_metrics.metrics.percentage_of_total_records 1 100 %}%</span>
+							</div>
+						</td>
+						
 					</tr>
 				</tbody>
 

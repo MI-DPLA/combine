@@ -122,3 +122,9 @@ div.grayed_dt_row, td.grayed_dt_row {
 	background-color: #ececec;
 	color: #949494;
 }
+
+/*percentage divs*/
+.percentage_div {
+	margin-top:5px;
+	background-color:rgba(255, 255, 0, 0.4);
+}
