@@ -1,6 +1,7 @@
 # xml2kvp
 
 from collections import OrderedDict
+import json
 from lxml import etree
 import logging
 from pprint import pprint, pformat
@@ -65,7 +66,7 @@ class XML2kvp(object):
 		# set overwritable class attributes
 		# TODO: Are these needed if provided as defaults in methods?
 		self.xml_attribs = True
-		self.node_delim = '_'
+		self.node_delim = '___'
 		self.ns_prefix_delim = '|'
 		self.error_on_delims_collision = False
 		self.skip_root = False
@@ -226,7 +227,7 @@ class XML2kvp(object):
 	def xml_to_kvp(
 		xml_input,
 		xml_attribs=True,
-		node_delim='_',
+		node_delim='___',
 		ns_prefix_delim='|',		
 		copy_to = None,
 		literals = None,
@@ -236,6 +237,7 @@ class XML2kvp(object):
 		error_on_delims_collision=False,
 		include_xml_prop=False,
 		as_tuples=True,
+		include_meta=False,
 		handler=None,
 		return_handler=False):
 
@@ -275,6 +277,13 @@ class XML2kvp(object):
 				if type(v) == list:
 					handler.kvp_dict[k] = tuple(v)
 
+		# include metadata about delimeters
+		if include_meta:
+			handler.kvp_dict['xml2kvp_meta'] = json.dumps({
+					'node_delim':node_delim,
+					'ns_prefix_delim':ns_prefix_delim
+				})
+
 		# return
 		if return_handler:
 			return handler
@@ -290,7 +299,7 @@ class XML2kvp(object):
 	@staticmethod
 	def k_to_xpath(
 		k,
-		node_delim='_',
+		node_delim='___',
 		ns_prefix_delim='|',
 		skip_root=False,
 		handler=None,

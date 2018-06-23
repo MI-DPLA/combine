@@ -3093,7 +3093,12 @@ class ESIndex(object):
 			field_names = list(self.index_mappings.keys())
 
 			# remove uninteresting fields
-			field_names = [ field for field in field_names if field not in ['db_id','combine_id'] ]
+			field_names = [ field for field in field_names if field not in [
+					'db_id',
+					'combine_id',
+					'xml2kvp_meta',
+					'fingerprint']
+				]
 
 			# sort alphabetically that influences results list
 			field_names.sort()
