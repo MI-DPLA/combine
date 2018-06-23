@@ -138,7 +138,11 @@ class CombineSparkJob(object):
 		self.job_track.save()
 
 
-	def save_records(self, records_df=None, write_avro=settings.WRITE_AVRO, index_records=settings.INDEX_TO_ES, assign_combine_id=False):
+	def save_records(self,
+		records_df=None,
+		write_avro=settings.WRITE_AVRO,
+		index_records=settings.INDEX_TO_ES,
+		assign_combine_id=False):
 
 		'''
 		Method to index records to DB and trigger indexing to ElasticSearch (ES)		
@@ -157,20 +161,24 @@ class CombineSparkJob(object):
 		'''
 
 		# assign combine ID
+		self.logger.info('###JOBS 1 -- Assigning Combine ID')
 		if assign_combine_id:
 			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
 
 		# run record identifier transformation scenario if provided
+		self.logger.info('###JOBS 2 -- Run Rits')
 		records_df = self.run_rits(records_df)
 
 		# check uniqueness (overwrites if column already exists)	
+		self.logger.info('###JOBS 3 -- Check Uniqueness')
 		records_df = records_df.withColumn("unique", (
 			pyspark_sql_functions.count('record_id')\
 			.over(Window.partitionBy('record_id')) == 1)\
 			.cast('integer'))
 
 		# ensure columns to avro and DB
+		self.logger.info('###JOBS 4 -- Ensure columns for Avro and DB')
 		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
 		# write avro, coalescing for output
@@ -186,9 +194,10 @@ class CombineSparkJob(object):
 			mode='append')
 
 		# check if anything written to DB to continue, else abort
-		if len(self.job.get_records()) > 0:
+		if self.job.get_records().count() > 0:
 
 			# read rows from DB for indexing to ES
+			self.logger.info('###JOBS 5 -- Reread DB records')
 			bounds = self.get_job_db_bounds(self.job)
 			sqldf = self.spark.read.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
@@ -203,6 +212,7 @@ class CombineSparkJob(object):
 			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
 			# index to ElasticSearch
+			self.logger.info('###JOBS 6 -- Begin ES index')
 			if index_records and settings.INDEX_TO_ES:
 				ESIndex.index_job_to_es_spark(
 					self.spark,
