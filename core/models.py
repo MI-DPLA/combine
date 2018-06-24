@@ -2269,6 +2269,11 @@ class FieldMapper(models.Model):
 			('python','Python Code Snippet')]
 	)
 
+
+	def __str__(self):
+		return '%s, FieldMapper: #%s' % (self.name, self.id)
+
+
 	@property
 	def config(self):
 
