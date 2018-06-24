@@ -5,6 +5,7 @@ import json
 from lxml import etree
 import logging
 from pprint import pprint, pformat
+import re
 import xmltodict
 
 # init logger
@@ -71,6 +72,7 @@ class XML2kvp(object):
 		self.node_delim='___'
 		self.ns_prefix_delim='|'
 		self.copy_to = {}
+		self.copy_to_regex = {}
 		self.literals = {}
 		self.skip_root=False
 		self.skip_repeating_values=True
@@ -100,6 +102,7 @@ class XML2kvp(object):
 			'node_delim',
 			'ns_prefix_delim',
 			'copy_to',
+			'copy_to_regex',
 			'literals',
 			'skip_root',
 			'skip_repeating_values',
@@ -229,6 +232,15 @@ class XML2kvp(object):
 		if len(self.copy_to) > 0 and k in self.copy_to.keys():
 			k = self.copy_to[k]
 
+		# handle copy_to_regex mixins
+		if len(self.copy_to_regex) > 0:
+
+			# check if key matches any regex, if so, copy to that field
+			for regex_k, regex_v in self.copy_to_regex.items():
+				regex = re.compile(regex_k)
+				if re.match(regex, k):
+					k = regex_v
+
 		# new key, new value
 		if k not in self.kvp_dict.keys():
 			self.kvp_dict[k] = value
@@ -284,6 +296,7 @@ class XML2kvp(object):
 		node_delim=None,
 		ns_prefix_delim=None,		
 		copy_to = None,
+		copy_to_regex = None,
 		literals = None,
 		skip_root=None,
 		skip_repeating_values=True,
@@ -304,6 +317,7 @@ class XML2kvp(object):
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,		
 				copy_to=copy_to,
+				copy_to_regex=copy_to_regex,
 				literals=literals,
 				skip_root=skip_root,
 				skip_repeating_values=skip_repeating_values,
