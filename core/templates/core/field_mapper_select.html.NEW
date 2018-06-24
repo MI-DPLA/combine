@@ -1,0 +1,33 @@
+{% block content %}
+{% load core_template_filters %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<div class="gray_box">
+
+				<h5>Field Mapping Configuration</h5>
+				
+				<div class="form-group">
+					<select class="form-control" id="field_mapper" name="field_mapper">
+						<option value="">Default XML2kvp</option>
+						{% for fm in field_mappers %}
+							<option value='{{ fm.id }}'>{{ fm.name }}</option>
+						{% endfor %}					
+					</select>
+				</div>
+
+				<div class="form-group">
+					<label for="field_mapper_config_json">Field Mapper Configuration</label>
+					<textarea class="code_style form-control" rows=18 name="field_mapper_config_json" id="field_mapper_config_json" placeholder="">{{ default_config_json|safe }}</textarea>
+					<small id="field_mapper_config_json" class="form-text text-muted">Edit this JSON configuration for on-the-fly changes</small>
+				</div>
+
+			</div>
+		</div>
+	</div>
+
+	<script>
+
+	</script>
+
+{% endblock %}

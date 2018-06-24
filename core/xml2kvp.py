@@ -53,8 +53,10 @@ class XML2kvp(object):
 </root>
 	'''
 
+
 	class DelimiterCollision(Exception):
 		pass
+
 
 
 	def __init__(self, **kwargs):
@@ -64,25 +66,38 @@ class XML2kvp(object):
 			kwargs (dict): Accepts named args from static methods
 		'''
 
-		# # set overwritable class attributes
-		# # TODO: Are these needed if provided as defaults in methods?
-		# self.xml_attribs = True
-		# self.node_delim = '___'
-		# self.ns_prefix_delim = '|'
-		# self.error_on_delims_collision = False
-		# self.skip_root = False
-		# self.skip_attribute_ns_declarations = True
+		# defaults, overwritten by methods
+		self.xml_attribs=True
+		self.node_delim='___'
+		self.ns_prefix_delim='|'
+		self.copy_to = None
+		self.literals = None
+		self.skip_root=False
+		self.skip_repeating_values=True
+		self.skip_attribute_ns_declarations=True
+		self.exclude_attributes=None
+		self.error_on_delims_collision=True
+		self.include_xml_prop=False
+		self.as_tuples=True
+		self.include_meta=False
+		self.self_describing=False
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
-			setattr(self, k, v)
+			if v is not None:
+				setattr(self, k, v)
 
 		# set non-overwritable class attributes
 		self.kvp_dict = {}
 		self.k_xpath_dict = {}
 
 
-	
+	@property
+	def default_config_json(self):
+
+		return json.dumps(self.__dict__, indent=2, sort_keys=True)
+
+
 	def _xml_dict_parser(self, in_k, in_v, hops=[]):
 
 		if type(in_v) == OrderedDict:		
@@ -251,20 +266,20 @@ class XML2kvp(object):
 	@staticmethod
 	def xml_to_kvp(
 		xml_input,
-		xml_attribs=True,
-		node_delim='___',
-		ns_prefix_delim='|',		
+		xml_attribs=None,
+		node_delim=None,
+		ns_prefix_delim=None,		
 		copy_to = None,
 		literals = None,
-		skip_root=False,
+		skip_root=None,
 		skip_repeating_values=True,
 		skip_attribute_ns_declarations=True,
 		exclude_attributes=None,
 		error_on_delims_collision=True,
-		include_xml_prop=False,
+		include_xml_prop=None,
 		as_tuples=True,
-		include_meta=False,
-		self_describing=False,
+		include_meta=None,
+		self_describing=None,
 		handler=None,
 		return_handler=False):
 
@@ -273,7 +288,7 @@ class XML2kvp(object):
 			handler = XML2kvp(
 				xml_attribs=xml_attribs,
 				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim,
+				ns_prefix_delim=ns_prefix_delim,		
 				copy_to=copy_to,
 				literals=literals,
 				skip_root=skip_root,
@@ -283,7 +298,9 @@ class XML2kvp(object):
 				error_on_delims_collision=error_on_delims_collision,
 				include_xml_prop=include_xml_prop,
 				as_tuples=as_tuples,
-				self_describing=self_describing)
+				include_meta=include_meta,
+				self_describing=self_describing
+				)
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
@@ -328,9 +345,9 @@ class XML2kvp(object):
 	@staticmethod
 	def k_to_xpath(
 		k,
-		node_delim='___',
-		ns_prefix_delim='|',
-		skip_root=False,
+		node_delim=None,
+		ns_prefix_delim=None,
+		skip_root=None,
 		handler=None,
 		return_handler=False):
 
@@ -416,9 +433,9 @@ class XML2kvp(object):
 	@staticmethod
 	def kvp_to_xpath(
 		kvp,
-		node_delim='_',
-		ns_prefix_delim='|',
-		skip_root=False,
+		node_delim=None,
+		ns_prefix_delim=None,
+		skip_root=None,
 		handler=None,
 		return_handler=False):
 

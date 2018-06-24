@@ -1486,8 +1486,9 @@ def job_update(request, org_id, record_group_id, job_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# # get field mappers		
+		# field_mappers = models.FieldMapper.objects.all()
+		# default_config_json = models.XML2kvp().default_config_json
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
@@ -1497,7 +1498,8 @@ def job_update(request, org_id, record_group_id, job_id):
 				'cjob':cjob,
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
-				'index_mappers':index_mappers,
+				'default_config_json':default_config_json,
+				'field_mappers':field_mappers,				
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1518,27 +1520,25 @@ def job_update(request, org_id, record_group_id, job_id):
 		if update_type == 'reindex':			
 
 			# get preferred metadata index mapper
-			index_mapper = request.POST.get('index_mapper')
-			include_attributes = request.POST.get('include_attributes', False)
-			if include_attributes and include_attributes == 'true':
-				include_attributes = True
+			field_mapper = request.POST.get('field_mapper')
+			field_mapper_config_json = request.POST.get('field_mapper_config_json')
 
-			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'Re-Map and Index Job: %s' % cjob.job.name,
-				task_type = 'job_reindex',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'index_mapper':index_mapper,
-					'include_attributes':include_attributes
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_reindex(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			# # initiate Combine BG Task
+			# ct = models.CombineBackgroundTask(
+			# 	name = 'Re-Map and Index Job: %s' % cjob.job.name,
+			# 	task_type = 'job_reindex',
+			# 	task_params_json = json.dumps({
+			# 		'job_id':cjob.job.id,
+			# 		'index_mapper':index_mapper,
+			# 		'include_attributes':include_attributes
+			# 	})
+			# )
+			# ct.save()
+			# bg_task = tasks.job_reindex(
+			# 	ct.id,
+			# 	verbose_name=ct.verbose_name,
+			# 	creator=ct
+			# )
 
 			return redirect('bg_tasks')
 

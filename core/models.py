@@ -2235,6 +2235,23 @@ class RecordValidation(models.Model):
 
 
 
+class IndexMappers(object):
+
+	'''
+	Model to aggregate built-in and custom index mappers from core.spark.es
+	'''
+
+	@staticmethod
+	def get_mappers():
+
+		'''
+		Find and return all index mappers that extend core.spark.es.BaseMapper
+		'''
+
+		return BaseMapper.__subclasses__()
+
+
+
 class FieldMapper(models.Model):
 
 	'''
@@ -2242,15 +2259,23 @@ class FieldMapper(models.Model):
 	'''
 
 	name = models.CharField(max_length=128)
-	payload = models.TextField(null=True, default=None)
+	payload = models.TextField(null=True, default=None, blank=True)
+	config_json = models.TextField(null=True, default=None, blank=True)
 	field_mapper_type = models.CharField(
 		max_length=255,
 		choices=[
-			('xml2kvp','XML to Key/Value Pairs'),
+			('xml2kvp','XML to Key/Value Pair (XML2kvp)'),
 			('xslt','XSL Stylesheet'),
 			('python','Python Code Snippet')]
 	)
 
+	@property
+	def config(self):
+
+		if self.config_json:
+			return json.loads(self.config_json)
+		else:
+			return None
 
 
 class RecordIdentifierTransformationScenario(models.Model):
@@ -3963,7 +3988,6 @@ class HarvestJob(CombineJob):
 			# create Job entry in DB and save
 			self.job = Job(
 				record_group = self.record_group,
-				# job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
 				job_type = type(self).__name__, # selects this level of class inheritance hierarchy
 				user = self.user,
 				name = self.job_name,
