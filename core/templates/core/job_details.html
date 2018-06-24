@@ -140,7 +140,7 @@
 					<a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Field Analysis</a>
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Metadata Fields</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
@@ -280,11 +280,11 @@
 				<div id="field_breakdown_tab" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-8">
-							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p>
+							<!-- <p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p> -->
 						</div>
 					</div>
 					<div class="row">
-						<div class="col-md-8">
+						<div class="col-md-12">
 							<table class="table table-bordered table-hover">
 								<thead>
 									<tr>
@@ -299,9 +299,9 @@
 										<td>{{ field_counts.total_docs }}</td>						
 										<td>
 											<ul class="list-inline">
-												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse Index</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}" target="_blank"><button type="button" class="btn btn-danger btn-sm">View Indexing Errors</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Index Records</button></a></li>
+												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}" target="_blank"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Metadata Fields</button></a></li>
 											</ul>
 										</td>
 									</tr>

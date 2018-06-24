@@ -63,14 +63,14 @@ class XML2kvp(object):
 			kwargs (dict): Accepts named args from static methods
 		'''
 
-		# set overwritable class attributes
-		# TODO: Are these needed if provided as defaults in methods?
-		self.xml_attribs = True
-		self.node_delim = '___'
-		self.ns_prefix_delim = '|'
-		self.error_on_delims_collision = False
-		self.skip_root = False
-		self.skip_attribute_ns_declarations = True
+		# # set overwritable class attributes
+		# # TODO: Are these needed if provided as defaults in methods?
+		# self.xml_attribs = True
+		# self.node_delim = '___'
+		# self.ns_prefix_delim = '|'
+		# self.error_on_delims_collision = False
+		# self.skip_root = False
+		# self.skip_attribute_ns_declarations = True
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
@@ -171,6 +171,16 @@ class XML2kvp(object):
 		else:	
 			k = self.node_delim.join(hops)
 
+		# add delims suffix
+		if self.self_describing:
+			k = "%(k)s%(node_delim)s%(node_delim_len)s%(ns_prefix_delim)s%(ns_prefix_delim_len)s" % {
+				'k':k,
+				'node_delim':self.node_delim,
+				'node_delim_len':len(self.node_delim),
+				'ns_prefix_delim':self.ns_prefix_delim,
+				'ns_prefix_delim_len':len(self.ns_prefix_delim)
+			}
+
 		# handle copy_to mixins
 		if self.copy_to and k in self.copy_to.keys():
 			k = self.copy_to[k]
@@ -238,6 +248,7 @@ class XML2kvp(object):
 		include_xml_prop=False,
 		as_tuples=True,
 		include_meta=False,
+		self_describing=False,
 		handler=None,
 		return_handler=False):
 
@@ -254,7 +265,8 @@ class XML2kvp(object):
 				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
 				error_on_delims_collision=error_on_delims_collision,
 				include_xml_prop=include_xml_prop,
-				as_tuples=as_tuples)
+				as_tuples=as_tuples,
+				self_describing=self_describing)
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
