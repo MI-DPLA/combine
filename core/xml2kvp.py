@@ -6,6 +6,7 @@ from lxml import etree
 import logging
 from pprint import pprint, pformat
 import re
+import time
 import xmltodict
 
 # init logger
@@ -83,6 +84,7 @@ class XML2kvp(object):
 		self.as_tuples=True
 		self.include_meta=False
 		self.self_describing=False
+		self.remove_copied_key=True
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
@@ -228,36 +230,45 @@ class XML2kvp(object):
 				'ns_prefix_delim_len':len(self.ns_prefix_delim)
 			}
 
+		# init k_list
+		k_list = [k]
+
 		# handle copy_to mixins
-		if len(self.copy_to) > 0 and k in self.copy_to.keys():
-			k = self.copy_to[k]
+		if len(self.copy_to) > 0:
+			slen = len(k_list)
+			k_list.extend([ copy_v for copy_k, copy_v in self.copy_to.items() if copy_k == k ])
+			if self.remove_copied_key:
+				if slen != len(k_list) and k in k_list:
+					k_list.remove(k)
 
 		# handle copy_to_regex mixins
 		if len(self.copy_to_regex) > 0:
+			slen = len(k_list)
+			k_list.extend([ regex_v for regex_k, regex_v in self.copy_to_regex.items() if re.match(re.compile(regex_k), k) ])
+			if self.remove_copied_key:
+				if slen != len(k_list) and k in k_list:
+					k_list.remove(k)
 
-			# check if key matches any regex, if so, copy to that field
-			for regex_k, regex_v in self.copy_to_regex.items():
-				regex = re.compile(regex_k)
-				if re.match(regex, k):
-					k = regex_v
+		# loop through keys
+		for k in k_list:
 
-		# new key, new value
-		if k not in self.kvp_dict.keys():
-			self.kvp_dict[k] = value
+			# new key, new value
+			if k not in self.kvp_dict.keys():
+				self.kvp_dict[k] = value
 
-		# pre-existing, but not yet list, convert
-		elif k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
+			# pre-existing, but not yet list, convert
+			elif k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
 
-			if self.skip_repeating_values and value == self.kvp_dict[k]:
-				pass				
+				if self.skip_repeating_values and value == self.kvp_dict[k]:
+					pass				
+				else:
+					tval = self.kvp_dict[k]
+					self.kvp_dict[k] = [tval, value]
+
+			# already list, append
 			else:
-				tval = self.kvp_dict[k]
-				self.kvp_dict[k] = [tval, value]
-
-		# already list, append
-		else:
-			if not self.skip_repeating_values or value not in self.kvp_dict[k]:
-				self.kvp_dict[k].append(value)		
+				if not self.skip_repeating_values or value not in self.kvp_dict[k]:
+					self.kvp_dict[k].append(value)		
 
 
 	def _parse_xml_input(self, xml_input):
@@ -307,8 +318,12 @@ class XML2kvp(object):
 		as_tuples=True,
 		include_meta=None,
 		self_describing=None,
+		remove_copied_key=None,
 		handler=None,
 		return_handler=False):
+
+		# DEBUG
+		stime = time.time()
 
 		# init handler
 		if not handler:
@@ -327,8 +342,8 @@ class XML2kvp(object):
 				include_xml_prop=include_xml_prop,
 				as_tuples=as_tuples,
 				include_meta=include_meta,
-				self_describing=self_describing
-				)
+				self_describing=self_describing,
+				remove_copied_key=remove_copied_key)
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
@@ -357,6 +372,9 @@ class XML2kvp(object):
 					'node_delim':node_delim,
 					'ns_prefix_delim':ns_prefix_delim
 				})
+
+		# DEBUG
+		logger.debug('elapsed: %s' % (time.time()-stime))
 
 		# return
 		if return_handler:
