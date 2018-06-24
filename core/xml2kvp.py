@@ -147,7 +147,7 @@ class XML2kvp(object):
 
 			# if skipping attributes
 			if self.exclude_attributes:
-				if k.startswith((self.exclude_attributes)):
+				if k.lstrip('@') in self.exclude_attributes:
 					return hops
 
 			# if erroring on collision
