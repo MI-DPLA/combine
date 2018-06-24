@@ -2235,20 +2235,21 @@ class RecordValidation(models.Model):
 
 
 
-class IndexMappers(object):
+class FieldMapper(models.Model):
 
 	'''
-	Model to aggregate built-in and custom index mappers from core.spark.es
+	Model to handle different Field Mappers
 	'''
 
-	@staticmethod
-	def get_mappers():
-
-		'''
-		Find and return all index mappers that extend core.spark.es.BaseMapper
-		'''
-
-		return BaseMapper.__subclasses__()
+	name = models.CharField(max_length=128)
+	payload = models.TextField(null=True, default=None)
+	field_mapper_type = models.CharField(
+		max_length=255,
+		choices=[
+			('xml2kvp','XML to Key/Value Pairs'),
+			('xslt','XSL Stylesheet'),
+			('python','Python Code Snippet')]
+	)
 
 
 

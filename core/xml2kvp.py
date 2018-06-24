@@ -22,7 +22,7 @@ class XML2kvp(object):
 
 	# demo xml
 	test_xml = '''<?xml version="1.0" encoding="UTF-8"?>
-<root>
+<root xmlns:internet="http://internet.com">
 	<foo>
 		<bar>42</bar>
 		<baz>109</baz>
@@ -49,6 +49,7 @@ class XML2kvp(object):
 	<nested>
 		<empty></empty>
 	</nested>
+	<internet:url url='http://example.com'>see my url</internet:url>	
 </root>
 	'''
 
@@ -128,6 +129,10 @@ class XML2kvp(object):
 
 		# handle elements
 		if hop_type == 'element':
+
+			# if erroring on collision
+			if self.error_on_delims_collision:			
+				self._check_delims_collision(k)
 			
 			# apply namespace delimiter
 			hop = k.replace(':', self.ns_prefix_delim)
@@ -139,6 +144,16 @@ class XML2kvp(object):
 			if self.skip_attribute_ns_declarations:
 				if k.startswith(('@xmlns', '@xsi')):
 					return hops
+
+			# if skipping attributes
+			if self.exclude_attributes:
+				if k.startswith((self.exclude_attributes)):
+					return hops
+
+			# if erroring on collision
+			if self.error_on_delims_collision:			
+				self._check_delims_collision(k)
+				self._check_delims_collision(v)
 			
 			# apply namespace delimiter
 			k = k.replace(':', self.ns_prefix_delim)
@@ -146,16 +161,16 @@ class XML2kvp(object):
 			# combine
 			hop = '%s=%s' % (k, v)
 
-		# if erroring on collision
-		if self.error_on_delims_collision:			
-			if not set([self.node_delim, self.ns_prefix_delim]).isdisjoint(hop):				
-				raise self.DelimiterCollision('collision for key: "%s", collides with a configured delimiter: %s' % 
-					(hop, {'node_delim':self.node_delim, 'ns_prefix_delim':self.ns_prefix_delim}))
-		
-		# if hop not None/False, append and return
-		if hop:
-			hops.append(hop)
+		# append and return
+		hops.append(hop)
 		return hops
+
+
+	def _check_delims_collision(self, value):
+
+		if any(delim in value for delim in [self.node_delim, self.ns_prefix_delim]):
+			raise self.DelimiterCollision('collision for key value: "%s", collides with a configured delimiter: %s' % 
+				(value, {'node_delim':self.node_delim, 'ns_prefix_delim':self.ns_prefix_delim}))
 		
 
 	def _process_kvp(self, hops, value):
@@ -244,7 +259,8 @@ class XML2kvp(object):
 		skip_root=False,
 		skip_repeating_values=True,
 		skip_attribute_ns_declarations=True,
-		error_on_delims_collision=False,
+		exclude_attributes=None,
+		error_on_delims_collision=True,
 		include_xml_prop=False,
 		as_tuples=True,
 		include_meta=False,
@@ -263,6 +279,7 @@ class XML2kvp(object):
 				skip_root=skip_root,
 				skip_repeating_values=skip_repeating_values,
 				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
+				exclude_attributes=exclude_attributes,
 				error_on_delims_collision=error_on_delims_collision,
 				include_xml_prop=include_xml_prop,
 				as_tuples=as_tuples,
