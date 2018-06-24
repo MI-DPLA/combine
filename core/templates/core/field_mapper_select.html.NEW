@@ -18,7 +18,7 @@
 
 				<div class="form-group">
 					<label for="field_mapper_config_json">Field Mapper Configuration</label>
-					<textarea class="code_style form-control" rows=18 name="field_mapper_config_json" id="field_mapper_config_json" placeholder="">{{ default_config_json|safe }}</textarea>
+					<textarea class="code_style form-control" rows=18 name="field_mapper_config_json" id="field_mapper_config_json" placeholder="">{{ default_field_mapper_config|safe }}</textarea>
 					<small id="field_mapper_config_json" class="form-text text-muted">Edit this JSON configuration for on-the-fly changes</small>
 				</div>
 

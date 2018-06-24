@@ -1487,8 +1487,8 @@ def job_update(request, org_id, record_group_id, job_id):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# # get field mappers		
-		# field_mappers = models.FieldMapper.objects.all()
-		# default_config_json = models.XML2kvp().default_config_json
+		field_mappers = models.FieldMapper.objects.all()
+		default_field_mapper_config = models.XML2kvp().default_config_json
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
@@ -1498,8 +1498,8 @@ def job_update(request, org_id, record_group_id, job_id):
 				'cjob':cjob,
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
-				'default_config_json':default_config_json,
 				'field_mappers':field_mappers,				
+				'default_field_mapper_config':default_field_mapper_config,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 

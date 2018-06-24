@@ -70,12 +70,12 @@ class XML2kvp(object):
 		self.xml_attribs=True
 		self.node_delim='___'
 		self.ns_prefix_delim='|'
-		self.copy_to = None
-		self.literals = None
+		self.copy_to = {}
+		self.literals = {}
 		self.skip_root=False
 		self.skip_repeating_values=True
 		self.skip_attribute_ns_declarations=True
-		self.exclude_attributes=None
+		self.exclude_attributes=[]
 		self.error_on_delims_collision=True
 		self.include_xml_prop=False
 		self.as_tuples=True
@@ -95,7 +95,21 @@ class XML2kvp(object):
 	@property
 	def default_config_json(self):
 
-		return json.dumps(self.__dict__, indent=2, sort_keys=True)
+		config_dict = { k:v for k,v in self.__dict__.items() if k in [
+			'xml_attribs',
+			'node_delim',
+			'ns_prefix_delim',
+			'copy_to',
+			'literals',
+			'skip_root',
+			'skip_repeating_values',
+			'skip_attribute_ns_declarations',
+			'exclude_attributes',
+			'error_on_delims_collision',
+			'self_describing'
+		] }
+
+		return json.dumps(config_dict, indent=2, sort_keys=True)
 
 
 	def _xml_dict_parser(self, in_k, in_v, hops=[]):
@@ -161,7 +175,7 @@ class XML2kvp(object):
 					return hops
 
 			# if skipping attributes
-			if self.exclude_attributes:
+			if len(self.exclude_attributes) > 0:
 				if k.lstrip('@') in self.exclude_attributes:
 					return hops
 
@@ -212,7 +226,7 @@ class XML2kvp(object):
 			}
 
 		# handle copy_to mixins
-		if self.copy_to and k in self.copy_to.keys():
+		if len(self.copy_to) > 0 and k in self.copy_to.keys():
 			k = self.copy_to[k]
 
 		# new key, new value
@@ -312,7 +326,7 @@ class XML2kvp(object):
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
-		if handler.literals:
+		if len(handler.literals) > 0:
 			for k,v in handler.literals.items():
 				handler.kvp_dict[k] = v
 
