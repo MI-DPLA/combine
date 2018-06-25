@@ -327,6 +327,7 @@ class XML2kvpMapper(BaseMapper):
 				node_delim='___',
 				ns_prefix_delim='|',
 				copy_to=None,
+				copy_to_regex=None,
 				literals=literals,
 				skip_root=False,
 				skip_repeating_values=True,

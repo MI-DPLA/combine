@@ -97,7 +97,7 @@ class XML2kvp(object):
 
 
 	@property
-	def default_config_json(self):
+	def config_json(self):
 
 		config_dict = { k:v for k,v in self.__dict__.items() if k in [
 			'xml_attribs',
@@ -111,7 +111,8 @@ class XML2kvp(object):
 			'skip_attribute_ns_declarations',
 			'exclude_attributes',
 			'error_on_delims_collision',
-			'self_describing'
+			'self_describing',
+			'remove_copied_key'
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
@@ -236,15 +237,29 @@ class XML2kvp(object):
 		# handle copy_to mixins
 		if len(self.copy_to) > 0:
 			slen = len(k_list)
-			k_list.extend([ copy_v for copy_k, copy_v in self.copy_to.items() if copy_k == k ])
+			k_list.extend([ cv for ck, cv in self.copy_to.items() if ck == k ])
 			if self.remove_copied_key:
 				if slen != len(k_list) and k in k_list:
 					k_list.remove(k)
 
 		# handle copy_to_regex mixins
 		if len(self.copy_to_regex) > 0:
+
 			slen = len(k_list)
-			k_list.extend([ regex_v for regex_k, regex_v in self.copy_to_regex.items() if re.match(re.compile(regex_k), k) ])
+
+			# k_list.extend([ regex_v for regex_k, regex_v in self.copy_to_regex.items() if re.match(re.compile(regex_k), k) ])
+			
+			# loop through copy_to_regex
+			for rk, rv in self.copy_to_regex.items():
+
+				# attempt sub
+				try:
+					sub = re.sub(rk, rv, k)
+					if sub != k:
+						k_list.append(sub)
+				except:
+					pass
+
 			if self.remove_copied_key:
 				if slen != len(k_list) and k in k_list:
 					k_list.remove(k)
@@ -322,9 +337,6 @@ class XML2kvp(object):
 		handler=None,
 		return_handler=False):
 
-		# DEBUG
-		stime = time.time()
-
 		# init handler
 		if not handler:
 			handler = XML2kvp(
@@ -344,6 +356,9 @@ class XML2kvp(object):
 				include_meta=include_meta,
 				self_describing=self_describing,
 				remove_copied_key=remove_copied_key)
+
+		# clean kvp_dict
+		handler.kvp_dict = {}
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
@@ -372,9 +387,6 @@ class XML2kvp(object):
 					'node_delim':node_delim,
 					'ns_prefix_delim':ns_prefix_delim
 				})
-
-		# DEBUG
-		logger.debug('elapsed: %s' % (time.time()-stime))
 
 		# return
 		if return_handler:
