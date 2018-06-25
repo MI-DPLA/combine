@@ -2234,23 +2234,6 @@ class RecordValidation(models.Model):
 
 
 
-class IndexMappers(object):
-
-	'''
-	Model to aggregate built-in and custom index mappers from core.spark.es
-	'''
-
-	@staticmethod
-	def get_mappers():
-
-		'''
-		Find and return all index mappers that extend core.spark.es.BaseMapper
-		'''
-
-		return BaseMapper.__subclasses__()
-
-
-
 class FieldMapper(models.Model):
 
 	'''
@@ -3953,8 +3936,8 @@ class HarvestJob(CombineJob):
 		user=None,
 		record_group=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None):
+		field_mapper=None,
+		fm_config_json=None):
 
 		'''
 		Args:
@@ -3963,7 +3946,6 @@ class HarvestJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es			
 
 		Returns:
 			None
@@ -3982,8 +3964,8 @@ class HarvestJob(CombineJob):
 			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4019,8 +4001,8 @@ class HarvestOAIJob(HarvestJob):
 		user=None,
 		record_group=None,		
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		oai_endpoint=None,
 		overrides=None,
 		validation_scenarios=[],
@@ -4050,8 +4032,8 @@ class HarvestOAIJob(HarvestJob):
 				job_name=job_name,
 				job_note=job_note,
 				record_group=record_group,
-				index_mapper=index_mapper,
-				include_attributes=include_attributes
+				field_mapper = field_mapper,
+				fm_config_json = fm_config_json
 			)
 
 		# if job_id not provided, assumed new Job
@@ -4093,7 +4075,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -4101,8 +4083,7 @@ class HarvestOAIJob(HarvestJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'dbdd':self.dbdd
@@ -4137,8 +4118,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		user=None,
 		record_group=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		payload_dict=None,
 		validation_scenarios=[],
 		rits=None,
@@ -4175,8 +4156,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				job_name=job_name,
 				job_note=job_note,
 				record_group=record_group,
-				index_mapper=index_mapper,
-				include_attributes=include_attributes
+				field_mapper=field_mapper,
+				fm_config_json=fm_config_json
 			)
 
 		# if job_id not provided, assumed new Job
@@ -4243,7 +4224,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -4252,8 +4233,7 @@ class HarvestStaticXMLJob(HarvestJob):
 				'additional_namespace_decs':self.payload_dict['additional_namespace_decs'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'dbdd':self.dbdd
@@ -4288,8 +4268,8 @@ class TransformJob(CombineJob):
 		input_job=None,
 		transformation=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
 		input_validity_valve='all',
@@ -4304,7 +4284,6 @@ class TransformJob(CombineJob):
 			input_job (core.models.Job): Job that provides input records for this job's work
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
 			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
@@ -4327,8 +4306,8 @@ class TransformJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.transformation = transformation
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
@@ -4390,13 +4369,12 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'input_validity_valve':self.input_validity_valve,
@@ -4438,8 +4416,8 @@ class MergeJob(CombineJob):
 		record_group=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
 		input_validity_valve='all',
@@ -4452,8 +4430,7 @@ class MergeJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
-			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			job_id (int): Not set on init, but acquired through self.job.save()			
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
 			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
@@ -4475,8 +4452,8 @@ class MergeJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
@@ -4537,12 +4514,11 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'input_validity_valve':self.input_validity_valve,
@@ -4693,8 +4669,8 @@ class AnalysisJob(CombineJob):
 		user=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
 		input_validity_valve='all',
@@ -4707,7 +4683,6 @@ class AnalysisJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
 			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
@@ -4727,8 +4702,8 @@ class AnalysisJob(CombineJob):
 			self.job_name = job_name
 			self.job_note = job_note
 			self.input_jobs = input_jobs
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.input_validity_valve = input_validity_valve
@@ -4851,12 +4826,11 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'input_validity_valve':self.input_validity_valve,

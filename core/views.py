@@ -794,8 +794,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
+		# get field mappers
+		field_mappers = models.FieldMapper.objects.all()
+		default_fm_config = models.XML2kvp().config_json
 
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -806,7 +807,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'default_fm_config':default_fm_config,
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -837,11 +839,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 			for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -864,8 +864,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			dbdd=dbdd
@@ -895,8 +895,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# get validation scenarios
 	validation_scenarios = models.ValidationScenario.objects.all()
 
-	# get index mappers
-	index_mappers = models.IndexMappers.get_mappers()	
+	# get field mappers		
+	field_mappers = models.FieldMapper.objects.all()
+	default_fm_config = models.XML2kvp().config_json
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -912,7 +913,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'default_fm_config':default_fm_config,
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -976,11 +978,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		if job_note == '':
 			job_note = None
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1001,8 +1001,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			payload_dict=payload_dict,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
@@ -1050,8 +1050,9 @@ def job_transform(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()
+		default_fm_config = models.XML2kvp().config_json
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -1071,7 +1072,8 @@ def job_transform(request, org_id, record_group_id):
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'default_fm_config':default_fm_config,
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1103,11 +1105,9 @@ def job_transform(request, org_id, record_group_id):
 		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
 		logger.debug('using transformation: %s' % transformation)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1133,8 +1133,8 @@ def job_transform(request, org_id, record_group_id):
 			record_group=record_group,
 			input_job=input_job,
 			transformation=transformation,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,
@@ -1182,8 +1182,9 @@ def job_merge(request, org_id, record_group_id):
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()
+		default_fm_config = models.XML2kvp().config_json
 
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
@@ -1199,7 +1200,8 @@ def job_merge(request, org_id, record_group_id):
 				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'field_mappers':field_mappers,
+				'default_fm_config':default_fm_config,
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1227,11 +1229,9 @@ def job_merge(request, org_id, record_group_id):
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('merging jobs: %s' % input_jobs)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1256,8 +1256,8 @@ def job_merge(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,			
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,
@@ -1486,7 +1486,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# # get field mappers		
+		# get field mappers		
 		field_mappers = models.FieldMapper.objects.all()
 		default_fm_config = models.XML2kvp().config_json
 
@@ -1530,7 +1530,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				task_params_json = json.dumps({
 					'job_id':cjob.job.id,
 					'field_mapper':field_mapper,
-					'fm_config_json':fm_config_json					
+					'fm_config_json':fm_config_json
 				})
 			)
 			ct.save()
@@ -2618,8 +2618,9 @@ def job_analysis(request):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()
+		default_fm_config = models.XML2kvp().config_json
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -2636,7 +2637,8 @@ def job_analysis(request):
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'default_fm_config':default_fm_config,	
 				'analysis_type':analysis_type,
 				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
@@ -2664,11 +2666,9 @@ def job_analysis(request):
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('analyzing jobs: %s' % input_jobs)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -2692,8 +2692,8 @@ def job_analysis(request):
 			job_note=job_note,
 			user=request.user,			
 			input_jobs=input_jobs,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			input_validity_valve=input_validity_valve,

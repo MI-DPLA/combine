@@ -258,11 +258,6 @@ class XML2kvpMapper(BaseMapper):
 	'''
 
 
-	# Index Mapper class attributes (needed for easy access in Django templates)
-	classname = "XML2kvpMapper" # must be same as class name
-	name = "XML2kvp mapper"
-
-
 	def __init__(self, fm_config=None):		
 
 		self.fm_config = fm_config

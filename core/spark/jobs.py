@@ -218,8 +218,7 @@ class CombineSparkJob(object):
 					self.spark,
 					job=self.job,
 					records_df=db_records,
-					index_mapper=self.kwargs['index_mapper'],
-					include_attributes=self.kwargs['include_attributes']
+					fm_config_json=self.kwargs['fm_config_json']
 				)
 
 			# run Validation Scenarios
