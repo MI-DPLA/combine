@@ -64,13 +64,13 @@ class ESIndex(object):
 		logger = log4jLogger.LogManager.getLogger(__name__)
 
 		# get index mapper
-		index_mapper_handle = globals()[index_mapper]
+		index_mapper_handle = globals()['XML2kvpMapper']
 
 		# create rdd from index mapper
 		def es_mapper_pt_udf(pt):
 
 			# init mapper once per partition
-			mapper = index_mapper_handle(include_attributes=include_attributes)
+			mapper = index_mapper_handle(fm_config=json.loads(fm_config_json))
 
 			for row in pt:
 
@@ -83,7 +83,7 @@ class ESIndex(object):
 					fingerprint=row.fingerprint
 				)
 
-		logger.info('###ES 1 -- assigning Combine ID')
+		logger.info('###ES 1 -- mapping records')
 		mapped_records_rdd = records_df.rdd.mapPartitions(es_mapper_pt_udf)
 
 		# attempt to write index mapping failures to DB
@@ -263,12 +263,9 @@ class XML2kvpMapper(BaseMapper):
 	name = "XML2kvp mapper"
 
 
-	def __init__(self, include_attributes = None):		
+	def __init__(self, fm_config=None):		
 
-		if include_attributes == None:
-			self.include_attributes = settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER
-		else:
-			self.include_attributes = include_attributes
+		self.fm_config = fm_config
 
 
 	def map_record(self,
@@ -298,7 +295,7 @@ class XML2kvpMapper(BaseMapper):
 		try:
 
 			# prepare literals
-			literals = {
+			self.fm_config['literals'].update({
 
 				# add temporary id field
 				'temp_id':combine_id,
@@ -318,22 +315,10 @@ class XML2kvpMapper(BaseMapper):
 				# add record's crc32 document hash, aka "fingerprint"
 				'fingerprint':fingerprint,
 
-			}
+			})
 
 			# map with XML2kvp
-			kvp_dict = XML2kvp.xml_to_kvp(
-				record_string,
-				xml_attribs=self.include_attributes,
-				node_delim='___',
-				ns_prefix_delim='|',
-				copy_to=None,
-				copy_to_regex=None,
-				literals=literals,
-				skip_root=False,
-				skip_repeating_values=True,
-				skip_attribute_ns_declarations=True,
-				error_on_delims_collision=False,
-				include_xml_prop=False)
+			kvp_dict = XML2kvp.xml_to_kvp(record_string, **self.fm_config)
 
 			return (
 					'success',

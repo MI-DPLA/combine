@@ -86,7 +86,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 # import ElasticSearch BaseMapper and PythonUDFRecord
-from core.spark.es import BaseMapper
 from core.spark.utils import PythonUDFRecord
 
 # AWS

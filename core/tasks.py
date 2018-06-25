@@ -367,7 +367,7 @@ def job_reindex(ct_id):
 			'job_id':cjob.job.id,
 			'fm_config_json':ct.task_params['fm_config_json']
 		}
-		logger.debug(spark_code)
+		# logger.debug(spark_code)
 
 		# submit to livy
 		logger.debug('submitting code to Spark')
