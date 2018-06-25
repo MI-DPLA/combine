@@ -1488,7 +1488,7 @@ def job_update(request, org_id, record_group_id, job_id):
 
 		# # get field mappers		
 		field_mappers = models.FieldMapper.objects.all()
-		default_field_mapper_config = models.XML2kvp().default_config_json
+		default_field_mapper_config = models.XML2kvp().config_json
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
