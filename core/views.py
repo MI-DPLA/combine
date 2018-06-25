@@ -1488,7 +1488,7 @@ def job_update(request, org_id, record_group_id, job_id):
 
 		# # get field mappers		
 		field_mappers = models.FieldMapper.objects.all()
-		default_field_mapper_config = models.XML2kvp().config_json
+		default_fm_config = models.XML2kvp().config_json
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
@@ -1499,7 +1499,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
 				'field_mappers':field_mappers,				
-				'default_field_mapper_config':default_field_mapper_config,
+				'default_fm_config':default_fm_config,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1521,24 +1521,24 @@ def job_update(request, org_id, record_group_id, job_id):
 
 			# get preferred metadata index mapper
 			field_mapper = request.POST.get('field_mapper')
-			field_mapper_config_json = request.POST.get('field_mapper_config_json')
+			fm_config_json = request.POST.get('fm_config_json')
 
-			# # initiate Combine BG Task
-			# ct = models.CombineBackgroundTask(
-			# 	name = 'Re-Map and Index Job: %s' % cjob.job.name,
-			# 	task_type = 'job_reindex',
-			# 	task_params_json = json.dumps({
-			# 		'job_id':cjob.job.id,
-			# 		'index_mapper':index_mapper,
-			# 		'include_attributes':include_attributes
-			# 	})
-			# )
-			# ct.save()
-			# bg_task = tasks.job_reindex(
-			# 	ct.id,
-			# 	verbose_name=ct.verbose_name,
-			# 	creator=ct
-			# )
+			# initiate Combine BG Task
+			ct = models.CombineBackgroundTask(
+				name = 'Re-Map and Index Job: %s' % cjob.job.name,
+				task_type = 'job_reindex',
+				task_params_json = json.dumps({
+					'job_id':cjob.job.id,
+					'field_mapper':field_mapper,
+					'fm_config_json':fm_config_json					
+				})
+			)
+			ct.save()
+			bg_task = tasks.job_reindex(
+				ct.id,
+				verbose_name=ct.verbose_name,
+				creator=ct
+			)
 
 			return redirect('bg_tasks')
 
@@ -2280,6 +2280,30 @@ def test_rits(request):
 
 		except Exception as e:
 			return JsonResponse({'results':str(e), 'success':False})
+
+
+def field_mapper_payload(request, fm_id):
+
+	'''
+	View payload for field mapper
+	'''
+
+	# get transformation
+	fm = models.FieldMapper.objects.get(pk=int(fm_id))
+
+	# get type
+	doc_type = request.GET.get('type',None)
+
+	if fm.field_mapper_type == 'xml2kvp':
+
+		if not doc_type:
+			return HttpResponse(fm.config_json, content_type='application/json')
+
+		elif doc_type and doc_type == 'config':
+			return HttpResponse(fm.config_json, content_type='application/json')
+
+		elif doc_type and doc_type == 'payload':
+			return HttpResponse(fm.payload, content_type='application/json')
 
 
 @login_required

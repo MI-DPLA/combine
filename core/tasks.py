@@ -346,7 +346,7 @@ def job_reindex(ct_id):
 	# get CombineTask (ct)
 	try:
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-		logger.debug('using %s' % ct)
+		logger.debug('using %s' % ct)				
 
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -363,10 +363,9 @@ def job_reindex(ct_id):
 			delete_results = 0
 
 		# generate spark code		
-		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s).spark_function()' % {
+		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\').spark_function()' % {
 			'job_id':cjob.job.id,
-			'index_mapper':ct.task_params['index_mapper'],
-			'include_attributes':ct.task_params['include_attributes']
+			'fm_config_json':ct.task_params['fm_config_json']
 		}
 		logger.debug(spark_code)
 

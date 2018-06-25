@@ -42,7 +42,7 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, job, records_df, index_mapper, include_attributes):
+	def index_job_to_es_spark(spark, job, records_df, fm_config_json):
 
 		'''
 		Method to index records dataframe into ES

@@ -69,7 +69,7 @@ class XML2kvp(object):
 		'''
 
 		# defaults, overwritten by methods
-		self.xml_attribs=True
+		self.include_attributes=True
 		self.node_delim='___'
 		self.ns_prefix_delim='|'
 		self.copy_to = {}
@@ -85,6 +85,7 @@ class XML2kvp(object):
 		self.include_meta=False
 		self.self_describing=False
 		self.remove_copied_key=True
+		self.remove_ns_prefix=False
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
@@ -100,7 +101,7 @@ class XML2kvp(object):
 	def config_json(self):
 
 		config_dict = { k:v for k,v in self.__dict__.items() if k in [
-			'xml_attribs',
+			'include_attributes',
 			'node_delim',
 			'ns_prefix_delim',
 			'copy_to',
@@ -112,7 +113,8 @@ class XML2kvp(object):
 			'exclude_attributes',
 			'error_on_delims_collision',
 			'self_describing',
-			'remove_copied_key'
+			'remove_copied_key',
+			'remove_ns_prefix'
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
@@ -131,10 +133,8 @@ class XML2kvp(object):
 
 				else:				
 					if k.startswith('@'):
-						# hops.append(self._format_hop('attribute', k, v))
 						hops = self._format_and_append_hop(hops, 'attribute', k, v)
 					else:
-						# hops.append(self._format_hop('element', k, None))
 						hops = self._format_and_append_hop(hops, 'element', k, None)
 
 						# recurse
@@ -170,7 +170,13 @@ class XML2kvp(object):
 				self._check_delims_collision(k)
 			
 			# apply namespace delimiter
-			hop = k.replace(':', self.ns_prefix_delim)
+			if not self.remove_ns_prefix:
+				hop = k.replace(':', self.ns_prefix_delim)
+			else:
+				if ':' in k:
+					hop = k.split(':')[1]
+				else:
+					hop = k
 
 		# handle elements
 		if hop_type == 'attribute':
@@ -318,7 +324,7 @@ class XML2kvp(object):
 	@staticmethod
 	def xml_to_kvp(
 		xml_input,
-		xml_attribs=None,
+		include_attributes=None,
 		node_delim=None,
 		ns_prefix_delim=None,		
 		copy_to = None,
@@ -334,13 +340,14 @@ class XML2kvp(object):
 		include_meta=None,
 		self_describing=None,
 		remove_copied_key=None,
+		remove_ns_prefix=None,
 		handler=None,
 		return_handler=False):
 
 		# init handler
 		if not handler:
 			handler = XML2kvp(
-				xml_attribs=xml_attribs,
+				include_attributes=include_attributes,
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,		
 				copy_to=copy_to,
@@ -355,7 +362,8 @@ class XML2kvp(object):
 				as_tuples=as_tuples,
 				include_meta=include_meta,
 				self_describing=self_describing,
-				remove_copied_key=remove_copied_key)
+				remove_copied_key=remove_copied_key,
+				remove_ns_prefix=remove_ns_prefix)
 
 		# clean kvp_dict
 		handler.kvp_dict = {}
@@ -364,7 +372,7 @@ class XML2kvp(object):
 		handler.xml_string = handler._parse_xml_input(xml_input)
 
 		# parse as dictionary
-		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=handler.xml_attribs)
+		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=handler.include_attributes)
 
 		# walk xmltodict parsed dictionary and reutnr
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
