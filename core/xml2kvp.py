@@ -69,27 +69,35 @@ class XML2kvp(object):
 		'''
 
 		# defaults, overwritten by methods
+		self.as_tuples=True
+		self.concat_values_on_all_fields=False
+		self.concat_values_on_fields={}
+		self.copy_to={}
+		self.copy_to_regex={}
+		self.error_on_delims_collision=True
+		self.exclude_attributes=[]
+		self.exclude_elements=[]
 		self.include_attributes=True
+		self.include_meta=False
+		self.include_xml_prop=False
+		self.literals={}
 		self.node_delim='___'
 		self.ns_prefix_delim='|'
-		self.copy_to = {}
-		self.copy_to_regex = {}
-		self.literals = {}
-		self.skip_root=False
-		self.skip_repeating_values=True
-		self.skip_attribute_ns_declarations=True
-		self.exclude_attributes=[]
-		self.error_on_delims_collision=True
-		self.include_xml_prop=False
-		self.as_tuples=True
-		self.include_meta=False
-		self.self_describing=False
 		self.remove_copied_key=True
 		self.remove_ns_prefix=False
+		self.self_describing=False
+		self.split_values_on_all_fields=False
+		self.split_values_on_fields={}
+		self.skip_attribute_ns_declarations=True
+		self.skip_repeating_values=True
+		self.skip_root=False
+
+		# list of properties that are allowed to be overwritten with None
+		arg_none_allowed = []
 
 		# overwite with attributes from static methods
 		for k,v in kwargs.items():
-			if v is not None:
+			if v is not None or k in arg_none_allowed:
 				setattr(self, k, v)
 
 		# set non-overwritable class attributes
@@ -101,20 +109,25 @@ class XML2kvp(object):
 	def config_json(self):
 
 		config_dict = { k:v for k,v in self.__dict__.items() if k in [
-			'include_attributes',
-			'node_delim',
-			'ns_prefix_delim',
+			'concat_values_on_all_fields',
+			'concat_values_on_fields',
 			'copy_to',
 			'copy_to_regex',
-			'literals',
-			'skip_root',
-			'skip_repeating_values',
-			'skip_attribute_ns_declarations',
-			'exclude_attributes',
 			'error_on_delims_collision',
-			'self_describing',
+			'exclude_attributes',
+			'exclude_elements',
+			'include_attributes',
+			'literals',
+			'node_delim',
+			'ns_prefix_delim',
 			'remove_copied_key',
-			'remove_ns_prefix'
+			'remove_ns_prefix',
+			'self_describing',
+			'split_values_on_all_fields',
+			'split_values_on_fields',
+			'skip_attribute_ns_declarations',
+			'skip_repeating_values',
+			'skip_root'
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
@@ -168,6 +181,11 @@ class XML2kvp(object):
 			# if erroring on collision
 			if self.error_on_delims_collision:			
 				self._check_delims_collision(k)
+
+			# if skipping elements
+			if len(self.exclude_elements) > 0:
+				if k in self.exclude_elements:
+					return hops
 			
 			# apply namespace delimiter
 			if not self.remove_ns_prefix:
@@ -221,11 +239,8 @@ class XML2kvp(object):
 		appending new values to pre-existing keys
 		'''
 
-		# gen key
-		if self.skip_root:
-			k = self.node_delim.join(hops[1:])
-		else:	
-			k = self.node_delim.join(hops)
+		# join on node delimiter
+		k = self.node_delim.join(hops)
 
 		# add delims suffix
 		if self.self_describing:
@@ -253,8 +268,6 @@ class XML2kvp(object):
 
 			slen = len(k_list)
 
-			# k_list.extend([ regex_v for regex_k, regex_v in self.copy_to_regex.items() if re.match(re.compile(regex_k), k) ])
-			
 			# loop through copy_to_regex
 			for rk, rv in self.copy_to_regex.items():
 
@@ -289,7 +302,38 @@ class XML2kvp(object):
 			# already list, append
 			else:
 				if not self.skip_repeating_values or value not in self.kvp_dict[k]:
-					self.kvp_dict[k].append(value)		
+					self.kvp_dict[k].append(value)
+
+
+	def _split_and_concat_fields(self):
+
+		'''
+		Method to group actions related to splitting and concatenating field values
+		'''
+
+		# concat values on all fields
+		if self.concat_values_on_all_fields:
+			for k,v in self.kvp_dict.items():
+				if type(v) == list:
+					self.kvp_dict[k] = self.concat_values_on_all_fields.join(v)
+
+		# concat values on select fields
+		if not self.concat_values_on_all_fields and len(self.concat_values_on_fields) > 0:
+			for k,v in self.concat_values_on_fields.items():
+				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == list:					
+					self.kvp_dict[k] = v.join(self.kvp_dict[k])
+
+		# split values on all fields
+		if self.split_values_on_all_fields:
+			for k,v in self.kvp_dict.items():
+				if type(v) == str:
+					self.kvp_dict[k] = v.split(self.split_values_on_all_fields)
+
+		# split values on select fields
+		if not self.split_values_on_all_fields and len(self.split_values_on_fields) > 0:
+			for k,v in self.split_values_on_fields.items():
+				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == str:					
+					self.kvp_dict[k] = self.kvp_dict[k].split(v)
 
 
 	def _parse_xml_input(self, xml_input):
@@ -318,52 +362,66 @@ class XML2kvp(object):
 			_nsmap['global_ns'] = ns0
 		except:
 			pass
-		self.nsmap = _nsmap		
+		self.nsmap = _nsmap
 
 
 	@staticmethod
 	def xml_to_kvp(
 		xml_input,
-		include_attributes=None,
-		node_delim=None,
-		ns_prefix_delim=None,		
+
+		# flow control
+		handler=None,
+		return_handler=False,
+
+		# kwargs
+		as_tuples=True,
+		concat_values_on_all_fields=None,
+		concat_values_on_fields=None,
 		copy_to = None,
 		copy_to_regex = None,
-		literals = None,
-		skip_root=None,
-		skip_repeating_values=True,
-		skip_attribute_ns_declarations=True,
-		exclude_attributes=None,
 		error_on_delims_collision=True,
-		include_xml_prop=None,
-		as_tuples=True,
+		exclude_attributes=None,
+		exclude_elements=None,
+		include_attributes=None,
 		include_meta=None,
-		self_describing=None,
+		include_xml_prop=None,
+		literals = None,
+		node_delim=None,
+		ns_prefix_delim=None,		
 		remove_copied_key=None,
-		remove_ns_prefix=None,
-		handler=None,
-		return_handler=False):
+		remove_ns_prefix=None,		
+		self_describing=None,
+		split_values_on_all_fields=None,
+		split_values_on_fields=None,
+		skip_attribute_ns_declarations=True,
+		skip_repeating_values=True,
+		skip_root=None):
 
-		# init handler
+		# init handler, overwriting defaults if not None
 		if not handler:
 			handler = XML2kvp(
-				include_attributes=include_attributes,
-				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim,		
+				as_tuples=as_tuples,
+				concat_values_on_all_fields=concat_values_on_all_fields,
+				concat_values_on_fields=concat_values_on_fields,
 				copy_to=copy_to,
 				copy_to_regex=copy_to_regex,
-				literals=literals,
-				skip_root=skip_root,
-				skip_repeating_values=skip_repeating_values,
-				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
-				exclude_attributes=exclude_attributes,
 				error_on_delims_collision=error_on_delims_collision,
-				include_xml_prop=include_xml_prop,
-				as_tuples=as_tuples,
+				exclude_attributes=exclude_attributes,
+				exclude_elements=exclude_elements,
+				include_attributes=include_attributes,
 				include_meta=include_meta,
-				self_describing=self_describing,
+				include_xml_prop=include_xml_prop,
+				literals=literals,
+				node_delim=node_delim,
+				ns_prefix_delim=ns_prefix_delim,		
 				remove_copied_key=remove_copied_key,
-				remove_ns_prefix=remove_ns_prefix)
+				remove_ns_prefix=remove_ns_prefix,
+				self_describing=self_describing,
+				split_values_on_all_fields=split_values_on_all_fields,
+				split_values_on_fields=split_values_on_fields,
+				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
+				skip_repeating_values=skip_repeating_values,
+				skip_root=skip_root)
 
 		# clean kvp_dict
 		handler.kvp_dict = {}
@@ -381,6 +439,9 @@ class XML2kvp(object):
 		if len(handler.literals) > 0:
 			for k,v in handler.literals.items():
 				handler.kvp_dict[k] = v
+
+		# handle split and concatenations
+		handler._split_and_concat_fields()
 
 		# convert list to tuples if flagged
 		if as_tuples:
@@ -411,11 +472,15 @@ class XML2kvp(object):
 	@staticmethod
 	def k_to_xpath(
 		k,
+
+		# flow control
+		handler=None,
+		return_handler=False,
+
+		# kwargs
 		node_delim=None,
 		ns_prefix_delim=None,
-		skip_root=None,
-		handler=None,
-		return_handler=False):
+		skip_root=None):
 
 		'''
 		Method to derive xpath from kvp key
