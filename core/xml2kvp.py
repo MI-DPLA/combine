@@ -51,7 +51,9 @@ class XML2kvp(object):
 	<nested>
 		<empty></empty>
 	</nested>
-	<internet:url url='http://example.com'>see my url</internet:url>	
+	<internet:url url='http://example.com'>see my url</internet:url>
+	<beat type="4/4">four on the floor</beat>
+	<beat type="3/4">waltz</beat>
 </root>
 	'''
 
@@ -126,8 +128,7 @@ class XML2kvp(object):
 			'split_values_on_all_fields',
 			'split_values_on_fields',
 			'skip_attribute_ns_declarations',
-			'skip_repeating_values',
-			'skip_root'
+			'skip_repeating_values'			
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
@@ -619,8 +620,13 @@ class XML2kvp(object):
 				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k,v,len(matched_elements),values_len))
 
 
+	@staticmethod
+	def test_xml_to_kvp_speed(iterations, kwargs):
 
-
+		stime=time.time()
+		for x in range(0,iterations):
+			XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
+		print("avg for %s iterations: %s" % (iterations, (time.time()-stime) / float(iterations)))
 
 		
 
