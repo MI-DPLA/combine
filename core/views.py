@@ -2350,22 +2350,20 @@ def test_field_mapper(request):
 		field_mapper = request.POST.get('field_mapper')
 		fm_config_json = request.POST.get('fm_config_json')
 
-		# try:
+		try:
 		
-		# parse record with XML2kvp
-		fm_config = json.loads(fm_config_json)
-		kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
+			# parse record with XML2kvp
+			fm_config = json.loads(fm_config_json)
+			kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
 
-		# return as JSON
-		return JsonResponse(kvp_dict)
+			# return as JSON
+			return JsonResponse(kvp_dict)
 
-		# except Exception as e:
+		except Exception as e:
 
-		# 	logger.debug('test validation scenario was unsucessful, deleting temporary vs')
-		# 	vs.delete()
-
-		# 	return HttpResponse(str(e), content_type="text/plain")
-
+			logger.debug('field mapper was unsucessful')
+			return JsonResponse({'error':str(e)})
+			
 
 @login_required
 def dpla_bulk_data_download(request):

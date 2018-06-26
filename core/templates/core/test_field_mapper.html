@@ -62,7 +62,8 @@
 
 	<!-- mapping results -->
 	<div class="row">		
-		<div class="col-md-12">			
+		<div class="col-md-12">
+			<h4>Mapping Results</h4>
 			<div>
 				<pre><code id="mapping_results" style="padding:10px; border-radius:10px;" class="json">Mapped fields will show here...</code></pre>
 			</div>
@@ -129,7 +130,7 @@
 				// change this to dynamically grab from selected rows in records table
 				var db_id = sel_row_id;
 				if (typeof db_id == 'undefined') {
-					alert('Click a row from the table at the top to run a Transformation Test against...');
+					alert('Click a row from the table at the top test Field Mapper...');
 				}
 
 				// get trans_payload
@@ -146,8 +147,6 @@
 					},
 					dataType:'json',
 					success: function(data){
-
-						console.log(data);
 
 						// paste to page
 						$("#mapping_results").html(JSON.stringify(data, null, 2));
