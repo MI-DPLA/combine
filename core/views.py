@@ -670,6 +670,10 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
+	# retrieve field mapper config json used
+	job_details = json.loads(cjob.job.job_details)
+	job_fm_config_json = job_details['fm_config_json']
+
 	# return	
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
@@ -678,6 +682,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'job_lineage_json':json.dumps(job_lineage),
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
 			'q':q,
+			'job_fm_config_json':job_fm_config_json,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -1489,6 +1494,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		# get field mappers		
 		field_mappers = models.FieldMapper.objects.all()
 		default_fm_config = models.XML2kvp().config_json
+		orig_fm_config_json = cjob.job.get_fm_config_json()
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
@@ -1500,6 +1506,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				'validation_scenarios':validation_scenarios,
 				'field_mappers':field_mappers,				
 				'default_fm_config':default_fm_config,
+				'orig_fm_config_json':orig_fm_config_json,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 

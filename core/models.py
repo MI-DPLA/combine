@@ -1020,6 +1020,28 @@ class Job(models.Model):
 			logger.debug('could not remove ES index: j%s' % self.id)
 
 
+	def get_fm_config_json(self, as_dict=False):
+
+		'''
+		Method to return Field Mapper Configuration JSON used
+		'''
+
+		try:
+
+			job_details = json.loads(self.job_details)
+			fm_config_json = job_details['fm_config_json']
+
+			# return as JSON
+			if as_dict:
+				return json.loads(fm_config_json)
+			else:
+				return fm_config_json
+
+		except Exception as e:
+			logger.debug('error retrieving fm_config_json: %s' % str(e))
+			return False
+
+
 
 class JobTrack(models.Model):
 
@@ -3982,7 +4004,10 @@ class HarvestJob(CombineJob):
 				job_id = None,
 				status = 'initializing',
 				url = None,
-				headers = None
+				headers = None,
+				job_details = json.dumps({
+					'fm_config_json':self.fm_config_json
+				})
 			)
 			self.job.save()
 
@@ -4330,12 +4355,14 @@ class TransformJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'transformation':
-						{
-							'name':self.transformation.name,
-							'type':self.transformation.transformation_type,
-							'id':self.transformation.id
-						}
+					{
+						'transformation':
+							{
+								'name':self.transformation.name,
+								'type':self.transformation.transformation_type,
+								'id':self.transformation.id
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
@@ -4476,10 +4503,12 @@ class MergeJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':str(self.input_jobs),
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':str(self.input_jobs),
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
@@ -4600,10 +4629,12 @@ class PublishJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':self.input_job.id,
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':self.input_job.id,
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
@@ -4729,10 +4760,12 @@ class AnalysisJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':str(self.input_jobs),
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':str(self.input_jobs),
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()

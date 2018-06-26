@@ -367,7 +367,6 @@ def job_reindex(ct_id):
 			'job_id':cjob.job.id,
 			'fm_config_json':ct.task_params['fm_config_json']
 		}
-		# logger.debug(spark_code)
 
 		# submit to livy
 		logger.debug('submitting code to Spark')
@@ -382,6 +381,18 @@ def job_reindex(ct_id):
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
+
+		# update field mapper config json used		
+		logger.debug("Updating job details: field mapper config json used")
+		if cjob.job.job_details:			
+			job_details_dict = json.loads(cjob.job.job_details)
+		else:
+			job_details_dict = {}
+		# set new fm_config_json
+		job_details_dict['fm_config_json'] = ct.task_params['fm_config_json']
+		# rewrite
+		cjob.job.job_details = json.dumps(job_details_dict)
+		cjob.job.save() # is this save problematic?
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		

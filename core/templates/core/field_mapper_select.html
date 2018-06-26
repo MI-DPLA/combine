@@ -8,6 +8,9 @@
 				<div class="form-group">
 					<label for="field_mapper">Configuration Name</label>
 					<select class="form-control" id="field_mapper" name="field_mapper">
+						{% if orig_fm_config_json %}
+							<option value="job_fm_config_json">Configuration used for Job: {{cjob.job.name}}</option>
+						{% endif %}
 						<option value="default">Default</option>
 						{% for fm in field_mappers %}
 							<option value='{{ fm.id }}'>{{ fm.name }}</option>
@@ -16,8 +19,8 @@
 				</div>
 
 				<div class="form-group">
-					<label for="fm_config_json">Configuration JSON</label>
-					<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ default_fm_config|safe }}</textarea>
+					<label for="fm_config_json">Configuration JSON</label>					
+					<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{% if orig_fm_config_json %}{{ orig_fm_config_json }}{% else %}{{ default_fm_config|safe }}{% endif %}</textarea>					
 					<small id="fm_config_json" class="form-text text-muted">Edit this JSON configuration for on-the-fly changes</small>
 				</div>
 
@@ -27,6 +30,10 @@
 
 	<script>
 
+		{% if orig_fm_config_json %}
+			orig_fm_config_json = {{ orig_fm_config_json|safe }};
+		{% endif %}
+
 		// store default
 		default_fm_config = {{ default_fm_config|safe }};
 
@@ -34,7 +41,7 @@
 		$(document).ready(function(){
 			$("#field_mapper").change(function(){
 
-				if (this.value != 'default'){
+				if (this.value != 'default' && this.value != 'job_fm_config_json' ){
 
 					// get payload
 					$.ajax({
@@ -45,6 +52,13 @@
 							$("#fm_config_json").val(JSON.stringify(data, null, 2));
 						}			
 					});	
+				}
+
+				else if (this.value == 'job_fm_config_json'){
+
+					// load job's fm_config_json
+					$("#fm_config_json").val(JSON.stringify(orig_fm_config_json, null, 2));
+
 				}
 
 				else {
