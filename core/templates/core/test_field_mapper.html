@@ -1,0 +1,184 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+	
+	<div class="row">
+		<div class="col-md-8">
+			<h2>Test Field Mapper</h2>			
+			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
+		</div>
+	</div>
+
+	{% if q and fmid %}
+		<div class="alert alert-success alert-dismissible fade show" role="alert">
+			<strong>Input Record</strong> used for Field Mapping and <strong>Field Mapper configuration</strong> have been automatically loaded, click the "<strong>Test Field Mapper</strong>" button to preview mapping!
+			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+			<span aria-hidden="true">&times;</span>
+			</button>
+		</div>
+	{% endif %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<!-- All Records DT table -->
+			{% include 'core/records_dt_table.html' %}
+		</div>
+	</div>
+
+	<!-- input paylaod -->
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Field Mapper Configuration JSON</h3>
+			<p>Paste/edit your Field Mapper configuration JSON, or select from a pre-existing Field Mapper to test:</p>
+			
+			<!-- pre-existing FieldMapper -->
+			<div class="row">
+				<div class="col-md-4">
+					<div class="form-group">
+						<label for="field_mapper">Configuration Name</label>
+						<select class="form-control" id="field_mapper" name="field_mapper">
+							<option value="default">Default</option>
+							{% for fm in field_mappers %}
+								<option value='{{ fm.id }}'>{{ fm.name }}</option>
+							{% endfor %}					
+						</select>
+					</div>
+				</div>
+			</div>
+
+			<!-- Field Mapper configuration JSON -->
+			<div class="row">
+				<div class="col-md-12">
+					<div class="form-group">
+						<label for="fm_config_json">Configuration JSON</label>
+						<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ default_fm_config|safe }}</textarea>
+					</div>
+				</div>
+			</div>
+
+			<button class="btn btn-success btn-sm" id="test_fm">Test Field Mapper</button>
+		</div>
+	</div>
+
+	<!-- mapping results -->
+	<div class="row">		
+		<div class="col-md-12">			
+			<div>
+				<pre><code id="mapping_results" style="padding:10px; border-radius:10px;" class="json">Mapped fields will show here...</code></pre>
+			</div>
+		</div>
+	</div>
+	
+
+	<script>
+
+		// global variables
+		var sel_row_id;
+
+		// capture clicked row
+		$(document).ready(function() {
+			$("#datatables_records tbody").on( 'click', 'tr', function () {
+
+				// loop through and remove other selections
+				$("#datatables_records tbody tr.selected").each(function(i, block){
+					$(block).removeClass('selected');
+				});
+
+				// show selection
+				$(this).toggleClass('selected');
+
+				// get record id
+			    sel_row = $(this).children(":first");
+			    sel_row_id = sel_row.find('code').html()
+			} );
+		});
+
+		// store default fm config json
+		default_fm_config = {{ default_fm_config|safe }};
+
+		// load saved field mapper configs
+		$(document).ready(function(){
+			$("#field_mapper").change(function(){
+
+				if (this.value != 'default'){
+
+					// get payload
+					$.ajax({
+						type: "GET",
+						url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+						dataType:'json',
+						success: function(data){
+							$("#fm_config_json").val(JSON.stringify(data, null, 2));
+						}			
+					});	
+				}
+
+				else {
+
+					// load default
+					$("#fm_config_json").val(JSON.stringify(default_fm_config, null, 2));
+					
+				}
+
+			})
+		});
+
+		$(document).ready(function(){
+			$("#test_fm").click(function(){				
+
+				// change this to dynamically grab from selected rows in records table
+				var db_id = sel_row_id;
+				if (typeof db_id == 'undefined') {
+					alert('Click a row from the table at the top to run a Transformation Test against...');
+				}
+
+				// get trans_payload
+				var fm_config_json = $("#fm_config_json").val();
+
+				// issue ajax request and get transformation results
+				$.ajax({
+					type: "POST",
+					url: "{% url 'test_field_mapper' %}",
+					data: {
+						'db_id':db_id,
+						'fm_config_json':fm_config_json,						
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){
+
+						console.log(data);
+
+						// paste to page
+						$("#mapping_results").html(JSON.stringify(data, null, 2));
+
+						// init hljs						
+						$("#mapping_results").each(function(i, block) {
+							hljs.highlightBlock(block);
+						});
+
+					}			
+				});
+			})
+		});
+
+		// run post records DT table draw specific to transformation testing
+		function run_view_specific_dt_draw(dt){
+
+			// if search term provided AND only one result, select
+			{% if q %}
+				if (dt.api.length == 1){
+					$("tr").click();
+				}
+			{% endif %}
+
+			// if transformation scenario requested, select from dropdown
+			{% if fmid %}
+				$("#field_mapper").val("{{ fmid }}").change();				
+			{% endif %}
+			
+		}
+		
+	</script>
+
+{% endblock %}

@@ -1989,12 +1989,16 @@ def configuration(request):
 	# get all bulk downloads
 	bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
+	# get field mappers
+	field_mappers = models.FieldMapper.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
 			'rits':rits,
+			'field_mappers':field_mappers,
 			'bulk_downloads':bulk_downloads,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2304,6 +2308,63 @@ def field_mapper_payload(request, fm_id):
 
 		elif doc_type and doc_type == 'payload':
 			return HttpResponse(fm.payload, content_type='application/json')
+
+
+def test_field_mapper(request):
+
+	'''
+	View to live test field mapper configurations
+	'''
+	
+	if request.method == 'GET':
+
+		# get field mapper
+		field_mappers = models.FieldMapper.objects.all()
+		default_fm_config = models.XML2kvp().config_json
+
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
+		# check for pre-requested transformation scenario
+		fmid = request.GET.get('fmid', None)
+
+		# return
+		return render(request, 'core/test_field_mapper.html', {
+			'q':q,
+			'fmid':fmid,
+			'field_mappers':field_mappers,
+			'default_fm_config':default_fm_config,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	# If POST, provide mapping of record
+	if request.method == 'POST':
+
+		logger.debug('running test field mapping')
+		logger.debug(request.POST)
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+
+		# get field mapper info
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
+
+		# try:
+		
+		# parse record with XML2kvp
+		fm_config = json.loads(fm_config_json)
+		kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
+
+		# return as JSON
+		return JsonResponse(kvp_dict)
+
+		# except Exception as e:
+
+		# 	logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+		# 	vs.delete()
+
+		# 	return HttpResponse(str(e), content_type="text/plain")
 
 
 @login_required

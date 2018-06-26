@@ -10,6 +10,30 @@
 		</div>
 	</div>
 
+	<div id="field_mappers_anchor" class="row">
+		<div class="col-md-12">
+			<h3>Field Mapper Configurations</h3>
+			<p>The following configurations are used as configurations for mapping XML documents to "flat" fields for indexing and analysis.  Though configurations can be modified on-the-fly for each Job run or re-indexed, this provides an ability to save particularly useful or complex configurations to reuse at a later time.</p>
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>ID</th>
+					<th>Name</th>
+					<th>Type</th>					
+					<th>Configuration JSON</th>
+				</tr>
+				{% for fm in field_mappers %}
+					<tr>
+						<td>{{fm.id}}</td>
+						<td>{{fm.name}}</td>
+						<td>{{fm.get_field_mapper_type_display}}</td>						
+						<td><a href="{% url 'field_mapper_payload' fm_id=fm.id %}?doc_type=config">View configuration JSON</a></td>
+					</tr>
+				{% endfor %}
+			</table>
+			<p><a href="{% url 'test_field_mapper' %}"><button type="button" class="btn btn-success btn-sm">Test Field Mapper</button></a></p>
+		</div>
+	</div>
+
 	<div id="oai_endpoints_anchor" class="row">
 		<div class="col-md-12">
 			<h3>OAI Endpoints for Harvest</h3>
