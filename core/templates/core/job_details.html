@@ -191,22 +191,14 @@
 									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>					
 									<td>{{ input_job.input_job.job_type }}</td>
 									<td>{{ input_job.get_input_validity_valve_display }}</td>
-									<td>
-										{% if input_job.input_validity_valve == 'all' %}
-											{{ input_job.input_job.record_count }}
-										{% elif input_job.input_validity_valve == 'valid' %}
-											{{ input_job.input_job.validation_results.passed_count }}
-										{% elif input_job.input_validity_valve == 'invalid' %}
-											{{ input_job.input_job.validation_results.failure_count }}
-										{% endif %}
-									</td>
+									<td>{{ input_job.calc_passed_records }}</td>
 								</tr>
 								{% endfor %}
 								<tr>
 									<td></td>
 									<td></td>									
 									<td><strong>Total:</strong></td>
-									<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
+									<td>{{ record_count_details.input_jobs.total_input_record_count }}</td>
 								</tr>
 							</table>
 						</div>

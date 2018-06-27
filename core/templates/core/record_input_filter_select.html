@@ -4,12 +4,12 @@
 		<div class="col-md-12">
 			<div class="gray_box">
 
-				<p>Filter Records used as input for this Job.  All parameters are optional, defaults will use <strong>all</strong> Records from input Job(s).</p>
+				<p>Filter Records from each Job used as input for this Job.  Default settings do not filter and include <strong>all</strong> Records from <strong>all</strong> input Jobs.</p>
 
 				<div class="row">
 					<div class="col-md-12">
 						<h5>Record Validity</h5>
-						<p>Select Records based on Validation Results from input Job(s):</p>
+						<p>Filter Records based on Validation Results from their respective Job:</p>
 						
 						<div class="form-check">
 							<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
@@ -36,12 +36,12 @@
 
 				<div class="row">
 					<div class="col-md-12">
-						<h5>Subset for Testing</h5>
-						<p>Select a numerical subset of Records for testing and debugging purposes:</p>
+						<h5>Limit Number of Records</h5>
+						<p>Numerically limit Records from each in Job <em>(Note: will apply to each Job separately, so if 4 Jobs are used as input, and limit is set to 10, a total of 40 Records will result)</em>:</p>
 
 						<div class="form-group">
-							<label for="input_numerical_valve">Number of Records</label>
-							<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000, or defaults to all"/>
+							<label for="input_numerical_valve">Limit</label>
+							<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000"/>
 						</div>						
 						
 					</div>

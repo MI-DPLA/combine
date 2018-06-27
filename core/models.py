@@ -828,7 +828,9 @@ class Job(models.Model):
 						'from':from_node,
 						'to':to_node,
 						'input_validity_valve':link.input_validity_valve,
-						'input_validity_valve_pretty':link.get_input_validity_valve_display()
+						'input_validity_valve_pretty':link.get_input_validity_valve_display(),
+						'input_numerical_valve':link.input_numerical_valve,
+						'total_records_passed':link.calc_passed_records()
 					}
 
 					# add record count depending in input_validity_valve
@@ -1075,6 +1077,34 @@ class JobInput(models.Model):
 			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
 		)
 	input_numerical_valve = models.IntegerField(null=True, default=None)
+
+
+	def __str__(self):
+		return 'JobInputLink: input job #%s for job #%s' % (self.input_job.id, self.job.id)
+
+
+	def calc_passed_records(self):
+
+		'''
+		Method to determine total amount of passed records to target Job
+		'''
+
+		stime=time.time()
+
+		# set passed_count with validity valves
+		if self.input_validity_valve == 'all':
+			passed_count = self.input_job.record_count
+		elif self.input_validity_valve == 'valid':
+			passed_count = self.input_job.validation_results()['passed_count']
+		elif self.input_validity_valve == 'invalid':
+			passed_count = self.input_job.validation_results()['failure_count']
+
+		# factor numerical subsets
+		if self.input_numerical_valve and passed_count > self.input_numerical_valve:
+			passed_count = self.input_numerical_valve
+
+		# return
+		return passed_count
 
 
 
@@ -3739,15 +3769,24 @@ class CombineJob(object):
 		'''
 
 		if self.job.jobinput_set.count() > 0:			
-			total_record_count = 0			
-			for input_job in self.job.jobinput_set.all():
-				if input_job.input_validity_valve == 'all':
-					total_record_count += input_job.input_job.record_count
-				elif input_job.input_validity_valve == 'valid':
-					total_record_count += input_job.input_job.validation_results()['passed_count']
-				elif input_job.input_validity_valve == 'invalid':
-					total_record_count += input_job.input_job.validation_results()['failure_count']
-			return total_record_count
+
+			# init dict
+			input_jobs_dict = {
+				'total_input_record_count':0,
+				'jobs':[]
+			}
+			
+			# loop through input jobs
+			for input_job in self.job.jobinput_set.all():	
+
+				# add to jobs
+				input_jobs_dict['jobs'].append(input_job)			
+
+				# bump count
+				input_jobs_dict['total_input_record_count'] += input_job.calc_passed_records()
+
+			# return 
+			return input_jobs_dict
 		else:
 			return None
 
@@ -3771,11 +3810,7 @@ class CombineJob(object):
 		r_count_dict['errors'] = self.job.get_errors().count()
 
 		# include input jobs
-		total_input_records = self.get_total_input_job_record_count()
-		r_count_dict['input_jobs'] = {
-			'total_input_records': total_input_records,
-			'jobs':self.job.jobinput_set.all()
-		}
+		r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
 
 		# calc success percentages, based on records ratio to job record count (which includes both success and error)
 		if r_count_dict['records'] != 0:

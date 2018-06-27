@@ -93,9 +93,23 @@ function styleNetworkEdges(edge){
 
 	// set edge label based on input validity type
 	edge.label = `${edge.input_validity_valve_pretty} (${edge.record_count})`;
+	// if limited, add
+	if (edge.input_numerical_valve){
+		edge.label += `, Limit (${edge.input_numerical_valve})`;
+	}
+
+	// color blue if limited
+	if (edge.input_numerical_valve){
+		edge.color = {
+			color:'blue'
+		};
+		edge.font = {
+			color:'blue'
+		}	
+	}
 
 	// all records edge
-	if (edge.input_validity_valve == 'all'){
+	else if (edge.input_validity_valve == 'all'){
 		edge.color = {
 			color:'orange'
 		};
@@ -105,7 +119,7 @@ function styleNetworkEdges(edge){
 	}
 	
 	// valid records edge
-	if (edge.input_validity_valve == 'valid'){
+	else if (edge.input_validity_valve == 'valid'){
 		edge.color = {
 			color:'green'
 		};
@@ -115,7 +129,7 @@ function styleNetworkEdges(edge){
 	}
 
 	// invalid records edge
-	if (edge.input_validity_valve == 'invalid'){
+	else if (edge.input_validity_valve == 'invalid'){
 		edge.color = {
 			color:'red'
 		};
