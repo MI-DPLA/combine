@@ -1089,7 +1089,7 @@ class JobInput(models.Model):
 		Method to determine total amount of passed records to target Job
 		'''
 
-		stime=time.time()
+		passed_count = 0
 
 		# set passed_count with validity valves
 		if self.input_validity_valve == 'all':
@@ -4628,8 +4628,7 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None,
-		input_validity_valve='all'):
+		job_id=None):
 
 		'''
 		Args:
@@ -4657,7 +4656,6 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
-			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4680,14 +4678,17 @@ class PublishJob(CombineJob):
 						'publish':
 							{
 								'publish_job_id':self.input_job.id,
-							},
-						'fm_config_json':self.fm_config_json
+							}						
 					})
 			)
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
+			job_input_link = JobInput(
+				job=self.job,
+				input_job=self.input_job,
+				input_validity_valve='all',
+				input_numerical_valve=None)
 			job_input_link.save()
 
 			# save publishing link from job to record_group
@@ -4751,7 +4752,10 @@ class AnalysisJob(CombineJob):
 		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4763,7 +4767,6 @@ class AnalysisJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
-			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4784,7 +4787,7 @@ class AnalysisJob(CombineJob):
 			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4819,7 +4822,11 @@ class AnalysisJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
+				job_input_link = JobInput(
+					job=self.job,
+					input_job=input_job,
+					input_validity_valve=self.input_filters['input_validity_valve'],
+					input_numerical_valve=self.input_filters['input_numerical_valve'])
 				job_input_link.save()
 
 			# write validation links
@@ -4906,14 +4913,14 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}
