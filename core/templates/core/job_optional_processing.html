@@ -36,12 +36,14 @@
 
 			<div class="tab-content">			
 
-				<div id="record_input_filter" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-					{# Input Record Filter #}
-					{% include 'core/record_input_filter_select.html' %}
-				</div>
+				{% if input_jobs %}
+					<div id="record_input_filter" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+						{# Input Record Filter #}
+						{% include 'core/record_input_filter_select.html' %}
+					</div>
+				{% endif %}
 
-				<div id="validation_tests_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				<div id="validation_tests_tab" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Record Validation Selection #}
 					{% include 'core/record_validation_select.html' %}
 				</div>

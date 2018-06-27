@@ -1260,8 +1260,16 @@ def job_merge(request, org_id, record_group_id):
 		if rits == '':
 			rits = None	
 
-		# capture input record validity valve
-		input_validity_valve = request.POST.get('input_validity_valve', None)
+		# capture input filters
+		input_filters = {
+			'input_validity_valve':request.POST.get('input_validity_valve', 'all')			
+		}
+		input_numerical_valve = request.POST.get('input_numerical_valve', None)
+		if input_numerical_valve == '':
+			input_numerical_valve = None
+		else:
+			input_numerical_valve = int(input_numerical_valve)
+		input_filters['input_numerical_valve'] = input_numerical_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1279,7 +1287,7 @@ def job_merge(request, org_id, record_group_id):
 			fm_config_json=fm_config_json,			
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve,
+			input_filters=input_filters,
 			dbdd=dbdd
 		)
 		

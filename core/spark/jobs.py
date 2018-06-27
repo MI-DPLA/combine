@@ -1263,9 +1263,6 @@ class MergeSpark(CombineSparkJob):
 		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
-		# # filter based on record validity
-		# agg_df = self.record_validity_valve(agg_df)
-
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
 

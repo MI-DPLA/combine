@@ -4487,7 +4487,10 @@ class MergeJob(CombineJob):
 		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4523,7 +4526,7 @@ class MergeJob(CombineJob):
 			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4555,7 +4558,11 @@ class MergeJob(CombineJob):
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
+				job_input_link = JobInput(
+					job=self.job,
+					input_job=input_job,
+					input_validity_valve=self.input_filters['input_validity_valve'],
+					input_numerical_valve=self.input_filters['input_numerical_valve'])
 				job_input_link.save()
 
 			# write validation links
@@ -4583,14 +4590,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
 				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}
