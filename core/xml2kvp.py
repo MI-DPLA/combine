@@ -9,8 +9,10 @@ import re
 import time
 import xmltodict
 
+
 # init logger
 logger = logging.getLogger(__name__)
+
 
 class XML2kvp(object):
 

@@ -4889,8 +4889,6 @@ class AnalysisJob(CombineJob):
 # ElasticSearch DataTables connectors 							   #
 ####################################################################
 
-
-
 class DTElasticFieldSearch(View):
 
 	'''

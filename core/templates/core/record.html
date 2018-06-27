@@ -199,7 +199,24 @@
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Mapped Fields</h4>
-							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></p>
+							<p>
+								<ul class="list-inline">
+									<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-outline-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
+									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></li>									
+								</ul>
+							</p>
+
+							<div id="job_fm_config_json_container" class="row" style="display:none;">
+								<div class="col-md-12">
+									<p>The following Field Mapper configuration JSON was used for this Job:</p>
+									<pre><code id="job_fm_config_json" style="padding:10px; border-radius:10px;" class="json">{{ job_fm_config_json|safe }}</code></pre>
+									<script>
+										$("#job_fm_config_json").each(function(i, block) {
+											hljs.highlightBlock(block);
+										});
+									</script>
+								</div>
+							</div>
 
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>

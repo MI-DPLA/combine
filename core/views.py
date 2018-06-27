@@ -25,7 +25,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms.models import model_to_dict
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
@@ -671,8 +671,11 @@ def job_details(request, org_id, record_group_id, job_id):
 	q = request.GET.get('q', None)
 
 	# retrieve field mapper config json used
-	job_details = json.loads(cjob.job.job_details)
-	job_fm_config_json = job_details['fm_config_json']
+	try:
+		job_details = json.loads(cjob.job.job_details)
+		job_fm_config_json = job_details['fm_config_json']
+	except:
+		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
 
 	# return	
 	return render(request, 'core/job_details.html', {
@@ -1638,14 +1641,12 @@ def document_download(request):
 		name = '%s%s' % (name, format_params['extension'])
 		content_type = format_params['content_type']
 
-	# open file and prepare as attachment
-	with open(filepath, 'rb') as fhand:
-
-		# prepare and return response
-		response = HttpResponse(fhand, content_type=content_type)
-		if not preview:
+	# NEW
+	response = FileResponse(open(filepath, 'rb'))
+	if not preview:
 			response['Content-Disposition'] = 'attachment; filename="%s"' % name
-		return response
+	return response
+
 
 
 ####################################################################
@@ -1828,6 +1829,13 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	# request only combined diff at this point	
 	record_diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
 
+	# retrieve field mapper config json used
+	try:
+		job_details = json.loads(record.job.job_details)
+		job_fm_config_json = job_details['fm_config_json']
+	except:
+		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+
 	# return
 	return render(request, 'core/record.html', {
 		'record_id':record_id,
@@ -1837,6 +1845,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
 		'record_diff_dict':record_diff_dict,
+		'job_fm_config_json':job_fm_config_json,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 

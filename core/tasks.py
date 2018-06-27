@@ -11,7 +11,7 @@ import subprocess
 import tarfile
 import time
 import uuid
-from zipfile import ZipFile
+import zipfile
 
 # django imports
 from django.db import connection
@@ -286,26 +286,39 @@ def export_documents(ct_id):
 		# zip
 		if ct.task_params['archive_type'] == 'zip':
 
-			logger.debug('creating zip archive')			
+			logger.debug('creating compressed zip archive')			
 			content_type = 'application/zip'
 
 			# establish output archive file
 			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
 			
-			with ZipFile(export_output_archive,'w') as zip:
+			with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
 				for f in glob.glob('%s/**/*.xml' % output_path):
 					zip.write(f, '/'.join(f.split('/')[-2:]))
 			
 		# tar
-		if ct.task_params['archive_type'] == 'tar':
+		elif ct.task_params['archive_type'] == 'tar':
 
-			logger.debug('creating tar archive')
+			logger.debug('creating uncompressed tar archive')
 			content_type = 'application/tar'
 
 			# establish output archive file
 			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
 
 			with tarfile.open(export_output_archive, 'w') as tar:
+				for f in glob.glob('%s/**/*.xml' % output_path):
+					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
+		# tar.gz
+		elif ct.task_params['archive_type'] == 'targz':
+
+			logger.debug('creating compressed tar archive')
+			content_type = 'application/gzip'
+
+			# establish output archive file
+			export_output_archive = '%s/%s.tar.gz' % (output_path, archive_filename_root)
+
+			with tarfile.open(export_output_archive, 'w:gz') as tar:
 				for f in glob.glob('%s/**/*.xml' % output_path):
 					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
