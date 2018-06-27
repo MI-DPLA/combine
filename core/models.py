@@ -2436,7 +2436,6 @@ class CombineBackgroundTask(models.Model):
 		Method to check for, and return, completed task
 		'''
 
-
 		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
 		if completed.count() == 1:
 			self.task = completed.first()

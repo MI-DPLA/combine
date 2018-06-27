@@ -1223,8 +1223,8 @@ class MergeSpark(CombineSparkJob):
 			input_job_temp = Job.objects.get(pk=int(input_job_id))
 
 			# if job has records, continue
-			if len(input_job_temp.get_records()) > 0:
-				records = input_job_temp.get_records().order_by('id')
+			if len(input_job_temp.get_records()) > 0:				
+				records = input_job_temp.get_records().order_by('id')				
 				start_id = records.first().id
 				end_id = records.last().id
 				records_ids += [start_id, end_id]
@@ -1246,8 +1246,10 @@ class MergeSpark(CombineSparkJob):
 		input_jobs_dfs = []		
 		for input_job_id in input_jobs_ids:
 
-			# db
+			# get dataframe of input job
 			job_df = sqldf.filter(sqldf.job_id == int(input_job_id))
+
+			# append to input jobs dataframes
 			input_jobs_dfs.append(job_df)
 
 		# create aggregate rdd of frames
@@ -1532,6 +1534,7 @@ class RunNewValidationsSpark(CombineSparkPatch):
 			vs.run_record_validation_scenarios()
 
 		# update `valid` column for Records based on results of ValidationScenarios
+		self.logger.info('Updating Records with validation results via MySQL cursor execution')
 		cursor = connection.cursor()
 		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 

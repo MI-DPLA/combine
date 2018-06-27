@@ -68,16 +68,23 @@ class PythonUDFRecord(object):
 			if document:
 				self.document = document
 
-				# parse XML string, save
-				self.xml = etree.fromstring(self.document.encode('utf-8'))
-
-				# get namespace map, popping None values
-				_nsmap = self.xml.nsmap.copy()
 				try:
-					_nsmap.pop(None)
+
+					# parse XML string, save
+					self.xml = etree.fromstring(self.document.encode('utf-8'))
+
+					# get namespace map, popping None values
+					_nsmap = self.xml.nsmap.copy()
+					try:
+						_nsmap.pop(None)
+					except:
+						pass
+					self.nsmap = _nsmap
+
 				except:
-					pass
-				self.nsmap = _nsmap
+
+					self.xml = None
+					self.nsmap = None
 
 		else:
 
@@ -93,26 +100,28 @@ class PythonUDFRecord(object):
 			# document string
 			self.document = self._row.document
 
-			# parse XML string, save
-			self.xml = etree.fromstring(self.document.encode('utf-8'))
+			# set error
+			self.error = self._row.error
 
-			# get namespace map, popping None values
-			_nsmap = self.xml.nsmap.copy()
 			try:
-				_nsmap.pop(None)
+
+				# parse XML string, save
+				self.xml = etree.fromstring(self.document.encode('utf-8'))
+
+				# get namespace map, popping None values
+				_nsmap = self.xml.nsmap.copy()
+				try:
+					_nsmap.pop(None)
+				except:
+					pass
+				self.nsmap = _nsmap
+
+				# set inverted nsmap
+				self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+
 			except:
-				pass
-			self.nsmap = _nsmap
 
-			# set inverted nsmap
-			self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+				self.xml = None
+				self.nsmap = None
 
-
-
-
-
-
-
-
-
-
+			
