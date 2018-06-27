@@ -101,10 +101,10 @@ function styleNetworkEdges(edge){
 	// color blue if limited
 	if (edge.input_numerical_valve){
 		edge.color = {
-			color:'blue'
+			color:'purple'
 		};
 		edge.font = {
-			color:'blue'
+			color:'purple'
 		}	
 	}
 

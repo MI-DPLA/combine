@@ -262,38 +262,6 @@ class CombineSparkJob(object):
 		}
 
 
-	# def record_validity_valve(self, records_df):
-
-	# 	'''
-	# 	Method to include all, valid, or invalid records only for downstream jobs
-
-	# 	Args:
-	# 		spark (pyspark.sql.session.SparkSession): provided by pyspark context
-	# 		records_df (pyspark.sql.DataFrame): DataFrame of records pre validity filtering
-	# 		kwargs (dict): kwargs
-
-	# 	Returns:
-	# 		(pyspark.sql.DataFrame): DataFrame of records post validity filtering
-	# 	'''
-
-	# 	# if all, return untouched
-	# 	if self.kwargs['input_validity_valve'] == 'all':
-	# 		filtered_df = records_df
-
-	# 	# else, filter to valid or invalid records
-	# 	else:
-	# 		# return valid records		
-	# 		if self.kwargs['input_validity_valve'] == 'valid':
-	# 			filtered_df = records_df.filter(records_df.valid == 1)
-
-	# 		# return invalid records		
-	# 		if self.kwargs['input_validity_valve'] == 'invalid':
-	# 			filtered_df = records_df.filter(records_df.valid == 0)
-
-	# 	# return
-	# 	return filtered_df
-
-
 	def record_input_filters(self, filtered_df):
 
 		'''
@@ -1285,6 +1253,9 @@ class MergeSpark(CombineSparkJob):
 			# get dataframe of input job
 			job_df = sqldf.filter(sqldf.job_id == int(input_job_id))
 
+			# apply record input filters
+			job_df = self.record_input_filters(job_df)
+
 			# append to input jobs dataframes
 			input_jobs_dfs.append(job_df)
 
@@ -1292,8 +1263,8 @@ class MergeSpark(CombineSparkJob):
 		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
 		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
 
-		# filter based on record validity
-		agg_df = self.record_validity_valve(agg_df)
+		# # filter based on record validity
+		# agg_df = self.record_validity_valve(agg_df)
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
