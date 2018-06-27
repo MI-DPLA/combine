@@ -1227,10 +1227,10 @@ class MergeSpark(CombineSparkJob):
 			input_job_temp = Job.objects.get(pk=int(input_job_id))
 
 			# if job has records, continue
-			if len(input_job_temp.get_records()) > 0:				
-				records = input_job_temp.get_records().order_by('id')				
-				start_id = records.first().id
-				end_id = records.last().id
+			if input_job_temp.get_records().count() > 0:
+				records = input_job_temp.get_records()
+				start_id = records.order_by().first().id
+				end_id = records.order_by().last().id
 				records_ids += [start_id, end_id]
 			else:
 				print("Job %s had no records, skipping" % input_job_temp.name)

@@ -3016,7 +3016,11 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+				try:
+					int(search)
+					qs = qs.filter(Q(id=search))
+				except:
+					qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search))
 
 			# return
 			return qs
@@ -3142,6 +3146,7 @@ class DTPublishedJson(BaseDatatableView):
 
 
 			return qs
+
 
 
 class DTIndexingFailuresJson(BaseDatatableView):
