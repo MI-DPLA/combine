@@ -262,10 +262,42 @@ class CombineSparkJob(object):
 		}
 
 
-	def record_validity_valve(self, records_df):
+	# def record_validity_valve(self, records_df):
+
+	# 	'''
+	# 	Method to include all, valid, or invalid records only for downstream jobs
+
+	# 	Args:
+	# 		spark (pyspark.sql.session.SparkSession): provided by pyspark context
+	# 		records_df (pyspark.sql.DataFrame): DataFrame of records pre validity filtering
+	# 		kwargs (dict): kwargs
+
+	# 	Returns:
+	# 		(pyspark.sql.DataFrame): DataFrame of records post validity filtering
+	# 	'''
+
+	# 	# if all, return untouched
+	# 	if self.kwargs['input_validity_valve'] == 'all':
+	# 		filtered_df = records_df
+
+	# 	# else, filter to valid or invalid records
+	# 	else:
+	# 		# return valid records		
+	# 		if self.kwargs['input_validity_valve'] == 'valid':
+	# 			filtered_df = records_df.filter(records_df.valid == 1)
+
+	# 		# return invalid records		
+	# 		if self.kwargs['input_validity_valve'] == 'invalid':
+	# 			filtered_df = records_df.filter(records_df.valid == 0)
+
+	# 	# return
+	# 	return filtered_df
+
+
+	def record_input_filters(self, filtered_df):
 
 		'''
-		Method to include all, valid, or invalid records only for downstream jobs
+		Method to apply filters to input Records
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
@@ -273,22 +305,26 @@ class CombineSparkJob(object):
 			kwargs (dict): kwargs
 
 		Returns:
-			(pyspark.sql.DataFrame): DataFrame of records post validity filtering
+			(pyspark.sql.DataFrame): DataFrame of records post filtering
 		'''
 
-		# if all, return untouched
-		if self.kwargs['input_validity_valve'] == 'all':
-			filtered_df = records_df
+		# handle validity filters
+		input_validity_valve = self.kwargs['input_filters']['input_validity_valve']
 
-		# else, filter to valid or invalid records
-		else:
-			# return valid records		
-			if self.kwargs['input_validity_valve'] == 'valid':
-				filtered_df = records_df.filter(records_df.valid == 1)
+		# filter to valid or invalid records
+		# return valid records		
+		if input_validity_valve == 'valid':
+			filtered_df = filtered_df.filter(filtered_df.valid == 1)
 
-			# return invalid records		
-			if self.kwargs['input_validity_valve'] == 'invalid':
-				filtered_df = records_df.filter(records_df.valid == 0)
+		# return invalid records		
+		elif input_validity_valve == 'invalid':
+			filtered_df = filtered_df.filter(filtered_df.valid == 0)
+
+		# handle numerical filters
+		input_numerical_valve = self.kwargs['input_filters']['input_numerical_valve']
+
+		if input_numerical_valve != None:
+			filtered_df = filtered_df.limit(input_numerical_valve)
 
 		# return
 		return filtered_df
@@ -854,7 +890,7 @@ class TransformSpark(CombineSparkJob):
 		input_records = records
 
 		# filter based on record validity
-		records = self.record_validity_valve(records)
+		records = self.record_input_filters(records)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)

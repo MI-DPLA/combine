@@ -1074,7 +1074,7 @@ class JobInput(models.Model):
 			null=True,
 			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
 		)
-
+	input_numerical_valve = models.IntegerField(null=True, default=None)
 
 
 
@@ -4296,7 +4296,10 @@ class TransformJob(CombineJob):
 		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4310,7 +4313,6 @@ class TransformJob(CombineJob):
 			job_id (int): Not set on init, but acquired through self.job.save()
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
-			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4334,7 +4336,7 @@ class TransformJob(CombineJob):
 			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4367,7 +4369,11 @@ class TransformJob(CombineJob):
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
+			job_input_link = JobInput(
+				job=self.job,
+				input_job=self.input_job,
+				input_validity_valve=self.input_filters['input_validity_valve'],
+				input_numerical_valve=self.input_filters['input_numerical_valve'])
 			job_input_link.save()
 
 			# write validation links
@@ -4395,7 +4401,7 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
@@ -4403,7 +4409,7 @@ class TransformJob(CombineJob):
 				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}

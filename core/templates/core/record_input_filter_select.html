@@ -1,0 +1,54 @@
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<div class="gray_box">
+
+				<p>Filter Records used as input for this Job.  All parameters are optional, defaults will use <strong>all</strong> Records from input Job(s).</p>
+
+				<div class="row">
+					<div class="col-md-12">
+						<h5>Record Validity</h5>
+						<p>Select Records based on Validation Results from input Job(s):</p>
+						
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
+							<label class="form-check-label" for="all">
+							<span class="text-warning">All records</span> (default)
+							</label>
+						</div>
+
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="input_validity_valve" id="valid" value="valid">
+							<label class="form-check-label" for="valid">
+							<span class="text-success">Passed validation</span>
+							</label>
+						</div>
+
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="input_validity_valve" id="invalid" value="invalid">
+							<label class="form-check-label" for="invalid">
+							<span class="text-danger">Failed validation</span>
+							</label>
+						</div>
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-12">
+						<h5>Subset for Testing</h5>
+						<p>Select a numerical subset of Records for testing and debugging purposes:</p>
+
+						<div class="form-group">
+							<label for="input_numerical_valve">Number of Records</label>
+							<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000, or defaults to all"/>
+						</div>						
+						
+					</div>
+				</div>
+				
+			</div>
+		</div>
+	</div>
+
+{% endblock %}
