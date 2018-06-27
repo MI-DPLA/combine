@@ -2508,6 +2508,9 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	if kibana_style:
 		kibana_style = True
 
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
 	# get selected fields if present
 	mapped_field_include = request.POST.getlist('mapped_field_include',False)
 
@@ -2518,6 +2521,7 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
 			'kibana_style':kibana_style,
+			'archive_type':archive_type,
 			'mapped_field_include':mapped_field_include
 		})
 	)

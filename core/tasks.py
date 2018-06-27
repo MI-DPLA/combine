@@ -175,9 +175,45 @@ def export_mapped_fields(ct_id):
 		logger.debug(ct.task_params['mapped_field_include'])
 		cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
 
-	# debug
+	# execute
 	logger.debug(cmd)
 	os.system(" ".join(cmd))
+
+	################################################################################################################################################
+	# handle compression
+	if ct.task_params['archive_type'] == 'none':
+		logger.debug('uncompressed csv file requested, continuing')
+
+	elif ct.task_params['archive_type'] == 'zip':
+
+		logger.debug('creating compressed zip archive')			
+		content_type = 'application/zip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+		
+		with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+			zip.write(export_output, export_output.split('/')[-1])
+
+		# set export output to archive file
+		export_output = export_output_archive
+		
+	# tar.gz
+	elif ct.task_params['archive_type'] == 'targz':
+
+		logger.debug('creating compressed tar archive')
+		content_type = 'application/gzip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+
+		with tarfile.open(export_output_archive, 'w:gz') as tar:
+			tar.add(export_output, arcname=export_output.split('/')[-1])
+
+		# set export output to archive file
+		export_output = export_output_archive
+	################################################################################################################################################
+		
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		

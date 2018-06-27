@@ -560,6 +560,17 @@
 													</div>
 												</div>
 
+												<div style="width:50%;">
+													<div class="form-group">
+														<label for="archive_type">Select archive file type</label>
+														<select class="form-control" id="archive_type" name="archive_type" required>
+															<option value="none">Uncompressed CSV file</option>
+															<option value="zip">Compressed Zip file</option>
+															<option value="targz">Compressed Tar file</option>														
+														</select>
+													</div>
+												</div>
+
 												<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
 												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
 												<div id="mapped_fields" style="display:none;">													
