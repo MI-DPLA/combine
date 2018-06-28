@@ -843,21 +843,22 @@ class TransformSpark(CombineSparkJob):
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
 		bounds = self.get_job_db_bounds(input_job)
-		sqldf = self.spark.read.jdbc(
+		records = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
+				'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job.id,
 				properties=settings.COMBINE_DATABASE,
 				column='id',
 				lowerBound=bounds['lowerBound'],
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
 		# fork as input_records
+		# QUESTION: what is the performance hit of this fork?
 		input_records = records
 
 		# filter based on record validity
+		input_records = self.record_input_filters(input_records)
 		records = self.record_input_filters(records)
 
 		# repartition
@@ -886,7 +887,6 @@ class TransformSpark(CombineSparkJob):
 
 		# write `transformed` column based on new fingerprint
 		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.fingerprint == records_trans.fingerprint, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(pyspark_sql_functions.isnull(pyspark_sql_functions.col('input_records.fingerprint')), pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
-
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -1221,47 +1221,42 @@ class MergeSpark(CombineSparkJob):
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
 
-		# get total range of id's from input jobs to help partition jdbc reader
-		records_ids = []
-		for input_job_id in input_jobs_ids:
-			input_job_temp = Job.objects.get(pk=int(input_job_id))
-
-			# if job has records, continue
-			if input_job_temp.get_records().count() > 0:
-				records = input_job_temp.get_records()
-				start_id = records.order_by().first().id
-				end_id = records.order_by().last().id
-				records_ids += [start_id, end_id]
-			else:
-				print("Job %s had no records, skipping" % input_job_temp.name)
-
-		records_ids.sort()		
-
-		# get list of RDDs from input jobs
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=records_ids[0],
-				upperBound=records_ids[-1],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
+		# loop through input jobs and append to input_jobs_rdds
 		input_jobs_rdds = []
 		input_schemas = []
 		for input_job_id in input_jobs_ids:
 
-			# get dataframe of input job
-			job_df = sqldf.filter(sqldf.job_id == int(input_job_id))
+			# get input Job
+			input_job_temp = Job.objects.get(pk=int(input_job_id))
 
-			# apply record input filters
-			job_df = self.record_input_filters(job_df)
+			# if Job has records, continue
+			if input_job_temp.get_records().count() > 0:
 
-			# save schema
-			input_schemas.append(job_df.schema)
+				# get bounds
+				bounds = self.get_job_db_bounds(input_job_temp)
 
-			# append to input jobs rdds
-			input_jobs_rdds.append(job_df.rdd)
+				# get list of RDDs from input jobs
+				sqldf = self.spark.read.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job_id,
+					properties=settings.COMBINE_DATABASE,
+					column='id',
+					lowerBound=bounds['lowerBound'],
+					upperBound=bounds['upperBound'],
+					numPartitions=settings.JDBC_NUMPARTITIONS
+				)
+
+				# append
+				sqldf = self.record_input_filters(sqldf)
+
+				# save schema
+				input_schemas.append(sqldf.schema)
+
+				# append to input jobs rdds
+				input_jobs_rdds.append(sqldf.rdd)
+			
+			else:
+				print("Job %s had no records, skipping" % input_job_temp.name)
 
 		# create aggregate rdd of frames
 		agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
@@ -1454,7 +1449,7 @@ class CombineSparkPatch(object):
 		'''	
 
 		records = job.get_records()
-		records = records.order_by('id')
+		records = records.order_by()
 		start_id = records.first().id
 		end_id = records.last().id
 
