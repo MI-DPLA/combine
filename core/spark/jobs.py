@@ -1247,7 +1247,8 @@ class MergeSpark(CombineSparkJob):
 				upperBound=records_ids[-1],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		input_jobs_dfs = []		
+		input_jobs_rdds = []
+		input_schemas = []
 		for input_job_id in input_jobs_ids:
 
 			# get dataframe of input job
@@ -1256,12 +1257,15 @@ class MergeSpark(CombineSparkJob):
 			# apply record input filters
 			job_df = self.record_input_filters(job_df)
 
-			# append to input jobs dataframes
-			input_jobs_dfs.append(job_df)
+			# save schema
+			input_schemas.append(job_df.schema)
+
+			# append to input jobs rdds
+			input_jobs_rdds.append(job_df.rdd)
 
 		# create aggregate rdd of frames
-		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
-		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
+		agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
+		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_schemas[0])
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
