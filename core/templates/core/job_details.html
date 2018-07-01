@@ -309,15 +309,23 @@
 						<div class="col-md-12">
 							<p>The following Field Mapper configurations were used for this Job:</p>
 							
-							<div id="jsoneditor" style=""></div>
+							<div id="jsoneditor" style="height:450px;"></div>
 							<script>
 						        // create the editor
 						        var container = document.getElementById("jsoneditor");
 						        var options = {
-						        	mode: 'view',
+						        	mode: 'code',
 			    					modes: ['code', 'text', 'view'],
 			    					sortObjectKeys: true,
-			    					name: 'field_mapping_configuration'
+			    					name: 'field_mapping_configuration',
+			    					onModeChange: function(nm, om){
+			    						if (nm == 'view'){
+			    							$("#jsoneditor").css('height','');
+			    						}
+			    						else {
+			    							$("#jsoneditor").css('height','450px');	
+			    						}
+			    					}
 						        };
 						        var editor = new JSONEditor(container, options);
 
