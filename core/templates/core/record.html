@@ -350,18 +350,33 @@
 							<div class="col-md-12">
 								<div id="dpla_api_result">
 									<h4>DPLA API Result</h4>
-									<div>
-										<pre><code id="dpla_api_result_json" style="padding:10px; border-radius:10px;" class="json">{{ dpla_api_json|safe }}</code></pre>
-									</div>		
+									<!-- DPLA api results -->
+									<div id="jsonresults" style="height:450px;"></div>
+									<script>
+								        // create the editor
+								        var container = document.getElementById("jsonresults");
+								        var options = {
+								        	mode: 'view',
+											modes: ['code', 'text', 'view'],
+											sortObjectKeys: true,
+											name: 'xml2kvp_mapping_results',
+											onModeChange: function(nm, om){
+												if (nm == 'view'){
+													$("#jsonresults").css('height','');
+												}
+												else {
+													$("#jsonresults").css('height','450px');	
+												}
+											},
+
+											navigationBar:false
+								        };
+								        var editor_results = new JSONEditor(container, options);
+
+								        // set json to editor_results
+								        editor_results.set({{ dpla_api_json|safe }});		        
+								    </script>
 								</div>
-								<script>
-									// highlight raw document after loaded
-									$(document).ready(function(){
-										$("#dpla_api_result_json").each(function(i, block) {											
-											hljs.highlightBlock(block);
-										});
-									});
-								</script>
 							</div>
 						</div>
 						
