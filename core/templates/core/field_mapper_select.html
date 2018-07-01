@@ -19,7 +19,7 @@
 				</div>
 
 				<!-- hidden textarea for JSON to submit with form -->
-				<textarea style="display:none;" class="code_style form-control" name="fm_config_json" id="fm_config_json"></textarea>					
+				<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_config_json" id="fm_config_json"></textarea>					
 
 				<!-- visible JSON editor -->
 				<div id="jsoneditor" style="height:450px;"></div>
@@ -43,7 +43,7 @@
 			        // set json to editor
 			        editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ default_fm_config|safe }}{% endif %});
 
-			        // onload, set default json
+			        // update textarea
 			        $("#fm_config_json").val(JSON.stringify(editor.get()));
 			    </script>
 
@@ -75,6 +75,8 @@
 						success: function(data){
 							// update editor
 							editor.set(data);
+							// update textarea
+			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
 						}			
 					});	
 				}
@@ -82,11 +84,15 @@
 				else if (this.value == 'job_fm_config_json'){
 					// update editor
 					editor.set(orig_fm_config_json);
+					// update textarea
+			        $("#fm_config_json").val(JSON.stringify(editor.get()));
 				}
 
 				else {
 					// update editor
 					editor.set(default_fm_config);
+					// update textarea
+			        $("#fm_config_json").val(JSON.stringify(editor.get()));
 				}
 
 			})

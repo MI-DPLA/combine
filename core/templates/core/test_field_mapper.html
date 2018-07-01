@@ -49,10 +49,38 @@
 			<!-- Field Mapper configuration JSON -->
 			<div class="row">
 				<div class="col-md-12">
-					<div class="form-group">
+
+					<div style="display:none;" class="form-group">
 						<label for="fm_config_json">Configuration JSON</label>
 						<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ default_fm_config|safe }}</textarea>
 					</div>
+
+					<!-- visible JSON editor -->
+					<div id="jsoneditor" style="height:450px;"></div>
+					
+					<script>
+				        // create the editor
+				        var container = document.getElementById("jsoneditor");
+				        var options = {
+				        	mode: 'code',
+	    					modes: ['code', 'text', 'tree'],
+	    					onChange: function(){
+	    						// update hidden textarea from editor contents
+	    						$("#fm_config_json").val(JSON.stringify(editor.get()));
+	    					},
+	    					sortObjectKeys: true,
+	    					name: 'field_mapping_configuration',
+	    					navigationBar:false
+				        };
+				        var editor = new JSONEditor(container, options);
+
+				        // set json to editor
+				        editor.set({{ default_fm_config|safe }});
+
+				        // update textarea
+				        $("#fm_config_json").val(JSON.stringify(editor.get()));
+				    </script>
+
 				</div>
 			</div>
 
@@ -64,9 +92,32 @@
 	<div class="row">		
 		<div class="col-md-12">
 			<h4>Mapping Results</h4>
-			<div>
-				<pre><code id="mapping_results" style="padding:10px; border-radius:10px;" class="json">Mapped fields will show here...</code></pre>
-			</div>
+			<!-- mapping results -->
+			<div id="jsonresults" style="height:450px;"></div>
+			<script>
+		        // create the editor
+		        var container = document.getElementById("jsonresults");
+		        var options = {
+		        	mode: 'view',
+					modes: ['code', 'text', 'view'],
+					sortObjectKeys: true,
+					name: 'xml2kvp_mapping_results',
+					onModeChange: function(nm, om){
+						if (nm == 'view'){
+							$("#jsonresults").css('height','');
+						}
+						else {
+							$("#jsonresults").css('height','450px');	
+						}
+					},
+
+					navigationBar:false
+		        };
+		        var editor_results = new JSONEditor(container, options);
+
+		        // set json to editor_results
+		        editor_results.set({});		        
+		    </script>
 		</div>
 	</div>
 	
@@ -148,13 +199,9 @@
 					dataType:'json',
 					success: function(data){
 
-						// paste to page
-						$("#mapping_results").html(JSON.stringify(data, null, 2));
-
-						// init hljs						
-						$("#mapping_results").each(function(i, block) {
-							hljs.highlightBlock(block);
-						});
+						// update editor_results
+						editor_results.set(data);
+						editor_results.expandAll();
 
 					}			
 				});
