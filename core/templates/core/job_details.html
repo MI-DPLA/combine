@@ -18,7 +18,6 @@
 			</div>
 		</div>
 		<div class="col-md-12">
-			<!-- <p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').slideToggle();">Job Notes</button> -->
 			<div id="job_notes_section" style="display:none;">
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
@@ -308,13 +307,23 @@
 
 					<div id="job_fm_config_json_container" class="row" style="display:none;">
 						<div class="col-md-12">
-							<p>The following Field Mapper configuration JSON was used for this Job:</p>
-							<pre><code id="job_fm_config_json" style="padding:10px; border-radius:10px;" class="json">{{ job_fm_config_json|safe }}</code></pre>
+							<p>The following Field Mapper configurations were used for this Job:</p>
+							
+							<div id="jsoneditor" style=""></div>
 							<script>
-								$("#job_fm_config_json").each(function(i, block) {
-									hljs.highlightBlock(block);
-								});
-							</script>
+						        // create the editor
+						        var container = document.getElementById("jsoneditor");
+						        var options = {
+						        	mode: 'view',
+			    					modes: ['code', 'text', 'view'],
+			    					sortObjectKeys: true,
+			    					name: 'field_mapping_configuration'
+						        };
+						        var editor = new JSONEditor(container, options);
+
+						        // set json to editor
+						        editor.set({{ job_fm_config_json|safe }});
+						    </script>
 						</div>
 					</div>
 
