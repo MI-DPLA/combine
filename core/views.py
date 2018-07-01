@@ -1850,7 +1850,6 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# retrieve field mapper config json used
 	try:
-		job_details = json.loads(record.job.job_details)
 		job_fm_config_json = job_details['fm_config_json']
 	except:
 		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
