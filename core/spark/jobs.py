@@ -1047,6 +1047,10 @@ class TransformSpark(CombineSparkJob):
 
 		def _field_name_to_xpath(field_name):
 
+			'''
+			TODO: This can be updated to use XML2kvp
+			'''
+
 			# for each column, reconstitue columnName --> XPath				
 			field_parts = field_name.split('_')[1:] # skip root element
 
