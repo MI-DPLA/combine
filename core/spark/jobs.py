@@ -296,7 +296,8 @@ class CombineSparkJob(object):
 		# handle es query valve
 		if 'input_es_query_valve' in self.kwargs['input_filters'].keys():
 			input_es_query_valve = self.kwargs['input_filters']['input_es_query_valve']
-			filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
+			if input_es_query_valve != None:
+				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
 		# return
 		return filtered_df
@@ -311,6 +312,30 @@ class CombineSparkJob(object):
 
 		'''
 
+		# prepare input jobs list
+		if 'input_jobs_ids' in self.kwargs:
+			input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
+		elif 'input_jobs_ids' in self.kwargs:
+			input_jobs_ids = [int(self.kwargs['input_job_id'])]
+
+		# loop through and create es.resource string
+		es_indexes = ','.join([ 'j%s' % job_id for job_id in input_jobs_ids])
+
+		# get es index as RDD
+		es_rdd = self.spark.sparkContext.newAPIHadoopRDD(
+			inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+			keyClass="org.apache.hadoop.io.NullWritable",
+			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+			conf={
+				"es.resource":"%s/record" % es_indexes,
+				"es.query":input_es_query_valve,
+				"es.read.field.exclude":"*"})
+		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
+
+		# perform join on ES documents
+		filtered_df = filtered_df.join(es_df, filtered_df['combine_id'] == es_df['_1'], 'leftsemi')
+
+		# return
 		return filtered_df
 
 
