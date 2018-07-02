@@ -853,8 +853,7 @@ class TransformSpark(CombineSparkJob):
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
 
-		# fork as input_records
-		# QUESTION: what is the performance hit of this fork?
+		# fork as input_records		
 		input_records = records
 
 		# filter based on record validity
