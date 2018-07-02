@@ -290,6 +290,10 @@ class XML2kvpMapper(BaseMapper):
 		try:
 
 			# prepare literals
+			if 'add_literals' not in self.fm_config.keys():
+				self.fm_config['add_literals'] = {}
+
+
 			self.fm_config['add_literals'].update({
 
 				# add temporary id field
