@@ -290,11 +290,27 @@ class CombineSparkJob(object):
 
 		# handle numerical filters
 		input_numerical_valve = self.kwargs['input_filters']['input_numerical_valve']
-
 		if input_numerical_valve != None:
 			filtered_df = filtered_df.limit(input_numerical_valve)
 
+		# handle es query valve
+		if 'input_es_query_valve' in self.kwargs['input_filters'].keys():
+			input_es_query_valve = self.kwargs['input_filters']['input_es_query_valve']
+			filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
+
 		# return
+		return filtered_df
+
+
+	def es_query_valve_filter(self, input_es_query_valve, filtered_df):
+
+		'''
+		Method to handle input valve based on ElasticSearch query
+			
+			- perform union if multiple input Jobs are used
+
+		'''
+
 		return filtered_df
 
 
