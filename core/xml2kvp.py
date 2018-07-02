@@ -78,7 +78,7 @@ class XML2kvp(object):
 		self.concat_values_on_fields={}
 		self.copy_to={}
 		self.copy_to_regex={}
-		self.error_on_delims_collision=True
+		self.error_on_delims_collision=False
 		self.exclude_attributes=[]
 		self.exclude_elements=[]
 		self.include_attributes=True
@@ -382,7 +382,7 @@ class XML2kvp(object):
 		concat_values_on_fields=None,
 		copy_to = None,
 		copy_to_regex = None,
-		error_on_delims_collision=True,
+		error_on_delims_collision=None,
 		exclude_attributes=None,
 		exclude_elements=None,
 		include_attributes=None,
@@ -396,8 +396,8 @@ class XML2kvp(object):
 		self_describing=None,
 		split_values_on_all_fields=None,
 		split_values_on_fields=None,
-		skip_attribute_ns_declarations=True,
-		skip_repeating_values=True,
+		skip_attribute_ns_declarations=None,
+		skip_repeating_values=None,
 		skip_root=None):
 
 		# init handler, overwriting defaults if not None
