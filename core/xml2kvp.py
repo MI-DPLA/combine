@@ -73,6 +73,7 @@ class XML2kvp(object):
 		'''
 
 		# defaults, overwritten by methods
+		self.add_literals={}
 		self.as_tuples=True
 		self.concat_values_on_all_fields=False
 		self.concat_values_on_fields={}
@@ -83,8 +84,7 @@ class XML2kvp(object):
 		self.exclude_elements=[]
 		self.include_attributes=True
 		self.include_meta=False
-		self.include_xml_prop=False
-		self.add_literals={}
+		self.include_xml_prop=False		
 		self.node_delim='_'
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
@@ -113,6 +113,7 @@ class XML2kvp(object):
 	def config_json(self):
 
 		config_dict = { k:v for k,v in self.__dict__.items() if k in [
+			'add_literals',
 			'concat_values_on_all_fields',
 			'concat_values_on_fields',
 			'copy_to',
@@ -120,8 +121,7 @@ class XML2kvp(object):
 			'error_on_delims_collision',
 			'exclude_attributes',
 			'exclude_elements',
-			'include_attributes',
-			'add_literals',
+			'include_attributes',			
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
@@ -377,6 +377,7 @@ class XML2kvp(object):
 		return_handler=False,
 
 		# kwargs
+		add_literals = None,
 		as_tuples=True,
 		concat_values_on_all_fields=None,
 		concat_values_on_fields=None,
@@ -387,8 +388,7 @@ class XML2kvp(object):
 		exclude_elements=None,
 		include_attributes=None,
 		include_meta=None,
-		include_xml_prop=None,
-		add_literals = None,
+		include_xml_prop=None,		
 		node_delim=None,
 		ns_prefix_delim=None,		
 		remove_copied_key=None,
@@ -403,6 +403,7 @@ class XML2kvp(object):
 		# init handler, overwriting defaults if not None
 		if not handler:
 			handler = XML2kvp(
+				add_literals=add_literals,
 				as_tuples=as_tuples,
 				concat_values_on_all_fields=concat_values_on_all_fields,
 				concat_values_on_fields=concat_values_on_fields,
@@ -413,8 +414,7 @@ class XML2kvp(object):
 				exclude_elements=exclude_elements,
 				include_attributes=include_attributes,
 				include_meta=include_meta,
-				include_xml_prop=include_xml_prop,
-				add_literals=add_literals,
+				include_xml_prop=include_xml_prop,				
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,		
 				remove_copied_key=remove_copied_key,
@@ -602,16 +602,18 @@ class XML2kvp(object):
 		# http://goodmami.org/2015/11/04/python-xpath-and-default-namespaces.html
 
 		# check for self.xml and self.nsmap
-		if not self.xml:
-			self.xml = etree.fromstring(self.xml_string)
-		if not self.nsmap:
+		if not hasattr(self, 'xml'):
+			try:
+				self.xml = etree.fromstring(self.xml_string)
+			except:
+				self.xml = etree.fromstring(self.xml_string.encode('utf-8'))
+		if not hasattr(self, 'nsmap'):
 			self._parse_nsmap()
 
 		# generate xpaths values
 		self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
 
 		for k,v in self.k_xpath_dict.items():
-			#logger.debug('checking xpath: %s' % v)
 			matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
 			values = self.kvp_dict[k]
 			if type(values) == str:
