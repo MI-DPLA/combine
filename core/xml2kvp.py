@@ -84,8 +84,8 @@ class XML2kvp(object):
 		self.include_attributes=True
 		self.include_meta=False
 		self.include_xml_prop=False
-		self.literals={}
-		self.node_delim='___'
+		self.add_literals={}
+		self.node_delim='_'
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
 		self.remove_ns_prefix=False
@@ -121,7 +121,7 @@ class XML2kvp(object):
 			'exclude_attributes',
 			'exclude_elements',
 			'include_attributes',
-			'literals',
+			'add_literals',
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
@@ -388,7 +388,7 @@ class XML2kvp(object):
 		include_attributes=None,
 		include_meta=None,
 		include_xml_prop=None,
-		literals = None,
+		add_literals = None,
 		node_delim=None,
 		ns_prefix_delim=None,		
 		remove_copied_key=None,
@@ -414,7 +414,7 @@ class XML2kvp(object):
 				include_attributes=include_attributes,
 				include_meta=include_meta,
 				include_xml_prop=include_xml_prop,
-				literals=literals,
+				add_literals=add_literals,
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,		
 				remove_copied_key=remove_copied_key,
@@ -439,8 +439,8 @@ class XML2kvp(object):
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
-		if len(handler.literals) > 0:
-			for k,v in handler.literals.items():
+		if len(handler.add_literals) > 0:
+			for k,v in handler.add_literals.items():
 				handler.kvp_dict[k] = v
 
 		# handle split and concatenations

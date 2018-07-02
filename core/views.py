@@ -1699,14 +1699,26 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
-	# get indexing failures
-	# index_failures = cjob.get_indexing_failures()
-
 	# return
 	return render(request, 'core/job_indexing_failures.html', {
 			'cjob':cjob,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
+
+
+@login_required
+def remove_job_indexing_failures(request, org_id, record_group_id, job_id):
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# remove indexing failures
+	to_delete = models.IndexMappingFailure.objects.filter(job=cjob.job)
+	delete_results = to_delete._raw_delete(to_delete.db)
+	logger.debug(delete_results)
+
+	# return
+	return redirect(request.META.get('HTTP_REFERER'))
 
 
 @login_required
@@ -3155,14 +3167,14 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
+		columns = ['id', 'combine_id', 'record_id', 'mapping_error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
+		order_columns = ['id', 'combine_id', 'record_id', 'mapping_error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -3214,7 +3226,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
 				logger.debug('looking for: %s' % search)
-				qs = qs.filter(Q(combine_id = search) | Q(mapping_error__contains = search))
+				qs = qs.filter(Q(id = search) | Q(combine_id = search) | Q(record_id = search) | Q(mapping_error__contains = search))
 
 			return qs
 

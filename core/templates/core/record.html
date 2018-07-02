@@ -78,7 +78,10 @@
 										<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document_pretty_print }}</code></pre>
 									</div>
 								{% else %}
-									<p>None</p>
+									<p>This Record does not have a document associated with it, see below for any errors that may have been reported:</p>
+									<div class="gray_box">
+										<pre><code>{{record.error}}</code></pre>
+									</div>
 								{% endif %}
 							</div>
 							<script>

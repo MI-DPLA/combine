@@ -14,7 +14,7 @@ import uuid
 import zipfile
 
 # django imports
-from django.db import connection
+from django.db import connection, transaction
 
 # Get an instance of a logger
 import logging
@@ -179,7 +179,6 @@ def export_mapped_fields(ct_id):
 	logger.debug(cmd)
 	os.system(" ".join(cmd))
 
-	################################################################################################################################################
 	# handle compression
 	if ct.task_params['archive_type'] == 'none':
 		logger.debug('uncompressed csv file requested, continuing')
@@ -212,8 +211,6 @@ def export_mapped_fields(ct_id):
 
 		# set export output to archive file
 		export_output = export_output_archive
-	################################################################################################################################################
-		
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
@@ -235,7 +232,6 @@ def export_documents(ct_id):
 	- tar/zip together
 	'''
 
-	# poll until complete
 	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
 	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
 	def spark_job_done(response):
@@ -300,6 +296,7 @@ def export_documents(ct_id):
 		logger.debug('submitting code to Spark')
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
 
+		# poll until complete
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
@@ -392,6 +389,11 @@ def job_reindex(ct_id):
 		- use livy session from cjob (works, but awkward way to get this)	
 	'''
 
+	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+	def spark_job_done(response):
+		return response['state'] == 'available'
+
 	# get CombineTask (ct)
 	try:
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
@@ -403,14 +405,6 @@ def job_reindex(ct_id):
 		# drop Job's ES index
 		cjob.job.drop_es_index()
 
-		# drop previous indexing failures
-		to_delete = models.IndexMappingFailure.objects.filter(job=cjob.job)
-		if to_delete.exists():
-			# use private raw delete method
-			delete_results = to_delete._raw_delete(to_delete.db)
-		else:
-			delete_results = 0
-
 		# generate spark code		
 		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\').spark_function()' % {
 			'job_id':cjob.job.id,
@@ -421,12 +415,7 @@ def job_reindex(ct_id):
 		logger.debug('submitting code to Spark')
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
-		# poll until complete
-		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-		def spark_job_done(response):
-			return response['state'] == 'available'
-
+		# poll until complete		
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
@@ -441,7 +430,7 @@ def job_reindex(ct_id):
 		job_details_dict['fm_config_json'] = ct.task_params['fm_config_json']
 		# rewrite
 		cjob.job.job_details = json.dumps(job_details_dict)
-		cjob.job.save() # is this save problematic?
+		cjob.job.save()
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
