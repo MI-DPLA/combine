@@ -1138,6 +1138,11 @@ def job_transform(request, org_id, record_group_id):
 		else:
 			input_numerical_valve = int(input_numerical_valve)
 		input_filters['input_numerical_valve'] = input_numerical_valve
+		# es query valve
+		input_es_query_valve = request.POST.get('input_es_query_valve', None)
+		if input_es_query_valve == '':
+			input_es_query_valve = None		
+		input_filters['input_es_query_valve'] = input_es_query_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -2803,6 +2808,11 @@ def job_analysis(request):
 		else:
 			input_numerical_valve = int(input_numerical_valve)
 		input_filters['input_numerical_valve'] = input_numerical_valve
+		# es query valve
+		input_es_query_valve = request.POST.get('input_es_query_valve', None)
+		if input_es_query_valve == '':
+			input_es_query_valve = None		
+		input_filters['input_es_query_valve'] = input_es_query_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)

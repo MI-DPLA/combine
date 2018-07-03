@@ -79,6 +79,7 @@ class XML2kvp(object):
 		self.concat_values_on_fields={}
 		self.copy_to={}
 		self.copy_to_regex={}
+		self.copy_value_to_regex={}
 		self.error_on_delims_collision=False
 		self.exclude_attributes=[]
 		self.exclude_elements=[]
@@ -88,6 +89,7 @@ class XML2kvp(object):
 		self.node_delim='_'
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
+		self.remove_copied_value=False
 		self.remove_ns_prefix=False
 		self.self_describing=False
 		self.split_values_on_all_fields=False
@@ -118,6 +120,7 @@ class XML2kvp(object):
 			'concat_values_on_fields',
 			'copy_to',
 			'copy_to_regex',
+			'copy_value_to_regex',
 			'error_on_delims_collision',
 			'exclude_attributes',
 			'exclude_elements',
@@ -125,6 +128,7 @@ class XML2kvp(object):
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
+			'remove_copied_value',
 			'remove_ns_prefix',
 			'self_describing',
 			'split_values_on_all_fields',
@@ -269,6 +273,7 @@ class XML2kvp(object):
 		# handle copy_to_regex mixins
 		if len(self.copy_to_regex) > 0:
 
+			# key list prior to copies
 			slen = len(k_list)
 
 			# loop through copy_to_regex
@@ -283,6 +288,26 @@ class XML2kvp(object):
 					pass
 
 			if self.remove_copied_key:
+				if slen != len(k_list) and k in k_list:
+					k_list.remove(k)
+
+		# handle copy_value_to_regex mixins
+		if len(self.copy_value_to_regex) > 0:
+
+			# key list prior to copies
+			slen = len(k_list)
+
+			# loop through copy_value_to_regex
+			for rk, rv in self.copy_value_to_regex.items():
+
+				# attempt sub
+				try:
+					if re.match(rk, value):
+						k_list.append(rv)
+				except:
+					pass
+
+			if self.remove_copied_value:
 				if slen != len(k_list) and k in k_list:
 					k_list.remove(k)
 
@@ -383,6 +408,7 @@ class XML2kvp(object):
 		concat_values_on_fields=None,
 		copy_to = None,
 		copy_to_regex = None,
+		copy_value_to_regex=None,
 		error_on_delims_collision=None,
 		exclude_attributes=None,
 		exclude_elements=None,
@@ -392,6 +418,7 @@ class XML2kvp(object):
 		node_delim=None,
 		ns_prefix_delim=None,		
 		remove_copied_key=None,
+		remove_copied_value=None,
 		remove_ns_prefix=None,		
 		self_describing=None,
 		split_values_on_all_fields=None,
@@ -409,6 +436,7 @@ class XML2kvp(object):
 				concat_values_on_fields=concat_values_on_fields,
 				copy_to=copy_to,
 				copy_to_regex=copy_to_regex,
+				copy_value_to_regex=copy_value_to_regex,
 				error_on_delims_collision=error_on_delims_collision,
 				exclude_attributes=exclude_attributes,
 				exclude_elements=exclude_elements,
@@ -418,6 +446,7 @@ class XML2kvp(object):
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,		
 				remove_copied_key=remove_copied_key,
+				remove_copied_value=remove_copied_value,
 				remove_ns_prefix=remove_ns_prefix,
 				self_describing=self_describing,
 				split_values_on_all_fields=split_values_on_all_fields,

@@ -315,7 +315,7 @@ class CombineSparkJob(object):
 		# prepare input jobs list
 		if 'input_jobs_ids' in self.kwargs:
 			input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
-		elif 'input_jobs_ids' in self.kwargs:
+		elif 'input_job_id' in self.kwargs:
 			input_jobs_ids = [int(self.kwargs['input_job_id'])]
 
 		# loop through and create es.resource string
