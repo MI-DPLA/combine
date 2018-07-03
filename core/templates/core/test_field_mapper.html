@@ -52,7 +52,7 @@
 
 					<div style="display:none;" class="form-group">
 						<label for="fm_config_json">Configuration JSON</label>
-						<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ default_fm_config|safe }}</textarea>
+						<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ xml2kvp_handle.config_json|safe }}</textarea>
 					</div>
 
 					<!-- visible JSON editor -->
@@ -70,13 +70,13 @@
 	    					},
 	    					sortObjectKeys: true,
 	    					name: 'field_mapping_configuration',
-	    					schema: {{fm_config_schema|safe}},
+	    					schema: {{xml2kvp_handle.schema|safe}},
 	    					navigationBar:false
 				        };
 				        var editor = new JSONEditor(container, options);
 
 				        // set json to editor
-				        editor.set({{ default_fm_config|safe }});
+				        editor.set({{ xml2kvp_handle.config_json|safe }});
 
 				        // update textarea
 				        $("#fm_config_json").val(JSON.stringify(editor.get()));
@@ -146,7 +146,7 @@
 		});
 
 		// store default fm config json
-		default_fm_config = {{ default_fm_config|safe }};
+		default_fm_config = {{ xml2kvp_handle.config_json|safe }};
 
 		// load saved field mapper configs
 		$(document).ready(function(){

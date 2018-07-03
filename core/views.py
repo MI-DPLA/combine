@@ -804,8 +804,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 
 		# get field mappers
 		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
-
+		
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
@@ -816,7 +815,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,
-				'default_fm_config':default_fm_config,
+				'xml2kvp_handle':models.XML2kvp(),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -904,8 +903,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	validation_scenarios = models.ValidationScenario.objects.all()
 
 	# get field mappers		
-	field_mappers = models.FieldMapper.objects.all()
-	default_fm_config = models.XML2kvp().config_json
+	field_mappers = models.FieldMapper.objects.all()	
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -922,7 +920,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,
-				'default_fm_config':default_fm_config,
+				'xml2kvp_handle':models.XML2kvp(),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -1059,8 +1057,7 @@ def job_transform(request, org_id, record_group_id):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# get field mappers		
-		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -1081,7 +1078,7 @@ def job_transform(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,
-				'default_fm_config':default_fm_config,
+				'xml2kvp_handle':models.XML2kvp(),
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1207,8 +1204,7 @@ def job_merge(request, org_id, record_group_id):
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
 		# get field mappers		
-		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
@@ -1225,7 +1221,7 @@ def job_merge(request, org_id, record_group_id):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,
-				'default_fm_config':default_fm_config,
+				'xml2kvp_handle':models.XML2kvp(),				
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1525,8 +1521,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# get field mappers		
-		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
+		field_mappers = models.FieldMapper.objects.all()		
 		orig_fm_config_json = cjob.job.get_fm_config_json()
 
 		# get uptdate type from GET params
@@ -1538,7 +1533,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
 				'field_mappers':field_mappers,				
-				'default_fm_config':default_fm_config,
+				'xml2kvp_handle':models.XML2kvp(),
 				'orig_fm_config_json':orig_fm_config_json,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -2377,8 +2372,6 @@ def test_field_mapper(request):
 
 		# get field mapper
 		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
-		fm_config_schema = models.XML2kvp.schema
 
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
@@ -2391,8 +2384,7 @@ def test_field_mapper(request):
 			'q':q,
 			'fmid':fmid,
 			'field_mappers':field_mappers,
-			'default_fm_config':default_fm_config,
-			'fm_config_schema':fm_config_schema,
+			'xml2kvp_handle':models.XML2kvp(),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2741,8 +2733,7 @@ def job_analysis(request):
 		validation_scenarios = models.ValidationScenario.objects.all()
 
 		# get field mappers		
-		field_mappers = models.FieldMapper.objects.all()
-		default_fm_config = models.XML2kvp().config_json
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -2760,7 +2751,7 @@ def job_analysis(request):
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,
-				'default_fm_config':default_fm_config,	
+				'xml2kvp_handle':models.XML2kvp(),
 				'analysis_type':analysis_type,
 				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
