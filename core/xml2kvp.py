@@ -24,7 +24,7 @@ class XML2kvp(object):
 		instance of XML2kvp
 	'''
 
-	# demo xml
+	# test xml
 	test_xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:internet="http://internet.com">
 	<foo>
@@ -60,9 +60,108 @@ class XML2kvp(object):
 	'''
 
 
+	# custom exception for delimiter collision
 	class DelimiterCollision(Exception):
 		pass
 
+
+	# schema for validation
+	schema = {
+		"$id": "https://example.com/person.schema.json",
+		"$schema": "http://json-schema.org/draft-07/schema#",
+		"title": "XML2kvp configuration options schema",
+		"type": "object",
+		"properties": {
+			"add_literals": {
+				"description":"Key/value pairs for literals to mixin, e.g. 'foo':'bar' would create field 'foo' with value 'bar' [Default: {}]",				
+				"type": "object"
+			},
+			"concat_values_on_all_fields": {
+				"description": "String to join all values from multivalued field on [Default: false]",
+				"type": "string"
+			},
+			"concat_values_on_fields": {
+				"description": "Key/value pairs for fields to concat on provided value, e.g. 'foo_bar':'-' would concatenate multiple values from 'foo_bar' with string '-' [Default: {}]",
+				"type": "object"
+			},
+			"copy_to": {
+				"description": "Key/value pairs to copy one field to another, e.g. 'foo':'bar' would create field 'bar' and copy all values when encountered for 'foo' to 'bar' [Default: {}}]",
+				"type": "object"
+			},
+			"copy_to_regex": {
+				"description": "Key/value pairs to copy one field to another based on regex match of field, e.g. '.*foo':'bar' would copy create field 'bar' and copy all values fields 'goober_foo' and 'tronic_foo' to 'bar' [Default: {}]",
+				"type": "object"
+			},
+			"copy_value_to_regex": {
+				"description": "Key/value pairs that match values based on regex and copy to new field if matching, e.g. 'http.*':'websites' would create new field 'websites' and copy 'http://exampl.com' and 'https://example.org' to new field 'websites' [Default: {}]",
+				"type": "object"
+			},
+			"error_on_delims_collision": {
+				"description": "Boolean to raise DelimiterCollision exception if delimiter strings from either 'node_delim' or 'ns_prefix_delim' collide with field name or field value (False by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: false]",
+				"type": "boolean"
+			},
+			"exclude_attributes": {
+				"description": "Array of attributes to skip when creating field names, e.g. ['baz'] when encountering XML '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would create field 'foo_bar_@goober=1000', skipping attribute 'baz' [Default: []]",
+				"type": "array"
+			},
+			"exclude_elements": {
+				"description": "Array of elements to skip when creating field names, e.g. ['baz'] when encountering field '<foo><baz><bar>tronic</bar></baz></foo>' would create field 'foo_bar', skipping element 'baz' [Default: []]",
+				"type": "array"
+			},
+			"include_attributes": {
+				"description": "Boolean to consider and include attributes when creating field names, e.g. if False, XML elements '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would result in field name 'foo_bar' without attributes included [Default: true]",
+				"type": "boolean"
+			},
+			"include_meta": {
+				"description": "Boolean to include 'xml2kvp_meta' field with output that contains these configurations [Default: false]",
+				"type": "boolean"
+			},
+			"node_delim": {
+				"description": "String to use as delimiter between XML elements and attributes when creating field name, e.g. '___' will convert XML '<foo><bar>tronic</bar></foo>' to field name 'foo___bar' [Default: '_']",
+				"type": "string"
+			},
+			"ns_prefix_delim": {
+				"description": "String to use as delimiter between XML namespace prefixes and elements, e.g. '|' XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will create field name 'ns|foo_ns:bar' [Default: '|']",
+				"type": "string"
+			},
+			"remove_copied_key": {
+				"description": "Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: true]",
+				"type": "boolean"
+			},
+			"remove_copied_value": {
+				"description": "Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: false]",
+				"type": "boolean"
+			},
+			"remove_ns_prefix": {
+				"description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if False, XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will result in field name 'foo_bar' without 'ns' prefix [Default: false]",
+				"type": "boolean"
+			},
+			"self_describing": {
+				"description": "Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if True, and 'node_delim' is '___' and 'ns_prefix_delim' is '|', suffix will be '___3|1' [Default: false]",
+				"type": "boolean"
+			},
+			"split_values_on_all_fields": {
+				"description": "If present, string to use for splitting values from all fields, e.g. ' ' will convert single value 'a foo bar please' into the array of values ['a','foo','bar','please'] for that field [Default: false]",
+				"type": "string"
+			},
+			"split_values_on_fields": {
+				"description": "Key/value pairs of field names to split, and the string to split on, e.g. 'foo_bar':',' will split all values on field 'foo_bar' on comma ',' [Default: {}]",
+				"type": "object"
+			},
+			"skip_attribute_ns_declarations": {
+				"description": "Boolean to remove namespace declarations as considered attributes when creating field names [Default: true]",
+				"type": "boolean"
+			},
+			"skip_repeating_values": {
+				"description": "Boolean to determine if a field is multivalued, if those values are allowed to repeat [Default: true]",
+				"type": "boolean"
+			},
+			"skip_root": {
+				"description": "Boolean to determine if the XML root element will be included in output field names [Default: false]",
+				"type": "boolean"
+			}
+		}
+	}
 
 
 	def __init__(self, **kwargs):
@@ -109,6 +208,11 @@ class XML2kvp(object):
 		# set non-overwritable class attributes
 		self.kvp_dict = {}
 		self.k_xpath_dict = {}
+
+
+	@property
+	def schema_json(self):
+		return json.dumps(self.schema)
 
 
 	@property
@@ -302,7 +406,7 @@ class XML2kvp(object):
 
 				# attempt sub
 				try:
-					if re.match(rk, value):
+					if re.match(r'%s' % rk, value):
 						k_list.append(rv)
 				except:
 					pass
