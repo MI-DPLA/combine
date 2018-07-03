@@ -67,8 +67,7 @@ class XML2kvp(object):
 
 	# schema for validation
 	schema = {
-		"$id": "https://example.com/person.schema.json",
-		"$schema": "http://json-schema.org/draft-07/schema#",
+		"$id": "xml2kvp_config_schema",		
 		"title": "XML2kvp configuration options schema",
 		"type": "object",
 		"properties": {
@@ -77,8 +76,8 @@ class XML2kvp(object):
 				"type": "object"
 			},
 			"concat_values_on_all_fields": {
-				"description": "String to join all values from multivalued field on [Default: false]",
-				"type": "string"
+				"description": "Boolean or String to join all values from multivalued field on [Default: false]",
+				"type": ["boolean","string"]
 			},
 			"concat_values_on_fields": {
 				"description": "Key/value pairs for fields to concat on provided value, e.g. 'foo_bar':'-' would concatenate multiple values from 'foo_bar' with string '-' [Default: {}]",
@@ -142,7 +141,7 @@ class XML2kvp(object):
 			},
 			"split_values_on_all_fields": {
 				"description": "If present, string to use for splitting values from all fields, e.g. ' ' will convert single value 'a foo bar please' into the array of values ['a','foo','bar','please'] for that field [Default: false]",
-				"type": "string"
+				"type": ["boolean","string"]
 			},
 			"split_values_on_fields": {
 				"description": "Key/value pairs of field names to split, and the string to split on, e.g. 'foo_bar':',' will split all values on field 'foo_bar' on comma ',' [Default: {}]",

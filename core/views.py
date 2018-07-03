@@ -2378,6 +2378,7 @@ def test_field_mapper(request):
 		# get field mapper
 		field_mappers = models.FieldMapper.objects.all()
 		default_fm_config = models.XML2kvp().config_json
+		fm_config_schema = models.XML2kvp.schema
 
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
@@ -2391,6 +2392,7 @@ def test_field_mapper(request):
 			'fmid':fmid,
 			'field_mappers':field_mappers,
 			'default_fm_config':default_fm_config,
+			'fm_config_schema':fm_config_schema,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 

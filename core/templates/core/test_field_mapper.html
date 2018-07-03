@@ -70,6 +70,7 @@
 	    					},
 	    					sortObjectKeys: true,
 	    					name: 'field_mapping_configuration',
+	    					schema: {{fm_config_schema|safe}},
 	    					navigationBar:false
 				        };
 				        var editor = new JSONEditor(container, options);
@@ -109,8 +110,7 @@
 						else {
 							$("#jsonresults").css('height','450px');	
 						}
-					},
-
+					},					
 					navigationBar:false
 		        };
 		        var editor_results = new JSONEditor(container, options);
@@ -179,7 +179,7 @@
 			$("#test_fm").click(function(){
 
 				// validate fm_config_json
-				
+
 
 				// change this to dynamically grab from selected rows in records table
 				var db_id = sel_row_id;
