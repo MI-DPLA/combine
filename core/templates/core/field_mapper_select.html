@@ -48,6 +48,33 @@
 			        $("#fm_config_json").val(JSON.stringify(editor.get()));
 			    </script>
 
+			    <div class="row" style="margin-top:15px;">
+					<div class="col-md-12">
+						<p><button class="btn btn-outline-info btn-sm" onclick="$('#fm_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+						<div id="fm_config_help" style="display:none;">
+							<!-- loop through configurations from schema, creating table of their description -->
+							<table id="jobs_table" class="table table-bordered table-hover">
+								<thead>
+									<tr>
+										<th>Parameter</th>
+										<th>Type</th>
+										<th>Description></th>
+									</tr>
+								</thead>
+								<tbody>
+									{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+										<tr>
+											<td><code>{{param}}</code></td>
+											<td><code>{{details.type}}</code></td>
+											<td>{{details.description}}</td>
+										</tr>
+									{% endfor %}
+								</tbody>
+							</table>
+						</div>
+					</div>
+				</div>
+
 			</div>
 		</div>
 	</div>
