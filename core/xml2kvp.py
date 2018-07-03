@@ -56,6 +56,18 @@ class XML2kvp(object):
 	<internet:url url='http://example.com'>see my url</internet:url>
 	<beat type="4/4">four on the floor</beat>
 	<beat type="3/4">waltz</beat>
+	<ordering>
+		<duck>100</duck>
+		<duck>101</duck>
+		<goose>102</goose>
+		<it>run!</it>
+	</ordering>
+	<ordering>
+		<duck>200</duck>
+		<duck>201</duck>
+		<goose>202</goose>
+		<it>run!</it>
+	</ordering>
 </root>
 	'''
 
