@@ -9,12 +9,12 @@
 				<div class="row">
 					<div class="col-md-12">
 						<h5>Record Validity</h5>
-						<p>Filter Records based on Validation Results from their respective Job:</p>
+						<p>Filter Records based on Validation Results:</p>
 						
 						<div class="form-check">
 							<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
 							<label class="form-check-label" for="all">
-							<span class="text-warning">All records</span> (default)
+							<span class="text-warning">All records</span>
 							</label>
 						</div>
 
@@ -37,7 +37,7 @@
 				<div class="row">
 					<div class="col-md-12">
 						<h5>Limit Number of Records</h5>
-						<p>Numerically limit Records from each in Job <em>(Note: will apply to each Job separately, so if 4 Jobs are used as input, and limit is set to 10, a total of 40 Records will result)</em>:</p>
+						<p>Numerically limit Records from each in Job:</p>
 
 						<div class="form-group">
 							<label for="input_numerical_valve">Limit</label>
@@ -50,6 +50,7 @@
 				<div class="row">
 					<div class="col-md-12">
 						<h5>Refine by Mapped Fields</h5>
+						<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
 						<div class="form-group">
 							<label for="input_es_query_valve">ElasticSearch Query DSL</label>
 

@@ -296,7 +296,7 @@ class CombineSparkJob(object):
 		# handle es query valve
 		if 'input_es_query_valve' in self.kwargs['input_filters'].keys():
 			input_es_query_valve = self.kwargs['input_filters']['input_es_query_valve']
-			if input_es_query_valve != None:
+			if input_es_query_valve not in [None,'{}']:
 				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
 		# return
