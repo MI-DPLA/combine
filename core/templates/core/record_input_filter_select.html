@@ -4,7 +4,7 @@
 		<div class="col-md-12">
 			<div class="gray_box">
 
-				<p>Filter Records from each Job used as input for this Job.  Default settings do not filter and include <strong>all</strong> Records from <strong>all</strong> input Jobs.</p>
+				<p>Filter Records from each Job used as input for this Job.  Default settings <strong>do not</strong> filter, and include <strong>all</strong> Records from <strong>all</strong> input Jobs.</p>
 
 				<div class="row">
 					<div class="col-md-12">
@@ -52,7 +52,35 @@
 						<h5>Refine by Mapped Fields</h5>
 						<div class="form-group">
 							<label for="input_es_query_valve">ElasticSearch Query DSL</label>
-							<textarea class="form-control" id="input_es_query_valve" name="input_es_query_valve" placeholder='e.g. {"query":{"match":{"mods_subject_topic":"Scaffolding"}}}'></textarea>
+
+							<textarea style="display:none;" rows=10 class="code_style form-control" id="input_es_query_valve" name="input_es_query_valve" placeholder='e.g. {"query":{"match":{"mods_subject_topic":"Scaffolding"}}}'></textarea>
+
+							<!-- visible JSON editor -->
+							<div id="es_query_json" style="height:450px;"></div>
+							
+							<script>
+						        // create the editor
+						        var container = document.getElementById("es_query_json");
+						        var options = {
+						        	mode: 'code',
+			    					modes: ['code', 'text', 'tree'],
+			    					onChange: function(){
+			    						// update hidden textarea from editor contents
+			    						$("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+			    					},
+			    					sortObjectKeys: true,
+			    					name: 'elasticsearch_query',
+			    					// schema: {{xml2kvp_handle.schema|safe}},			    					
+						        };
+						        var es_query_editor = new JSONEditor(container, options);
+
+						        // // set json to editor
+						        // es_query_editor.set();
+
+						        // // update textarea
+						        // $("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+						    </script>
+
 						</div>
 					</div>
 				</div>

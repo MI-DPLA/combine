@@ -2362,6 +2362,55 @@ def field_mapper_payload(request, fm_id):
 			return HttpResponse(fm.payload, content_type='application/json')
 
 
+def field_mapper_update(request):
+
+	'''
+	Create and save JSON to FieldMapper instance, or update pre-existing
+	'''
+
+	logger.debug(request.POST)
+
+	# get update type
+	update_type = request.POST.get('update_type')
+
+	# handle new FieldMapper creation
+	if update_type == 'new':
+		logger.debug('creating new FieldMapper instance')
+
+		fm = models.FieldMapper(
+			name=request.POST.get('fm_name'),
+			config_json=request.POST.get('fm_config_json'),
+			field_mapper_type='xml2kvp'
+		)
+
+		# save 
+		fm.save()
+		return JsonResponse({'results':True,'msg':'New Field Mapper configurations were <strong>saved</strong> as: <strong>%s</strong>' % request.POST.get('fm_name')}, status=201)
+
+	# handle update
+	if update_type == 'update':
+		logger.debug('updating pre-existing FieldMapper instance')
+
+		# get fm instance
+		fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+
+		# update and save
+		fm.config_json = request.POST.get('fm_config_json')			
+		fm.save()
+		return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % fm.name}, status=200)
+
+	# handle delete
+	if update_type == 'delete':
+		logger.debug('deleting pre-existing FieldMapper instance')
+
+		# get fm instance
+		fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+
+		# delete
+		fm.delete()		
+		return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>deleted</strong>' % fm.name}, status=200)
+
+
 def test_field_mapper(request):
 
 	'''

@@ -50,7 +50,8 @@
 
 			    <div class="row" style="margin-top:15px;">
 					<div class="col-md-12">
-						<p><button class="btn btn-outline-info btn-sm" onclick="$('#fm_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+						<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_fm_config_options" onclick="save_current_fm_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+						<div id="fm_config_alerts"></div>
 						<div id="fm_config_help" style="display:none;">
 							<!-- loop through configurations from schema, creating table of their description -->
 							<table id="jobs_table" class="table table-bordered table-hover">
@@ -105,6 +106,8 @@
 							editor.set(data);
 							// update textarea
 			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
+			        		// show update button
+			        		$(".pre_fm_config_options").show();
 						}			
 					});	
 				}
@@ -114,6 +117,8 @@
 					editor.set(orig_fm_config_json);
 					// update textarea
 			        $("#fm_config_json").val(JSON.stringify(editor.get()));
+			        // hide update options
+	        		$(".pre_fm_config_options").hide();
 				}
 
 				else {
@@ -121,10 +126,66 @@
 					editor.set(default_fm_config);
 					// update textarea
 			        $("#fm_config_json").val(JSON.stringify(editor.get()));
+			        // hide update options
+	        		$(".pre_fm_config_options").hide();
 				}
 
 			})
 		});
+
+		// save current config
+		function save_current_fm_config_json(update_type, fm_id=null, fm_name=null){
+			
+			// grab config
+			fm_config_json = $("#fm_config_json").val();
+
+			if (update_type == 'new'){
+				// get name of new FieldMapper from user
+				var fm_name = prompt("Save these Field Mapper configurations as:");
+			}
+
+			else if (update_type == 'update'){
+				// get current id of FieldMapper selected
+				fm_id = $("#field_mapper").val();
+			}
+
+			else if (update_type == 'delete'){
+				// get current id of FieldMapper selected
+				fm_id = $("#field_mapper").val();
+				// switch back to default
+				$("#field_mapper").val('default');
+				$("#field_mapper").change();
+			}
+
+			// fire ajax to create/save
+			$.ajax({
+				type: "POST",
+				url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
+				data: {
+					'update_type':update_type,
+					'fm_id':fm_id,
+					'fm_config_json':fm_config_json,
+					'fm_name':fm_name,
+					'csrfmiddlewaretoken': '{{ csrf_token }}'
+				},
+				dataType:'json',
+				success: function(data){
+					
+					// notify user
+					alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+						${data.msg}
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>`
+					$("#fm_config_alerts").append(alert);
+					$(".expiring").fadeTo(2500, 500).fadeOut(500, function(){
+					    $(".expiring").fadeOut(500);
+					});
+				}			
+			});	
+			
+		}
 
 	</script>
 

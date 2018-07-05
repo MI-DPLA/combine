@@ -77,6 +77,7 @@ urlpatterns = [
 	url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$', views.rits_payload, name='rits_payload'),
 	url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
 	url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/payload$', views.field_mapper_payload, name='field_mapper_payload'),
+	url(r'^configuration/field_mapper/update$', views.field_mapper_update, name='field_mapper_update'),
 	url(r'^configuration/test_field_mapper$', views.test_field_mapper, name='test_field_mapper'),
 	url(r'^configuration/dpla_bulk_data/download$', views.dpla_bulk_data_download, name='dpla_bulk_data_download'),
 	
