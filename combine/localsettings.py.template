@@ -23,7 +23,9 @@ LIVY_HOST = 'localhost'
 LIVY_PORT = 8998
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
-    'jars':[],
+    'jars':[
+    	'file:///usr/share/java/mysql.jar'
+    ],
     'files':[
     	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/jobs.py' % COMBINE_INSTALL_PATH.rstrip('/'),
@@ -81,7 +83,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://localhost:3306/combine',
+	'jdbc_url':'jdbc:mysql://localhost:3306/combine', # if remote workers in cluster, set to Combine host IP
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
