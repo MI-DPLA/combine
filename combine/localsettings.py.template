@@ -83,7 +83,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://localhost:3306/combine', # if remote workers in cluster, set to Combine host IP
+	'jdbc_url':'jdbc:mysql://%s:3306/combine' % APP_HOST,
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
