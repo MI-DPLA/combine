@@ -23,8 +23,7 @@
 					<th>Elapsed</th>
 					<th>Input</th>
 					<th>Notes</th>
-					<th>Total Record Count</th>
-					<th>Monitor</th>
+					<th>Total Record Count</th>					
 					<th>Actions</th>
 				</tr>
 			</thead>
@@ -60,7 +59,7 @@
 					{% if job.jobinput_set.all|length > 0 %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 
-							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Show Input Jobs</button>
+							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Input Jobs</button>
 
 							<div id="input_jobs_column" style="margin-top:10px; display:none;">
 								{% for input_job in job.jobinput_set.all %}
@@ -88,9 +87,8 @@
 							</form>
 						</div>
 					</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="http://{{ APP_HOST }}:8998{{ job.url }}" target="_blank">Livy</a> / <a href="http://{{ APP_HOST }}:4040" target="_blank">Spark</a></td> 
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a></td>				
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>					
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a></td>				
 				</tr>
 			{% endfor %}
 			</tbody>

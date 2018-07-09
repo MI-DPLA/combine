@@ -752,7 +752,7 @@
 									</thead>
 									<tbody>
 										{% for spark_job in cjob.job.get_spark_jobs %}
-											<tr>
+											<tr class="{% if spark_job.status == 'FAILED' %}bg_light_red{% elif spark_job.status == 'RUNNING' %}bg_light_yellow{% elif spark_job.status == 'SUCCEEDED' %}bg_light_green{% endif %}">
 												<td>{{ spark_job.jobId }}</td>
 												<td>{{ spark_job.description }}</td>
 												<td>{{ spark_job.status }}</td>
@@ -792,8 +792,9 @@
 						        };
 						        var editor = new JSONEditor(container, options);
 
-						        // set json to editor
+						        // set json to editor and expand
 						        editor.set({{ cjob.job.response|safe }});
+						        editor.expandAll();
 						    </script>
 						</div>
 					</div>

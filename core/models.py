@@ -599,6 +599,26 @@ class Job(models.Model):
 			return None
 
 
+	@property
+	def has_spark_failures(self):
+
+		'''
+		Look for failure in spark jobs associated with this Combine Job
+		'''
+
+		# get spark jobs
+		spark_jobs = self.get_spark_jobs
+
+		if spark_jobs:
+			failed = [ job for job in spark_jobs if job['status'] == 'FAILED' ]
+			if len(failed) > 0:
+				return failed
+			else:
+				return False
+		else:
+			return None
+
+
 	def get_records(self):
 
 		'''
