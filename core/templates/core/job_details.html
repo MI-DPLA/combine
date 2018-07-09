@@ -736,33 +736,65 @@
 				<div id="spark_details_tab" class="tab-pane full_width_tab">
 					<div class="row">		
 						<div class="col-md-12">
-							<h4>Spark Details</h4>
-							<p>The following table shows specific Spark jobs that were run for this Job
-							<table class="table table-bordered table-hover">
-								<thead>
-									<tr>
-										<th>ID</th>					
-										<th>Description</th>
-										<th>Status</th>
-										<th>Completed / Total Tasks</th>
-										<th>Submitted</th>
-										<th>Completed</th>
-										<th>Duration</th>
-									</tr>
-								</thead>
-								<tbody>
-									{% for spark_job in cjob.job.get_spark_jobs %}
+							<h4>Spark Jobs/Tasks Run</h4>
+							{% if cjob.job.get_spark_jobs %}
+								<table class="table table-bordered table-hover">
+									<thead>
 										<tr>
-											<td>{{ spark_job.jobId }}</td>
-											<td>{{ spark_job.description }}</td>
-											<td>{{ spark_job.status }}</td>
-											<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
-											<td>{{ spark_job.submissionTime }}</td>
-											<td>{{ spark_job.completionTime }}</td>
-											<td>{{ spark_job.duration_s }}</td>
-									{% endfor %}
-								</tbody>
-							</table>
+											<th>ID</th>					
+											<th>Description</th>
+											<th>Status</th>
+											<th>Completed / Total Tasks</th>
+											<th>Submitted</th>
+											<th>Completed</th>
+											<th>Duration</th>
+										</tr>
+									</thead>
+									<tbody>
+										{% for spark_job in cjob.job.get_spark_jobs %}
+											<tr>
+												<td>{{ spark_job.jobId }}</td>
+												<td>{{ spark_job.description }}</td>
+												<td>{{ spark_job.status }}</td>
+												<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
+												<td>{{ spark_job.submissionTime }}</td>
+												<td>{{ spark_job.completionTime }}</td>
+												<td>{{ spark_job.duration_s }}</td>
+										{% endfor %}
+									</tbody>
+								</table>
+							{% else %}
+							<p>Could not retrieve information about Spark Tasks/Jobs.</p>
+							{% endif %}
+						</div>
+					</div>
+					<div class="row">		
+						<div class="col-md-12">
+							<h4>Livy Statement Information</h4>
+							<div id="livy_statement" style="height:450px;"></div>
+							<script>
+						        // create the editor
+						        var container = document.getElementById("livy_statement");
+						        var options = {
+						        	mode: 'view',
+			    					modes: ['code', 'text', 'view'],
+			    					sortObjectKeys: true,
+			    					name: 'livy_response',
+			    					onModeChange: function(nm, om){
+			    						if (nm == 'view'){
+			    							$("#livy_statement").css('height','');
+			    						}
+			    						else {
+			    							$("#livy_statement").css('height','450px');	
+			    						}
+			    					},
+			    					navigationBar:false
+						        };
+						        var editor = new JSONEditor(container, options);
+
+						        // set json to editor
+						        editor.set({{ cjob.job.response|safe }});
+						    </script>
 						</div>
 					</div>
 				</div>

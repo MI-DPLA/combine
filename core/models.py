@@ -552,6 +552,9 @@ class Job(models.Model):
 
 		elif livy_response.status_code == 200:
 
+			# set response
+			self.response = livy_response.content
+
 			# parse response
 			response = livy_response.json()
 			headers = livy_response.headers
@@ -589,7 +592,11 @@ class Job(models.Model):
 			ls.refresh_from_livy()
 
 		# get list of Jobs, filter by jobGroup for this Combine Job
-		return SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+		filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+		if len(filtered_jobs) > 0:
+			return filtered_jobs
+		else:
+			return None
 
 
 	def get_records(self):
@@ -3224,20 +3231,29 @@ class SparkAppAPIClient(object):
 		# calc duration if flagged		
 		if calc_duration:
 			for job in filtered_jobs:
-				
+
 				# prepare dates
 				if not parse_dates:
-					st = dateutil.parser.parse(job['submissionTime'])
-					ct = dateutil.parser.parse(job['completionTime'])
+					st = dateutil.parser.parse(job['submissionTime'])					
+					if 'completionTime' in job.keys():
+						ct = dateutil.parser.parse(job['completionTime'])
+					else:
+						ct = datetime.datetime.now()
 				else:
 					st = job['submissionTime']
-					ct = job['completionTime']
+					if 'completionTime' in job.keys():
+						ct = job['completionTime']
+					else:
+						ct = datetime.datetime.now()
 
 				# calc and append
-				job['duration'] = (ct - st).seconds
+				job['duration'] = (ct.replace(tzinfo=None) - st.replace(tzinfo=None)).seconds
 				m, s = divmod(job['duration'], 60)
 				h, m = divmod(m, 60)
 				job['duration_s'] = "%d:%02d:%02d" % (h, m, s)
+
+				
+
 
 		return filtered_jobs
 		
