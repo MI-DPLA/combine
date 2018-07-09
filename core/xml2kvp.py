@@ -116,11 +116,15 @@ class XML2kvp(object):
 				"type": "array"
 			},
 			"exclude_elements": {
-				"description": "Array of elements to skip when creating field names, e.g. ['baz'] when encountering field '<foo><baz><bar>tronic</bar></baz></foo>' would create field 'foo_bar', skipping element 'baz' [Default: []]",
+				"description": "Array of elements to skip when creating field names, e.g. ['baz'] when encountering field '<foo><baz><bar>tronic</bar></baz></foo>' would create field 'foo_bar', skipping element 'baz' [Default: [], After: include_all_attributes, include_attributes]",
 				"type": "array"
 			},
 			"include_attributes": {
-				"description": "Boolean to consider and include attributes when creating field names, e.g. if False, XML elements '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would result in field name 'foo_bar' without attributes included [Default: true]",
+				"description": "Array of attributes to include when creating field names, e.g. ['baz'] when encountering XML '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would create field 'foo_bar_@baz=42' [Default: [], Before: exclude_attributes, After: include_all_attributes]",
+				"type": "array"
+			},
+			"include_all_attributes": {
+				"description": "Boolean to consider and include attributes when creating field names, e.g. if False, XML elements '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would result in field name 'foo_bar' without attributes included [Default: true, Before: include_attributes, exclude_attributes]",
 				"type": "boolean"
 			},
 			"include_meta": {
@@ -193,7 +197,8 @@ class XML2kvp(object):
 		self.error_on_delims_collision=False
 		self.exclude_attributes=[]
 		self.exclude_elements=[]
-		self.include_attributes=True
+		self.include_attributes=[]
+		self.include_all_attributes=True
 		self.include_meta=False
 		self.include_xml_prop=False		
 		self.node_delim='_'
@@ -239,7 +244,8 @@ class XML2kvp(object):
 			'error_on_delims_collision',
 			'exclude_attributes',
 			'exclude_elements',
-			'include_attributes',			
+			'include_attributes',
+			'include_all_attributes',
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
@@ -268,7 +274,8 @@ class XML2kvp(object):
 
 				else:				
 					if k.startswith('@'):
-						hops = self._format_and_append_hop(hops, 'attribute', k, v)
+						if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
+							hops = self._format_and_append_hop(hops, 'attribute', k, v)
 					else:
 						hops = self._format_and_append_hop(hops, 'element', k, None)
 
@@ -326,7 +333,7 @@ class XML2kvp(object):
 				if k.startswith(('@xmlns', '@xsi')):
 					return hops
 
-			# if skipping attributes
+			# if excluded attributes
 			if len(self.exclude_attributes) > 0:
 				if k.lstrip('@') in self.exclude_attributes:
 					return hops
@@ -509,66 +516,11 @@ class XML2kvp(object):
 
 
 	@staticmethod
-	def xml_to_kvp(
-		xml_input,
-
-		# flow control
-		handler=None,
-		return_handler=False,
-
-		# kwargs
-		add_literals = None,
-		as_tuples=True,
-		concat_values_on_all_fields=None,
-		concat_values_on_fields=None,
-		copy_to = None,
-		copy_to_regex = None,
-		copy_value_to_regex=None,
-		error_on_delims_collision=None,
-		exclude_attributes=None,
-		exclude_elements=None,
-		include_attributes=None,
-		include_meta=None,
-		include_xml_prop=None,		
-		node_delim=None,
-		ns_prefix_delim=None,		
-		remove_copied_key=None,
-		remove_copied_value=None,
-		remove_ns_prefix=None,		
-		self_describing=None,
-		split_values_on_all_fields=None,
-		split_values_on_fields=None,
-		skip_attribute_ns_declarations=None,
-		skip_repeating_values=None,
-		skip_root=None):
+	def xml_to_kvp(xml_input, handler=None, return_handler=False, **kwargs):
 
 		# init handler, overwriting defaults if not None
 		if not handler:
-			handler = XML2kvp(
-				add_literals=add_literals,
-				as_tuples=as_tuples,
-				concat_values_on_all_fields=concat_values_on_all_fields,
-				concat_values_on_fields=concat_values_on_fields,
-				copy_to=copy_to,
-				copy_to_regex=copy_to_regex,
-				copy_value_to_regex=copy_value_to_regex,
-				error_on_delims_collision=error_on_delims_collision,
-				exclude_attributes=exclude_attributes,
-				exclude_elements=exclude_elements,
-				include_attributes=include_attributes,
-				include_meta=include_meta,
-				include_xml_prop=include_xml_prop,				
-				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim,		
-				remove_copied_key=remove_copied_key,
-				remove_copied_value=remove_copied_value,
-				remove_ns_prefix=remove_ns_prefix,
-				self_describing=self_describing,
-				split_values_on_all_fields=split_values_on_all_fields,
-				split_values_on_fields=split_values_on_fields,
-				skip_attribute_ns_declarations=skip_attribute_ns_declarations,
-				skip_repeating_values=skip_repeating_values,
-				skip_root=skip_root)
+			handler = XML2kvp(**kwargs)
 
 		# clean kvp_dict
 		handler.kvp_dict = {}
@@ -577,7 +529,7 @@ class XML2kvp(object):
 		handler.xml_string = handler._parse_xml_input(xml_input)
 
 		# parse as dictionary
-		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=handler.include_attributes)
+		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=True)
 
 		# walk xmltodict parsed dictionary and reutnr
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
@@ -591,17 +543,17 @@ class XML2kvp(object):
 		handler._split_and_concat_fields()
 
 		# convert list to tuples if flagged
-		if as_tuples:
+		if handler.as_tuples:
 			# convert all lists to tuples
 			for k,v in handler.kvp_dict.items():
 				if type(v) == list:
 					handler.kvp_dict[k] = tuple(v)
 
 		# include metadata about delimeters
-		if include_meta:
+		if handler.include_meta:
 			handler.kvp_dict['xml2kvp_meta'] = json.dumps({
-					'node_delim':node_delim,
-					'ns_prefix_delim':ns_prefix_delim
+					'node_delim':handler.node_delim,
+					'ns_prefix_delim':handler.ns_prefix_delim
 				})
 
 		# return
@@ -617,17 +569,7 @@ class XML2kvp(object):
 
 
 	@staticmethod
-	def k_to_xpath(
-		k,
-
-		# flow control
-		handler=None,
-		return_handler=False,
-
-		# kwargs
-		node_delim=None,
-		ns_prefix_delim=None,
-		skip_root=None):
+	def k_to_xpath(k, handler=None, return_handler=False, **kwargs):
 
 		'''
 		Method to derive xpath from kvp key
@@ -635,10 +577,7 @@ class XML2kvp(object):
 
 		# init handler
 		if not handler:
-			handler = XML2kvp(			
-				node_delim=node_delim,
-				ns_prefix_delim=ns_prefix_delim,
-				skip_root=skip_root)
+			handler = XML2kvp(**kwargs)
 
 		# for each column, reconstitue columnName --> XPath				
 		k_parts = k.split(handler.node_delim)
