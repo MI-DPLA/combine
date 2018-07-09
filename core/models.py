@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import binascii
 from collections import OrderedDict
 import datetime
+import dateutil
 import difflib
 import django
 import gc
@@ -162,8 +163,11 @@ class LivySession(models.Model):
 			self.session_timestamp = headers['Date']			
 
 			# gather information about registered application in spark cluster
-			spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
-			self.appId = spark_app_id
+			try:
+				spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
+				self.appId = spark_app_id
+			except:
+				pass
 
 			# update
 			self.save()
@@ -3198,7 +3202,7 @@ class SparkAppAPIClient(object):
 
 
 	@classmethod
-	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup):
+	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
 
 		'''
 		Method to retrieve all Jobs from application, then filter by jobGroup
@@ -3208,7 +3212,34 @@ class SparkAppAPIClient(object):
 		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()
 
 		# loop through and filter
-		return [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
+		filtered_jobs = [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
+
+		# convert to datetimes
+		if parse_dates:
+			for job in filtered_jobs:
+				job['submissionTime'] = dateutil.parser.parse(job['submissionTime'])
+				if 'completionTime' in job.keys():
+					job['completionTime'] = dateutil.parser.parse(job['completionTime'])
+
+		# calc duration if flagged		
+		if calc_duration:
+			for job in filtered_jobs:
+				
+				# prepare dates
+				if not parse_dates:
+					st = dateutil.parser.parse(job['submissionTime'])
+					ct = dateutil.parser.parse(job['completionTime'])
+				else:
+					st = job['submissionTime']
+					ct = job['completionTime']
+
+				# calc and append
+				job['duration'] = (ct - st).seconds
+				m, s = divmod(job['duration'], 60)
+				h, m = divmod(m, 60)
+				job['duration_s'] = "%d:%02d:%02d" % (h, m, s)
+
+		return filtered_jobs
 		
 
 

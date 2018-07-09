@@ -747,6 +747,7 @@
 										<th>Completed / Total Tasks</th>
 										<th>Submitted</th>
 										<th>Completed</th>
+										<th>Duration</th>
 									</tr>
 								</thead>
 								<tbody>
@@ -758,6 +759,7 @@
 											<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
 											<td>{{ spark_job.submissionTime }}</td>
 											<td>{{ spark_job.completionTime }}</td>
+											<td>{{ spark_job.duration_s }}</td>
 									{% endfor %}
 								</tbody>
 							</table>

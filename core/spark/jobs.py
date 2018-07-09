@@ -145,7 +145,7 @@ class CombineSparkJob(object):
 		'''
 
 		self.logger.info("### %s" % description)
-		self.spark.sparkContext.setJobGroup("%s" % self.job.id, description)
+		self.spark.sparkContext.setJobGroup("%s" % self.job.id, "%s, Job #%s" % (description, self.job.id))
 
 
 	def save_records(self,
@@ -1514,6 +1514,16 @@ class CombineSparkPatch(object):
 		}
 
 
+	def update_jobGroup(self, description, job_id):
+
+		'''
+		Method to update spark jobGroup
+		'''
+
+		self.logger.info("### %s" % description)
+		self.spark.sparkContext.setJobGroup("%s" % job_id, "%s, Job #%s" % (description, job_id))
+
+
 
 class ReindexSparkPatch(CombineSparkPatch):
 
@@ -1529,7 +1539,7 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))		 
-		self.update_jobGroup('Running Re-Index Job')
+		self.update_jobGroup('Running Re-Index Job', self.job.id)
 
 		# get records from job as DF
 		bounds = self.get_job_db_bounds(self.job)
@@ -1568,7 +1578,7 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
-		self.update_jobGroup('Running New Validation Scenarios')
+		self.update_jobGroup('Running New Validation Scenarios', self.job.id)
 
 		# get records from job as DF
 		bounds = self.get_job_db_bounds(self.job)

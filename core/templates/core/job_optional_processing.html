@@ -12,7 +12,7 @@
 	</div>	
 	
 	<div class="row">
-		<div class="col-md-8">
+		<div class="col-md-12">
 
 			<ul class="nav nav-tabs">				
 				{% if input_jobs %}
@@ -21,11 +21,11 @@
 					</li>
 				{% endif %}
 				<li class="nav-item">
-					<a class="nav-link {% if not input_jobs %}active{% endif %}" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
-				</li>				
-				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#field_mapping_config">Field Mapping Configuration</a>
 				</li>
+				<li class="nav-item">
+					<a class="nav-link {% if not input_jobs %}active{% endif %}" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
+				</li>				
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#identifier_transform_tab">Transform Identifier</a>
 				</li>				
