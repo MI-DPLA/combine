@@ -159,16 +159,12 @@ class LivySession(models.Model):
 			if self.status in ['starting','idle','busy']:
 				self.active = True
 			
-			self.session_timestamp = headers['Date']
-			
-			# update Spark/YARN information, if available
-			if 'appId' in response.keys():
-				self.appId = response['appId']
-			if 'appInfo' in response.keys():
-				if 'driverLogUrl' in response['appInfo']:
-					self.driverLogUrl = response['appInfo']['driverLogUrl']
-				if 'sparkUiUrl' in response['appInfo']:
-					self.sparkUiUrl = response['appInfo']['sparkUiUrl']
+			self.session_timestamp = headers['Date']			
+
+			# gather information about registered application in spark cluster
+			spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
+			self.appId = spark_app_id
+
 			# update
 			self.save()
 
@@ -540,22 +536,9 @@ class Job(models.Model):
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
 		
-		# if status_code 404, set as gone
-		if livy_response.status_code == 400:
+		# if status_code 400 or 404, set as gone
+		if livy_response.status_code in [400,404]:
 			
-			# logger.debug(livy_response.json())
-			# logger.debug('Livy session likely not active, setting status to available')
-			self.status = 'available'
-			self.finished = True
-			
-			# update
-			if save:
-				self.save()
-
-		# if status_code 404, set as gone
-		if livy_response.status_code == 404:
-			
-			# logger.debug('job/statement not found, setting status to available')
 			self.status = 'available'
 			self.finished = True
 			
@@ -571,7 +554,6 @@ class Job(models.Model):
 			
 			# update Livy information
 			self.status = response['state']
-			# logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
@@ -586,6 +568,24 @@ class Job(models.Model):
 			logger.debug('error retrieving information about Livy job/statement')
 			logger.debug(livy_response.status_code)
 			logger.debug(livy_response.json())
+
+
+	@property
+	def get_spark_jobs(self):
+
+		'''
+		Attempt to retrieve associated jobs from Spark Application API
+		'''
+
+		# get active livy session, and refresh, which contains spark_app_id as appId
+		ls = LivySession.get_active_session()
+
+		# if appId not set, attempt to retrieve
+		if not ls.appId:
+			ls.refresh_from_livy()
+
+		# get list of Jobs, filter by jobGroup for this Combine Job
+		return SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
 
 
 	def get_records(self):
@@ -2901,7 +2901,7 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 
 
 ####################################################################
-# Apahce livy 													   #
+# Apahce Livy and Spark Clients									   #
 ####################################################################
 
 class LivyClient(object):
@@ -3117,6 +3117,98 @@ class LivyClient(object):
 		# statement
 		statement = self.http_request('POST', '%s/cancel' % job_url)
 		return statement
+
+
+
+class SparkAppAPIClient(object):
+
+	'''
+	
+	'''
+
+
+	# set API base
+	api_base = settings.SPARK_APPLICATION_API_BASE
+
+
+	@classmethod
+	def http_request(self,
+			http_method,
+			url,
+			data=None,
+			headers={'Content-Type':'application/json'},
+			files=None,
+			stream=False
+		):
+
+		'''
+		Make HTTP request to Spark Application API			
+
+		Args:
+			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
+			url (str): expecting path only, as host is provided by settings
+			data (str,file): payload of data to send for request
+			headers (dict): optional dictionary of headers passed directly to requests.request,
+				defaults to JSON content-type request
+			files (dict): optional dictionary of files passed directly to requests.request
+			stream (bool): passed directly to requests.request for stream parameter
+		'''
+
+		# prepare data as JSON string
+		if type(data) != str:
+			data = json.dumps(data)
+
+		# build request
+		session = requests.Session()
+		request = requests.Request(http_method, "%s%s" % (
+			self.api_base,
+			url.lstrip('/')),
+			data=data,
+			headers=headers,
+			files=files)
+		prepped_request = request.prepare()
+		response = session.send(
+			prepped_request,
+			stream=stream,
+		)
+		return response
+
+
+	@classmethod
+	def get_application_id(self, livy_session_id):
+
+		'''
+		Attempt to retrieve application ID based on Livy Session ID
+
+		Args:
+			None
+
+		Returns:
+			(dict): Spark Application API response 
+		'''
+
+		# get list of applications
+		applications = self.http_request('GET','applications').json()
+
+		# loop through and look for Livy session
+		for app in applications:
+			if app['name'] == 'livy-session-%s' % livy_session_id:
+				logger.debug('found application matching Livy session id: %s' % app['id'])
+				return app['id']
+
+
+	@classmethod
+	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup):
+
+		'''
+		Method to retrieve all Jobs from application, then filter by jobGroup
+		'''
+
+		# get all jobs from application
+		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()
+
+		# loop through and filter
+		return [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
 		
 
 

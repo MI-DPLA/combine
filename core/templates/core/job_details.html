@@ -156,6 +156,9 @@
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
 				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#spark_details_tab">Spark Details</a>
+				</li>
 			</ul>
 
 			<!-- Tabbed Content -->
@@ -726,6 +729,38 @@
 
 							</div>
 
+						</div>
+					</div>
+				</div>
+
+				<div id="spark_details_tab" class="tab-pane full_width_tab">
+					<div class="row">		
+						<div class="col-md-12">
+							<h4>Spark Details</h4>
+							<p>The following table shows specific Spark jobs that were run for this Job
+							<table class="table table-bordered table-hover">
+								<thead>
+									<tr>
+										<th>ID</th>					
+										<th>Description</th>
+										<th>Status</th>
+										<th>Completed / Total Tasks</th>
+										<th>Submitted</th>
+										<th>Completed</th>
+									</tr>
+								</thead>
+								<tbody>
+									{% for spark_job in cjob.job.get_spark_jobs %}
+										<tr>
+											<td>{{ spark_job.jobId }}</td>
+											<td>{{ spark_job.description }}</td>
+											<td>{{ spark_job.status }}</td>
+											<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
+											<td>{{ spark_job.submissionTime }}</td>
+											<td>{{ spark_job.completionTime }}</td>
+									{% endfor %}
+								</tbody>
+							</table>
 						</div>
 					</div>
 				</div>
