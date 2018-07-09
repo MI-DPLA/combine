@@ -198,7 +198,7 @@ class XML2kvp(object):
 		self.exclude_attributes=[]
 		self.exclude_elements=[]
 		self.include_attributes=[]
-		self.include_all_attributes=True
+		self.include_all_attributes=False
 		self.include_meta=False
 		self.include_xml_prop=False		
 		self.node_delim='_'
@@ -255,7 +255,7 @@ class XML2kvp(object):
 			'split_values_on_all_fields',
 			'split_values_on_fields',
 			'skip_attribute_ns_declarations',
-			'skip_repeating_values'			
+			'skip_repeating_values'
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)

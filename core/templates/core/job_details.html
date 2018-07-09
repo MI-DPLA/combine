@@ -736,13 +736,23 @@
 				<div id="spark_details_tab" class="tab-pane full_width_tab">
 					<div class="row">		
 						<div class="col-md-12">
+							<ul class="list-inline">
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI</button></a></li>
+							</ul>
+						</div>
+					</div>
+					<div class="row">		
+						<div class="col-md-12">
 							<h4>Spark Jobs/Tasks Run</h4>
 							{% if cjob.job.get_spark_jobs %}
 								<table class="table table-bordered table-hover">
 									<thead>
 										<tr>
-											<th>ID</th>					
+											<th>ID</th>
 											<th>Description</th>
+											<th>Name</th>
 											<th>Status</th>
 											<th>Completed / Total Tasks</th>
 											<th>Submitted</th>
@@ -755,6 +765,7 @@
 											<tr class="{% if spark_job.status == 'FAILED' %}bg_light_red{% elif spark_job.status == 'RUNNING' %}bg_light_yellow{% elif spark_job.status == 'SUCCEEDED' %}bg_light_green{% endif %}">
 												<td>{{ spark_job.jobId }}</td>
 												<td>{{ spark_job.description }}</td>
+												<td>{{ spark_job.name }}</td>
 												<td>{{ spark_job.status }}</td>
 												<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
 												<td>{{ spark_job.submissionTime }}</td>

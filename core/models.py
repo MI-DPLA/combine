@@ -592,7 +592,11 @@ class Job(models.Model):
 			ls.refresh_from_livy()
 
 		# get list of Jobs, filter by jobGroup for this Combine Job
-		filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+		try:
+			filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+		except:
+			logger.warning('trouble retrieving Jobs from Spark App API')
+			filtered_jobs = []
 		if len(filtered_jobs) > 0:
 			return filtered_jobs
 		else:
@@ -5689,27 +5693,30 @@ class DTElasticGenericSearch(View):
 		# loop through hits
 		for hit in self.query_results.hits:
 
-			# get combine record
-			record = Record.objects.get(pk=int(hit.db_id))
+			try:
+				# get combine record
+				record = Record.objects.get(pk=int(hit.db_id))
 
-			# loop through rows, add to list while handling data types
-			row_data = []
-			for field in self.fields:
-				field_value = getattr(hit, field, None)
+				# loop through rows, add to list while handling data types
+				row_data = []
+				for field in self.fields:
+					field_value = getattr(hit, field, None)
 
-				# handle ES lists
-				if type(field_value) == AttrList:
-					row_data.append(str(field_value))
+					# handle ES lists
+					if type(field_value) == AttrList:
+						row_data.append(str(field_value))
 
-				# all else, append
-				else:
-					row_data.append(field_value)
+					# all else, append
+					else:
+						row_data.append(field_value)
 
-			# add record lineage in front
-			row_data = self._prepare_record_hierarchy_links(record, row_data)
+				# add record lineage in front
+				row_data = self._prepare_record_hierarchy_links(record, row_data)
 
-			# add list to object			
-			self.DToutput['data'].append(row_data)
+				# add list to object			
+				self.DToutput['data'].append(row_data)
+			except Exception as e:
+				logger.debug("error retrieving DB record based on id %s, from index %s: %s" % (hit.db_id, hit.meta.index, str(e)))
 
 
 	def _prepare_record_hierarchy_links(self, record, row_data):
