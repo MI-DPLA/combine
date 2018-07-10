@@ -11,6 +11,7 @@ import re
 import requests
 import shutil
 import sys
+import textwrap
 import time
 from types import ModuleType
 import uuid
@@ -137,7 +138,21 @@ class CombineSparkJob(object):
 		self.job_track.save()
 
 
-	def save_records(self, records_df=None, write_avro=settings.WRITE_AVRO, index_records=settings.INDEX_TO_ES, assign_combine_id=False):
+	def update_jobGroup(self, description):
+
+		'''
+		Method to update spark jobGroup
+		'''
+
+		self.logger.info("### %s" % description)
+		self.spark.sparkContext.setJobGroup("%s" % self.job.id, "%s, Job #%s" % (description, self.job.id))
+
+
+	def save_records(self,
+		records_df=None,
+		write_avro=settings.WRITE_AVRO,
+		index_records=settings.INDEX_TO_ES,
+		assign_combine_id=False):
 
 		'''
 		Method to index records to DB and trigger indexing to ElasticSearch (ES)		
@@ -155,7 +170,7 @@ class CombineSparkJob(object):
 				- writes to DB, writes to avro files
 		'''
 
-		# assign combine ID
+		# assign combine ID		
 		if assign_combine_id:
 			combine_id_udf = udf(lambda record_id: str(uuid.uuid4()), StringType())
 			records_df = records_df.withColumn('combine_id', combine_id_udf(records_df.record_id))
@@ -185,9 +200,9 @@ class CombineSparkJob(object):
 			mode='append')
 
 		# check if anything written to DB to continue, else abort
-		if len(self.job.get_records()) > 0:
+		if self.job.get_records().count() > 0:
 
-			# read rows from DB for indexing to ES
+			# read rows from DB for indexing to ES			
 			bounds = self.get_job_db_bounds(self.job)
 			sqldf = self.spark.read.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
@@ -201,18 +216,19 @@ class CombineSparkJob(object):
 			job_id = self.job.id
 			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
-			# index to ElasticSearch
+			# index to ElasticSearch			
+			self.update_jobGroup('Indexing to ElasticSearch')
 			if index_records and settings.INDEX_TO_ES:
 				ESIndex.index_job_to_es_spark(
 					self.spark,
 					job=self.job,
 					records_df=db_records,
-					index_mapper=self.kwargs['index_mapper'],
-					include_attributes=self.kwargs['include_attributes']
+					fm_config_json=self.kwargs['fm_config_json']
 				)
 
 			# run Validation Scenarios
 			if 'validation_scenarios' in self.kwargs.keys():
+				self.update_jobGroup('Running Validation Scenarios')
 				vs = ValidationScenarioSpark(
 					spark=self.spark,
 					job=self.job,
@@ -252,10 +268,10 @@ class CombineSparkJob(object):
 		}
 
 
-	def record_validity_valve(self, records_df):
+	def record_input_filters(self, filtered_df):
 
 		'''
-		Method to include all, valid, or invalid records only for downstream jobs
+		Method to apply filters to input Records
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
@@ -263,22 +279,67 @@ class CombineSparkJob(object):
 			kwargs (dict): kwargs
 
 		Returns:
-			(pyspark.sql.DataFrame): DataFrame of records post validity filtering
+			(pyspark.sql.DataFrame): DataFrame of records post filtering
 		'''
 
-		# if all, return untouched
-		if self.kwargs['input_validity_valve'] == 'all':
-			filtered_df = records_df
+		# handle validity filters
+		input_validity_valve = self.kwargs['input_filters']['input_validity_valve']
 
-		# else, filter to valid or invalid records
-		else:
-			# return valid records		
-			if self.kwargs['input_validity_valve'] == 'valid':
-				filtered_df = records_df.filter(records_df.valid == 1)
+		# filter to valid or invalid records
+		# return valid records		
+		if input_validity_valve == 'valid':
+			filtered_df = filtered_df.filter(filtered_df.valid == 1)
 
-			# return invalid records		
-			if self.kwargs['input_validity_valve'] == 'invalid':
-				filtered_df = records_df.filter(records_df.valid == 0)
+		# return invalid records		
+		elif input_validity_valve == 'invalid':
+			filtered_df = filtered_df.filter(filtered_df.valid == 0)
+
+		# handle numerical filters
+		input_numerical_valve = self.kwargs['input_filters']['input_numerical_valve']
+		if input_numerical_valve != None:
+			filtered_df = filtered_df.limit(input_numerical_valve)
+
+		# handle es query valve
+		if 'input_es_query_valve' in self.kwargs['input_filters'].keys():
+			input_es_query_valve = self.kwargs['input_filters']['input_es_query_valve']
+			if input_es_query_valve not in [None,'{}']:
+				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
+
+		# return
+		return filtered_df
+
+
+	def es_query_valve_filter(self, input_es_query_valve, filtered_df):
+
+		'''
+		Method to handle input valve based on ElasticSearch query
+			
+			- perform union if multiple input Jobs are used
+
+		'''
+
+		# prepare input jobs list
+		if 'input_jobs_ids' in self.kwargs:
+			input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
+		elif 'input_job_id' in self.kwargs:
+			input_jobs_ids = [int(self.kwargs['input_job_id'])]
+
+		# loop through and create es.resource string
+		es_indexes = ','.join([ 'j%s' % job_id for job_id in input_jobs_ids])
+
+		# get es index as RDD
+		es_rdd = self.spark.sparkContext.newAPIHadoopRDD(
+			inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+			keyClass="org.apache.hadoop.io.NullWritable",
+			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+			conf={
+				"es.resource":"%s/record" % es_indexes,
+				"es.query":input_es_query_valve,
+				"es.read.field.exclude":"*"})
+		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
+
+		# perform join on ES documents
+		filtered_df = filtered_df.join(es_df, filtered_df['combine_id'] == es_df['_1'], 'leftsemi')
 
 		# return
 		return filtered_df
@@ -459,8 +520,8 @@ class CombineSparkJob(object):
 		'''
 
 		self.logger.info('running bulk data compare')
+		self.update_jobGroup('Running DPLA Bulk Data Compare')
 
-		# get dbdd instance
 		# get dbdd ID from kwargs
 		dbdd_id = self.kwargs.get('dbdd', False)
 
@@ -555,6 +616,7 @@ class HarvestOAISpark(CombineSparkJob):
 
 		# init job
 		self.init_job()
+		self.update_jobGroup('Running Harvest OAI Job')
 
 		# harvest OAI records via Ingestion3
 		df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
@@ -666,6 +728,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 		# init job
 		self.init_job()
+		self.update_jobGroup('Running Harvest Static Job')
 
 		# use Spark-XML's XmlInputFormat to stream globbed files, parsing with user provided `document_element_root`
 		static_rdd = self.spark.sparkContext.newAPIHadoopFile(
@@ -825,26 +888,27 @@ class TransformSpark(CombineSparkJob):
 
 		# init job
 		self.init_job()
+		self.update_jobGroup('Running Transform Job')
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
 		bounds = self.get_job_db_bounds(input_job)
-		sqldf = self.spark.read.jdbc(
+		records = self.spark.read.jdbc(
 				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
+				'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job.id,
 				properties=settings.COMBINE_DATABASE,
 				column='id',
 				lowerBound=bounds['lowerBound'],
 				upperBound=bounds['upperBound'],
 				numPartitions=settings.JDBC_NUMPARTITIONS
 			)
-		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
 
-		# fork as input_records
+		# fork as input_records		
 		input_records = records
 
 		# filter based on record validity
-		records = self.record_validity_valve(records)
+		input_records = self.record_input_filters(input_records)
+		records = self.record_input_filters(records)
 
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
@@ -860,6 +924,10 @@ class TransformSpark(CombineSparkJob):
 		if transformation.transformation_type == 'python':
 			records_trans = self.transform_python(transformation, records)
 
+		# if OpenRefine type transformation
+		if transformation.transformation_type == 'openrefine':
+			records_trans = self.transform_openrefineactions(transformation, records)
+
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
 
@@ -867,8 +935,7 @@ class TransformSpark(CombineSparkJob):
 		records_trans = self.fingerprint_records(records_trans)
 
 		# write `transformed` column based on new fingerprint
-		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.fingerprint == records_trans.fingerprint, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(pyspark_sql_functions.isnull(pyspark_sql_functions.col('input_records.fingerprint')), pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
-
+		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.combine_id == records_trans.combine_id, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(records_trans.fingerprint != input_records.fingerprint, pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -1004,10 +1071,172 @@ class TransformSpark(CombineSparkJob):
 					transformed = row.transformed
 				)
 
-		# transform via rdd.map and return
+		# transform via rdd.mapPartitions and return
 		job_id = self.job.id			
 		python_code = transformation.payload
 		records_trans = records.rdd.mapPartitions(transform_python_pt_udf)
+		return records_trans
+
+
+	def transform_openrefineactions(self, transformation, records):
+
+		'''
+		Transform records per OpenRefine Actions JSON		
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs (dict): kwargs from parent job
+			job: job from parent job
+			transformation: Transformation Scenario from parent job
+			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
+
+		Return:
+			records_trans (rdd): transformed records as RDD
+		'''
+
+		def _field_name_to_xpath(field_name):
+
+			'''
+			TODO: This can be updated to use XML2kvp
+			'''
+
+			# for each column, reconstitue columnName --> XPath				
+			field_parts = field_name.split('_')[1:] # skip root element
+
+			# loop through pieces and build xpath
+			on_attrib = False
+			xpath = '/' # begin with single slash, will get appended to
+
+			for part in field_parts:
+
+				# if not attribute, assume node hop
+				if not part.startswith('@'):
+
+					# handle closing attrib if present
+					if on_attrib:
+						xpath += ']/'
+
+					# close previous element
+					else:
+						xpath += '/'
+				
+					# replace pipe with colon for prefix
+					part = part.replace('|',':')
+
+					# append to xpath string
+					xpath += '%s' % part
+
+				# if attribute, assume part of previous element and build
+				else:
+
+					# handle attribute
+					attrib, value = part.split('=')
+
+					# if not on_attrib, open xpath for attribute inclusion
+					if not on_attrib:
+						xpath += "[%s='%s'" % (attrib, value)
+
+					# else, currently in attribute write block, continue
+					else:
+						xpath += " and %s='%s'" % (attrib, value)
+
+					# set on_attrib flag for followup
+					on_attrib = True
+
+			# cleanup after loop
+			if on_attrib:
+
+				# close attrib brackets
+				xpath += ']'
+
+			# return 
+			return xpath
+
+
+		# define udf function for python transformation	
+		def transform_openrefine_pt_udf(pt):
+
+			# parse OpenRefine actions JSON
+			or_actions = json.loads(or_actions_json)
+
+			# loop through rows
+			for row in pt:
+
+				try:
+
+					# prepare row as parsed document with PythonUDFRecord class
+					prtb = PythonUDFRecord(row)
+
+					# loop through actions
+					for event in or_actions:
+
+						# handle mass edits
+						if event['op'] == 'core/mass-edit':
+
+							# for each column, reconstitue columnName --> XPath	
+							xpath = _field_name_to_xpath(event['columnName'])
+							
+							# find elements for potential edits
+							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+							# loop through elements
+							for ele in eles:				
+
+								# loop through edits
+								for edit in event['edits']:
+
+									# check if element text in from, change
+									if ele.text in edit['from']:
+										ele.text = edit['to']
+
+						# handle jython
+						if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):					
+
+							# fire up temp module
+							temp_pyts = ModuleType('temp_pyts')
+
+							# parse code
+							code = event['expression'].split('jython:')[1]
+
+							# wrap in function and write to temp module
+							code = 'def temp_func(value):\n%s' % textwrap.indent(code, prefix='    ')					
+							exec(code, temp_pyts.__dict__)
+
+							# get xpath (unique to action, can't pre learn)
+							xpath = _field_name_to_xpath(event['columnName'])
+							
+							# find elements for potential edits
+							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+							# loop through elements
+							for ele in eles:
+								ele.text = temp_pyts.temp_func(ele.text)
+
+					# re-serialize as trans_result
+					trans_result = (etree.tostring(prtb.xml).decode('utf-8'), '', 1)
+
+				except Exception as e:
+					# set trans_result tuple
+					trans_result = ('', str(e), 0)
+
+				# return Row
+				yield Row(
+					combine_id = row.combine_id,
+					record_id = row.record_id,
+					document = trans_result[0],
+					error = trans_result[1],
+					job_id = int(job_id),
+					oai_set = row.oai_set,
+					success = trans_result[2],
+					fingerprint = row.fingerprint,
+					transformed = row.transformed
+				)
+
+
+		# transform via rdd.mapPartitions and return
+		job_id = self.job.id			
+		or_actions_json = transformation.payload
+		records_trans = records.rdd.mapPartitions(transform_openrefine_pt_udf)
 		return records_trans
 
 
@@ -1040,50 +1269,52 @@ class MergeSpark(CombineSparkJob):
 		'''
 
 		# init job
-		self.init_job()
+		self.init_job()		
+		self.update_jobGroup('Running Merge/Duplicate Job')
 
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
 
-		# get total range of id's from input jobs to help partition jdbc reader
-		records_ids = []
+		# loop through input jobs and append to input_jobs_rdds
+		input_jobs_rdds = []
+		input_schemas = []
 		for input_job_id in input_jobs_ids:
+
+			# get input Job
 			input_job_temp = Job.objects.get(pk=int(input_job_id))
 
-			# if job has records, continue
-			if len(input_job_temp.get_records()) > 0:
-				records = input_job_temp.get_records().order_by('id')
-				start_id = records.first().id
-				end_id = records.last().id
-				records_ids += [start_id, end_id]
+			# if Job has records, continue
+			if input_job_temp.get_records().count() > 0:
+
+				# get bounds
+				bounds = self.get_job_db_bounds(input_job_temp)
+
+				# get list of RDDs from input jobs
+				sqldf = self.spark.read.jdbc(
+					settings.COMBINE_DATABASE['jdbc_url'],
+					'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job_id,
+					properties=settings.COMBINE_DATABASE,
+					column='id',
+					lowerBound=bounds['lowerBound'],
+					upperBound=bounds['upperBound'],
+					numPartitions=settings.JDBC_NUMPARTITIONS
+				)
+
+				# append
+				sqldf = self.record_input_filters(sqldf)
+
+				# save schema
+				input_schemas.append(sqldf.schema)
+
+				# append to input jobs rdds
+				input_jobs_rdds.append(sqldf.rdd)
+			
 			else:
 				print("Job %s had no records, skipping" % input_job_temp.name)
 
-		records_ids.sort()		
-
-		# get list of RDDs from input jobs
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=records_ids[0],
-				upperBound=records_ids[-1],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
-		input_jobs_dfs = []		
-		for input_job_id in input_jobs_ids:
-
-			# db
-			job_df = sqldf.filter(sqldf.job_id == int(input_job_id))
-			input_jobs_dfs.append(job_df)
-
 		# create aggregate rdd of frames
-		agg_rdd = self.spark.sparkContext.union([ df.rdd for df in input_jobs_dfs ])
-		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_jobs_dfs[0].schema)
-
-		# filter based on record validity
-		agg_df = self.record_validity_valve(agg_df)
+		agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
+		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_schemas[0])
 
 		# repartition
 		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
@@ -1139,6 +1370,7 @@ class PublishSpark(CombineSparkJob):
 
 		# init job
 		self.init_job()
+		self.update_jobGroup('Running Publish Job')
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
@@ -1272,7 +1504,7 @@ class CombineSparkPatch(object):
 		'''	
 
 		records = job.get_records()
-		records = records.order_by('id')
+		records = records.order_by()
 		start_id = records.first().id
 		end_id = records.last().id
 
@@ -1280,6 +1512,16 @@ class CombineSparkPatch(object):
 			'lowerBound':start_id,
 			'upperBound':end_id
 		}
+
+
+	def update_jobGroup(self, description, job_id):
+
+		'''
+		Method to update spark jobGroup
+		'''
+
+		self.logger.info("### %s" % description)
+		self.spark.sparkContext.setJobGroup("%s" % job_id, "%s, Job #%s" % (description, job_id))
 
 
 
@@ -1296,7 +1538,8 @@ class ReindexSparkPatch(CombineSparkPatch):
 	def spark_function(self):
 
 		# get job and set to self
-		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))		 
+		self.update_jobGroup('Running Re-Index Job', self.job.id)
 
 		# get records from job as DF
 		bounds = self.get_job_db_bounds(self.job)
@@ -1316,8 +1559,7 @@ class ReindexSparkPatch(CombineSparkPatch):
 			self.spark,
 			job=self.job,
 			records_df=db_records,
-			index_mapper=self.kwargs['index_mapper'],
-			include_attributes=self.kwargs['include_attributes']
+			fm_config_json=self.kwargs['fm_config_json']
 		)
 
 
@@ -1336,6 +1578,7 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.update_jobGroup('Running New Validation Scenarios', self.job.id)
 
 		# get records from job as DF
 		bounds = self.get_job_db_bounds(self.job)
@@ -1361,6 +1604,7 @@ class RunNewValidationsSpark(CombineSparkPatch):
 			vs.run_record_validation_scenarios()
 
 		# update `valid` column for Records based on results of ValidationScenarios
+		self.logger.info('Updating Records with validation results via MySQL cursor execution')
 		cursor = connection.cursor()
 		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 

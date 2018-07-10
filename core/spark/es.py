@@ -31,6 +31,9 @@ if not hasattr(django, 'apps'):
 # import django settings
 from django.conf import settings
 
+# import xml2kvp
+from core.xml2kvp import XML2kvp
+
 
 class ESIndex(object):
 
@@ -39,7 +42,7 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, job, records_df, index_mapper, include_attributes):
+	def index_job_to_es_spark(spark, job, records_df, fm_config_json):
 
 		'''
 		Method to index records dataframe into ES
@@ -55,14 +58,19 @@ class ESIndex(object):
 				- indexes records to ES
 		'''
 
+		# init logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		logger = log4jLogger.LogManager.getLogger(__name__)
+
 		# get index mapper
-		index_mapper_handle = globals()[index_mapper]
+		index_mapper_handle = globals()['XML2kvpMapper']
 
 		# create rdd from index mapper
 		def es_mapper_pt_udf(pt):
 
 			# init mapper once per partition
-			mapper = index_mapper_handle(include_attributes=include_attributes)
+			mapper = index_mapper_handle(fm_config=json.loads(fm_config_json))
 
 			for row in pt:
 
@@ -75,14 +83,18 @@ class ESIndex(object):
 					fingerprint=row.fingerprint
 				)
 
+		logger.info('###ES 1 -- mapping records')
 		mapped_records_rdd = records_df.rdd.mapPartitions(es_mapper_pt_udf)
 
 		# attempt to write index mapping failures to DB
 		# filter our failures
+		logger.info('###ES 2 -- filtering failures')
 		failures_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'fail')
 
 		# if failures, write
 		if not failures_rdd.isEmpty():
+
+			logger.info('###ES 3 -- writing indexing failures')
 
 			failures_df = failures_rdd.map(lambda row: Row(combine_id=row[1]['combine_id'], mapping_error=row[1]['mapping_error'])).toDF()
 
@@ -101,6 +113,7 @@ class ESIndex(object):
 				)
 		
 		# retrieve successes to index
+		logger.info('###ES 4 -- filtering successes')
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
 
 		# create index in advance
@@ -124,6 +137,7 @@ class ESIndex(object):
 			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
 
 		# index to ES
+		logger.info('###ES 5 -- writing to ES')
 		to_index_rdd.saveAsNewAPIHadoopFile(
 			path='-',
 			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
@@ -222,33 +236,16 @@ class BaseMapper(object):
 				nsmap[ns[0]] = ns[1]
 		self.nsmap = nsmap
 
+		# set inverted nsmap
+		self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
 
-class GenericMapper(BaseMapper):
+
+
+class XML2kvpMapper(BaseMapper):
 
 	'''
-	Generic flattener of nested, or flat, XML, suitable for indexing in ElasticSearch
-
-	Looping through all elements in an XML tree, the xpath for each element, in combination with attributes is used
-	to generate a flattened version of the field into a single string.
-
-	e.g.
-		<foo>
-			<bar type="geographic">Seattle</bar>
-			<bar type="topic">city</bar>
-		</foo>
-		<foo>
-			<baz>Cats Cradle</baz>
-			<baz>Breakfast of Champions</baz>
-		</foo>
-
-	becomes...
-		[
-			('foo_bar_type_geographic', 'Seattle'),
-			('foo_bar_type_@topic', 'city'),
-			('foo_bar', ('Cats Cradle','Breakfast of Champions'))
-				# note tuple for multiple values, not list here, as saveAsNewAPIHadoopFile requires
-		]
-
+	Map XML to ElasticSearch friendly fields with xml2kvp	
+	
 	Args:
 		record_id (str): record id
 		record_string (str): string of record document
@@ -261,151 +258,9 @@ class GenericMapper(BaseMapper):
 	'''
 
 
-	# Index Mapper class attributes (needed for easy access in Django templates)
-	classname = "GenericMapper" # must be same as class name
-	name = "Generic XPath based mapper"
+	def __init__(self, fm_config=None):		
 
-
-	def __init__(self, include_attributes = None):
-
-		# empty elems list
-		self.flat_elems = []
-
-		# empty formatted elems dict, grouping by flat, formatted element
-		self.formatted_elems = {}
-
-		if include_attributes == None:
-			self.include_attributes = settings.INCLUDE_ATTRIBUTES_GENERIC_MAPPER
-		else:
-			self.include_attributes = include_attributes
-
-
-	def flatten_record(self):
-
-		'''
-		Walk XML tree, writing each element with some basic information
-		of xpath, attributes, and text to self.flat_elems()
-
-		Args:
-			None
-
-		Returns:
-			None
-				- sets self.flat_elems
-		'''
-
-		# reset flat_elems
-		self.flat_elems = []
-
-		# walk descendants of root
-		for elem in self.xml_root.iterdescendants():
-
-			# if text value present for element, save to list
-			if elem.text and re.search(self.blank_check_regex, elem.text) is not None:
-
-				# get xpath
-				xpath = self.xml_tree.getpath(elem)
-
-				# append
-				self.flat_elems.append({
-						'text':elem.text,
-						'xpath':xpath,
-						'attributes':elem.attrib
-					})
-
-
-	def format_record(self):
-
-		'''
-		After elements have been flattened, with text, xpath, and attributes, 
-		derive single string for flattened field, and append potentially repeating
-		values to self.formatted_elems
-
-		Args:
-			None
-
-		Returns:
-			None
-				- sets self.formatted_elems
-		'''
-
-		# reset formatted elems
-		self.formatted_elems = {}
-
-		# loop through flattened elements
-		for elem in self.flat_elems:
-
-			# split on slashes
-			xpath_comps = elem['xpath'].lstrip('/').split('/')
-
-			# proceed if not entirely asterisks
-			if set(xpath_comps) != set('*'):
-
-				# walk parents to develop flat field name
-				self.hops = []
-				node = self.xml_root.xpath(elem['xpath'], namespaces=self.nsmap)[0]
-				self.hops.append(node)
-
-				self.parent_walk(node)
-
-				# reverse order
-				self.hops.reverse()
-
-				# loop through hops to develop field name
-				fn_pieces = []				
-				for hop in self.hops:
-
-					# add field name, removing etree prefix
-					prefix, tag_name = re.match(self.namespace_prefix_regex, hop.tag).groups()
-					fn_pieces.append(tag_name)
-
-					# add attributes if not root node
-					if self.include_attributes and hop != self.xml_root:					
-						attribs = [ (k,v) for k,v in hop.attrib.items() ]
-						attribs.sort(key=lambda x: x[0])
-						for attribute, value in attribs:						
-							if re.search(self.blank_check_regex, value) is not None:								
-								attribute = attribute.replace(' ','_')
-								prefix, attribute = re.match(self.namespace_prefix_regex, attribute).groups()
-								value = value.replace(' ','_')
-								fn_pieces.append('@%s=%s' % (attribute,value))
-
-				# derive flat field name
-				flat_field = '_'.join(fn_pieces)
-
-				# replace any periods in flat field name with underscore
-				flat_field = flat_field.replace('.','_')
-				
-				# if not yet seen, add to dictionary as single element
-				if flat_field not in self.formatted_elems.keys():
-					self.formatted_elems[flat_field] = elem['text']
-
-				# elif, field exists, but not yet list, convert to list and append value
-				elif flat_field in self.formatted_elems.keys() and type(self.formatted_elems[flat_field]) != list:
-					temp_val = self.formatted_elems[flat_field]
-					self.formatted_elems[flat_field] = [temp_val, elem['text']]
-
-				# else, if list, and value not already present, append
-				else:
-					if elem['text'] not in self.formatted_elems[flat_field]:
-						self.formatted_elems[flat_field].append(elem['text'])
-
-		# convert all lists to tuples (required for saveAsNewAPIHadoopFile() method)
-		for k,v in self.formatted_elems.items():
-			if type(v) == list:
-				self.formatted_elems[k] = tuple(v)
-
-
-	def parent_walk(self, node):
-
-		'''
-		Small method to walk parents of XML node
-		'''
-
-		parent = node.getparent()
-		if parent != None:
-			self.hops.append(parent)
-			self.parent_walk(parent)
+		self.fm_config = fm_config
 
 
 	def map_record(self,
@@ -432,47 +287,41 @@ class GenericMapper(BaseMapper):
 
 		'''
 
-		# set record string, encoded as utf8
-		self.xml_string = record_string.encode('utf-8')
-
 		try:
 
-			# parse from string
-			self.xml_root = etree.fromstring(self.xml_string)
+			# prepare literals
+			if 'add_literals' not in self.fm_config.keys():
+				self.fm_config['add_literals'] = {}
 
-			# get tree
-			self.xml_tree = self.xml_root.getroottree()
 
-			# save namespaces
-			self.get_namespaces()
+			self.fm_config['add_literals'].update({
 
-			# flatten record
-			self.flatten_record()
+				# add temporary id field
+				'temp_id':combine_id,
 
-			# format for return
-			self.format_record()
+				# add combine_id field
+				'combine_id':combine_id,
 
-			# add temporary id field
-			self.formatted_elems['temp_id'] = combine_id
+				# add record_id field
+				'record_id':record_id,
 
-			# add combine_id field
-			self.formatted_elems['combine_id'] = combine_id
+				# add publish set id
+				'publish_set_id':publish_set_id,
 
-			# add record_id field
-			self.formatted_elems['record_id'] = record_id
+				# add record's Combine DB id
+				'db_id':db_id,
 
-			# add publish set id
-			self.formatted_elems['publish_set_id'] = publish_set_id
+				# add record's crc32 document hash, aka "fingerprint"
+				'fingerprint':fingerprint,
 
-			# add record's Combine DB id
-			self.formatted_elems['db_id'] = db_id
+			})
 
-			# add record's crc32 document hash, aka "fingerprint"
-			self.formatted_elems['fingerprint'] = fingerprint
+			# map with XML2kvp
+			kvp_dict = XML2kvp.xml_to_kvp(record_string, **self.fm_config)
 
 			return (
 					'success',
-					self.formatted_elems
+					kvp_dict
 				)
 
 		except Exception as e:

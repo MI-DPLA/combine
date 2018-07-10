@@ -15,21 +15,22 @@
 
 			<div class="row">
 				<div class="col-md-12">
-					<h4>Re-Index Records</h4>					
+					<h4>Re-Map and Re-Index Records</h4>					
 				</div>
 			</div>
 
 			<div class="row">
-				<div class="col-md-6">
-					<p>Similar to running a new Job, use the form below to select an metadata field mapper.  The ElasticSearch index for this Job will be dropped, and the Records will be re-mapped and re-indexed.</p>
+				<div class="col-md-12">
+					
+					<p>Select and configure Field Mapping configurations below:</p>
 
 					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
 						{% csrf_token %}
 
 						<div id="index_mapping_tab" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-							{# Indexing Mapping Selection #}
-							{% include 'core/index_mapping_select.html' %}
+							{# Field Mapper Selection #}
+							{% include 'core/field_mapper_select.html' %}
 						</div>
 
 						<!-- submit job update form -->

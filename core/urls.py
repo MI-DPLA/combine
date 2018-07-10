@@ -9,7 +9,7 @@ urlpatterns = [
 
 	# User Livy sessions
 	url(r'^livy_sessions$', views.livy_sessions, name='livy_sessions'),
-	url(r'^livy_sessions/stop$', views.livy_session_start, name='livy_session_start'),
+	url(r'^livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
 	url(r'^livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
 
 	# Organizations
@@ -47,6 +47,7 @@ urlpatterns = [
 
 	# Record Group Job Analysis
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/indexing_failures$', views.job_indexing_failures, name='job_indexing_failures'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/indexing_failures/remove$', views.remove_job_indexing_failures, name='remove_job_indexing_failures'),
 
 	# ElasticSearch Analysis
 	url(r'^analysis/es/index/(?P<es_index>.+)/field_analysis$', views.field_analysis, name='field_analysis'),
@@ -75,7 +76,11 @@ urlpatterns = [
 	url(r'^configuration/test_transformation_scenario$', views.test_transformation_scenario, name='test_transformation_scenario'),
 	url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$', views.rits_payload, name='rits_payload'),
 	url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
+	url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/payload$', views.field_mapper_payload, name='field_mapper_payload'),
+	url(r'^configuration/field_mapper/update$', views.field_mapper_update, name='field_mapper_update'),
+	url(r'^configuration/test_field_mapper$', views.test_field_mapper, name='test_field_mapper'),
 	url(r'^configuration/dpla_bulk_data/download$', views.dpla_bulk_data_download, name='dpla_bulk_data_download'),
+	
 
 	# Publish
 	url(r'^published$', views.published, name='published'),

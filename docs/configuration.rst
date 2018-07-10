@@ -11,6 +11,24 @@ This section will outline configuration options and associated configuration pag
 **Note:** What settings are not configurable via the GUI in Combine, are configurable in the file ``combine/localsettings.py``.
 
 
+Field Mapper Configurations
+===========================
+
+Field Mapping is one of Combine's more advanced features, and subsequently, one of the most powerful.  Field Mapping is the process of a Record's sourece document (likely XML) and mapping it in a meaningful and predictable way to key/value pairs that are suitable for a search engine like ElasticSearch.
+
+Combine uses an internal library called ``XML2kvp``, which stands "XML to Key/Value Pairs", to map XML to ElasticSearch ready JSON documents.  Within Combine, the configurations passed to XML2kvp are referred to as "Field Mapper Configurations", and like many other parts of Combine, can be named and saved to the database for later, repeated use.  This section shows all saved Field Mapper Configurations.
+
+Additionally, a link to test field mapper configurations can be found here:
+
+.. figure:: img/test_field_mapper.png
+   :alt: Testing Field Mapper Configurations
+   :target: _images/test_field_mapper.png
+
+   Testing Field Mapper Configurations
+
+In this screenshot, you can see a single Record is used as input, a Field Mapper Configurations applied, and the resulting mapped fields at the bottom.
+
+
 OAI Server Endpoints
 ====================
 

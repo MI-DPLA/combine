@@ -32,7 +32,7 @@ If you just want to kick the tires, the `QuickStart guide <quickstart.html>`_ pr
    data_model
    spark_and_livy
    configuration
-   workflow
+   workflow   
    harvesting
    transforming
    merging
@@ -42,3 +42,4 @@ If you just want to kick the tires, the `QuickStart guide <quickstart.html>`_ pr
    tests
    command_line
    installing
+   tuning

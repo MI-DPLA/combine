@@ -7,7 +7,7 @@ Installing Combine
 Pre-Installation Notes:
 -----------------------
 
--  Both installation methods listed below assume an Ubuntu 16.04 server
+-  Both installation methods listed below assume an Ubuntu 18.04 server
 -  For either installation, there are a host of variables that set
    default values. They are all found in the ``all.yml`` file inside the
    ``group_vars`` folder.
@@ -59,7 +59,7 @@ Within the root directory of the repository, run the commands listed below:
 
          vagrant up
 
--  This installation will take a while. The command you just ran initializes the vagrant tool to manage the installation process. It will first download and install a copy of Ubuntu Linux (v.16.04) on your VirtualBox VM. Then, it will configure your networking to allow SSH access through an account called ``vagrant`` and make the server available only to your local computer at the IP address of 192.168.45.10. After that initial work, the vagrant tool will use ansible to provision (i.e. install all components and dependencies) to a VM on your computer.
+-  This installation will take a while. The command you just ran initializes the vagrant tool to manage the installation process. It will first download and install a copy of Ubuntu Linux (v.18.04) on your VirtualBox VM. Then, it will configure your networking to allow SSH access through an account called ``vagrant`` and make the server available only to your local computer at the IP address of 192.168.45.10. After that initial work, the vagrant tool will use ansible to provision (i.e. install all components and dependencies) to a VM on your computer.
 
 -  After completed, your server will be available at
    http://192.168.45.10. Navigating to http://192.168.45.10/admin will
@@ -86,7 +86,7 @@ Ansible-based Installation (remote server)
 
 -  If you have a remote server that you want to install the system upon,
    these installation instructions are for you. Your server should
-   already be running Ubuntu 16.04. It needs to be remotely accessible
+   already be running Ubuntu 18.04. It needs to be remotely accessible
    through SSH from your client machine and have at least port 80
    accessible. Also, it needs Python 2.7 installed on it. Your server
    will need at least 8GB of RAM and 2 cores, but more is better.

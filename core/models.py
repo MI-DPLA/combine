@@ -5,6 +5,7 @@ from __future__ import unicode_literals
 import binascii
 from collections import OrderedDict
 import datetime
+import dateutil
 import difflib
 import django
 import gc
@@ -47,6 +48,7 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import connection, models
 from django.db.models import Count
@@ -55,6 +57,9 @@ from django.dispatch import receiver
 from django.utils.encoding import python_2_unicode_compatible
 from django.utils.html import format_html
 from django.views import View
+
+# import xml2kvp
+from core.xml2kvp import XML2kvp
 
 # import background tasks
 from core import tasks
@@ -82,7 +87,6 @@ logger = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 # import ElasticSearch BaseMapper and PythonUDFRecord
-from core.spark.es import BaseMapper
 from core.spark.utils import PythonUDFRecord
 
 # AWS
@@ -156,16 +160,15 @@ class LivySession(models.Model):
 			if self.status in ['starting','idle','busy']:
 				self.active = True
 			
-			self.session_timestamp = headers['Date']
-			
-			# update Spark/YARN information, if available
-			if 'appId' in response.keys():
-				self.appId = response['appId']
-			if 'appInfo' in response.keys():
-				if 'driverLogUrl' in response['appInfo']:
-					self.driverLogUrl = response['appInfo']['driverLogUrl']
-				if 'sparkUiUrl' in response['appInfo']:
-					self.sparkUiUrl = response['appInfo']['sparkUiUrl']
+			self.session_timestamp = headers['Date']			
+
+			# gather information about registered application in spark cluster
+			try:
+				spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
+				self.appId = spark_app_id
+			except:
+				pass
+
 			# update
 			self.save()
 
@@ -537,22 +540,9 @@ class Job(models.Model):
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
 		
-		# if status_code 404, set as gone
-		if livy_response.status_code == 400:
+		# if status_code 400 or 404, set as gone
+		if livy_response.status_code in [400,404]:
 			
-			# logger.debug(livy_response.json())
-			# logger.debug('Livy session likely not active, setting status to available')
-			self.status = 'available'
-			self.finished = True
-			
-			# update
-			if save:
-				self.save()
-
-		# if status_code 404, set as gone
-		if livy_response.status_code == 404:
-			
-			# logger.debug('job/statement not found, setting status to available')
 			self.status = 'available'
 			self.finished = True
 			
@@ -562,13 +552,15 @@ class Job(models.Model):
 
 		elif livy_response.status_code == 200:
 
+			# set response
+			self.response = livy_response.content
+
 			# parse response
 			response = livy_response.json()
 			headers = livy_response.headers
 			
 			# update Livy information
 			self.status = response['state']
-			# logger.debug('job/statement found, updating status to %s' % self.status)
 
 			# if state is available, assume finished
 			if self.status == 'available':
@@ -583,6 +575,57 @@ class Job(models.Model):
 			logger.debug('error retrieving information about Livy job/statement')
 			logger.debug(livy_response.status_code)
 			logger.debug(livy_response.json())
+
+
+	@property
+	def get_spark_jobs(self):
+
+		'''
+		Attempt to retrieve associated jobs from Spark Application API
+		'''
+
+		# get active livy session, and refresh, which contains spark_app_id as appId
+		ls = LivySession.get_active_session()
+
+		if ls:
+
+			# if appId not set, attempt to retrieve
+			if not ls.appId:
+				ls.refresh_from_livy()
+
+			# get list of Jobs, filter by jobGroup for this Combine Job
+			try:
+				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+			except:
+				logger.warning('trouble retrieving Jobs from Spark App API')
+				filtered_jobs = []
+			if len(filtered_jobs) > 0:
+				return filtered_jobs
+			else:
+				return None
+		
+		else:
+			return False
+
+
+	@property
+	def has_spark_failures(self):
+
+		'''
+		Look for failure in spark jobs associated with this Combine Job
+		'''
+
+		# get spark jobs
+		spark_jobs = self.get_spark_jobs
+
+		if spark_jobs:
+			failed = [ job for job in spark_jobs if job['status'] == 'FAILED' ]
+			if len(failed) > 0:
+				return failed
+			else:
+				return False
+		else:
+			return None
 
 
 	def get_records(self):
@@ -825,7 +868,9 @@ class Job(models.Model):
 						'from':from_node,
 						'to':to_node,
 						'input_validity_valve':link.input_validity_valve,
-						'input_validity_valve_pretty':link.get_input_validity_valve_display()
+						'input_validity_valve_pretty':link.get_input_validity_valve_display(),
+						'input_numerical_valve':link.input_numerical_valve,
+						'total_records_passed':link.calc_passed_records()
 					}
 
 					# add record count depending in input_validity_valve
@@ -1017,6 +1062,28 @@ class Job(models.Model):
 			logger.debug('could not remove ES index: j%s' % self.id)
 
 
+	def get_fm_config_json(self, as_dict=False):
+
+		'''
+		Method to return Field Mapper Configuration JSON used
+		'''
+
+		try:
+
+			job_details = json.loads(self.job_details)
+			fm_config_json = job_details['fm_config_json']
+
+			# return as JSON
+			if as_dict:
+				return json.loads(fm_config_json)
+			else:
+				return fm_config_json
+
+		except Exception as e:
+			logger.debug('error retrieving fm_config_json: %s' % str(e))
+			return False
+
+
 
 class JobTrack(models.Model):
 
@@ -1049,7 +1116,35 @@ class JobInput(models.Model):
 			null=True,
 			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
 		)
+	input_numerical_valve = models.IntegerField(null=True, default=None)
 
+
+	def __str__(self):
+		return 'JobInputLink: input job #%s for job #%s' % (self.input_job.id, self.job.id)
+
+
+	def calc_passed_records(self):
+
+		'''
+		Method to determine total amount of passed records to target Job
+		'''
+
+		passed_count = 0
+
+		# set passed_count with validity valves
+		if self.input_validity_valve == 'all':
+			passed_count = self.input_job.record_count
+		elif self.input_validity_valve == 'valid':
+			passed_count = self.input_job.validation_results()['passed_count']
+		elif self.input_validity_valve == 'invalid':
+			passed_count = self.input_job.validation_results()['failure_count']
+
+		# factor numerical subsets
+		if self.input_numerical_valve and passed_count > self.input_numerical_valve:
+			passed_count = self.input_numerical_valve
+
+		# return
+		return passed_count
 
 
 
@@ -1116,7 +1211,11 @@ class Transformation(models.Model):
 	payload = models.TextField()
 	transformation_type = models.CharField(
 		max_length=255,
-		choices=[('xslt','XSLT Stylesheet'),('python','Python Code Snippet')]
+		choices=[
+			('xslt','XSLT Stylesheet'),
+			('python','Python Code Snippet'),
+			('openrefine','Open Refine Actions')
+		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	
@@ -1146,6 +1245,8 @@ class Transformation(models.Model):
 			result = self._transform_xslt(row)
 		if self.transformation_type == 'python':
 			result = self._transform_python(row)
+		if self.transformation_type == 'openrefine':
+			result = self._transform_openrefine(row)
 
 		# return result
 		return result
@@ -1199,6 +1300,75 @@ class Transformation(models.Model):
 				return trans_result[1]
 
 		except Exception as e:			
+			return str(e)
+
+
+	def _transform_openrefine(self, row):
+
+		try:
+
+			# parse or_actions
+			or_actions = json.loads(self.payload)
+
+			# load record as prtb
+			prtb = PythonUDFRecord(row)
+
+			# loop through actions
+			for event in or_actions:
+
+				# handle core/mass-edit
+				if event['op'] == 'core/mass-edit':
+
+					# get xpath
+					xpath = XML2kvp.k_to_xpath(
+						event['columnName'],
+						node_delim='___',
+						ns_prefix_delim='|')
+					
+					# find elements for potential edits
+					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+					# loop through elements
+					for ele in eles:				
+
+						# loop through edits
+						for edit in event['edits']:
+
+							# check if element text in from, change
+							if ele.text in edit['from']:
+								ele.text = edit['to']
+
+				# handle jython				
+				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):					
+
+					# fire up temp module
+					temp_pyts = ModuleType('temp_pyts')
+
+					# parse code
+					code = event['expression'].split('jython:')[1]
+
+					# wrap in function and write to temp module
+					code = 'def temp_func(value):\n%s' % textwrap.indent(code, prefix='    ')					
+					exec(code, temp_pyts.__dict__)
+
+					# get xpath
+					xpath = XML2kvp.k_to_xpath(
+						event['columnName'],
+						node_delim='___',
+						ns_prefix_delim='|')
+					
+					# find elements for potential edits
+					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+
+					# loop through elements
+					for ele in eles:
+						ele.text = temp_pyts.temp_func(ele.text)
+
+			# re-serialize as trans_result
+			return etree.tostring(prtb.xml).decode('utf-8')
+
+		except Exception as e:
+			# set trans_result tuple
 			return str(e)
 
 
@@ -2156,21 +2326,35 @@ class RecordValidation(models.Model):
 
 
 
-class IndexMappers(object):
+class FieldMapper(models.Model):
 
 	'''
-	Model to aggregate built-in and custom index mappers from core.spark.es
+	Model to handle different Field Mappers
 	'''
 
-	@staticmethod
-	def get_mappers():
+	name = models.CharField(max_length=128)
+	payload = models.TextField(null=True, default=None, blank=True)
+	config_json = models.TextField(null=True, default=None, blank=True)
+	field_mapper_type = models.CharField(
+		max_length=255,
+		choices=[
+			('xml2kvp','XML to Key/Value Pair (XML2kvp)'),
+			('xslt','XSL Stylesheet'),
+			('python','Python Code Snippet')]
+	)
 
-		'''
-		Find and return all index mappers that extend core.spark.es.BaseMapper
-		'''
 
-		return BaseMapper.__subclasses__()
+	def __str__(self):
+		return '%s, FieldMapper: #%s' % (self.name, self.id)
 
+
+	@property
+	def config(self):
+
+		if self.config_json:
+			return json.loads(self.config_json)
+		else:
+			return None
 
 
 class RecordIdentifierTransformationScenario(models.Model):
@@ -2321,7 +2505,6 @@ class CombineBackgroundTask(models.Model):
 		'''
 		Method to check for, and return, completed task
 		'''
-
 
 		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
 		if completed.count() == 1:
@@ -2758,7 +2941,7 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 
 
 ####################################################################
-# Apahce livy 													   #
+# Apahce Livy and Spark Clients									   #
 ####################################################################
 
 class LivyClient(object):
@@ -2974,6 +3157,134 @@ class LivyClient(object):
 		# statement
 		statement = self.http_request('POST', '%s/cancel' % job_url)
 		return statement
+
+
+
+class SparkAppAPIClient(object):
+
+	'''
+	
+	'''
+
+
+	# set API base
+	api_base = settings.SPARK_APPLICATION_API_BASE
+
+
+	@classmethod
+	def http_request(self,
+			http_method,
+			url,
+			data=None,
+			headers={'Content-Type':'application/json'},
+			files=None,
+			stream=False
+		):
+
+		'''
+		Make HTTP request to Spark Application API			
+
+		Args:
+			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
+			url (str): expecting path only, as host is provided by settings
+			data (str,file): payload of data to send for request
+			headers (dict): optional dictionary of headers passed directly to requests.request,
+				defaults to JSON content-type request
+			files (dict): optional dictionary of files passed directly to requests.request
+			stream (bool): passed directly to requests.request for stream parameter
+		'''
+
+		# prepare data as JSON string
+		if type(data) != str:
+			data = json.dumps(data)
+
+		# build request
+		session = requests.Session()
+		request = requests.Request(http_method, "%s%s" % (
+			self.api_base,
+			url.lstrip('/')),
+			data=data,
+			headers=headers,
+			files=files)
+		prepped_request = request.prepare()
+		response = session.send(
+			prepped_request,
+			stream=stream,
+		)
+		return response
+
+
+	@classmethod
+	def get_application_id(self, livy_session_id):
+
+		'''
+		Attempt to retrieve application ID based on Livy Session ID
+
+		Args:
+			None
+
+		Returns:
+			(dict): Spark Application API response 
+		'''
+
+		# get list of applications
+		applications = self.http_request('GET','applications').json()
+
+		# loop through and look for Livy session
+		for app in applications:
+			if app['name'] == 'livy-session-%s' % livy_session_id:
+				logger.debug('found application matching Livy session id: %s' % app['id'])
+				return app['id']
+
+
+	@classmethod
+	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
+
+		'''
+		Method to retrieve all Jobs from application, then filter by jobGroup
+		'''
+
+		# get all jobs from application
+		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()
+
+		# loop through and filter
+		filtered_jobs = [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
+
+		# convert to datetimes
+		if parse_dates:
+			for job in filtered_jobs:
+				job['submissionTime'] = dateutil.parser.parse(job['submissionTime'])
+				if 'completionTime' in job.keys():
+					job['completionTime'] = dateutil.parser.parse(job['completionTime'])
+
+		# calc duration if flagged		
+		if calc_duration:
+			for job in filtered_jobs:
+
+				# prepare dates
+				if not parse_dates:
+					st = dateutil.parser.parse(job['submissionTime'])					
+					if 'completionTime' in job.keys():
+						ct = dateutil.parser.parse(job['completionTime'])
+					else:
+						ct = datetime.datetime.now()
+				else:
+					st = job['submissionTime']
+					if 'completionTime' in job.keys():
+						ct = job['completionTime']
+					else:
+						ct = datetime.datetime.now()
+
+				# calc and append
+				job['duration'] = (ct.replace(tzinfo=None) - st.replace(tzinfo=None)).seconds
+				m, s = divmod(job['duration'], 60)
+				h, m = divmod(m, 60)
+				job['duration_s'] = "%d:%02d:%02d" % (h, m, s)
+
+				
+
+
+		return filtered_jobs
 		
 
 
@@ -3010,8 +3321,18 @@ class ESIndex(object):
 			es_r = es_handle.indices.get(index=self.es_index)
 			self.index_mappings = es_r[self.es_index]['mappings']['record']['properties']
 
-			# sort alphabetically that influences results list
+			# get fields as list
 			field_names = list(self.index_mappings.keys())
+
+			# remove uninteresting fields
+			field_names = [ field for field in field_names if field not in [
+					'db_id',
+					'combine_id',
+					'xml2kvp_meta',
+					'fingerprint']
+				]
+
+			# sort alphabetically that influences results list
 			field_names.sort()
 
 			return field_names
@@ -3167,7 +3488,8 @@ class ESIndex(object):
 	def field_analysis(self,
 			field_name,
 			cardinality_precision_threshold=settings.CARDINALITY_PRECISION_THRESHOLD,
-			metrics_only=False
+			metrics_only=False,
+			terms_limit=10000
 		):
 
 		'''
@@ -3200,7 +3522,7 @@ class ESIndex(object):
 
 		# add agg bucket for field values
 		if not metrics_only:
-			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=1000000))
+			s.aggs.bucket(field_name, A('terms', field='%s.keyword' % field_name, size=terms_limit))
 
 		# return zero
 		s = s[0]
@@ -3431,7 +3753,11 @@ class CombineJob(object):
 		'''
 
 		# get job from db
-		j = Job.objects.get(pk=job_id)
+		try:
+			j = Job.objects.get(pk=job_id)
+		except ObjectDoesNotExist:
+			logger.debug('Job #%s was not found, returning False' % job_id)
+			return False
 
 		# using job_type, return instance of approriate job type
 		return globals()[j.job_type](job_id=job_id)
@@ -3611,15 +3937,24 @@ class CombineJob(object):
 		'''
 
 		if self.job.jobinput_set.count() > 0:			
-			total_record_count = 0			
-			for input_job in self.job.jobinput_set.all():
-				if input_job.input_validity_valve == 'all':
-					total_record_count += input_job.input_job.record_count
-				elif input_job.input_validity_valve == 'valid':
-					total_record_count += input_job.input_job.validation_results()['passed_count']
-				elif input_job.input_validity_valve == 'invalid':
-					total_record_count += input_job.input_job.validation_results()['failure_count']
-			return total_record_count
+
+			# init dict
+			input_jobs_dict = {
+				'total_input_record_count':0,
+				'jobs':[]
+			}
+			
+			# loop through input jobs
+			for input_job in self.job.jobinput_set.all():	
+
+				# add to jobs
+				input_jobs_dict['jobs'].append(input_job)			
+
+				# bump count
+				input_jobs_dict['total_input_record_count'] += input_job.calc_passed_records()
+
+			# return 
+			return input_jobs_dict
 		else:
 			return None
 
@@ -3643,11 +3978,7 @@ class CombineJob(object):
 		r_count_dict['errors'] = self.job.get_errors().count()
 
 		# include input jobs
-		total_input_records = self.get_total_input_job_record_count()
-		r_count_dict['input_jobs'] = {
-			'total_input_records': total_input_records,
-			'jobs':self.job.jobinput_set.all()
-		}
+		r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
 
 		# calc success percentages, based on records ratio to job record count (which includes both success and error)
 		if r_count_dict['records'] != 0:
@@ -3829,8 +4160,8 @@ class HarvestJob(CombineJob):
 		user=None,
 		record_group=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None):
+		field_mapper=None,
+		fm_config_json=None):
 
 		'''
 		Args:
@@ -3839,7 +4170,6 @@ class HarvestJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance that will be used for harvest
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es			
 
 		Returns:
 			None
@@ -3858,8 +4188,8 @@ class HarvestJob(CombineJob):
 			self.job_note = job_note
 			self.record_group = record_group
 			self.organization = self.record_group.organization
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -3868,7 +4198,6 @@ class HarvestJob(CombineJob):
 			# create Job entry in DB and save
 			self.job = Job(
 				record_group = self.record_group,
-				# job_type = inspect.getmro(type(self))[-3].__name__, # selects this level of class inheritance hierarchy
 				job_type = type(self).__name__, # selects this level of class inheritance hierarchy
 				user = self.user,
 				name = self.job_name,
@@ -3877,7 +4206,10 @@ class HarvestJob(CombineJob):
 				job_id = None,
 				status = 'initializing',
 				url = None,
-				headers = None
+				headers = None,
+				job_details = json.dumps({
+					'fm_config_json':self.fm_config_json
+				})
 			)
 			self.job.save()
 
@@ -3896,8 +4228,8 @@ class HarvestOAIJob(HarvestJob):
 		user=None,
 		record_group=None,		
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		oai_endpoint=None,
 		overrides=None,
 		validation_scenarios=[],
@@ -3927,8 +4259,8 @@ class HarvestOAIJob(HarvestJob):
 				job_name=job_name,
 				job_note=job_note,
 				record_group=record_group,
-				index_mapper=index_mapper,
-				include_attributes=include_attributes
+				field_mapper = field_mapper,
+				fm_config_json = fm_config_json
 			)
 
 		# if job_id not provided, assumed new Job
@@ -3970,7 +4302,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -3978,8 +4310,7 @@ class HarvestOAIJob(HarvestJob):
 				'scope_type':harvest_vars['scope_type'],
 				'scope_value':harvest_vars['scope_value'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'dbdd':self.dbdd
@@ -4014,8 +4345,8 @@ class HarvestStaticXMLJob(HarvestJob):
 		user=None,
 		record_group=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		payload_dict=None,
 		validation_scenarios=[],
 		rits=None,
@@ -4052,8 +4383,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				job_name=job_name,
 				job_note=job_note,
 				record_group=record_group,
-				index_mapper=index_mapper,
-				include_attributes=include_attributes
+				field_mapper=field_mapper,
+				fm_config_json=fm_config_json
 			)
 
 		# if job_id not provided, assumed new Job
@@ -4120,7 +4451,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -4129,8 +4460,7 @@ class HarvestStaticXMLJob(HarvestJob):
 				'additional_namespace_decs':self.payload_dict['additional_namespace_decs'],
 				'xpath_record_id':self.payload_dict['xpath_record_id'],
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
 				'dbdd':self.dbdd
@@ -4165,11 +4495,14 @@ class TransformJob(CombineJob):
 		input_job=None,
 		transformation=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4181,10 +4514,8 @@ class TransformJob(CombineJob):
 			input_job (core.models.Job): Job that provides input records for this job's work
 			transformation (core.models.Transformation): Transformation scenario to use for transforming records
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
-			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4204,11 +4535,11 @@ class TransformJob(CombineJob):
 			self.organization = self.record_group.organization
 			self.input_job = input_job
 			self.transformation = transformation
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4228,18 +4559,24 @@ class TransformJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'transformation':
-						{
-							'name':self.transformation.name,
-							'type':self.transformation.transformation_type,
-							'id':self.transformation.id
-						}
+					{
+						'transformation':
+							{
+								'name':self.transformation.name,
+								'type':self.transformation.transformation_type,
+								'id':self.transformation.id
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
+			job_input_link = JobInput(
+				job=self.job,
+				input_job=self.input_job,
+				input_validity_valve=self.input_filters['input_validity_valve'],
+				input_numerical_valve=self.input_filters['input_numerical_valve'])
 			job_input_link.save()
 
 			# write validation links
@@ -4267,16 +4604,15 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'transformation_id':self.transformation.id,				
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}
@@ -4315,11 +4651,14 @@ class MergeJob(CombineJob):
 		record_group=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4329,8 +4668,7 @@ class MergeJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
-			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
+			job_id (int): Not set on init, but acquired through self.job.save()			
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
 			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
@@ -4352,11 +4690,11 @@ class MergeJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_jobs = input_jobs
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4376,17 +4714,23 @@ class MergeJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':str(self.input_jobs),
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':str(self.input_jobs),
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
+				job_input_link = JobInput(
+					job=self.job,
+					input_job=input_job,
+					input_validity_valve=self.input_filters['input_validity_valve'],
+					input_numerical_valve=self.input_filters['input_numerical_valve'])
 				job_input_link.save()
 
 			# write validation links
@@ -4414,15 +4758,14 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}
@@ -4453,8 +4796,7 @@ class PublishJob(CombineJob):
 		user=None,
 		record_group=None,
 		input_job=None,
-		job_id=None,
-		input_validity_valve='all'):
+		job_id=None):
 
 		'''
 		Args:
@@ -4482,7 +4824,6 @@ class PublishJob(CombineJob):
 			self.record_group = record_group
 			self.organization = self.record_group.organization
 			self.input_job = input_job
-			self.input_validity_valve = input_validity_valve
 
 			# if job name not provided, provide default
 			if not self.job_name:
@@ -4501,16 +4842,21 @@ class PublishJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':self.input_job.id,
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':self.input_job.id,
+							}						
 					})
 			)
 			self.job.save()
 
 			# save input job to JobInput table
-			job_input_link = JobInput(job=self.job, input_job=self.input_job, input_validity_valve=self.input_validity_valve)
+			job_input_link = JobInput(
+				job=self.job,
+				input_job=self.input_job,
+				input_validity_valve='all',
+				input_numerical_valve=None)
 			job_input_link.save()
 
 			# save publishing link from job to record_group
@@ -4570,11 +4916,14 @@ class AnalysisJob(CombineJob):
 		user=None,
 		input_jobs=None,
 		job_id=None,
-		index_mapper=None,
-		include_attributes=None,
+		field_mapper=None,
+		fm_config_json=None,
 		validation_scenarios=[],
 		rits=None,
-		input_validity_valve='all',
+		input_filters={
+			'input_validity_valve':'all',
+			'input_numerical_valve':None
+		},
 		dbdd=None):
 
 		'''
@@ -4584,10 +4933,8 @@ class AnalysisJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
 			job_id (int): Not set on init, but acquired through self.job.save()
-			index_mapper (str): String of index mapper clsas from core.spark.es
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
-			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
 
 		Returns:
 			None
@@ -4604,11 +4951,11 @@ class AnalysisJob(CombineJob):
 			self.job_name = job_name
 			self.job_note = job_note
 			self.input_jobs = input_jobs
-			self.index_mapper = index_mapper
-			self.include_attributes = include_attributes
+			self.field_mapper = field_mapper
+			self.fm_config_json = fm_config_json
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
-			self.input_validity_valve = input_validity_valve
+			self.input_filters = input_filters
 			self.dbdd = dbdd
 
 			# if job name not provided, provide default
@@ -4631,17 +4978,23 @@ class AnalysisJob(CombineJob):
 				url = None,
 				headers = None,
 				job_details = json.dumps(
-					{'publish':
-						{
-							'publish_job_id':str(self.input_jobs),
-						}
+					{
+						'publish':
+							{
+								'publish_job_id':str(self.input_jobs),
+							},
+						'fm_config_json':self.fm_config_json
 					})
 			)
 			self.job.save()
 
 			# save input job to JobInput table
 			for input_job in self.input_jobs:
-				job_input_link = JobInput(job=self.job, input_job=input_job, input_validity_valve=self.input_validity_valve)
+				job_input_link = JobInput(
+					job=self.job,
+					input_job=input_job,
+					input_validity_valve=self.input_filters['input_validity_valve'],
+					input_numerical_valve=self.input_filters['input_numerical_valve'])
 				job_input_link.save()
 
 			# write validation links
@@ -4728,15 +5081,14 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s, validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_validity_valve="%(input_validity_valve)s", dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
-				'index_mapper':self.index_mapper,
-				'include_attributes':self.include_attributes,
+				'fm_config_json':self.fm_config_json,
 				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
 				'rits':self.rits,
-				'input_validity_valve':self.input_validity_valve,
+				'input_filters':self.input_filters,
 				'dbdd':self.dbdd
 			}
 		}
@@ -4758,8 +5110,6 @@ class AnalysisJob(CombineJob):
 ####################################################################
 # ElasticSearch DataTables connectors 							   #
 ####################################################################
-
-
 
 class DTElasticFieldSearch(View):
 
@@ -4881,6 +5231,7 @@ class DTElasticFieldSearch(View):
 
 		# further filter by DT provided keyword
 		if self.DTinput['search[value]'] != '':
+			logger.debug('general type filtering')
 			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
 
 
@@ -5086,7 +5437,7 @@ class DTElasticFieldSearch(View):
 			self.DToutput['data'].append(row_data)
 
 
-	def values_per_field(self):
+	def values_per_field(self, terms_limit=10000):
 
 		'''
 		Perform aggregation-based search to get count of values for single field.
@@ -5109,7 +5460,7 @@ class DTElasticFieldSearch(View):
 		self.query = Search(using=es_handle, index=self.es_index)
 
 		# add agg bucket for field values
-		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=1000000))
+		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=terms_limit))
 
 		# return zero
 		self.query = self.query[0]
@@ -5347,27 +5698,30 @@ class DTElasticGenericSearch(View):
 		# loop through hits
 		for hit in self.query_results.hits:
 
-			# get combine record
-			record = Record.objects.get(pk=int(hit.db_id))
+			try:
+				# get combine record
+				record = Record.objects.get(pk=int(hit.db_id))
 
-			# loop through rows, add to list while handling data types
-			row_data = []
-			for field in self.fields:
-				field_value = getattr(hit, field, None)
+				# loop through rows, add to list while handling data types
+				row_data = []
+				for field in self.fields:
+					field_value = getattr(hit, field, None)
 
-				# handle ES lists
-				if type(field_value) == AttrList:
-					row_data.append(str(field_value))
+					# handle ES lists
+					if type(field_value) == AttrList:
+						row_data.append(str(field_value))
 
-				# all else, append
-				else:
-					row_data.append(field_value)
+					# all else, append
+					else:
+						row_data.append(field_value)
 
-			# add record lineage in front
-			row_data = self._prepare_record_hierarchy_links(record, row_data)
+				# add record lineage in front
+				row_data = self._prepare_record_hierarchy_links(record, row_data)
 
-			# add list to object			
-			self.DToutput['data'].append(row_data)
+				# add list to object			
+				self.DToutput['data'].append(row_data)
+			except Exception as e:
+				logger.debug("error retrieving DB record based on id %s, from index %s: %s" % (hit.db_id, hit.meta.index, str(e)))
 
 
 	def _prepare_record_hierarchy_links(self, record, row_data):
@@ -5379,9 +5733,9 @@ class DTElasticGenericSearch(View):
 		urls = record.get_lineage_url_paths()
 
 		to_append = [
-			'<a href="%s" target="_blank">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
-			'<a href="%s" target="_blank">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
-			'<a href="%s" target="_blank"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
+			'<a href="%s">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
+			'<a href="%s">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
+			'<a href="%s"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
 			urls['record']['path'],
 		]
 
@@ -5885,6 +6239,38 @@ class DPLARecord(object):
 		self.metadata_string = str(self.original_metadata)		
 
 		
+
+####################################################################
+# OpenRefine Actions Client 									   #
+####################################################################
+
+class OpenRefineActionsClient(object):
+
+	'''
+	This class / client is to handle the transformation of Record documents (XML)
+	using the history of actions JSON output from OpenRefine.
+	'''
+
+	def __init__(self, or_actions=None):
+
+		'''
+		Args:
+			or_actions_json (str|dict): raw json or dictionary
+		'''
+
+		# handle or_actions
+		if type(or_actions) == str:
+			logger.debug('parsing or_actions as JSON string')
+			self.or_actions_json = or_actions
+			self.or_actions = json.loads(or_actions)
+		elif type(or_actions) == dict:
+			logger.debug('parsing or_actions as dictionary')
+			self.or_actions_json = json.dumps(or_actions)
+			self.or_actions = or_actions
+		else:
+			logger.debug('not parsing or_actions, storing as-is')
+			self.or_actions = or_actions
+
 
 
 

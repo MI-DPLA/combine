@@ -1,5 +1,4 @@
 {% extends 'core/base.html' %}
-
 {% block content %}
 {% load core_template_filters %}
 
@@ -36,13 +35,6 @@
 
 	<div class="row">
 		<div class="col-md-12">
-
-			<!-- <div class="alert alert-info alert-dismissible fade show" role="alert">
-				The following tabs provide additional information about this Record
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-				<span aria-hidden="true">&times;</span>
-				</button>
-			</div> -->
 
 			<!-- Navigation -->
 			<ul class="nav nav-tabs">				
@@ -86,7 +78,10 @@
 										<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document_pretty_print }}</code></pre>
 									</div>
 								{% else %}
-									<p>None</p>
+									<p>This Record does not have a document associated with it, see below for any errors that may have been reported:</p>
+									<div class="gray_box">
+										<pre><code>{{record.error}}</code></pre>
+									</div>
 								{% endif %}
 							</div>
 							<script>
@@ -206,7 +201,42 @@
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Mapped Fields</h4>
-							<p><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></p>
+							<p>
+								<ul class="list-inline">
+									<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-outline-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
+									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></li>									
+								</ul>
+							</p>
+
+							<div id="job_fm_config_json_container" class="row" style="display:none;">
+								<div class="col-md-12">
+									<p>The following Field Mapper configurations were used for this Job:</p>
+									<div id="jsoneditor" style="height:450px;"></div>
+									<script>
+								        // create the editor
+								        var container = document.getElementById("jsoneditor");
+								        var options = {
+								        	mode: 'code',
+					    					modes: ['code', 'text', 'view'],
+					    					sortObjectKeys: true,
+					    					name: 'field_mapping_configuration',
+					    					onModeChange: function(nm, om){
+					    						if (nm == 'view'){
+					    							$("#jsoneditor").css('height','');
+					    						}
+					    						else {
+					    							$("#jsoneditor").css('height','450px');	
+					    						}
+					    					},
+					    					navigationBar:false
+								        };
+								        var editor = new JSONEditor(container, options);
+
+								        // set json to editor
+								        editor.set({{ job_fm_config_json|safe }});
+								    </script>
+								</div>
+							</div>
 
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>
@@ -220,7 +250,7 @@
 								<tbody>
 									{% for field_name, field_value in record.get_es_doc.items %}
 									<tr>
-										<td>{{ field_name }}</td>
+										<td><code>{{ field_name }}</code></td>
 
 										<!-- show mapped DPLA field if exists -->
 										{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
@@ -323,18 +353,33 @@
 							<div class="col-md-12">
 								<div id="dpla_api_result">
 									<h4>DPLA API Result</h4>
-									<div>
-										<pre><code id="dpla_api_result_json" style="padding:10px; border-radius:10px;" class="json">{{ dpla_api_json|safe }}</code></pre>
-									</div>		
+									<!-- DPLA api results -->
+									<div id="jsonresults" style="height:450px;"></div>
+									<script>
+								        // create the editor
+								        var container = document.getElementById("jsonresults");
+								        var options = {
+								        	mode: 'view',
+											modes: ['code', 'text', 'view'],
+											sortObjectKeys: true,
+											name: 'xml2kvp_mapping_results',
+											onModeChange: function(nm, om){
+												if (nm == 'view'){
+													$("#jsonresults").css('height','');
+												}
+												else {
+													$("#jsonresults").css('height','450px');	
+												}
+											},
+
+											navigationBar:false
+								        };
+								        var editor_results = new JSONEditor(container, options);
+
+								        // set json to editor_results
+								        editor_results.set({{ dpla_api_json|safe }});		        
+								    </script>
 								</div>
-								<script>
-									// highlight raw document after loaded
-									$(document).ready(function(){
-										$("#dpla_api_result_json").each(function(i, block) {											
-											hljs.highlightBlock(block);
-										});
-									});
-								</script>
 							</div>
 						</div>
 						
@@ -480,6 +525,7 @@
 							
 							<p>
 								<ul class="list-inline">
+									<li style="margin-top:5px;"><a href="{% url 'test_field_mapper' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Field Mapping for this Record</button></a></li>
 									<li style="margin-top:5px;"><a href="{% url 'test_transformation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Transformation Scenario for this Record</button></a></li>
 									<li style="margin-top:5px;"><a href="{% url 'test_validation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario for this Record</button></a></li>
 									<li style="margin-top:5px;"><a href="{% url 'test_rits' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transform for this Record</button></a></li>

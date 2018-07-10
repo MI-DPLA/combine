@@ -11,10 +11,10 @@ import subprocess
 import tarfile
 import time
 import uuid
-from zipfile import ZipFile
+import zipfile
 
 # django imports
-from django.db import connection
+from django.db import connection, transaction
 
 # Get an instance of a logger
 import logging
@@ -173,11 +173,44 @@ def export_mapped_fields(ct_id):
 	if ct.task_params['mapped_field_include']:
 		logger.debug('specific fields selected, adding to es2csv command:')
 		logger.debug(ct.task_params['mapped_field_include'])
-		cmd.append("-f " + " ".join(ct.task_params['mapped_field_include']))
+		cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
 
-	# debug
+	# execute
 	logger.debug(cmd)
 	os.system(" ".join(cmd))
+
+	# handle compression
+	if ct.task_params['archive_type'] == 'none':
+		logger.debug('uncompressed csv file requested, continuing')
+
+	elif ct.task_params['archive_type'] == 'zip':
+
+		logger.debug('creating compressed zip archive')			
+		content_type = 'application/zip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+		
+		with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+			zip.write(export_output, export_output.split('/')[-1])
+
+		# set export output to archive file
+		export_output = export_output_archive
+		
+	# tar.gz
+	elif ct.task_params['archive_type'] == 'targz':
+
+		logger.debug('creating compressed tar archive')
+		content_type = 'application/gzip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+
+		with tarfile.open(export_output_archive, 'w:gz') as tar:
+			tar.add(export_output, arcname=export_output.split('/')[-1])
+
+		# set export output to archive file
+		export_output = export_output_archive
 
 	# save export output to Combine Task output
 	ct.task_output_json = json.dumps({		
@@ -199,7 +232,6 @@ def export_documents(ct_id):
 	- tar/zip together
 	'''
 
-	# poll until complete
 	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
 	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
 	def spark_job_done(response):
@@ -264,51 +296,11 @@ def export_documents(ct_id):
 		logger.debug('submitting code to Spark')
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
 
+		# poll until complete
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
 
-		################################################################################################################################################################
-		# # loop through parts, group XML docs with rool XML element, and save as new XML file
-		# logger.debug('grouping documents in XML files')
-
-		# export_parts = glob.glob('%s/part*' % output_path)
-		# logger.debug('found %s documents to write as XML' % len(export_parts))
-		# for part in export_parts:
-		# 	with open('%s.xml' % part, 'w') as f:
-		# 		f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
-		# 		with open(part) as f_part:
-		# 			f.write(f_part.read())
-		# 		f.write('</documents>')
-
-		# # save file list pre-archive for cleanup
-		# pre_archive_files = [ '%s/%s' % (output_path, f) for f in os.listdir(output_path) ]
-
-		# # zip
-		# if ct.task_params['archive_type'] == 'zip':
-		# 	content_type = 'application/zip'
-		# 	logger.debug('creating zip archive')
-		# 	export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
-		# 	with ZipFile(export_output_archive,'w') as zip:
-		# 		for f in glob.glob('%s/*.xml' % output_path):
-		# 			zip.write(f, os.path.basename(f))
-			
-		# # tar
-		# if ct.task_params['archive_type'] == 'tar':
-		# 	content_type = 'application/tar'
-		# 	logger.debug('creating tar archive')
-		# 	export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
-
-		# 	with tarfile.open(export_output_archive, 'w') as tar:
-		# 		for f in glob.glob('%s/*.xml' % output_path):
-		# 			tar.add(f, arcname=os.path.basename(f))
-
-		# # cleanup directory
-		# for f in pre_archive_files:
-		# 	os.remove(f)
-		################################################################################################################################################################
-
-		################################################################################################################################################################
 		# loop through parts, group XML docs with rool XML element, and save as new XML file
 		logger.debug('grouping documents in XML files')
 
@@ -327,20 +319,20 @@ def export_documents(ct_id):
 		# zip
 		if ct.task_params['archive_type'] == 'zip':
 
-			logger.debug('creating zip archive')			
+			logger.debug('creating compressed zip archive')			
 			content_type = 'application/zip'
 
 			# establish output archive file
 			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
 			
-			with ZipFile(export_output_archive,'w') as zip:
+			with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
 				for f in glob.glob('%s/**/*.xml' % output_path):
 					zip.write(f, '/'.join(f.split('/')[-2:]))
 			
 		# tar
-		if ct.task_params['archive_type'] == 'tar':
+		elif ct.task_params['archive_type'] == 'tar':
 
-			logger.debug('creating tar archive')
+			logger.debug('creating uncompressed tar archive')
 			content_type = 'application/tar'
 
 			# establish output archive file
@@ -350,11 +342,23 @@ def export_documents(ct_id):
 				for f in glob.glob('%s/**/*.xml' % output_path):
 					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
+		# tar.gz
+		elif ct.task_params['archive_type'] == 'targz':
+
+			logger.debug('creating compressed tar archive')
+			content_type = 'application/gzip'
+
+			# establish output archive file
+			export_output_archive = '%s/%s.tar.gz' % (output_path, archive_filename_root)
+
+			with tarfile.open(export_output_archive, 'w:gz') as tar:
+				for f in glob.glob('%s/**/*.xml' % output_path):
+					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
 		# cleanup directory
 		for d in pre_archive_dirs:
 			logger.debug('removing dir: %s' % d)
 			shutil.rmtree(d)
-		################################################################################################################################################################
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
@@ -385,10 +389,15 @@ def job_reindex(ct_id):
 		- use livy session from cjob (works, but awkward way to get this)	
 	'''
 
+	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+	def spark_job_done(response):
+		return response['state'] == 'available'
+
 	# get CombineTask (ct)
 	try:
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-		logger.debug('using %s' % ct)
+		logger.debug('using %s' % ct)				
 
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -397,26 +406,31 @@ def job_reindex(ct_id):
 		cjob.job.drop_es_index()
 
 		# generate spark code		
-		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", index_mapper="%(index_mapper)s", include_attributes=%(include_attributes)s).spark_function()' % {
+		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\').spark_function()' % {
 			'job_id':cjob.job.id,
-			'index_mapper':ct.task_params['index_mapper'],
-			'include_attributes':ct.task_params['include_attributes']
+			'fm_config_json':ct.task_params['fm_config_json']
 		}
-		logger.debug(spark_code)
 
 		# submit to livy
 		logger.debug('submitting code to Spark')
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
-		# poll until complete
-		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-		def spark_job_done(response):
-			return response['state'] == 'available'
-
+		# poll until complete		
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
+
+		# update field mapper config json used		
+		logger.debug("Updating job details: field mapper config json used")
+		if cjob.job.job_details:			
+			job_details_dict = json.loads(cjob.job.job_details)
+		else:
+			job_details_dict = {}
+		# set new fm_config_json
+		job_details_dict['fm_config_json'] = ct.task_params['fm_config_json']
+		# rewrite
+		cjob.job.job_details = json.dumps(job_details_dict)
+		cjob.job.save()
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		

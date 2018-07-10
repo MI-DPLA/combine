@@ -1,6 +1,6 @@
 {% block content %}	
 <div class="col-md-12">	
-	<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').fadeToggle();">Show field analysis explanation</button>
+	<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').fadeToggle();">What do these numbers mean?</button>
 		<div class="bg-light" id="field_analysis_explanation" style="display:none;">
 			<p>In Combine, Records undergo a processing of <span class="font-weight-bold">mapping</span> to extract discrete metadata fields from their original XML record for analysis and comparison across Records, or to associate with specific fields from DPLA.  The method by which Records are mapped is selected for each Job when run, defaulting to what is called the <code>Generic Mapper</code> that creates mapped fields based on raw XPath locations of fields in an XML record.  While not tailored for any particular purpose, this serves to extract as many fields as possible to help with analysis and comparison.</p> 
 
@@ -35,7 +35,7 @@
 					<td>Percentage of values for this field that are unique.  1.0 (dark green) would be entirely unique, 0.10 (lighter green) would be 10% unique.</td>
 				</tr>
 				<tr>
-					<td><strong>Instance of Field in Total Indexed Records</strong></td>
+					<td><strong>Percentage of Documents with Field</strong></td>
 					<td>Ratio of documents with an instance of this field against total number of documents.  1.0 (dark green) would mean all documents have this field, 0.10 (lighter green) would mean 10% of documents have this field.This can be useful for QA-ing mandatory fields like titles or identifiers, where 1.0 would be required.</td>
 				</tr>
 			</table>

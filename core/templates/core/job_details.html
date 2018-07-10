@@ -18,7 +18,6 @@
 			</div>
 		</div>
 		<div class="col-md-12">
-			<!-- <p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').slideToggle();">Job Notes</button> -->
 			<div id="job_notes_section" style="display:none;">
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
@@ -78,7 +77,7 @@
 						layout:{
 							hierarchical: {
 								enabled:true,
-								levelSeparation: 600,
+								levelSeparation: 720,
 								nodeSpacing: 100,
 								treeSpacing: 100,
 								blockShifting: true,
@@ -140,7 +139,7 @@
 					<a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Field Analysis</a>
+					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped Fields</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
@@ -156,6 +155,9 @@
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#spark_details_tab">Spark Details</a>
 				</li>
 			</ul>
 
@@ -183,30 +185,25 @@
 								<tr>
 									<th>Input Job Name</th>					
 									<th>Job Type</th>
-									<th>Record Input Type</th>
-									<th>Record Count</th>
+									<th>Validity of Records Passed</th>
+									<th>Record Limit</th>
+									<th>Total Passed Records</th>
 								</tr>
 								{% for input_job in cjob.job.jobinput_set.all %}
 								<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
 									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>					
 									<td>{{ input_job.input_job.job_type }}</td>
 									<td>{{ input_job.get_input_validity_valve_display }}</td>
-									<td>
-										{% if input_job.input_validity_valve == 'all' %}
-											{{ input_job.input_job.record_count }}
-										{% elif input_job.input_validity_valve == 'valid' %}
-											{{ input_job.input_job.validation_results.passed_count }}
-										{% elif input_job.input_validity_valve == 'invalid' %}
-											{{ input_job.input_job.validation_results.failure_count }}
-										{% endif %}
-									</td>
+									<td>{{ input_job.input_numerical_valve }}</td>
+									<td>{{ input_job.calc_passed_records }}</td>
 								</tr>
 								{% endfor %}
 								<tr>
 									<td></td>
-									<td></td>									
+									<td></td>
+									<td></td>
 									<td><strong>Total:</strong></td>
-									<td>{{ record_count_details.input_jobs.total_input_records }}</td> <!-- NEED TO FIX THIS -->
+									<td>{{ record_count_details.input_jobs.total_input_record_count }}</td>
 								</tr>
 							</table>
 						</div>
@@ -280,11 +277,11 @@
 				<div id="field_breakdown_tab" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-8">
-							<p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p>
+							<!-- <p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p> -->
 						</div>
 					</div>
 					<div class="row">
-						<div class="col-md-8">
+						<div class="col-md-12">
 							<table class="table table-bordered table-hover">
 								<thead>
 									<tr>
@@ -299,14 +296,46 @@
 										<td>{{ field_counts.total_docs }}</td>						
 										<td>
 											<ul class="list-inline">
-												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse Index</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}" target="_blank"><button type="button" class="btn btn-danger btn-sm">View Indexing Errors</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Index Records</button></a></li>
+												<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
+												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}" target="_blank"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields</button></a></li>
 											</ul>
 										</td>
 									</tr>
 								</tbody>
 							</table>
+						</div>
+					</div>
+
+					<div id="job_fm_config_json_container" class="row" style="display:none;">
+						<div class="col-md-12">
+							<p>The following Field Mapper configurations were used for this Job:</p>
+							
+							<div id="jsoneditor" style="height:450px;"></div>
+							<script>
+						        // create the editor
+						        var container = document.getElementById("jsoneditor");
+						        var options = {
+						        	mode: 'code',
+			    					modes: ['code', 'text', 'view'],
+			    					sortObjectKeys: true,
+			    					name: 'field_mapping_configuration',
+			    					onModeChange: function(nm, om){
+			    						if (nm == 'view'){
+			    							$("#jsoneditor").css('height','');
+			    						}
+			    						else {
+			    							$("#jsoneditor").css('height','450px');	
+			    						}
+			    					},
+			    					navigationBar:false
+						        };
+						        var editor = new JSONEditor(container, options);
+
+						        // set json to editor
+						        editor.set({{ job_fm_config_json|safe }});
+						    </script>
 						</div>
 					</div>
 
@@ -547,6 +576,17 @@
 													</div>
 												</div>
 
+												<div style="width:50%;">
+													<div class="form-group">
+														<label for="archive_type">Select archive file type</label>
+														<select class="form-control" id="archive_type" name="archive_type" required>
+															<option value="none">Uncompressed CSV file</option>
+															<option value="zip">Compressed Zip file</option>
+															<option value="targz">Compressed Tar file</option>														
+														</select>
+													</div>
+												</div>
+
 												<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
 												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
 												<div id="mapped_fields" style="display:none;">													
@@ -674,8 +714,9 @@
 												<div class="form-group">
 													<label for="archive_type">Select archive file type</label>
 													<select class="form-control" id="archive_type" name="archive_type" required>
-														<option value="zip">Zip file</option>
-														<option value="tar">Tar file</option>
+														<option value="zip">Compressed Zip file</option>
+														<option value="targz">Compressed Tar file</option>
+														<option value="tar">Uncompressed Tar file</option>
 													</select>
 												</div>
 
@@ -688,6 +729,84 @@
 
 							</div>
 
+						</div>
+					</div>
+				</div>
+
+				<div id="spark_details_tab" class="tab-pane full_width_tab">
+					<div class="row">		
+						<div class="col-md-12">
+							<ul class="list-inline">
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI</button></a></li>
+							</ul>
+						</div>
+					</div>
+					<div class="row">		
+						<div class="col-md-12">
+							<h4>Spark Jobs/Tasks Run</h4>
+							{% if cjob.job.get_spark_jobs %}
+								<table class="table table-bordered table-hover">
+									<thead>
+										<tr>
+											<th>ID</th>
+											<th>Description</th>
+											<th>Name</th>
+											<th>Status</th>
+											<th>Completed / Total Tasks</th>
+											<th>Submitted</th>
+											<th>Completed</th>
+											<th>Duration</th>
+										</tr>
+									</thead>
+									<tbody>
+										{% for spark_job in cjob.job.get_spark_jobs %}
+											<tr class="{% if spark_job.status == 'FAILED' %}bg_light_red{% elif spark_job.status == 'RUNNING' %}bg_light_yellow{% elif spark_job.status == 'SUCCEEDED' %}bg_light_green{% endif %}">
+												<td>{{ spark_job.jobId }}</td>
+												<td>{{ spark_job.description }}</td>
+												<td>{{ spark_job.name }}</td>
+												<td>{{ spark_job.status }}</td>
+												<td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
+												<td>{{ spark_job.submissionTime }}</td>
+												<td>{{ spark_job.completionTime }}</td>
+												<td>{{ spark_job.duration_s }}</td>
+										{% endfor %}
+									</tbody>
+								</table>
+							{% else %}
+							<p>Could not retrieve information about Spark Tasks/Jobs.</p>
+							{% endif %}
+						</div>
+					</div>
+					<div class="row">		
+						<div class="col-md-12">
+							<h4>Livy Statement Information</h4>
+							<div id="livy_statement" style="height:450px;"></div>
+							<script>
+						        // create the editor
+						        var container = document.getElementById("livy_statement");
+						        var options = {
+						        	mode: 'view',
+			    					modes: ['code', 'text', 'view'],
+			    					sortObjectKeys: true,
+			    					name: 'livy_response',
+			    					onModeChange: function(nm, om){
+			    						if (nm == 'view'){
+			    							$("#livy_statement").css('height','');
+			    						}
+			    						else {
+			    							$("#livy_statement").css('height','450px');	
+			    						}
+			    					},
+			    					navigationBar:false
+						        };
+						        var editor = new JSONEditor(container, options);
+
+						        // set json to editor and expand
+						        editor.set({{ cjob.job.response|safe }});
+						        editor.expandAll();
+						    </script>
 						</div>
 					</div>
 				</div>

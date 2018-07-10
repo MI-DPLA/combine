@@ -25,7 +25,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django.forms.models import model_to_dict
-from django.http import HttpResponse, JsonResponse
+from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
@@ -670,6 +670,13 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
+	# retrieve field mapper config json used
+	try:
+		job_details = json.loads(cjob.job.job_details)
+		job_fm_config_json = job_details['fm_config_json']
+	except:
+		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+
 	# return	
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
@@ -678,6 +685,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'job_lineage_json':json.dumps(job_lineage),
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
 			'q':q,
+			'job_fm_config_json':job_fm_config_json,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -794,9 +802,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
-
+		# get field mappers
+		field_mappers = models.FieldMapper.objects.all()
+		
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
@@ -806,7 +814,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 				'oai_endpoints':oai_endpoints,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -837,11 +846,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 			for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
 		logger.debug(overrides)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -864,8 +871,8 @@ def job_harvest_oai(request, org_id, record_group_id):
 			record_group=record_group,
 			oai_endpoint=oai_endpoint,
 			overrides=overrides,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
 			dbdd=dbdd
@@ -895,8 +902,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# get validation scenarios
 	validation_scenarios = models.ValidationScenario.objects.all()
 
-	# get index mappers
-	index_mappers = models.IndexMappers.get_mappers()	
+	# get field mappers		
+	field_mappers = models.FieldMapper.objects.all()	
 
 	# get record identifier transformation scenarios
 	rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -912,7 +919,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 				'record_group':record_group,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
@@ -976,11 +984,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 		if job_note == '':
 			job_note = None
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1001,8 +1007,8 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 			job_note=job_note,
 			user=request.user,
 			record_group=record_group,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			payload_dict=payload_dict,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
@@ -1050,8 +1056,8 @@ def job_transform(request, org_id, record_group_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -1071,7 +1077,8 @@ def job_transform(request, org_id, record_group_id):
 				'transformations':transformations,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1103,11 +1110,9 @@ def job_transform(request, org_id, record_group_id):
 		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
 		logger.debug('using transformation: %s' % transformation)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1118,7 +1123,23 @@ def job_transform(request, org_id, record_group_id):
 			rits = None	
 
 		# capture input record validity valve
-		input_validity_valve = request.POST.get('input_validity_valve', None)
+		# input_validity_valve = request.POST.get('input_validity_valve', None)
+
+		# capture input filters
+		input_filters = {
+			'input_validity_valve':request.POST.get('input_validity_valve', 'all')			
+		}
+		input_numerical_valve = request.POST.get('input_numerical_valve', None)
+		if input_numerical_valve == '':
+			input_numerical_valve = None
+		else:
+			input_numerical_valve = int(input_numerical_valve)
+		input_filters['input_numerical_valve'] = input_numerical_valve
+		# es query valve
+		input_es_query_valve = request.POST.get('input_es_query_valve', None)
+		if input_es_query_valve == '':
+			input_es_query_valve = None		
+		input_filters['input_es_query_valve'] = input_es_query_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1133,11 +1154,11 @@ def job_transform(request, org_id, record_group_id):
 			record_group=record_group,
 			input_job=input_job,
 			transformation=transformation,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve,
+			input_filters=input_filters,
 			dbdd=dbdd
 		)
 		
@@ -1182,8 +1203,8 @@ def job_merge(request, org_id, record_group_id):
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get job lineage for all jobs (filtered to input jobs scope)
 		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
@@ -1199,7 +1220,8 @@ def job_merge(request, org_id, record_group_id):
 				'input_job_scope':input_job_scope,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),				
 				'job_lineage_json':json.dumps(ld),
 				'bulk_downloads':bulk_downloads,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1227,11 +1249,9 @@ def job_merge(request, org_id, record_group_id):
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('merging jobs: %s' % input_jobs)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -1241,8 +1261,22 @@ def job_merge(request, org_id, record_group_id):
 		if rits == '':
 			rits = None	
 
-		# capture input record validity valve
-		input_validity_valve = request.POST.get('input_validity_valve', None)
+		# capture input filters
+		input_filters = {
+			'input_validity_valve':request.POST.get('input_validity_valve', 'all')			
+		}
+		# numerical valve
+		input_numerical_valve = request.POST.get('input_numerical_valve', None)
+		if input_numerical_valve == '':
+			input_numerical_valve = None
+		else:
+			input_numerical_valve = int(input_numerical_valve)
+		input_filters['input_numerical_valve'] = input_numerical_valve
+		# es query valve
+		input_es_query_valve = request.POST.get('input_es_query_valve', None)
+		if input_es_query_valve == '':
+			input_es_query_valve = None		
+		input_filters['input_es_query_valve'] = input_es_query_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1256,11 +1290,11 @@ def job_merge(request, org_id, record_group_id):
 			user=request.user,
 			record_group=record_group,
 			input_jobs=input_jobs,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,			
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve,
+			input_filters=input_filters,
 			dbdd=dbdd
 		)
 		
@@ -1486,8 +1520,9 @@ def job_update(request, org_id, record_group_id, job_id):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()		
+		orig_fm_config_json = cjob.job.get_fm_config_json()
 
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
@@ -1497,7 +1532,9 @@ def job_update(request, org_id, record_group_id, job_id):
 				'cjob':cjob,
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
-				'index_mappers':index_mappers,
+				'field_mappers':field_mappers,				
+				'xml2kvp_handle':models.XML2kvp(),
+				'orig_fm_config_json':orig_fm_config_json,
 				'breadcrumbs':breadcrumb_parser(request)
 			})
 
@@ -1518,10 +1555,8 @@ def job_update(request, org_id, record_group_id, job_id):
 		if update_type == 'reindex':			
 
 			# get preferred metadata index mapper
-			index_mapper = request.POST.get('index_mapper')
-			include_attributes = request.POST.get('include_attributes', False)
-			if include_attributes and include_attributes == 'true':
-				include_attributes = True
+			field_mapper = request.POST.get('field_mapper')
+			fm_config_json = request.POST.get('fm_config_json')
 
 			# initiate Combine BG Task
 			ct = models.CombineBackgroundTask(
@@ -1529,8 +1564,8 @@ def job_update(request, org_id, record_group_id, job_id):
 				task_type = 'job_reindex',
 				task_params_json = json.dumps({
 					'job_id':cjob.job.id,
-					'index_mapper':index_mapper,
-					'include_attributes':include_attributes
+					'field_mapper':field_mapper,
+					'fm_config_json':fm_config_json
 				})
 			)
 			ct.save()
@@ -1631,14 +1666,12 @@ def document_download(request):
 		name = '%s%s' % (name, format_params['extension'])
 		content_type = format_params['content_type']
 
-	# open file and prepare as attachment
-	with open(filepath, 'rb') as fhand:
-
-		# prepare and return response
-		response = HttpResponse(fhand, content_type=content_type)
-		if not preview:
+	# NEW
+	response = FileResponse(open(filepath, 'rb'))
+	if not preview:
 			response['Content-Disposition'] = 'attachment; filename="%s"' % name
-		return response
+	return response
+
 
 
 ####################################################################
@@ -1672,14 +1705,26 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
-	# get indexing failures
-	# index_failures = cjob.get_indexing_failures()
-
 	# return
 	return render(request, 'core/job_indexing_failures.html', {
 			'cjob':cjob,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
+
+
+@login_required
+def remove_job_indexing_failures(request, org_id, record_group_id, job_id):
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# remove indexing failures
+	to_delete = models.IndexMappingFailure.objects.filter(job=cjob.job)
+	delete_results = to_delete._raw_delete(to_delete.db)
+	logger.debug(delete_results)
+
+	# return
+	return redirect(request.META.get('HTTP_REFERER'))
 
 
 @login_required
@@ -1821,6 +1866,12 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	# request only combined diff at this point	
 	record_diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
 
+	# retrieve field mapper config json used
+	try:
+		job_fm_config_json = job_details['fm_config_json']
+	except:
+		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+
 	# return
 	return render(request, 'core/record.html', {
 		'record_id':record_id,
@@ -1830,6 +1881,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
 		'record_diff_dict':record_diff_dict,
+		'job_fm_config_json':job_fm_config_json,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 
@@ -1989,12 +2041,16 @@ def configuration(request):
 	# get all bulk downloads
 	bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
+	# get field mappers
+	field_mappers = models.FieldMapper.objects.all()
+
 	# return
 	return render(request, 'core/configuration.html', {
 			'transformations':transformations,
 			'oai_endpoints':oai_endpoints,
 			'validation_scenarios':validation_scenarios,
 			'rits':rits,
+			'field_mappers':field_mappers,
 			'bulk_downloads':bulk_downloads,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -2032,6 +2088,10 @@ def transformation_scenario_payload(request, trans_id):
 
 	# return transformation as Python
 	if transformation.transformation_type == 'python':
+		return HttpResponse(transformation.payload, content_type='text/plain')
+
+	# return transformation as Python
+	if transformation.transformation_type == 'openrefine':
 		return HttpResponse(transformation.payload, content_type='text/plain')
 
 
@@ -2278,6 +2338,133 @@ def test_rits(request):
 			return JsonResponse({'results':str(e), 'success':False})
 
 
+def field_mapper_payload(request, fm_id):
+
+	'''
+	View payload for field mapper
+	'''
+
+	# get transformation
+	fm = models.FieldMapper.objects.get(pk=int(fm_id))
+
+	# get type
+	doc_type = request.GET.get('type',None)
+
+	if fm.field_mapper_type == 'xml2kvp':
+
+		if not doc_type:
+			return HttpResponse(fm.config_json, content_type='application/json')
+
+		elif doc_type and doc_type == 'config':
+			return HttpResponse(fm.config_json, content_type='application/json')
+
+		elif doc_type and doc_type == 'payload':
+			return HttpResponse(fm.payload, content_type='application/json')
+
+
+def field_mapper_update(request):
+
+	'''
+	Create and save JSON to FieldMapper instance, or update pre-existing
+	'''
+
+	logger.debug(request.POST)
+
+	# get update type
+	update_type = request.POST.get('update_type')
+
+	# handle new FieldMapper creation
+	if update_type == 'new':
+		logger.debug('creating new FieldMapper instance')
+
+		fm = models.FieldMapper(
+			name=request.POST.get('fm_name'),
+			config_json=request.POST.get('fm_config_json'),
+			field_mapper_type='xml2kvp'
+		)
+
+		# save 
+		fm.save()
+		return JsonResponse({'results':True,'msg':'New Field Mapper configurations were <strong>saved</strong> as: <strong>%s</strong>' % request.POST.get('fm_name')}, status=201)
+
+	# handle update
+	if update_type == 'update':
+		logger.debug('updating pre-existing FieldMapper instance')
+
+		# get fm instance
+		fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+
+		# update and save
+		fm.config_json = request.POST.get('fm_config_json')			
+		fm.save()
+		return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % fm.name}, status=200)
+
+	# handle delete
+	if update_type == 'delete':
+		logger.debug('deleting pre-existing FieldMapper instance')
+
+		# get fm instance
+		fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+
+		# delete
+		fm.delete()		
+		return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>deleted</strong>' % fm.name}, status=200)
+
+
+def test_field_mapper(request):
+
+	'''
+	View to live test field mapper configurations
+	'''
+	
+	if request.method == 'GET':
+
+		# get field mapper
+		field_mappers = models.FieldMapper.objects.all()
+
+		# check if limiting to one, pre-existing record
+		q = request.GET.get('q', None)
+
+		# check for pre-requested transformation scenario
+		fmid = request.GET.get('fmid', None)
+
+		# return
+		return render(request, 'core/test_field_mapper.html', {
+			'q':q,
+			'fmid':fmid,
+			'field_mappers':field_mappers,
+			'xml2kvp_handle':models.XML2kvp(),
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	# If POST, provide mapping of record
+	if request.method == 'POST':
+
+		logger.debug('running test field mapping')
+		logger.debug(request.POST)
+
+		# get record
+		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+
+		# get field mapper info
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
+
+		try:
+		
+			# parse record with XML2kvp
+			fm_config = json.loads(fm_config_json)
+			kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
+
+			# return as JSON
+			return JsonResponse(kvp_dict)
+
+		except Exception as e:
+
+			logger.debug('field mapper was unsucessful')
+			return JsonResponse({'error':str(e)})
+			
+
 @login_required
 def dpla_bulk_data_download(request):
 
@@ -2405,6 +2592,9 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	if kibana_style:
 		kibana_style = True
 
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
 	# get selected fields if present
 	mapped_field_include = request.POST.getlist('mapped_field_include',False)
 
@@ -2415,6 +2605,7 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 		task_params_json = json.dumps({			
 			'job_id':cjob.job.id,
 			'kibana_style':kibana_style,
+			'archive_type':archive_type,
 			'mapped_field_include':mapped_field_include
 		})
 	)
@@ -2590,8 +2781,8 @@ def job_analysis(request):
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
 
-		# get index mappers
-		index_mappers = models.IndexMappers.get_mappers()		
+		# get field mappers		
+		field_mappers = models.FieldMapper.objects.all()		
 
 		# get record identifier transformation scenarios
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
@@ -2608,7 +2799,8 @@ def job_analysis(request):
 				'input_jobs':input_jobs,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
-				'index_mappers':index_mappers,				
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),
 				'analysis_type':analysis_type,
 				'bulk_downloads':bulk_downloads,
 				'job_lineage_json':json.dumps(ld)				
@@ -2636,11 +2828,9 @@ def job_analysis(request):
 		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]		
 		logger.debug('analyzing jobs: %s' % input_jobs)
 
-		# get preferred metadata index mapper
-		index_mapper = request.POST.get('index_mapper')
-		include_attributes = request.POST.get('include_attributes', False)
-		if include_attributes and include_attributes == 'true':
-			include_attributes = True
+		# get field mapper configurations
+		field_mapper = request.POST.get('field_mapper')
+		fm_config_json = request.POST.get('fm_config_json')
 
 		# get requested validation scenarios
 		validation_scenarios = request.POST.getlist('validation_scenario', [])
@@ -2650,8 +2840,21 @@ def job_analysis(request):
 		if rits == '':
 			rits = None
 
-		# capture input record validity valve
-		input_validity_valve = request.POST.get('input_validity_valve', None)
+		# capture input filters
+		input_filters = {
+			'input_validity_valve':request.POST.get('input_validity_valve', 'all')			
+		}
+		input_numerical_valve = request.POST.get('input_numerical_valve', None)
+		if input_numerical_valve == '':
+			input_numerical_valve = None
+		else:
+			input_numerical_valve = int(input_numerical_valve)
+		input_filters['input_numerical_valve'] = input_numerical_valve
+		# es query valve
+		input_es_query_valve = request.POST.get('input_es_query_valve', None)
+		if input_es_query_valve == '':
+			input_es_query_valve = None		
+		input_filters['input_es_query_valve'] = input_es_query_valve
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -2664,11 +2867,11 @@ def job_analysis(request):
 			job_note=job_note,
 			user=request.user,			
 			input_jobs=input_jobs,
-			index_mapper=index_mapper,
-			include_attributes=include_attributes,
+			field_mapper=field_mapper,
+			fm_config_json=fm_config_json,
 			validation_scenarios=validation_scenarios,
 			rits=rits,
-			input_validity_valve=input_validity_valve,
+			input_filters=input_filters,
 			dbdd=dbdd
 		)
 		
@@ -2727,10 +2930,17 @@ def bg_task(request, task_id):
 
 	# get task
 	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
-	logger.debug('retrieving task: %s' % ct)	
+	logger.debug('retrieving task: %s' % ct)
+
+	# include job if mentioned in task params
+	if 'job_id' in ct.task_params:		
+		cjob = models.CombineJob.get_combine_job(ct.task_params['job_id'])
+	else:
+		cjob = None
 
 	return render(request, 'core/bg_task.html', {
 			'ct':ct,
+			'cjob':cjob,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2875,7 +3085,11 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+				try:
+					int(search)
+					qs = qs.filter(Q(id=search))
+				except:
+					qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search))
 
 			# return
 			return qs
@@ -3003,6 +3217,7 @@ class DTPublishedJson(BaseDatatableView):
 			return qs
 
 
+
 class DTIndexingFailuresJson(BaseDatatableView):
 
 		'''
@@ -3010,14 +3225,14 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
+		columns = ['id', 'combine_id', 'record_id', 'mapping_error']
 
 		# define column names that will be used in sorting
 		# order is important and should be same as order of columns
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'combine_id', 'record_id', 'job', 'mapping_error']
+		order_columns = ['id', 'combine_id', 'record_id', 'mapping_error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -3069,7 +3284,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
 				logger.debug('looking for: %s' % search)
-				qs = qs.filter(Q(combine_id = search) | Q(mapping_error__contains = search))
+				qs = qs.filter(Q(id = search) | Q(combine_id = search) | Q(record_id = search) | Q(mapping_error__contains = search))
 
 			return qs
 

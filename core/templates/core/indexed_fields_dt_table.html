@@ -20,13 +20,13 @@
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
 					<th>Percentage of Field Values that are Unique</th>
-					<th>Instance of Field in Total Indexed Records</th>
+					<th>	Percentage of Documents with Field</th>
 				</tr>
 			</thead>
 			<tbody>
 				{% for field in field_counts.fields %}
 					<tr>
-						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank"><code>{{ field.field_name }}</code></a></td>
+						<td {% if field.one_distinct_per_doc %}style="background-color:rgba(255, 255, 0, 0.4);"{% endif %}><a href="{% url 'field_analysis' es_index=es_index %}?field_name={{ field.field_name }}" target="_blank"><code>{{ field.field_name }}</code></a></td>
 
 						{% if cjob %}
 
@@ -64,8 +64,17 @@
 						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-						<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+						<td>
+							<div class="percentage_div" style="{% if field.distinct_ratio >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.distinct_ratio > 0 %}{% widthratio field.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
+								<span>{% widthratio field.distinct_ratio 1 100 %}%</span>
+							</div>
+						</td>
+						<td>
+							<div class="percentage_div" style="{% if field.percentage_of_total_records >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.percentage_of_total_records > 0 %}{% widthratio field.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
+								<span>{% widthratio field.percentage_of_total_records 1 100 %}%</span>
+							</div>
+						</td>
+
 					</tr>
 				{% endfor %}
 			</tbody>

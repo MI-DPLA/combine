@@ -12,23 +12,23 @@
 	</div>	
 	
 	<div class="row">
-		<div class="col-md-8">
+		<div class="col-md-12">
 
 			<ul class="nav nav-tabs">				
-				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
-				</li>				
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#index_mapping_tab">Index Mapping</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#identifier_transform_tab">Transform Identifier</a>
-				</li>
 				{% if input_jobs %}
 					<li class="nav-item">
-						<a class="nav-link" data-toggle="tab" href="#validity_valve_tab">Record Input Validity</a>
+						<a class="nav-link active" data-toggle="tab" href="#record_input_filter">Record Input Filter</a>
 					</li>
 				{% endif %}
+				<li class="nav-item">
+					<a class="nav-link {% if not input_jobs %}active{% endif %}" data-toggle="tab" href="#field_mapping_config">Field Mapping Configuration</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
+				</li>				
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#identifier_transform_tab">Transform Identifier</a>
+				</li>				
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#bulk_download_check">DPLA Bulk Data Compare</a>
 				</li>
@@ -36,7 +36,14 @@
 
 			<div class="tab-content">			
 
-				<div id="validation_tests_tab" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				{% if input_jobs %}
+					<div id="record_input_filter" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+						{# Input Record Filter #}
+						{% include 'core/record_input_filter_select.html' %}
+					</div>
+				{% endif %}
+
+				<div id="validation_tests_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Record Validation Selection #}
 					{% include 'core/record_validation_select.html' %}
 				</div>
@@ -46,19 +53,14 @@
 					{% include 'core/bulk_download_compare_select.html' %}
 				</div>
 
-				<div id="index_mapping_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
-					{# Indexing Mapping Selection #}
-					{% include 'core/index_mapping_select.html' %}
+				<div id="field_mapping_config" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+					{# Field Mapper Selection #}
+					{% include 'core/field_mapper_select.html' %}
 				</div>
 
 				<div id="identifier_transform_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
 					{# Record Identifier Transformation #}
 					{% include 'core/record_identifier_transform.html' %}
-				</div>
-
-				<div id="validity_valve_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-					{# Input Job Valid Record Valve #}
-					{% include 'core/record_valid_valve_select.html' %}
 				</div>
 
 			</div>

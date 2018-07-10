@@ -249,15 +249,17 @@ Combine is the Record as stored in MySQL.
 It is worth noting, though not dwelling on here, that groups of Records
 are also stored as Avro files on disk.
 
-Configuration
-=============
+Configuration and Scenarios
+===========================
 
-Currently, there are three main areas in Combine that require user
-configuration:
+Combine relies on users coniguring "scenarios" that will be used for things like transformations, validations, etc.  These can be viewed, modified, and tested in the Configuration page.  This page includes the following main sections:
 
+-  `Field Mapper Configurations <.>`__
 -  `OAI-PMH endpoints <.>`__
 -  `Transformation Scenarios <.>`__
 -  `Validation Scenarios <.>`__
+-  `Record Identifier Transformation Scenarios <.>`__
+-  `DPLA Bulk Data Downloader <.>`__
 
 For the sake of this QuickStart demo, we can bootstrap our instance of
 Combine with some demo configurations, creating the following:
@@ -324,11 +326,12 @@ a directory of 250 MODS files (this was created during bootstrapping):
 
 Next, we need to provide an XPath query that locates each discrete
 record within the provided MODS file. Under the section "Locate Document", for the 
-form field ``XPath for metadata document root``, enter the following:
+form field ``Root XML Element``, enter the following:
 
 ::
 
     /mods:mods
+
 
 For the time being, we can ignore the section "Locate Identifier in Document" which would allow us to find a unique identifier via XPath in the document.  By default, it will assign a random identifier based on a hash of the document string.
 
@@ -342,12 +345,12 @@ Next, we can apply some optional parameters that are present for all jobs in Com
 
 Different parameter types can be found under the various tabs, such as:
 
+  * Field Mapping Configuration
   * Validation Tests
-  * Index Mapping
   * Transform Identifier
   * etc.
 
-One optional parameter we'll want to check and set for this initial job are Validations to perform on the records.  These can be found under the "Validation Tests" tab. If you bootstrapped the demo configurations from steps above, you should see two options, *DPLA minimum* and *Date checker*; make sure both are checked.
+Most of these settings we can leave as deafult for now, but one optional parameter we'll want to check and set for this initial job are Validations to perform on the records.  These can be found under the "Validation Tests" tab. If you bootstrapped the demo configurations from steps above, you should see two options, *DPLA minimum* and *Date checker*; make sure both are checked.
 
 Finally, click "Run Job" at the bottom. 
 
@@ -422,18 +425,21 @@ Once the input Job (radio button from table) and Transformation Scenario
 double checking that the two Validation Scenarios -- *DPLA minimum* and
 *Date checker* -- are both checked under the "Validation Tests" tab.
 
-We also have the ability to select records based on whether or not they
-previously passed validation tests.  Under the tab "Record Input Validity", you can select *All records*, *Passed validation*, or *Faled validation* records.  This will be reflected in the Jobs screen, indicating how many records are passed from one Job to another.
+When running Jobs, we also have the ability to select subsets of Records from input Jobs.  Under the tab "Record Input Filter", you can refine the Records that will be used in the following ways:
 
-.. figure:: img/record_validity_valve.png
-   :alt: "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
-   :target: _images/record_validity_valve.png
+  - **Refine by Record Validity**: Select Records based on their passing/failing of Validation tests
+  - **Limit Number of Records**: Select a numerical subset of Records, helpful for testing
+  - **Refine by Mapped Fields**: Most exciting, select subsets of Records based on an ElasticSearch query run against those input Jobs mapped fields
 
-   "Valve" for All, Valid, or Invalid Records to be passed along from the input Job
 
-For this walkthrough, we can just select "All records".
+.. figure:: img/job_record_input_filters.png
+   :alt: Filters that can be applied to Records used as input for a Job
+   :target: _images/job_record_input_filters.png
 
-Finally, click "Run Job" at the bottom.
+   Filters that can be applied to Records used as input for a Job
+
+
+For the time being, we can leave these as default.  Finally, click "Run Job" at the bottom.
 
 Again, we are kicked back to the RecordGroup screen, and should
 hopefully see a Transform job with the status ``running``. **Note:** The
@@ -461,7 +467,7 @@ Looking at Jobs and Records
 ===========================
 
 Now is a good time to look at the details of the jobs we have run. Let's
-start with the Harvest Job. Clicking the Job name in the table, or
+start by looking at the first **Harvest Job** we ran. Clicking the Job name in the table, or
 "details" link at the far-right will take you to a Job details page.
 
 **Note:** Clicking the Job in the graph will gray out any other jobs in
@@ -485,9 +491,9 @@ Major sections can be found behind the various tabs, and include:
 
     - *a table of all records contained in this Job*
 
-  - Field Analysis
+  - Mapped Fields
 
-    - *statistical breakdown of indexed fields*
+    - *statistical breakdown of indexed fields, with ability to view values per field*
 
   - Input Jobs
 
@@ -496,6 +502,10 @@ Major sections can be found behind the various tabs, and include:
   - Validation
 
     - *shows all Validations run for this Job, with reporting*
+
+  - Job Type Specific Details
+
+    - *depending on the Job type, details relevant to that task (e.g. Transform Jobs will show all Records that were modified)*
 
   - DPLA Bulk Data Matches
 
@@ -509,28 +519,36 @@ for this Job. This is *one*, but not the only, entry point for viewing
 the details about a single Record. It is also helpful for determining if
 the Record is unique *with respect to other Records from this Job*.
 
-Field Analysis
---------------
+Mapped Fields
+-------------
 
-This table represents individual fields as mapped from a Record's source
-XML record to fields in ElasticSearch. This relates back the "Index
-Mapper" that we select when running each Job.
+This table represents all mapped fields from the Record's original source
+XML record to ElasticSearch. 
 
-To this point, we have been using the default "Generic XPath based
-mapper", which is a general purpose way of "flattening" an XML document
-into fields that can be indexed in ElasticSearch for analysis.
+To this point, we have been using the default configurations for mapping, but more complex mappings can be provided when running a new Job, or when re-indexing a Job.  These configurations are covered in more detail in `Field Mapping <configuration.html#field_mapping>`_.
+
+At a glance, field mapping attempts to convert XML into a key/value pairs suitable for a search platform like ElasticSearch.  Combine does this via a library ``xml2kvp``, which stands for "XML to Key/Value Pairs" that accepts a medley of configurations in JSON format.  These JSON parameters are referred to as "Field Mapper Configurations" throughout.
 
 For example, it might map the following XML block from a Record's MODS
 metadata:
 
 .. code-block:: xml
 
-    <mods:titleInfo>
-        <mods:title>Edmund Dulac's fairy-book : </mods:title>
-        <mods:subTitle>fairy tales of the allied nations</mods:subTitle>
-    </mods:titleInfo>
+    <mods:mods>
+      <mods:titleInfo>
+          <mods:title>Edmund Dulac's fairy-book : </mods:title>
+          <mods:subTitle>fairy tales of the allied nations</mods:subTitle>
+      </mods:titleInfo>
+    </mods:mods>
 
 to the following *two* ElasticSearch key/value pairs:
+
+.. code-block:: text
+
+    mods|mods_mods|titleInfo_mods|title : Edmund Dulac's fairy-book :
+    mods|mods_mods|titleInfo_mods|subTitle : fairy tales of the allied nations
+
+An example of a field mapping configuration that could be applied would be the  ``remove_ns_prefix`` which removes XML namespaces prefixes from the resulting fields.  This would result in the following fields, removing the ``mods`` prefix and delimiter for each field:
 
 .. code-block:: text
 
@@ -555,9 +573,9 @@ An example of how this may be helpful: sorting the column
 ``Documents without`` in ascending order with zero at the top, you can
 scroll down until you see the count ``11``. This represents a subset of
 Records -- 11 of them -- that *do not* have the field
-``mods_subject_topic``, which might itself be helpful to know. This is
+``mods|mods_mods|subject_mods|topic``, which might itself be helpful to know. This is
 particularly true with fields that might represent titles, identifiers,
-or other required information.
+or other required information.  The far end of the column, we can see that 95% of Records have this field, and 34% of those have unique values.
 
 .. figure:: img/mods_subject_without.png
    :alt: Row from Indexed fields showing that 11 Records do not have this particular field
@@ -570,7 +588,7 @@ some information about other columns from this table.
 
 **Note:** Short of an extended discussion about this mapping, and
 possible value, it is worth noting these indexed fields are used almost
-exclusively for *analysis*, and are not any kind of final mapping or
+exclusively for **analysis** and **creating subsets through queries** of Records in Combine, and are not any kind of final mapping or
 transformation on the Record itself. The Record's XML is always stored
 seperately in MySQL (and on disk as Avro files), and is used for any
 downstream transformations or publishing. The only exception being where
@@ -589,7 +607,13 @@ validation, all records passed. We can click "See Failures" link to get
 the specific Records that failed, with some information about which
 tests within that Validation Scenario they failed.
 
-Additionally, we can click "Run validation results report" to generate
+.. figure:: img/validation_qs_example.png
+   :alt: Two Validation Scenarios run for this Job
+   :target: _images/validation_qs_example.png
+
+   Two Validation Scenarios run for this Job
+
+Additionally, we can click "Generate validation results report" to generate
 an Excel or .csv output of the validation results. From that screen, you
 are able to select:
 
@@ -630,8 +654,8 @@ Record XML
 The raw XML document for this Record. **Note:** As mentioned, regardless of how fields are mapped in Combine to ElasticSearch, the Record's XML or "document" is always left intact, and is used for any downstream Jobs. Combine provides mapping and analysis of Records through mapping to ElasticSearch, but the Record's XML document is stored as plain, ``LONGTEXT`` in MySQL for each Job.
 
 
-Indexed Fields
-~~~~~~~~~~~~~~
+Mapped Fields
+~~~~~~~~~~~~~
 
 .. figure:: img/record_indexed_fields.png
    :alt: Part of table showing indexed fields for Record
@@ -738,6 +762,18 @@ to re-run and see the results of that Validation Scenario run against
 this Record's XML document.
 
 
+Harvest Details (Job Type Specific Details)
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+As we are looking at Records for a Harvest Job, clicking this tab will not provide much information.  However, this is a good opportunity to think about how records are linked: we can look at the Transformation details for the same Record we are currently looking at.
+
+To do this:
+
+  - Click the "Record Stages" tab
+  - Find the second row in the table, which is this same Record but as part of the Transformation Job, and click it
+  - From that new Record page, click the "Transform Details" tab
+
+    - unlike the "Harvest Details", this provides more information, including a diff of the Record's original XML if it has changed
 
 
 
@@ -751,25 +787,6 @@ a familiar Job creation screen, with one key difference: when selecting you inpu
 
 The use cases are still emerging when this could be helpful, but here
 are a couple of examples...
-
-Run different Index Mapping or Validation Scenarios
----------------------------------------------------
-
-When you duplicate/merge Jobs, you have the ability to select a
-different Index Mapper, and/or run different Validation Scenarios than
-were run for the input job. However, as has been pointed out, these are
-both used primarily for **analysis**. As such, an `Analysis
-Job <#analysis-job>`__ might be a better option, which itself is running
-Duplicate/Merge jobs behind the scenes.
-
-Pull Jobs from one RecordGroup into another
--------------------------------------------
-
-Most Job workflow actions -- Transformations and Publishing -- are
-limited to a RecordGroup, which is itself an intellectual grouping of
-Jobs (e.g. Fedora Repository). However, use cases may drive the need for
-multiple RecordGroups, but a desire to "pull" in a Job from a different
-RecordGroup. This can be done by merging.
 
 Merging Jobs
 ------------

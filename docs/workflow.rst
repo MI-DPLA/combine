@@ -100,61 +100,22 @@ When running any type of Job in Combine, you are presented with a section near t
 
 These options are split across various tabs, and include:
 
-  - `Validation Tests <#validation-tests>`_
-  - `Index Mapping <#index-mapping>`_
-  - `Transform Identifier <#transform-identifier>`_
-  - `Record Input Validity <#record-input-validity-valve>`_
+  - `Record Input Filters <#record-input-filters>`_
+  - `Field Mapping Configuration <#field-mapping-configuration>`_
+  - `Validation Tests <#validation-tests>`_  
+  - `Transform Identifier <#transform-identifier>`_  
   - `DPLA Bulk Data Compare <#dpla-bulk-data-compare>`_
 
 For the most part, a user is required to pre-configure these in the `Configurations section <configuration.html>`_, and then select which optional parameters to apply during runtime for Jobs.
 
-
-Validation Tests
-~~~~~~~~~~~~~~~~
-
-One of the most commonly used optional parameters would be what Validation Scenarios to apply for this Job.  Validation Scenarios are `pre-configured validations <configuration.html#validation-scenario>`_ that will run for *each* Record in the Job.  When viewing a Job's or Record's details, the result of each validation run will be shown.
-
-The Validation Tests selection looks like this for a Job, with checkboxes for each pre-configured Validation Scenarios (additionally, checked if the Validation Scenario is marked to run by default):
-
-.. figure:: img/select_validations.png
-   :alt: Selecting Validations Tests for Job
-   :target: _images/select_validations.png
-
-   Selecting Validations Tests for Job
-
-
-Index Mapping
-~~~~~~~~~~~~~
-
-How, and why, metadata fields are indexed is `covered in more detail here <analysis.html#analyzing-indexed-fields>`_.
-
-When running a Job, users can select what index mapper to use.  This defaults to "Generic XPath based mapper":
-
-.. figure:: img/select_index_mapper.png
-   :alt: Selecting Index Mapper for Job
-   :target: _images/select_index_mapper.png
-
-   Selecting Index Mapper for Job
-
-
-The generic mapper is a good, safe bet until the need for a more custom mapper is needed.
-
-Transform Identifier
+Record Input Filters
 ~~~~~~~~~~~~~~~~~~~~
 
-When running a Job, users can optionally select a `Record Identifier Transformation Scenario (RITS) <configuration.html#record-identifier-transformation-scenario>`_ that will modify the Record Identifier for each Record in the Job.
+When running a new Job, various filters can be applied to refine or limit the Records that will come from input Jobs selected.  Currently, the following filters are supported:
 
-.. figure:: img/select_rits.png
-   :alt: Selecting Record Identifier Transformation Scenario (RITS) for Job
-   :target: _images/select_rits.png
+**Refine by Record Validity**
 
-   Selecting Record Identifier Transformation Scenario (RITS) for Job
-
-
-Record Input Validity Valve
-~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-When running a Job, with respect to *all* input Jobs selected, users can select if **all**, **valid**, or **invalid** Records should be included.  This is referred to as a "Validity Valve" because it very much feels like a valve that is applied to the input Job for the Job that is about to be run.
+Users can select if **all**, **valid**, or **invalid** Records should be included.
 
 .. figure:: img/select_input_validity.png
    :alt: Selecting Record Input Validity Valve for Job
@@ -171,6 +132,99 @@ Below is an example of how those valves can be applied and utilized with Merge J
    Example of shunting Records based on validity, and eventually merging all valid Records
 
 Keep in mind, if multiple Validation Scenarios were run for a particular Job, it only requires failing one test, within one Validation Scenario, for the Record to be considered "invalid" as a whole.
+
+**Limit Number of Records**
+
+The simplest of the three, users can provide a number to limit the Records from *each* Job.  For example, if **4** Jobs are selected as input, and a limit of **100** is entered, the resulting Job will have **400** Records: **4 x 100 = 400**.
+
+**Refine by Mapped Fields**
+
+Users can provide an ElasticSearch DSL query, as JSON, to refine the records that will be used for this Job.
+
+Take, for example, an input Job of 10,000 Records that has a field ``foo_bar``, and 500 of those Records have the value ``baz`` for this field.  If the following query is entered here, only the 500 Records that are returned from this query will be used for the Job:
+
+.. code-block:: json
+
+    {
+      "query":{
+        "match":{
+          "foo_bar":"baz"
+        }
+      }
+    }
+
+This ability hints at the potential for taking the time to map fields in interesting and helpful ways, such that you can use those mapped fields to refine later Jobs by.  ElasticSearch queries can be quite powerul and complex, and in theory, this filter will support any query used.
+
+
+Field Mapping Configuration
+~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+Combine maps a Record's original document -- likely XML -- to key/value pairs suitable for ElasticSearch with a library called ``XML2kvp``.  When running a new Job, users can provide parameters to the ``XML2kvp`` parser in the form of JSON.  
+
+Here's an example of the default configurations:
+
+.. code-block:: json
+
+    {
+      "add_literals": {},
+      "concat_values_on_all_fields": false,
+      "concat_values_on_fields": {},
+      "copy_to": {},
+      "copy_to_regex": {},
+      "copy_value_to_regex": {},
+      "error_on_delims_collision": false,
+      "exclude_attributes": [],
+      "exclude_elements": [],
+      "include_all_attributes": false,
+      "include_attributes": [],
+      "node_delim": "_",
+      "ns_prefix_delim": "|",
+      "remove_copied_key": true,
+      "remove_copied_value": false,
+      "remove_ns_prefix": false,
+      "self_describing": false,
+      "skip_attribute_ns_declarations": true,
+      "skip_repeating_values": true,
+      "split_values_on_all_fields": false,
+      "split_values_on_fields": {}
+    }
+
+Clicking the button "What do these configurations mean?" will provide information about each parameter, pulled form the ``XML2kvp`` JSON schema.  
+
+The default is a safe bet to run Jobs, but configurations can be **saved**, **retrieved**, **updated**, and **deleted** from this screen as well.
+
+Additional, high level discussion about mapping and indexing metadata `can also be found here <analysis.html#analyzing-indexed-fields>`_.
+
+
+Validation Tests
+~~~~~~~~~~~~~~~~
+
+One of the most commonly used optional parameters would be what Validation Scenarios to apply for this Job.  Validation Scenarios are `pre-configured validations <configuration.html#validation-scenario>`_ that will run for *each* Record in the Job.  When viewing a Job's or Record's details, the result of each validation run will be shown.
+
+The Validation Tests selection looks like this for a Job, with checkboxes for each pre-configured Validation Scenarios (additionally, checked if the Validation Scenario is marked to run by default):
+
+.. figure:: img/select_validations.png
+   :alt: Selecting Validations Tests for Job
+   :target: _images/select_validations.png
+
+   Selecting Validations Tests for Job
+
+
+
+
+Transform Identifier
+~~~~~~~~~~~~~~~~~~~~
+
+When running a Job, users can optionally select a `Record Identifier Transformation Scenario (RITS) <configuration.html#record-identifier-transformation-scenario>`_ that will modify the Record Identifier for each Record in the Job.
+
+.. figure:: img/select_rits.png
+   :alt: Selecting Record Identifier Transformation Scenario (RITS) for Job
+   :target: _images/select_rits.png
+
+   Selecting Record Identifier Transformation Scenario (RITS) for Job
+
+
+
 
 DPLA Bulk Data Compare
 ~~~~~~~~~~~~~~~~~~~~~~
