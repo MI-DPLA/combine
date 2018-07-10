@@ -21,10 +21,10 @@
 					</li>
 				{% endif %}
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#field_mapping_config">Field Mapping Configuration</a>
+					<a class="nav-link {% if not input_jobs %}active{% endif %}" data-toggle="tab" href="#field_mapping_config">Field Mapping Configuration</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link {% if not input_jobs %}active{% endif %}" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
+					<a class="nav-link" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
 				</li>				
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#identifier_transform_tab">Transform Identifier</a>
@@ -43,7 +43,7 @@
 					</div>
 				{% endif %}
 
-				<div id="validation_tests_tab" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+				<div id="validation_tests_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Record Validation Selection #}
 					{% include 'core/record_validation_select.html' %}
 				</div>
@@ -53,7 +53,7 @@
 					{% include 'core/bulk_download_compare_select.html' %}
 				</div>
 
-				<div id="field_mapping_config" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+				<div id="field_mapping_config" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
 					{# Field Mapper Selection #}
 					{% include 'core/field_mapper_select.html' %}
 				</div>
