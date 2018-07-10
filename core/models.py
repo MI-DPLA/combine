@@ -587,20 +587,25 @@ class Job(models.Model):
 		# get active livy session, and refresh, which contains spark_app_id as appId
 		ls = LivySession.get_active_session()
 
-		# if appId not set, attempt to retrieve
-		if not ls.appId:
-			ls.refresh_from_livy()
+		if ls:
 
-		# get list of Jobs, filter by jobGroup for this Combine Job
-		try:
-			filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
-		except:
-			logger.warning('trouble retrieving Jobs from Spark App API')
-			filtered_jobs = []
-		if len(filtered_jobs) > 0:
-			return filtered_jobs
+			# if appId not set, attempt to retrieve
+			if not ls.appId:
+				ls.refresh_from_livy()
+
+			# get list of Jobs, filter by jobGroup for this Combine Job
+			try:
+				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+			except:
+				logger.warning('trouble retrieving Jobs from Spark App API')
+				filtered_jobs = []
+			if len(filtered_jobs) > 0:
+				return filtered_jobs
+			else:
+				return None
+		
 		else:
-			return None
+			return False
 
 
 	@property
