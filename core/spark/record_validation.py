@@ -13,6 +13,7 @@ from types import ModuleType
 # import Row from pyspark
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
+import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
 
 # import from core.spark
@@ -295,77 +296,40 @@ class ValidationScenarioSpark(object):
 			# if query is not empty
 			if not es_rdd.isEmpty():
 
-				self.logger.info('##### We got a live one')
-
 				es_df = es_rdd.map(lambda row: (row[1]['db_id'], )).toDF()
 
 				# perform joins
 				# if a match is valid, report all the others that didn't match
 				if v['matches'] == 'valid':
-					fail_df = records_df.join(es_df, records_df['id'] == es_df['_1'], 'leftanti').select('id')
+					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftanti').select('id')
 				
 				# if a match is invalid, report these
 				elif v['matches'] == 'invalid':
-					fail_df = records_df.join(es_df, records_df['id'] == es_df['_1'], 'leftsemi').select('id')
+					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftsemi').select('id')
 
 				# add columns
-				fail_df = fail_df.withColumn('test', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
-				fail_df = fail_df.withColumn('count', pyspark_sql_functions.lit(1))
+				fail_df = fail_df.withColumn('failed', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
+				fail_df = fail_df.withColumn('fail_count', pyspark_sql_functions.lit(1))
 
 				# append to validations dictionary
 				fail_dfs.append(fail_df)
 
-		# DEBUG
-		self.logger.info(len(fail_dfs))
-
-		####################################################################################################################################
-		# APPROACH 2
-		####################################################################################################################################
-		# # loop through dataframes in validations dictionary and merge 
-		# for i in range(0, (len(fail_dfs) - 1)):	
-			
-		# 	# set dfs
-		# 	df1 = fail_dfs[i]
-		# 	df2 = fail_dfs[(i+1)]
-			
-		# 	# join
-		# 	df2 = df1.select("id", pyspark_sql_functions.explode("test").alias("test_values"), "count")\
-		# 	.unionAll(df2.select("id", pyspark_sql_functions.explode("test").alias("test_values"), "count"))\
-		# 	.groupBy("id")\
-		# 	.agg(pyspark_sql_functions.collect_list("test_values").alias("test"), pyspark_sql_functions.sum("count").alias("count"))
-			
-		# 	# update new_df
-		# 	new_df = df2
-
-		# # finally, collapse to JSON in data field
-		# new_df = new_df.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("test", "count")).alias("data"), "count")
-
-		####################################################################################################################################
-		# APPROACH 1
-		####################################################################################################################################
-		# get list of test dfs
-		# df_list = [v['df'] for v in validations]
-		
 		# merge and format
 		new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
-			.select("id", pyspark_sql_functions.explode("test").alias("test_values"), "count")\
+			.select("id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
 			.groupBy("id")\
-			.agg(pyspark_sql_functions.collect_list("test_values").alias("test"), pyspark_sql_functions.sum("count").alias("count"))\
-			.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("test", "count")).alias("data"))
+			.agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"), pyspark_sql_functions.sum("fail_count").alias("fail_count"))\
+			.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
 
 		# write return failures as validation_fails_rdd
 		validation_fails_rdd = new_df.rdd.map(lambda row: Row(
 			record_id=int(row.id),
 			validation_scenario_id=int(vs_id),
-			valid=0, results_payload=row.data,
-			fail_count=int(row['count']))
+			valid=0,
+			results_payload=row.data,
+			fail_count=int(row['fail_count']))
 		)
 		return validation_fails_rdd
-
-
-
-
-
 
 
 
