@@ -2258,7 +2258,7 @@ class ValidationScenario(models.Model):
 		      }
 		    },
 		    {
-		      "test_name":"record has subject of Fiction",
+		      "test_name":"record does not have subject of Fiction",
 		      "matches":"invalid",
 		      "es_query":{
 		        "query":{
@@ -2294,8 +2294,8 @@ class ValidationScenario(models.Model):
 			# update query with search body
 			query = query.update_from_dict(t['es_query'])
 
-			# filter by row.id
-			query = query.filter("term", db_id=row.id)
+			# add row to query
+			query = query.query("term", db_id=row.id)			
 
 			# debug
 			logger.debug(query.to_dict())
@@ -2304,11 +2304,18 @@ class ValidationScenario(models.Model):
 			query_results = query.execute()
 
 			# if hits.total > 0, assume a hit and call success
-			if query_results.hits.total > 0:
-				results_dict['passed'].append(t['test_name'])
-			else:
-				results_dict['failed'].append(t['test_name'])
-				results_dict['fail_count'] += 1
+			if t['matches'] == 'valid':
+				if query_results.hits.total > 0:
+					results_dict['passed'].append(t['test_name'])
+				else:
+					results_dict['failed'].append(t['test_name'])
+					results_dict['fail_count'] += 1
+			elif t['matches'] == 'invalid':
+				if query_results.hits.total == 0:
+					results_dict['passed'].append(t['test_name'])
+				else:
+					results_dict['failed'].append(t['test_name'])
+					results_dict['fail_count'] += 1
 		
 		# return
 		return {
