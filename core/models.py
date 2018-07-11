@@ -2065,7 +2065,7 @@ class ValidationScenario(models.Model):
 	payload = models.TextField()
 	validation_type = models.CharField(
 		max_length=255,
-		choices=[('sch','Schematron'),('python','Python Code Snippet')]
+		choices=[('sch','Schematron'),('python','Python Code Snippet'),('es_query','ElasticSearch DSL Query')]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	default_run = models.BooleanField(default=1)
@@ -2095,6 +2095,8 @@ class ValidationScenario(models.Model):
 			result = self._validate_schematron(row)
 		if self.validation_type == 'python':
 			result = self._validate_python(row)
+		if self.validation_type == 'es_query':
+			result = self._validate_es_query(row)
 
 		# return result
 		return result
@@ -2227,6 +2229,87 @@ class ValidationScenario(models.Model):
 				results_dict['fail_count'] += 1
 				results_dict['failed'].append("test '%s' had exception: %s" % (func.__name__, str(e)))
 
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':json.dumps(results_dict)
+		}
+
+
+	def _validate_es_query(self, row):
+
+		'''
+		Method to test ElasticSearch DSL query validation against row
+			- NOTE: unlike the schematron and python validations, which run as 
+			python UDF functions in spark, the mechanics are slightly different here
+			where this will run with Hadoop ES queries and unions in Spark
+
+		Proposed structure:
+		[
+		    {
+		      "test_name":"record has mods_subject_topic",
+		      "matches":"valid",
+		      "es_query":{
+		        "query":{
+		          "exists":{
+		            "field":"mods_subject_topic"
+		          }
+		        }
+		      }
+		    },
+		    {
+		      "test_name":"record has subject of Fiction",
+		      "matches":"invalid",
+		      "es_query":{
+		        "query":{
+		          "match":{
+		            "mods_subject_topic.keyword":"Fiction"
+		          }
+		        }
+		      }
+		    }
+	  	]		
+		'''
+
+		# parse es validation payload
+		es_payload = json.loads(self.payload)
+
+		# prepare results_dict
+		results_dict = {
+			'fail_count':0,			
+			'passed':[],
+			'failed':[],
+			'total_tests':len(es_payload)
+		}
+
+		# loop through tests in ES validation
+		for t in es_payload:
+
+			# get row's cjob
+			cjob = CombineJob.get_combine_job(row.job.id)
+
+			# init query with es_handle and es index
+			query = Search(using=es_handle, index=cjob.esi.es_index)
+
+			# update query with search body
+			query = query.update_from_dict(t['es_query'])
+
+			# filter by row.id
+			query = query.filter("term", db_id=row.id)
+
+			# debug
+			logger.debug(query.to_dict())
+
+			# execute query
+			query_results = query.execute()
+
+			# if hits.total > 0, assume a hit and call success
+			if query_results.hits.total > 0:
+				results_dict['passed'].append(t['test_name'])
+			else:
+				results_dict['failed'].append(t['test_name'])
+				results_dict['fail_count'] += 1
+		
 		# return
 		return {
 			'parsed':results_dict,
@@ -2879,6 +2962,8 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 		filename = 'file_%s.sch' % uuid.uuid4().hex
 	if instance.validation_type == 'python':
 		filename = 'file_%s.py' % uuid.uuid4().hex
+	if instance.validation_type == 'es_query':
+		filename = 'file_%s.json' % uuid.uuid4().hex
 
 	filepath = '%s/%s' % (validations_dir, filename)
 	with open(filepath, 'w') as f:
@@ -3543,6 +3628,26 @@ class ESIndex(object):
 			'metrics':field_metrics,
 			'values':values
 		}
+
+
+	def query(self, query_body):
+
+		'''
+		Method to run query against Job's ES index
+		'''
+
+		# init query
+		query = Search(using=es_handle, index=self.es_index)
+
+		# update with query_body
+		if type(query_body) == dict:
+			query = query.update_from_dict(query_body)
+		elif type(query_body) == str:
+			query = query.update_from_dict(json.loads(query_body))
+
+		# execute and return
+		results = query.execute()
+		return results
 
 
 
