@@ -15,6 +15,7 @@ import inspect
 import io
 import json
 from json import JSONDecodeError
+import jsonschema
 import logging
 from lxml import etree, isoschematron
 import os
@@ -76,7 +77,7 @@ from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
-# sxsdiff 
+# sxsdiff
 from sxsdiff import DiffCalculator
 from sxsdiff.generators.github import GitHubStyledGenerator
 
@@ -95,7 +96,7 @@ import boto3
 
 
 ####################################################################
-# Django ORM                                                       #
+# Django ORM																											 #
 ####################################################################
 
 class LivySession(models.Model):
@@ -160,7 +161,7 @@ class LivySession(models.Model):
 			if self.status in ['starting','idle','busy']:
 				self.active = True
 			
-			self.session_timestamp = headers['Date']			
+			self.session_timestamp = headers['Date']
 
 			# gather information about registered application in spark cluster
 			try:
@@ -316,9 +317,9 @@ class RecordGroup(models.Model):
 
 		# loop through jobs
 		for job in record_group_jobs:
-		    job_ld = job.get_lineage(directionality='downstream')
-		    ld['edges'].extend(job_ld['edges'])
-		    ld['nodes'].extend(job_ld['nodes'])
+				job_ld = job.get_lineage(directionality='downstream')
+				ld['edges'].extend(job_ld['edges'])
+				ld['nodes'].extend(job_ld['nodes'])
 
 		# filter for unique
 		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
@@ -362,7 +363,7 @@ class Job(models.Model):
 	Model to manage jobs in Combine.
 	Jobs are members of Record Groups, and contain Records.
 
-	A Job can be considered a "stage" of records in Combine as they move through Harvest, Transformations, Merges, and 
+	A Job can be considered a "stage" of records in Combine as they move through Harvest, Transformations, Merges, and
 	eventually Publishing.
 	'''
 
@@ -447,7 +448,7 @@ class Job(models.Model):
 				if self.finished:
 					self.update_record_count(save=False)
 
-			# update elapsed		
+			# update elapsed
 			self.elapsed = self.calc_elapsed()
 
 			# finally, save
@@ -467,7 +468,7 @@ class Job(models.Model):
 		'''
 
 		# if job_track exists, calc elapsed
-		if self.jobtrack_set.count() > 0: 
+		if self.jobtrack_set.count() > 0:
 
 			# get start time
 			job_track = self.jobtrack_set.first()
@@ -766,7 +767,7 @@ class Job(models.Model):
 		'''
 
 		# lineage dict
-		ld = {'nodes':[],'edges':[]}		
+		ld = {'nodes':[],'edges':[]}
 
 		# get validation results for self
 		validation_results = self.validation_results()
@@ -779,7 +780,7 @@ class Job(models.Model):
 				'org_id':None,
 				'job_type':self.job_type,
 				'job_status':self.status,
-				'is_valid':validation_results['verdict'],				
+				'is_valid':validation_results['verdict'],
 				'deleted':self.deleted
 			}
 
@@ -832,7 +833,7 @@ class Job(models.Model):
 
 					# prepare node dictionary
 					node_dict = {
-						'id':pj.id,						
+						'id':pj.id,
 						'name':pj.name,
 						'record_group_id':None,
 						'org_id':None,
@@ -935,9 +936,9 @@ class Job(models.Model):
 
 		# loop through jobs
 		for job in jobs:
-		    job_ld = job.get_lineage(directionality=directionality)
-		    ld['edges'].extend(job_ld['edges'])
-		    ld['nodes'].extend(job_ld['nodes'])
+				job_ld = job.get_lineage(directionality=directionality)
+				ld['edges'].extend(job_ld['edges'])
+				ld['nodes'].extend(job_ld['nodes'])
 
 		# filter for unique
 		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
@@ -960,7 +961,7 @@ class Job(models.Model):
 			None
 
 		Returns:
-			(dict): 
+			(dict):
 				verdict (boolean): True if all tests passed, or no tests performed, False is any fail
 				failure_count (int): Total number of validation failures
 				validation_scenarios (list): QuerySet of associated JobValidation
@@ -988,7 +989,7 @@ class Job(models.Model):
 				failure_count = jv.validation_failure_count()
 
 				if failure_count:
-					results['failure_count'] += failure_count					
+					results['failure_count'] += failure_count
 
 			# if failures found
 			if results['failure_count'] > 0:
@@ -1011,7 +1012,7 @@ class Job(models.Model):
 		'''
 
 		# get match checks
-		t_stime = time.time()		
+		t_stime = time.time()
 		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
 		logger.debug('match attempts returned: %s' % (time.time() - t_stime))
 
@@ -1034,7 +1035,7 @@ class Job(models.Model):
 			# get misses
 			t_stime = time.time()
 			misses = records.exclude(id__in=match_attempts.values_list('record_id'))
-			logger.debug('misses returned: %s' % (time.time() - t_stime))		
+			logger.debug('misses returned: %s' % (time.time() - t_stime))
 			
 			return {
 				'dbdd':dbdd,
@@ -1203,7 +1204,7 @@ class OAIEndpoint(models.Model):
 class Transformation(models.Model):
 
 	'''
-	Model to handle "transformation scenarios".  Envisioned to faciliate more than just XSL transformations, but
+	Model to handle "transformation scenarios".	Envisioned to faciliate more than just XSL transformations, but
 	currently, only XSLT is handled downstream
 	'''
 
@@ -1230,8 +1231,8 @@ class Transformation(models.Model):
 		Method to test transformation against a single record.
 
 		Note: The code for self._transform_xslt() and self._transform_python() are similar,
-		to staticmethods found in core.spark.jobs.py.  However, because those are running on spark workers,
-		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		to staticmethods found in core.spark.jobs.py.	However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.	As such, these
 		transformations are recreated here.
 
 		Args:
@@ -1299,7 +1300,7 @@ class Transformation(models.Model):
 					trans_result[1] = trans_result[1].decode('utf-8')
 				return trans_result[1]
 
-		except Exception as e:			
+		except Exception as e:
 			return str(e)
 
 
@@ -1329,7 +1330,7 @@ class Transformation(models.Model):
 					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
 
 					# loop through elements
-					for ele in eles:				
+					for ele in eles:
 
 						# loop through edits
 						for edit in event['edits']:
@@ -1338,8 +1339,8 @@ class Transformation(models.Model):
 							if ele.text in edit['from']:
 								ele.text = edit['to']
 
-				# handle jython				
-				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):					
+				# handle jython
+				if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):
 
 					# fire up temp module
 					temp_pyts = ModuleType('temp_pyts')
@@ -1348,7 +1349,7 @@ class Transformation(models.Model):
 					code = event['expression'].split('jython:')[1]
 
 					# wrap in function and write to temp module
-					code = 'def temp_func(value):\n%s' % textwrap.indent(code, prefix='    ')					
+					code = 'def temp_func(value):\n%s' % textwrap.indent(code, prefix='		')
 					exec(code, temp_pyts.__dict__)
 
 					# get xpath
@@ -1398,14 +1399,14 @@ class Record(models.Model):
 
 	'''
 	Model to manage individual records.
-	Records are the lowest level of granularity in Combine.  They are members of Jobs.
+	Records are the lowest level of granularity in Combine.	They are members of Jobs.
 	
-	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
 	combine/core/inc/combine_tables.sql
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	combine_id = models.CharField(max_length=1024, null=True, default=None) 	
+	combine_id = models.CharField(max_length=1024, null=True, default=None)
 	record_id = models.CharField(max_length=1024, null=True, default=None)
 	document = models.TextField(null=True, default=None)
 	error = models.TextField(null=True, default=None)
@@ -1501,7 +1502,7 @@ class Record(models.Model):
 		if remove_duplicates:
 			record_stages = list(OrderedDict.fromkeys(record_stages))
 		
-		# return		
+		# return
 		return record_stages
 
 
@@ -1587,7 +1588,7 @@ class Record(models.Model):
 
 		'''
 		Method to query DPLA API for match against some known mappings.
-		NOTE: Experimental.		
+		NOTE: Experimental.
 
 		Loop through mapped fields in opinionated order from opinionated_search_hash
 		Update: Leaning towards exclusive use of 'isShownAt'
@@ -1625,7 +1626,7 @@ class Record(models.Model):
 
 							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
 
-							# get value for mapped field					
+							# get value for mapped field
 							field_value = mapped_dpla_fields[local_mapped_field]
 
 							# if list, loop through and attempt searches
@@ -1648,7 +1649,7 @@ class Record(models.Model):
 								self.dpla_api_doc = match_results
 								return self.dpla_api_doc
 
-				# preapre search query			
+				# preapre search query
 				api_q = requests.get(
 					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
@@ -1656,7 +1657,7 @@ class Record(models.Model):
 				try:
 					api_r = api_q.json()
 				except:
-					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))					
+					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
 					self.dpla_api_doc = None
 					return self.dpla_api_doc
 
@@ -1664,7 +1665,7 @@ class Record(models.Model):
 				if 'count' in api_r.keys():
 					# response
 					if api_r['count'] == 1:
-						dpla_api_doc = api_r['docs'][0]		
+						dpla_api_doc = api_r['docs'][0]
 						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
 					elif api_r['count'] > 1:
 						logger.debug('multiple hits for DPLA API query')
@@ -1755,7 +1756,7 @@ class Record(models.Model):
 
 		Returns:
 			(str|list): results of Record documents diff, line-by-line
-		'''		
+		'''
 
 		# check if Record has input Record
 		irq = self.get_record_stages(input_record_only=True)
@@ -1832,14 +1833,14 @@ class Record(models.Model):
 			)
 
 			# return as HTML
-			if combined_as_html:				
+			if combined_as_html:
 				combined_gen = self._return_combined_diff_gen_as_html(combined_gen)
 
 		else:
 			combined_gen = None
 
 		# include side_by_side html in output
-		if output in ['all','side_by_side_html']:		
+		if output in ['all','side_by_side_html']:
 
 			sxsdiff_result = DiffCalculator().run(docs[0], docs[1])
 			sio = io.StringIO()
@@ -1869,7 +1870,7 @@ class Record(models.Model):
 			elif line.startswith('+'):
 				html += '<span style="background-color:#e6ffed;">'
 			else:
-				html += '<span>'			
+				html += '<span>'
 			html += line.replace('<','&lt;').replace('>','&gt;')
 			html += '</span><br>'
 		html += '</code></pre>'
@@ -1911,7 +1912,7 @@ class IndexMappingFailure(models.Model):
 	'''
 	Model for accessing and updating indexing failures.
 	
-	NOTE: This DB model is not managed by Django for performance reasons.  The SQL for table creation is included in 
+	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
 	combine/core/inc/combine_tables.sql
 	'''
 
@@ -1960,7 +1961,7 @@ class DPLAJobMap(models.Model):
 	'''
 	#Experiemental#
 
-	Model to map parsed fields from ES index to DPLA record fields.  Values for each DPLA field correspond to an ES
+	Model to map parsed fields from ES index to DPLA record fields.	Values for each DPLA field correspond to an ES
 	field name for the associated Job.
 
 	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
@@ -2028,8 +2029,8 @@ class DPLAJobMap(models.Model):
 			(dict): dictionary of instance mappings
 		'''
 
-		mapped_fields = { 
-				field.name: getattr(self, field.name) for field in self._meta.get_fields() 
+		mapped_fields = {
+				field.name: getattr(self, field.name) for field in self._meta.get_fields()
 				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
 			}
 		return mapped_fields
@@ -2082,8 +2083,8 @@ class ValidationScenario(models.Model):
 		Method to test validation against a single record.
 
 		Note: The code for self._validate_schematron() and self._validate_python() are similar, if not identical,
-		to staticmethods found in core.spark.record_validation.py.  However, because those are running on spark workers,
-		in a spark context, it makes it difficult to define once, but use in multiple places.  As such, these
+		to staticmethods found in core.spark.record_validation.py.	However, because those are running on spark workers,
+		in a spark context, it makes it difficult to define once, but use in multiple places.	As such, these
 		validations are effectively defined twice.
 
 		Args:
@@ -2123,7 +2124,7 @@ class ValidationScenario(models.Model):
 
 		# temporarily add all tests to successes
 		sct_root = sct_doc.getroot()
-		nsmap = sct_root.nsmap			
+		nsmap = sct_root.nsmap
 		
 		# if schematron namespace logged as None, fix
 		try:
@@ -2189,7 +2190,7 @@ class ValidationScenario(models.Model):
 
 		# prepare results_dict
 		results_dict = {
-			'fail_count':0,			
+			'fail_count':0,
 			'passed':[],
 			'failed':[]
 		}
@@ -2240,35 +2241,35 @@ class ValidationScenario(models.Model):
 
 		'''
 		Method to test ElasticSearch DSL query validation against row
-			- NOTE: unlike the schematron and python validations, which run as 
+			- NOTE: unlike the schematron and python validations, which run as
 			python UDF functions in spark, the mechanics are slightly different here
 			where this will run with Hadoop ES queries and unions in Spark
 
 		Proposed structure:
 		[
-		    {
-		      "test_name":"record has mods_subject_topic",
-		      "matches":"valid",
-		      "es_query":{
-		        "query":{
-		          "exists":{
-		            "field":"mods_subject_topic"
-		          }
-		        }
-		      }
-		    },
-		    {
-		      "test_name":"record does not have subject of Fiction",
-		      "matches":"invalid",
-		      "es_query":{
-		        "query":{
-		          "match":{
-		            "mods_subject_topic.keyword":"Fiction"
-		          }
-		        }
-		      }
-		    }
-	  	]		
+				{
+					"test_name":"record has mods_subject_topic",
+					"matches":"valid",
+					"es_query":{
+						"query":{
+							"exists":{
+								"field":"mods_subject_topic"
+							}
+						}
+					}
+				},
+				{
+					"test_name":"record does not have subject of Fiction",
+					"matches":"invalid",
+					"es_query":{
+						"query":{
+							"match":{
+								"mods_subject_topic.keyword":"Fiction"
+							}
+						}
+					}
+				}
+			]
 		'''
 
 		# parse es validation payload
@@ -2276,7 +2277,7 @@ class ValidationScenario(models.Model):
 
 		# prepare results_dict
 		results_dict = {
-			'fail_count':0,			
+			'fail_count':0,
 			'passed':[],
 			'failed':[],
 			'total_tests':len(es_payload)
@@ -2295,7 +2296,7 @@ class ValidationScenario(models.Model):
 			query = query.update_from_dict(t['es_query'])
 
 			# add row to query
-			query = query.query("term", db_id=row.id)			
+			query = query.query("term", db_id=row.id)
 
 			# debug
 			logger.debug(query.to_dict())
@@ -2387,7 +2388,7 @@ class JobValidation(models.Model):
 class RecordValidation(models.Model):
 
 	'''
-	Model to manage validation tests associated with a Record	
+	Model to manage validation tests associated with a Record
 
 		- what is the performance hit of the FK?
 
@@ -2445,8 +2446,22 @@ class FieldMapper(models.Model):
 			return json.loads(self.config_json)
 		else:
 			return None
-
-
+			
+	
+	def validate_config_json(self, config_json=None):
+			
+		# if config_json not provided, assume use self
+		if not config_json:
+			config_json = self.config_json
+				
+		# load config_json as dictionary
+		config_dict = json.loads(config_json)
+				
+		# validate against XML2kvp schema
+		jsonschema.validate(config_dict, XML2kvp.schema)
+			
+			
+			
 class RecordIdentifierTransformationScenario(models.Model):
 
 	'''
@@ -2519,7 +2534,7 @@ class CombineBackgroundTask(models.Model):
 
 	'''
 	Model for long running, background tasks
-		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)	
+		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)
 
 	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
 	'''
@@ -2573,7 +2588,7 @@ class CombineBackgroundTask(models.Model):
 			task = self._get_running_task()
 
 			# if not found, check if completed
-			if not task:				
+			if not task:
 				task = self._get_completed_task()
 				
 				if task:
@@ -2586,7 +2601,7 @@ class CombineBackgroundTask(models.Model):
 					# save
 					self.save()
 				
-				else:					
+				else:
 					self.task = False
 
 
@@ -2680,7 +2695,7 @@ class CombineBackgroundTask(models.Model):
 
 
 ####################################################################
-# Signals Handlers                                                 # 
+# Signals Handlers																								 #
 ####################################################################
 
 @receiver(signals.user_logged_in)
@@ -2771,7 +2786,7 @@ def delete_org_pre_delete(sender, instance, **kwargs):
 		logger.debug('marking all child Jobs as deleting')
 		for job in record_group.job_set.all():
 
-			job.name = "%s (DELETING)" % job.name	
+			job.name = "%s (DELETING)" % job.name
 			job.deleted = True
 			job.status = 'deleting'
 			job.save()
@@ -2784,7 +2799,7 @@ def delete_record_group_pre_delete(sender, instance, **kwargs):
 	logger.debug('marking all child Jobs as deleting')
 	for job in instance.job_set.all():
 
-		job.name = "%s (DELETING)" % job.name	
+		job.name = "%s (DELETING)" % job.name
 		job.deleted = True
 		job.status = 'deleting'
 		job.save()
@@ -2892,14 +2907,14 @@ def delete_job_post_delete(sender, instance, **kwargs):
 def update_uniqueness_of_published_records(sender, instance, **kwargs):
 
 	'''
-	After job delete, if Publish job, update uniquess of published records 
+	After job delete, if Publish job, update uniquess of published records
 	'''
 
 	if instance.job_type == 'PublishJob':
 
 		logger.debug('updating uniquess of published records')
 
-		# get PublishedRecords instance and run method		
+		# get PublishedRecords instance and run method
 		pr = PublishedRecords()
 		pr.update_published_uniqueness()
 
@@ -3033,7 +3048,7 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 
 
 ####################################################################
-# Apahce Livy and Spark Clients									   #
+# Apahce Livy and Spark Clients										 #
 ####################################################################
 
 class LivyClient(object):
@@ -3050,8 +3065,8 @@ class LivyClient(object):
 	Sets class attributes from Django settings
 	'''
 
-	server_host = settings.LIVY_HOST 
-	server_port = settings.LIVY_PORT 
+	server_host = settings.LIVY_HOST
+	server_port = settings.LIVY_PORT
 	default_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
 
 
@@ -3109,7 +3124,7 @@ class LivyClient(object):
 			None
 
 		Returns:
-			(dict): Livy server response 
+			(dict): Livy server response
 		'''
 
 		livy_sessions = self.http_request('GET','sessions')
@@ -3160,7 +3175,7 @@ class LivyClient(object):
 
 		'''
 		Assume session id's are unique, change state of session DB based on session id only
-			- as opposed to passing session row, which while convenient, would limit this method to 
+			- as opposed to passing session row, which while convenient, would limit this method to
 			only stopping sessions with a LivySession row in the DB
 
 		Args:
@@ -3218,7 +3233,7 @@ class LivyClient(object):
 
 		Args:
 			session_id (str/int): Livy session id
-			python_code (str): 
+			python_code (str):
 
 		Returns:
 			(dict): Livy server response
@@ -3274,7 +3289,7 @@ class SparkAppAPIClient(object):
 		):
 
 		'''
-		Make HTTP request to Spark Application API			
+		Make HTTP request to Spark Application API
 
 		Args:
 			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
@@ -3316,7 +3331,7 @@ class SparkAppAPIClient(object):
 			None
 
 		Returns:
-			(dict): Spark Application API response 
+			(dict): Spark Application API response
 		'''
 
 		# get list of applications
@@ -3349,13 +3364,13 @@ class SparkAppAPIClient(object):
 				if 'completionTime' in job.keys():
 					job['completionTime'] = dateutil.parser.parse(job['completionTime'])
 
-		# calc duration if flagged		
+		# calc duration if flagged
 		if calc_duration:
 			for job in filtered_jobs:
 
 				# prepare dates
 				if not parse_dates:
-					st = dateutil.parser.parse(job['submissionTime'])					
+					st = dateutil.parser.parse(job['submissionTime'])
 					if 'completionTime' in job.keys():
 						ct = dateutil.parser.parse(job['completionTime'])
 					else:
@@ -3381,7 +3396,7 @@ class SparkAppAPIClient(object):
 
 
 ####################################################################
-# Combine Models 												   #
+# Combine Models 													 #
 ####################################################################
 
 class ESIndex(object):
@@ -3479,7 +3494,7 @@ class ESIndex(object):
 			else:
 				field_dict['one_distinct_per_doc'] = False
 
-			# return 
+			# return
 			return field_dict
 
 		# if no instances of field in results, return False
@@ -3671,7 +3686,7 @@ class PublishedRecords(object):
 		# get published jobs
 		self.publish_links = JobPublish.objects.all()
 
-		# get set IDs from record group of published jobs		
+		# get set IDs from record group of published jobs
 		sets = {}
 		for publish_link in self.publish_links:
 			publish_set_id = publish_link.record_group.publish_set_id
@@ -3681,7 +3696,7 @@ class PublishedRecords(object):
 				sets[publish_set_id] = []
 
 			# add publish job
-			sets[publish_set_id].append(publish_link.job)	
+			sets[publish_set_id].append(publish_link.job)
 		self.sets = sets
 
 		# setup ESIndex instance
@@ -3754,11 +3769,11 @@ class PublishedRecords(object):
 		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
 		# set true in bulk
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])		
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
 		set_true.update(unique_published=True)
 
 		# set false in bulk
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])		
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
 		set_false.update(unique_published=False)
 
 		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
@@ -3801,12 +3816,12 @@ class PublishedRecords(object):
 class CombineJob(object):
 
 	'''
-	Class to aggregate methods useful for managing and inspecting jobs.  
+	Class to aggregate methods useful for managing and inspecting jobs.
 
 	Additionally, some methods and workflows for loading a job, inspecting job.job_type, and loading as appropriate
 	Combine job.
 
-	Note: There is overlap with the core.models.Job class, but this not being a Django model, allows for a bit 
+	Note: There is overlap with the core.models.Job class, but this not being a Django model, allows for a bit
 	more flexibility with __init__.
 	'''
 
@@ -3936,7 +3951,7 @@ class CombineJob(object):
 	def submit_job_to_livy(self, job_code):
 
 		'''
-		Using LivyClient, submit actual job code to Spark.  For the most part, Combine Jobs have the heavy lifting of 
+		Using LivyClient, submit actual job code to Spark.	For the most part, Combine Jobs have the heavy lifting of
 		their Spark code in core.models.spark.jobs, but this spark code is enough to fire those.
 
 		Args:
@@ -4048,7 +4063,7 @@ class CombineJob(object):
 			(int): count of records
 		'''
 
-		if self.job.jobinput_set.count() > 0:			
+		if self.job.jobinput_set.count() > 0:
 
 			# init dict
 			input_jobs_dict = {
@@ -4057,15 +4072,15 @@ class CombineJob(object):
 			}
 			
 			# loop through input jobs
-			for input_job in self.job.jobinput_set.all():	
+			for input_job in self.job.jobinput_set.all():
 
 				# add to jobs
-				input_jobs_dict['jobs'].append(input_job)			
+				input_jobs_dict['jobs'].append(input_job)
 
 				# bump count
 				input_jobs_dict['total_input_record_count'] += input_job.calc_passed_records()
 
-			# return 
+			# return
 			return input_jobs_dict
 		else:
 			return None
@@ -4094,7 +4109,7 @@ class CombineJob(object):
 
 		# calc success percentages, based on records ratio to job record count (which includes both success and error)
 		if r_count_dict['records'] != 0:
-			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)		
+			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)
 		else:
 			r_count_dict['success_percentage'] = 0.0
 
@@ -4119,7 +4134,7 @@ class CombineJob(object):
 		job_output_dir = self.job.job_output.split('file://')[-1]
 
 		try:
-			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]		
+			avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
 
 			if len(avros) > 0:
 				job_output_filename_hash = re.match(r'part-[0-9]+-(.+?)\.avro', avros[0]).group(1)
@@ -4187,7 +4202,7 @@ class CombineJob(object):
 		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
 
 		# loop through requests mapped fields, add to dataframe
-		if mapped_field_include:			
+		if mapped_field_include:
 
 			# prepare dictionary
 			field_values_dict = { field:[] for field in mapped_field_include }
@@ -4199,17 +4214,17 @@ class CombineJob(object):
 
 			while start < tlen:
 
-				logger.debug('working on chunk_start: %s' % start)			
+				logger.debug('working on chunk_start: %s' % start)
 
 				# get doc chunks from es
 				chunk = list(rvf_df['Combine ID'].iloc[start:end])
-				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']				
+				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']
 				
 				# grab values and add to dictionary
 				for es_doc in docs:
 					for field in mapped_field_include:
 						if field in es_doc['_source'].keys():
-							field_values_dict[field].append(es_doc['_source'][field]) 
+							field_values_dict[field].append(es_doc['_source'][field])
 						else:
 							field_values_dict[field].append(None)
 				
@@ -4221,7 +4236,7 @@ class CombineJob(object):
 					start = end
 					end = tlen
 
-			# add values to dataframe			
+			# add values to dataframe
 			for field, value_list in field_values_dict.items():
 				rvf_df[field] = value_list
 
@@ -4338,7 +4353,7 @@ class HarvestOAIJob(HarvestJob):
 		job_name=None,
 		job_note=None,
 		user=None,
-		record_group=None,		
+		record_group=None,
 		job_id=None,
 		field_mapper=None,
 		fm_config_json=None,
@@ -4414,7 +4429,7 @@ class HarvestOAIJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' %
 			{
 				'endpoint':harvest_vars['endpoint'],
 				'verb':harvest_vars['verb'],
@@ -4473,8 +4488,8 @@ class HarvestStaticXMLJob(HarvestJob):
 				payload_dict (dict): dictionary of user provided arguments for static harvest
 					static_filepath (str): location of metadata records on disk
 					type (str)['location','upload']: type of static harvest, uploaded content or location on disk
-					payload_dir (str): location on disk to work form, NOTE: for uploads this is a UUID 
-						named directory at /tmp/combine/ 
+					payload_dir (str): location on disk to work form, NOTE: for uploads this is a UUID
+						named directory at /tmp/combine/
 					static_payload (str): temporary filename from upload
 					content_type (str): mimetype of static file from upload
 					payload_filename (str): final filename of static payload on disk
@@ -4485,7 +4500,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		Returns:
 			None
-				- fires parent HarvestJob init				
+				- fires parent HarvestJob init
 		'''
 
 		# perform HarvestJob initialization
@@ -4503,7 +4518,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		if not job_id:
 
 			# capture static XML specific args
-			logger.debug(payload_dict)			
+			logger.debug(payload_dict)
 			self.payload_dict = payload_dict
 
 			# prepare static files
@@ -4540,7 +4555,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		p = self.payload_dict
 
 		# handle uploads
-		if p['type'] == 'upload':			
+		if p['type'] == 'upload':
 			logger.debug('static harvest, processing upload type')
 
 		# handle disk locations
@@ -4563,7 +4578,7 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' %
 			{
 				'static_type':self.payload_dict['type'],
 				'static_payload':self.payload_dict['payload_dir'],
@@ -4716,9 +4731,9 @@ class TransformJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' %
 			{
-				'transformation_id':self.transformation.id,				
+				'transformation_id':self.transformation.id,
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id,
 				'fm_config_json':self.fm_config_json,
@@ -4780,7 +4795,7 @@ class MergeJob(CombineJob):
 			user (auth.models.User): user that will issue job
 			record_group (core.models.RecordGroup): record group instance this job belongs to
 			input_jobs (core.models.Job): Job(s) that provides input records for this job's work
-			job_id (int): Not set on init, but acquired through self.job.save()			
+			job_id (int): Not set on init, but acquired through self.job.save()
 			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
 			rits (str): Identifier of Record Identifier Transformation Scenario
 			input_validity_valve (str)['all','valid','invalid']: Type of records to use as input for Spark job
@@ -4870,7 +4885,7 @@ class MergeJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' %
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
@@ -4958,7 +4973,7 @@ class PublishJob(CombineJob):
 						'publish':
 							{
 								'publish_job_id':self.input_job.id,
-							}						
+							}
 					})
 			)
 			self.job.save()
@@ -4991,7 +5006,7 @@ class PublishJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s").spark_function()' % 
+			'code':'from jobs import PublishSpark\nPublishSpark(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s").spark_function()' %
 			{
 				'input_job_id':self.input_job.id,
 				'job_id':self.job.id
@@ -5017,8 +5032,8 @@ class AnalysisJob(CombineJob):
 	'''
 	Analysis job
 		- Analysis job are unique in name and some functionality, but closely mirror Merge Jobs in execution
-		- Though Analysis jobs are very similar to most typical workflow jobs, they do not naturally 
-		belong to an Organization and Record Group like others.  As such, they dynamically create their own Org and
+		- Though Analysis jobs are very similar to most typical workflow jobs, they do not naturally
+		belong to an Organization and Record Group like others.	As such, they dynamically create their own Org and
 		Record Group, configured in localsettings.py, that is hidden from most other views.
 	'''
 
@@ -5193,7 +5208,7 @@ class AnalysisJob(CombineJob):
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' % 
+			'code':'from jobs import MergeSpark\nMergeSpark(spark, input_jobs_ids="%(input_jobs_ids)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' %
 			{
 				'input_jobs_ids':str([ input_job.id for input_job in self.input_jobs ]),
 				'job_id':self.job.id,
@@ -5220,7 +5235,7 @@ class AnalysisJob(CombineJob):
 
 
 ####################################################################
-# ElasticSearch DataTables connectors 							   #
+# ElasticSearch DataTables connectors 								 #
 ####################################################################
 
 class DTElasticFieldSearch(View):
@@ -5278,7 +5293,7 @@ class DTElasticFieldSearch(View):
 			'recordsFiltered': None,
 			'data': []
 		}
-		self.DToutput['draw'] = DTinput['draw']		
+		self.DToutput['draw'] = DTinput['draw']
 
 
 	def filter(self):
@@ -5313,9 +5328,9 @@ class DTElasticFieldSearch(View):
 			# filter query
 			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
 
-			if matches:				
+			if matches:
 				logger.debug('filtering to matches')
-				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))				
+				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
 			else:
 				# filter where filter_field == filter_value AND filter_field exists
 				logger.debug('filtering to non-matches')
@@ -5393,7 +5408,7 @@ class DTElasticFieldSearch(View):
 
 				if sort_dir == 'desc':
 					sort_field_string = "-%s" % sort_field_string
-				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))			
+				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))
 			else:
 				logger.debug("cannot sort by column %s" % sort_col)
 
@@ -5460,7 +5475,7 @@ class DTElasticFieldSearch(View):
 		# save parameters to self
 		self.request = request
 		self.es_index = es_index
-		self.DTinput = self.request.GET		
+		self.DTinput = self.request.GET
 
 		# time respond build
 		stime = time.time()
@@ -5606,7 +5621,7 @@ class DTElasticFieldSearch(View):
 		# paginate
 		self.paginate()
 
-		# loop through field values		
+		# loop through field values
 		for index, row in self.query_results.iterrows():
 
 			# iterate through columns and place in list
@@ -5684,7 +5699,7 @@ class DTElasticGenericSearch(View):
 		Returns:
 			None
 				- modifies self.query
-		'''		
+		'''
 
 		logger.debug('DTElasticGenericSearch: filtering')
 
@@ -5692,7 +5707,7 @@ class DTElasticGenericSearch(View):
 		search_term = self.request.GET.get('search[value]')
 
 		if search_term != '':
-			logger.debug('searching ES for: %s' % search_term)			
+			logger.debug('searching ES for: %s' % search_term)
 			self.query = self.query.query('match', _all="'%s'" % search_term.replace("'","\'"))
 
 
@@ -5756,7 +5771,7 @@ class DTElasticGenericSearch(View):
 	def get(self, request):
 
 		'''
-		Django Class-based view, GET request.		
+		Django Class-based view, GET request.
 
 		Args:
 			request (django.request): request object
@@ -5764,14 +5779,14 @@ class DTElasticGenericSearch(View):
 		'''
 
 		# save parameters to self
-		self.request = request		
+		self.request = request
 		self.DTinput = self.request.GET
 
 		# time respond build
 		stime = time.time()
 		
 		# execute search
-		self.search()		
+		self.search()
 
 		# end time
 		logger.debug('DTElasticGenericSearch: response time %s' % (time.time()-stime))
@@ -5830,7 +5845,7 @@ class DTElasticGenericSearch(View):
 				# add record lineage in front
 				row_data = self._prepare_record_hierarchy_links(record, row_data)
 
-				# add list to object			
+				# add list to object
 				self.DToutput['data'].append(row_data)
 			except Exception as e:
 				logger.debug("error retrieving DB record based on id %s, from index %s: %s" % (hit.db_id, hit.meta.index, str(e)))
@@ -5856,7 +5871,7 @@ class DTElasticGenericSearch(View):
 
 
 ####################################################################
-# Published Records Test Clients								   #
+# Published Records Test Clients									 #
 ####################################################################
 
 class CombineOAIClient(object):
@@ -5874,7 +5889,7 @@ class CombineOAIClient(object):
 		# NOTE: Currently Combine's OAI server does not support this, a nonfunctional default is provided
 		self.metadata_prefix = None
 
-		# save results from identify		
+		# save results from identify
 		self.identify = self.sickle.Identify()
 
 
@@ -5895,7 +5910,7 @@ class CombineOAIClient(object):
 				set_name = oai_set
 			
 			# return records filtered by set
-			return self.sickle.ListRecords(set=set_name, metadataPrefix=self.metadata_prefix)			
+			return self.sickle.ListRecords(set=set_name, metadataPrefix=self.metadata_prefix)
 
 		# no filter
 		return self.sickle.ListRecords(metadataPrefix=self.metadata_prefix)
@@ -5918,7 +5933,7 @@ class CombineOAIClient(object):
 				set_name = oai_set
 			
 			# return record identifiers filtered by set
-			return self.sickle.ListIdentifiers(set=set_name, metadataPrefix=self.metadata_prefix)			
+			return self.sickle.ListIdentifiers(set=set_name, metadataPrefix=self.metadata_prefix)
 
 		# no filter
 		return self.sickle.ListIdentifiers(metadataPrefix=self.metadata_prefix)
@@ -5943,7 +5958,7 @@ class CombineOAIClient(object):
 
 
 ####################################################################
-# Identifier Transformation Scenario							   #
+# Identifier Transformation Scenario								 #
 ####################################################################
 
 class RITSClient(object):
@@ -6048,7 +6063,7 @@ class RITSClient(object):
 		r_dict = {
 			'results':trans_result,
 			'success':True
-		}		
+		}
 		return r_dict
 
 
@@ -6063,13 +6078,13 @@ class RITSClient(object):
 
 
 ####################################################################
-# DPLA Service Hub and Bulk Data								   #
+# DPLA Service Hub and Bulk Data									 #
 ####################################################################
 
 class DPLABulkDataClient(object):
 
 	'''
-	Client to faciliate browsing, downloading, and indexing of bulk DPLA data	
+	Client to faciliate browsing, downloading, and indexing of bulk DPLA data
 
 	Args:
 		filepath (str): optional filepath for downloaded bulk data on disk
@@ -6078,8 +6093,8 @@ class DPLABulkDataClient(object):
 	def __init__(self):
 
 		self.service_hub_prefix = settings.SERVICE_HUB_PREFIX
-		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER		
-		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]		
+		self.combine_oai_identifier = settings.COMBINE_OAI_IDENTIFIER
+		self.bulk_dir = '%s/bulk' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
 
 		# ES
 		self.es_handle = es_handle
@@ -6103,12 +6118,12 @@ class DPLABulkDataClient(object):
 		Note: Move to background task...
 		'''
 
-		# create bulk directory if not already present		
+		# create bulk directory if not already present
 		if not os.path.exists(self.bulk_dir):
 			os.mkdir(self.bulk_dir)
 
 		# download
-		s3 = boto3.resource('s3')		
+		s3 = boto3.resource('s3')
 		download_results = self.dpla_bucket.download_file(object_key, filepath)
 
 		# return
@@ -6138,7 +6153,7 @@ class DPLABulkDataClient(object):
 
 		stime = time.time()
 
-		##  prepare index
+		##	prepare index
 
 		# get single, sample record to retrieve ES index name
 		# sample_record = self.get_sample_record(filepath)
@@ -6154,7 +6169,7 @@ class DPLABulkDataClient(object):
 		mapping = {
 			'mappings':{
 				'item':{
-					'date_detection':False					
+					'date_detection':False
 				}
 			}
 		}
@@ -6162,7 +6177,7 @@ class DPLABulkDataClient(object):
 		self.es_handle.indices.create(index_name, body=json.dumps(mapping))
 
 		# get instance of bulk reader
-		bulk_reader = self.get_bulk_reader(filepath)		
+		bulk_reader = self.get_bulk_reader(filepath)
 
 		# index using streaming
 		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
@@ -6187,7 +6202,7 @@ class DPLABulkDataClient(object):
 
 		stime = time.time()
 
-		# get and return list of all keys		
+		# get and return list of all keys
 		keys = []
 		for obj in self.dpla_bucket.objects.all():
 			key = {
@@ -6237,7 +6252,7 @@ class DPLABulkDataClient(object):
 		# set bulk data timestamp (when it was uploaded to S3 from DPLA)
 		dbdd.uploaded_timestamp = obj.last_modified
 
-		# save 
+		# save
 		dbdd.save()
 
 		# hand off to background tasks
@@ -6257,7 +6272,7 @@ class BulkDataJSONReader(object):
 
 	def __init__(self, input_file, compressed=True):
 
-		self.input_file = input_file		
+		self.input_file = input_file
 		self.compressed = compressed
 
 		# not compressed
@@ -6348,12 +6363,12 @@ class DPLARecord(object):
 			self.original_metadata = self.record['_source']['originalRecord']['metadata']
 		except:
 			self.original_metadata = False
-		self.metadata_string = str(self.original_metadata)		
+		self.metadata_string = str(self.original_metadata)
 
 		
 
 ####################################################################
-# OpenRefine Actions Client 									   #
+# OpenRefine Actions Client 										 #
 ####################################################################
 
 class OpenRefineActionsClient(object):

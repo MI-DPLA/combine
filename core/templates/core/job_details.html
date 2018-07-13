@@ -4,11 +4,11 @@
 {% load core_template_filters %}
 
 	<div class="row">
-		<div class="col-md-12">	
+		<div class="col-md-12">
 			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').fadeToggle();">Job Notes</button></h3>
 			<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 				<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-					{% csrf_token %}																		
+					{% csrf_token %}
 					<div class="form-group">
 						<label for="job_name">Enter new job name</label>
 						<input type="text" class="form-control" id="job_name" name="job_name" placeholder="Better Job Name">
@@ -22,7 +22,7 @@
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
 					
-					<div class="form-group">						
+					<div class="form-group">
 						<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
 					</div>
 					<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
@@ -37,19 +37,19 @@
 		<div class="col-md-12">
 			<div id="job_family_diagram_container">
 				<style type="text/css">
-					#job_family_diagram {				
-						height: 200px;				
+					#job_family_diagram {
+						height: 200px;
 					}
-				</style>		
+				</style>
 				<div id="job_family_diagram"></div>
 				<script type="text/javascript">
 
 					// parse job lineage json
-					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');										
+					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
 
 					// style nodes
 					$(job_lineage.nodes).each(function(){
-						styleNetworkNodes(this);						
+						styleNetworkNodes(this);
 					});
 
 					// style edges
@@ -86,7 +86,7 @@
 								direction: 'LR',        // UD, DU, LR, RL
 								sortMethod: 'directed'   // hubsize, directed
 							}
-						}			  	
+						}
 					};
 
 					// fire network
@@ -104,19 +104,19 @@
 		<div class="col-md-12">
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Job Name</th>					
+					<th>Job Name</th>
 					<th>Job Type</th>
 					<th>Total Input Records</th>
 					<th>Successfully Processed</th>
-					<th>Error in Processing</th>										
+					<th>Error in Processing</th>
 					<th>Failed Validation</th>
 				</tr>
 				<tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-					<td>{{ cjob.job.name }}</td>					
+					<td>{{ cjob.job.name }}</td>
 					<td>{{ cjob.job.job_type }}</td>
 					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 					<td>{{ record_count_details.records }}</td>
-					<td>{{ record_count_details.errors }}</td>					
+					<td>{{ record_count_details.errors }}</td>
 					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
 			</table>
@@ -134,7 +134,7 @@
 			</div> -->
 
 			<!-- Navigation -->
-			<ul id="tabs" class="nav nav-tabs">								
+			<ul id="tabs" class="nav nav-tabs">
 				<li class="nav-item">
 					<a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
 				</li>
@@ -146,9 +146,9 @@
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
-				</li>								
+				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>						
+					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif cjob.job.job_type_family == 'PublishJob' %}Publish Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
@@ -162,10 +162,10 @@
 			</ul>
 
 			<!-- Tabbed Content -->
-			<div class="tab-content">			
+			<div class="tab-content">
 
 				<div id="records_tab" class="tab-pane full_width_tab active">
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 							<!-- Indexing Records DT Table -->
 							{% include 'core/records_dt_table.html' %}
@@ -183,7 +183,7 @@
 							<p>The following Jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
 							<table class="table table-bordered table-hover">
 								<tr>
-									<th>Input Job Name</th>					
+									<th>Input Job Name</th>
 									<th>Job Type</th>
 									<th>Validity of Records Passed</th>
 									<th>Record Limit</th>
@@ -191,7 +191,7 @@
 								</tr>
 								{% for input_job in cjob.job.jobinput_set.all %}
 								<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>					
+									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 									<td>{{ input_job.input_job.job_type }}</td>
 									<td>{{ input_job.get_input_validity_valve_display }}</td>
 									<td>{{ input_job.input_numerical_valve }}</td>
@@ -219,7 +219,7 @@
 				<div id="validation_tab" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-12">
-							<h3>Validation Scenarios</h3>							
+							<h3>Validation Scenarios</h3>
 						</div>
 					</div>
 
@@ -231,14 +231,14 @@
 								<table class="table table-bordered table-hover">
 									<thead>
 										<tr>
-											<th>Validation Name</th>
+											<th>Validation</th>
 											<th>Validation Type</th>
 											<th>Record Validation Failure Count</th>
 											<th>Actions</th>
 										</tr>
 									</thead>
 									<tbody>
-										{% for jv in cjob.job.jobvalidation_set.all %}			
+										{% for jv in cjob.job.jobvalidation_set.all %}
 											<tr>
 												<td>{{ jv.validation_scenario.name }}</td>
 												<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
@@ -255,19 +255,19 @@
 										{% endfor %}
 									</tbody>
 								</table>
-								{% if cjob.job.validation_results.verdict == False %}							
+								{% if cjob.job.validation_results.verdict == False %}
 									<p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
 									{% endif %}
 
 							{% else %}
-								<p>No Validations have been run for this Job.</p>							
+								<p>No Validations have been run for this Job.</p>
 							{% endif %}
 						</div>
 
 					</div>
 
 					<div class="row">
-						<div class="col-md-12">							
+						<div class="col-md-12">
 							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job</button></a></p>
 						</div>
 					</div>
@@ -286,14 +286,14 @@
 								<thead>
 									<tr>
 										<th>Total Records for Job</th>
-										<th>Successfully Indexed</th>						
+										<th>Successfully Indexed</th>
 										<th>Actions</th>
 									</tr>
 								</thead>
 								<tbody>
 									<tr>
 										<td>{{ record_count_details.records }}</td>
-										<td>{{ field_counts.total_docs }}</td>						
+										<td>{{ field_counts.total_docs }}</td>
 										<td>
 											<ul class="list-inline">
 												<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
@@ -326,7 +326,7 @@
 			    							$("#jsoneditor").css('height','');
 			    						}
 			    						else {
-			    							$("#jsoneditor").css('height','450px');	
+			    							$("#jsoneditor").css('height','450px');
 			    						}
 			    					},
 			    					navigationBar:false
@@ -370,28 +370,28 @@
 							</div>
 						</div>
 
-						<!-- DataTable of DPLA Matches -->	
+						<!-- DataTable of DPLA Matches -->
 						<div class="row">
 							<div class="col-md-12">
 								<h4>Matches</h4>
 								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
-										<th>Record ID</th>										
+										<th>Record ID</th>
 									</thead>
 									<tbody></tbody>
 								</table>
 							</div>
 						</div>
 
-						<!-- DataTable of DPLA Misses -->	
+						<!-- DataTable of DPLA Misses -->
 						<div class="row">
 							<div class="col-md-12">
 								<h4>Misses</h4>
 								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
-										<th>Record ID</th>										
+										<th>Record ID</th>
 									</thead>
 									<tbody></tbody>
 								</table>
@@ -410,12 +410,12 @@
 							        "pageLength": 10,
 							        "order": [[ 1, "desc" ]],
 							        "columns": [
-							            { 
+							            {
 							            	title: "DB ID"
 						            	},
-							            { 
+							            {
 							            	title: "Record ID"
-							            }									            
+							            }
 							        ],
 							    });
 							});
@@ -430,12 +430,12 @@
 							        "pageLength": 10,
 							        "order": [[ 1, "desc" ]],
 							        "columns": [
-							            { 
+							            {
 							            	title: "DB ID"
 						            	},
-							            { 
+							            {
 							            	title: "Record ID"
-							            }									            
+							            }
 							        ],
 							    });
 							});
@@ -464,9 +464,9 @@
 									<p>No additional information at this time for Harvest jobs.</p>
 								{% endif %}
 
-								<!-- TransformJob -->			
-								{% if cjob.job.job_type_family == 'TransformJob' %}									
-									<p>See below for a table of all records that were altered in some way during this Transform Job.  Click into a Record and then click the tab <strong>"Transform Details"</strong> to view detailed changes for that Record.</p>									
+								<!-- TransformJob -->
+								{% if cjob.job.job_type_family == 'TransformJob' %}
+									<p>See below for a table of all records that were altered in some way during this Transform Job.  Click into a Record and then click the tab <strong>"Transform Details"</strong> to view detailed changes for that Record.</p>
 
 									<!-- Record Diff table -->
 									<table id='job_record_diffs' class="table table-bordered table-hover dt_table">
@@ -488,12 +488,12 @@
 										        "pageLength": 10,
 										        "order": [[ 1, "desc" ]],
 										        "columns": [
-										            { 
+										            {
 										            	title: "DB ID"
 									            	},
-										            { 
+										            {
 										            	title: "Record ID"
-										            }									            
+										            }
 										        ],
 										    });
 										});
@@ -523,7 +523,7 @@
 				</div>
 
 				<div id="export_tab" class="tab-pane full_width_tab">
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 
 							<p>Jobs may be exported in two ways (<a href="https://combine.readthedocs.io/en/master/workflow.html#export">see documentation for more information</a>):
@@ -540,19 +540,19 @@
 								</button>
 							</div>
 							
-							<ul id="export_tabs" class="nav nav-tabs">								
+							<ul id="export_tabs" class="nav nav-tabs">
 								<li class="nav-item">
 									<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
 								</li>
 								<li class="nav-item">
 									<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
-								</li>								
+								</li>
 							</ul>
 
-							<div class="tab-content">			
+							<div class="tab-content">
 
 								<div id="export_mapped_fields" class="tab-pane full_width_tab">
-									<div class="row">		
+									<div class="row">
 										<div class="col-md-12">
 
 											<!-- form for Job mapped fields export -->
@@ -582,21 +582,21 @@
 														<select class="form-control" id="archive_type" name="archive_type" required>
 															<option value="none">Uncompressed CSV file</option>
 															<option value="zip">Compressed Zip file</option>
-															<option value="targz">Compressed Tar file</option>														
+															<option value="targz">Compressed Tar file</option>
 														</select>
 													</div>
 												</div>
 
 												<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
 												<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
-												<div id="mapped_fields" style="display:none;">													
+												<div id="mapped_fields" style="display:none;">
 													<p><button type="button" class="btn btn-primary btn-sm" onclick="return false;" id="select_all_fields">Toggle all fields</button></p>
 													<table id="mapped_field_export_select" class="table table-bordered table-hover">
 														<thead>
 															<tr>
 																<th>Field Name</th>
 																{% if cjob %}
-																	<th>DPLA Mapped Field</th>						
+																	<th>DPLA Mapped Field</th>
 																{% endif %}
 																<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
 																<th>Documents without</th>
@@ -654,8 +654,8 @@
 													    });
 
 													    // listener for checkboxes
-													    $("#select_all_fields").click(function(){			    	
-														    cells = mapped_field_export_select_table.cells().nodes();						    
+													    $("#select_all_fields").click(function(){
+														    cells = mapped_field_export_select_table.cells().nodes();
 														    $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
 													    });
 
@@ -698,7 +698,7 @@
 								</div>
 
 								<div id="export_documents" class="tab-pane full_width_tab active">
-									<div class="row">		
+									<div class="row">
 										<div class="col-md-6">
 											<!-- form for Job mapped fields export -->
 											<form method="POST" action="{% url 'job_export_documents' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
@@ -734,7 +734,7 @@
 				</div>
 
 				<div id="spark_details_tab" class="tab-pane full_width_tab">
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 							<ul class="list-inline">
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy GUI</button></a></li>
@@ -743,7 +743,7 @@
 							</ul>
 						</div>
 					</div>
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 							<h4>Spark Jobs/Tasks Run</h4>
 							{% if cjob.job.get_spark_jobs %}
@@ -779,7 +779,7 @@
 							{% endif %}
 						</div>
 					</div>
-					<div class="row">		
+					<div class="row">
 						<div class="col-md-12">
 							<h4>Livy Statement Information</h4>
 							<div id="livy_statement" style="height:450px;"></div>
@@ -796,7 +796,7 @@
 			    							$("#livy_statement").css('height','');
 			    						}
 			    						else {
-			    							$("#livy_statement").css('height','450px');	
+			    							$("#livy_statement").css('height','450px');
 			    						}
 			    					},
 			    					navigationBar:false
