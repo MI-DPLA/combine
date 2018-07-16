@@ -14,12 +14,12 @@
 						<option value="default">Default</option>
 						{% for fm in field_mappers %}
 							<option value='{{ fm.id }}'>{{ fm.name }}</option>
-						{% endfor %}					
+						{% endfor %}
 					</select>
 				</div>
 
 				<!-- hidden textarea for JSON to submit with form -->
-				<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_config_json" id="fm_config_json"></textarea>					
+				<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_config_json" id="fm_config_json"></textarea>
 
 				<!-- visible JSON editor -->
 				<div id="jsoneditor" style="height:450px;"></div>
@@ -108,8 +108,8 @@
 			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
 			        		// show update button
 			        		$(".pre_fm_config_options").show();
-						}			
-					});	
+						}
+					});
 				}
 
 				else if (this.value == 'job_fm_config_json'){
@@ -179,11 +179,19 @@
 						</button>
 					</div>`
 					$("#fm_config_alerts").append(alert);
-					$(".expiring").fadeTo(2500, 500).fadeOut(500, function(){
-					    $(".expiring").fadeOut(500);
-					});
-				}			
-			});	
+				},
+				error: function(data){
+					
+					// notify user
+					alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+						${data.responseJSON.msg}
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>`
+					$("#fm_config_alerts").append(alert);
+				}
+			});
 			
 		}
 

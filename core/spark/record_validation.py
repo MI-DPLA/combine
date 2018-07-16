@@ -1,5 +1,6 @@
 # imports
 import django
+from functools import reduce
 import hashlib
 from inspect import isfunction, signature
 import json
@@ -12,6 +13,7 @@ from types import ModuleType
 # import Row from pyspark
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
+import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf
 
 # import from core.spark
@@ -100,6 +102,10 @@ class ValidationScenarioSpark(object):
 			# python based validation scenario
 			elif vs.validation_type == 'python':
 				validation_fails_rdd = self._python_validation(vs, vs_id, vs_filepath)
+
+			# ElasticSearch DSL query based validation scenario
+			elif vs.validation_type == 'es_query':
+				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_filepath)
 
 			# finally, write to DB if validation failures
 			if not validation_fails_rdd.isEmpty():
@@ -255,11 +261,75 @@ class ValidationScenarioSpark(object):
 		return validation_fails_rdd
 
 
+	def _es_query_validation(self, vs, vs_id, vs_filepath):
 
+		self.logger.info('running es_query validation: %s' % vs.name)
 
+		# set es index
+		# TODO: how handle published Jobs?
+		es_index = 'j%s' % self.job.id
 
+		# loads validation payload as dictionary
+		validations = json.loads(vs.payload)
 
+		# failure dfs
+		fail_dfs = []
+		
+		# loop through validations
+		for v in validations:
 
+			# prepare query
+			es_val_query = json.dumps(v['es_query'])
+
+			# perform es query
+			es_rdd = self.spark.sparkContext.newAPIHadoopRDD(
+				inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+				keyClass="org.apache.hadoop.io.NullWritable",
+				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+				conf={
+						"es.resource":"%s/record" % es_index,
+						"es.query":es_val_query,
+						"es.read.field.include":"db_id"
+					}
+				)
+
+			# if query is not empty
+			if not es_rdd.isEmpty():
+
+				es_df = es_rdd.map(lambda row: (row[1]['db_id'], )).toDF()
+
+				# perform joins
+				# if a match is valid, report all the others that didn't match
+				if v['matches'] == 'valid':
+					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftanti').select('id')
+				
+				# if a match is invalid, report these
+				elif v['matches'] == 'invalid':
+					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftsemi').select('id')
+
+				# add columns
+				fail_df = fail_df.withColumn('failed', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
+				fail_df = fail_df.withColumn('fail_count', pyspark_sql_functions.lit(1))
+
+				# append to validations dictionary
+				fail_dfs.append(fail_df)
+
+		# merge and format
+		new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
+			.select("id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
+			.groupBy("id")\
+			.agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"), pyspark_sql_functions.sum("fail_count").alias("fail_count"))\
+			.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
+
+		# write return failures as validation_fails_rdd
+		validation_fails_rdd = new_df.rdd.map(lambda row: Row(
+			record_id=int(row.id),
+			validation_scenario_id=int(vs_id),
+			valid=0,
+			results_payload=row.data,
+			fail_count=int(row['fail_count']))
+		)
+		return validation_fails_rdd
 
 
 
