@@ -178,11 +178,11 @@ In many if not most cases, XSLT will fit the bill and provide the needed transfo
 Validation Scenario
 ===================
 
-Validation Scenarios are by which Records in Combine are validated against.  Similar to Transformation Scenarios outlined above, they currently accept two formats: Schematron and python code snippets.  Each Validation Scenario requires the following fields:
+Validation Scenarios are by which Records in Combine are validated against.  Validation Scenarios may be written in the following formats: Schematron, Python code snippets, and ElasticSearch DSL queries.  Each Validation Scenario requires the following fields:
 
   - ``Name`` - human readable name for Validation Scenario
   - ``Payload`` - pasted Schematron or python code
-  - ``Validation type`` - ``sch`` for Schematron, or ``python`` for python code snippet
+  - ``Validation type`` - ``sch`` for Schematron, ``python`` for python code snippets, or ``es_query`` for ElasticSearch DSL query type validations
   - ``Filepath`` - *This may be ignored* (in some cases, validation payloads were written to disk to be used, but likely deprecated moving forward)
   - ``Default run`` - if checked, this Validation Scenario will be automatically checked when running a new Job
 
@@ -192,7 +192,7 @@ Validation Scenarios are by which Records in Combine are validated against.  Sim
 
    Adding Validation Scenario in Django admin
 
-When running a Job, **multiple** Validation Scenarios may be applied to the Job, each of which will run for every Record.  Validation Scenarios -- Schematron or python code snippets -- may include multiple tests or "rules" with a single scenario.  So, for example, ``Validation A`` may contain ``Test 1`` and ``Test 2``.  If run for a Job, and ``Record Foo`` fails ``Test 2`` for the ``Validation A``, the results will show the failure for that Validation Scenario as a whole.  
+When running a Job, **multiple** Validation Scenarios may be applied to the Job, each of which will run for every Record.  Validation Scenarios may include multiple tests or "rules" with a single scenario.  So, for example, ``Validation A`` may contain ``Test 1`` and ``Test 2``.  If run for a Job, and ``Record Foo`` fails ``Test 2`` for the ``Validation A``, the results will show the failure for that Validation Scenario as a whole.  
 
 When thinking about creating Validation Scenarios, there is flexibility in how many tests to put in a single Validation Scenario, versus splitting up those tests between distinct Validation Scenarios, recalling that **multiple** Validation Scenarios may be run for a single Job.  It is worth pointing out, multiple Validation Scenarios for a Job will likely degrade performance *more* than a multiple tests within a single Scenario, though this has not been testing thoroughly, just speculation based on how Records are passed to Validation Scenarios in Spark in Combine.
 
@@ -307,6 +307,52 @@ An example of an arbitrary Validation Scenario that looks for MODS titles longer
 
     def another_function();
       pass
+
+
+ElasticSearch DSL query
+-----------------------
+
+ElasticSearch DSL query type Validations Scenarios are a bit different.  Instead of validating the document for a Record, ElasticSearch DSL validations validate by performing ElasticSearch queries against mapped fields for a Job, and marking Records as valid or invalid based on whether they are matches for those queries.
+
+These queries may be written such that Records matches are **valid**, or they may be written where matches are **invalid**.  
+
+An example structure of an ElasticSearch DSL query might like the following:
+
+.. code-block:: json
+
+    [
+      {
+        "test_name": "field foo exists",
+        "matches": "valid",
+        "es_query": {
+          "query": {
+            "exists": {
+              "field": "foo"
+            }
+          }
+        }
+      },
+      {
+        "test_name": "field bar does NOT have value 'baz'",
+        "matches": "invalid",
+        "es_query": {
+          "query": {
+            "match": {
+              "bar.keyword": "baz"
+            }
+          }
+        }
+      }
+    ]
+
+This example contains **two** tests in a single Validation Scenario: checking for field ``foo``, and checking that field ``bar`` does *not* have value ``baz``.  Each test must contain the following properties:
+
+  - ``test_name``: name that will be returned in the validation reporting for failures
+  - ``matches``: the string ``valid`` if matches to the query can be consider valid, or ``invalid`` if query matches should be considered invalid
+  - ``es_query``: the raw, ElasticSearch DSL query
+
+
+ElasticSearch DSL queries can be quite complex, resulting in a rich and powerful way to identify Records of interest.  
 
 
 Record Identifier Transformation Scenario
