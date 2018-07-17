@@ -414,19 +414,21 @@ class XML2kvp(object):
 			slen = len(k_list)
 
 			# loop through copy_to_regex
-			for rk, rv in self.copy_to_regex.items():
+			for rk, rv in self.copy_to_regex.items():				
 
-				# if target False, keep False
+				# if False, check for match and remove				
 				if rv == False:
-					k_list.append(False)
+					if re.match(rk, k):
+						k_list.append(False)
 
 				# attempt sub
-				try:
-					sub = re.sub(rk, rv, k)
-					if sub != k:						
-						k_list.append(sub)
-				except:
-					pass
+				else:					
+					try:
+						sub = re.sub(rk, rv, k)
+						if sub != k:
+							k_list.append(sub)
+					except:
+						pass
 
 			if self.remove_copied_key:
 				if slen != len(k_list) and k in k_list:
