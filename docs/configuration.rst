@@ -316,7 +316,7 @@ ElasticSearch DSL query type Validations Scenarios are a bit different.  Instead
 
 These queries may be written such that Records matches are **valid**, or they may be written where matches are **invalid**.  
 
-An example structure of an ElasticSearch DSL query might like the following:
+An example structure of an ElasticSearch DSL query might look like the following:
 
 .. code-block:: json
 
@@ -352,7 +352,7 @@ This example contains **two** tests in a single Validation Scenario: checking fo
   - ``es_query``: the raw, ElasticSearch DSL query
 
 
-ElasticSearch DSL queries can be quite complex, resulting in a rich and powerful way to identify Records of interest.  
+ElasticSearch DSL queries can support complex querying (boolean, and/or, fuzzy, regex, etc.), resulting in an additional, rich and powerful way to validate Records.
 
 
 Record Identifier Transformation Scenario

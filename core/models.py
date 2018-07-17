@@ -955,7 +955,7 @@ class Job(models.Model):
 	def validation_results(self):
 
 		'''
-		Method to return boolean whether job passes all/any validation tests run
+		Method to return boolean whether job passes all/any validation tests run		
 
 		Args:
 			None
@@ -963,7 +963,7 @@ class Job(models.Model):
 		Returns:
 			(dict):
 				verdict (boolean): True if all tests passed, or no tests performed, False is any fail
-				failure_count (int): Total number of validation failures
+				failure_count (int): Total number of distinct Records with 1+ validation failures
 				validation_scenarios (list): QuerySet of associated JobValidation
 		'''
 
@@ -982,14 +982,8 @@ class Job(models.Model):
 		# validation tests run, loop through
 		else:
 
-			# bump failure count
-			for jv in self.jobvalidation_set.all():
-
-				# update validation failure count
-				failure_count = jv.validation_failure_count()
-
-				if failure_count:
-					results['failure_count'] += failure_count
+			# determine total number of distinct Records with 1+ validation failures
+			results['failure_count'] = RecordValidation.objects.filter(record__job=self).values('record').annotate(record_count=Count('record')).count()
 
 			# if failures found
 			if results['failure_count'] > 0:

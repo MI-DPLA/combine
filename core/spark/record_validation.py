@@ -108,7 +108,7 @@ class ValidationScenarioSpark(object):
 				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_filepath)
 
 			# finally, write to DB if validation failures
-			if not validation_fails_rdd.isEmpty():
+			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
 				validation_fails_rdd.toDF().write.jdbc(
 					settings.COMBINE_DATABASE['jdbc_url'],
 					'core_recordvalidation',
@@ -291,45 +291,64 @@ class ValidationScenarioSpark(object):
 						"es.query":es_val_query,
 						"es.read.field.include":"db_id"
 					}
-				)
+				)			
 
-			# if query is not empty
+			# if query is not empty, map to DataFrame
 			if not es_rdd.isEmpty():
-
 				es_df = es_rdd.map(lambda row: (row[1]['db_id'], )).toDF()
 
-				# perform joins
-				# if a match is valid, report all the others that didn't match
-				if v['matches'] == 'valid':
-					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftanti').select('id')
+			# handle validity matching			
+			# if a match is valid, report all Records that don't match
+			if v['matches'] == 'valid':
+
+				# if empty, assume all Records in Job are invalid
+				if es_rdd.isEmpty():
+					fail_df = self.records_df.select('id')
 				
-				# if a match is invalid, report these
-				elif v['matches'] == 'invalid':
+				# else, perform join
+				else:				
+					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftanti').select('id')
+			
+			# if a match is invalid, report all Records that match
+			elif v['matches'] == 'invalid':
+
+				# if empty, nothing to report, return None				
+				if es_rdd.isEmpty():
+					return None
+
+				# else, perform join
+				else:
 					fail_df = self.records_df.join(es_df, self.records_df['id'] == es_df['_1'], 'leftsemi').select('id')
 
-				# add columns
-				fail_df = fail_df.withColumn('failed', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
-				fail_df = fail_df.withColumn('fail_count', pyspark_sql_functions.lit(1))
+			# add columns to df to return
+			fail_df = fail_df.withColumn('failed', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
+			fail_df = fail_df.withColumn('fail_count', pyspark_sql_functions.lit(1))
 
-				# append to validations dictionary
-				fail_dfs.append(fail_df)
+			# append to validations dictionary
+			fail_dfs.append(fail_df)
 
-		# merge and format
-		new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
-			.select("id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
-			.groupBy("id")\
-			.agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"), pyspark_sql_functions.sum("fail_count").alias("fail_count"))\
-			.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
+		# if dataframes to reduce and return, perform
+		if len(fail_dfs) > 0:
 
-		# write return failures as validation_fails_rdd
-		validation_fails_rdd = new_df.rdd.map(lambda row: Row(
-			record_id=int(row.id),
-			validation_scenario_id=int(vs_id),
-			valid=0,
-			results_payload=row.data,
-			fail_count=int(row['fail_count']))
-		)
-		return validation_fails_rdd
+			# merge and format
+			new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
+				.select("id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
+				.groupBy("id")\
+				.agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"), pyspark_sql_functions.sum("fail_count").alias("fail_count"))\
+				.select("id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
+
+			# write return failures as validation_fails_rdd
+			validation_fails_rdd = new_df.rdd.map(lambda row: Row(
+				record_id=int(row.id),
+				validation_scenario_id=int(vs_id),
+				valid=0,
+				results_payload=row.data,
+				fail_count=int(row['fail_count']))
+			)
+			return validation_fails_rdd
+
+		else:
+			return None
 
 
 

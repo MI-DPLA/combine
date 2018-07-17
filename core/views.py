@@ -3347,7 +3347,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 			# determine record link
 			target_record = row.record
-			record_link = reverse(record, kwargs={
+			record_link = "%s#validation_tab" % reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
 					'job_id':target_record.job.id,
