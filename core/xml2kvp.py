@@ -148,7 +148,7 @@ class XML2kvp(object):
 				"type": "boolean"
 			},
 			"remove_ns_prefix": {
-				"description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if False, XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will result in field name 'foo_bar' without 'ns' prefix [Default: false]",
+				"description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if False, XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will result in field name 'foo_bar' without 'ns' prefix [Default: true]",
 				"type": "boolean"
 			},
 			"self_describing": {
@@ -205,7 +205,7 @@ class XML2kvp(object):
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
 		self.remove_copied_value=False
-		self.remove_ns_prefix=False
+		self.remove_ns_prefix=True
 		self.self_describing=False
 		self.split_values_on_all_fields=False
 		self.split_values_on_fields={}
