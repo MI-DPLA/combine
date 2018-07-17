@@ -4,6 +4,7 @@ from collections import OrderedDict
 import json
 from lxml import etree
 import logging
+import pdb
 from pprint import pprint, pformat
 import re
 import time
@@ -86,6 +87,10 @@ class XML2kvp(object):
 			"add_literals": {
 				"description":"Key/value pairs for literals to mixin, e.g. 'foo':'bar' would create field 'foo' with value 'bar' [Default: {}]",				
 				"type": "object"
+			},
+			"capture_attribute_values": {
+				"description": "Array of attributes to capture values from and set as standalone field, e.g. if ['age'] is provided and encounters <foo age='42'/>, a field 'foo_@age@' would be created (note the additional trailing '@' to indicate an attribute value) with the value '42'. [Default: [], Before: copy_to, copy_to_regex]",
+				"type": "array"
 			},
 			"concat_values_on_all_fields": {
 				"description": "Boolean or String to join all values from multivalued field on [Default: false]",
@@ -189,6 +194,7 @@ class XML2kvp(object):
 		# defaults, overwritten by methods
 		self.add_literals={}
 		self.as_tuples=True
+		self.capture_attribute_values=[]
 		self.concat_values_on_all_fields=False
 		self.concat_values_on_fields={}
 		self.copy_to={}
@@ -236,6 +242,7 @@ class XML2kvp(object):
 
 		config_dict = { k:v for k,v in self.__dict__.items() if k in [
 			'add_literals',
+			'capture_attribute_values',
 			'concat_values_on_all_fields',
 			'concat_values_on_fields',
 			'copy_to',
@@ -274,8 +281,16 @@ class XML2kvp(object):
 
 				else:				
 					if k.startswith('@'):
+
+						# handle capture_attribute_values
+						if len(self.capture_attribute_values) > 0 and k.lstrip('@') in self.capture_attribute_values:							
+							temp_hops = hops.copy()
+							temp_hops.append("%s@" % k)
+							self._process_kvp(temp_hops, v)
+
 						if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
 							hops = self._format_and_append_hop(hops, 'attribute', k, v)
+
 					else:
 						hops = self._format_and_append_hop(hops, 'element', k, None)
 
