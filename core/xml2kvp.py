@@ -101,11 +101,11 @@ class XML2kvp(object):
 				"type": "object"
 			},
 			"copy_to": {
-				"description": "Key/value pairs to copy one field to another, e.g. 'foo':'bar' would create field 'bar' and copy all values when encountered for 'foo' to 'bar' [Default: {}}]",
+				"description": "Key/value pairs to copy one field to another, e.g. 'foo':'bar' would create field 'bar' and copy all values when encountered for 'foo' to 'bar'.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':false, would remove field 'foo' [Default: {}}]",
 				"type": "object"
 			},
 			"copy_to_regex": {
-				"description": "Key/value pairs to copy one field to another based on regex match of field, e.g. '.*foo':'bar' would copy create field 'bar' and copy all values fields 'goober_foo' and 'tronic_foo' to 'bar' [Default: {}]",
+				"description": "Key/value pairs to copy one field to another based on regex match of field, e.g. '.*foo':'bar' would copy create field 'bar' and copy all values fields 'goober_foo' and 'tronic_foo' to 'bar'.  Note: Can also be used to remove fields by setting the target field as false, e.g. '.*bar':false, would remove fields matching regex '.*bar' [Default: {}]",
 				"type": "object"
 			},
 			"copy_value_to_regex": {
@@ -416,10 +416,14 @@ class XML2kvp(object):
 			# loop through copy_to_regex
 			for rk, rv in self.copy_to_regex.items():
 
+				# if target False, keep False
+				if rv == False:
+					k_list.append(False)
+
 				# attempt sub
 				try:
 					sub = re.sub(rk, rv, k)
-					if sub != k:
+					if sub != k:						
 						k_list.append(sub)
 				except:
 					pass
@@ -451,8 +455,12 @@ class XML2kvp(object):
 		# loop through keys
 		for k in k_list:
 
+			# if k is false, treat like /dev/null
+			if k == False:
+				pass
+
 			# new key, new value
-			if k not in self.kvp_dict.keys():
+			elif k not in self.kvp_dict.keys():
 				self.kvp_dict[k] = value
 
 			# pre-existing, but not yet list, convert
