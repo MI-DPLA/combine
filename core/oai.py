@@ -183,14 +183,14 @@ class OAIProvider(object):
 			self.verb_node.append(oai_record_node)
 
 		# finally, set resumption token
-		self.set_resumption_token()
+		self.set_resumption_token(completeListSize=records.count())
 
 		# report
 		etime = time.time()
 		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
 
-	def set_resumption_token(self):
+	def set_resumption_token(self, completeListSize=None):
 
 		'''
 		Set resumption tokens in DB under OAITransaction model
@@ -223,7 +223,7 @@ class OAIProvider(object):
 			self.resumptionToken_node = etree.Element('resumptionToken')
 			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600))\
 			.strftime('%Y-%m-%dT%H:%M:%SZ')
-			self.resumptionToken_node.attrib['completeListSize'] = str(self.published.records.count())
+			self.resumptionToken_node.attrib['completeListSize'] = str(completeListSize)
 			self.resumptionToken_node.attrib['cursor'] = str(self.start)
 			self.resumptionToken_node.text = token
 			self.verb_node.append(self.resumptionToken_node)

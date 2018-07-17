@@ -672,11 +672,14 @@ def job_details(request, org_id, record_group_id, job_id):
 	q = request.GET.get('q', None)
 
 	# retrieve field mapper config json used
-	try:
-		job_details = json.loads(cjob.job.job_details)
-		job_fm_config_json = job_details['fm_config_json']
-	except:
-		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+	if type(cjob) != models.PublishJob:
+		try:
+			job_details = json.loads(cjob.job.job_details)
+			job_fm_config_json = job_details['fm_config_json']
+		except:
+			job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+	else:
+		job_fm_config_json = json.dumps({'info':'PublishJob: mapped fields were copied from input Job'})
 
 	# return
 	return render(request, 'core/job_details.html', {
