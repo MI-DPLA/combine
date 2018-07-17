@@ -813,10 +813,10 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				return Row(
 					record_id = record_id,
 					document = etree.tostring(xml_root).decode('utf-8'),
-					error = str(e),
+					error = "AmbiguousIdentifier: %s" % str(e),
 					job_id = int(job_id),
 					oai_set = '',
-					success = 0
+					success = 1
 				)
 
 			# handle all other exceptions
