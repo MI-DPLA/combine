@@ -1315,10 +1315,8 @@ class Transformation(models.Model):
 				if event['op'] == 'core/mass-edit':
 
 					# get xpath
-					xpath = XML2kvp.k_to_xpath(
-						event['columnName'],
-						node_delim='___',
-						ns_prefix_delim='|')
+					xpath = XML2kvp.k_to_xpath(event['columnName'])
+					logger.debug("using xpath value: %s" % xpath)
 					
 					# find elements for potential edits
 					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1347,10 +1345,8 @@ class Transformation(models.Model):
 					exec(code, temp_pyts.__dict__)
 
 					# get xpath
-					xpath = XML2kvp.k_to_xpath(
-						event['columnName'],
-						node_delim='___',
-						ns_prefix_delim='|')
+					xpath = XML2kvp.k_to_xpath(event['columnName'])
+					logger.debug("using xpath value: %s" % xpath)
 					
 					# find elements for potential edits
 					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)

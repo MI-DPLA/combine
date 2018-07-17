@@ -49,6 +49,10 @@ from django.db import connection
 # import select models from Core
 from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
+# import xml2kvp
+from core.xml2kvp import XML2kvp
+
+
 
 
 ####################################################################
@@ -926,7 +930,13 @@ class TransformSpark(CombineSparkJob):
 
 		# if OpenRefine type transformation
 		if transformation.transformation_type == 'openrefine':
-			records_trans = self.transform_openrefineactions(transformation, records)
+
+			# get XML2kvp settings from input Job
+			input_job_details = json.loads(input_job.job_details)
+			input_job_fm_config = json.loads(input_job_details['fm_config_json'])
+
+			# pass config json
+			records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
@@ -1078,7 +1088,7 @@ class TransformSpark(CombineSparkJob):
 		return records_trans
 
 
-	def transform_openrefineactions(self, transformation, records):
+	def transform_openrefineactions(self, transformation, records, input_job_fm_config):
 
 		'''
 		Transform records per OpenRefine Actions JSON		
@@ -1093,65 +1103,6 @@ class TransformSpark(CombineSparkJob):
 		Return:
 			records_trans (rdd): transformed records as RDD
 		'''
-
-		def _field_name_to_xpath(field_name):
-
-			'''
-			TODO: This can be updated to use XML2kvp
-			'''
-
-			# for each column, reconstitue columnName --> XPath				
-			field_parts = field_name.split('_')[1:] # skip root element
-
-			# loop through pieces and build xpath
-			on_attrib = False
-			xpath = '/' # begin with single slash, will get appended to
-
-			for part in field_parts:
-
-				# if not attribute, assume node hop
-				if not part.startswith('@'):
-
-					# handle closing attrib if present
-					if on_attrib:
-						xpath += ']/'
-
-					# close previous element
-					else:
-						xpath += '/'
-				
-					# replace pipe with colon for prefix
-					part = part.replace('|',':')
-
-					# append to xpath string
-					xpath += '%s' % part
-
-				# if attribute, assume part of previous element and build
-				else:
-
-					# handle attribute
-					attrib, value = part.split('=')
-
-					# if not on_attrib, open xpath for attribute inclusion
-					if not on_attrib:
-						xpath += "[%s='%s'" % (attrib, value)
-
-					# else, currently in attribute write block, continue
-					else:
-						xpath += " and %s='%s'" % (attrib, value)
-
-					# set on_attrib flag for followup
-					on_attrib = True
-
-			# cleanup after loop
-			if on_attrib:
-
-				# close attrib brackets
-				xpath += ']'
-
-			# return 
-			return xpath
-
 
 		# define udf function for python transformation	
 		def transform_openrefine_pt_udf(pt):
@@ -1174,7 +1125,7 @@ class TransformSpark(CombineSparkJob):
 						if event['op'] == 'core/mass-edit':
 
 							# for each column, reconstitue columnName --> XPath	
-							xpath = _field_name_to_xpath(event['columnName'])
+							xpath = XML2kvp.k_to_xpath(event['columnName'], **input_job_fm_config)
 							
 							# find elements for potential edits
 							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1203,7 +1154,7 @@ class TransformSpark(CombineSparkJob):
 							exec(code, temp_pyts.__dict__)
 
 							# get xpath (unique to action, can't pre learn)
-							xpath = _field_name_to_xpath(event['columnName'])
+							xpath = XML2kvp.k_to_xpath(event['columnName'], **input_job_fm_config)
 							
 							# find elements for potential edits
 							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1235,7 +1186,7 @@ class TransformSpark(CombineSparkJob):
 
 		# transform via rdd.mapPartitions and return
 		job_id = self.job.id			
-		or_actions_json = transformation.payload
+		or_actions_json = transformation.payload		
 		records_trans = records.rdd.mapPartitions(transform_openrefine_pt_udf)
 		return records_trans
 
