@@ -1405,6 +1405,7 @@ class Record(models.Model):
 	oai_set = models.CharField(max_length=255, null=True, default=None)
 	success = models.BooleanField(default=1)
 	published = models.BooleanField(default=0)
+	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
 	valid = models.BooleanField(default=1)
 	fingerprint = models.IntegerField(null=True, default=None)
 	transformed = models.BooleanField(default=0)
@@ -3769,20 +3770,31 @@ class PublishedRecords(object):
 		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
-	def set_published_field(self, job_id=None):
+	def set_published_field(self, job_id=None, publish_set_id=None):
 
 		'''
 		Method to set 'published' for all Records with Publish Job parent
 		'''
 
-		to_set_published = Record.objects.filter(job__job_type='PublishJob')
+		# set publish_set_id
+		if publish_set_id:
+			publish_set_id_q = "publish_set_id='%s'," % publish_set_id		
+		else:
+			publish_set_id_q = ''
 
-		# if job_id
+		# limit by job
 		if job_id:
-			to_set_published.filter(job__id=job_id)
+			job_id_q = "WHERE job_id = %s" % job_id
+		else:
+			job_id_q = ''
 
-		# update
-		to_set_published.update(published=True)
+		# build query
+		query = "UPDATE core_record SET %s published = 1 %s;" % (publish_set_id_q, job_id_q)
+
+		# execute query
+		stime = time.time()
+		with connection.cursor() as cursor:
+			query_results = cursor.execute(query)
 
 
 	@staticmethod

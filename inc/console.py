@@ -1,5 +1,6 @@
 # convenience methods for Django's shell_plus
 
+import os
 from core.models import *
 
 
@@ -28,3 +29,12 @@ def get_rg(id):
 def get_o(id):
 	return Organization.objects.get(pk=int(id))
 
+
+# tail livy
+def tail_livy():
+	os.system('tail -f /var/log/livy/livy.stderr')
+
+
+# tail django
+def tail_bg():
+	os.system('tail -f /var/log/combine_background_tasks.stdout')

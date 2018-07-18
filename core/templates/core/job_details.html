@@ -737,7 +737,8 @@
 					<div class="row">
 						<div class="col-md-12">
 							<ul class="list-inline">
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs</button></a></li>
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI</button></a></li>
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI</button></a></li>
 							</ul>

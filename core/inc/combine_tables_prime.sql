@@ -21,6 +21,7 @@ CREATE TABLE `core_record` (
   `unique_published` tinyint(1) DEFAULT NULL,
   `job_id` int(11) NOT NULL,
   `published` tinyint(1) DEFAULT 0,
+  `publish_set_id` varchar(128) DEFAULT NULL,
   `oai_set` varchar(255) DEFAULT NULL,
   `success` tinyint(1) DEFAULT 1,
   `valid` tinyint(1) DEFAULT 1,

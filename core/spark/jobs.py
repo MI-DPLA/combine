@@ -242,8 +242,8 @@ class CombineSparkJob(object):
 				vs.run_record_validation_scenarios()
 
 			# update `valid` column for Records based on results of ValidationScenarios
-			cursor = connection.cursor()
-			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+			with connection.cursor() as cursor:
+				query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 
 			# run comparison against bulk data if provided
 			db_records = self.bulk_data_compare(db_records)
@@ -1410,9 +1410,10 @@ class PublishSpark(CombineSparkJob):
 		# get PublishedRecords handle
 		pr = PublishedRecords()
 
-		# set records from job as published		
+		# set records from job as published and set publish_set_id
 		job_id = self.job.id
-		pr.set_published_field(job_id)
+		publish_set_id = self.job.record_group.publish_set_id
+		pr.set_published_field(job_id, publish_set_id)
 
 		# update uniqueness of all published records
 		pr.update_published_uniqueness()
@@ -1556,8 +1557,8 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 		# update `valid` column for Records based on results of ValidationScenarios
 		self.logger.info('Updating Records with validation results via MySQL cursor execution')
-		cursor = connection.cursor()
-		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+		with connection.cursor() as cursor:
+			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 
 
 
