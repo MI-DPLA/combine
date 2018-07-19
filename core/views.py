@@ -681,6 +681,34 @@ def job_details(request, org_id, record_group_id, job_id):
 	else:
 		job_fm_config_json = json.dumps({'info':'PublishJob: mapped fields were copied from input Job'})
 
+	####################################################################################################################
+	# Job Type Specific
+
+	job_details = cjob.job.job_details_dict	
+
+	# OAI Harvest
+	if type(cjob) == models.HarvestOAIJob:
+
+		# get OAI endpoint used		
+		job_details['oai_endpoint'] = models.OAIEndpoint.objects.get(pk=job_details['oai_endpoint_id'])
+
+	# Static Harvest
+	elif type(cjob) == models.HarvestStaticXMLJob:
+		pass
+
+	# Transform 
+	elif type(cjob) == models.TransformJob:
+		pass
+
+	# Merge/Duplicate 
+	elif type(cjob) == models.MergeJob:
+		pass
+
+	# Analysis
+	elif type(cjob) == models.AnalysisJob:
+		pass
+	####################################################################################################################
+
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
@@ -690,6 +718,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
 			'q':q,
 			'job_fm_config_json':job_fm_config_json,
+			'job_details':job_details,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})

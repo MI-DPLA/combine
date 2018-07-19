@@ -1079,6 +1079,51 @@ class Job(models.Model):
 			return False
 
 
+	@property
+	def job_details_dict(self):
+
+		'''
+		Property to return job_details json as dictionary
+		'''
+
+		if self.job_details:
+			return json.loads(self.job_details)
+		else:
+			return {}
+
+
+	def update_job_details(self, update_dict, save=True):
+
+		'''
+		Method to update job_details by providing a dictionary to update with, optiontally saving
+
+		Args:
+			update_dict (dict): dictionary of key/value pairs to update job_details JSON with
+			save (bool): if True, save Job instance
+		'''
+
+		# parse job details
+		try:
+			if self.job_details:
+				job_details = json.loads(self.job_details)
+			elif not self.job_details:
+				job_details = {}
+		except:
+			logger.debug('could not parse job details')
+			raise Exception('could not parse job details')
+
+		# update details with update_dict
+		job_details.update(update_dict)
+
+		# if saving
+		if save:
+			self.job_details = json.dumps(job_details)
+			self.save()
+
+		# return
+		return job_details
+
+
 
 class JobTrack(models.Model):
 
@@ -4407,6 +4452,9 @@ class HarvestOAIJob(HarvestJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.dbdd = dbdd
+
+			# write OAI endpoint to job_details
+			self.job.update_job_details({'oai_endpoint_id':self.oai_endpoint.id,'oai_overrides':self.overrides})
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:

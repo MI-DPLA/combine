@@ -454,6 +454,7 @@
 				</div>
 
 				<div id="job_type_specific_tab" class="tab-pane full_width_tab">
+
 					<!-- Details specific to Job Type -->
 					<div class="row">
 						<div class="col-md-12">
@@ -461,7 +462,36 @@
 
 								<!-- HarvestJob -->
 								{% if cjob.job.job_type_family == 'HarvestJob' %}
-									<p>No additional information at this time for Harvest jobs.</p>
+									
+									<h4>OAI Endpoint for Harvest</h3>										
+									<table class="table table-bordered table-hover">
+										<thead>
+											<tr>
+												<th>ID</th>
+												<th>Name</th>
+												<th>Endpoint URL</th>
+												<th>Verb</th>
+												<th>Metadata Prefix</th>
+												<th>Scope Type</th>
+												<th>Scope Value</th>
+												<th>Actions</th>
+											</tr>
+										</thead>
+										<tbody>
+											<tr>
+												<td>{{job_details.oai_endpoint.id}}</td>
+												<td>{{job_details.oai_endpoint.name}}</td>
+												<td><a href="{{job_details.oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{job_details.oai_endpoint.endpoint}}</a></td>
+												<td><code>{{job_details.oai_overrides.verb}}</code></td>
+												<td><code>{{job_details.oai_overrides.metadataPrefix}}</code></td>
+												<td><code>{{job_details.oai_overrides.scope_type}}</code></td>
+												<td><code>{{job_details.oai_overrides.scope_value}}</code></td>
+												<td><a href="{{job_details.oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+											</tr>
+										</tbody>											
+									</table>
+
+
 								{% endif %}
 
 								<!-- TransformJob -->
@@ -520,6 +550,38 @@
 							</div>
 						</div>
 					</div>
+
+					<!-- general Job details -->
+					<div class="row">
+						<div class="col-md-12">
+							<h4>Job Runtime Details</h3>
+							<div id="job_details_json" style="height:450px;"></div>
+							<script>
+						        // create the editor
+						        var container = document.getElementById("job_details_json");
+						        var options = {
+						        	mode: 'code',
+			    					modes: ['code', 'text', 'view'],
+			    					sortObjectKeys: true,
+			    					name: 'field_mapping_configuration',
+			    					onModeChange: function(nm, om){
+			    						if (nm == 'view'){
+			    							$("#job_details_json").css('height','');
+			    						}
+			    						else {
+			    							$("#job_details_json").css('height','450px');
+			    						}
+			    					},
+			    					navigationBar:false
+						        };
+						        var job_details_editor = new JSONEditor(container, options);
+
+						        // set json to editor
+						        job_details_editor.set({{ cjob.job.job_details|safe }});
+						    </script>
+						</div>
+					</div>
+
 				</div>
 
 				<div id="export_tab" class="tab-pane full_width_tab">
