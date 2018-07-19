@@ -1274,6 +1274,8 @@ class Transformation(models.Model):
 			
 		try:
 
+			logger.debug('python transformation running')
+
 			# prepare row as parsed document with PythonUDFRecord class
 			prtb = PythonUDFRecord(row)
 
@@ -1283,6 +1285,10 @@ class Transformation(models.Model):
 
 			# run transformation
 			trans_result = temp_pyts.python_record_transformation(prtb)
+
+			# check that trans_result is a list
+			if type(trans_result) != list:
+				raise Exception('Python transformation should return a list, but got type %s' % type(trans_result))
 
 			# convert any possible byte responses to string
 			if trans_result[2] == True:

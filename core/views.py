@@ -2148,7 +2148,7 @@ def test_transformation_scenario(request):
 			trans.save()
 
 			# validate with record
-			trans_results = trans.transform_record(record)
+			trans_results = trans.transform_record(record)			
 
 			# delete temporary trans
 			trans.delete()
