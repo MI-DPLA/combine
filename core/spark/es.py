@@ -158,6 +158,9 @@ class ESIndex(object):
 				}
 		)
 
+		# refresh index
+		es_handle_temp.indices.refresh(index_name)
+
 
 	@staticmethod
 	def copy_es_index(
