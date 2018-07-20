@@ -293,24 +293,6 @@ def organizations(request):
 		# get all organizations
 		orgs = models.Organization.objects.exclude(for_analysis=True).all()
 
-		# loop through orgs
-		stime = time.time()
-		for org in orgs:
-
-			total_record_count = 0
-			
-			# loop through record groups
-			for rg in org.recordgroup_set.all():
-
-				# loop through jobs
-				for job in rg.job_set.all():
-
-					total_record_count += job.record_count
-
-			# set total
-			org.total_record_count = total_record_count
-		logger.debug('record count for organizations: %s' % (time.time()-stime))
-
 		# render page
 		return render(request, 'core/organizations.html', {
 				'orgs':orgs,
@@ -340,21 +322,6 @@ def organization(request, org_id):
 
 	# get record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org).exclude(for_analysis=True)
-
-	# loop through record groups and count
-	stime = time.time()	
-	for rg in record_groups:
-
-		total_record_count = 0
-
-		# loop through jobs
-		for job in rg.job_set.all():
-
-			total_record_count += job.record_count
-
-		# set total
-		rg.total_record_count = total_record_count
-	logger.debug('record count for record groups: %s' % (time.time()-stime))
 
 	# render page
 	return render(request, 'core/organization.html', {

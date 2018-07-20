@@ -273,6 +273,26 @@ class Organization(models.Model):
 		return 'Organization: %s' % self.name
 
 
+	def total_record_count(self):
+
+		'''
+		Method to determine total records under this Org
+		'''
+
+		total_record_count = 0
+			
+		# loop through record groups
+		for rg in self.recordgroup_set.all():
+
+			# loop through jobs
+			for job in rg.job_set.all():
+
+				total_record_count += job.record_count
+
+		# return
+		return total_record_count
+
+
 
 class RecordGroup(models.Model):
 
@@ -354,6 +374,23 @@ class RecordGroup(models.Model):
 			return False
 		else:
 			return True
+
+
+	def total_record_count(self):
+
+		'''
+		Method to count total records under this RG
+		'''
+
+		total_record_count = 0
+
+		# loop through jobs
+		for job in self.job_set.all():
+
+			total_record_count += job.record_count
+
+		# return
+		return total_record_count
 
 
 
