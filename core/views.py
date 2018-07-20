@@ -1586,25 +1586,10 @@ def job_update(request, org_id, record_group_id, job_id):
 		if update_type == 'reindex':
 
 			# get preferred metadata index mapper
-			field_mapper = request.POST.get('field_mapper')
 			fm_config_json = request.POST.get('fm_config_json')
 
-			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'Re-Map and Index Job: %s' % cjob.job.name,
-				task_type = 'job_reindex',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'field_mapper':field_mapper,
-					'fm_config_json':fm_config_json
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_reindex(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			# init re-index
+			bg_task = cjob.reindex_bg_task(fm_config_json)
 
 			return redirect('bg_tasks')
 
@@ -1614,21 +1599,8 @@ def job_update(request, org_id, record_group_id, job_id):
 			# get requested validation scenarios
 			validation_scenarios = request.POST.getlist('validation_scenario', [])
 
-			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'New Validations for Job: %s' % cjob.job.name,
-				task_type = 'job_new_validations',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'validation_scenarios':validation_scenarios
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_new_validations(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			# init bg task
+			bg_task = cjob.new_validations_bg_task(validation_scenarios)
 
 			return redirect('bg_tasks')
 
@@ -1639,20 +1611,7 @@ def job_update(request, org_id, record_group_id, job_id):
 			jv_id = request.POST.get('jv_id', False)
 
 			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'Remove Validation %s for Job: %s' % (jv_id, cjob.job.name),
-				task_type = 'job_remove_validation',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'jv_id':jv_id
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_remove_validation(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			bg_task = cjob.remove_validation_bg_task(jv_id)
 
 			return redirect('bg_tasks')
 

@@ -4360,6 +4360,98 @@ class CombineJob(object):
 			return full_path
 
 
+	def reindex_bg_task(self, fm_config=None):
+
+		'''
+		Method to reindex job as bg task
+
+		Args:
+			fm_config (dict|str): XML2kvp field mapper configurations, JSON or dictionary
+				- if None, saved configurations for Job will be used
+		'''
+
+		# handle fm_config
+		if not fm_config:
+			fm_config_json = self.job.get_fm_config_json()
+		else:
+			if type(fm_config) == dict:
+				fm_config_json = json.dumps(fm_config)
+			elif type(fm_config) == str:
+				fm_config_json = fm_config
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Re-Map and Index Job: %s' % self.job.name,
+			task_type = 'job_reindex',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'fm_config_json':fm_config_json
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_reindex(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def new_validations_bg_task(self, validation_scenarios):
+
+		'''
+		Method to run new validations for Job
+
+		Args:
+			validation_scenarios (list): List of Validation Scenarios ids
+		'''
+		
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'New Validations for Job: %s' % self.job.name,
+			task_type = 'job_new_validations',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'validation_scenarios':validation_scenarios
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_new_validations(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def remove_validation_bg_task(self, jv_id):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Remove Validation %s for Job: %s' % (jv_id, self.job.name),
+			task_type = 'job_remove_validation',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'jv_id':jv_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_remove_validation(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+
 class HarvestJob(CombineJob):
 
 	'''
