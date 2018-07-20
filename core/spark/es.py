@@ -121,24 +121,26 @@ class ESIndex(object):
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		if not es_handle_temp.indices.exists(index_name):
 			
-			# prepare mapping
-			mapping = {
-				'mappings':{
-					'record':{
-						'date_detection':False,
-						'properties':{
-							'combine_db_id':{'type':'integer'},
-						}
-					}
-				},
-				'settings':{
-					'index':{
+			# put combine es index templates
+			template_body = {
+					'template':'*',
+					'settings':{
 						'number_of_shards':1,
 						'number_of_replicas':0,
 						'refresh_interval':-1
+					},
+					'mappings':{
+						'record':{
+							'date_detection':False,
+							'properties':{
+								'combine_db_id':{
+									'type':'integer'
+								}
+							}
+						}
 					}
 				}
-			}
+			es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
 			
 			# create index
 			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
@@ -187,6 +189,27 @@ class ESIndex(object):
 
 		# get ES handle
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+
+		# put/confirm combine es index templates
+		template_body = {
+				'template':'*',
+				'settings':{
+					'number_of_shards':1,
+					'number_of_replicas':0,
+					'refresh_interval':-1
+				},
+				'mappings':{
+					'record':{
+						'date_detection':False,
+						'properties':{
+							'combine_db_id':{
+								'type':'integer'
+							}
+						}
+					}
+				}
+			}
+		es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
 
 		# if creating target index check if target index exists
 		if create_target_index and not es_handle_temp.indices.exists(target_index):
