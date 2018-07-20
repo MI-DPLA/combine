@@ -143,7 +143,7 @@ class ESIndex(object):
 			es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
 			
 			# create index
-			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+			es_handle_temp.indices.create(index_name)
 
 		# index to ES
 		logger.info('###ES 5 -- writing to ES')
@@ -168,8 +168,7 @@ class ESIndex(object):
 	def copy_es_index(
 		source_index=None,
 		target_index=None,
-		create_target_index=True,
-		target_index_mapping={'mappings':{'record':{'date_detection':False}}},
+		create_target_index=True,		
 		refresh=True,
 		wait_for_completion=True,
 		add_copied_from=None):
@@ -180,8 +179,7 @@ class ESIndex(object):
 		Args:
 			create_target_index (boolean): If True, check for target and create
 			source_index (str): Source ES index to copy from
-			target_index (str): Target ES index to copy to
-			target_index_mapping (dict): Dictionary of mapping to create target index
+			target_index (str): Target ES index to copy to			
 
 		Returns:
 			(dict): results of reindex via elasticsearch client reindex request
@@ -213,7 +211,7 @@ class ESIndex(object):
 
 		# if creating target index check if target index exists
 		if create_target_index and not es_handle_temp.indices.exists(target_index):
-			es_handle_temp.indices.create(target_index, body=json.dumps(target_index_mapping))
+			es_handle_temp.indices.create(target_index)
 
 		# prepare reindex query
 		dupe_dict = {
