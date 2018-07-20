@@ -130,6 +130,13 @@ class ESIndex(object):
 							'combine_db_id':{'type':'integer'},
 						}
 					}
+				},
+				'settings':{
+					'index':{
+						'number_of_shards':1,
+						'number_of_replicas':0,
+						'refresh_interval':-1
+					}
 				}
 			}
 			
