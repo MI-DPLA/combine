@@ -409,7 +409,9 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed
 					)
 
 				# transform via rdd.map and return			
@@ -454,7 +456,9 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed
 					)
 
 				# transform via rdd.map and return			
@@ -501,7 +505,9 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed
 					)
 
 				# transform via rdd.map and return			
