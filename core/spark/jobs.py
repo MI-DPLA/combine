@@ -1385,34 +1385,6 @@ class PublishSpark(CombineSparkJob):
 			wait_for_completion=False
 		)
 
-		# copy index from new Publish Job to /published index
-		# NOTE: because back to back reindexes, and problems with timeouts on requests,
-		# wait on task from previous reindex
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		retry = 1
-		while retry <= 100:
-
-			# get task
-			task = es_handle_temp.tasks.get(index_to_job_index['task'])
-
-			# if task complete, index job index to published index
-			if task['completed']:
-				index_to_published_index = ESIndex.copy_es_index(
-					source_index = 'j%s' % self.job.id,
-					target_index = 'published',
-					wait_for_completion = False,
-					add_copied_from = job_id # do not use Job instance here, only pass string
-				)
-				break # break from retry loop
-
-			else:
-				print("indexing to /published, waiting on task node %s, retry: %s/100" % (task['task']['node'], retry))
-
-				# bump retries, sleep, and continue
-				retry += 1
-				time.sleep(3)
-				continue
-
 		# get PublishedRecords handle
 		pr = PublishedRecords()
 

@@ -3813,26 +3813,6 @@ class PublishedRecords(object):
 			return False
 
 
-	def count_indexed_fields(self):
-
-		'''
-		Wrapper for ESIndex.count_indexed_fields
-		'''
-
-		# return count
-		return self.esi.count_indexed_fields()
-
-
-	def field_analysis(self, field_name):
-
-		'''
-		Wrapper for ESIndex.field_analysis
-		'''
-
-		# return field analysis
-		return self.esi.field_analysis(field_name)
-
-
 	def update_published_uniqueness(self):
 
 		'''
