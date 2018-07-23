@@ -3608,23 +3608,25 @@ class ESIndex(object):
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
 			# DEBUG
-			stime = time.time()
+			stime = time.time()			
 
 			# get field mappings for index
 			field_names = self.get_index_fields()
-			
-			'''
-			At this point, already mis-representing field names
-			'''
 
-			# init search
-			s = Search(using=es_handle, index=self.es_index)
-
-			# return no results, only aggs
-			s = s[0]
-
-			# add agg buckets for each field to count total and unique instances
+			# loop through fields and query ES
+			field_count = []
 			for field_name in field_names:
+
+				logger.debug('analyzing mapped field %s' % field_name)
+
+				# init search
+				s = Search(using=es_handle, index=self.es_index)
+
+				# return no results, only aggs
+				s = s[0]
+
+				# add agg buckets for each field to count total and unique instances
+				# for field_name in field_names:
 				s.aggs.bucket('%s_doc_instances' % field_name, A('filter', Q('exists', field=field_name)))
 				s.aggs.bucket('%s_val_instances' % field_name, A('value_count', field='%s.keyword' % field_name))
 				s.aggs.bucket('%s_distinct' % field_name, A(
@@ -3633,22 +3635,18 @@ class ESIndex(object):
 						precision_threshold = cardinality_precision_threshold
 					))
 
-			# execute search and capture as dictionary
-			sr = s.execute()
-			sr_dict = sr.to_dict()
+				# execute search and capture as dictionary
+				sr = s.execute()
+				sr_dict = sr.to_dict()
 
-			# calc field percentages and return as list
-			'''
-			Because this also acts on the `published` ES index, which might contain mappings for fields that no longer
-			exist, filter out fields with zero instances.
-			'''
-			field_count = []
-			for field_name in field_names:
+				# calc field percentages and return as list			
+				# field_count = []
+				# for field_name in field_names:
 
-					# get metrics and append if field metrics found
-					field_metrics = self._calc_field_metrics(sr_dict, field_name)
-					if field_metrics:
-						field_count.append(field_metrics)
+				# get metrics and append if field metrics found
+				field_metrics = self._calc_field_metrics(sr_dict, field_name)
+				if field_metrics:
+					field_count.append(field_metrics)
 
 			# DEBUG
 			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))

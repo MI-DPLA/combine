@@ -659,9 +659,6 @@ def job_details(request, org_id, record_group_id, job_id):
 	# detailed record count
 	record_count_details = cjob.get_detailed_job_record_count()
 
-	# field analysis
-	field_counts = cjob.count_indexed_fields()
-
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
 
@@ -683,6 +680,17 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# job details and job type specific augment
 	job_details = cjob.job.job_details_dict	
+
+	# mapped field analysis, generate if not part of job_details
+	if 'mapped_field_analysis' in job_details.keys():
+		field_counts = job_details['mapped_field_analysis']
+	else:
+		if cjob.job.finished:
+			field_counts = cjob.count_indexed_fields()
+			cjob.job.update_job_details({'mapped_field_analysis':field_counts}, save=True)
+		else:
+			logger.debug('job not finished, not setting')
+			field_counts = {}	
 
 	# OAI Harvest
 	if type(cjob) == models.HarvestOAIJob:
