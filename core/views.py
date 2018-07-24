@@ -3093,7 +3093,7 @@ class DTRecordsJson(BaseDatatableView):
 					int(search)
 					qs = qs.filter(Q(id=search))
 				except:
-					qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search))
+					qs = qs.filter(Q(combine_id=search) | Q(record_id=search))
 
 			# return
 			return qs
