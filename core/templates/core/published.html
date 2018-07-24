@@ -29,7 +29,7 @@
 	<div class="col-md-6">
 		<h4>Published Sets</h4>
 		
-		<p>Showing all published Record Groups, where one Job from each Record Group may be published with an optional <code>Publish Set ID</code>.  This <code>Publish Set ID</code> is used during publishing for the outgoing OAI set.  In some cases this may be <span class="text-danger">"Not set"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
+		<p>Showing all published Record Groups, where one Job from each Record Group may be published with an optional <code>Publish Set ID</code>.  This <code>Publish Set ID</code> is used during publishing for the outgoing OAI set.  In some cases this may be <span class="text-danger">"None"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
 		<table class="table table-bordered table-hover">
 
@@ -47,7 +47,7 @@
 						{% if job.publish_set_id %}
 							<a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank">{{ job.publish_set_id }}</a>
 						{% else %}
-							<span style="color:red;"><strong>Not set</strong></span>
+							<span style="color:red;"><strong>None</strong></span>
 						{% endif %}
 					</td>
 					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>

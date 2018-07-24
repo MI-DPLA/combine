@@ -285,8 +285,11 @@ def export_documents(ct_id):
 
 			# build job_dictionary
 			job_dict = {}
+			# handle published jobs with publish set ids
 			for publish_id, jobs in pr.sets.items():
 				job_dict[publish_id] = [ job.id for job in jobs ]
+			# handle "loose" Jobs
+			job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
 			logger.debug(job_dict)
 
 			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
