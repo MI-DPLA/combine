@@ -3865,54 +3865,27 @@ class PublishedRecords(object):
 			return False
 
 
-	# def update_published_uniqueness(self):
+	def update_published_uniqueness(self):
 
-	# 	'''
-	# 	Method to update `unique_published` field from Record table for all published records
-	# 	Note: Very likely possible to improve performance, currently about 1s per 10k records.
-	# 	'''
+		'''
+		Method to update `unique_published` field from Record table for all published records
+		Note: Very likely possible to improve performance, currently about 1s per 10k records.
+		'''
 
-	# 	stime = time.time()
+		stime = time.time()
 
-	# 	# get non-unique as QuerySet
-	# 	dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
+		# get non-unique as QuerySet
+		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-	# 	# set true in bulk
-	# 	set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-	# 	set_true.update(unique_published=True)
+		# set true in bulk
+		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+		set_true.update(unique_published=True)
 
-	# 	# set false in bulk
-	# 	set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-	# 	set_false.update(unique_published=False)
+		# set false in bulk
+		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+		set_false.update(unique_published=False)
 
-	# 	logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
-
-
-	# def set_published_field(self, job_id=None, publish_set_id=None):
-
-	# 	'''
-	# 	Method to set 'published' for all Records with Publish Job parent
-	# 	'''
-
-	# 	# set publish_set_id
-	# 	if publish_set_id:
-	# 		publish_set_id_q = "publish_set_id='%s'," % publish_set_id		
-	# 	else:
-	# 		publish_set_id_q = ''
-
-	# 	# limit by job
-	# 	if job_id:
-	# 		job_id_q = "WHERE job_id = %s" % job_id
-	# 	else:
-	# 		job_id_q = ''
-
-	# 	# build query
-	# 	query = "UPDATE core_record SET %s published = 1 %s;" % (publish_set_id_q, job_id_q)
-
-	# 	# execute query
-	# 	stime = time.time()
-	# 	with connection.cursor() as cursor:
-	# 		query_results = cursor.execute(query)
+		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
 	@staticmethod

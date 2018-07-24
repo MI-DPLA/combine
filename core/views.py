@@ -2557,7 +2557,7 @@ def job_export_documents(request, org_id, record_group_id, job_id):
 
 def published_export_mapped_fields(request):
 
-	logger.debug('exporting mapped fields from Published')
+	logger.debug('exporting mapped fields from published records')
 
 	# get instance of Published model
 	published = models.PublishedRecords()
@@ -2566,6 +2566,9 @@ def published_export_mapped_fields(request):
 	kibana_style = request.POST.get('kibana_style', False)
 	if kibana_style:
 		kibana_style = True
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
 
 	# get selected fields if present
 	mapped_field_include = request.POST.getlist('mapped_field_include',False)
@@ -2577,6 +2580,7 @@ def published_export_mapped_fields(request):
 		task_params_json = json.dumps({
 			'published':True,
 			'kibana_style':kibana_style,
+			'archive_type':archive_type,
 			'mapped_field_include':mapped_field_include
 		})
 	)

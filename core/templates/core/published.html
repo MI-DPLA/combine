@@ -110,9 +110,9 @@
 								<th>ID</th>
 								<th>Record ID</th>
 								<th>Record Group</th>
-								<th>Outgoing OAI set</th>
+								<th>Publish Set ID</th>
 								<th>Harvested OAI set</th>
-								<th>Unique in Published?</th>
+								<th>Unique Record ID</th>
 								<th>Document</th>
 							</thead>
 							<tbody>
@@ -207,6 +207,17 @@
 													<p>For example, consider an ElasticSearch field called <code>mods_subject_topic</code>, with multiple values of <code>history</code>, <code>boating</code>, and <code>typing</code>.  If Kibana style is <strong>not</strong> checked/used -- which is the default behavior -- this would result in three distinct columns in the generated .csv file with a number affixed to the field name: <code>mods_subject_topic.0</code> with the value <code>historyM</code>, <code>mods_subject_topic.1</code> with the value <code>boating</code>, and <code>mods_subject_topic.2</code> with the value <code>typing</code>.  This can handy for analysis, as distinct values for this field are in distinct columns.</p>
 
 													<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.
+												</div>
+											</div>
+
+											<div style="width:50%;">
+												<div class="form-group">
+													<label for="archive_type">Select archive file type</label>
+													<select class="form-control" id="archive_type" name="archive_type" required>
+														<option value="none">Uncompressed CSV file</option>
+														<option value="zip">Compressed Zip file</option>
+														<option value="targz">Compressed Tar file</option>
+													</select>
 												</div>
 											</div>
 

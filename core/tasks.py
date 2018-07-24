@@ -156,11 +156,15 @@ def export_mapped_fields(ct_id):
 		os.mkdir(output_path)
 		export_output = '%s/published_mapped_fields.csv' % (output_path)
 
+		# get list of jobs ES indices to export
+		pr = models.PublishedRecords()
+		es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+
 		# build command list
 		cmd = [
 			"es2csv",
 			"-q '*'",
-			"-i 'published'",
+			"-i '%s'" % es_list,
 			"-D 'record'",
 			"-o '%s'" % export_output
 		]
