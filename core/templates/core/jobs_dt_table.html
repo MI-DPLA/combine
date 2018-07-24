@@ -20,6 +20,7 @@
 					<th>Status</th>
 					<th>Finished</th>
 					<th>Is Valid</th>
+					<th>Publishing</th>
 					<th>Elapsed</th>
 					<th>Input</th>
 					<th>Notes</th>
@@ -55,6 +56,13 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						{% if job.published %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-danger btn-sm">Unpublish</button></a>
+						{% else %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-success btn-sm">Publish</button></a>
+						{% endif %}
+					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
 					{% if job.jobinput_set.all|length > 0 %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">

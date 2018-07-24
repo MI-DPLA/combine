@@ -1177,6 +1177,9 @@ class Job(models.Model):
 			publish_set_id (str): identifier to group published Records
 		'''
 
+		# debug
+		logger.debug('publishing job #%s, with publish_set_id %s' % (self.id, publish_set_id))
+
 		# set publish_set_id
 		if publish_set_id:
 			# update query
@@ -1190,7 +1193,6 @@ class Job(models.Model):
 		query = "UPDATE core_record SET %s published = 1 WHERE job_id = %s;" % (publish_set_id_q, self.id)
 
 		# execute query
-		stime = time.time()
 		with connection.cursor() as cursor:
 			query_results = cursor.execute(query)
 
@@ -1207,6 +1209,9 @@ class Job(models.Model):
 		'''
 		Method to unpublish Job
 		'''
+
+		# debug
+		logger.debug('unpublishing job #%s' % (self.id))
 
 		# build query
 		query = "UPDATE core_record SET publish_set_id = NULL, published = 0 WHERE job_id = %s;" % (self.id)
