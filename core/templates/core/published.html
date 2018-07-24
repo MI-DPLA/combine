@@ -244,10 +244,24 @@
 																<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=published.esi.es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
 																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
-																<td>{{ field.val_instances }}</td>
+																<!-- OLD -->
+																<!-- <td>{{ field.val_instances }}</td>
 																<td>{{ field.distinct }}</td>
 																<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-																<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td>
+																<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td> -->
+																<!-- NEW -->
+																<td>{{ field.val_instances }}</td>
+																<td>{{ field.distinct }}</td>
+																<td>
+																	<div class="percentage_div" style="{% if field.distinct_ratio >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.distinct_ratio > 0 %}{% widthratio field.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
+																		<span>{% widthratio field.distinct_ratio 1 100 %}%</span>
+																	</div>
+																</td>
+																<td>
+																	<div class="percentage_div" style="{% if field.percentage_of_total_records >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.percentage_of_total_records > 0 %}{% widthratio field.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
+																		<span>{% widthratio field.percentage_of_total_records 1 100 %}%</span>
+																	</div>
+																</td>
 																<td><input type="checkbox" name="mapped_field_include_dynamic" value="{{ field.field_name }}"/></td>
 															</tr>
 														{% endfor %}
