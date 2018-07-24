@@ -244,12 +244,6 @@
 																<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=published.esi.es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
 																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
 																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
-																<!-- OLD -->
-																<!-- <td>{{ field.val_instances }}</td>
-																<td>{{ field.distinct }}</td>
-																<td style="background-color:rgba(0,200,0,{{ field.distinct_ratio }});">{{ field.distinct_ratio }}</td>
-																<td style="background-color:rgba(0,200,0,{{ field.percentage_of_total_records }});">{{ field.percentage_of_total_records }}</td> -->
-																<!-- NEW -->
 																<td>{{ field.val_instances }}</td>
 																<td>{{ field.distinct }}</td>
 																<td>
