@@ -20,8 +20,8 @@
 							<th>Description</th>
 							<th>Job Count</th>
 							<th>Record Count</th>
-							<th>Published?</th>
-							<th>Publish Set ID</th>
+							<th>Has Published Jobs</th>
+							<th>Published Set IDs</th>
 							<th>Created</th>
 							<th>Actions</th>
 						</tr>
@@ -35,12 +35,18 @@
 								<td><code>{{ record_group.job_set.count }}</code></td>
 								<td><code>{{ record_group.total_record_count }}</code></td>
 								{% if record_group.is_published %}
-									<td style="background-color:#def3ff;"><a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a></td>
+									<td><span class="text-success">True</span></td>
 								{% else %}
-									<td><span class="text-danger">Not published</span></td>
+									<td><span class="text-danger">False</span></td>
 								{% endif %}
-								{% if record_group.publish_set_id %}
-									<td>{{ record_group.publish_set_id }}</td>
+								{% if record_group.is_published %}
+									<td>
+										<ul>
+											{% for job in record_group.published_jobs %}
+												<li><code>{{ job.publish_set_id }}</code></li>
+											{% endfor %}
+										</ul>
+									</td>
 								{% else %}
 									<td></td>
 								{% endif %}

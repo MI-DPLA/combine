@@ -79,7 +79,7 @@ class ESIndex(object):
 					db_id=row.id,
 					combine_id=row.combine_id,
 					record_id=row.record_id,				
-					publish_set_id=job.record_group.publish_set_id,
+					publish_set_id=job.publish_set_id,
 					fingerprint=row.fingerprint
 				)
 
