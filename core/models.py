@@ -3567,7 +3567,7 @@ class ESIndex(object):
 			field_names = []
 			for index,index_properties in es_r.items():
 				fields = index_properties['mappings']['record']['properties']
-				# get fields as list and append
+				# get fields as list and extend list
 				field_names.extend(list(fields.keys()))
 				logger.debug(field_names)
 			# get unique list
@@ -3838,8 +3838,10 @@ class PublishedRecords(object):
 
 				# add publish job
 				sets[job.publish_set_id].append(job)
-
 		self.sets = sets
+
+		# establish esi		
+		self.esi = ESIndex([ 'j%s' % job.id for job in self.published_jobs ])
 
 
 	@property
@@ -3873,6 +3875,16 @@ class PublishedRecords(object):
 		else:
 			logger.debug('multiple records found for id %s - this is not allowed for published records' % id)
 			return False
+
+
+	def count_indexed_fields(self):
+
+		'''
+		Wrapper for ESIndex.count_indexed_fields
+		'''
+
+		# return count
+		return self.esi.count_indexed_fields()
 
 
 	def update_published_uniqueness(self):

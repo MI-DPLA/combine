@@ -2424,8 +2424,12 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
+	# get count of fields for all published job indices
+	field_counts = published.count_indexed_fields()
+
 	return render(request, 'core/published.html', {
-			'published':published,			
+			'published':published,
+			'field_counts':field_counts,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
