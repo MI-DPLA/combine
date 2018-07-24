@@ -470,30 +470,6 @@ def record_group(request, org_id, record_group_id):
 		})
 
 
-def record_group_update_publish_set_id(request, org_id, record_group_id):
-
-	if request.method == 'POST':
-
-		# get record group
-		record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
-
-		logger.debug(request.POST)
-
-		# update RecordGroup publish set id
-		if request.POST.get('new_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('new_publish_set_id')
-			record_group.save()
-		elif request.POST.get('existing_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
-			record_group.save()
-		else:
-			logger.debug('publish_set_id not set, skipping')
-
-		# redirect to
-		# return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
-		return redirect(request.META.get('HTTP_REFERER'))
-
-
 
 ####################################################################
 # Jobs 															   #
@@ -668,15 +644,12 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
-	# retrieve field mapper config json used
-	if type(cjob) != models.PublishJob:
-		try:
-			job_details = json.loads(cjob.job.job_details)
-			job_fm_config_json = job_details['fm_config_json']
-		except:
-			job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
-	else:
-		job_fm_config_json = json.dumps({'info':'PublishJob: mapped fields were copied from input Job'})
+	# attempt to retrieve fm_config_json
+	try:
+		job_details = json.loads(cjob.job.job_details)
+		job_fm_config_json = job_details['fm_config_json']
+	except:
+		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
 
 	# job details and job type specific augment
 	job_details = cjob.job.job_details_dict	
@@ -715,6 +688,9 @@ def job_details(request, org_id, record_group_id, job_id):
 	elif type(cjob) == models.AnalysisJob:
 		pass
 
+	# get published records, primarily for published sets
+	pr = models.PublishedRecords()
+
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
@@ -725,6 +701,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'q':q,
 			'job_fm_config_json':job_fm_config_json,
 			'job_details':job_details,
+			'pr':pr,
 			'es_index':cjob.esi.es_index,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -822,13 +799,28 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 @login_required
 def job_publish(request, org_id, record_group_id, job_id):
 
-	pass
+	# get preferred metadata index mapper
+	publish_set_id = request.GET.get('publish_set_id', None)
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# init publish
+	bg_task = cjob.publish_bg_task(publish_set_id=publish_set_id)
+
+	return redirect('bg_tasks')
 
 
 @login_required
 def job_unpublish(request, org_id, record_group_id, job_id):
 
-	pass
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# init unpublish
+	bg_task = cjob.unpublish_bg_task()
+
+	return redirect('bg_tasks')
 
 
 @login_required
@@ -1347,112 +1339,6 @@ def job_merge(request, org_id, record_group_id):
 			rits=rits,
 			input_filters=input_filters,
 			dbdd=dbdd
-		)
-		
-		# start job and update status
-		job_status = cjob.start_job()
-
-		# if job_status is absent, report job status as failed
-		if job_status == False:
-			cjob.job.status = 'failed'
-			cjob.job.save()
-
-		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
-
-
-@login_required
-def job_publish(request, org_id, record_group_id):
-
-	'''
-	Publish a single job for a Record Group
-	'''
-
-	# retrieve record group
-	record_group = models.RecordGroup.objects.get(pk=record_group_id)
-	
-	# if GET, prepare form
-	if request.method == 'GET':
-		
-		# get scope of input jobs and retrieve
-		input_job_scope = request.GET.get('scope', None)
-
-		# if all jobs, retrieve all jobs
-		if input_job_scope == 'all_jobs':
-			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
-
-		# else, limit to RecordGroup
-		else:
-			input_jobs = record_group.job_set.all()
-
-		# get validation scenarios
-		validation_scenarios = models.ValidationScenario.objects.all()
-
-		# get job lineage for all jobs (filtered to input jobs scope)
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
-
-		# get all currently applied publish set ids
-		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
-
-		# get all bulk downloads
-		bulk_downloads = models.DPLABulkDataDownload.objects.all()
-
-		# render page
-		return render(request, 'core/job_publish.html', {
-				'job_select_type':'single',
-				'record_group':record_group,
-				'input_jobs':input_jobs,
-				'input_job_scope':input_job_scope,
-				'validation_scenarios':validation_scenarios,
-				'job_lineage_json':json.dumps(ld),
-				'publish_set_ids':publish_set_ids,
-				'bulk_downloads':bulk_downloads,
-				'breadcrumbs':breadcrumb_parser(request)
-			})
-
-	# if POST, submit job
-	if request.method == 'POST':
-
-		logger.debug('Publishing job for Record Group: %s' % record_group.name)
-
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve input job
-		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
-		logger.debug('publishing job: %s' % input_job)
-
-		# update RecordGroup publish set id
-		'''
-		priority:
-			1) new, user input publish_set_id
-			2) pre-existing publish_set_id
-		'''
-		if request.POST.get('new_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('new_publish_set_id')
-			record_group.save()
-		elif request.POST.get('existing_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
-			record_group.save()
-		else:
-			logger.debug('publish_set_id not set, skipping')
-
-		# initiate job
-		cjob = models.PublishJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			input_job=input_job
 		)
 		
 		# start job and update status

@@ -42,48 +42,46 @@
 				<th>Action</th>
 			</tr>
 
-			{% for set, jobs in published.sets.items %}
-				{% for job in jobs %}
-					<tr>
-						<td>
-							{% if job.publish_set_id %}
-								<a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank">{{ job.publish_set_id }}</a>
-							{% else %}
-								<span style="color:red;"><strong>Not set</strong></span>
-							{% endif %}
-						</td>
-						<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
-						<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
-						<td>{{ job.record_count }}</td>
-						<td><a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+			{% for job in published.published_jobs %}
+				<tr>
+					<td>
+						{% if job.publish_set_id %}
+							<a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank">{{ job.publish_set_id }}</a>
+						{% else %}
+							<span style="color:red;"><strong>Not set</strong></span>
+						{% endif %}
+					</td>
+					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
+					<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
+					<td>{{ job.record_count }}</td>
+					<td><a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
 
-						<!-- NEW -->
-						<td>
-							<a href="#" onclick="$(this).next().fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
-							<div id="publish_set_id_update" style="display:none; margin-top:10px;">
-								<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">
-									{% csrf_token %}
+					<!-- NEW -->
+					<td>
+						<a href="#" onclick="$(this).next().fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
+						<div id="publish_set_id_update" style="display:none; margin-top:10px;">
+							<form method="POST" action="#">
+								{% csrf_token %}
 
-									<div class="form-group">
-										<label for="existing_publish_set_id">Select a pre-existing Publish Set ID used from other RecordGroups</label>
-										<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
-											<option value=''>Select pre-existing Publish Set ID to use...</option>
-											{% for publish_set_id in publish_set_ids %}
-												<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
-											{% endfor %}
-										</select>																	
-									</div>
-									<div class="form-group">
-										<label for="new_publish_set_id">Or enter a new one</label>
-										<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
-									</div>
-									<button type="submit" class="btn btn-primary btn-sm">Update</button>
-								</form>
-							</div>
-						</td>
+								<div class="form-group">
+									<label for="existing_publish_set_id">Select a pre-existing Publish Set ID used from other RecordGroups</label>
+									<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
+										<option value=''>Select pre-existing Publish Set ID to use...</option>
+										{% for publish_set_id in publish_set_ids %}
+											<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
+										{% endfor %}
+									</select>																	
+								</div>
+								<div class="form-group">
+									<label for="new_publish_set_id">Or enter a new one</label>
+									<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
+								</div>
+								<button type="submit" class="btn btn-primary btn-sm">Update</button>
+							</form>
+						</div>
+					</td>
 
-					</tr>
-				{% endfor %}
+				</tr>
 			{% endfor %}
 
 			<tr>

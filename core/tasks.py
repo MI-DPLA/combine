@@ -580,5 +580,68 @@ def job_remove_validation(ct_id):
 		ct.save()
 
 
+@background(schedule=1)
+def job_publish(ct_id):
 
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		# publish job
+		publish_results = cjob.job.publish(publish_set_id=ct.task_params['publish_set_id'])
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'job_id':ct.task_params['job_id'],
+			'publish_results':publish_results
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)		
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
+
+
+@background(schedule=1)
+def job_unpublish(ct_id):
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		# publish job
+		unpublish_results = cjob.job.unpublish()
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'job_id':ct.task_params['job_id'],
+			'unpublish_results':unpublish_results
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)		
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
 

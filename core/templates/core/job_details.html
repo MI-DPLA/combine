@@ -142,6 +142,9 @@
 					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped Fields</a>
 				</li>
 				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#publish_tab">Publish</a>
+				</li>
+				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
 				</li>
 				<li class="nav-item">
@@ -171,6 +174,84 @@
 							{% include 'core/records_dt_table.html' %}
 						</div>
 					</div>
+				</div>
+
+				<div id="publish_tab" class="tab-pane full_width_tab">
+					<div class="row">
+						<div class="col-md-12">
+							<h4>Publish Job</h4>
+						</div>
+					</div>
+
+					{% if cjob.job.published %}
+					<div class="row">
+						<div class="col-md-12">
+							<p>This Jobs is currently <strong>published</strong>:</p>
+							<table class="table table-bordered table-hover">
+								<thead>									
+									<tr>
+										<th>Publish Set ID</th>
+										<th>Record Count</th>
+										<th></th>
+										<th></th>
+									</tr>
+								</thead>
+								<tbody>
+									<tr>
+										<td>
+											{% if cjob.job.publish_set_id %}
+												<a href="{% url 'oai' %}?verb=ListRecords&set={{ cjob.job.publish_set_id }}" target="_blank">{{ cjob.job.publish_set_id }}</a>
+											{% else %}
+												<span style="color:red;"><strong>Not set</strong></span>
+											{% endif %}
+										</td>
+										<td>{{ cjob.job.record_count }}</td>
+										<td><a onclick="return confirm('Are you sure you want to unpublish this Job?');" href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+										<td>
+											<a href="#" onclick="$(this).next().fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
+											<div id="publish_set_id_update" style="display:none; margin-top:10px;">
+												<form method="POST" action="#">
+													{% csrf_token %}
+
+													<div class="form-group">
+														<label for="existing_publish_set_id">Select a pre-existing Publish Set ID used from other RecordGroups</label>
+														<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
+															<option value=''>Select pre-existing Publish Set ID to use...</option>
+															{% for publish_set_id in pr.sets.keys %}
+																<option value="{{ publish_set_id }}">{{ publish_set_id }}</option>						
+															{% endfor %}
+														</select>																	
+													</div>
+													<div class="form-group">
+														<label for="new_publish_set_id">Or enter a new one</label>
+														<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
+													</div>
+													<button type="submit" class="btn btn-primary btn-sm">Update</button>
+												</form>
+											</div>
+										</td>
+									</tr>
+								</tbody>
+							</table>
+						</div>
+					</div>
+
+					{% else %}								
+					<div class="row">
+						<div class="col-md-6">
+							<p>Publish this Job using the form below, selecting a pre-existing <code>publish_set_id</code>, creating a new one, or not including:</p>
+							<form method="GET" action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+								{% csrf_token %}
+								<div class="form-group">
+									<label for="publish_set_id">Publish Set Id</label>
+									<input type="text" class="form-control" id="publish_set_id" name="publish_set_id" placeholder="e.g. fedora_records"/>
+								</div>
+								<button type="submit" class="btn btn-success btn-sm">Publish Job</button>
+							</form>
+						</div>
+					</div>
+
+					{% endif %}
 				</div>
 
 				<div id="io_tab" class="tab-pane full_width_tab">

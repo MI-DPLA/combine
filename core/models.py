@@ -1198,6 +1198,9 @@ class Job(models.Model):
 		self.published = True
 		self.save()
 
+		# return
+		return True
+
 
 	def unpublish(self):
 
@@ -1217,6 +1220,9 @@ class Job(models.Model):
 		self.publish_set_id = None
 		self.published = False
 		self.save()
+
+		# return 
+		return True
 
 
 
@@ -4462,6 +4468,55 @@ class CombineJob(object):
 		)
 		ct.save()
 		bg_task = tasks.job_remove_validation(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def publish_bg_task(self, publish_set_id=None):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Publish Job: %s' % (self.job.name),
+			task_type = 'job_publish',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'publish_set_id':publish_set_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_publish(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def unpublish_bg_task(self):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Unpublish Job: %s' % (self.job.name),
+			task_type = 'job_unpublish',
+			task_params_json = json.dumps({
+				'job_id':self.job.id				
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_unpublish(
 			ct.id,
 			verbose_name=ct.verbose_name,
 			creator=ct
