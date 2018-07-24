@@ -3539,7 +3539,11 @@ class ESIndex(object):
 
 	def __init__(self, es_index):
 
-		self.es_index = es_index
+		# convert single index to list
+		if type(es_index) == str:
+			self.es_index = [es_index]
+		else:
+			self.es_index = es_index
 
 
 	def get_index_fields(self):
@@ -3558,10 +3562,16 @@ class ESIndex(object):
 
 			# get mappings for job index
 			es_r = es_handle.indices.get(index=self.es_index)
-			self.index_mappings = es_r[self.es_index]['mappings']['record']['properties']
 
-			# get fields as list
-			field_names = list(self.index_mappings.keys())
+			# loop through indices and build field names
+			field_names = []
+			for index,index_properties in es_r.items():
+				fields = index_properties['mappings']['record']['properties']
+				# get fields as list and append
+				field_names.extend(list(fields.keys()))
+				logger.debug(field_names)
+			# get unique list
+			field_names = list(set(field_names))
 
 			# remove uninteresting fields
 			field_names = [ field for field in field_names if field not in [
