@@ -19,17 +19,17 @@
 				<tr>
 					<th>Published?</th>
 					{% if record_group.is_published %}
-						{% for published in record_group.jobpublish_set.all %}
-							<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }} {% if record_group.jobpublish_set.all.first.job.deleted %}deleted{% endif %}">
-									<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>
+						{% for published in record_group.published_jobs %}
+							<td class="{{ published.job_type_family }} {% if published.deleted %}deleted{% endif %}">
+									<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=published.id %}">Job #{{ published.id }}, {{ published.name }}</a>
 							</td>
 							<td>
-								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a>
+								<a href="{% url 'job_unpublish' org_id=record_group.organization.id record_group_id=record_group.id job_id=published.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a>
 							</td>
 						{% endfor %}
 					{% else %}
 						<td style="color:red;"><strong>This Record Group has not been published yet</strong></td>
-						<td><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Publish</button></a></td>
+						<td><a href="#"><button type="button" class="btn btn-primary btn-sm">This Publish Button Doesn't Make Sense</button></a></td>
 					{% endif %}
 				</tr>
 				{% if record_group.is_published %}

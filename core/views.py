@@ -448,7 +448,7 @@ def record_group(request, org_id, record_group_id):
 	job_lineage = record_group.get_jobs_lineage()
 
 	# get all currently applied publish set ids
-	publish_set_ids = models.PublishedRecords.get_publish_set_ids()
+	publish_set_ids = models.PublishedRecords.get_publish_set_ids()	
 
 	# loop through jobs
 	for job in jobs:
@@ -817,6 +817,18 @@ def job_dpla_field_map(request, org_id, record_group_id, job_id):
 		setattr(djm, dpla_field, es_field)
 		djm.save()
 		return redirect(request.META.get('HTTP_REFERER'))
+
+
+@login_required
+def job_publish(request, org_id, record_group_id, job_id):
+
+	pass
+
+
+@login_required
+def job_unpublish(request, org_id, record_group_id, job_id):
+
+	pass
 
 
 @login_required
@@ -2527,8 +2539,7 @@ def published(request):
 	published = models.PublishedRecords()
 
 	return render(request, 'core/published.html', {
-			'published':published,
-			'es_index':published.esi.es_index,
+			'published':published,			
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -3111,7 +3122,7 @@ class DTPublishedJson(BaseDatatableView):
 			'id',
 			'record_id',
 			'job__record_group',
-			'job__record_group__publish_set_id', # note syntax for Django FKs
+			'publish_set_id', 
 			'oai_set',
 			'unique_published',
 			'document'
@@ -3125,7 +3136,7 @@ class DTPublishedJson(BaseDatatableView):
 			'id',
 			'record_id',
 			'job__record_group',
-			'job__record_group__publish_set_id', # note syntax for Django FKs
+			'publish_set_id', 
 			'oai_set',
 			'unique_published',
 			'document'
@@ -3150,7 +3161,6 @@ class DTPublishedJson(BaseDatatableView):
 		def render_column(self, row, column):
 			
 			# handle document metadata
-
 			if column == 'record_id':
 				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
@@ -3175,10 +3185,6 @@ class DTPublishedJson(BaseDatatableView):
 					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
-
-			# handle associated job
-			if column == 'job__record_group__publish_set_id':
-				return row.job.record_group.publish_set_id
 
 			# handle associated job
 			if column == 'unique_published':
@@ -3213,8 +3219,8 @@ class DTPublishedJson(BaseDatatableView):
 				else:
 					# very slow to include the job's publish set id - removing from search
 					qs = qs.filter(
-						Q(record_id__contains=search) |
-						Q(document__contains=search)
+						Q(record_id=search) |
+						Q(document=search)
 					)
 
 

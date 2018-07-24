@@ -305,7 +305,7 @@ class RecordGroup(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
+	# publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
 	for_analysis = models.BooleanField(default=0)
 
 
@@ -354,6 +354,12 @@ class RecordGroup(models.Model):
 		return ld
 
 
+	def published_jobs(self):
+
+		# get published jobs for rg
+		return self.job_set.filter(published=True)
+
+
 	def is_published(self):
 
 		'''
@@ -366,8 +372,8 @@ class RecordGroup(models.Model):
 			(bool): if a job has been published for this RecordGroup, return True, else False
 		'''
 
-		# get published links
-		published = self.jobpublish_set.all()
+		# get jobs for rg
+		published = self.published_jobs()
 
 		# return True/False
 		if published.count() == 0:
@@ -418,6 +424,7 @@ class Job(models.Model):
 	job_output = models.TextField(null=True, default=None)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
+	publish_set_id = models.CharField(max_length=255, null=True, default=None, blank=True)
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
@@ -1161,6 +1168,57 @@ class Job(models.Model):
 		return job_details
 
 
+	def publish(self, publish_set_id=None):
+
+		'''
+		Method to publish Job
+
+		Args:
+			publish_set_id (str): identifier to group published Records
+		'''
+
+		# set publish_set_id
+		if publish_set_id:
+			# update query
+			publish_set_id_q = "publish_set_id='%s'," % publish_set_id
+			# set for Job
+			self.publish_set_id = publish_set_id			
+		else:
+			publish_set_id_q = ''
+
+		# build query
+		query = "UPDATE core_record SET %s published = 1 WHERE job_id = %s;" % (publish_set_id_q, self.id)
+
+		# execute query
+		stime = time.time()
+		with connection.cursor() as cursor:
+			query_results = cursor.execute(query)
+
+		# set self as publish
+		self.published = True
+		self.save()
+
+
+	def unpublish(self):
+
+		'''
+		Method to unpublish Job
+		'''
+
+		# build query
+		query = "UPDATE core_record SET publish_set_id = NULL, published = 0 WHERE job_id = %s;" % (self.id)
+
+		# execute query
+		stime = time.time()
+		with connection.cursor() as cursor:
+			query_results = cursor.execute(query)
+
+		# set self as publish
+		self.publish_set_id = None
+		self.published = False
+		self.save()
+
+
 
 class JobTrack(models.Model):
 
@@ -1222,22 +1280,6 @@ class JobInput(models.Model):
 
 		# return
 		return passed_count
-
-
-
-class JobPublish(models.Model):
-
-	'''
-	Model to manage published jobs.
-	Provides a one-to-many relationship for a record group and published job
-	'''
-
-	record_group = models.ForeignKey(RecordGroup)
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-
-	def __str__(self):
-		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (
-			self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
 
 
 
@@ -3761,23 +3803,22 @@ class PublishedRecords(object):
 		self.record_group = 0
 
 		# get published jobs
-		self.publish_links = JobPublish.objects.all()
+		self.published_jobs = Job.objects.filter(published=True)
 
 		# get set IDs from record group of published jobs
 		sets = {}
-		for publish_link in self.publish_links:
-			publish_set_id = publish_link.record_group.publish_set_id
+		for job in self.published_jobs:
 			
-			# if set not seen, add as list
-			if publish_set_id not in sets.keys():
-				sets[publish_set_id] = []
+			if job.publish_set_id:
+			
+				# if set not seen, add as list
+				if job.publish_set_id not in sets.keys():
+					sets[job.publish_set_id] = []
 
-			# add publish job
-			sets[publish_set_id].append(publish_link.job)
+				# add publish job
+				sets[job.publish_set_id].append(job)
+
 		self.sets = sets
-
-		# setup ESIndex instance
-		self.esi = ESIndex('published')
 
 
 	@property
@@ -3813,54 +3854,54 @@ class PublishedRecords(object):
 			return False
 
 
-	def update_published_uniqueness(self):
+	# def update_published_uniqueness(self):
 
-		'''
-		Method to update `unique_published` field from Record table for all published records
-		Note: Very likely possible to improve performance, currently about 1s per 10k records.
-		'''
+	# 	'''
+	# 	Method to update `unique_published` field from Record table for all published records
+	# 	Note: Very likely possible to improve performance, currently about 1s per 10k records.
+	# 	'''
 
-		stime = time.time()
+	# 	stime = time.time()
 
-		# get non-unique as QuerySet
-		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
+	# 	# get non-unique as QuerySet
+	# 	dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-		# set true in bulk
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-		set_true.update(unique_published=True)
+	# 	# set true in bulk
+	# 	set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_true.update(unique_published=True)
 
-		# set false in bulk
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-		set_false.update(unique_published=False)
+	# 	# set false in bulk
+	# 	set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_false.update(unique_published=False)
 
-		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
+	# 	logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
-	def set_published_field(self, job_id=None, publish_set_id=None):
+	# def set_published_field(self, job_id=None, publish_set_id=None):
 
-		'''
-		Method to set 'published' for all Records with Publish Job parent
-		'''
+	# 	'''
+	# 	Method to set 'published' for all Records with Publish Job parent
+	# 	'''
 
-		# set publish_set_id
-		if publish_set_id:
-			publish_set_id_q = "publish_set_id='%s'," % publish_set_id		
-		else:
-			publish_set_id_q = ''
+	# 	# set publish_set_id
+	# 	if publish_set_id:
+	# 		publish_set_id_q = "publish_set_id='%s'," % publish_set_id		
+	# 	else:
+	# 		publish_set_id_q = ''
 
-		# limit by job
-		if job_id:
-			job_id_q = "WHERE job_id = %s" % job_id
-		else:
-			job_id_q = ''
+	# 	# limit by job
+	# 	if job_id:
+	# 		job_id_q = "WHERE job_id = %s" % job_id
+	# 	else:
+	# 		job_id_q = ''
 
-		# build query
-		query = "UPDATE core_record SET %s published = 1 %s;" % (publish_set_id_q, job_id_q)
+	# 	# build query
+	# 	query = "UPDATE core_record SET %s published = 1 %s;" % (publish_set_id_q, job_id_q)
 
-		# execute query
-		stime = time.time()
-		with connection.cursor() as cursor:
-			query_results = cursor.execute(query)
+	# 	# execute query
+	# 	stime = time.time()
+	# 	with connection.cursor() as cursor:
+	# 		query_results = cursor.execute(query)
 
 
 	@staticmethod
@@ -3876,7 +3917,7 @@ class PublishedRecords(object):
 			(list): list of publish set ids
 		'''
 
-		publish_set_ids = RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
+		publish_set_ids = Job.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
 		return publish_set_ids
 
 
@@ -5068,122 +5109,6 @@ class MergeJob(CombineJob):
 
 		'''
 		Not current implemented from Merge jobs, as primarily just copying of successful records
-		'''
-
-		pass
-
-
-
-class PublishJob(CombineJob):
-	
-	'''
-	Copy record output from job as published job set
-	'''
-
-	def __init__(self,
-		job_name=None,
-		job_note=None,
-		user=None,
-		record_group=None,
-		input_job=None,
-		job_id=None):
-
-		'''
-		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance this job belongs to
-			input_job (core.models.Job): Job that provides input records for this job's work
-			job_id (int): Not set on init, but acquired through self.job.save()
-
-		Returns:
-			None
-				- sets multiple attributes for self.job
-				- sets in motion the output of spark jobs from core.spark.jobs
-		'''
-
-		# perform CombineJob initialization
-		super().__init__(user=user, job_id=job_id)
-
-		# if job_id not provided, assumed new Job
-		if not job_id:
-
-			self.job_name = job_name
-			self.job_note = job_note
-			self.record_group = record_group
-			self.organization = self.record_group.organization
-			self.input_job = input_job
-
-			# if job name not provided, provide default
-			if not self.job_name:
-				self.job_name = self.default_job_name()
-
-			# create Job entry in DB
-			self.job = Job(
-				record_group = self.record_group,
-				job_type = type(self).__name__,
-				user = self.user,
-				name = self.job_name,
-				note = self.job_note,
-				spark_code = None,
-				job_id = None,
-				status = 'initializing',
-				url = None,
-				headers = None,
-				job_details = json.dumps(
-					{
-						'publish':
-							{
-								'publish_job_id':self.input_job.id,
-							}
-					})
-			)
-			self.job.save()
-
-			# save input job to JobInput table
-			job_input_link = JobInput(
-				job=self.job,
-				input_job=self.input_job,
-				input_validity_valve='all',
-				input_numerical_valve=None)
-			job_input_link.save()
-
-			# save publishing link from job to record_group
-			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
-			job_publish_link.save()
-
-
-	def prepare_job(self):
-
-		'''
-		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
-
-		Args:
-			None
-
-		Returns:
-			None
-				- submits job to Livy
-		'''
-
-		# prepare job code
-		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s").spark_function()' %
-			{
-				'input_job_id':self.input_job.id,
-				'job_id':self.job.id
-			}
-		}
-
-		# submit job
-		self.submit_job_to_livy(job_code)
-
-
-	def get_job_errors(self):
-
-		'''
-		Not implemented for Publish jobs, primarily just copying and indexing records
 		'''
 
 		pass

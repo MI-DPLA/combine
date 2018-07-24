@@ -46,8 +46,8 @@
 				{% for job in jobs %}
 					<tr>
 						<td>
-							{% if job.record_group.publish_set_id %}
-								<a href="{% url 'oai' %}?verb=ListRecords&set={{ set }}" target="_blank">{{ set }}</a>
+							{% if job.publish_set_id %}
+								<a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank">{{ job.publish_set_id }}</a>
 							{% else %}
 								<span style="color:red;"><strong>Not set</strong></span>
 							{% endif %}
@@ -55,7 +55,7 @@
 						<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 						<td class="{{ job.job_type }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 						<td>{{ job.record_count }}</td>
-						<td><a href="{% url 'job_delete' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+						<td><a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
 
 						<!-- NEW -->
 						<td>
