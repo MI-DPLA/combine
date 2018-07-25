@@ -86,6 +86,9 @@
 				<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
 			</li>
 			<li class="nav-item">
+				<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab">Mapped Fields</a>
+			</li>
+			<li class="nav-item">
 				<a class="nav-link" data-toggle="tab" href="#oai_server">Outgoing OAI-PMH Server</a>
 			</li>
 			<li class="nav-item">
@@ -130,6 +133,20 @@
 							    });
 							});
 						</script>
+
+					</div>
+				</div>
+			</div>
+
+			<!-- Field Analysis -->
+			<div id="field_breakdown_tab" class="tab-pane full_width_tab">
+				<div class="row">
+					<div class="col-md-12">
+
+						<h4>Mapped Fields Analysis</h4>						
+
+						<!-- Indexed Fields Analysis DT Table -->
+						{% include 'core/indexed_fields_dt_table.html' %}
 
 					</div>
 				</div>
@@ -241,9 +258,9 @@
 													<tbody>
 														{% for field in field_counts.fields %}
 															<tr>
-																<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=published.esi.es_index %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
-																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
+																<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% url 'field_analysis' es_index=published.esi.es_index_str %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
+																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+																<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=published.esi.es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
 																<td>{{ field.val_instances }}</td>
 																<td>{{ field.distinct }}</td>
 																<td>

@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+import ast
 import binascii
 from collections import OrderedDict
 import datetime
@@ -3528,7 +3529,7 @@ class SparkAppAPIClient(object):
 
 
 ####################################################################
-# Combine Models 													 #
+# Combine Models 												   #
 ####################################################################
 
 class ESIndex(object):
@@ -3537,13 +3538,16 @@ class ESIndex(object):
 	Model to aggregate methods useful for accessing and analyzing ElasticSearch indices
 	'''
 
-	def __init__(self, es_index):
+	def __init__(self, es_index):		
 
 		# convert single index to list
 		if type(es_index) == str:
 			self.es_index = [es_index]
 		else:
 			self.es_index = es_index
+
+		# also, save as string
+		self.es_index_str = str(self.es_index)
 
 
 	def get_index_fields(self):
@@ -5615,9 +5619,14 @@ class DTElasticFieldSearch(View):
 			es_index (str): ES index
 		'''
 
-		# save parameters to self
+		# save request
 		self.request = request
-		self.es_index = es_index
+
+		# handle es index
+		esi = ESIndex(ast.literal_eval(es_index))
+		self.es_index = esi.es_index
+		
+		# save DT params
 		self.DTinput = self.request.GET
 
 		# time respond build

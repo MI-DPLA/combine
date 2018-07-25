@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic
+import ast
 import datetime
 import hashlib
 import json
@@ -701,8 +702,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'q':q,
 			'job_fm_config_json':job_fm_config_json,
 			'job_details':job_details,
-			'pr':pr,
-			'es_index':cjob.esi.es_index,
+			'pr':pr,			
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -1320,6 +1320,13 @@ def job_merge(request, org_id, record_group_id):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('input_validity_valve', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1580,8 +1587,8 @@ def field_analysis(request, es_index):
 	# get field name
 	field_name = request.GET.get('field_name')
 	
-	# get ESIndex
-	esi = models.ESIndex(es_index)
+	# get ESIndex, evaluating stringified list
+	esi = models.ESIndex(ast.literal_eval(es_index))
 
 	# get analysis for field
 	field_metrics = esi.field_analysis(field_name, metrics_only=True)
@@ -1639,7 +1646,7 @@ def field_analysis_docs(request, es_index, filter_type):
 	field_name = request.GET.get('field_name')
 
 	# get ESIndex
-	esi = models.ESIndex(es_index)
+	esi = models.ESIndex(ast.literal_eval(es_index))
 
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
@@ -2427,9 +2434,10 @@ def published(request):
 	# get count of fields for all published job indices
 	field_counts = published.count_indexed_fields()
 
+
 	return render(request, 'core/published.html', {
 			'published':published,
-			'field_counts':field_counts,
+			'field_counts':field_counts,			
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 

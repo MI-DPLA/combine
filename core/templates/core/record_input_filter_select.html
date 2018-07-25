@@ -49,6 +49,28 @@
 
 				<div class="row">
 					<div class="col-md-12">
+						<h5>Filter Duplicates</h5>
+						<p>Remove duplicates based on Record Identifier (<code>record_id</code>):</p>
+
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="filter_record_id_dupes" id="filter_dupes_yes" value="filter_dupes_yes" checked>
+							<label class="form-check-label" for="filter_dupes_yes">
+							<span>Yes</span>
+							</label>
+						</div>
+
+						<div class="form-check">
+							<input class="form-check-input" type="radio" name="filter_record_id_dupes" id="filter_dupes_no" value="filter_dupes_no">
+							<label class="form-check-label" for="filter_dupes_no">
+							<span>No</span>
+							</label>
+						</div>					
+						
+					</div>
+				</div>
+
+				<div class="row">
+					<div class="col-md-12">
 						<h5>Refine by Mapped Fields</h5>
 						<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
 						<div class="form-group">
