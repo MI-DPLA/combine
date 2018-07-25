@@ -702,7 +702,8 @@ def job_details(request, org_id, record_group_id, job_id):
 			'q':q,
 			'job_fm_config_json':job_fm_config_json,
 			'job_details':job_details,
-			'pr':pr,			
+			'pr':pr,
+			'es_index_str':cjob.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2434,10 +2435,10 @@ def published(request):
 	# get count of fields for all published job indices
 	field_counts = published.count_indexed_fields()
 
-
 	return render(request, 'core/published.html', {
 			'published':published,
-			'field_counts':field_counts,			
+			'field_counts':field_counts,
+			'es_index_str':published.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
