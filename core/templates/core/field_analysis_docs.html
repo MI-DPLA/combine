@@ -61,7 +61,6 @@
 				$(document).ready(function() {
 					es_query = "{% url 'records_es_field_dt_json' es_index=esi.es_index_str search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}";
 					es_query = es_query.replace(/&#39;/g,"'");
-
 				    var oTable = $('#datatables_es_records').dataTable({
 				        "processing": true,
 				        "serverSide": true,
