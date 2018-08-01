@@ -1184,6 +1184,13 @@ def job_transform(request, org_id, record_group_id):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1322,7 +1329,7 @@ def job_merge(request, org_id, record_group_id):
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
 		# filter duplicates
-		filter_dupe_record_ids = request.POST.get('input_validity_valve', 'true')
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
 		if filter_dupe_record_ids == 'true':
 			filter_dupe_record_ids = True
 		else:
@@ -2432,8 +2439,11 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
-	# get count of fields for all published job indices
-	field_counts = published.count_indexed_fields()
+	if published.records.count() > 0:
+		# get count of fields for all published job indices
+		field_counts = published.count_indexed_fields()
+	else:
+		field_counts = {}
 
 	return render(request, 'core/published.html', {
 			'published':published,
@@ -2773,6 +2783,13 @@ def job_analysis(request):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)

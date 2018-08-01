@@ -309,6 +309,10 @@ class CombineSparkJob(object):
 			if input_es_query_valve not in [None,'{}']:
 				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
+		# filter duplicates
+		if 'filter_dupe_record_ids' in self.kwargs['input_filters'].keys() and self.kwargs['input_filters']['filter_dupe_record_ids'] == True:			
+			filtered_df = filtered_df.dropDuplicates(['record_id'])
+
 		# return
 		return filtered_df
 
