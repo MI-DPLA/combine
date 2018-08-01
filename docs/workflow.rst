@@ -15,7 +15,7 @@ Sub-sections include:
 Record Versioning
 =================
 
-In an effort to preserve various stages of a Record through harvest, possible multiple transformation, merges, and eventually publishing, Combine takes the approach of copying the Record each time.
+In an effort to preserve various stages of a Record through harvest, possible multiple transformation, merges and sub-dividing, Combine takes the approach of copying the Record each time.
 
 As outlined in the `Data Model <data_model.html>`_, Records are represented in both MySQL and ElasticSearch.  Each time a Job is run, and a Record is duplicated, it gets a new row in MySQL, with the full XML of the Record duplicated.  Records are associated with each other across Jobs by their `Combine ID <data_model.html#identifiers>`_.
 
@@ -64,7 +64,7 @@ The table shows all Jobs, with optional filters and a search box in the upper-ri
   - ``Name`` - Clickable name for Job that leads to Job details, optionally given one by user, or a default is generated.  This is editable anytime.  
   - ``Organization`` - Clickable link to the Organization this Job falls under
   - ``Record Group`` - Clickable link to the Record Group this Job falls under (as this table is reused throughout Combine, it can sometimes contain Jobs from other Record Groups)
-  - ``Job Type`` - Harvest, Transform, Merge, Publish, or Analysis
+  - ``Job Type`` - Harvest, Transform, Merge, or Analysis
   - ``Livy Status`` - This is the status of the Job in Livy
 
     - ``gone`` - Livy has been restarted or stopped, and no information about this Job is available
@@ -74,6 +74,7 @@ The table shows all Jobs, with optional filters and a search box in the upper-ri
 
   - ``Finished`` - Though Livy does the majority of the Job processing, this indicates the Job is finished in the context of Combine
   - ``Is Valid`` - True/False, True if no validations were run or *all* Records passed validation, False if any Records failed any validations
+  - ``Publishing`` - Buttons for `Publishing or Unpublishing <publishing.html>`_ a Job
   - ``Elapsed`` - How long the Job has been running, or took
   - ``Input`` - All input Jobs used for this Job
   - ``Notes`` - Optional notes field that can be filled out by User here, or in Job Details
@@ -258,12 +259,14 @@ Also in this area is a button "Job Notes" which will reveal a panel for reading 
 Below that are tabs that organize the various parts of the Job Details page:
 
   - `Records <#records>`__
-  - `Field Analysis <#field-analysis>`__
+  - `Mapped Fields <#field-analysis>`__
+  - `Publish <#publish>`__
   - `Input Jobs <#input-jobs>`__
   - `Validation <#validation>`__
   - `DPLA Bulk Data Matches <#dpla-bulk-data-matches>`__
   - `Job Type Details - Jobs <#job-type-details-jobs>`__
   - `Exporting <#export>`__
+  - `Spark Details <#spark-details>`__
 
 
 Records
@@ -299,6 +302,12 @@ This tab provides a table of all indexed fields for this job, the nature of whic
    :target: _images/job_field_analysis.png
 
    Indexed field analysis for a Job, across all Records
+
+
+Publish
+-------
+
+This tab provides the means of publishing a single Job and its Records.  This is covered in more detail in the `Publishing section <publishing.html>`_.
 
 
 Input Jobs
@@ -347,14 +356,48 @@ This feature is still somewhat exploratory, but Combine provides an ideal enviro
 In this example, we are seeing that 185k Records were found in the DPLA data dump, and that 38k Records appear to be new.  Without an example at hand, it is difficult to show, but it's conceivable that by leaving Jobs in Combine, and then comparing against a later DPLA data dump, one would have the ability to confirm that all records do indeed show up in the DPLA data.
 
 
+Spark Details
+-------------
+
+This tab provides helpful diagnostic information about the Job as run in in the background in Spark.
+
+**Spark Jobs/Tasks Run**
+
+Shows the actual tasks and stages as run by Spark.  Due to how Spark runs, the names of these tasks may not be familiar or immediately obvious, but provide a window into the Job as it runs.  This section also shows additioanl tasks that have been run for this Job such as re-indexing, or new validations.
+
+**Livy Statement Information**
+
+This section shows the raw JSON output from the Job as submitted to Apache Livy.
+
+.. figure:: img/job_details_spark_details.png
+   :alt: Details about the Job as run in Apache Spark
+   :target: _images/job_details_spark_details.png
+
+   Details about the Job as run in Apache Spark
+
+
+
 Job Type Details - Jobs
 ~~~~~~~~~~~~~~~~~~~~~~~
 
-For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, ``Publish``, and ``Analysis`` -- the Job details screen provides a tab with information specific to that Job type.
+For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, and ``Analysis`` -- the Job details screen provides a tab with information specific to that Job type.
 
-**Harvest Jobs**
+All Jobs contain a section called **Job Runtime Details** that show all parameters used for the Job:
 
-No additional information at this time for Harvest Jobs.
+.. figure:: img/job_details_runtime_details.png
+   :alt: Parameters used to initiate and run Job that can be useful for diagnostic purposes
+   :target: _images/job_details_runtime_details.png
+
+   Parameters used to initiate and run Job that can be useful for diagnostic purposes
+
+
+**OAI Harvest Jobs**
+
+Shows what OAI endpoint was used for Harvest.
+
+**Static Harvest Jobs**
+
+No additional information at this time for Static Harvest Jobs.
 
 **Transform Jobs**
 
@@ -371,10 +414,6 @@ Clicking into a Record, and then clicking the "Transform Details" tab at the Rec
 **Merge/Duplicate Jobs**
 
 No additional information at this time for Merge/Duplicate Jobs.
-
-**Publish Jobs**
-
-No additional information at this time for Publish Jobs.
 
 **Analysis Jobs**
 
@@ -568,7 +607,7 @@ Results from the DPLA API are parsed and presented here, with the full API JSON 
 Job Type Details - Records
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, ``Publish``, and ``Analysis`` -- the Record details screen provides a tab with information specific to that Job type.
+For each Job type -- ``Harvest``, ``Transform``, ``Merge/Duplicate``, and ``Analysis`` -- the Record details screen provides a tab with information specific to that Job type.
 
 **Harvest Jobs**
 
@@ -622,10 +661,6 @@ Users may also click the button "View Side-by-Side Changes" for a GitHub-esque, 
 **Merge/Duplicate Jobs**
 
 No additional information at this time for Merge/Duplicate Jobs.
-
-**Publish Jobs**
-
-No additional information at this time for Publish Jobs.
 
 **Analysis Jobs**
 

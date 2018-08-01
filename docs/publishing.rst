@@ -7,13 +7,11 @@ The following will outline specifics for Publishing a Record Group, with more `g
 How does Publishing work in Combine?
 ====================================
 
-As a tool for aggregating metadata, Combine must also have the ability to serve or distribute aggregated Records again.  This is done by "publishing" in Combine, and this happens at the `Record Group level <data_model.html#record-group>`_.  Only **one** Job may be published per Record Group.
+As a tool for aggregating metadata, Combine must also have the ability to serve or distribute aggregated Records again.  This is done by "publishing" in Combine, which happens at the `Job level <data_model.html#job>`_.
 
-When a Record Group is published, a user may create a "Publish Set Identifier" (``publish_id``) that is used to aggregate and group published Records.  For example, in the built-in OAI-PMH server, this Publish ID becomes the OAI set ID, or for exported flat XML files, the ``publish_id`` is used to create a folder hierarchy.  Multiple Record Groups can publish under the same Publish Set ID, allowing for grouping of materials in publishing.
+When a Job is published, a user may a Publish Set Identifier (``publish_set_id``) that is used to aggregate and group published Records.  For example, in the built-in OAI-PMH server, that Publish Set Identifier becomes the OAI set ID, or for exported flat XML files, the ``publish_set_id`` is used to create a folder hierarchy.  Multiple Jobs can publish under the same Publish Set ID, allowing for grouping of materials when publishing.
 
-Why publishing at the Record Group level?  This reinforces the idea that a Record Group is an intellectual group of records, and though it may contain many Jobs of various stages, or previous versions, there should be only one, representative, published body of Records from this intellectual grouping of Records.  This is another instance where `Merge Jobs <merging.html>`_ can be useful, by allowing users to merge all Records / Jobs within a Record Group for publishing.
-
-When a Record Group is published, a Publish Job is run that works very similar to a Merge / Duplicate Job in that it takes the input Job wholesale, copying the Records and the ElasticSearch documents.  What differentiates a Publish job from other Jobs is that each Record contained in that Job is considered "published" and will get returned through publishing routes.
+On the back-end, publishing a Job adds a flag to Job that indicates it is published, with an optional ``publish_set_id``.  Unpublishing removes these flags, but maintains the Job and its Records.
 
 Currently, the the following methods are avaialable for publishing Records from Combine:
 
@@ -21,40 +19,40 @@ Currently, the the following methods are avaialable for publishing Records from 
   - `Export of Flat Files <#export-flat-files>`__
 
 
-Publishing a Record Group
-=========================
+Publishing a Job
+================
 
-From the Record Group screen, click the blue "Publish" button near the top of the page:
+Publishing a Job can be initated one of two ways: from the Record Group's list of Jobs which contains a column called "Publishing":
 
-.. figure:: img/publish_init.png
-   :alt: Beginning the publish process from a Record Group
-   :target: _images/publish_init.png
+.. figure:: img/publish_column.png
+   :alt: Column in Jobs table for publishing a Job
+   :target: _images/publish_column.png
 
-   Beginning the publish process from a Record Group
+   Column in Jobs table for publishing a Job
 
-The next screen will be a familiar Job running screen, with a red section near the top to enter, or use a previously created, Publish Set ID for this Job:
+Or the "Publish" tab from a Job's details page.  Both point a user to the same screen, which shows the current publish status for a Job.
 
-.. figure:: img/publish_set_id.png
-   :alt: Create or reuse a Publish Set ID when publishing a Record Group
-   :target: _images/publish_set_id.png
+If a Job is unpublished, a user is presented with a field to assign a Publish Set ID and publish a Job:
 
-   Create or reuse a Publish Set ID when publishing a Record 
+.. figure:: img/unpublished_job.png
+   :alt: Screenshot to publish a Job
+   :target: _images/unpublished_job.png
+
+   Screenshot to publish a Job
+
+If a Job is already published, a user is presented with information about the publish status, and the ability to *unpublish*:
+
+.. figure:: img/published_job.png
+   :alt: Screenshot of a published Job, with option to unpublish
+   :target: _images/published_job.png
+
+   Screenshot of a published Job, with option to unpublish
+
+Both publishing and unpublishing will run a background task.
 
 **Note:** When selecting a Publish Set ID, consider that when the Records are later harvested *from* Combine, this Publish Set ID -- at that point, an OAI set ID -- will prefix the Record Identifier to create the OAI identifier.  This behavior is consistent with other OAI-PMH aggregators / servers like REPOX.  It is good to consider what OAI sets these Records have been published under in the past (thereby effecting their identifiers), and/or special characters should probably be avoided.
 
 Identifiers during metadata aggregation is a complex issue, and will not be addressed here, but it's important to note that the Publish Set ID set during Publishing Records in Combine will have bearing on those considerations.
-
-Next, select a **single** input Job from the table below, much like Transformation jobs and when ready, click "Publish" near the bottom.
-
-This should return you to the Record Group screen, where you'll see that the Record Group has been published:
-
-.. figure:: img/publish_record_group.png
-   :alt: Record Group indicated as published
-   :target: _images/publish_record_group.png
-
-   Record Group indicated as published
-
-You can see the Publish Set ID of ``wsuoai``.  Two buttons are provided for un-publishing this Record Group, effectively deleting the Publish Job, or changing the Publish Set ID.
 
 
 Viewing Publishing Records
@@ -62,15 +60,15 @@ Viewing Publishing Records
 
 All published Records can be viewed from the "Published" section in Combine, which can be navigated to from a consistent link at the top of the page.
 
-The "Published Sets" section in the upper-left show all published Record Groups:
+The "Published Sets" section in the upper-left show all published Jobs:
 
-.. figure:: img/published_rgs.png
-   :alt: Published Record Groups
-   :target: _images/published_rgs.png
+.. figure:: img/published_jobs.png
+   :alt: Published Jobs
+   :target: _images/published_jobs.png
 
-   Published Record Groups
+   Published Jobs
 
-Similar to the view from a Record Group, a Record Group can also be unpublished here, or the Publish Set ID changed.
+As can be seen here, two Jobs are published, both from the same Record Group, but with different Publish Set IDs.
 
 To the right, is an area called "Analysis" that allows for running an `Analysis Job <analysis.html#analysis-jobs>`_ over *all* published records.  While this would be possible from a manually started Analysis Job, carefully selecting all Publish Jobs throughout Combine, this is a convenience option to begin an Analysis Jobs with all published Records as input.
 
@@ -78,25 +76,33 @@ Below these two sections is a table of all published Records.  Similar to tables
 
   - ``Outgoing OAI Set`` - the OAI set, aka the Publish Set ID, that the Record belongs to
   - ``Harvested OAI Set`` - the OAI set that the Record was *harvested* under (empty if not harvested via OAI-PMH)
-  - ``Unique in Published?`` - whether or not the Record ID (``record_id``) is unique among all Published Records
+  - ``Unique Record ID`` - whether or not the Record ID (``record_id``) is unique among all Published Records
 
-.. figure:: img/published_records_table.png
+.. figure:: img/published_records.png
    :alt: Table showing all Published Records
-   :target: _images/published_records_table.png
+   :target: _images/published_records.png
 
    Table showing all Published Records
 
-Next, there is now hopefully familiar breakdown of indexed fields table, but this time, for all Published Records.
+Next, there is a now hopefully familiar breakdown of mapped fields, but this time, for all published Records.
 
-.. figure:: img/published_indexed_fields_sorted_subset.png
-   :alt: Section of indexed fields table, dual sorted by total instances and percent of values that are unique
-   :target: _images/published_indexed_fields_sorted_subset.png
+.. figure:: img/published_mapped.png
+   :alt: Screenshot of Mapped Fields across ALL published Records
+   :target: _images/published_mapped.png
 
-   Section of indexed fields table, dual sorted by total instances and percent of values that are unique
+   Screenshot of Mapped Fields across ALL published Records
 
 While helpful in the Job setting, this breakdown can be particularly helpful for analyzing the distribution of metadata across Records that are slated for Publishing.
 
-For example: **determining if all records have a thumbnail image**.  Once the field has been identified as where this information should be, in the case of the screenshot above, it is the field ``mods_location_url_@access_preview``.  We can sort the right-most column, ``Instance of Field in Total Indexed Records`` *and then hold shift for perform a secondary sort* and click the second right-most column ``Percentage of Field Values that are Unique``.  This gives us a "dual" sort that orders by fields with the most values across all records, sorted again by their uniqueness.  These two qualities would be critical for things like thumbnail or access URLs, both of which can be seen in the screen shot above.  As a convenience feature, Combine attempts to highlight those fields in Yellow that are both found, and are unique, in all Records.  More on this in `Analyzing Indexed Fields Breakdown <analysis.html#analyzing-indexed-fields>`_.
+For example: **determining if all records have an access URL**.  Once the mapped field has been identified as where this information should be -- in this case ``mods_location_url_@usage=primary`` -- we can search for this field and confirm that 100% of Records have a value for that mapped field.
+
+.. figure:: img/confirm_published_field.png
+   :alt: Confirm important field exists in published Records
+   :target: _images/confirm_published_field.png
+
+   Confirm important field exists in published Records
+
+More on this in `Analyzing Indexed Fields Breakdown <analysis.html#analyzing-indexed-fields>`_.
 
 
 OAI-PMH Server

@@ -35,8 +35,6 @@ Record Groups fall under Organizations, and are loosely based on a "Data Set" in
 
 Record Groups are envisioned as the right level of hierarchy for a group of records that are intellectually grouped, come from the same system, or might be managed with the same transformations and validations.
 
-Record Groups are also the level at which a bunch of records are `published <publishing.html>`_ in Combine.  For those familiar with OAI-PMH, it can be convenient to think of a 1:1 between Record Groups and OAI sets (though it is possible to publish multiple Record Groups under the same OAI set identifier).
-
 From our Foo University example above, the Fedora Repository, Omeka installs, and the records from a small historical society -- all managed and mediated by Foo University -- might make nice, individual, distinct Record Groups.
 
 
@@ -47,18 +45,17 @@ Jobs are contained with a Record Group, and contain Records.
 
 This is where the model forks from REPOX, in that a Record Group can, and likely will, contain multiple Jobs.  It is reasonable to also think of a Job as a *stage* of records.
 
-Jobs represent Records as they move through the various stages of harvesting, transforming, and publishing.  In a typical Record Group, you may see Jobs that represent a harvest of records, another for transforming the records, perhaps yet another transformation, and finally a publish Job.  In this way, Jobs also provide an approach to versioning Records.
+Jobs represent Records as they move through the various stages of harvesting, sub-dividing, and transforming.  In a typical Record Group, you may see Jobs that represent a harvest of records, another for transforming the records, perhaps yet another transformation, and finally a Job that is "published".  In this way, Jobs also provide an approach to versioning Records.
 
 Imagine the record ``baz`` that comes with the harvest from ``Job1``.  ``Job2`` is then a transformation style Job that uses ``Job1`` as input.  ``Job3`` might be another transformation, and ``Job4`` a final publishing of the records.   In each Job, the record ``baz`` exists, at those various stages of harvesting and transformation.  Combine errs on the side of duplicating data in the name of lineage and transparency as to how and why a Record "downstream" looks they way it does.
 
 As may be clear by this point, Jobs are used as **input** for other Jobs.  ``Job1`` serves as the input Records for ``Job2``, ``Job2`` for ``Job3``, etc.
 
-There are five major types of Jobs:
+There are four primary types of Jobs:
 
   * Harvests
   * Transformations
   * Merge / Duplicate
-  * Publishing
   * Analysis
 
 It is up to the user how to manage Jobs in Combine, but one strategy might be to leave previous harvests, transforms, and merges of Jobs within a RecordGroup for historical purposes.  From an organizational standpoint, this may look like:
@@ -68,7 +65,7 @@ It is up to the user how to manage Jobs in Combine, but one strategy might be to
     Harvest, 1/1/2017 --> Transform to Service Hub Profile
     Harvest, 4/1/2017 --> Transform to Service Hub Profile
     Harvest, 8/1/2017 --> Transform to Service Hub Profile
-    Harvest, 1/1/2018 --> Transform to Service Hub Profile --> Publish
+    Harvest, 1/1/2018 --> Transform to Service Hub Profile (Published)
 
 In this scenario, this Record Group would have **9** total Jobs, but only only the last "set" of Jobs would represent the currently published Records.
 
@@ -93,14 +90,6 @@ Merge / Duplicate Jobs
 ----------------------
 
 `Merge / Duplicate Jobs <merging.html>`_ are true to their namesake: merging Records across multiple Jobs, or duplicating all Records from a single Job, into a new, single Job.
-
-
-Publish Jobs
-------------
-
-`Publish Jobs <publishing.html>`_ are how Records are "published" in Combine, meaning they are available and destined for systems downstream (e.g. DPLA harvesting).  
-
-Publish Jobs are run at the Record Group level, effectively "publishing" the Record Group when they are run.
 
 
 Analysis Jobs
