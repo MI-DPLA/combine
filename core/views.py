@@ -1166,9 +1166,6 @@ def job_transform(request, org_id, record_group_id):
 		if rits == '':
 			rits = None
 
-		# capture input record validity valve
-		# input_validity_valve = request.POST.get('input_validity_valve', None)
-
 		# capture input filters
 		input_filters = {
 			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
