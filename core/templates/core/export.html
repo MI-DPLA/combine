@@ -73,9 +73,9 @@
 							<!-- form for Job mapped fields export -->
 
 							{% if cjob %}
-								<form method="POST" action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
+								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
-								<form method="POST" action="{% url 'export_documents' export_source='published' %}">
+								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' %}">
 							{% endif %}
 
 								{% csrf_token %}
@@ -88,7 +88,7 @@
 											<option value="json">JSON (line-delimited, recommended)</option>
 											<option value="csv">CSV (tabular, comma seperated) </option>
 										</select>
-										<small id="mapped_fields_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv is prone to messy data due to delimiters and newline characters that may exist in the mapped field values.  Exporting Mapped Fields as JSON is recommended.</small>
+										<small id="mapped_fields_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values.  Exporting Mapped Fields as JSON handles this more deftly, and is recommended.</small>
 									</div>
 								</div>
 
@@ -221,7 +221,7 @@
 									    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
 									    DataTable.
 									    */
-									    $("#form_submit_button").click(function(){
+									    $("#form_submit_button").click(function(){									    	
 
 									    	// remove any pre-existing temp, hidden inputs
 									    	$("#hidden_field_inputs input").each(function(){
@@ -237,7 +237,7 @@
 									    	});
 
 									    	// submit form
-									    	$("#export_mapped_form").submit();
+									    	$("#export_mapped_fields_form").submit();
 
 									    });
 								    });

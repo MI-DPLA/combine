@@ -2655,11 +2655,134 @@ def search(request):
 
 def export_documents(request, export_source, job_id=None):
 
-	pass
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# export for single job
+	if export_source == 'job':
+
+		logger.debug('exporting documents from Job')
+
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Documents for Job: %s' % cjob.job.name,
+			task_type = 'export_documents',
+			task_params_json = json.dumps({
+				'job_id':cjob.job.id,
+				'records_per_file':int(records_per_file),
+				'archive_type':archive_type
+			})
+		)
+		ct.save()
+
+	# export for published
+	if export_source == 'published':
+
+		logger.debug('exporting documents from Job')
+
+		# get instance of Published model
+		published = models.PublishedRecords()
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Documents for Published Records',
+			task_type = 'export_documents',
+			task_params_json = json.dumps({
+				'published':True,
+				'records_per_file':int(records_per_file),
+				'archive_type':archive_type
+			})
+		)
+		ct.save()
+	
+	# fire bg_task
+	bg_task = tasks.export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
 
 def export_mapped_fields(request, export_source, job_id=None):
 
-	pass
+	# get mapped fields export type
+	mapped_fields_export_type = request.POST.get('mapped_fields_export_type')
+
+	# check for Kibana check
+	kibana_style = request.POST.get('kibana_style', False)
+	if kibana_style:
+		kibana_style = True
+
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# get selected fields if present
+	mapped_field_include = request.POST.getlist('mapped_field_include',False)
+
+	# export for single job
+	if export_source == 'job':
+
+		logger.debug('exporting mapped fields from Job')
+
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
+			task_type = 'export_mapped_fields',
+			task_params_json = json.dumps({
+				'job_id':cjob.job.id,
+				'mapped_fields_export_type':mapped_fields_export_type,
+				'kibana_style':kibana_style,
+				'archive_type':archive_type,
+				'mapped_field_include':mapped_field_include
+			})
+		)
+		ct.save()		
+
+	# export for published
+	if export_source == 'published':
+
+		logger.debug('exporting mapped fields from published records')
+
+		# get instance of Published model
+		published = models.PublishedRecords()
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Mapped Fields for Published Records',
+			task_type = 'export_mapped_fields',
+			task_params_json = json.dumps({
+				'published':True,
+				'mapped_fields_export_type':mapped_fields_export_type,
+				'kibana_style':kibana_style,
+				'archive_type':archive_type,
+				'mapped_field_include':mapped_field_include
+			})
+		)
+		ct.save()
+	
+	# fire bg task
+	bg_task = tasks.export_mapped_fields(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
 
 ####################################################################
 # Analysis  													   #

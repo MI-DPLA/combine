@@ -38,8 +38,6 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),	
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/reports/create_validation_report$', views.job_reports_create_validation, name='job_reports_create_validation'),
 	url(r'^organization/(?P<org_id>([0-9]|(DYNAMIC_ORG_ID))+)/record_group/(?P<record_group_id>([0-9]|(DYNAMIC_RG_ID))+)/job/(?P<job_id>([0-9]|(DYNAMIC_ID))+)/job_lineage_json$', views.job_lineage_json, name='job_lineage_json'),
-	# url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/mapped_fields$', views.job_export_mapped_fields, name='job_export_mapped_fields'),
-	# url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/documents$', views.job_export_documents, name='job_export_documents'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update$', views.job_update, name='job_update'),	
 
 	# Job Record Validation Scenarios
@@ -85,15 +83,13 @@ urlpatterns = [
 	# Publish
 	url(r'^published$', views.published, name='published'),
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
-	# url(r'^published/export/mapped_fields$', views.published_export_mapped_fields, name='published_export_mapped_fields'),
-	# url(r'^published/export/documents$', views.published_export_documents, name='published_export_documents'),
 
 	# Export
-	url(r'^published/export/mapped_fields/(?P<export_source>.+)$', views.export_mapped_fields, name='export_mapped_fields'),
-	url(r'^published/export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
-	url(r'^published/export/documents/(?P<export_source>.+)$', views.export_documents, name='export_documents'),
-	url(r'^published/export/documents/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_documents, name='export_documents'),
-
+	url(r'^export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
+	url(r'^export/mapped_fields/(?P<export_source>.+)$', views.export_mapped_fields, name='export_mapped_fields'),	
+	url(r'^export/documents/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_documents, name='export_documents'),
+	url(r'^export/documents/(?P<export_source>.+)$', views.export_documents, name='export_documents'),
+	
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
 
