@@ -120,15 +120,9 @@ Combine comes with a built-in OAI-PMH server that serves records directly from t
 Export Flat Files
 =================
 
-Another way to "publish" or distribute Records from Combine is by exporting flat files of Record XML documents as an archive file.  This can be done by clicking the "Export" tab and then "Export Documents" (if not already selected):
+Another way to "publish" or distribute Records from Combine is by exporting flat files of Record XML documents as an archive file.  This can be done by clicking the "Export" tab and then "Export Documents".  `Read more about exporting here <exporting.html>`_.
 
-.. figure:: img/publishing_flat_files.png
-   :alt: Exporting Published Records as flat files
-   :target: _images/publishing_flat_files.png
-
-   Exporting Published Records as flat files
-
-The Publish Set ID (``publish_id``) for each published Record Group will be used to organzize the exported XML files in the resulting archive file.  For example, if a single Record Group was published under the Publish ID ``foo``, and two Record Groups were published under the Publish ID ``bar``, and the user specified ``100`` Record per file, the resulting export structure would look similar to this:
+Publish Set IDs will be used to organzize the exported XML files in the resulting archive file.  For example, if a single Job was published under the Publish ID ``foo``, and two Jobs were published under the Publish ID ``bar``, and the user specified ``100`` Record per file, the resulting export structure would look similar to this:
 
 .. figure:: img/published_export_structure.png
    :alt: Publish IDs as folder structured in exported Published Records
