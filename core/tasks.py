@@ -5,6 +5,7 @@ import glob
 import json
 import math
 import os
+import pdb
 import polling
 import shutil
 import subprocess
@@ -128,58 +129,118 @@ def export_mapped_fields(ct_id):
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
-	# handle single Job
-	if 'job_id' in ct.task_params.keys():
+	# JSON export
+	if ct.task_params['mapped_fields_export_type'] == 'json':
 
-		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+		# handle single Job
+		if 'job_id' in ct.task_params.keys():
 
-		# set output filename
-		output_path = '/tmp/%s' % uuid.uuid4().hex
-		os.mkdir(output_path)
-		export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
+			# get CombineJob
+			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-		# build command list
-		cmd = [
-			"es2csv",
-			"-q '*'",
-			"-i 'j%s'" % cjob.job.id,
-			"-D 'record'",
-			"-o '%s'" % export_output
-		]
+			# set output filename
+			output_path = '/tmp/%s' % uuid.uuid4().hex
+			os.mkdir(output_path)
+			export_output = '%s/job_%s_mapped_fields.json' % (output_path, cjob.job.id)
 
-	# handle published records
-	if 'published' in ct.task_params.keys():
+			# build command list
+			cmd = [
+				"elasticdump",
+				"--input=http://localhost:9200/j%s" % cjob.job.id,
+				"--output=%s" % export_output,
+				"--type=data",
+				"--sourceOnly",
+				"--ignore-errors",
+				"--noRefresh"
+			]
 
-		# set output filename
-		output_path = '/tmp/%s' % uuid.uuid4().hex
-		os.mkdir(output_path)
-		export_output = '%s/published_mapped_fields.csv' % (output_path)
+		# handle published records
+		if 'published' in ct.task_params.keys():
 
-		# get list of jobs ES indices to export
-		pr = models.PublishedRecords()
-		es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+			# set output filename
+			output_path = '/tmp/%s' % uuid.uuid4().hex
+			os.mkdir(output_path)
+			export_output = '%s/published_mapped_fields.csv' % (output_path)
 
-		# build command list
-		cmd = [
-			"es2csv",
-			"-q '*'",
-			"-i '%s'" % es_list,
-			"-D 'record'",
-			"-o '%s'" % export_output
-		]
+			# get list of jobs ES indices to export
+			pr = models.PublishedRecords()
+			es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
-	# handle kibana style
-	if ct.task_params['kibana_style']:
-		cmd.append('-k')
+			# build command list
+			cmd = [
+				"elasticdump",
+				"--input=http://localhost:9200/j%s" % cjob.job.id,
+				"--output=%s" % export_output,
+				"--type=data",
+				"--sourceOnly",
+				"--ignore-errors",
+				"--noRefresh"
+			]		
 
-	# if fields provided, limit
-	if ct.task_params['mapped_field_include']:
-		logger.debug('specific fields selected, adding to es2csv command:')
-		logger.debug(ct.task_params['mapped_field_include'])
-		cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
+		# if fields provided, limit
+		if ct.task_params['mapped_field_include']:
+			logger.debug('specific fields selected, adding to elasticdump command:')
+			searchBody = {
+				"_source":ct.task_params['mapped_field_include']
+			}
+			cmd.append("--searchBody='%s'" % json.dumps(searchBody))
 
-	# execute
+
+	# CSV export
+	# if ct.task_params['mapped_fields_export_type'] == 'csv':
+
+	# 	# handle single Job
+	# 	if 'job_id' in ct.task_params.keys():
+
+	# 		# get CombineJob
+	# 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+	# 		# set output filename
+	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
+	# 		os.mkdir(output_path)
+	# 		export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
+
+	# 		# build command list
+	# 		cmd = [
+	# 			"es2csv",
+	# 			"-q '*'",
+	# 			"-i 'j%s'" % cjob.job.id,
+	# 			"-D 'record'",
+	# 			"-o '%s'" % export_output
+	# 		]
+
+	# 	# handle published records
+	# 	if 'published' in ct.task_params.keys():
+
+	# 		# set output filename
+	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
+	# 		os.mkdir(output_path)
+	# 		export_output = '%s/published_mapped_fields.csv' % (output_path)
+
+	# 		# get list of jobs ES indices to export
+	# 		pr = models.PublishedRecords()
+	# 		es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+
+	# 		# build command list
+	# 		cmd = [
+	# 			"es2csv",
+	# 			"-q '*'",
+	# 			"-i '%s'" % es_list,
+	# 			"-D 'record'",
+	# 			"-o '%s'" % export_output
+	# 		]
+
+	# 	# handle kibana style
+	# 	if ct.task_params['kibana_style']:
+	# 		cmd.append('-k')
+
+	# 	# if fields provided, limit
+	# 	if ct.task_params['mapped_field_include']:
+	# 		logger.debug('specific fields selected, adding to es2csv command:')
+	# 		cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
+
+
+	# execute compiled command
 	logger.debug(cmd)
 	os.system(" ".join(cmd))
 
