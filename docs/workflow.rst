@@ -423,8 +423,7 @@ No additional information at this time for Analysis Jobs.
 Export
 ~~~~~~
 
-Jobs may be exported in two ways:
-
+Records from Jobs may be exported in a variety of ways:
 
 **Record Mapped Fields**
 
