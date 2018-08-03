@@ -423,45 +423,7 @@ No additional information at this time for Analysis Jobs.
 Export
 ~~~~~~
 
-Records from Jobs may be exported in a variety of ways:
-
-**Record Mapped Fields**
-
-Exporting a Job as Mapped Fields creates a single.csv or Excel file mapped fields stored in ElasticSearch, across all Records, for this Job.
-
-.. figure:: img/job_export_mapped_fields.png
-   :alt: Exporting Mapped Fields for a Job
-   :target: _images/job_export_mapped_fields.png
-
-   Exporting Mapped Fields for a Job
-
-By default, **all** mapped fields are included in the export, but a smaller, selected subset is possible by clicking the "Selected Mapped Fields for Export" button:
-
-.. figure:: img/job_export_mapped_fields_select_subset.png
-   :alt: Exporting Mapped Fields, selecting subset of fields to include
-   :target: _images/job_export_mapped_fields_select_subset.png
-
-   Exporting Mapped Fields, selecting subset of fields to include
-
-This is similar to selecting fields to include when generating a report of Validation failures.
-
-Exporting mapped fields can be helpful for analysis, or even importing into OpenRefine for more detailed analysis and clustering.  Please note, this exported format cannot be *re-imported* or "round-tripped" into Combine to modify the mapped fields or XML document for each Record in that Job; it is for analysis purposes only.
-
-If a Record contains a mapped field such as ``mods_subject_topic`` that is repeating, the default export format is to create multiple columns in the export, appending an integer for each instance of that field, e.g.,
-
-.. code-block:: text
-
-    mods_subject_topic.0, mods_subject_topic.1, mods_subject_topic.0
-    history, michigan, snow
-
-But if the checkbox, ``Check this box to export repeating fields "Kibana style"`` is checked, all multi-valued fields will export in the "Kibana style" where a single column is added to the export and the values are comma separated, e.g.,
-
-.. code-block:: text
-
-    mods_subject_topic
-    history,michigan,snow
-
-When a Job is exported as Mapped Fields, this will send users to the `Background Tasks <background_tasks.html>`_ screen where the task can be monitored and viewed.
+Records from Jobs may be exported in a variety of ways, `read more about exporting here <exporting.html>`_.
 
 
 **Record Documents**
