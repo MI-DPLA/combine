@@ -52,6 +52,11 @@ from core.models import CombineJob, Job, JobTrack, Transformation, PublishedReco
 # import xml2kvp
 from core.xml2kvp import XML2kvp
 
+# import mongo dependencies
+import mongoengine
+mongoengine.connect('combine')
+import pymongo
+
 
 
 
@@ -196,29 +201,37 @@ class CombineSparkJob(object):
 			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
 			.write.format("com.databricks.spark.avro").save(self.job.job_output)
 
-		# write records to DB
-		records_df_combine_cols.write.jdbc(
-			settings.COMBINE_DATABASE['jdbc_url'],
-			'core_record',
-			properties=settings.COMBINE_DATABASE,
-			mode='append')
+		# write records to MongoDB
+		records_df_combine_cols.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
 
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
 
-			# read rows from DB for indexing to ES			
-			bounds = self.get_job_db_bounds(self.job)
-			sqldf = self.spark.read.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_record',
-					properties=settings.COMBINE_DATABASE,
-					column='id',
-					lowerBound=bounds['lowerBound'],
-					upperBound=bounds['upperBound'],
-					numPartitions=settings.SPARK_REPARTITION
-				)
-			job_id = self.job.id
-			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+			# # read rows from DB for indexing to ES			
+			# bounds = self.get_job_db_bounds(self.job)
+			# sqldf = self.spark.read.jdbc(
+			# 		settings.COMBINE_DATABASE['jdbc_url'],
+			# 		'core_record',
+			# 		properties=settings.COMBINE_DATABASE,
+			# 		column='id',
+			# 		lowerBound=bounds['lowerBound'],
+			# 		upperBound=bounds['upperBound'],
+			# 		numPartitions=settings.SPARK_REPARTITION
+			# 	)
+			# job_id = self.job.id
+			# db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+
+			# read rows from Mongo for indexing to ES
+			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': 1}})
+			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection","record")\
+			.option("pipeline",pipeline).load()
 
 			# index to ElasticSearch			
 			self.update_jobGroup('Indexing to ElasticSearch')
@@ -241,12 +254,12 @@ class CombineSparkJob(object):
 				)
 				vs.run_record_validation_scenarios()
 
-			# update `valid` column for Records based on results of ValidationScenarios
-			with connection.cursor() as cursor:
-				query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+			# # update `valid` column for Records based on results of ValidationScenarios
+			# with connection.cursor() as cursor:
+			# 	query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 
-			# run comparison against bulk data if provided
-			db_records = self.bulk_data_compare(db_records)
+			# # run comparison against bulk data if provided
+			# db_records = self.bulk_data_compare(db_records)
 
 			# return db_records DataFrame
 			return db_records

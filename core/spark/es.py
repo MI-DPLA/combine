@@ -76,7 +76,7 @@ class ESIndex(object):
 
 				yield mapper.map_record(
 					record_string=row.document,
-					db_id=row.id,
+					db_id=row._id.oid,
 					combine_id=row.combine_id,
 					record_id=row.record_id,				
 					publish_set_id=job.publish_set_id,

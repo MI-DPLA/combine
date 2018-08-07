@@ -82,6 +82,11 @@ from elasticsearch_dsl.utils import AttrList
 from sxsdiff import DiffCalculator
 from sxsdiff.generators.github import GitHubStyledGenerator
 
+# import mongo dependencies
+import mongoengine
+mongoengine.connect('combine')
+import pymongo
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -677,7 +682,7 @@ class Job(models.Model):
 	def get_records(self):
 
 		'''
-		Retrieve records associated with this job, if the document field is not blank.
+		Retrieve records associated with this job from Mongo
 
 		Args:
 			None
@@ -686,7 +691,8 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 
-		records = self.record_set.filter(success=1)
+		# Mongo
+		records = Record.objects(job_id=self.id, success=1)
 
 		# return
 		return records
@@ -703,12 +709,8 @@ class Job(models.Model):
 		Returns:
 			(django.db.models.query.QuerySet)
 		'''
-
-		stime = time.time()
-
-		errors = self.record_set.filter(success=0)
-
-		logger.debug('get_errors elapsed: %s' % (time.time() - stime))
+			
+		errors = Record.objects(job_id=251, success=0)
 
 		# return
 		return errors
@@ -717,7 +719,7 @@ class Job(models.Model):
 	def update_record_count(self, save=True):
 
 		'''
-		Get record count from DB, save to self
+		Get record count from Mongo from Record table, filtering by job_id
 
 		Args:
 			None
@@ -726,11 +728,12 @@ class Job(models.Model):
 			None
 		'''
 		
-		self.record_count = self.record_set.count()
+		self.record_count = Record.objects(job_id=self.id).count()
 		
 		# if save, save
 		if save:
 			self.save()
+
 
 
 	def job_output_as_filesystem(self):
@@ -1050,41 +1053,44 @@ class Job(models.Model):
 		Method to generate a QuerySet of DPLABulkDataMatch
 		'''
 
-		# get match checks
-		t_stime = time.time()
-		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
-		logger.debug('match attempts returned: %s' % (time.time() - t_stime))
+		# MONGODEBUG
+		return False
 
-		# if match_attempts more than zero, get associated dbdd
-		if match_attempts.count() > 0:
+		# # get match checks
+		# t_stime = time.time()
+		# match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
+		# logger.debug('match attempts returned: %s' % (time.time() - t_stime))
 
-			# get records from job
-			records = self.get_records()
+		# # if match_attempts more than zero, get associated dbdd
+		# if match_attempts.count() > 0:
 
-			# get the dbdd
-			t_stime = time.time()
-			dbdd = match_attempts.first().dbdd
-			logger.debug('dbdd returned: %s' % (time.time() - t_stime))
+		# 	# get records from job
+		# 	records = self.get_records()
 
-			# get matches
-			t_stime = time.time()
-			matches = records.filter(id__in=match_attempts.values_list('record_id'))
-			logger.debug('matches returned: %s' % (time.time() - t_stime))
+		# 	# get the dbdd
+		# 	t_stime = time.time()
+		# 	dbdd = match_attempts.first().dbdd
+		# 	logger.debug('dbdd returned: %s' % (time.time() - t_stime))
 
-			# get misses
-			t_stime = time.time()
-			misses = records.exclude(id__in=match_attempts.values_list('record_id'))
-			logger.debug('misses returned: %s' % (time.time() - t_stime))
+		# 	# get matches
+		# 	t_stime = time.time()
+		# 	matches = records.filter(id__in=match_attempts.values_list('record_id'))
+		# 	logger.debug('matches returned: %s' % (time.time() - t_stime))
+
+		# 	# get misses
+		# 	t_stime = time.time()
+		# 	misses = records.exclude(id__in=match_attempts.values_list('record_id'))
+		# 	logger.debug('misses returned: %s' % (time.time() - t_stime))
 			
-			return {
-				'dbdd':dbdd,
-				'matches':matches,
-				'misses': misses
-			}
+		# 	return {
+		# 		'dbdd':dbdd,
+		# 		'matches':matches,
+		# 		'misses': misses
+		# 	}
 
-		else:
-			logger.debug('DPLA Bulk comparison not run, or no matches found.')
-			return False
+		# else:
+		# 	logger.debug('DPLA Bulk comparison not run, or no matches found.')
+		# 	return False
 
 
 	def drop_es_index(self):
@@ -1527,7 +1533,7 @@ class OAITransaction(models.Model):
 
 
 
-class Record(models.Model):
+class Record_SQL_BACKUP(models.Model):
 
 	'''
 	Model to manage individual records.
@@ -2040,6 +2046,44 @@ class Record(models.Model):
 
 
 
+class Record(mongoengine.Document):
+
+	combine_id = mongoengine.StringField()
+	document = mongoengine.StringField()
+	error = mongoengine.StringField()
+	fingerprint = mongoengine.IntField()
+	job_id = mongoengine.IntField()
+	oai_set = mongoengine.StringField()
+	publish_set_id = mongoengine.StringField()
+	published = mongoengine.BooleanField()
+	record_id = mongoengine.StringField()
+	success = mongoengine.BooleanField()
+	transformed = mongoengine.BooleanField()
+	unique = mongoengine.BooleanField()
+	unique_published = mongoengine.BooleanField()
+	valid = mongoengine.BooleanField()
+
+
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+
+		job = Job.objects.get(pk=self.job_id)
+		return job
+
+
+	# def __str__(self):
+	# 	return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
+	# 		self.id, self.record_id, self.job.id, self.job.job_type)
+
+
+
+
+
 class IndexMappingFailure(models.Model):
 
 	'''
@@ -2527,7 +2571,7 @@ class RecordValidation(models.Model):
 
 	'''
 
-	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
 	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
 	valid = models.BooleanField(default=1)
 	results_payload = models.TextField(null=True, default=None)
@@ -2653,7 +2697,7 @@ class DPLABulkDataMatch(models.Model):
 	Class to record DPLA bulk data matches (DBDM)
 	'''
 
-	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
 	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
 	match = models.BooleanField(default=True)
 
