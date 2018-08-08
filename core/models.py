@@ -690,7 +690,7 @@ class Job(models.Model):
 		'''
 
 		# Mongo
-		records = Record.objects(job_id=self.id, success=1)
+		records = Record.objects(job_id=self.id, success=True)
 
 		# return
 		return records
@@ -708,7 +708,7 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 			
-		errors = Record.objects(job_id=251, success=0)
+		errors = Record.objects(job_id=251, success=False)
 
 		# return
 		return errors

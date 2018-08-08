@@ -188,8 +188,8 @@ class CombineSparkJob(object):
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
 			pyspark_sql_functions.count('record_id')\
-			.over(Window.partitionBy('record_id')) == 1)\
-			.cast('integer'))
+			.over(Window.partitionBy('record_id')) == True)\
+			.cast('boolean'))
 
 		# ensure columns to avro and DB
 		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
@@ -210,7 +210,7 @@ class CombineSparkJob(object):
 		if self.job.get_records().count() > 0:
 
 			# read rows from Mongo for indexing to ES
-			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': 1}})
+			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': True}})
 			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
@@ -394,13 +394,13 @@ class CombineSparkJob(object):
 							trans_result = re.sub(match, replace, row.document)
 
 						# run transformation
-						success = 1
+						success = True
 						error = row.error
 
 					except Exception as e:
 						trans_result = str(e)
 						error = 'record_id transformation failure'
-						success = 0
+						success = False
 
 					# return Row
 					return Row(
@@ -441,13 +441,13 @@ class CombineSparkJob(object):
 
 						# run transformation
 						trans_result = temp_mod.transform_identifier(pyudfr)
-						success = 1
+						success = True
 						error = row.error
 
 					except Exception as e:
 						trans_result = str(e)
 						error = 'record_id transformation failure'
-						success = 0
+						success = False
 
 					# return Row
 					return Row(
@@ -487,15 +487,15 @@ class CombineSparkJob(object):
 					xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
 					if len(xpath_query) == 1:
 						trans_result = xpath_query[0].text
-						success = 1
+						success = True
 						error = row.error
 					elif len(xpath_query) == 0:
 						trans_result = 'xpath expression found nothing'
-						success = 0
+						success = False
 						error = 'record_id transformation failure'
 					else:
 						trans_result = 'more than one node found for XPath query'
-						success = 0
+						success = False
 						error = 'record_id transformation failure'
 
 					# return Row
@@ -665,7 +665,7 @@ class HarvestOAISpark(CombineSparkJob):
 		records = records.filter(records.document != 'none')
 
 		# establish 'success' column, setting all success for Harvest
-		records = records.withColumn('success', pyspark_sql_functions.lit(1))
+		records = records.withColumn('success', pyspark_sql_functions.lit(True))
 
 		# copy 'id' from OAI harvest to 'record_id' column
 		records = records.withColumn('record_id', records.id)
@@ -684,7 +684,7 @@ class HarvestOAISpark(CombineSparkJob):
 
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(True))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -807,7 +807,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					error = '',
 					job_id = int(job_id),
 					oai_set = '',
-					success = 1
+					success = True
 				)
 
 			# catch missing or ambiguous identifiers
@@ -823,7 +823,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					error = "AmbiguousIdentifier: %s" % str(e),
 					job_id = int(job_id),
 					oai_set = '',
-					success = 1
+					success = True
 				)
 
 			# handle all other exceptions
@@ -839,7 +839,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					error = str(e),
 					job_id = int(job_id),
 					oai_set = '',
-					success = 0
+					success = False
 				)
 
 		# map with parse_records_udf 
@@ -996,12 +996,12 @@ class TransformSpark(CombineSparkJob):
 					valid_xml = etree.fromstring(result.encode('utf-8'))
 
 					# set trans_result tuple
-					trans_result = (result, '', 1)
+					trans_result = (result, '', True)
 
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# yield each Row in mapPartition
 				yield Row(
@@ -1074,7 +1074,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# return Row
 				yield Row(
@@ -1176,7 +1176,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# return Row
 				yield Row(
