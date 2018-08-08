@@ -53,9 +53,7 @@ from core.models import CombineJob, Job, JobTrack, Transformation, PublishedReco
 from core.xml2kvp import XML2kvp
 
 # import mongo dependencies
-import mongoengine
-mongoengine.connect('combine')
-import pymongo
+from core.mongo import *
 
 
 
@@ -210,20 +208,6 @@ class CombineSparkJob(object):
 
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
-
-			# # read rows from DB for indexing to ES			
-			# bounds = self.get_job_db_bounds(self.job)
-			# sqldf = self.spark.read.jdbc(
-			# 		settings.COMBINE_DATABASE['jdbc_url'],
-			# 		'core_record',
-			# 		properties=settings.COMBINE_DATABASE,
-			# 		column='id',
-			# 		lowerBound=bounds['lowerBound'],
-			# 		upperBound=bounds['upperBound'],
-			# 		numPartitions=settings.SPARK_REPARTITION
-			# 	)
-			# job_id = self.job.id
-			# db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
 
 			# read rows from Mongo for indexing to ES
 			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': 1}})
