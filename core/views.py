@@ -48,6 +48,9 @@ from core import tasks
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
+# import mongo dependencies
+from core.mongo import *
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -1802,7 +1805,7 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return document as XML
 	return HttpResponse(record.document, content_type='text/xml')
@@ -1815,7 +1818,7 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return ES document as JSON
 	return JsonResponse(record.get_es_doc())
@@ -1829,7 +1832,7 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return document as XML
 	return HttpResponse("<pre>%s</pre>" % record.error)
@@ -1845,7 +1848,7 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# get validation scenario
 	vs = models.ValidationScenario.objects.get(pk=int(job_validation_id))
@@ -1874,7 +1877,7 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# get side_by_side diff as HTML
 	diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
@@ -1900,7 +1903,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# check for embed flag
 	embed = request.GET.get('embed', False)
@@ -2945,10 +2948,6 @@ class DTRecordsJson(BaseDatatableView):
 			if column == '_id':
 				return '<a href="%s"><code>%s</code></a>' % (record_link, str(row.id))
 
-			# handle combine_id
-			if column == 'combine_id':
-				return '<a href="%s"><code>%s</code></a>' % (record_link, row.combine_id)
-
 			# handle record_id
 			if column == 'record_id':
 				return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
@@ -2998,11 +2997,15 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				try:
-					int(search)
-					qs = qs.filter(Q(id=search))
-				except:
-					qs = qs.filter(Q(combine_id=search) | Q(record_id=search))
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
+				else:
+					qs = qs.filter(mongoengine.Q(record_id=search))
 
 			# return
 			return qs

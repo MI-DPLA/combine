@@ -100,7 +100,7 @@ import boto3
 
 
 ####################################################################
-# Django ORM																											 #
+# Django ORM 													   #
 ####################################################################
 
 class LivySession(models.Model):
@@ -2071,10 +2071,12 @@ class Record(mongoengine.Document):
 		'indexes': [
 			{'fields': ['job_id']},
 			{'fields': ['record_id']},
-			{'fields': ['combine_id']},
-			# {'fields': ['fingerprint']}
+			{'fields': ['combine_id']}
 		]
 	}
+
+	# cached attributes
+	_job = None
 
 
 	# define job property
@@ -2084,9 +2086,12 @@ class Record(mongoengine.Document):
 		'''
 		Method to retrieve Job from Django ORM via job_id
 		'''
-
-		job = Job.objects.get(pk=self.job_id)
-		return job
+		if self._job is None:
+			job = Job.objects.get(pk=self.job_id)
+			self._job = job
+			return job
+		else:
+			return self._job
 
 
 	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
