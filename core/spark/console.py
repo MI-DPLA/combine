@@ -59,7 +59,7 @@ def copy_sql_to_mongo(spark, job_id):
 	sdf = get_sql_job_as_df(spark, job_id, remove_id=True)
 
 	# repartition	
-	sdf = sdf.rdd.repartition(20).toDF(schema=sdf.schema)
+	sdf = sdf.rdd.repartition(200).toDF(schema=sdf.schema)
 
 	# insert
 	sdf.write.format("com.mongodb.spark.sql.DefaultSource")\

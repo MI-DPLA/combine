@@ -3064,35 +3064,58 @@ class JobValidation(models.Model):
 
 
 
-class RecordValidation(models.Model):
+# class RecordValidationSQL(models.Model):
 
-	'''
-	Model to manage validation tests associated with a Record
+# 	'''
+# 	Model to manage validation tests associated with a Record
 
-		- what is the performance hit of the FK?
+# 		- what is the performance hit of the FK?
 
-	'''
+# 	'''
 
-	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
-	valid = models.BooleanField(default=1)
-	results_payload = models.TextField(null=True, default=None)
-	fail_count = models.IntegerField(null=True, default=None)
-
-
-	def __str__(self):
-		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
+# 	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
+# 	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
+# 	valid = models.BooleanField(default=1)
+# 	results_payload = models.TextField(null=True, default=None)
+# 	fail_count = models.IntegerField(null=True, default=None)
 
 
-	@property
-	def failed(self):
+# 	def __str__(self):
+# 		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
 
-		# if not set, set
-		if not hasattr(self, '_failures'):
-			self._failures = json.loads(self.results_payload)['failed']
 
-		# return
-		return self._failures
+# 	@property
+# 	def failed(self):
+
+# 		# if not set, set
+# 		if not hasattr(self, '_failures'):
+# 			self._failures = json.loads(self.results_payload)['failed']
+
+# 		# return
+# 		return self._failures
+
+
+class RecordValidation(mongoengine.Document):
+
+	# fields
+	record = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+	validation_scenario_id = mongoengine.IntField()
+	valid = mongoengine.BooleanField(default=True)
+	results_payload = mongoengine.StringField()
+	fail_count = mongoengine.IntField()
+
+	# meta
+	meta = {
+		'index_options': {},
+        'index_background': False,        
+        'auto_create_index': False,
+        'index_drop_dups': False,
+		'indexes': [
+			{'fields': ['record']}
+		]
+	}
+
+	# NEED VALIDATION SCENARIO PROPERTY
 
 
 
