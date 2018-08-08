@@ -1234,49 +1234,67 @@ class MergeSpark(CombineSparkJob):
 		# rehydrate list of input jobs
 		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
 
-		# loop through input jobs and append to input_jobs_rdds
-		input_jobs_rdds = []
-		input_schemas = []
-		for input_job_id in input_jobs_ids:
+		##########################################################################################################################################################
+		# # loop through input jobs and append to input_jobs_rdds
+		# input_jobs_rdds = []
+		# input_schemas = []
+		# for input_job_id in input_jobs_ids:
 
-			# get input Job
-			input_job_temp = Job.objects.get(pk=int(input_job_id))
+		# 	# get input Job
+		# 	input_job_temp = Job.objects.get(pk=int(input_job_id))
 
-			# if Job has records, continue
-			if input_job_temp.get_records().count() > 0:
+		# 	# if Job has records, continue
+		# 	if input_job_temp.get_records().count() > 0:
 
-				# get bounds
-				bounds = self.get_job_db_bounds(input_job_temp)
+		# 		# get bounds
+		# 		bounds = self.get_job_db_bounds(input_job_temp)
 
-				# get list of RDDs from input jobs
-				sqldf = self.spark.read.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job_id,
-					properties=settings.COMBINE_DATABASE,
-					column='id',
-					lowerBound=bounds['lowerBound'],
-					upperBound=bounds['upperBound'],
-					numPartitions=settings.JDBC_NUMPARTITIONS
-				)
+		# 		# get list of RDDs from input jobs
+		# 		sqldf = self.spark.read.jdbc(
+		# 			settings.COMBINE_DATABASE['jdbc_url'],
+		# 			'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job_id,
+		# 			properties=settings.COMBINE_DATABASE,
+		# 			column='id',
+		# 			lowerBound=bounds['lowerBound'],
+		# 			upperBound=bounds['upperBound'],
+		# 			numPartitions=settings.JDBC_NUMPARTITIONS
+		# 		)
 
-				# append
-				sqldf = self.record_input_filters(sqldf)
+		# 		# append
+		# 		sqldf = self.record_input_filters(sqldf)
 
-				# save schema
-				input_schemas.append(sqldf.schema)
+		# 		# save schema
+		# 		input_schemas.append(sqldf.schema)
 
-				# append to input jobs rdds
-				input_jobs_rdds.append(sqldf.rdd)
+		# 		# append to input jobs rdds
+		# 		input_jobs_rdds.append(sqldf.rdd)
 			
-			else:
-				print("Job %s had no records, skipping" % input_job_temp.name)
+		# 	else:
+		# 		print("Job %s had no records, skipping" % input_job_temp.name)
 
-		# create aggregate rdd of frames
-		agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
-		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_schemas[0])
+		# # create aggregate rdd of frames
+		# agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
+		# agg_df = self.spark.createDataFrame(agg_rdd, schema=input_schemas[0])
+
+		# # repartition
+		# agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
+		##########################################################################################################################################################
+
+		##########################################################################################################################################################
+		# retrieve from Mongo		
+		pipeline = json.dumps({'$match': {'job_id':{"$in":input_jobs_ids}}})
+		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("pipeline",pipeline).load()		
+
+		# drop _id
+		records = records.select([ c for c in records.columns if c != '_id' ])
 
 		# repartition
-		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
+		agg_df = records.rdd.repartition(settings.SPARK_REPARTITION).toDF(schema=records.schema)		
+		##########################################################################################################################################################
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = self.job.id
