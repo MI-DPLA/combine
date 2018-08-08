@@ -733,7 +733,6 @@ class Job(models.Model):
 			self.save()
 
 
-
 	def job_output_as_filesystem(self):
 
 		'''
@@ -1233,6 +1232,18 @@ class Job(models.Model):
 
 		# return 
 		return True
+
+
+	def remove_records_from_db(self):
+
+		'''
+		Method to remove records from DB, fired as pre_delete signal
+		'''
+
+		records = self.get_records()
+		del_result = records.delete()
+		logger.debug('removed %s records from db' % del_result)
+		return del_result
 
 
 
@@ -3482,6 +3493,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 		- if Publish job, remove symlinks
 		- remove avro files from disk
 		- delete ES indexes (if present)
+		- delete from Mongo
 
 	Args:
 		sender (auth.models.Job): class
@@ -3563,6 +3575,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	# remove ES index if exists
 	instance.drop_es_index()
+
+	# remove Records from Mongo
+	instance.remove_records_from_db()
 
 
 @receiver(models.signals.post_delete, sender=Job)
