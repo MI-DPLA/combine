@@ -71,6 +71,18 @@ def get_job_as_df(spark, job_id, published=False):
 	return records
 
 
+def get_sql_job_as_df(spark, job_id, remove_id=False):
+
+	sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
+	sqldf = sqldf.filter(sqldf['job_id'] == job_id)
+
+	# if remove ID
+	if remove_id:
+		sqldf = sqldf.select([ c for c in sqldf.columns if c != 'id' ])
+
+	return sqldf
+
+
 def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 
 	'''

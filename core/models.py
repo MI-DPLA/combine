@@ -83,9 +83,7 @@ from sxsdiff import DiffCalculator
 from sxsdiff.generators.github import GitHubStyledGenerator
 
 # import mongo dependencies
-import mongoengine
-mongoengine.connect('combine')
-import pymongo
+from core.mongo import *
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -2048,6 +2046,7 @@ class Record_SQL_BACKUP(models.Model):
 
 class Record(mongoengine.Document):
 
+	# fields
 	combine_id = mongoengine.StringField()
 	document = mongoengine.StringField()
 	error = mongoengine.StringField()
@@ -2055,13 +2054,27 @@ class Record(mongoengine.Document):
 	job_id = mongoengine.IntField()
 	oai_set = mongoengine.StringField()
 	publish_set_id = mongoengine.StringField()
-	published = mongoengine.BooleanField()
+	published = mongoengine.BooleanField(default=False)
 	record_id = mongoengine.StringField()
-	success = mongoengine.BooleanField()
-	transformed = mongoengine.BooleanField()
-	unique = mongoengine.BooleanField()
-	unique_published = mongoengine.BooleanField()
-	valid = mongoengine.BooleanField()
+	success = mongoengine.BooleanField(default=True)
+	transformed = mongoengine.BooleanField(default=False)
+	unique = mongoengine.BooleanField(default=True)
+	unique_published = mongoengine.BooleanField(default=True)
+	valid = mongoengine.BooleanField(default=True)
+
+	# meta
+	meta = {
+		'index_options': {},
+        'index_background': False,        
+        'auto_create_index': False,
+        'index_drop_dups': False,
+		'indexes': [
+			{'fields': ['job_id']},
+			{'fields': ['record_id']},
+			{'fields': ['combine_id']},
+			# {'fields': ['fingerprint']}
+		]
+	}
 
 
 	# define job property
@@ -2074,13 +2087,6 @@ class Record(mongoengine.Document):
 
 		job = Job.objects.get(pk=self.job_id)
 		return job
-
-
-	# def __str__(self):
-	# 	return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
-	# 		self.id, self.record_id, self.job.id, self.job.job_type)
-
-
 
 
 
