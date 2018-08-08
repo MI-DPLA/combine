@@ -109,12 +109,11 @@ class ValidationScenarioSpark(object):
 
 			# finally, write to DB if validation failures
 			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
-				validation_fails_rdd.toDF().write.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_recordvalidation',
-					properties=settings.COMBINE_DATABASE,
-					mode='append')
-
+				validation_fails_rdd.toDF().write.format("com.mongodb.spark.sql.DefaultSource")\
+				.mode("append")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection", "record_validation").save()
 	
 	def _sch_validation(self, vs, vs_id, vs_filepath):
 
@@ -156,9 +155,10 @@ class ValidationScenarioSpark(object):
 						results_dict['failed'].append(fail_text_elem.text)
 					
 					yield Row(
-						record_id=int(row.id),
+						record_id=row._id,
+						job_id=row.job_id,
 						validation_scenario_id=int(vs_id),
-						valid=0,
+						valid=False,
 						results_payload=json.dumps(results_dict),
 						fail_count=results_dict['fail_count']
 					)

@@ -1027,8 +1027,14 @@ class Job(models.Model):
 		# validation tests run, loop through
 		else:
 
+			# # determine total number of distinct Records with 1+ validation failures
+			# results['failure_count'] = RecordValidation.objects.filter(record__job=self)\
+			# .values('record')\
+			# .annotate(record_count=Count('record'))\
+			# .count()
+
 			# determine total number of distinct Records with 1+ validation failures
-			results['failure_count'] = RecordValidation.objects.filter(record__job=self).values('record').annotate(record_count=Count('record')).count()
+			
 
 			# if failures found
 			if results['failure_count'] > 0:
@@ -3099,6 +3105,7 @@ class RecordValidation(mongoengine.Document):
 
 	# fields
 	record = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+	job_id = mongoengine.IntField()
 	validation_scenario_id = mongoengine.IntField()
 	valid = mongoengine.BooleanField(default=True)
 	results_payload = mongoengine.StringField()
@@ -3111,11 +3118,43 @@ class RecordValidation(mongoengine.Document):
         'auto_create_index': False,
         'index_drop_dups': False,
 		'indexes': [
-			{'fields': ['record']}
+			{'fields': ['record']},
+			{'fields': ['job_id']},
 		]
 	}
 
-	# NEED VALIDATION SCENARIO PROPERTY
+	# cache
+	_validation_scenario = None
+	_job = None
+
+	# define Validation Scenario property
+	@property
+	def validation_scenario(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+		if self._validation_scenario is None:
+			validation_scenario = ValidationScenario.objects.get(pk=self.validation_scenario_id)
+			self._validation_scenario = validation_scenario
+			return validation_scenario
+		else:
+			return self._validation_scenario
+
+
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+		if self._job is None:
+			job = Job.objects.get(pk=self.job_id)
+			self._job = job
+			return job
+		else:
+			return self._job
 
 
 
