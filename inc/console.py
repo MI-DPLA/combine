@@ -7,7 +7,7 @@ from core.models import *
 
 # get Record instance
 def get_r(id):
-	return Record.objects.get(pk=int(id))
+	return Record.objects.get(id=id)
 
 
 # get Job instance

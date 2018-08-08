@@ -1745,8 +1745,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	record = models.Record.objects.get(id=record_id)
 
 	# build ancestry in both directions
-	# record_stages = record.get_record_stages()
-	record_stages = []
+	record_stages = record.get_record_stages()
 
 	# get details depending on job type
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)

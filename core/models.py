@@ -2124,7 +2124,9 @@ class Record(mongoengine.Document):
 				# loop through upstream jobs, look for record id
 				for upstream_job in upstream_job_query.all():
 					upstream_record_query = Record.objects.filter(
-						job=upstream_job.input_job).filter(combine_id=self.combine_id)
+							job_id=upstream_job.input_job.id,
+							combine_id=self.combine_id
+						)
 
 					# if count found, save record to record_stages and re-run
 					if upstream_record_query.count() > 0:
@@ -2148,7 +2150,9 @@ class Record(mongoengine.Document):
 				for downstream_job in downstream_job_query.all():
 
 					downstream_record_query = Record.objects.filter(
-						job=downstream_job.job).filter(combine_id=self.combine_id)
+						job_id=downstream_job.job.id,
+						combine_id=self.combine_id
+					)
 
 					# if count found, save record to record_stages and re-run
 					if downstream_record_query.count() > 0:

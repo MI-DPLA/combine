@@ -903,16 +903,17 @@ class TransformSpark(CombineSparkJob):
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
-		bounds = self.get_job_db_bounds(input_job)
-		records = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job.id,
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
+
+		# retrieve from Mongo
+		pipeline = json.dumps({'$match': {'job_id': input_job.id}})
+		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("pipeline",pipeline).load()
+
+		# drop _id
+		records = records.select([ c for c in records.columns if c != '_id' ])
 
 		# fork as input_records		
 		input_records = records
