@@ -1531,40 +1531,562 @@ class OAITransaction(models.Model):
 
 
 
-class Record_SQL_BACKUP(models.Model):
+# class Record_SQL_BACKUP(models.Model):
 
-	'''
-	Model to manage individual records.
-	Records are the lowest level of granularity in Combine.	They are members of Jobs.
+# 	'''
+# 	Model to manage individual records.
+# 	Records are the lowest level of granularity in Combine.	They are members of Jobs.
 	
-	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
-	combine/core/inc/combine_tables.sql
-	'''
+# 	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
+# 	combine/core/inc/combine_tables.sql
+# 	'''
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	combine_id = models.CharField(max_length=1024, null=True, default=None)
-	record_id = models.CharField(max_length=1024, null=True, default=None)
-	document = models.TextField(null=True, default=None)
-	error = models.TextField(null=True, default=None)
-	unique = models.BooleanField(default=1)
-	unique_published = models.NullBooleanField()
-	oai_set = models.CharField(max_length=255, null=True, default=None)
-	success = models.BooleanField(default=1)
-	published = models.BooleanField(default=0)
-	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
-	valid = models.BooleanField(default=1)
-	fingerprint = models.IntegerField(null=True, default=None)
-	transformed = models.BooleanField(default=0)
-
-
-	# this model is managed outside of Django
-	class Meta:
-		managed = False
+# 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+# 	combine_id = models.CharField(max_length=1024, null=True, default=None)
+# 	record_id = models.CharField(max_length=1024, null=True, default=None)
+# 	document = models.TextField(null=True, default=None)
+# 	error = models.TextField(null=True, default=None)
+# 	unique = models.BooleanField(default=1)
+# 	unique_published = models.NullBooleanField()
+# 	oai_set = models.CharField(max_length=255, null=True, default=None)
+# 	success = models.BooleanField(default=1)
+# 	published = models.BooleanField(default=0)
+# 	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
+# 	valid = models.BooleanField(default=1)
+# 	fingerprint = models.IntegerField(null=True, default=None)
+# 	transformed = models.BooleanField(default=0)
 
 
-	def __str__(self):
-		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
-			self.id, self.record_id, self.job.id, self.job.job_type)
+# 	# this model is managed outside of Django
+# 	class Meta:
+# 		managed = False
+
+
+# 	def __str__(self):
+# 		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
+# 			self.id, self.record_id, self.job.id, self.job.job_type)
+
+
+# 	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
+
+# 		'''
+# 		Method to return all upstream and downstreams stages of this record
+
+# 		Args:
+# 			input_record_only (bool): If True, return only immediate record that served as input for this record.
+# 			remove_duplicates (bool): Removes duplicates - handy for flat list of stages,
+# 			but use False to create lineage
+
+# 		Returns:
+# 			(list): ordered list of Record instances from first created (e.g. Harvest), to last (e.g. Publish).
+# 			This record is included in the list.
+# 		'''
+
+# 		record_stages = []
+
+# 		def get_upstream(record, input_record_only):
+
+# 			# check for upstream job
+# 			upstream_job_query = record.job.jobinput_set
+
+# 			# if upstream jobs found, continue
+# 			if upstream_job_query.count() > 0:
+
+# 				logger.debug('upstream jobs found, checking for combine_id')
+
+# 				# loop through upstream jobs, look for record id
+# 				for upstream_job in upstream_job_query.all():
+# 					upstream_record_query = Record.objects.filter(
+# 						job=upstream_job.input_job).filter(combine_id=self.combine_id)
+
+# 					# if count found, save record to record_stages and re-run
+# 					if upstream_record_query.count() > 0:
+# 						upstream_record = upstream_record_query.first()
+# 						record_stages.insert(0, upstream_record)
+# 						if not input_record_only:
+# 							get_upstream(upstream_record, input_record_only)
+
+
+# 		def get_downstream(record):
+
+# 			# check for downstream job
+# 			downstream_job_query = JobInput.objects.filter(input_job=record.job)
+
+# 			# if downstream jobs found, continue
+# 			if downstream_job_query.count() > 0:
+
+# 				logger.debug('downstream jobs found, checking for combine_id')
+
+# 				# loop through downstream jobs
+# 				for downstream_job in downstream_job_query.all():
+
+# 					downstream_record_query = Record.objects.filter(
+# 						job=downstream_job.job).filter(combine_id=self.combine_id)
+
+# 					# if count found, save record to record_stages and re-run
+# 					if downstream_record_query.count() > 0:
+# 						downstream_record = downstream_record_query.first()
+# 						record_stages.append(downstream_record)
+# 						get_downstream(downstream_record)
+
+# 		# run
+# 		get_upstream(self, input_record_only)
+# 		if not input_record_only:
+# 			record_stages.append(self)
+# 			get_downstream(self)
+
+# 		# remove duplicate
+# 		if remove_duplicates:
+# 			record_stages = list(OrderedDict.fromkeys(record_stages))
+		
+# 		# return
+# 		return record_stages
+
+
+# 	def get_es_doc(self):
+
+# 		'''
+# 		Return indexed ElasticSearch document as dictionary.
+# 		Search is limited by ES index (Job associated) and combine_id
+
+# 		Args:
+# 			None
+
+# 		Returns:
+# 			(dict): ES document
+# 		'''
+
+# 		# init search
+# 		s = Search(using=es_handle, index='j%s' % self.job_id)
+# 		s = s.query('match', _id=self.combine_id)
+
+# 		# execute search and capture as dictionary
+# 		try:
+# 			sr = s.execute()
+# 			sr_dict = sr.to_dict()
+# 		except NotFoundError:
+# 			logger.debug('ES query 404')
+# 			return {}
+
+# 		# return
+# 		try:
+# 			return sr_dict['hits']['hits'][0]['_source']
+# 		except:
+# 			return {}
+
+
+# 	def parse_document_xml(self):
+
+# 		'''
+# 		Parse self.document as XML node with etree
+
+# 		Args:
+# 			None
+
+# 		Returns:
+# 			(tuple): ((bool) result of XML parsing, (lxml.etree._Element) parsed document)
+# 		'''
+# 		try:
+# 			return (True, etree.fromstring(self.document.encode('utf-8')))
+# 		except Exception as e:
+# 			logger.debug(str(e))
+# 			return (False, str(e))
+
+
+# 	def dpla_mapped_field_values(self):
+
+# 		'''
+# 		Using self.dpla_mapped_fields, loop through and insert values from ES document
+# 		'''
+
+# 		# get mapped fields
+# 		mapped_fields = self.job.dpla_mapping.mapped_fields()
+
+# 		if mapped_fields:
+			
+# 			# get elasticsearch doc
+# 			es_doc = self.get_es_doc()
+			
+# 			# loop through and use mapped key for es doc
+# 			mapped_values = {}
+# 			for k,v in mapped_fields.items():
+# 				val = es_doc.get(v, None)
+# 				if val:
+# 					mapped_values[k] = es_doc[v]
+
+# 			# return mapped values
+# 			return mapped_values
+
+# 		else:
+# 			return None
+
+
+# 	def dpla_api_record_match(self, search_string=None):
+
+# 		'''
+# 		Method to query DPLA API for match against some known mappings.
+# 		NOTE: Experimental.
+
+# 		Loop through mapped fields in opinionated order from opinionated_search_hash
+# 		Update: Leaning towards exclusive use of 'isShownAt'
+# 			- close to binary True/False API match, removes any fuzzy connections
+
+# 		Args:
+# 			search_string(str): Optional search_string override
+
+# 		Returns:
+# 			(dict): If match found, return dictionary of DPLA API response
+# 		'''
+
+# 		# check for DPLA_API_KEY, else return None
+# 		if settings.DPLA_API_KEY:
+
+# 			# check for any mapped DPLA fields, skipping altogether if none
+# 			mapped_dpla_fields = self.dpla_mapped_field_values()
+# 			if mapped_dpla_fields:
+
+# 				# attempt search if mapped fields present and search_string not provided
+# 				if not search_string:
+
+# 					# opionated search hash
+# 					opinionated_search_fields = [
+# 						('isShownAt', 'isShownAt'),
+# 						('title', 'sourceResource.title'),
+# 						('description', 'sourceResource.description')
+# 					]
+
+# 					# loop through opionated search hash
+# 					for local_mapped_field, target_dpla_field in opinionated_search_fields:
+
+# 						# if local_mapped_field in keys
+# 						if local_mapped_field in mapped_dpla_fields.keys():
+
+# 							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
+
+# 							# get value for mapped field
+# 							field_value = mapped_dpla_fields[local_mapped_field]
+
+# 							# if list, loop through and attempt searches
+# 							if type(field_value) == list:
+# 								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
+
+# 								for val in field_value:
+# 									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+# 									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
+# 									match_results = self.dpla_api_record_match(search_string=search_string)
+
+# 							# else if string, perform search
+# 							else:
+# 								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+# 								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
+# 								match_results = self.dpla_api_record_match(search_string=search_string)
+
+# 							# if match found from list iteration or single string search, use
+# 							if match_results:
+# 								self.dpla_api_doc = match_results
+# 								return self.dpla_api_doc
+
+# 				# preapre search query
+# 				api_q = requests.get(
+# 					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+
+# 				# attempt to parse response as JSON
+# 				try:
+# 					api_r = api_q.json()
+# 				except:
+# 					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
+# 					self.dpla_api_doc = None
+# 					return self.dpla_api_doc
+
+# 				# if count present
+# 				if 'count' in api_r.keys():
+# 					# response
+# 					if api_r['count'] == 1:
+# 						dpla_api_doc = api_r['docs'][0]
+# 						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+# 					elif api_r['count'] > 1:
+# 						logger.debug('multiple hits for DPLA API query')
+# 						dpla_api_doc = None
+# 					else:
+# 						logger.debug('no matches found')
+# 						dpla_api_doc = None
+# 				else:
+# 					logger.debug(api_r)
+# 					dpla_api_doc = None
+
+# 				# save to record instance and return
+# 				self.dpla_api_doc = dpla_api_doc
+# 				return self.dpla_api_doc
+
+# 		# return None by default
+# 		self.dpla_api_doc = None
+# 		return self.dpla_api_doc
+
+
+# 	def get_validation_errors(self):
+
+# 		'''
+# 		Return validation errors associated with this record
+# 		'''
+
+# 		vfs = RecordValidation.objects.filter(record=self)
+# 		return vfs
+
+
+# 	def document_pretty_print(self):
+
+# 		'''
+# 		Method to return document as pretty printed (indented) XML
+# 		'''
+
+# 		# return as pretty printed string
+# 		parsed_doc = self.parse_document_xml()
+# 		if parsed_doc[0]:
+# 			return etree.tostring(parsed_doc[1], pretty_print=True)
+# 		else:
+# 			return "Could not parse Record document:\n%s" % parsed_doc[1]
+
+
+# 	def get_lineage_url_paths(self):
+
+# 		'''
+# 		get paths of Record, Record Group, and Organzation
+# 		'''
+
+# 		record_lineage_urls = {
+# 			'record':{
+# 					'name':self.record_id,
+# 					'path':reverse('record', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id, 'record_id':self.id})
+# 				},
+# 			'job':{
+# 					'name':self.job.name,
+# 					'path':reverse('job_details', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id, 'job_id':self.job.id})
+# 				},
+# 			'record_group':{
+# 					'name':self.job.record_group.name,
+# 					'path':reverse('record_group', kwargs={'org_id':self.job.record_group.organization.id, 'record_group_id':self.job.record_group.id})
+# 				},
+# 			'organization':{
+# 					'name':self.job.record_group.organization.name,
+# 					'path':reverse('organization', kwargs={'org_id':self.job.record_group.organization.id})
+# 				}
+# 		}
+
+# 		return record_lineage_urls
+
+
+# 	def get_dpla_bulk_data_match(self):
+
+# 		'''
+# 		Method to return single DPLA Bulk Data Match
+# 		'''
+
+# 		return DPLABulkDataMatch.objects.filter(record=self)
+
+
+# 	def get_input_record_diff(self, output='all', combined_as_html=False):
+
+# 		'''
+# 		Method to return a string diff of this record versus the input record
+# 			- this is primarily helpful for Records from Transform Jobs
+# 			- use self.get_record_stages(input_record_only=True)[0]
+
+# 		Returns:
+# 			(str|list): results of Record documents diff, line-by-line
+# 		'''
+
+# 		# check if Record has input Record
+# 		irq = self.get_record_stages(input_record_only=True)
+# 		if len(irq) == 1:
+# 			logger.debug('single, input Record found: %s' % irq[0])
+
+# 			# get input record
+# 			ir = irq[0]
+
+# 			# check if fingerprints the same
+# 			if self.fingerprint != ir.fingerprint:
+
+# 				logger.debug('fingerprint mismatch, returning diffs')
+# 				return self.get_record_diff(
+# 						input_record=ir,
+# 						output=output,
+# 						combined_as_html=combined_as_html
+# 					)
+
+# 			# else, return None
+# 			else:
+# 				logger.debug('fingerprint match, returning None')
+# 				return None
+
+# 		else:
+# 			return False
+
+
+# 	def get_record_diff(self,
+# 			input_record=None,
+# 			xml_string=None,
+# 			output='all',
+# 			combined_as_html=False,
+# 			reverse_direction=False
+# 		):
+
+# 		'''
+# 		Method to return diff of document XML strings
+
+# 		Args;
+# 			input_record (core.models.Record): use another Record instance to compare diff
+# 			xml_string (str): provide XML string to provide diff on
+
+# 		Returns:
+# 			(dict): {
+# 				'combined_gen' : generator of diflibb
+# 				'side_by_side_html' : html output of sxsdiff lib
+# 			}
+				 
+# 		'''
+
+# 		if input_record:
+# 			input_xml_string = input_record.document
+
+# 		elif xml_string:
+# 			input_xml_string = xml_string
+
+# 		else:
+# 			logger.debug('input record or XML string required, returning false')
+# 			return False
+
+# 		# prepare input / result
+# 		docs = [input_xml_string, self.document]
+# 		if reverse_direction:
+# 			docs.reverse()
+
+# 		# include combine generator in output
+# 		if output in ['all','combined_gen']:
+			
+# 			# get generator of differences
+# 			combined_gen = difflib.unified_diff(
+# 				docs[0].splitlines(),
+# 				docs[1].splitlines()
+# 			)
+
+# 			# return as HTML
+# 			if combined_as_html:
+# 				combined_gen = self._return_combined_diff_gen_as_html(combined_gen)
+
+# 		else:
+# 			combined_gen = None
+
+# 		# include side_by_side html in output
+# 		if output in ['all','side_by_side_html']:
+
+# 			sxsdiff_result = DiffCalculator().run(docs[0], docs[1])
+# 			sio = io.StringIO()
+# 			GitHubStyledGenerator(file=sio).run(sxsdiff_result)
+# 			sio.seek(0)
+# 			side_by_side_html = sio.read()
+
+# 		else:
+# 			side_by_side_html = None
+
+# 		return {
+# 			'combined_gen':combined_gen,
+# 			'side_by_side_html':side_by_side_html
+# 		}
+
+
+# 	def _return_combined_diff_gen_as_html(self, combined_gen):
+
+# 		'''
+# 		Small method to return combined diff generated as pre-compiled HTML
+# 		'''
+
+# 		html = '<pre><code>'
+# 		for line in combined_gen:
+# 			if line.startswith('-'):
+# 				html += '<span style="background-color:#ffeef0;">'
+# 			elif line.startswith('+'):
+# 				html += '<span style="background-color:#e6ffed;">'
+# 			else:
+# 				html += '<span>'
+# 			html += line.replace('<','&lt;').replace('>','&gt;')
+# 			html += '</span><br>'
+# 		html += '</code></pre>'
+
+# 		return html
+
+
+# 	def calc_fingerprint(self, update_db=False):
+		
+# 		'''
+# 		Generate fingerprint hash with binascii.crc32()
+# 		'''
+
+# 		fingerprint = binascii.crc32(self.document.encode('utf-8'))
+
+# 		if update_db:
+# 			self.fingerprint = fingerprint
+# 			self.save()
+
+# 		return fingerprint
+
+
+# 	def map_fields_for_es(self, mapper):
+
+# 		'''
+# 		Method for testing how a Record will map given an instance
+# 		of a mapper from core.spark.es
+# 		'''
+
+# 		stime = time.time()
+# 		mapped_fields = mapper.map_record(record_string=self.document)
+# 		logger.debug('mapping elapsed: %s' % (time.time()-stime))
+# 		return mapped_fields
+
+
+
+class Record(mongoengine.Document):
+
+	# fields
+	combine_id = mongoengine.StringField()
+	document = mongoengine.StringField()
+	error = mongoengine.StringField()
+	fingerprint = mongoengine.IntField()
+	job_id = mongoengine.IntField()
+	oai_set = mongoengine.StringField()
+	publish_set_id = mongoengine.StringField()
+	published = mongoengine.BooleanField(default=False)
+	record_id = mongoengine.StringField()
+	success = mongoengine.BooleanField(default=True)
+	transformed = mongoengine.BooleanField(default=False)
+	unique = mongoengine.BooleanField(default=True)
+	unique_published = mongoengine.BooleanField(default=True)
+	valid = mongoengine.BooleanField(default=True)
+
+	# meta
+	meta = {
+		'index_options': {},
+        'index_background': False,        
+        'auto_create_index': False,
+        'index_drop_dups': False,
+		'indexes': [
+			{'fields': ['job_id']},
+			{'fields': ['record_id']},
+			{'fields': ['combine_id']},
+			# {'fields': ['fingerprint']}
+		]
+	}
+
+
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+
+		job = Job.objects.get(pk=self.job_id)
+		return job
 
 
 	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
@@ -2041,52 +2563,6 @@ class Record_SQL_BACKUP(models.Model):
 		mapped_fields = mapper.map_record(record_string=self.document)
 		logger.debug('mapping elapsed: %s' % (time.time()-stime))
 		return mapped_fields
-
-
-
-class Record(mongoengine.Document):
-
-	# fields
-	combine_id = mongoengine.StringField()
-	document = mongoengine.StringField()
-	error = mongoengine.StringField()
-	fingerprint = mongoengine.IntField()
-	job_id = mongoengine.IntField()
-	oai_set = mongoengine.StringField()
-	publish_set_id = mongoengine.StringField()
-	published = mongoengine.BooleanField(default=False)
-	record_id = mongoengine.StringField()
-	success = mongoengine.BooleanField(default=True)
-	transformed = mongoengine.BooleanField(default=False)
-	unique = mongoengine.BooleanField(default=True)
-	unique_published = mongoengine.BooleanField(default=True)
-	valid = mongoengine.BooleanField(default=True)
-
-	# meta
-	meta = {
-		'index_options': {},
-        'index_background': False,        
-        'auto_create_index': False,
-        'index_drop_dups': False,
-		'indexes': [
-			{'fields': ['job_id']},
-			{'fields': ['record_id']},
-			{'fields': ['combine_id']},
-			# {'fields': ['fingerprint']}
-		]
-	}
-
-
-	# define job property
-	@property
-	def job(self):
-
-		'''
-		Method to retrieve Job from Django ORM via job_id
-		'''
-
-		job = Job.objects.get(pk=self.job_id)
-		return job
 
 
 

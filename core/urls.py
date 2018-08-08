@@ -57,13 +57,13 @@ urlpatterns = [
 	url(r'^jobs/move_jobs$', views.move_jobs, name='move_jobs'),
 
 	# Records
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)$', views.record, name='record'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/document$', views.record_document, name='record_document'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/indexed_document$', views.record_indexed_document, name='record_indexed_document'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/error$', views.record_error, name='record_error'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/diff/combined$', views.record_combined_diff_html, name='record_combined_diff_html'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/diff/side_by_side$', views.record_side_by_side_diff_html, name='record_side_by_side_diff_html'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)$', views.record, name='record'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/document$', views.record_document, name='record_document'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/indexed_document$', views.record_indexed_document, name='record_indexed_document'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/error$', views.record_error, name='record_error'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/diff/combined$', views.record_combined_diff_html, name='record_combined_diff_html'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/diff/side_by_side$', views.record_side_by_side_diff_html, name='record_side_by_side_diff_html'),
 
 	# Configuration
 	url(r'^configuration$', views.configuration, name='configuration'),

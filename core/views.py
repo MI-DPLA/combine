@@ -156,9 +156,9 @@ def breadcrumb_parser(request):
 			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
 	# record
-	r_m = re.match(r'(.+?/record/([0-9]+))', request.path)
+	r_m = re.match(r'(.+?/record/([0-9a-z]+))', request.path)
 	if r_m:
-		r = models.Record.objects.get(pk=int(r_m.group(2)))
+		r = models.Record.objects.get(id=r_m.group(2))
 		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
 	# background tasks
@@ -1738,11 +1738,12 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	Single Record page
 	'''
 	
-	# get single record based on Combine record DB id
-	record = models.Record.objects.get(pk=int(record_id))
+	# get record
+	record = models.Record.objects.get(id=record_id)
 
 	# build ancestry in both directions
-	record_stages = record.get_record_stages()
+	# record_stages = record.get_record_stages()
+	record_stages = []
 
 	# get details depending on job type
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
@@ -2884,10 +2885,9 @@ class DTRecordsJson(BaseDatatableView):
 
 		# define the columns that will be returned
 		columns = [
-			'id',
-			'combine_id',
+			'_id',			
 			'record_id',
-			'job',
+			'job_id',
 			'oai_set',
 			'unique',
 			'document',
@@ -2901,10 +2901,9 @@ class DTRecordsJson(BaseDatatableView):
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
-			'id',
-			'combine_id',
+			'_id',			
 			'record_id',
-			'job',
+			'job_id',
 			'oai_set',
 			'unique',
 			'document',
@@ -2923,10 +2922,10 @@ class DTRecordsJson(BaseDatatableView):
 			
 			# if job present, filter by job
 			if 'job_id' in self.kwargs.keys():
-				# get job
+				# get jobself.kwargs['job_id']
 				job = models.Job.objects.get(pk=self.kwargs['job_id'])
 				# return filtered queryset
-				return models.Record.objects.filter(job=job)
+				return job.get_records()
 
 			# else, return all records
 			else:
@@ -2939,12 +2938,12 @@ class DTRecordsJson(BaseDatatableView):
 			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					})
 
 			# handle db_id
-			if column == 'id':
-				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
+			if column == '_id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, str(row.id))
 
 			# handle combine_id
 			if column == 'combine_id':
@@ -2962,7 +2961,7 @@ class DTRecordsJson(BaseDatatableView):
 					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
@@ -3472,6 +3471,7 @@ class JobRecordDiffs(BaseDatatableView):
 
 			# return
 			return qs
+
 
 
 class CombineBackgroundTasksDT(BaseDatatableView):
