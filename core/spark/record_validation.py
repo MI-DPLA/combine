@@ -119,13 +119,26 @@ class ValidationScenarioSpark(object):
 
 			# merge rdds
 			failures_union_rdd = self.spark.sparkContext.union(failure_rdds)
+
+			failures_df = failures_union_rdd.toDF()
 			
 			# write
-			failures_union_rdd.toDF().write.format("com.mongodb.spark.sql.DefaultSource")\
+			failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
 			.option("collection", "record_validation").save()
+
+			# rewrite records with valid = False if in
+			set_valid_df = self.records_df.alias('records_df').join(failures_df.select('record_id').distinct().alias('failures_df'), failures_df['record_id'] == self.records_df['_id'], 'leftsemi').select(self.records_df.columns)
+			set_valid_df = set_valid_df.withColumn('valid',pyspark_sql_functions.lit(False))
+
+			# re-write failures
+			set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "record").save()
 
 	
 	def _sch_validation(self, vs, vs_id, vs_filepath):
