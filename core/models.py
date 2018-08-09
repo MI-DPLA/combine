@@ -2096,7 +2096,9 @@ class Record(mongoengine.Document):
 		'indexes': [
 			{'fields': ['job_id']},
 			{'fields': ['record_id']},
-			{'fields': ['combine_id']}
+			{'fields': ['combine_id']},
+			{'fields': ['success']},
+			{'fields': ['valid']}
 		]
 	}
 

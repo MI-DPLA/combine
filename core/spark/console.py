@@ -21,54 +21,6 @@ from django.db import connection
 from core.models import Job, PublishedRecords
 
 
-def get_job_as_df(spark, job_id, remove_id=False):
-
-	'''
-	Convenience method to retrieve set of records as Spark DataFrame
-	'''
-
-	pipeline = json.dumps({'$match': {'job_id': job_id}})
-	mdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-	.option("uri","mongodb://127.0.0.1")\
-	.option("database","combine")\
-	.option("collection","record")\
-	.option("pipeline",pipeline).load()
-
-	# if remove ID
-	if remove_id:
-		mdf = mdf.select([ c for c in mdf.columns if c != '_id' ])
-
-	return mdf
-
-
-def get_sql_job_as_df(spark, job_id, remove_id=False):
-
-	sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
-	sqldf = sqldf.filter(sqldf['job_id'] == job_id)
-
-	# if remove ID
-	if remove_id:
-		sqldf = sqldf.select([ c for c in sqldf.columns if c != 'id' ])
-
-	return sqldf
-
-
-def copy_sql_to_mongo(spark, job_id):
-
-	# get sql job
-	sdf = get_sql_job_as_df(spark, job_id, remove_id=True)
-
-	# repartition	
-	sdf = sdf.rdd.repartition(200).toDF(schema=sdf.schema)
-
-	# insert
-	sdf.write.format("com.mongodb.spark.sql.DefaultSource")\
-	.mode("append")\
-	.option("uri","mongodb://127.0.0.1")\
-	.option("database","combine")\
-	.option("collection", "record").save()
-
-
 def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 
 	'''
@@ -108,8 +60,78 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 
 
 
+############################################################################
+# Convenience Functions
+############################################################################
+
+def get_job_as_df(spark, job_id, remove_id=False):
+
+	'''
+	Convenience method to retrieve set of records as Spark DataFrame
+	'''
+
+	pipeline = json.dumps({'$match': {'job_id': job_id}})
+	mdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+	.option("uri","mongodb://127.0.0.1")\
+	.option("database","combine")\
+	.option("collection","record")\
+	.option("partitioner","MongoSamplePartitioner")\
+	.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+	.option("pipeline",pipeline).load()
+
+	# if remove ID
+	if remove_id:
+		mdf = mdf.select([ c for c in mdf.columns if c != '_id' ])
+
+	return mdf
 
 
+def get_sql_job_as_df(spark, job_id, remove_id=False):
+
+	sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
+	sqldf = sqldf.filter(sqldf['job_id'] == job_id)
+
+	# if remove ID
+	if remove_id:
+		sqldf = sqldf.select([ c for c in sqldf.columns if c != 'id' ])
+
+	return sqldf
+
+
+def copy_sql_to_mongo(spark, job_id):
+
+	# get sql job
+	sdf = get_sql_job_as_df(spark, job_id, remove_id=True)
+
+	# repartition	
+	sdf = sdf.rdd.repartition(200).toDF(schema=sdf.schema)
+
+	# insert
+	sdf.write.format("com.mongodb.spark.sql.DefaultSource")\
+	.mode("append")\
+	.option("uri","mongodb://127.0.0.1")\
+	.option("database","combine")\
+	.option("collection", "record").save()
+
+
+def copy_sql_to_mongo_adv(spark, job_id, lowerBound, upperBound, numPartitions):
+
+	sqldf = self.spark.read.jdbc(
+			settings.COMBINE_DATABASE['jdbc_url'],
+			'core_record',
+			properties=settings.COMBINE_DATABASE,
+			column='id',
+			lowerBound=lowerBound,
+			upperBound=upperBound,
+			numPartitions=numPartitions
+		)
+	db_records = sqldf.filter(sqldf.job_id == int(job_id))
+
+	db_records.write.format("com.mongodb.spark.sql.DefaultSource")\
+	.mode("append")\
+	.option("uri","mongodb://127.0.0.1")\
+	.option("database","combine")\
+	.option("collection", "record").save()
 
 
 
