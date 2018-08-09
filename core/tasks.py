@@ -596,8 +596,6 @@ def job_remove_validation(ct_id):
 
 	'''
 	Task to remove a validation, and all failures, from a Job
-		- potentially expensive in that the full Job must be re-checked for validity
-		- will remove
 	'''
 
 	# get CombineTask (ct)
@@ -614,7 +612,6 @@ def job_remove_validation(ct_id):
 		# delete validation failures associated with Validation Scenario and Job
 		delete_results = jv.delete_record_validation_failures()
 
-		####################################################################################################################################################################
 		# update valid field in Records via Spark
 		# generate spark code		
 		spark_code = 'from jobs import RemoveValidationsSpark\nRemoveValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
@@ -636,7 +633,6 @@ def job_remove_validation(ct_id):
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
-		####################################################################################################################################################################
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		

@@ -1478,7 +1478,7 @@ class RemoveValidationsSpark(CombineSparkPatch):
 		.option("collection","record")\
 		.option("pipeline",pipeline).load()
 
-		# if not nothing to update, skip updating
+		# if not nothing to update, skip
 		if not db_records.rdd.isEmpty():
 			# run Validation Scenarios
 			if 'validation_scenarios' in self.kwargs.keys():
