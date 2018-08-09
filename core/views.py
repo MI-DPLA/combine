@@ -3021,7 +3021,7 @@ class DTPublishedJson(BaseDatatableView):
 		columns = [
 			'id',
 			'record_id',
-			'job__record_group',
+			'job_id',
 			'publish_set_id', 
 			'oai_set',
 			'unique_published',
@@ -3035,7 +3035,7 @@ class DTPublishedJson(BaseDatatableView):
 		order_columns = [
 			'id',
 			'record_id',
-			'job__record_group',
+			'job_id',
 			'publish_set_id', 
 			'oai_set',
 			'unique_published',
@@ -3065,10 +3065,10 @@ class DTPublishedJson(BaseDatatableView):
 				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}), row.record_id)
 
-			if column == 'job__record_group':
+			if column == 'job_id':
 				return '<a href="%s">%s</a>' % (reverse(record_group, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id
@@ -3081,7 +3081,7 @@ class DTPublishedJson(BaseDatatableView):
 					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
@@ -3097,34 +3097,34 @@ class DTPublishedJson(BaseDatatableView):
 				return super(DTPublishedJson, self).render_column(row, column)
 
 
-		def filter_queryset(self, qs):
-			# use parameters passed in GET request to filter queryset
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
 
-			# handle search
-			search = self.request.GET.get(u'search[value]', None)
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
 
-			if search:
+		# 	if search:
 
-				# determine if search is integer
-				try:
-					int_qs = int(search)
-				except:
-					int_qs = False
+		# 		# determine if search is integer
+		# 		try:
+		# 			int_qs = int(search)
+		# 		except:
+		# 			int_qs = False
 
-				# if integer
-				if int_qs:
-					qs = qs.filter(
-						Q(id=search)
-					)
-				else:
-					# very slow to include the job's publish set id - removing from search
-					qs = qs.filter(
-						Q(record_id=search) |
-						Q(document=search)
-					)
+		# 		# if integer
+		# 		if int_qs:
+		# 			qs = qs.filter(
+		# 				Q(id=search)
+		# 			)
+		# 		else:
+		# 			# very slow to include the job's publish set id - removing from search
+		# 			qs = qs.filter(
+		# 				Q(record_id=search) |
+		# 				Q(document=search)
+		# 			)
 
 
-			return qs
+		# 	return qs
 
 
 
