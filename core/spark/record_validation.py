@@ -128,8 +128,12 @@ class ValidationScenarioSpark(object):
 			.option("collection", "record_validation").save()
 
 			# rewrite records with valid = False if in
-			set_valid_df = self.records_df.alias('records_df').join(failures_df.select('record_id').distinct().alias('failures_df'), failures_df['record_id'] == self.records_df['_id'], 'leftsemi').select(self.records_df.columns)
-			set_valid_df = set_valid_df.withColumn('valid',pyspark_sql_functions.lit(False))
+			set_valid_df = self.records_df.alias('records_df').join(
+				failures_df.select('record_id').distinct().alias('failures_df'),
+				failures_df['record_id'] == self.records_df['_id'],
+				'leftsemi')\
+				.select(self.records_df.columns)\
+				.withColumn('valid',pyspark_sql_functions.lit(False))			
 
 			# re-write failures
 			set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
@@ -377,6 +381,39 @@ class ValidationScenarioSpark(object):
 			return None
 
 
+	def remove_validation_scenarios(self):
 
+		'''
+		Method to update validity attribute of records after removal of validation scenarios
+			- approach is to update all INVALID Records that may now be valid by lack of 
+			matching record_id in validation failures
+		'''
+
+		# read current failures from Mongo
+		failures_pipeline = json.dumps({'$match': {'job_id': self.job.id}})
+		failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record_validation")\
+		.option("pipeline",failures_pipeline).load()
+
+		# if failures to work with
+		if not failures_df.rdd.isEmpty():
+			# rewrite records with valid = True if NOT in failures_df
+			set_valid_df = self.records_df.alias('records_df').join(
+				failures_df.select('record_id').distinct().alias('failures_df'),
+				failures_df['record_id'] == self.records_df['_id'],
+				'leftanti')\
+				.select(self.records_df.columns)\
+				.withColumn('valid',pyspark_sql_functions.lit(True))
+		else:
+			set_valid_df = self.records_df.withColumn('valid',pyspark_sql_functions.lit(True))
+
+		# update validity of Records
+		set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
 
 

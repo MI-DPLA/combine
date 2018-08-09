@@ -1420,11 +1420,12 @@ class ReindexSparkPatch(CombineSparkPatch):
 class RunNewValidationsSpark(CombineSparkPatch):
 
 	'''
-	Class to handle Job re-indexing
+	Class to run new validations for Job
 
 	Args:
 		kwargs(dict):
-			- job_id (int): ID of Job to reindex
+			- job_id (int): ID of Job
+			- validation_scenarios (list): list of validation scenarios to run
 	'''
 
 	def spark_function(self):
@@ -1450,10 +1451,44 @@ class RunNewValidationsSpark(CombineSparkPatch):
 			)
 			vs.run_record_validation_scenarios()
 
-		# # update `valid` column for Records based on results of ValidationScenarios
-		# self.logger.info('Updating Records with validation results via MySQL cursor execution')
-		# with connection.cursor() as cursor:
-		# 	query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+
+class RemoveValidationsSpark(CombineSparkPatch):
+
+	'''
+	Class to remove validations for Job
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job
+			- validation_scenarios (int): list of validation scenarios to run
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.update_jobGroup('Running New Validation Scenarios', self.job.id)
+
+		# create pipeline to select INVALID records, that may become valid
+		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id},{'valid':False}]}})		
+		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("pipeline",pipeline).load()
+
+		# if not nothing to update, skip updating
+		if not db_records.rdd.isEmpty():
+			# run Validation Scenarios
+			if 'validation_scenarios' in self.kwargs.keys():
+				vs = ValidationScenarioSpark(
+					spark=self.spark,
+					job=self.job,
+					records_df=db_records,
+					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+				)
+				vs.remove_validation_scenarios()
 
 
 

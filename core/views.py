@@ -3209,7 +3209,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 		# define the columns that will be returned
 		columns = [
 			'id',
-			'record_id',
+			'record',
 			'results_payload',
 			'fail_count'
 		]
@@ -3221,7 +3221,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
 			'id',
-			'record_id',
+			'record',
 			'results_payload',
 			'fail_count'
 		]
@@ -3260,7 +3260,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
-			elif column == 'record_id':
+			elif column == 'record':
 				# get target record from row
 				target_record = row.record
 				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
@@ -3275,16 +3275,16 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 				return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
 
 
-		def filter_queryset(self, qs):
-			# use parameters passed in GET request to filter queryset
+		# def filter_queryset(self, qs):
+		# 	# use parameters passed in GET request to filter queryset
 
-			# handle search
-			search = self.request.GET.get(u'search[value]', None)
-			if search:
-				qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
 
-			# return
-			return qs
+		# 	# return
+		# 	return qs
 
 
 

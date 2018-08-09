@@ -3045,6 +3045,7 @@ class JobValidation(models.Model):
 		Returns:
 			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
 		'''
+
 		stime = time.time()
 		rvfs = RecordValidation.objects\
 			.filter(validation_scenario_id=self.validation_scenario.id)\
@@ -3075,6 +3076,19 @@ class JobValidation(models.Model):
 
 		# return count
 		return self.failure_count
+
+
+	def delete_record_validation_failures(self):
+
+		'''
+		Method to delete record validations associated with this validation job
+		'''
+		rvfs = RecordValidation.objects\
+			.filter(validation_scenario_id=self.validation_scenario.id)\
+			.filter(job_id=self.job.id)
+		del_results = rvfs.delete()
+		logger.debug('%s validations removed' % del_results)
+		return del_results
 
 
 
@@ -3112,7 +3126,7 @@ class JobValidation(models.Model):
 class RecordValidation(mongoengine.Document):
 
 	# fields
-	record = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
 	job_id = mongoengine.IntField()
 	validation_scenario_id = mongoengine.IntField()
 	valid = mongoengine.BooleanField(default=True)
@@ -3126,7 +3140,7 @@ class RecordValidation(mongoengine.Document):
         'auto_create_index': False,
         'index_drop_dups': False,
 		'indexes': [
-			{'fields': ['record']},
+			{'fields': ['record_id']},
 			{'fields': ['job_id']},
 		]
 	}
@@ -3163,6 +3177,12 @@ class RecordValidation(mongoengine.Document):
 			return job
 		else:
 			return self._job
+
+
+	# convenience method
+	@property
+	def record(self):
+		return self.record_id
 
 
 
