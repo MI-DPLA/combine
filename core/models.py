@@ -1240,9 +1240,23 @@ class Job(models.Model):
 		Method to remove records from DB, fired as pre_delete signal
 		'''
 
+		# remove records
 		records = self.get_records()
 		del_result = records.delete()
 		logger.debug('removed %s records from db' % del_result)
+		return del_result
+
+
+	def remove_validations_from_db(self):
+
+		'''
+		Method to remove validations from DB, fired as pre_delete signal
+		'''
+
+		# remove validations
+		validations = RecordValidation.objects(job_id=self.id)
+		del_result = validations.delete()
+		logger.debug('removed %s validations from db' % del_result)
 		return del_result
 
 
@@ -3634,6 +3648,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	# remove Records from Mongo
 	instance.remove_records_from_db()
+
+	# remove Validations from Mongo
+	instance.remove_validations_from_db()
 
 
 @receiver(models.signals.post_delete, sender=Job)
