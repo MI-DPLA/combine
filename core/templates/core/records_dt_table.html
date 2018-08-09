@@ -24,7 +24,7 @@
 
 		// check for record limiter				
     	{% if q %}
-	    	q = {{ q }};
+	    	q = '{{ q }}';
 	    {% else %}
 	    	q = '';
     	{% endif %}
@@ -33,7 +33,7 @@
 			"processing": true,
 			"serverSide": true,
 			"search": {
-			    "search": q					    
+			    "search": q				    
 			},
 
 			{# if cjob is present, limit to Job records only #}

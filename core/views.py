@@ -2042,7 +2042,7 @@ def test_transformation_scenario(request):
 		response_type = request.POST.get('response_type', False)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		try:
 			
@@ -2148,7 +2148,7 @@ def test_validation_scenario(request):
 		logger.debug(request.POST)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		try:
 			# init new validation scenario
@@ -2229,7 +2229,7 @@ def test_rits(request):
 
 			# get record
 			if request.POST.get('db_id', False):
-				record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+				record = models.Record.objects.get(id=request.POST.get('db_id'))
 			else:
 				return JsonResponse({'results':'Please select a record from the table above!','success':False})
 
@@ -2365,7 +2365,7 @@ def test_field_mapper(request):
 		logger.debug(request.POST)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		# get field mapper info
 		field_mapper = request.POST.get('field_mapper')

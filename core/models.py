@@ -2112,7 +2112,10 @@ class Record(mongoengine.Document):
 		Method to retrieve Job from Django ORM via job_id
 		'''
 		if self._job is None:
-			job = Job.objects.get(pk=self.job_id)
+			try:
+				job = Job.objects.get(pk=self.job_id)
+			except:
+				job = False
 			self._job = job
 			return job
 		else:
@@ -6333,7 +6336,7 @@ class DTElasticFieldSearch(View):
 		for hit in self.query_results.hits:
 
 			# get combine record
-			record = Record.objects.get(pk=int(hit.db_id))
+			record = Record.objects.get(id=hit.db_id)
 
 			# loop through rows, add to list while handling data types
 			row_data = []
