@@ -206,6 +206,9 @@ class CombineSparkJob(object):
 		.option("database","combine")\
 		.option("collection", "record").save()
 
+		# after written, add valid field and set to True if not present
+		mc_handle.combine.record.update({'job_id':self.job.id, 'valid': {"$exists" : False}}, {"$set": {'valid': True}})
+
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
 

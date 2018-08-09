@@ -92,7 +92,7 @@ class PythonUDFRecord(object):
 			self._row = record_input
 
 			# get combine id
-			self.id = self._row.id
+			self.id = self._row._id
 
 			# get record id
 			self.record_id = self._row.record_id

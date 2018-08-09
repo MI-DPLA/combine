@@ -1034,7 +1034,8 @@ class Job(models.Model):
 			# .count()
 
 			# determine total number of distinct Records with 1+ validation failures
-			
+			results['failure_count'] = 0
+
 
 			# if failures found
 			if results['failure_count'] > 0:

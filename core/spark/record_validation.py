@@ -88,6 +88,7 @@ class ValidationScenarioSpark(object):
 		refresh_django_db_connection()
 
 		# loop through validation scenarios and fire validation type specific method
+		failure_rdds = []
 		for vs_id in self.validation_scenarios:
 
 			# get validation scenario
@@ -107,13 +108,25 @@ class ValidationScenarioSpark(object):
 			elif vs.validation_type == 'es_query':
 				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_filepath)
 
-			# finally, write to DB if validation failures
+			# if results, append
 			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
-				validation_fails_rdd.toDF().write.format("com.mongodb.spark.sql.DefaultSource")\
-				.mode("append")\
-				.option("uri","mongodb://127.0.0.1")\
-				.option("database","combine")\
-				.option("collection", "record_validation").save()
+
+				# append
+				failure_rdds.append(validation_fails_rdd)
+		
+		# if rdds, union and write
+		if len(failure_rdds) > 0:
+
+			# merge rdds
+			failures_union_rdd = self.spark.sparkContext.union(failure_rdds)
+			
+			# write
+			failures_union_rdd.toDF().write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "record_validation").save()
+
 	
 	def _sch_validation(self, vs, vs_id, vs_filepath):
 
@@ -234,7 +247,7 @@ class ValidationScenarioSpark(object):
 
 				# return row			
 				return Row(
-					record_id=int(row.id),
+					record_id=row._id,
 					validation_scenario_id=int(vs_id),
 					valid=0,
 					results_payload=json.dumps(results_dict),
@@ -339,7 +352,7 @@ class ValidationScenarioSpark(object):
 
 			# write return failures as validation_fails_rdd
 			validation_fails_rdd = new_df.rdd.map(lambda row: Row(
-				record_id=int(row.id),
+				record_id=row._id,
 				validation_scenario_id=int(vs_id),
 				valid=0,
 				results_payload=row.data,
