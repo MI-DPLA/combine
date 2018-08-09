@@ -110,8 +110,6 @@ class ValidationScenarioSpark(object):
 
 			# if results, append
 			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
-
-				# append
 				failure_rdds.append(validation_fails_rdd)
 		
 		# if rdds, union and write
@@ -261,8 +259,9 @@ class ValidationScenarioSpark(object):
 				# return row			
 				return Row(
 					record_id=row._id,
+					job_id=row.job_id,
 					validation_scenario_id=int(vs_id),
-					valid=0,
+					valid=False,
 					results_payload=json.dumps(results_dict),
 					fail_count=results_dict['fail_count']
 				)
@@ -366,8 +365,9 @@ class ValidationScenarioSpark(object):
 			# write return failures as validation_fails_rdd
 			validation_fails_rdd = new_df.rdd.map(lambda row: Row(
 				record_id=row._id,
+				job_id=row.job_id,
 				validation_scenario_id=int(vs_id),
-				valid=0,
+				valid=False,
 				results_payload=row.data,
 				fail_count=int(row['fail_count']))
 			)

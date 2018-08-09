@@ -1027,15 +1027,8 @@ class Job(models.Model):
 		# validation tests run, loop through
 		else:
 
-			# # determine total number of distinct Records with 1+ validation failures
-			# results['failure_count'] = RecordValidation.objects.filter(record__job=self)\
-			# .values('record')\
-			# .annotate(record_count=Count('record'))\
-			# .count()
-
 			# determine total number of distinct Records with 1+ validation failures
-			results['failure_count'] = 0
-
+			results['failure_count'] = Record.objects(job_id=self.id, valid=False).count()
 
 			# if failures found
 			if results['failure_count'] > 0:
@@ -3040,8 +3033,8 @@ class JobValidation(models.Model):
 		'''
 		stime = time.time()
 		rvfs = RecordValidation.objects\
-			.filter(validation_scenario=self.validation_scenario)\
-			.filter(record__job=self.job)
+			.filter(validation_scenario_id=self.validation_scenario.id)\
+			.filter(job_id=self.job.id)
 		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
 		return rvfs
 
