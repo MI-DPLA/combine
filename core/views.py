@@ -3019,7 +3019,7 @@ class DTPublishedJson(BaseDatatableView):
 
 		# define the columns that will be returned
 		columns = [
-			'id',
+			'_id',
 			'record_id',
 			'job_id',
 			'publish_set_id', 
@@ -3033,7 +3033,7 @@ class DTPublishedJson(BaseDatatableView):
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		order_columns = [
-			'id',
+			'_id',
 			'record_id',
 			'job_id',
 			'publish_set_id', 
@@ -3061,6 +3061,14 @@ class DTPublishedJson(BaseDatatableView):
 		def render_column(self, row, column):
 			
 			# handle document metadata
+
+			if column == '_id':
+				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':str(row.id)
+					}), str(row.id))
+
 			if column == 'record_id':
 				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
