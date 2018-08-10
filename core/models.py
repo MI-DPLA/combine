@@ -42,9 +42,6 @@ import pyjxslt
 # pandas
 import pandas as pd
 
-# django-pandas
-from django_pandas.io import read_frame
-
 # django imports
 from django.apps import AppConfig
 from django.conf import settings
@@ -4329,125 +4326,125 @@ class CombineJob(object):
 			return False
 
 
-	def generate_validation_report(self,
-			report_format='csv',
-			validation_scenarios=None,
-			mapped_field_include=None,
-			return_dataframe_only=False,
-			chunk_size=1000
-		):
+	# def generate_validation_report(self,
+	# 		report_format='csv',
+	# 		validation_scenarios=None,
+	# 		mapped_field_include=None,
+	# 		return_dataframe_only=False,
+	# 		chunk_size=1000
+	# 	):
 
-		'''
-		Method to generate report based on validation scenarios run for this job
+	# 	'''
+	# 	Method to generate report based on validation scenarios run for this job
 
-		Args:
-			validation_scenarios (list): List of validation scenario IDs, run for this job, to include in report
-			mapped_field_include (list): List of mapped field as str to include in report
-			output_format (str)['csv','excel','pdf']: output format for report
+	# 	Args:
+	# 		validation_scenarios (list): List of validation scenario IDs, run for this job, to include in report
+	# 		mapped_field_include (list): List of mapped field as str to include in report
+	# 		output_format (str)['csv','excel','pdf']: output format for report
 
-		Returns:
-			filepath (str): output filepath of report
-			report Dataframe (pandas.DataFrame): DataFrame of report
-		'''
+	# 	Returns:
+	# 		filepath (str): output filepath of report
+	# 		report Dataframe (pandas.DataFrame): DataFrame of report
+	# 	'''
 
-		# DEBUG
-		stime = time.time()
+	# 	# DEBUG
+	# 	stime = time.time()
 
-		# get QuerySet of all validation records failures (rvf) for job
-		rvfs = RecordValidation.objects.filter(job_id=self.job.id)
+	# 	# get QuerySet of all validation records failures (rvf) for job
+	# 	rvfs = RecordValidation.objects.filter(job_id=self.job.id)
 
-		# if validation_scenarios passed, filter only those
-		if validation_scenarios:
-			rvfs = rvfs.filter(validation_scenario_id__in=validation_scenarios)
+	# 	# if validation_scenarios passed, filter only those
+	# 	if validation_scenarios:
+	# 		rvfs = rvfs.filter(validation_scenario_id__in=validation_scenarios)
 
-		# create DataFrame with django-pands
-		rvf_df = read_frame(rvfs, fieldnames=[
-				'record__id', # DB ID
-				'record__combine_id', # Combine ID
-				'record__record_id', # Record string ID
-				'validation_scenario__name',
-				'fail_count',
-				'results_payload'
-			])
+	# 	# create DataFrame with django-pands
+	# 	rvf_df = read_frame(rvfs, fieldnames=[
+	# 			'record__id', # DB ID
+	# 			'record__combine_id', # Combine ID
+	# 			'record__record_id', # Record string ID
+	# 			'validation_scenario__name',
+	# 			'fail_count',
+	# 			'results_payload'
+	# 		])
 
-		# rename columns to more human readable format
-		col_mapping = {
-			'record__id':'DB ID',
-			'record__combine_id':'Combine ID',
-			'record__record_id':'Record ID',
-			'validation_scenario__name':'Validation Scenario',
-			'fail_count':'Test Failure Count',
-			'results_payload':'Failure Message'
-		}
-		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
+	# 	# rename columns to more human readable format
+	# 	col_mapping = {
+	# 		'record__id':'DB ID',
+	# 		'record__combine_id':'Combine ID',
+	# 		'record__record_id':'Record ID',
+	# 		'validation_scenario__name':'Validation Scenario',
+	# 		'fail_count':'Test Failure Count',
+	# 		'results_payload':'Failure Message'
+	# 	}
+	# 	rvf_df = rvf_df.rename(index=str, columns=col_mapping)
 
-		# loop through requests mapped fields, add to dataframe
-		if mapped_field_include:
+	# 	# loop through requests mapped fields, add to dataframe
+	# 	if mapped_field_include:
 
-			# prepare dictionary
-			field_values_dict = { field:[] for field in mapped_field_include }
+	# 		# prepare dictionary
+	# 		field_values_dict = { field:[] for field in mapped_field_include }
 			
-			# establish chunking
-			tlen = rvf_df['Combine ID'].count()
-			start = 0
-			end = start + chunk_size
+	# 		# establish chunking
+	# 		tlen = rvf_df['Combine ID'].count()
+	# 		start = 0
+	# 		end = start + chunk_size
 
-			while start < tlen:
+	# 		while start < tlen:
 
-				logger.debug('working on chunk_start: %s' % start)
+	# 			logger.debug('working on chunk_start: %s' % start)
 
-				# get doc chunks from es
-				chunk = list(rvf_df['Combine ID'].iloc[start:end])
-				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']
+	# 			# get doc chunks from es
+	# 			chunk = list(rvf_df['Combine ID'].iloc[start:end])
+	# 			docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']
 				
-				# grab values and add to dictionary
-				for es_doc in docs:
-					for field in mapped_field_include:
-						if field in es_doc['_source'].keys():
-							field_values_dict[field].append(es_doc['_source'][field])
-						else:
-							field_values_dict[field].append(None)
+	# 			# grab values and add to dictionary
+	# 			for es_doc in docs:
+	# 				for field in mapped_field_include:
+	# 					if field in es_doc['_source'].keys():
+	# 						field_values_dict[field].append(es_doc['_source'][field])
+	# 					else:
+	# 						field_values_dict[field].append(None)
 				
-				# bump iterations
-				if tlen > (end + chunk_size):
-					start = end
-					end = end + chunk_size
-				elif tlen <= (end + chunk_size):
-					start = end
-					end = tlen
+	# 			# bump iterations
+	# 			if tlen > (end + chunk_size):
+	# 				start = end
+	# 				end = end + chunk_size
+	# 			elif tlen <= (end + chunk_size):
+	# 				start = end
+	# 				end = tlen
 
-			# add values to dataframe
-			for field, value_list in field_values_dict.items():
-				rvf_df[field] = value_list
+	# 		# add values to dataframe
+	# 		for field, value_list in field_values_dict.items():
+	# 			rvf_df[field] = value_list
 
-		# if only dataframe needed, return
-		if return_dataframe_only:
-			logger.debug('report generation elapsed: %s' % (time.time() - stime))
-			gc.collect() # manual garbage collection
-			return rvf_df
+	# 	# if only dataframe needed, return
+	# 	if return_dataframe_only:
+	# 		logger.debug('report generation elapsed: %s' % (time.time() - stime))
+	# 		gc.collect() # manual garbage collection
+	# 		return rvf_df
 
-		# else, output to file and return path
-		else:
+	# 	# else, output to file and return path
+	# 	else:
 
-			# create filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
+	# 		# create filename
+	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
+	# 		os.mkdir(output_path)
 
-			# output csv
-			if report_format == 'csv':
-				full_path = '%s/validation_report.csv' % (output_path)
-				rvf_df.to_csv(full_path, encoding='utf-8')
+	# 		# output csv
+	# 		if report_format == 'csv':
+	# 			full_path = '%s/validation_report.csv' % (output_path)
+	# 			rvf_df.to_csv(full_path, encoding='utf-8')
 
-			# output excel
-			if report_format == 'excel':
-				full_path = '%s/validation_report.xlsx' % (output_path)
-				rvf_df.to_excel(full_path, encoding='utf-8')
+	# 		# output excel
+	# 		if report_format == 'excel':
+	# 			full_path = '%s/validation_report.xlsx' % (output_path)
+	# 			rvf_df.to_excel(full_path, encoding='utf-8')
 
-			# return
-			logger.debug('report written to :%s' % full_path)
-			logger.debug('report generation elapsed: %s' % (time.time() - stime))
-			gc.collect() # manual garbage collection
-			return full_path
+	# 		# return
+	# 		logger.debug('report written to :%s' % full_path)
+	# 		logger.debug('report generation elapsed: %s' % (time.time() - stime))
+	# 		gc.collect() # manual garbage collection
+	# 		return full_path
 
 
 	def reindex_bg_task(self, fm_config=None):
