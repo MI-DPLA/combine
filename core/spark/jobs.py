@@ -298,6 +298,9 @@ class CombineSparkJob(object):
 		if 'filter_dupe_record_ids' in self.kwargs['input_filters'].keys() and self.kwargs['input_filters']['filter_dupe_record_ids'] == True:			
 			filtered_df = filtered_df.dropDuplicates(['record_id'])
 
+		# after input filtering which might leverage db_id, drop		
+		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
+
 		# return
 		return filtered_df
 
@@ -332,7 +335,7 @@ class CombineSparkJob(object):
 		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
 
 		# perform join on ES documents
-		filtered_df = filtered_df.join(es_df, filtered_df['combine_id'] == es_df['_1'], 'leftsemi')
+		filtered_df = filtered_df.join(es_df, filtered_df['_id']['oid'] == es_df['_1'], 'leftsemi')
 
 		# return
 		return filtered_df
@@ -900,10 +903,7 @@ class TransformSpark(CombineSparkJob):
 		.option("collection","record")\
 		.option("partitioner","MongoSamplePartitioner")\
 		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
-		.option("pipeline",pipeline).load()
-
-		# drop _id
-		records = records.select([ c for c in records.columns if c != '_id' ])
+		.option("pipeline",pipeline).load()		
 
 		# fork as input_records		
 		input_records = records
@@ -1230,10 +1230,7 @@ class MergeSpark(CombineSparkJob):
 		.option("collection","record")\
 		.option("partitioner","MongoSamplePartitioner")\
 		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
-		.option("pipeline",pipeline).load()
-
-		# drop _id
-		records = records.select([ c for c in records.columns if c != '_id' ])
+		.option("pipeline",pipeline).load()		
 		
 		# apply input filters
 		records = self.record_input_filters(records)
