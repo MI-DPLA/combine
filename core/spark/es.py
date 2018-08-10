@@ -18,7 +18,7 @@ import pyjxslt
 try:
 	from pyspark.sql import Row
 	from pyspark.sql.types import StringType, IntegerType
-	from pyspark.sql.functions import udf
+	from pyspark.sql.functions import udf, lit
 except:
 	pass
 
@@ -96,21 +96,22 @@ class ESIndex(object):
 
 			logger.info('###ES 3 -- writing indexing failures')
 
-			failures_df = failures_rdd.map(lambda row: Row(combine_id=row[1]['combine_id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = failures_rdd.map(lambda row: Row(
+					db_id=row[1]['db_id'],
+					record_id=row[1]['record_id'],
+					mapping_error=row[1]['mapping_error']
+				)).toDF()
 
 			# add job_id as column
-			job_id = job.id
-			job_id_udf = udf(lambda id: job_id, IntegerType())
-			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.combine_id))
+			failures_df = failures_df.withColumn('job_id', lit(job.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('combine_id', failures_df.combine_id).select(['combine_id', 'job_id', 'mapping_error'])\
-			.write.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_indexmappingfailure',
-					properties=settings.COMBINE_DATABASE,
-					mode='append'
-				)
+			failures_df.select(['db_id', 'record_id', 'job_id', 'mapping_error'])\
+			.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "index_mapping_failure").save()
 		
 		# retrieve successes to index
 		logger.info('###ES 4 -- filtering successes')
@@ -248,11 +249,9 @@ class BaseMapper(object):
 		- map_record()
 	'''
 
-	# pre-compiled regex
-	# checker for blank spaces
-	blank_check_regex = re.compile(r"[^ \t\n]")
-	# element tag name
-	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
+	# pre-compiled regex	
+	blank_check_regex = re.compile(r"[^ \t\n]") # checker for blank spaces	
+	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)') # element tag name
 
 
 	def get_namespaces(self):
@@ -307,18 +306,20 @@ class XML2kvpMapper(BaseMapper):
 		Map record
 
 		Args:
-			record_id (str): record id
 			record_string (str): string of record document
-			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+			db_id (str): mongo db id
+			combine_id (str): combine_id id
+			record_id (str): record id			
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build publish identifier
+			fingerprint (str): fingerprint
 
 		Returns:
 			(tuple):
 				0 (str): ['success','fail']
 				1 (dict): details from mapping process, success or failure
-
 		'''
 
-		try:
+		try:			
 
 			# prepare literals
 			if 'add_literals' not in self.fm_config.keys():
@@ -360,115 +361,8 @@ class XML2kvpMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'combine_id':combine_id,
-					'mapping_error':str(e)
-				}
-			)
-
-
-
-class MODSMapper(BaseMapper):
-
-	'''
-	Mapper for MODS metadata
-
-		- flattens MODS with XSLT transformation (derivation of Islandora and Fedora GSearch xslt)
-			- field names are combination of prefixes and attributes
-		- convert to dictionary with xmltodict
-	'''
-
-
-	# Index Mapper class attributes (needed for easy access in Django templates)
-	classname = "MODSMapper" # must be same as class name
-	name = "Custom MODS mapper"
-
-
-	def __init__(self, include_attributes=None, xslt_processor='lxml'):
-
-		'''
-		Initiates MODSMapper, with option of what XSLT processor to use.
-			- lxml: faster, but does not provide XSLT 2.0 support (though the included stylesheet does not require)
-			- pyjxslt: slower, but offers XSLT 2.0 support
-
-		Args:
-			xslt_processor (str)['lxml','pyjxslt']: Selects which XSLT processor to use.
-		'''
-
-		self.xslt_processor = xslt_processor
-		self.xslt_filepath = '/opt/combine/inc/xslt/MODS_extract.xsl'
-
-		if self.xslt_processor == 'lxml':
-
-			# set xslt transformer
-			xslt_tree = etree.parse(self.xslt_filepath)
-			self.xsl_transform = etree.XSLT(xslt_tree)
-
-		elif self.xslt_processor == 'pyjxslt':
-
-			# prepare pyjxslt gateway
-			self.gw = pyjxslt.Gateway(6767)
-			with open(self.xslt_filepath,'r') as f:
-				self.gw.add_transform('xslt_transform', f.read())
-
-
-	def map_record(self,
-			record_string=None,
-			db_id=None,
-			combine_id=None,
-			record_id=None,
-			publish_set_id=None,
-			fingerprint=None
-		):
-
-		try:
-			
-			if self.xslt_processor == 'lxml':
-				
-				# flatten file with XSLT transformation
-				xml_root = etree.fromstring(record_string.encode('utf-8'))
-				flat_xml = self.xsl_transform(xml_root)
-
-			elif self.xslt_processor == 'pyjxslt':
-
-				# flatten file with XSLT transformation
-				flat_xml = self.gw.transform('xslt_transform', record_string)
-
-			# convert to dictionary			
-			flat_dict = xmltodict.parse(flat_xml)
-
-			# prepare as flat mapped
-			fields = flat_dict['fields']['field']
-			mapped_dict = { field['@name']:field['#text'] for field in fields }
-
-			# add temporary id field
-			mapped_dict['temp_id'] = combine_id
-
-			# add combine_id field
-			mapped_dict['combine_id'] = combine_id
-
-			# add record_id field
-			mapped_dict['record_id'] = record_id
-
-			# add publish set id
-			mapped_dict['publish_set_id'] = publish_set_id
-
-			# add record's Combine DB id
-			mapped_dict['db_id'] = db_id
-
-			# add record's crc32 document hash, aka "fingerprint"
-			mapped_dict['fingerprint'] = db_id
-
-			return (
-				'success',
-				mapped_dict
-			)
-
-		except Exception as e:
-			
-			return (
-				'fail',
-				{
-					'combine_id':combine_id,
+					'db_id':db_id,
+					'record_id':record_id,
 					'mapping_error':str(e)
 				}
 			)

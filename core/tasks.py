@@ -473,6 +473,9 @@ def job_reindex(ct_id):
 		# drop Job's ES index
 		cjob.job.drop_es_index()
 
+		# drop previous index mapping failures
+		cjob.job.remove_mapping_failures_from_db()
+
 		# generate spark code		
 		spark_code = 'from jobs import ReindexSparkPatch\nReindexSparkPatch(spark, job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\').spark_function()' % {
 			'job_id':cjob.job.id,

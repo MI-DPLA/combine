@@ -461,7 +461,7 @@ class OAIProvider(object):
 
 		'''
 		OAI-PMH verb: ListSets
-		Lists available sets.  Sets are derived from the associated Record Groups of all Publish jobs.
+		Lists available sets.  Sets are derived from the publish_set_id from a published Job
 
 		Args:
 			None

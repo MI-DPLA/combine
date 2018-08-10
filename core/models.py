@@ -1190,6 +1190,7 @@ class Job(models.Model):
 		logger.debug('Matched %s, marked as published %s' % (result.matched_count, result.modified_count))
 
 		# set self as publish
+		self.publish_set_id = publish_set_id
 		self.published = True
 		self.save()
 
@@ -1225,7 +1226,6 @@ class Job(models.Model):
 		Method to remove records from DB, fired as pre_delete signal
 		'''
 
-		# remove records
 		logger.debug('removing records from db')
 		mc_handle.combine.record.delete_many({'job_id':self.id})
 		logger.debug('removed records from db')
@@ -1238,11 +1238,25 @@ class Job(models.Model):
 		Method to remove validations from DB, fired as pre_delete signal
 		'''
 
-		# remove validations
 		logger.debug('removing validations from db')
 		mc_handle.combine.record_validation.delete_many({'job_id':self.id})
 		logger.debug('removed validations from db')
 		return True
+
+
+	def remove_mapping_failures_from_db(self):
+
+		'''
+		Method to remove mapping failures from DB, fired as pre_delete signal
+		'''
+
+		logger.debug('removing mapping failures from db')
+		mc_handle.combine.index_mapping_failure.delete_many({'job_id':self.id})
+		logger.debug('removed mapping failures from db')
+		return True
+
+
+
 
 
 
@@ -1571,7 +1585,8 @@ class Record(mongoengine.Document):
 			{'fields': ['combine_id']},
 			{'fields': ['success']},
 			{'fields': ['valid']},
-			{'fields': ['published']}
+			{'fields': ['published']},
+			{'fields': ['publish_set_id']}
 		]
 	}
 
@@ -1591,10 +1606,8 @@ class Record(mongoengine.Document):
 				job = Job.objects.get(pk=self.job_id)
 			except:
 				job = False
-			self._job = job
-			return job
-		else:
-			return self._job
+			self._job = job			
+		return self._job
 
 
 	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
@@ -2078,52 +2091,60 @@ class Record(mongoengine.Document):
 
 
 
-class IndexMappingFailureSQL(models.Model):
+class IndexMappingFailure(mongoengine.Document):
 
-	'''
-	Model for accessing and updating indexing failures.
-	
-	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
-	combine/core/inc/combine_tables.sql
-	'''
+	db_id = mongoengine.StringField()
+	record_id = mongoengine.StringField()
+	job_id = mongoengine.IntField()	
+	mapping_error = mongoengine.StringField()
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	combine_id = models.CharField(max_length=1024, null=True, default=None)
-	mapping_error = models.TextField(null=True, default=None)
-
-
-	# this model is managed outside of Django
-	class Meta:
-		managed = False
-
+	# meta
+	meta = {
+		'index_options': {},
+		'index_background': False,        
+		'auto_create_index': False,
+		'index_drop_dups': False,
+		'indexes': [			
+			{'fields': ['job_id']},
+			{'fields': ['db_id']},
+		]
+	}
 
 	def __str__(self):
-		return 'Index Mapping Failure: #%s, combine_id: %s, job_id: %s' % (self.id, self.combine_id, self.job.id)
+		return 'Index Mapping Failure: #%s' % (self.id)
 
 
+	# cache	
+	_job = None
+	_record = None
+
+
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+
+		if self._job is None:
+			job = Job.objects.get(pk=self.job_id)
+			self._job = job			
+		return self._job
+
+
+	# convenience method
 	@property
 	def record(self):
-
+		
 		'''
-		Property for one-off access to record the indexing failure stemmed from
-
-		Returns:
-			(core.models.Record): Record instance that relates to this indexing failure
+		Method to retrieve Record from Django ORM via job_id
 		'''
 
-		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
-
-
-	def get_record(self):
-
-		'''
-		Method to return target record, for performance purposes if accessed multiple times
-
-		Returns:
-			(core.models.Record): Record instance that relates to this indexing failure
-		'''
-
-		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
+		if self._record is None:
+			record = Record.objects.get(id=self.db_id)
+			self._record = record			
+		return self._record
 
 
 
@@ -2605,10 +2626,8 @@ class RecordValidation(mongoengine.Document):
 		'''
 		if self._validation_scenario is None:
 			validation_scenario = ValidationScenario.objects.get(pk=self.validation_scenario_id)
-			self._validation_scenario = validation_scenario
-			return validation_scenario
-		else:
-			return self._validation_scenario
+			self._validation_scenario = validation_scenario			
+		return self._validation_scenario
 
 
 	# define job property
@@ -2620,10 +2639,8 @@ class RecordValidation(mongoengine.Document):
 		'''
 		if self._job is None:
 			job = Job.objects.get(pk=self.job_id)
-			self._job = job
-			return job
-		else:
-			return self._job
+			self._job = job			
+		return self._job
 
 
 	# convenience method
@@ -3069,6 +3086,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	# remove Validations from Mongo
 	instance.remove_validations_from_db()
+
+	# remove Validations from Mongo
+	instance.remove_mapping_failures_from_db()
 
 
 @receiver(models.signals.post_delete, sender=Job)
@@ -4207,7 +4227,7 @@ class CombineJob(object):
 		'''
 
 		# load indexing failures for this job from DB
-		index_failures = IndexMappingFailure.objects.filter(job=self.job)
+		index_failures = IndexMappingFailure.objects.filter(job_id=self.job.id)
 		return index_failures
 
 
@@ -4334,7 +4354,7 @@ class CombineJob(object):
 		stime = time.time()
 
 		# get QuerySet of all validation records failures (rvf) for job
-		rvfs = RecordValidation.objects.filter(record__job=self.job)
+		rvfs = RecordValidation.objects.filter(job_id=self.job.id)
 
 		# if validation_scenarios passed, filter only those
 		if validation_scenarios:

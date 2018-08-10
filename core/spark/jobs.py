@@ -1289,23 +1289,6 @@ class CombineSparkPatch(object):
 		self.logger = log4jLogger.LogManager.getLogger(__name__)
 
 
-	def get_job_db_bounds(self, job):
-
-		'''
-		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-		'''	
-
-		records = job.get_records()
-		records = records.order_by()
-		start_id = records.first().id
-		end_id = records.last().id
-
-		return {
-			'lowerBound':start_id,
-			'upperBound':end_id
-		}
-
-
 	def update_jobGroup(self, description, job_id):
 
 		'''

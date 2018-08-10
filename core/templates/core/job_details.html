@@ -343,19 +343,19 @@
 								<thead>
 									<tr>
 										<th>Total Records for Job</th>
-										<th>Successfully Indexed</th>
+										<th>Successfully Mapped</th>										
 										<th>Actions</th>
 									</tr>
 								</thead>
 								<tbody>
 									<tr>
 										<td>{{ record_count_details.records }}</td>
-										<td>{{ field_counts.total_docs }}</td>
+										<td>{% if field_counts %}{{ field_counts.total_docs }}{% else %}0{% endif %}</td>
 										<td>
 											<ul class="list-inline">
 												<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
 												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}" target="_blank"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
 												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields</button></a></li>
 											</ul>
 										</td>
