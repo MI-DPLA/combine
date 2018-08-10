@@ -222,9 +222,6 @@ class CombineSparkJob(object):
 			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
 			.option("pipeline",pipeline).load()
 
-			# repartition
-			# db_records = db_records.rdd.repartition(settings.SPARK_REPARTITION).toDF(schema=db_records.schema)
-
 			# index to ElasticSearch			
 			self.update_jobGroup('Indexing to ElasticSearch')
 			if index_records and settings.INDEX_TO_ES:
@@ -258,23 +255,6 @@ class CombineSparkJob(object):
 
 		else:		
 			raise Exception("Nothing written to disk for Job: %s" % self.job.name)
-
-
-	def get_job_db_bounds(self, job):
-
-		'''
-		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-		'''	
-
-		records = job.get_records()
-		records = records.order_by('id')
-		start_id = records.first().id
-		end_id = records.last().id
-
-		return {
-			'lowerBound':start_id,
-			'upperBound':end_id
-		}
 
 
 	def record_input_filters(self, filtered_df):
@@ -933,9 +913,6 @@ class TransformSpark(CombineSparkJob):
 		input_records = self.record_input_filters(input_records)
 		records = self.record_input_filters(records)
 
-		# repartition
-		# records = records.repartition(settings.SPARK_REPARTITION)
-
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(self.kwargs['transformation_id']))
 
@@ -1257,20 +1234,17 @@ class MergeSpark(CombineSparkJob):
 
 		# drop _id
 		records = records.select([ c for c in records.columns if c != '_id' ])
-
-		# repartition
-		# agg_df = records.rdd.repartition(settings.SPARK_REPARTITION).toDF(schema=records.schema)		
 		
 		# apply input filters
-		agg_df = self.record_input_filters(agg_df)
+		records = self.record_input_filters(records)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
-		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
+		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# set transformed column to False		
-		agg_df = agg_df.withColumn('transformed', pyspark_sql_functions.lit(0))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(0))
 
 		# if Analysis Job, do not write avro
 		if self.job.job_type == 'AnalysisJob':
@@ -1280,7 +1254,7 @@ class MergeSpark(CombineSparkJob):
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
-			records_df=agg_df,
+			records_df=records,
 			write_avro=write_avro
 		)
 
@@ -1357,20 +1331,17 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))		 
-		self.update_jobGroup('Running Re-Index Job', self.job.id)
+		self.update_jobGroup('Running Re-Index Job', self.job.id)		
 
-		# get records from job as DF
-		bounds = self.get_job_db_bounds(self.job)
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
-		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+		# get records as DF
+		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
+		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()
 
 		# reindex
 		ESIndex.index_job_to_es_spark(

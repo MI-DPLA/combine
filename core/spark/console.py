@@ -116,7 +116,7 @@ def copy_sql_to_mongo(spark, job_id):
 
 def copy_sql_to_mongo_adv(spark, job_id, lowerBound, upperBound, numPartitions):
 
-	sqldf = self.spark.read.jdbc(
+	sqldf = spark.read.jdbc(
 			settings.COMBINE_DATABASE['jdbc_url'],
 			'core_record',
 			properties=settings.COMBINE_DATABASE,

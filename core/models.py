@@ -1101,6 +1101,7 @@ class Job(models.Model):
 			if es_handle.indices.exists('j%s' % self.id):
 				logger.debug('removing ES index: j%s' % self.id)
 				es_handle.indices.delete('j%s' % self.id)
+				logger.debug('ES index remove')
 		except:
 			logger.debug('could not remove ES index: j%s' % self.id)
 
@@ -1225,10 +1226,10 @@ class Job(models.Model):
 		'''
 
 		# remove records
-		records = self.get_records()
-		del_result = records.delete()
-		logger.debug('removed %s records from db' % del_result)
-		return del_result
+		logger.debug('removing records from db')
+		mc_handle.combine.record.delete_many({'job_id':self.id})
+		logger.debug('removed records from db')
+		return True
 
 
 	def remove_validations_from_db(self):
@@ -1238,10 +1239,10 @@ class Job(models.Model):
 		'''
 
 		# remove validations
-		validations = RecordValidation.objects(job_id=self.id)
-		del_result = validations.delete()
-		logger.debug('removed %s validations from db' % del_result)
-		return del_result
+		logger.debug('removing validations from db')
+		mc_handle.combine.record_validation.delete_many({'job_id':self.id})
+		logger.debug('removed validations from db')
+		return True
 
 
 
@@ -2077,7 +2078,7 @@ class Record(mongoengine.Document):
 
 
 
-class IndexMappingFailure(models.Model):
+class IndexMappingFailureSQL(models.Model):
 
 	'''
 	Model for accessing and updating indexing failures.
@@ -2569,37 +2570,6 @@ class JobValidation(models.Model):
 
 
 
-# class RecordValidationSQL(models.Model):
-
-# 	'''
-# 	Model to manage validation tests associated with a Record
-
-# 		- what is the performance hit of the FK?
-
-# 	'''
-
-# 	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
-# 	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
-# 	valid = models.BooleanField(default=1)
-# 	results_payload = models.TextField(null=True, default=None)
-# 	fail_count = models.IntegerField(null=True, default=None)
-
-
-# 	def __str__(self):
-# 		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
-
-
-# 	@property
-# 	def failed(self):
-
-# 		# if not set, set
-# 		if not hasattr(self, '_failures'):
-# 			self._failures = json.loads(self.results_payload)['failed']
-
-# 		# return
-# 		return self._failures
-
-
 class RecordValidation(mongoengine.Document):
 
 	# fields
@@ -3056,8 +3026,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	'''
 	When jobs are removed, some actions are performed:
-		- if job is queued or running, stop
-		- if Publish job, remove symlinks
+		- if job is queued or running, stop		
 		- remove avro files from disk
 		- delete ES indexes (if present)
 		- delete from Mongo
@@ -3082,63 +3051,15 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not stop job in livy')
 		logger.debug(str(e))
 
-
-	# if publish job, remove symlinks to global /published
-	if instance.job_type == 'PublishJob':
-
-		logger.debug('Publish job detected, removing symlinks and removing record set from ES index')
-
-		# open cjob
-		cjob = CombineJob.get_combine_job(instance.id)
-
-		# loop through published symlinks and look for filename hash similarity
-		published_dir = os.path.join(settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'), 'published')
-		job_output_filename_hash = cjob.get_job_output_filename_hash()
-		try:
-			for f in os.listdir(published_dir):
-				# if hash is part of filename, remove
-				if job_output_filename_hash in f:
-					os.remove(os.path.join(published_dir, f))
-		except:
-			logger.debug('could not delete symlinks from /published directory')
-
-		# attempting to delete from ES
-		try:
-			del_dsl = {
-				'query':{
-					'match':{
-						'source_job_id':instance.id
-					}
-				}
-			}
-			if es_handle.indices.exists('published'):
-				r = es_handle.delete_by_query(
-					index='published',
-					doc_type='record',
-					body=del_dsl
-				)
-			else:
-				logger.debug('published index not found in ES, skipping removal of records')
-		except Exception as e:
-			logger.debug('could not remove published records from ES index')
-			logger.debug(str(e))
-
-
-		# when removing publish job, unset RecordGroup publish_set_id
-		logger.debug('Unsetting RecordGroup publish_set_id')
-		instance.record_group.publish_set_id = None
-		instance.record_group.save()
-
-	# remove avro files from disk
-	# if file://
+	# remove avro files from disk	
 	if instance.job_output and instance.job_output.startswith('file://'):
 
 		try:
 			output_dir = instance.job_output.split('file://')[-1]
 			shutil.rmtree(output_dir)
+
 		except:
 			logger.debug('could not remove job output directory at: %s' % instance.job_output)
-
 
 	# remove ES index if exists
 	instance.drop_es_index()

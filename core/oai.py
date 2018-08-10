@@ -168,7 +168,7 @@ class OAIProvider(object):
 		
 		# get slice for iteration
 		records = records[self.start:(self.start+self.chunk_size)]				
-		for record in records.iterator():
+		for record in records:
 
 			record = OAIRecord(
 					args=self.args,
