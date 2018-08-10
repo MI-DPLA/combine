@@ -329,7 +329,7 @@ class XML2kvpMapper(BaseMapper):
 			self.fm_config['add_literals'].update({
 
 				# add temporary id field
-				'temp_id':combine_id,
+				'temp_id':db_id,
 
 				# add combine_id field
 				'combine_id':combine_id,

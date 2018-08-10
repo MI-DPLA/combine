@@ -133,66 +133,9 @@
 								</div>
 
 								<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
-								<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields for Export</button></a></p>
-								<div id="mapped_fields" style="display:none;">
-									<p><button type="button" class="btn btn-primary btn-sm" onclick="return false;" id="select_all_fields">Toggle all fields</button></p>
-									<table id="mapped_field_export_select" class="table table-bordered table-hover">
-										<thead>
-											<tr>
-												<th>Field Name</th>
-												{% if cjob %}
-													<th>DPLA Mapped Field</th>
-												{% endif %}
-												<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
-												<th>Documents without</th>
-												<th>Count of Total Values for Field</th>
-												<th>Count of Distinct Values for Field</th>
-												<th>Percentage of Field Values that are Unique</th>
-												<th>Instance of Field in Total Indexed Records</th>
-												<th>Include in Report</th>
-											</tr>
-										</thead>
-										<tbody>
-											{% for field in field_counts.fields %}
-												<tr>
-													<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% if cjob %}{% url 'field_analysis' es_index=cjob.esi.es_index %}{% else %}{% url 'field_analysis' es_index=published.esi.es_index %}{% endif %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-
-													{% if cjob %}
-
-														<!-- show mapped DPLA field if exists -->
-														{% if cjob.job.dpla_mapping %}
-															{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
-																<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
-															{% else %}
-																<td></td>
-															{% endif %}
-														{% else %}
-															<td></td>
-														{% endif %}
-
-													{% endif %}
-
-													<td><a target="_blank" href="{% if cjob %}{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}{% else %}{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}{% endif %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
-													<td><a target="_blank" href="{% if cjob %}{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}{% else %}{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}{% endif %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
-													<td>{{ field.val_instances }}</td>
-													<td>{{ field.distinct }}</td>
-													<td>
-														<div class="percentage_div" style="{% if field.distinct_ratio >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.distinct_ratio > 0 %}{% widthratio field.distinct_ratio 1 100 %}{% else %}0{% endif %}%">
-															<span>{% widthratio field.distinct_ratio 1 100 %}%</span>
-														</div>
-													</td>
-													<td>
-														<div class="percentage_div" style="{% if field.percentage_of_total_records >= 0.5 %}padding:2px;{% else %}padding:0px;{% endif %} width:{% if field.percentage_of_total_records > 0 %}{% widthratio field.percentage_of_total_records 1 100 %}{% else %}0{% endif %}%">
-															<span>{% widthratio field.percentage_of_total_records 1 100 %}%</span>
-														</div>
-													</td>
-													<td><input type="checkbox" name="mapped_field_include_dynamic" value="{{ field.field_name }}"/></td>
-												</tr>
-											{% endfor %}
-										</tbody>
-									</table>
-									<div id="hidden_field_inputs"></div>
-								</div>
+								
+								<!-- select mapped fields -->
+								{% include 'core/select_mapped_fields.html' %}
 
 								<button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped Fields</button>
 
@@ -201,7 +144,7 @@
 									$(document).ready(function() {
 
 										// init datatables
-									    mapped_field_export_select_table = $('#mapped_field_export_select').DataTable({
+									    mapped_field_export_select_table = $('#select_mapped_fields').DataTable({
 									    	"pageLength": 10,
 									    	"lengthMenu": [ 10, 25, 100, 500 ]
 									    });

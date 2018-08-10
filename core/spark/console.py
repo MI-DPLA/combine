@@ -86,6 +86,48 @@ def get_job_as_df(spark, job_id, remove_id=False):
 	return mdf
 
 
+def get_job_es_as_df(spark, job_id=None, indices=None, es_query=None, field_exclude=None, id_only=False):
+
+	'''
+	Convenience method to retrieve ElasticSearch indices as DataFrame
+	'''
+
+	# handle indices
+	if job_id:
+		es_indexes = 'j%s' % job_id
+	elif indices:
+		es_indexes = ','.join(indices)
+
+	# prep conf
+	conf = {
+		"es.resource":"%s/record" % es_indexes		
+	}
+
+	# handle es_query
+	if es_query:
+		conf['es.query'] = es_query
+
+	# handle field exclusion
+	if field_exclude:
+		conf['es.read.field.exclude'] = field_exclude
+
+	# get es index as RDD
+	es_rdd = spark.sparkContext.newAPIHadoopRDD(
+		inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
+		keyClass="org.apache.hadoop.io.NullWritable",
+		valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+		conf=conf)
+
+	# id only
+	if id_only:
+		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
+	else:
+		es_df = es_rdd.toDF()
+	
+	# return
+	return es_df
+
+
 def get_sql_job_as_df(spark, job_id, remove_id=False):
 
 	sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'],'core_record',properties=settings.COMBINE_DATABASE)
