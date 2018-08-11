@@ -117,7 +117,6 @@ class ValidationScenarioSpark(object):
 
 			# merge rdds
 			failures_union_rdd = self.spark.sparkContext.union(failure_rdds)
-
 			failures_df = failures_union_rdd.toDF()
 			
 			# write
@@ -130,12 +129,12 @@ class ValidationScenarioSpark(object):
 			# rewrite records with valid = False if in
 			set_valid_df = self.records_df.alias('records_df').join(
 				failures_df.select('record_id').distinct().alias('failures_df'),
-				failures_df['record_id'] == self.records_df['_id'],
+				self.records_df['_id'] == failures_df['record_id'],
 				'leftsemi')\
 				.select(self.records_df.columns)\
-				.withColumn('valid',pyspark_sql_functions.lit(False))			
+				.withColumn('valid',pyspark_sql_functions.lit(False))
 
-			# re-write failures
+			# re-write records as failures to DB
 			set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
 			.option("uri","mongodb://127.0.0.1")\

@@ -7,6 +7,7 @@ import hashlib
 import json
 from lxml import etree
 import os
+import pdb
 import re
 import requests
 import shutil
@@ -212,7 +213,7 @@ class CombineSparkJob(object):
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
 
-			# read rows from Mongo for indexing to ES
+			# read rows from Mongo with minted ID for future stages
 			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': True}})
 			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
 			.option("uri","mongodb://127.0.0.1")\
@@ -242,10 +243,6 @@ class CombineSparkJob(object):
 					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
 				)
 				vs.run_record_validation_scenarios()
-
-			# # update `valid` column for Records based on results of ValidationScenarios
-			# with connection.cursor() as cursor:
-			# 	query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
 
 			# # run comparison against bulk data if provided
 			# db_records = self.bulk_data_compare(db_records)
@@ -1383,6 +1380,8 @@ class RemoveValidationsSpark(CombineSparkPatch):
 	'''
 
 	def spark_function(self):
+
+		pdb.set_trace()
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
