@@ -21,10 +21,11 @@
 					<th>Active</th>
 					<th>Name</th>
 					<th>Livy Session ID</th>
-					<th>Livy Session GUI</th>
+					<th>Livy Session</th>					
 					<th>Status</th>
 					<th>Timestamp</th>
-					<th>Spark Session GUI</th>
+					<th>Spark Application</th>
+					<th>Spark Cluster</th>
 					<th>actions</th>
 				</tr>
 				<tr>
@@ -36,6 +37,7 @@
 					<td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
 					<td>{{ livy_session.timestamp }}</td>
 					<td><a href="http://{{ APP_HOST }}:4040">http://{{ APP_HOST }}:4040</a></td>
+					<td><a href="http://{{ APP_HOST }}:8080">http://{{ APP_HOST }}:8080</a></td>
 					<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop{% else %}Remove{% endif %}</button></a></td>
 				</tr>
 			</table>

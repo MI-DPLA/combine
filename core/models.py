@@ -4083,11 +4083,10 @@ class CombineJob(object):
 		livy_sessions = LivySession.objects.filter(active=True)
 
 		# if single session, confirm active or starting
-		if livy_sessions.count() == 1:
-			
-			livy_session = livy_sessions.first()
-			logger.debug('single livy session found, confirming running')
+		if livy_sessions.count() == 1:			
 
+			livy_session = livy_sessions.first()
+			
 			try:
 				livy_session_status = LivyClient().session_status(livy_session.session_id)
 				if livy_session_status.status_code == 200:
