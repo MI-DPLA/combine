@@ -5376,8 +5376,7 @@ class AnalysisJob(CombineJob):
 			analysis_record_group = RecordGroup(
 				organization = analysis_org,
 				name = record_group_name,
-				description = 'For the explicit use of aggregating Analysis jobs',
-				publish_set_id = None,
+				description = 'For the explicit use of aggregating Analysis jobs',				
 				for_analysis = True
 			)
 			analysis_record_group.save()
