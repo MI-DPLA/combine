@@ -11,6 +11,7 @@ import sys
 from types import ModuleType
 
 # import Row from pyspark
+from pyspark import StorageLevel
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
@@ -118,6 +119,9 @@ class ValidationScenarioSpark(object):
 			# merge rdds
 			failures_union_rdd = self.spark.sparkContext.union(failure_rdds)
 			failures_df = failures_union_rdd.toDF()
+
+			# cache dataframe to avoid differences between written and join
+			failures_df.persist(StorageLevel.MEMORY_AND_DISK)
 			
 			# write
 			failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
@@ -141,7 +145,10 @@ class ValidationScenarioSpark(object):
 			.option("database","combine")\
 			.option("collection", "record").save()
 
-	
+			# remove from cache
+			failures_df.unpersist()
+
+
 	def _sch_validation(self, vs, vs_id, vs_filepath):
 
 		self.logger.info('running schematron validation: %s' % vs.name)

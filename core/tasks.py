@@ -5,7 +5,6 @@ import glob
 import json
 import math
 import os
-import pdb
 import polling
 import shutil
 import subprocess

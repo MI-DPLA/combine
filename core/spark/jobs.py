@@ -248,6 +248,7 @@ class CombineSparkJob(object):
 			# db_records = self.bulk_data_compare(db_records)
 
 			# return db_records DataFrame
+
 			return db_records
 
 		else:		
@@ -1376,16 +1377,14 @@ class RemoveValidationsSpark(CombineSparkPatch):
 	Args:
 		kwargs(dict):
 			- job_id (int): ID of Job
-			- validation_scenarios (int): list of validation scenarios to run
+			- validation_scenarios (list): list of validation scenarios to run
 	'''
 
 	def spark_function(self):
 
-		pdb.set_trace()
-
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
-		self.update_jobGroup('Running New Validation Scenarios', self.job.id)
+		self.update_jobGroup('Removing Validation Scenario', self.job.id)
 
 		# create pipeline to select INVALID records, that may become valid
 		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id},{'valid':False}]}})		
