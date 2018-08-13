@@ -564,6 +564,11 @@ def job_new_validations(ct_id):
 			)
 			val_job.save()
 
+		# update failure counts
+		logger.debug('updating failure counts for new validation jobs')
+		for jv in cjob.job.jobvalidation_set.filter(failure_count=None):					
+			jv.validation_failure_count(force_recount=True)
+
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
 			'run_new_validations':results

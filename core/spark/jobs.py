@@ -142,9 +142,22 @@ class CombineSparkJob(object):
 
 	def close_job(self):
 
+		'''
+		Note to Job tracker that finished, and perform other long-running, one-time calculations
+		to speed up front-end
+		'''
+
+		refresh_django_db_connection()		
+
 		# finally, update finish_timestamp of job_track instance
 		self.job_track.finish_timestamp = datetime.datetime.now()
 		self.job_track.save()
+
+		# count new job validations		
+		for jv in self.job.jobvalidation_set.filter(failure_count=None):
+			jv.validation_failure_count(force_recount=True)
+		
+		
 
 
 	def update_jobGroup(self, description):
