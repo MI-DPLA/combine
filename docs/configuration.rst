@@ -6,6 +6,14 @@ Combine relies heavily on front-loading configuration, so that the process of ru
 
 This section will outline configuration options and associated configuration pages.
 
+  - `Field Mapping <#field-mapper-configurations>`__
+  - `OAI-PMH Harvesting Endpoints <#oai-server-endpoints>`__
+  - `Transformation Scenarios <#transformation-scenario>`__
+  - `Validation Scenarios <#validation-scenario>`__
+  - `Record Identifier Transformation Scenarios (RITS) <#record-identifier-transformation-scenario>`__
+  - `Built-In OAI-PMH server <#combine-oai-pmh-server>`__
+  - `DPLA Bulk Data Downloads <#dpla-bulk-data-downloads-dbdd>`__
+
 **Note:** Currently, Combine leverages Django's built-in admin interface for editing and creating model instances -- transformations, validations, and other scenarios -- below.  This will likely evolve into more tailored CRUDs for each, but for the time being, there is a link to the Django admin panel on the Configuration screen.
 
 **Note:** What settings are not configurable via the GUI in Combine, are configurable in the file ``combine/localsettings.py``.
