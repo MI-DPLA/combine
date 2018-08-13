@@ -1223,10 +1223,11 @@ class Job(models.Model):
 		Method to remove records from DB, fired as pre_delete signal
 		'''
 
-		logger.debug('removing records from db')
-		mc_handle.combine.record.delete_many({'job_id':self.id})
-		logger.debug('removed records from db')
-		return True
+		pass
+		# logger.debug('removing records from db')
+		# mc_handle.combine.record.delete_many({'job_id':self.id})
+		# logger.debug('removed records from db')
+		# return True
 
 
 	def remove_validations_from_db(self):
