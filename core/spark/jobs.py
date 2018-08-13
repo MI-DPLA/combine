@@ -31,6 +31,7 @@ except:
 	from core.spark.record_validation import ValidationScenarioSpark
 
 # import Row from pyspark
+from pyspark import StorageLevel
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions

@@ -122,7 +122,7 @@ class ValidationScenarioSpark(object):
 
 			# cache dataframe to avoid differences between written and join
 			failures_df.persist(StorageLevel.MEMORY_AND_DISK)
-			
+
 			# write
 			failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
@@ -130,16 +130,21 @@ class ValidationScenarioSpark(object):
 			.option("database","combine")\
 			.option("collection", "record_validation").save()
 
-			# rewrite records with valid = False if in
+			# rename record_id to fail_id
+			failures_df = failures_df.select('record_id').withColumnRenamed('record_id','fail_id')
+
+			# join
 			set_valid_df = self.records_df.alias('records_df').join(
-				failures_df.select('record_id').distinct().alias('failures_df'),
-				self.records_df['_id'] == failures_df['record_id'],
-				'leftsemi')\
-				.select(self.records_df.columns)\
-				.withColumn('valid',pyspark_sql_functions.lit(False))
+				failures_df.select('fail_id').distinct().alias('failures_df'),
+				self.records_df['_id'] == failures_df['fail_id'],
+				'leftouter')
+
+			# set valid column based on join and drop column
+			to_write = set_valid_df.withColumn('valid', pyspark_sql_functions.when(set_valid_df['fail_id'].isNotNull(), False).otherwise(True))\
+				.select(self.records_df.columns)
 
 			# re-write records as failures to DB
-			set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			to_write.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
