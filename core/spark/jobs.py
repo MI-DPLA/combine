@@ -200,6 +200,9 @@ class CombineSparkJob(object):
 			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
 			.write.format("com.databricks.spark.avro").save(self.job.job_output)
 
+		# add valid column
+		records_df_combine_cols = records_df_combine_cols.withColumn('valid', pyspark_sql_functions.lit(True))
+
 		# write records to MongoDB
 		records_df_combine_cols.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
@@ -207,8 +210,8 @@ class CombineSparkJob(object):
 		.option("database","combine")\
 		.option("collection", "record").save()
 
-		# after written, add valid field and set to True if not present
-		mc_handle.combine.record.update({'job_id':self.job.id, 'valid': {"$exists" : False}}, {"$set": {'valid': True}})
+		# # after written, add valid field and set to True if not present
+		# mc_handle.combine.record.update({'job_id':self.job.id, 'valid': {"$exists" : False}}, {"$set": {'valid': True}})
 
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
@@ -842,7 +845,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(True))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -1239,7 +1242,7 @@ class MergeSpark(CombineSparkJob):
 		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# set transformed column to False		
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(0))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(False))
 
 		# if Analysis Job, do not write avro
 		if self.job.job_type == 'AnalysisJob':

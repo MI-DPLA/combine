@@ -1232,10 +1232,11 @@ class Job(models.Model):
 	def remove_validations_from_db(self):
 
 		'''
-		Method to remove validations from DB, fired as pre_delete signal
+		Method to remove validations from DB, fired as pre_delete signal			
+			- usually handled by signals, but method left as convenience
 		'''
 
-		logger.debug('removing validations from db')
+		logger.debug('removing validations from db')		
 		mc_handle.combine.record_validation.delete_many({'job_id':self.id})
 		logger.debug('removed validations from db')
 		return True
@@ -1253,7 +1254,21 @@ class Job(models.Model):
 		return True
 
 
+	def remove_validation_jobs(self, validation_scenarios=[]):
 
+		'''
+		Method to remove validation jobs that match validation scenarios provided
+			- NOTE: only one validation job should exist per validation scenario per Job
+		'''
+
+		for jv in self.jobvalidation_set.all():
+			# if validation scenarios provided
+			if jv.validation_scenario.id in validation_scenarios:				
+				logger.debug('validation scenario %s used for %s, removing' % (jv.validation_scenario.id, jv))
+				jv.delete()
+
+		# return 
+		return True
 
 
 
@@ -2542,11 +2557,9 @@ class JobValidation(models.Model):
 			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
 		'''
 
-		stime = time.time()
 		rvfs = RecordValidation.objects\
 			.filter(validation_scenario_id=self.validation_scenario.id)\
-			.filter(job_id=self.job.id)
-		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
+			.filter(job_id=self.job.id)		
 		return rvfs
 
 
@@ -2579,6 +2592,7 @@ class JobValidation(models.Model):
 		'''
 		Method to delete record validations associated with this validation job
 		'''
+
 		rvfs = RecordValidation.objects\
 			.filter(validation_scenario_id=self.validation_scenario.id)\
 			.filter(job_id=self.job.id)
@@ -2607,6 +2621,7 @@ class RecordValidation(mongoengine.Document):
 		'indexes': [
 			{'fields': ['record_id']},
 			{'fields': ['job_id']},
+			{'fields': ['validation_scenario_id']}
 		]
 	}
 
@@ -2925,7 +2940,7 @@ class CombineBackgroundTask(models.Model):
 
 
 ####################################################################
-# Signals Handlers																								 #
+# Signals Handlers												   #
 ####################################################################
 
 @receiver(signals.user_logged_in)
@@ -3082,10 +3097,20 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 	instance.remove_records_from_db()
 
 	# remove Validations from Mongo
-	instance.remove_validations_from_db()
+	# instance.remove_validations_from_db()
 
 	# remove Validations from Mongo
 	instance.remove_mapping_failures_from_db()
+
+
+@receiver(models.signals.pre_delete, sender=JobValidation)
+def delete_job_validation_pre_delete(sender, instance, **kwargs):
+
+	'''
+	Signal to remove RecordValidations from DB if JobValidation removed
+	'''
+
+	del_results = instance.delete_record_validation_failures()
 
 
 @receiver(models.signals.post_delete, sender=Job)

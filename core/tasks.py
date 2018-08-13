@@ -531,6 +531,9 @@ def job_new_validations(ct_id):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
+		# loop through validation jobs, and remove from DB if share validation scenario
+		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
+
 		# generate spark code		
 		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
 			'job_id':cjob.job.id,
@@ -594,7 +597,7 @@ def job_remove_validation(ct_id):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-		# get Job Validation
+		# get Job Validation and delete
 		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
 
 		# delete validation failures associated with Validation Scenario and Job
