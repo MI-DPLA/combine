@@ -120,38 +120,15 @@ class ValidationScenarioSpark(object):
 			failures_union_rdd = self.spark.sparkContext.union(failure_rdds)
 			failures_df = failures_union_rdd.toDF()
 
-			# cache dataframe to avoid differences between written and join
-			failures_df.persist(StorageLevel.MEMORY_AND_DISK)
-
-			# write
+			# write failures
 			failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
 			.option("collection", "record_validation").save()
 
-			# rename record_id to fail_id
-			failures_df = failures_df.select('record_id').withColumnRenamed('record_id','fail_id')
-
-			# join
-			set_valid_df = self.records_df.alias('records_df').join(
-				failures_df.select('fail_id').distinct().alias('failures_df'),
-				self.records_df['_id'] == failures_df['fail_id'],
-				'leftouter')
-
-			# set valid column based on join and drop column
-			to_write = set_valid_df.withColumn('valid', pyspark_sql_functions.when(set_valid_df['fail_id'].isNotNull(), False).otherwise(True))\
-				.select(self.records_df.columns)
-
-			# re-write records as failures to DB
-			to_write.write.format("com.mongodb.spark.sql.DefaultSource")\
-			.mode("append")\
-			.option("uri","mongodb://127.0.0.1")\
-			.option("database","combine")\
-			.option("collection", "record").save()
-
-			# remove from cache
-			failures_df.unpersist()
+			# update validity for Job
+			self.update_job_record_validity()
 
 
 	def _sch_validation(self, vs, vs_id, vs_filepath):
@@ -399,7 +376,7 @@ class ValidationScenarioSpark(object):
 		'''
 		Method to update validity attribute of records after removal of validation scenarios
 			- approach is to update all INVALID Records that may now be valid by lack of 
-			matching record_id in validation failures
+			matching record_id in remaining validation failures
 		'''
 
 		# read current failures from Mongo
@@ -410,9 +387,8 @@ class ValidationScenarioSpark(object):
 		.option("collection","record_validation")\
 		.option("pipeline",failures_pipeline).load()
 
-		# if failures to work with
+		# if failures to work with, rewrite records with valid = True if NOT in remaining DB failures
 		if not failures_df.rdd.isEmpty():
-			# rewrite records with valid = True if NOT in failures_df
 			set_valid_df = self.records_df.alias('records_df').join(
 				failures_df.select('record_id').distinct().alias('failures_df'),
 				failures_df['record_id'] == self.records_df['_id'],
@@ -420,7 +396,8 @@ class ValidationScenarioSpark(object):
 				.select(self.records_df.columns)\
 				.withColumn('valid',pyspark_sql_functions.lit(True))
 		else:
-			set_valid_df = self.records_df.withColumn('valid',pyspark_sql_functions.lit(True))
+			# will write all previously invalid, as valid
+			set_valid_df = self.records_df.withColumn('valid',pyspark_sql_functions.lit(True)) 
 
 		# update validity of Records
 		set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
@@ -428,5 +405,64 @@ class ValidationScenarioSpark(object):
 		.option("uri","mongodb://127.0.0.1")\
 		.option("database","combine")\
 		.option("collection", "record").save()
+
+
+	def update_job_record_validity(self):
+
+		'''
+		Method to update validity of Records in Job based on found RecordValidadtions
+		'''
+
+		# get failures
+		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id}]}})
+		all_failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record_validation")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()\
+		.select('record_id')\
+		.withColumnRenamed('record_id','fail_id')
+
+		# join, writing potentially null `fail_id` column
+		fail_join = self.records_df.alias('records_df').join(
+			all_failures_df.select('fail_id').distinct().alias('all_failures_df'),
+			self.records_df['_id'] == all_failures_df['fail_id'],
+			'leftouter')
+
+		# set valid column based on join and drop column
+		updated_validity = fail_join.withColumn('update_valid', pyspark_sql_functions.when(fail_join['fail_id'].isNotNull(), False).otherwise(True))
+
+		# subset those that need updating and flip validity
+		to_update = updated_validity.where(updated_validity['valid'] != updated_validity['update_valid'])\
+			.select(self.records_df.columns)\
+			.withColumn('valid', pyspark_sql_functions.when(self.records_df.valid == True, False).otherwise(True))
+
+		# update in DB by overwriting		
+		to_update.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
