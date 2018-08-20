@@ -7,8 +7,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Validation Results Report</h2>
-			<p><strong>For Job:</strong> <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></p>
-			<p>Using the options below, select the parameters to generate a report with all validation failures for this job.</p>
+			<p><span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></p>
 		</div>
 	</div>
 
@@ -36,15 +35,9 @@
 						<div class="form-group">
 							<label for="report_format">Select output format for report:</label>
 							<select class="form-control" id="report_format" name="report_format">
-								<option value='csv'>comma separated (.csv)</option>
-								<option value='excel'>Excel spreadsheet (.xslx)</option>
-							</select>
-							<small id="report_name_help" class="form-text text-muted">
-								<ul>
-									<li><strong>Comma seperated file (.csv)</strong> - Fast report generation, large filesize</li>
-									<li><strong>Excel spreadsheet (.xlsx)</strong> - Considerably slower report generation, much smaller filesize</li>
-								</ul>
-							</small>
+								<option value='csv'>CSV (tabular, comma seperated)</option>
+								<option value='excel'>JSON (line-delimited)</option>
+							</select>							
 						</div>
 
 						{% if cjob.job.jobvalidation_set.count > 0 %}
@@ -60,7 +53,7 @@
 									{% for jv in cjob.job.jobvalidation_set.all %}			
 										<tr>
 											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.validation_type }}</td>
+											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
 											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
 											<td><input type="checkbox" name="validation_scenario" checked value="{{ jv.validation_scenario.id }}"/></td>
 										</tr>

@@ -1606,6 +1606,12 @@ class Record(mongoengine.Document):
 	_job = None
 
 
+	# _id shim property
+	@property
+	def _id(self):
+		return self.id
+
+
 	# define job property
 	@property
 	def job(self):
@@ -1888,7 +1894,7 @@ class Record(mongoengine.Document):
 		Return validation errors associated with this record
 		'''
 
-		vfs = RecordValidation.objects.filter(record=self)
+		vfs = RecordValidation.objects.filter(record_id=self.id)
 		return vfs
 
 
@@ -2661,6 +2667,12 @@ class RecordValidation(mongoengine.Document):
 	@property
 	def record(self):
 		return self.record_id
+
+
+	# failed tests as property
+	@property
+	def failed(self):
+		return json.loads(self.results_payload)['failed']
 
 
 

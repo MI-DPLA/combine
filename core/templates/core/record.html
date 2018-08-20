@@ -152,12 +152,13 @@
 						<!-- Record Validations -->
 						{% if record.job.jobvalidation_set.count > 0 %}
 						<div class="col-md-12">
-							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>
-							<p>The following Validation Scenarios were run for this Job.</p>
-							{% if record.get_validation_errors.count > 0 %}			
+							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>							
+							{% if record.get_validation_errors.count > 0 %}
+								<p>This Record failed the following Validation Scenarios</p>
 								<table class="table table-bordered table-hover">
 									<tr>
 										<th>Validation Scenario</th>
+										<th>Validation Type</th>
 										<th>Test Failed</th>
 										<th>Actions</th>
 									</tr>
@@ -165,6 +166,7 @@
 										{% for failure in rv.failed %}
 											<tr>
 												<td>{{ rv.validation_scenario.name }}</td>
+												<td>{{ rv.validation_scenario.get_validation_type_display }}</td>
 												<td><code>{{ failure }}</code></td>												
 												<td><a target="_blank" href="{% url 'test_validation_scenario' %}?q={{record.id}}&validation_scenario={{rv.validation_scenario.id}}|{{rv.validation_scenario.validation_type}}"><button type="button" class="btn btn-info btn-sm">Run Validation</button></a></td>
 											</tr>
@@ -172,7 +174,7 @@
 									{% endfor %}
 								</table>
 							{% else %}
-								<p>The following Validation Scenarios passed!</p>
+								<p>This Record passed the following Validation Scenarios tests:</p>
 								<table class="table table-bordered table-hover">
 									<tr>
 										<th>Validation Scenario</th>
@@ -181,7 +183,7 @@
 									{% for jv in record.job.jobvalidation_set.all %}
 										<tr>
 											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.validation_type }}</td>							
+											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
 										</tr>
 									{% endfor %}
 								</table>

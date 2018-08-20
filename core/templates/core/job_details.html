@@ -284,7 +284,7 @@
 						<div class="col-md-12">
 
 							{% if cjob.job.jobvalidation_set.count > 0 %}
-								<p>The following Validation Scenarios were run for this job:</p>
+								<p>The following Validation Scenarios have been run for this Job:</p>
 								<table class="table table-bordered table-hover">
 									<thead>
 										<tr>
@@ -301,12 +301,10 @@
 												<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
 												<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
 												<td>
-													<ul class="list-inline">
-														{% if jv.validation_failure_count > 0 %}
-															<li style="display:inline;"><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures</button></a></li>
-														{% endif %}
-														<li style="display:inline;"><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job</button></form></li>
-													</ul>
+													{% if jv.validation_failure_count > 0 %}
+														<p><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures for this Validation</button></a></p>
+													{% endif %}
+													<p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job</button></form></p>
 												</td>
 											</tr>
 										{% endfor %}
