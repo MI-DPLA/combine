@@ -2506,7 +2506,7 @@ class ValidationScenario(models.Model):
 			query = query.update_from_dict(t['es_query'])
 
 			# add row to query
-			query = query.query("term", db_id=row.id)
+			query = query.query("term", db_id=str(row.id))
 
 			# debug
 			logger.debug(query.to_dict())
