@@ -2606,6 +2606,7 @@ class RecordValidation(mongoengine.Document):
 
 	# fields
 	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+	record_identifier = mongoengine.StringField()
 	job_id = mongoengine.IntField()
 	validation_scenario_id = mongoengine.IntField()
 	validation_scenario_name = mongoengine.StringField()

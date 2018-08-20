@@ -173,6 +173,7 @@ class ValidationScenarioSpark(object):
 					
 					yield Row(
 						record_id=row._id,
+						record_identifier=row.record_id,
 						job_id=row.job_id,
 						validation_scenario_id=int(vs_id),
 						validation_scenario_name=vs_name,
@@ -253,6 +254,7 @@ class ValidationScenarioSpark(object):
 				# return row			
 				return Row(
 					record_id=row._id,
+					record_identifier=row.record_id,
 					job_id=row.job_id,
 					validation_scenario_id=int(vs_id),
 					validation_scenario_name=vs_name,
@@ -324,11 +326,11 @@ class ValidationScenarioSpark(object):
 
 				# if empty, assume all Records in Job are invalid
 				if es_rdd.isEmpty():
-					fail_df = self.records_df.select('id')
+					fail_df = self.records_df.select('_id','record_id')
 				
 				# else, perform join
 				else:				
-					fail_df = self.records_df.join(es_df, self.records_df['_id']['oid'] == es_df['_1'], 'leftanti').select('_id')
+					fail_df = self.records_df.alias('records_df').join(es_df, self.records_df['_id']['oid'] == es_df['_1'], 'leftanti').select('_id','records_df.record_id')
 			
 			# if a match is invalid, report all Records that match
 			elif v['matches'] == 'invalid':
@@ -339,7 +341,7 @@ class ValidationScenarioSpark(object):
 
 				# else, perform join
 				else:
-					fail_df = self.records_df.join(es_df, self.records_df['_id']['oid'] == es_df['_1'], 'leftsemi').select('_id')
+					fail_df = self.records_df.alias('records_df').join(es_df, self.records_df['_id']['oid'] == es_df['_1'], 'leftsemi').select('_id','records_df.record_id')
 
 			# add columns to df to return
 			fail_df = fail_df.withColumn('failed', pyspark_sql_functions.array(pyspark_sql_functions.lit(v['test_name'])))
@@ -353,15 +355,16 @@ class ValidationScenarioSpark(object):
 
 			# merge and format
 			new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
-				.select("_id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
-				.groupBy("_id")\
+				.select("_id", "record_id", pyspark_sql_functions.explode("failed").alias("failed_values"), "fail_count")\
+				.groupBy("_id","record_id")\
 				.agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"), pyspark_sql_functions.sum("fail_count").alias("fail_count"))\
-				.select("_id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
+				.select("_id", "record_id", pyspark_sql_functions.to_json(pyspark_sql_functions.struct("failed", "fail_count")).alias("data"), "fail_count")
 
 			# write return failures as validation_fails_rdd
 			job_id = self.job.id
 			validation_fails_rdd = new_df.rdd.map(lambda row: Row(
 				record_id=row._id,
+				record_identifier=row.record_id,
 				job_id=job_id,
 				validation_scenario_id=int(vs_id),
 				validation_scenario_name=vs_name,
@@ -451,7 +454,9 @@ class ValidationScenarioSpark(object):
 		.option("collection", "record").save()
 
 
+	def export_job_validation_report(self):
 
+		pass
 
 
 
