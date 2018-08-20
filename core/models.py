@@ -2608,6 +2608,7 @@ class RecordValidation(mongoengine.Document):
 	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
 	job_id = mongoengine.IntField()
 	validation_scenario_id = mongoengine.IntField()
+	validation_scenario_name = mongoengine.StringField()
 	valid = mongoengine.BooleanField(default=True)
 	results_payload = mongoengine.StringField()
 	fail_count = mongoengine.IntField()

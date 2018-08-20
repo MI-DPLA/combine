@@ -95,19 +95,20 @@ class ValidationScenarioSpark(object):
 			# get validation scenario
 			vs = ValidationScenario.objects.get(pk=vs_id)
 			vs_id = vs.id
+			vs_name = vs.name
 			vs_filepath = vs.filepath
 
 			# schematron based validation scenario
 			if vs.validation_type == 'sch':
-				validation_fails_rdd = self._sch_validation(vs, vs_id, vs_filepath)
+				validation_fails_rdd = self._sch_validation(vs, vs_id, vs_name, vs_filepath)
 
 			# python based validation scenario
 			elif vs.validation_type == 'python':
-				validation_fails_rdd = self._python_validation(vs, vs_id, vs_filepath)
+				validation_fails_rdd = self._python_validation(vs, vs_id, vs_name, vs_filepath)
 
 			# ElasticSearch DSL query based validation scenario
 			elif vs.validation_type == 'es_query':
-				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_filepath)
+				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_name, vs_filepath)
 
 			# if results, append
 			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
@@ -131,7 +132,7 @@ class ValidationScenarioSpark(object):
 			self.update_job_record_validity()
 
 
-	def _sch_validation(self, vs, vs_id, vs_filepath):
+	def _sch_validation(self, vs, vs_id, vs_name, vs_filepath):
 
 		self.logger.info('running schematron validation: %s' % vs.name)
 
@@ -174,6 +175,7 @@ class ValidationScenarioSpark(object):
 						record_id=row._id,
 						job_id=row.job_id,
 						validation_scenario_id=int(vs_id),
+						validation_scenario_name=vs_name,
 						valid=False,
 						results_payload=json.dumps(results_dict),
 						fail_count=results_dict['fail_count']
@@ -186,11 +188,11 @@ class ValidationScenarioSpark(object):
 		return validation_fails_rdd
 
 
-	def _python_validation(self, vs, vs_id, vs_filepath):
+	def _python_validation(self, vs, vs_id, vs_name, vs_filepath):
 
 		self.logger.info('running python validation: %s' % vs.name)
 
-		def validate_python_udf(vs_id, pyvs_funcs, row):
+		def validate_python_udf(vs_id, vs_name, pyvs_funcs, row):
 
 			'''
 			Loop through test functions and aggregate in fail_dict to return with Row
@@ -253,6 +255,7 @@ class ValidationScenarioSpark(object):
 					record_id=row._id,
 					job_id=row.job_id,
 					validation_scenario_id=int(vs_id),
+					validation_scenario_name=vs_name,
 					valid=False,
 					results_payload=json.dumps(results_dict),
 					fail_count=results_dict['fail_count']
@@ -271,14 +274,14 @@ class ValidationScenarioSpark(object):
 				pyvs_funcs.append(attr)
 
 		validation_fails_rdd = self.records_df.rdd.\
-			map(lambda row: validate_python_udf(vs_id, pyvs_funcs, row))\
+			map(lambda row: validate_python_udf(vs_id, vs_name, pyvs_funcs, row))\
 			.filter(lambda row: row is not None)
 
 		# return
 		return validation_fails_rdd
 
 
-	def _es_query_validation(self, vs, vs_id, vs_filepath):
+	def _es_query_validation(self, vs, vs_id, vs_name, vs_filepath):
 
 		self.logger.info('running es_query validation: %s' % vs.name)
 
@@ -361,6 +364,7 @@ class ValidationScenarioSpark(object):
 				record_id=row._id,
 				job_id=job_id,
 				validation_scenario_id=int(vs_id),
+				validation_scenario_name=vs_name,
 				valid=False,
 				results_payload=row.data,
 				fail_count=int(row['fail_count']))
