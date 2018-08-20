@@ -85,7 +85,6 @@ def download_and_index_bulk_data(dbdd_id, verbose_name=uuid.uuid4().urn):
 	dbdd.save()
 
 
-
 @background(schedule=1)
 def create_validation_report(ct_id):
 
@@ -99,27 +98,73 @@ def create_validation_report(ct_id):
 		location on disk
 	'''
 
+	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+	def spark_job_done(response):
+		return response['state'] == 'available'
+
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# run report generation
-	report_output = cjob.generate_validation_report(
-		report_format=ct.task_params['report_format'],
-		validation_scenarios=ct.task_params['validation_scenarios'],
-		mapped_field_include=ct.task_params['mapped_field_include']
-	)
-	logger.debug('validation report output: %s' % report_output)
+	# OLD ###################################################################################################
+	# # run report generation
+	# report_output = cjob.generate_validation_report(
+	# 	report_format=ct.task_params['report_format'],
+	# 	validation_scenarios=ct.task_params['validation_scenarios'],
+	# 	mapped_field_include=ct.task_params['mapped_field_include']
+	# )
+	# logger.debug('validation report output: %s' % report_output)
+
+	# # save validation report output to Combine Task output
+	# ct.task_output_json = json.dumps({
+	# 	'report_format':ct.task_params['report_format'],		
+	# 	'report_output':report_output,
+	# 	'export_dir':"/".join(report_output.split('/')[:-1])
+	# })
+	# ct.save()
+	# OLD ###################################################################################################
+
+	# NEW ###################################################################################################
+
+	logger.debug("##################################")
+	logger.debug(ct.task_params)
+	logger.debug("##################################")
+
+	# set output path
+	output_path = '/tmp/%s' % uuid.uuid4().hex
+
+	# RUN SPARK CODE
+	spark_code = "from console import *\ngenerate_validation_report(spark, '%(output_path)s', %(task_params)s)" % {
+		'output_path':output_path,
+		'task_params':ct.task_params
+	}
+	logger.debug(spark_code)
+
+	# submit to livy
+	logger.debug('submitting code to Spark')
+	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
+
+	# poll until complete
+	logger.debug('polling for Spark job to complete...')
+	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+	logger.debug(results)
+
+	# set archive filename of loose XML files
+	archive_filename_root = ct.task_params['report_name']
 
 	# save validation report output to Combine Task output
 	ct.task_output_json = json.dumps({
-		'report_format':ct.task_params['report_format'],		
-		'report_output':report_output,
-		'export_dir':"/".join(report_output.split('/')[:-1])
+		'report_format':ct.task_params['report_format'],
+		'mapped_field_include':ct.task_params['mapped_field_include'],
+		'output_dir':output_path,
+		'results':results
 	})
 	ct.save()
+
+	# NEW ###################################################################################################	
 
 
 @background(schedule=1)

@@ -61,6 +61,56 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 
 
 
+def generate_validation_report(spark, output_path, task_params):
+
+
+	# DEBUG
+	job_id = 11
+	mapped_fields = ['mods_titleInfo_title','mods_subject_topic']
+
+	# get job validations
+	pipeline = json.dumps({'$match': {'job_id': job_id}})
+	rvdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+	.option("uri","mongodb://127.0.0.1")\
+	.option("database","combine")\
+	.option("collection","record_validation")\
+	.option("partitioner","MongoSamplePartitioner")\
+	.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+	.option("pipeline",pipeline).load()
+
+	# get job as df
+	records_df = get_job_as_df(spark, job_id)
+
+	# merge on validation failures
+	mdf = rvdf.alias('rvdf').join(records_df.alias('records_df'), rvdf['record_id'] == records_df['_id'])
+
+	# select subset of fields for export, and rename
+	mdf = mdf.select(
+			'records_df._id.oid',
+			'records_df.record_id',
+			'rvdf.validation_scenario_id',
+			'rvdf.validation_scenario_name',
+			'rvdf.results_payload',
+			'rvdf.fail_count'
+		)
+
+	# get job's mapped fields as df
+	if mapped_fields:
+
+		# get mapped fields as df	
+		if 'db_id' not in mapped_fields:
+			mapped_fields.append('db_id')
+		es_df = get_job_es(spark, job_id=job_id).select(mapped_fields)
+
+		# join 	
+		mdf = mdf.alias('mdf').join(es_df.alias('es_df'), mdf['oid'] == es_df['db_id'])
+		mdf = mdf.select([c for c in mdf.columns if c != 'db_id']).withColumnRenamed('oid','db_id')
+
+	# write to output dir
+	mdf.write.format(task_params['report_format']).save('file://%s' % output_path)
+
+
+
 ############################################################################
 # Convenience Functions
 ############################################################################
