@@ -19,6 +19,7 @@ from django.conf import settings
 from django.db import connection
 
 from core.models import Job, PublishedRecords
+from core.es import es_handle
 
 
 def export_records_as_xml(spark, base_path, job_dict, records_per_file):
@@ -86,7 +87,7 @@ def get_job_as_df(spark, job_id, remove_id=False):
 	return mdf
 
 
-def get_job_es_as_df(spark, job_id=None, indices=None, es_query=None, field_exclude=None, id_only=False):
+def get_job_es(spark, job_id=None, indices=None, es_query=None, field_exclude=None, as_rdd=False):
 
 	'''
 	Convenience method to retrieve ElasticSearch indices as DataFrame
@@ -100,7 +101,9 @@ def get_job_es_as_df(spark, job_id=None, indices=None, es_query=None, field_excl
 
 	# prep conf
 	conf = {
-		"es.resource":"%s/record" % es_indexes		
+		"es.resource":"%s/record" % es_indexes,
+		"es.output.json":"true",
+		"es.input.max.docs.per.partition":"10000"
 	}
 
 	# handle es_query
@@ -118,11 +121,12 @@ def get_job_es_as_df(spark, job_id=None, indices=None, es_query=None, field_excl
 		valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 		conf=conf)
 
-	# id only
-	if id_only:
-		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
-	else:
-		es_df = es_rdd.toDF()
+	# return rdd
+	if as_rdd:
+		return es_rdd
+
+	# read json
+	es_df = spark.read.json(es_rdd.map(lambda row: row[1]))
 	
 	# return
 	return es_df
