@@ -87,7 +87,8 @@ class CombineRecordSchema(object):
 				StructField('record_id', StringType(), True),
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
-				StructField('unique', BooleanType(), False),
+				StructField('unique', BooleanType(), True),
+				StructField('valid', BooleanType(), True),
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False),
@@ -223,9 +224,6 @@ class CombineSparkJob(object):
 		.option("uri","mongodb://127.0.0.1")\
 		.option("database","combine")\
 		.option("collection", "record").save()
-
-		# # after written, add valid field and set to True if not present
-		# mc_handle.combine.record.update({'job_id':self.job.id, 'valid': {"$exists" : False}}, {"$set": {'valid': True}})
 
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
@@ -383,6 +381,7 @@ class CombineSparkJob(object):
 		# if rits id provided
 		if rits_id and rits_id != None:
 
+			# get RITS 
 			rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
 
 			# handle regex
@@ -418,7 +417,9 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed
+						transformed = row.transformed,
+						unique = row.unique,
+						valid = row.valid
 					)
 
 				# transform via rdd.map and return			
@@ -426,7 +427,7 @@ class CombineSparkJob(object):
 				replace = rits.regex_replace_payload
 				trans_target = rits.transformation_target
 				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
-				records_df = records_rdd.toDF()
+				records_df = records_rdd.toDF(schema=records_df.schema)
 
 			# handle python
 			if rits.transformation_type == 'python':	
@@ -465,7 +466,9 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed
+						transformed = row.transformed,
+						unique = row.unique,
+						valid = row.valid
 					)
 
 				# transform via rdd.map and return			
@@ -514,7 +517,9 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed
+						transformed = row.transformed,
+						unique = row.unique,
+						valid = row.valid
 					)
 
 				# transform via rdd.map and return			
