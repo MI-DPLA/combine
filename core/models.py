@@ -6325,7 +6325,7 @@ class RITSClient(object):
 
 
 ####################################################################
-# DPLA Service Hub and Bulk Data									 #
+# DPLA Service Hub and Bulk Data 								   #
 ####################################################################
 
 class DPLABulkDataClient(object):
@@ -6361,8 +6361,6 @@ class DPLABulkDataClient(object):
 
 		'''
 		Method to bulk download a service hub's data from DPLA's S3 bucket
-
-		Note: Move to background task...
 		'''
 
 		# create bulk directory if not already present
@@ -6401,11 +6399,6 @@ class DPLABulkDataClient(object):
 		stime = time.time()
 
 		##	prepare index
-
-		# get single, sample record to retrieve ES index name
-		# sample_record = self.get_sample_record(filepath)
-		# index_name = sample_record.dpla_es_index
-
 		index_name = hashlib.md5(object_key.encode('utf-8')).hexdigest()
 		logger.debug('indexing to %s' % index_name)
 
@@ -6428,7 +6421,6 @@ class DPLABulkDataClient(object):
 
 		# index using streaming
 		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
-			# logger.debug(i)
 			continue
 
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
