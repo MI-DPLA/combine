@@ -1404,8 +1404,16 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 
-		# field analysis
-		field_counts = cjob.count_indexed_fields()
+		# mapped field analysis, generate if not part of job_details		
+		if 'mapped_field_analysis' in cjob.job.job_details_dict.keys():
+			field_counts = cjob.job.job_details_dict['mapped_field_analysis']
+		else:
+			if cjob.job.finished:
+				field_counts = cjob.count_indexed_fields()
+				cjob.job.update_job_details({'mapped_field_analysis':field_counts}, save=True)
+			else:
+				logger.debug('job not finished, not setting')
+				field_counts = {}
 
 		# render page
 		return render(request, 'core/job_reports_create_validation.html', {
