@@ -132,35 +132,73 @@ def create_validation_report(ct_id):
 	logger.debug(results)
 
 	# set archive filename of loose XML files
-	archive_filename_root = '/tmp/%s' % ct.task_params['report_name']
+	archive_filename_root = '/tmp/%s.%s' % (ct.task_params['report_name'],ct.task_params['report_format'])
 
-	# loop through parts, writing to single file
-	'''
-	NOTES
-		- will need to skip first line of all parts sans part-00000 which contains headers
-		- delete everything but coalesced file after possible compression
-	'''
+	# loop through partitioned parts, coalesce and write to single file
 	logger.debug('coalescing output parts')
 
+	# glob parts
 	export_parts = glob.glob('%s/part*' % output_path)
 	logger.debug('found %s documents to group' % len(export_parts))
 
+	# open new file for writing and loop through files
 	with open(archive_filename_root, 'w') as fout, fileinput.input(export_parts) as fin:
 		
-		# handle csv
+		# if CSV or TSV, write first line of headers
 		if ct.task_params['report_format'] == 'csv':
 			header_string = 'db_id,record_id,validation_scenario_id,validation_scenario_name,results_payload,fail_count'
 			if len(ct.task_params['mapped_field_include']) > 0:
 				header_string += ',' + ','.join(ct.task_params['mapped_field_include'])
+			fout.write('%s\n' % header_string)
+		if ct.task_params['report_format'] == 'tsv':
+			header_string = 'db_id\trecord_id\tvalidation_scenario_id\tvalidation_scenario_name\tresults_payload\tfail_count'
+			if len(ct.task_params['mapped_field_include']) > 0:
+				header_string += '\t' + '\t'.join(ct.task_params['mapped_field_include'])
 			fout.write('%s\n' % header_string)
 
 		# loop through output and write
 		for line in fin:
 			fout.write(line)
 
-	# DELETE output_path
+	# removing partitioned output
+	logger.debug('removing dir: %s' % output_path)
+	shutil.rmtree(output_path)
 
-	# HANDLE COMPRESSION
+	##############################################################################################################
+	# # optionally, compress file
+	
+	# if ct.task_params['archive_type'] == 'none':
+	# 	logger.debug('no compression requested, continuing')
+
+	# elif ct.task_params['archive_type'] == 'zip':
+
+	# 	logger.debug('creating compressed zip archive')			
+	# 	content_type = 'application/zip'
+
+	# 	# establish output archive file
+	# 	export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+		
+	# 	with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+	# 		zip.write(export_output, export_output.split('/')[-1])
+
+	# 	# set export output to archive file
+	# 	export_output = export_output_archive
+		
+	# # tar.gz
+	# elif ct.task_params['archive_type'] == 'targz':
+
+	# 	logger.debug('creating compressed tar archive')
+	# 	content_type = 'application/gzip'
+
+	# 	# establish output archive file
+	# 	export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+
+	# 	with tarfile.open(export_output_archive, 'w:gz') as tar:
+	# 		tar.add(export_output, arcname=export_output.split('/')[-1])
+
+	# 	# set export output to archive file
+	# 	export_output = export_output_archive
+	##############################################################################################################
 
 	# WRITE FILENAME TO OUTPUT FOR DOWNLOAD
 	output_filename = archive_filename_root

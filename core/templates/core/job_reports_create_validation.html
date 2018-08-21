@@ -35,9 +35,20 @@
 						<div class="form-group">
 							<label for="report_format">Select output format for report:</label>
 							<select class="form-control" id="report_format" name="report_format">
+								<option value='tsv'>TSV (tabular, tab seperated)</option>
 								<option value='csv'>CSV (tabular, comma seperated)</option>
 								<option value='json'>JSON (line-delimited)</option>
-							</select>							
+							</select>
+							<small id="report_format_help" class="form-text text-muted">Note: if including mapped fields, line-delimited JSON better handles metadata with special characters and linebreaks</small>
+						</div>
+
+						<div class="form-group">
+							<label for="compression_type">Select compression for file</label>
+							<select class="form-control" id="compression_type" name="compression_type" required>
+								<option value="none">None</option>
+								<option value="zip">Compressed Zip file</option>
+								<option value="targz">Compressed Tar file</option>
+							</select>
 						</div>
 
 						{% if cjob.job.jobvalidation_set.count > 0 %}

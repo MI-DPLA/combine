@@ -109,7 +109,9 @@ def generate_validation_report(spark, output_path, task_params):
 
 	# write to output dir
 	if task_params['report_format'] == 'csv':
-		mdf.write.format('csv').save('file://%s' % output_path)
+		mdf.write.format('com.databricks.spark.csv').option("delimiter", ",").save('file://%s' % output_path)
+	if task_params['report_format'] == 'tsv':
+		mdf.write.format('com.databricks.spark.csv').option("delimiter", "\t").save('file://%s' % output_path)
 	if task_params['report_format'] == 'json':
 		mdf.write.format('json').save('file://%s' % output_path)
 

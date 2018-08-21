@@ -41,11 +41,7 @@
 					<!-- handle different task types below -->
 					
 					{% if ct.task_type == 'validation_report' %}						
-						<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
-
-						{% if ct.task_params.report_format == 'csv' %}
-							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}&preview=true" target="_blank"><button type="button" class="btn btn-success btn-sm">View Raw CSV file in browser</button></a>
-						{% endif %}							
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
 					
 					{% elif ct.task_type == 'export_mapped_fields' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields</button></a>

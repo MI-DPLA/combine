@@ -1430,6 +1430,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 			'job_id':cjob.job.id,
 			'report_name':report_name,
 			'report_format':request.POST.get('report_format'),
+			'compression_type':request.POST.get('compression_type'),
 			'validation_scenarios':request.POST.getlist('validation_scenario', []),
 			'mapped_field_include':request.POST.getlist('mapped_field_include', [])
 		}
@@ -1559,6 +1560,14 @@ def document_download(request):
 		},
 		'csv':{
 			'extension':'.csv',
+			'content_type':'text/plain'
+		},
+		'tsv':{
+			'extension':'.tsv',
+			'content_type':'text/plain'
+		},
+		'json':{
+			'extension':'.json',
 			'content_type':'text/plain'
 		}
 	}
