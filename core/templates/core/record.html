@@ -390,7 +390,11 @@
 
 							<div class="col-md-12">
 								<h4>DPLA API Item Match</h4>
-								<p>No matching DPLA record found.  Try mapping the <code>isShownAt</code> field to your known live URL for the record from the "Indexed Fields" tab...</p>
+								{% if DPLA_API_KEY %}
+									<p>No matching DPLA record found.  Try mapping the <code>isShownAt</code> field to your known live URL for the record from the "Indexed Fields" tab...</p>
+								{% else %}
+									<p>DPLA API key not set, set in <code>localsettings.py</code> to query DPLA API for Record matching.</p>
+								{% endif %}
 							</div>
 
 					{% endif %}

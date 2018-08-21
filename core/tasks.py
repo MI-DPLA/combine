@@ -27,6 +27,12 @@ from core import models as models
 This file provides background tasks that are performed with Django-Background-Tasks
 '''
 
+# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+def spark_job_done(response):
+	return response['state'] == 'available'
+
+
 @background(schedule=1)
 def delete_model_instance(instance_model, instance_id, verbose_name=uuid.uuid4().urn):
 
@@ -99,11 +105,6 @@ def create_validation_report(ct_id):
 		location on disk
 	'''
 
-	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-	def spark_job_done(response):
-		return response['state'] == 'available'
-
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
@@ -112,106 +113,122 @@ def create_validation_report(ct_id):
 
 	logger.debug(ct.task_params)
 
-	# set output path
-	output_path = '/tmp/%s' % uuid.uuid4().hex
+	try:
 
-	# RUN SPARK CODE
-	spark_code = "from console import *\ngenerate_validation_report(spark, '%(output_path)s', %(task_params)s)" % {
-		'output_path':output_path,
-		'task_params':ct.task_params
-	}
-	logger.debug(spark_code)
+		# set output path
+		output_path = '/tmp/%s' % uuid.uuid4().hex
 
-	# submit to livy
-	logger.debug('submitting code to Spark')
-	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
+		# generate spark code
+		spark_code = "from console import *\ngenerate_validation_report(spark, '%(output_path)s', %(task_params)s)" % {
+			'output_path':output_path,
+			'task_params':ct.task_params
+		}
+		logger.debug(spark_code)
 
-	# poll until complete
-	logger.debug('polling for Spark job to complete...')
-	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
-	logger.debug(results)
+		# submit to livy
+		logger.debug('submitting code to Spark')
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})		
 
-	# set archive filename of loose XML files
-	archive_filename_root = '/tmp/%s.%s' % (ct.task_params['report_name'],ct.task_params['report_format'])
+		# poll until complete
+		logger.debug('polling for Spark job to complete...')
+		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+		logger.debug(results)
 
-	# loop through partitioned parts, coalesce and write to single file
-	logger.debug('coalescing output parts')
+		# set archive filename of loose XML files
+		archive_filename_root = '/tmp/%s.%s' % (ct.task_params['report_name'],ct.task_params['report_format'])
 
-	# glob parts
-	export_parts = glob.glob('%s/part*' % output_path)
-	logger.debug('found %s documents to group' % len(export_parts))
+		# loop through partitioned parts, coalesce and write to single file
+		logger.debug('coalescing output parts')
 
-	# open new file for writing and loop through files
-	with open(archive_filename_root, 'w') as fout, fileinput.input(export_parts) as fin:
-		
-		# if CSV or TSV, write first line of headers
-		if ct.task_params['report_format'] == 'csv':
-			header_string = 'db_id,record_id,validation_scenario_id,validation_scenario_name,results_payload,fail_count'
-			if len(ct.task_params['mapped_field_include']) > 0:
-				header_string += ',' + ','.join(ct.task_params['mapped_field_include'])
-			fout.write('%s\n' % header_string)
-		if ct.task_params['report_format'] == 'tsv':
-			header_string = 'db_id\trecord_id\tvalidation_scenario_id\tvalidation_scenario_name\tresults_payload\tfail_count'
-			if len(ct.task_params['mapped_field_include']) > 0:
-				header_string += '\t' + '\t'.join(ct.task_params['mapped_field_include'])
-			fout.write('%s\n' % header_string)
+		# glob parts
+		export_parts = glob.glob('%s/part*' % output_path)
+		logger.debug('found %s documents to group' % len(export_parts))
 
-		# loop through output and write
-		for line in fin:
-			fout.write(line)
+		# if output not found, exit
+		if len(export_parts) == 0:
+			ct.task_output_json = json.dumps({		
+				'error':'no output found',
+				'spark_output':results
+			})
+			ct.save()
 
-	# removing partitioned output
-	logger.debug('removing dir: %s' % output_path)
-	shutil.rmtree(output_path)
+		# else, continue
+		else:
 
-	##############################################################################################################
-	# # optionally, compress file
-	
-	# if ct.task_params['archive_type'] == 'none':
-	# 	logger.debug('no compression requested, continuing')
+			# set report_format
+			report_format = ct.task_params['report_format']
 
-	# elif ct.task_params['archive_type'] == 'zip':
+			# open new file for writing and loop through files
+			with open(archive_filename_root, 'w') as fout, fileinput.input(export_parts) as fin:
 
-	# 	logger.debug('creating compressed zip archive')			
-	# 	content_type = 'application/zip'
+				# if CSV or TSV, write first line of headers
+				if report_format == 'csv':
+					header_string = 'db_id,record_id,validation_scenario_id,validation_scenario_name,results_payload,fail_count'
+					if len(ct.task_params['mapped_field_include']) > 0:
+						header_string += ',' + ','.join(ct.task_params['mapped_field_include'])
+					fout.write('%s\n' % header_string)
 
-	# 	# establish output archive file
-	# 	export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
-		
-	# 	with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
-	# 		zip.write(export_output, export_output.split('/')[-1])
+				if report_format == 'tsv':
+					header_string = 'db_id\trecord_id\tvalidation_scenario_id\tvalidation_scenario_name\tresults_payload\tfail_count'
+					if len(ct.task_params['mapped_field_include']) > 0:
+						header_string += '\t' + '\t'.join(ct.task_params['mapped_field_include'])
+					fout.write('%s\n' % header_string)
 
-	# 	# set export output to archive file
-	# 	export_output = export_output_archive
-		
-	# # tar.gz
-	# elif ct.task_params['archive_type'] == 'targz':
+				# loop through output and write
+				for line in fin:
+					fout.write(line)
 
-	# 	logger.debug('creating compressed tar archive')
-	# 	content_type = 'application/gzip'
+			# removing partitioned output
+			logger.debug('removing dir: %s' % output_path)
+			shutil.rmtree(output_path)
 
-	# 	# establish output archive file
-	# 	export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+			# optionally, compress file
+			if ct.task_params['compression_type'] == 'none':
+				logger.debug('no compression requested, continuing')
+				output_filename = archive_filename_root
 
-	# 	with tarfile.open(export_output_archive, 'w:gz') as tar:
-	# 		tar.add(export_output, arcname=export_output.split('/')[-1])
+			elif ct.task_params['compression_type'] == 'zip':
 
-	# 	# set export output to archive file
-	# 	export_output = export_output_archive
-	##############################################################################################################
+				logger.debug('creating compressed zip archive')			
+				report_format = 'zip'
 
-	# WRITE FILENAME TO OUTPUT FOR DOWNLOAD
-	output_filename = archive_filename_root
+				# establish output archive file
+				output_filename = '%s.zip' % (archive_filename_root)
+				
+				with zipfile.ZipFile(output_filename,'w', zipfile.ZIP_DEFLATED) as zip:
+					zip.write(archive_filename_root, archive_filename_root.split('/')[-1])
 
-	# save validation report output to Combine Task output
-	ct.task_output_json = json.dumps({
-		'report_format':ct.task_params['report_format'],
-		'mapped_field_include':ct.task_params['mapped_field_include'],
-		'output_dir':output_path,
-		'output_filename':output_filename,
-		'results':results
-	})
-	ct.save()
+			# tar.gz
+			elif ct.task_params['compression_type'] == 'targz':
+
+				logger.debug('creating compressed tar archive')
+				report_format = 'targz'
+
+				# establish output archive file
+				output_filename = '%s.tar.gz' % (archive_filename_root)
+
+				with tarfile.open(output_filename, 'w:gz') as tar:
+					tar.add(archive_filename_root, arcname=archive_filename_root.split('/')[-1])
+
+			# save validation report output to Combine Task output
+			ct.task_output_json = json.dumps({
+				'report_format':report_format,
+				'mapped_field_include':ct.task_params['mapped_field_include'],
+				'output_dir':output_path,
+				'output_filename':output_filename,
+				'results':results
+			})
+			ct.save()
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
 
 
 @background(schedule=1)
@@ -388,11 +405,6 @@ def export_documents(ct_id):
 	- tar/zip together
 	'''
 
-	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-	def spark_job_done(response):
-		return response['state'] == 'available'
-
 	# get CombineTask (ct)
 	try:
 
@@ -548,11 +560,6 @@ def job_reindex(ct_id):
 		- use livy session from cjob (works, but awkward way to get this)	
 	'''
 
-	# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-	# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-	def spark_job_done(response):
-		return response['state'] == 'available'
-
 	# get CombineTask (ct)
 	try:
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
@@ -638,11 +645,6 @@ def job_new_validations(ct_id):
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
 		# poll until complete
-		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-		def spark_job_done(response):
-			return response['state'] == 'available'
-
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
@@ -713,11 +715,6 @@ def job_remove_validation(ct_id):
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
 		# poll until complete
-		# TODO: need some handling for failed Jobs which may not be available, but will not be changing
-		# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-		def spark_job_done(response):
-			return response['state'] == 'available'
-
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)

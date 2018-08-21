@@ -1723,7 +1723,7 @@ class Record(mongoengine.Document):
 
 		# init search
 		s = Search(using=es_handle, index='j%s' % self.job_id)
-		s = s.query('match', _id=self.combine_id)
+		s = s.query('match', _id=str(self.id))
 
 		# execute search and capture as dictionary
 		try:

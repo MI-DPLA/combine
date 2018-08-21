@@ -64,9 +64,10 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 def generate_validation_report(spark, output_path, task_params):
 
 	job_id = task_params['job_id']
+	validation_scenarios = [ int(vs_id) for vs_id in task_params['validation_scenarios']]
 
-	# get job validations
-	pipeline = json.dumps({'$match': {'job_id': job_id}})
+	# get job validations, limiting by selected validation scenarios
+	pipeline = json.dumps({'$match': {'job_id': job_id, 'validation_scenario_id':{'$in':validation_scenarios}}})
 	rvdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
 	.option("uri","mongodb://127.0.0.1")\
 	.option("database","combine")\
@@ -94,6 +95,7 @@ def generate_validation_report(spark, output_path, task_params):
 	# if mapped fields requested, query ES and join
 	if len(task_params['mapped_field_include']) > 0:
 
+		# get mapped fields
 		mapped_fields = task_params['mapped_field_include']
 
 		# get mapped fields as df	

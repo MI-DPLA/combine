@@ -1435,6 +1435,12 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 			'mapped_field_include':request.POST.getlist('mapped_field_include', [])
 		}
 
+		# cast to int
+		task_params['validation_scenarios'] = [int(vs_id) for vs_id in task_params['validation_scenarios']]
+
+		# remove select, reserved fields if in mapped field request
+		task_params['mapped_field_include'] = [ f for f in task_params['mapped_field_include'] if f not in ['record_id','db_id','oid','_id']] 
+
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = combine_task_name,
@@ -1569,6 +1575,14 @@ def document_download(request):
 		'json':{
 			'extension':'.json',
 			'content_type':'text/plain'
+		},
+		'zip':{
+			'extension':'.zip',
+			'content_type':'application/zip'
+		},
+		'targz':{
+			'extension':'.tar.gz',
+			'content_type':'application/gzip'
 		}
 	}
 
@@ -1586,10 +1600,10 @@ def document_download(request):
 		name = '%s%s' % (name, format_params['extension'])
 		content_type = format_params['content_type']
 
-	# NEW
+	# generate response
 	response = FileResponse(open(filepath, 'rb'))
 	if not preview:
-			response['Content-Disposition'] = 'attachment; filename="%s"' % name
+		response['Content-Disposition'] = 'attachment; filename="%s"' % name
 	return response
 
 
