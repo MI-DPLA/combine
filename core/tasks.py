@@ -2,6 +2,7 @@ from background_task import background
 
 # generic imports 
 import glob
+import fileinput
 import json
 import math
 import os
@@ -109,29 +110,7 @@ def create_validation_report(ct_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# OLD ###################################################################################################
-	# # run report generation
-	# report_output = cjob.generate_validation_report(
-	# 	report_format=ct.task_params['report_format'],
-	# 	validation_scenarios=ct.task_params['validation_scenarios'],
-	# 	mapped_field_include=ct.task_params['mapped_field_include']
-	# )
-	# logger.debug('validation report output: %s' % report_output)
-
-	# # save validation report output to Combine Task output
-	# ct.task_output_json = json.dumps({
-	# 	'report_format':ct.task_params['report_format'],		
-	# 	'report_output':report_output,
-	# 	'export_dir':"/".join(report_output.split('/')[:-1])
-	# })
-	# ct.save()
-	# OLD ###################################################################################################
-
-	# NEW ###################################################################################################
-
-	logger.debug("##################################")
 	logger.debug(ct.task_params)
-	logger.debug("##################################")
 
 	# set output path
 	output_path = '/tmp/%s' % uuid.uuid4().hex
@@ -153,18 +132,48 @@ def create_validation_report(ct_id):
 	logger.debug(results)
 
 	# set archive filename of loose XML files
-	archive_filename_root = ct.task_params['report_name']
+	archive_filename_root = '/tmp/%s' % ct.task_params['report_name']
+
+	# loop through parts, writing to single file
+	'''
+	NOTES
+		- will need to skip first line of all parts sans part-00000 which contains headers
+		- delete everything but coalesced file after possible compression
+	'''
+	logger.debug('coalescing output parts')
+
+	export_parts = glob.glob('%s/part*' % output_path)
+	logger.debug('found %s documents to group' % len(export_parts))
+
+	with open(archive_filename_root, 'w') as fout, fileinput.input(export_parts) as fin:
+		
+		# handle csv
+		if ct.task_params['report_format'] == 'csv':
+			header_string = 'db_id,record_id,validation_scenario_id,validation_scenario_name,results_payload,fail_count'
+			if len(ct.task_params['mapped_field_include']) > 0:
+				header_string += ',' + ','.join(ct.task_params['mapped_field_include'])
+			fout.write('%s\n' % header_string)
+
+		# loop through output and write
+		for line in fin:
+			fout.write(line)
+
+	# DELETE output_path
+
+	# HANDLE COMPRESSION
+
+	# WRITE FILENAME TO OUTPUT FOR DOWNLOAD
+	output_filename = archive_filename_root
 
 	# save validation report output to Combine Task output
 	ct.task_output_json = json.dumps({
 		'report_format':ct.task_params['report_format'],
 		'mapped_field_include':ct.task_params['mapped_field_include'],
 		'output_dir':output_path,
+		'output_filename':output_filename,
 		'results':results
 	})
 	ct.save()
-
-	# NEW ###################################################################################################	
 
 
 @background(schedule=1)

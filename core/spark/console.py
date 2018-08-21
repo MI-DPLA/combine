@@ -63,10 +63,7 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 
 def generate_validation_report(spark, output_path, task_params):
 
-
-	# DEBUG
-	job_id = 11
-	mapped_fields = ['mods_titleInfo_title','mods_subject_topic']
+	job_id = task_params['job_id']
 
 	# get job validations
 	pipeline = json.dumps({'$match': {'job_id': job_id}})
@@ -94,8 +91,10 @@ def generate_validation_report(spark, output_path, task_params):
 			'rvdf.fail_count'
 		)
 
-	# get job's mapped fields as df
-	if mapped_fields:
+	# if mapped fields requested, query ES and join
+	if len(task_params['mapped_field_include']) > 0:
+
+		mapped_fields = task_params['mapped_field_include']
 
 		# get mapped fields as df	
 		if 'db_id' not in mapped_fields:
@@ -104,10 +103,15 @@ def generate_validation_report(spark, output_path, task_params):
 
 		# join 	
 		mdf = mdf.alias('mdf').join(es_df.alias('es_df'), mdf['oid'] == es_df['db_id'])
-		mdf = mdf.select([c for c in mdf.columns if c != 'db_id']).withColumnRenamed('oid','db_id')
+	
+	# cleanup columns
+	mdf = mdf.select([c for c in mdf.columns if c != 'db_id']).withColumnRenamed('oid','db_id')
 
 	# write to output dir
-	mdf.write.format(task_params['report_format']).save('file://%s' % output_path)
+	if task_params['report_format'] == 'csv':
+		mdf.write.format('csv').save('file://%s' % output_path)
+	if task_params['report_format'] == 'json':
+		mdf.write.format('json').save('file://%s' % output_path)
 
 
 
