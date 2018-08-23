@@ -3092,34 +3092,24 @@ class DTPublishedJson(BaseDatatableView):
 				return super(DTPublishedJson, self).render_column(row, column)
 
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-		# 	# handle search
-		# 	search = self.request.GET.get(u'search[value]', None)
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
+				else:
+					qs = qs.filter(mongoengine.Q(record_id=search))
 
-		# 	if search:
-
-		# 		# determine if search is integer
-		# 		try:
-		# 			int_qs = int(search)
-		# 		except:
-		# 			int_qs = False
-
-		# 		# if integer
-		# 		if int_qs:
-		# 			qs = qs.filter(
-		# 				Q(id=search)
-		# 			)
-		# 		else:
-		# 			# very slow to include the job's publish set id - removing from search
-		# 			qs = qs.filter(
-		# 				Q(record_id=search) |
-		# 				Q(document=search)
-		# 			)
-
-
-		# 	return qs
+			# return
+			return qs
 
 
 
@@ -3263,16 +3253,21 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 				return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
 
 
-		# def filter_queryset(self, qs):
-		# 	# use parameters passed in GET request to filter queryset
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-		# 	# handle search
-		# 	search = self.request.GET.get(u'search[value]', None)
-		# 	if search:
-		# 		qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
-
-		# 	# return
-		# 	return qs
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(record_id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
+			# return
+			return qs
 
 
 
