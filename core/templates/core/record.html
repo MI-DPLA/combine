@@ -288,7 +288,7 @@
 
 								<div class="col-md-12">
 									<div>
-										<h4>DPLA API Item Match</h4>
+										<h4>DPLA API Item Query</h4>
 										<p>A matching DPLA Item was found!</p>
 										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
 										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
@@ -342,8 +342,8 @@
 						{% else %}
 							<div class="row">
 								<div class="col-md-12">
-									<h4>DPLA API Item Match</h4>
-									<p>A single, matching DPLA item was not found.  Possible none were found, or multiple, which will be shown in the table below.</p>
+									<h4>DPLA API Item Query</h4>
+									<p>A single, matching DPLA item was not found.  Possible none were found, or multiple, which would be shown in the table below.</p>
 								</div>
 							</div>
 						{% endif %}
@@ -378,6 +378,8 @@
 								</div>
 
 							</div>
+						
+						{% else %}
 
 						{% endif %}
 
