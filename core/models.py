@@ -779,27 +779,27 @@ class Job(models.Model):
 			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
-	@property
-	def dpla_mapping(self):
+	# @property
+	# def dpla_mapping(self):
 
-		'''
-		Method to return DPLA mapping for this job
+	# 	'''
+	# 	Method to return DPLA mapping for this job
 
-		Args:
-			None
+	# 	Args:
+	# 		None
 
-		Returns:
-			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
-		'''
+	# 	Returns:
+	# 		(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
+	# 	'''
 
-		if not hasattr(self, '_dpla_mapping'):
-			if self.dplajobmap_set.count() == 1:
-				self._dpla_mapping = self.dplajobmap_set.first()
-			else:
-				self._dpla_mapping = None
+	# 	if not hasattr(self, '_dpla_mapping'):
+	# 		if self.dplajobmap_set.count() == 1:
+	# 			self._dpla_mapping = self.dplajobmap_set.first()
+	# 		else:
+	# 			self._dpla_mapping = None
 
-		# return
-		return self._dpla_mapping
+	# 	# return
+	# 	return self._dpla_mapping
 
 
 	def get_lineage(self, directionality='downstream'):
@@ -1758,32 +1758,32 @@ class Record(mongoengine.Document):
 			return (False, str(e))
 
 
-	def dpla_mapped_field_values(self):
+	# def dpla_mapped_field_values(self):
 
-		'''
-		Using self.dpla_mapped_fields, loop through and insert values from ES document
-		'''
+	# 	'''
+	# 	Using self.dpla_mapped_fields, loop through and insert values from ES document
+	# 	'''
 
-		# get mapped fields
-		mapped_fields = self.job.dpla_mapping.mapped_fields()
+	# 	# get mapped fields
+	# 	mapped_fields = self.job.dpla_mapping.mapped_fields()
 
-		if mapped_fields:
+	# 	if mapped_fields:
 			
-			# get elasticsearch doc
-			es_doc = self.get_es_doc()
+	# 		# get elasticsearch doc
+	# 		es_doc = self.get_es_doc()
 			
-			# loop through and use mapped key for es doc
-			mapped_values = {}
-			for k,v in mapped_fields.items():
-				val = es_doc.get(v, None)
-				if val:
-					mapped_values[k] = es_doc[v]
+	# 		# loop through and use mapped key for es doc
+	# 		mapped_values = {}
+	# 		for k,v in mapped_fields.items():
+	# 			val = es_doc.get(v, None)
+	# 			if val:
+	# 				mapped_values[k] = es_doc[v]
 
-			# return mapped values
-			return mapped_values
+	# 		# return mapped values
+	# 		return mapped_values
 
-		else:
-			return None
+	# 	else:
+	# 		return None
 
 
 	def dpla_api_record_match(self, search_string=None):
@@ -1802,6 +1802,12 @@ class Record(mongoengine.Document):
 		Returns:
 			(dict): If match found, return dictionary of DPLA API response
 		'''
+
+		########################################################################
+		# DEBUG		
+		self.dpla_api_doc = None
+		return self.dpla_api_doc
+		########################################################################
 
 		# check for DPLA_API_KEY, else return None
 		if settings.DPLA_API_KEY:
@@ -2166,103 +2172,103 @@ class IndexMappingFailure(mongoengine.Document):
 
 
 
-class DPLAJobMap(models.Model):
+# class DPLAJobMap(models.Model):
 
-	'''
-	#Experiemental#
+# 	'''
+# 	#Experiemental#
 
-	Model to map parsed fields from ES index to DPLA record fields.	Values for each DPLA field correspond to an ES
-	field name for the associated Job.
+# 	Model to map parsed fields from ES index to DPLA record fields.	Values for each DPLA field correspond to an ES
+# 	field name for the associated Job.
 
-	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
-	to the DPLA JSON model.
+# 	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
+# 	to the DPLA JSON model.
 
-	Inspiration for DPLA fields are taken from here:
-	https://github.com/dpla/ingestion3/blob/develop/src/main/scala/dpla/ingestion3/model/DplaMapData.scala
-	'''
+# 	Inspiration for DPLA fields are taken from here:
+# 	https://github.com/dpla/ingestion3/blob/develop/src/main/scala/dpla/ingestion3/model/DplaMapData.scala
+# 	'''
 
-	# associate mapping with Job
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
+# 	# associate mapping with Job
+# 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
 
-	# DPLA fields
-	# thumbnails and access
-	isShownAt = models.CharField(max_length=255, null=True, default=None)
-	preview = models.CharField(max_length=255, null=True, default=None)
+# 	# DPLA fields
+# 	# thumbnails and access
+# 	isShownAt = models.CharField(max_length=255, null=True, default=None)
+# 	preview = models.CharField(max_length=255, null=True, default=None)
 
-	# descriptive metadata
-	contributor = models.CharField(max_length=255, null=True, default=None)
-	creator = models.CharField(max_length=255, null=True, default=None)
-	date = models.CharField(max_length=255, null=True, default=None)
-	description = models.CharField(max_length=255, null=True, default=None)
-	extent = models.CharField(max_length=255, null=True, default=None)
-	format = models.CharField(max_length=255, null=True, default=None)
-	genre = models.CharField(max_length=255, null=True, default=None)
-	identifier = models.CharField(max_length=255, null=True, default=None)
-	language = models.CharField(max_length=255, null=True, default=None)
-	place = models.CharField(max_length=255, null=True, default=None)
-	publisher = models.CharField(max_length=255, null=True, default=None)
-	relation = models.CharField(max_length=255, null=True, default=None)
-	rights = models.CharField(max_length=255, null=True, default=None)
-	subject = models.CharField(max_length=255, null=True, default=None)
-	temporal = models.CharField(max_length=255, null=True, default=None)
-	title = models.CharField(max_length=255, null=True, default=None)
+# 	# descriptive metadata
+# 	contributor = models.CharField(max_length=255, null=True, default=None)
+# 	creator = models.CharField(max_length=255, null=True, default=None)
+# 	date = models.CharField(max_length=255, null=True, default=None)
+# 	description = models.CharField(max_length=255, null=True, default=None)
+# 	extent = models.CharField(max_length=255, null=True, default=None)
+# 	format = models.CharField(max_length=255, null=True, default=None)
+# 	genre = models.CharField(max_length=255, null=True, default=None)
+# 	identifier = models.CharField(max_length=255, null=True, default=None)
+# 	language = models.CharField(max_length=255, null=True, default=None)
+# 	place = models.CharField(max_length=255, null=True, default=None)
+# 	publisher = models.CharField(max_length=255, null=True, default=None)
+# 	relation = models.CharField(max_length=255, null=True, default=None)
+# 	rights = models.CharField(max_length=255, null=True, default=None)
+# 	subject = models.CharField(max_length=255, null=True, default=None)
+# 	temporal = models.CharField(max_length=255, null=True, default=None)
+# 	title = models.CharField(max_length=255, null=True, default=None)
 
 
-	def __str__(self):
+# 	def __str__(self):
 
-		# count mapped fields
-		mapped_fields = self.mapped_fields()
+# 		# count mapped fields
+# 		mapped_fields = self.mapped_fields()
 		
-		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
+# 		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
 
 
-	def all_fields(self):
+# 	def all_fields(self):
 
-		'''
-		Return list of all potential field mappings
-		'''
+# 		'''
+# 		Return list of all potential field mappings
+# 		'''
 
-		all_fields = [ field.name for field in self._meta.get_fields() if field.name not in ['id','job'] ]
-		all_fields.sort()
-		return all_fields
-
-
-	def mapped_fields(self):
-
-		'''
-		Return dictionary of fields with associated mapping
-
-		Args:
-			None
-
-		Returns:
-			(dict): dictionary of instance mappings
-		'''
-
-		mapped_fields = {
-				field.name: getattr(self, field.name) for field in self._meta.get_fields()
-				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
-			}
-		return mapped_fields
+# 		all_fields = [ field.name for field in self._meta.get_fields() if field.name not in ['id','job'] ]
+# 		all_fields.sort()
+# 		return all_fields
 
 
-	def inverted_mapped_fields(self):
+# 	def mapped_fields(self):
 
-		'''
-		Convenience method to invert mapping, using ES field name as key for DPLA field
+# 		'''
+# 		Return dictionary of fields with associated mapping
 
-		Args:
-			None
+# 		Args:
+# 			None
 
-		Returns:
-			(dict): dictionary of inverted model instance mapping
-		'''
+# 		Returns:
+# 			(dict): dictionary of instance mappings
+# 		'''
+
+# 		mapped_fields = {
+# 				field.name: getattr(self, field.name) for field in self._meta.get_fields()
+# 				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
+# 			}
+# 		return mapped_fields
+
+
+# 	def inverted_mapped_fields(self):
+
+# 		'''
+# 		Convenience method to invert mapping, using ES field name as key for DPLA field
+
+# 		Args:
+# 			None
+
+# 		Returns:
+# 			(dict): dictionary of inverted model instance mapping
+# 		'''
 		
-		# get mapped fields as dict
-		mapped_fields = self.mapped_fields()
+# 		# get mapped fields as dict
+# 		mapped_fields = self.mapped_fields()
 
-		# invert and return
-		return {v: k for k, v in mapped_fields.items()}
+# 		# invert and return
+# 		return {v: k for k, v in mapped_fields.items()}
 
 
 

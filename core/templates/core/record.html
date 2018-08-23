@@ -243,9 +243,7 @@
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>
 									<tr>
-										<th>Field Name</th>
-										<th>DPLA Mapped Field</th>
-										<th>Map DPLA Field</th>
+										<th>Field Name</th>										
 										<th>Field Value</th>
 									</tr>
 								</thead>
@@ -253,30 +251,6 @@
 									{% for field_name, field_value in record.get_es_doc.items %}
 									<tr>
 										<td><code>{{ field_name }}</code></td>
-
-										<!-- show mapped DPLA field if exists -->
-										{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
-											<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
-										{% else %}
-											<td></td>
-										{% endif %}
-
-										<!-- provide in-place form for mapping field -->
-										<td>
-											<form method="POST" action="{% url 'job_dpla_field_map' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id %}">
-												{% csrf_token %}
-												<div class="form-group" style="margin-bottom:0rem;">
-													<select class="form-control form-control-sm" name='dpla_field' onchange="this.form.submit()">
-														<option value="">Select DPLA field</option>
-														<option value="">None</option>
-														{% for field_name in record.job.dpla_mapping.all_fields %}									
-															<option value="{{ field_name }}">{{ field_name }}</option>
-														{% endfor %}
-													</select>
-												</div>
-												<input type="hidden" name="es_field" value="{{ field_name }}"></input>
-											</form>
-										</td>
 
 										{% if 'http://' in field_value or 'https://' in field_value %}
 											<td><a href="{{ field_value }}" target="_blank">{{ field_value }}</a></td>
@@ -293,33 +267,11 @@
 								    	"pageLength": 100,
 								    	"lengthMenu": [ 10, 25, 100, 500 ],
 								    	"columnDefs": [
-											{ "searchable": false, "targets": 2 }
+											{ "searchable": false, "targets": 1 }
 										]
 								    });
 								} );
 							</script>
-						</div>
-					</div>
-
-					<div class="row">
-						<div class="col-md-12">							
-							<div>
-								<h4>Mapped DLPA Fields</h4>
-							
-								{% if record.job.dpla_mapping.preview %}
-									<a target="_blank" href="{{record.dpla_mapped_field_values.isShownAt}}"><img src="{{ record.dpla_mapped_field_values.preview }}"/></a>
-								{% endif %}
-								
-								<table class="table table-bordered table-hover">
-									{% for field, value in record.dpla_mapped_field_values.items  %}
-									<tr>
-										<td><strong>{{ field }}</strong></td>
-										<td>{% if field == 'isShownAt' %}<a href="{{ value }}" target="_blank">{{ value }}</a>{% else %}{{ value }}{% endif %}</td>
-									</tr>
-									{% endfor %}
-								</table>
-
-							</div>
 						</div>
 					</div>
 

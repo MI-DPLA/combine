@@ -8,10 +8,7 @@
 		<table id="select_mapped_fields" class="table table-bordered table-hover">
 			<thead>
 				<tr>
-					<th>Field Name</th>
-					{% if cjob %}
-						<th>DPLA Mapped Field</th>
-					{% endif %}
+					<th>Field Name</th>					
 					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
 					<th>Documents without</th>
 					<th>Count of Total Values for Field</th>
@@ -25,22 +22,6 @@
 				{% for field in field_counts.fields %}
 					<tr>
 						<td {% if field.one_distinct_per_doc %}style="background-color:yellow;"{% endif %}><a href="{% if cjob %}{% url 'field_analysis' es_index=cjob.esi.es_index %}{% else %}{% url 'field_analysis' es_index=published.esi.es_index %}{% endif %}?field_name={{ field.field_name }}" target="_blank">{{ field.field_name }}</a></td>
-
-						{% if cjob %}
-
-							<!-- show mapped DPLA field if exists -->
-							{% if cjob.job.dpla_mapping %}
-								{% if field.field_name in cjob.job.dpla_mapping.inverted_mapped_fields.keys %}
-									<td style="background-color:#cbdafb;">{{ cjob.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field.field_name }}</td>
-								{% else %}
-									<td></td>
-								{% endif %}
-							{% else %}
-								<td></td>
-							{% endif %}
-
-						{% endif %}
-
 						<td><a target="_blank" href="{% if cjob %}{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}{% else %}{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}{% endif %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
 						<td><a target="_blank" href="{% if cjob %}{% url 'field_analysis_docs' es_index=cjob.esi.es_index filter_type='exists' %}{% else %}{% url 'field_analysis_docs' es_index=published.esi.es_index filter_type='exists' %}{% endif %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
 						<td>{{ field.val_instances }}</td>

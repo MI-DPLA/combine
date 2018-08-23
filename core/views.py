@@ -772,35 +772,6 @@ def job_update_name(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_dpla_field_map(request, org_id, record_group_id, job_id):
-	
-	if request.method == 'POST':
-
-		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(job_id)
-
-		# get DPLAJobMap
-		djm = cjob.job.dpla_mapping
-
-		# get fields
-		dpla_field = request.POST.get('dpla_field')
-		es_field = request.POST.get('es_field')
-
-		# if dpla none, get current dpla field for this es field, then set to None
-		if dpla_field == '':
-			if es_field in djm.inverted_mapped_fields().keys():
-				current_dpla_field = djm.inverted_mapped_fields()[es_field]
-				logger.debug('unsetting %s' % current_dpla_field)
-				dpla_field = current_dpla_field
-				es_field = None
-		
-		# update DPLAJobMap and redirect
-		setattr(djm, dpla_field, es_field)
-		djm.save()
-		return redirect(request.META.get('HTTP_REFERER'))
-
-
-@login_required
 def job_publish(request, org_id, record_group_id, job_id):
 
 	# get preferred metadata index mapper
