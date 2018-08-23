@@ -1740,6 +1740,16 @@ class Record(mongoengine.Document):
 			return {}
 
 
+	def get_dpla_mapped_fields(self):
+
+		'''
+		Method to return DPLA specific mapped fields from Record's mapped fields
+		'''
+
+		# get mapped fields and return filtered		
+		return {f:v for f,v in self.get_es_doc().items() if f.startswith('dpla_')}
+
+
 	def parse_document_xml(self):
 
 		'''
@@ -1758,35 +1768,7 @@ class Record(mongoengine.Document):
 			return (False, str(e))
 
 
-	# def dpla_mapped_field_values(self):
-
-	# 	'''
-	# 	Using self.dpla_mapped_fields, loop through and insert values from ES document
-	# 	'''
-
-	# 	# get mapped fields
-	# 	mapped_fields = self.job.dpla_mapping.mapped_fields()
-
-	# 	if mapped_fields:
-			
-	# 		# get elasticsearch doc
-	# 		es_doc = self.get_es_doc()
-			
-	# 		# loop through and use mapped key for es doc
-	# 		mapped_values = {}
-	# 		for k,v in mapped_fields.items():
-	# 			val = es_doc.get(v, None)
-	# 			if val:
-	# 				mapped_values[k] = es_doc[v]
-
-	# 		# return mapped values
-	# 		return mapped_values
-
-	# 	else:
-	# 		return None
-
-
-	def dpla_api_record_match(self, search_string=None):
+	def dpla_api_record_match_OLD(self, search_string=None):
 
 		'''
 		Method to query DPLA API for match against some known mappings.
@@ -1802,12 +1784,6 @@ class Record(mongoengine.Document):
 		Returns:
 			(dict): If match found, return dictionary of DPLA API response
 		'''
-
-		########################################################################
-		# DEBUG		
-		self.dpla_api_doc = None
-		return self.dpla_api_doc
-		########################################################################
 
 		# check for DPLA_API_KEY, else return None
 		if settings.DPLA_API_KEY:
@@ -1891,6 +1867,131 @@ class Record(mongoengine.Document):
 
 		# return None by default
 		self.dpla_api_doc = None
+		return self.dpla_api_doc
+
+
+	def dpla_api_record_match(self, search_string=None):
+
+		'''
+		Method to query DPLA API for match against mapped fields
+			- querying is an ranked list of fields to consecutively search
+			- this method is recursive such that a preformatted search string can be fed back into it
+
+		Args:
+			search_string(str): Optional search_string override
+
+		Returns:
+			(dict): If match found, return dictionary of DPLA API response
+		'''
+
+		# check for DPLA_API_KEY, else return None
+		if settings.DPLA_API_KEY:
+
+			# check for any mapped DPLA fields, skipping altogether if none
+			mapped_dpla_fields = self.get_dpla_mapped_fields()
+			if len(mapped_dpla_fields) > 0:
+
+				# attempt search if mapped fields present and search_string not provided
+				if not search_string:
+
+					# ranked search fields
+					opinionated_search_fields = [
+						('dpla_isShownAt', 'isShownAt'),
+						('dpla_title', 'sourceResource.title'),
+						('dpla_description', 'sourceResource.description')
+					]
+
+					# loop through ranked search fields
+					for local_mapped_field, target_dpla_field in opinionated_search_fields:
+
+						# if local_mapped_field in keys
+						if local_mapped_field in mapped_dpla_fields.keys():
+
+							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
+
+							# get value for mapped field
+							field_value = mapped_dpla_fields[local_mapped_field]
+
+							# if list, loop through and attempt searches
+							if type(field_value) == list:
+								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
+
+								for val in field_value:
+									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
+									match_results = self.dpla_api_record_match(search_string=search_string)
+
+							# else if string, perform search
+							else:
+								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
+								match_results = self.dpla_api_record_match(search_string=search_string)
+
+							# if match found from list iteration or single string search, use
+							if match_results:
+								logger.debug("THIS HAPPEND")
+								self.dpla_api_doc = match_results
+								return self.dpla_api_doc
+
+				# preapre search query
+				api_q = requests.get(
+					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+
+				# attempt to parse response as JSON
+				try:
+					api_r = api_q.json()
+				except:
+					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
+					self.dpla_api_doc = None
+					return self.dpla_api_doc
+
+				# if count present
+				if 'count' in api_r.keys():
+					
+					# response
+					if api_r['count'] >= 1:
+
+						# add matches to matches
+						logger.debug('one or more matches found, adding to matches')
+						field,value = search_string.split('=')
+						value = urllib.parse.unquote(value)
+						
+						# check for matches attr
+						if not hasattr(self, "dpla_api_matches"):
+							self.dpla_api_matches = {}
+						
+						# add mapped field used for searching
+						if field not in self.dpla_api_matches.keys():
+							self.dpla_api_matches[field] = {}
+						
+						# add matches for values searched
+						self.dpla_api_matches[field][value] = api_r['docs']
+
+						# single doc found, using
+						if api_r['count'] == 1:
+							dpla_api_doc = api_r['docs'][0]
+							logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
+
+						# multiple docs founds, ignoring
+						elif api_r['count'] > 1:
+							logger.debug('multiple hits for DPLA API query: adding matches and continuing')
+							dpla_api_doc = None
+
+					# no matches
+					else:
+						logger.debug('no matches found, aborting')
+						dpla_api_doc = None
+				else:
+					logger.debug(api_r)
+					dpla_api_doc = None
+
+				# save to record instance and return
+				self.dpla_api_doc = dpla_api_doc				
+				return self.dpla_api_doc
+
+		# return None by default
+		self.dpla_api_doc = None
+		self.dpla_api_matches = matches
 		return self.dpla_api_doc
 
 
@@ -3027,14 +3128,6 @@ def save_job(sender, instance, created, **kwargs):
 			instance.job_type,
 			instance.id)
 		instance.save()
-
-
-	# create DPLAJobMap instance and save
-	if created:
-		djm = DPLAJobMap(
-			job = instance
-		)
-		djm.save()
 
 
 @receiver(models.signals.pre_delete, sender=Organization)

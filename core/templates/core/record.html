@@ -51,7 +51,7 @@
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
 				</li>				
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA Link</a>
+					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA API Query</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{% if record.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif record.job.job_type_family == 'TransformJob' %}Transform Details{% elif record.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif record.job.job_type_family == 'PublishJob' %}Publish Details{% elif record.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
@@ -279,77 +279,115 @@
 
 				<div id="dpla_link_tab" class="tab-pane full_width_tab">
 
-					<!-- if DPLA API hit -->
-					{% if dpla_api_doc %}
-					
-						<div class="row">
+					{% if DPLA_API_KEY %}
 
-							<div class="col-md-12">
-								<div>
-									<h4>DPLA API Item Match</h4>
-									<p>A matching DPLA Item was found!</p>
-									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
-									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
-									<table class="table table-bordered table-hover">
-									{% for field, value in dpla_api_doc.sourceResource.items %}
-										<tr>
-											<td><strong>{{field}}</strong></td>
-											<td>{{value}}</td>
-										</tr>
-									{% endfor %}
-									</table>										
-								</div>
-							</div>
-
-						</div>						
-
-						<div class="row">
-							<div class="col-md-12">
-								<div id="dpla_api_result">
-									<h4>DPLA API Result</h4>
-									<!-- DPLA api results -->
-									<div id="jsonresults" style="height:450px;"></div>
-									<script>
-								        // create the editor
-								        var container = document.getElementById("jsonresults");
-								        var options = {
-								        	mode: 'view',
-											modes: ['code', 'text', 'view'],
-											sortObjectKeys: true,
-											name: 'dpla_api_response',
-											onModeChange: function(nm, om){
-												if (nm == 'view'){
-													$("#jsonresults").css('height','');
-												}
-												else {
-													$("#jsonresults").css('height','450px');	
-												}
-											},
-
-											navigationBar:false
-								        };
-								        var editor_results = new JSONEditor(container, options);
-
-								        // set json to editor_results
-								        editor_results.set({{ dpla_api_json|safe }});		        
-								    </script>
-								</div>
-							</div>
-						</div>
+						<!-- if DPLA API document hit -->
+						{% if dpla_api_doc %}
 						
+							<div class="row">
+
+								<div class="col-md-12">
+									<div>
+										<h4>DPLA API Item Match</h4>
+										<p>A matching DPLA Item was found!</p>
+										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
+										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
+										<table class="table table-bordered table-hover">
+										{% for field, value in dpla_api_doc.sourceResource.items %}
+											<tr>
+												<td><strong>{{field}}</strong></td>
+												<td>{{value}}</td>
+											</tr>
+										{% endfor %}
+										</table>										
+									</div>
+								</div>
+
+							</div>						
+
+							<div class="row">
+								<div class="col-md-12">
+									<div id="dpla_api_result">
+										<h4>DPLA API Result</h4>
+										<!-- DPLA api results -->
+										<div id="jsonresults" style="height:450px;"></div>
+										<script>
+									        // create the editor
+									        var container = document.getElementById("jsonresults");
+									        var options = {
+									        	mode: 'view',
+												modes: ['code', 'text', 'view'],
+												sortObjectKeys: true,
+												name: 'dpla_api_response',
+												onModeChange: function(nm, om){
+													if (nm == 'view'){
+														$("#jsonresults").css('height','');
+													}
+													else {
+														$("#jsonresults").css('height','450px');	
+													}
+												},
+
+												navigationBar:false
+									        };
+									        var editor_results = new JSONEditor(container, options);
+
+									        // set json to editor_results
+									        editor_results.set({{ dpla_api_json|safe }});		        
+									    </script>
+									</div>
+								</div>
+							</div>
+
+						{% else %}
+							<div class="row">
+								<div class="col-md-12">
+									<h4>DPLA API Item Match</h4>
+									<p>A single, matching DPLA item was not found.  Possible none were found, or multiple, which will be shown in the table below.</p>
+								</div>
+							</div>
+						{% endif %}
+
+						<!-- if DPLA API document hit -->
+						{% if record.dpla_api_matches %}
+							<div class="row">
+
+								<div class="col-md-12">
+									<h4>DPLA API Matches</h4>
+									<table class="table table-bordered table-hover">
+										<thead>
+											<tr>
+												<th>DPLA Field</th>
+												<th>Search Term</th>
+												<th>DPLA Item</th>
+											</tr>
+										</thead>
+										<tbody>
+											{% for field, search_terms in record.dpla_api_matches.items %}
+												{% for search_term, matches in search_terms.items %}
+													{% for match in matches %}
+														<tr>
+															<td><code>{{field}}</code></td>
+															<td><code>{{search_term}}</code></td>
+															<td><a target="_blank" href="https://dp.la/item/{{ match.id }}">{{match.id}}</a></td>														
+														</tr>
+													{% endfor %}
+												{% endfor %}
+											{% endfor %}
+										</tbody>												
+									</table>
+								</div>
+
+							</div>
+
+						{% endif %}
+
 
 					{% else %}
-
-							<div class="col-md-12">
-								<h4>DPLA API Item Match</h4>
-								{% if DPLA_API_KEY %}
-									<p>No matching DPLA record found.  Try mapping the <code>isShownAt</code> field to your known live URL for the record from the "Indexed Fields" tab...</p>
-								{% else %}
-									<p>DPLA API key not set, set in <code>localsettings.py</code> to query DPLA API for Record matching.</p>
-								{% endif %}
-							</div>
-
+						<p>DPLA API key not set, set in <code>localsettings.py</code> to query DPLA API for Record matching.</p>
 					{% endif %}
+
+					
 
 				</div>
 
