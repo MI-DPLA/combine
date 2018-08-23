@@ -1927,71 +1927,75 @@ class Record(mongoengine.Document):
 								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
 								match_results = self.dpla_api_record_match(search_string=search_string)
 
-							# if match found from list iteration or single string search, use
-							if match_results:
-								logger.debug("THIS HAPPEND")
-								self.dpla_api_doc = match_results
-								return self.dpla_api_doc
 
-				# preapre search query
-				api_q = requests.get(
-					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+					# parse results
+					# count instances of isShownAt, a single one is good enough
+					if 'isShownAt' in self.dpla_api_matches.keys() and len(self.dpla_api_matches['isShownAt']) == 1:
+						self.dpla_api_doc = self.dpla_api_matches['isShownAt'][0]['hit']
 
-				# attempt to parse response as JSON
-				try:
-					api_r = api_q.json()
-				except:
-					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
-					self.dpla_api_doc = None
+					# otherwise, count all, and if only one, use
+					else:
+						matches = []
+						for field,field_matches in self.dpla_api_matches.items():
+							matches.extend(field_matches)
+
+						if len(matches) == 1:
+							self.dpla_api_doc = matches[0]['doc']
+
+						else:
+							logger.debug('more than one found')
+							self.dpla_api_doc = None
+
+					# return
 					return self.dpla_api_doc
 
-				# if count present
-				if 'count' in api_r.keys():
-					
-					# response
-					if api_r['count'] >= 1:
-
-						# add matches to matches
-						logger.debug('one or more matches found, adding to matches')
-						field,value = search_string.split('=')
-						value = urllib.parse.unquote(value)
-						
-						# check for matches attr
-						if not hasattr(self, "dpla_api_matches"):
-							self.dpla_api_matches = {}
-						
-						# add mapped field used for searching
-						if field not in self.dpla_api_matches.keys():
-							self.dpla_api_matches[field] = {}
-						
-						# add matches for values searched
-						self.dpla_api_matches[field][value] = api_r['docs']
-
-						# single doc found, using
-						if api_r['count'] == 1:
-							dpla_api_doc = api_r['docs'][0]
-							logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
-
-						# multiple docs founds, ignoring
-						elif api_r['count'] > 1:
-							logger.debug('multiple hits for DPLA API query: adding matches and continuing')
-							dpla_api_doc = None
-
-					# no matches
-					else:
-						logger.debug('no matches found, aborting')
-						dpla_api_doc = None
 				else:
-					logger.debug(api_r)
-					dpla_api_doc = None
+					# prepare search query
+					api_q = requests.get(
+						'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
-				# save to record instance and return
-				self.dpla_api_doc = dpla_api_doc				
-				return self.dpla_api_doc
+					# attempt to parse response as JSON
+					try:
+						api_r = api_q.json()
+					except:
+						logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
+						self.dpla_api_doc = None
+						return self.dpla_api_doc
+
+					# if count present
+					if 'count' in api_r.keys():
+
+						# response
+						if api_r['count'] >= 1:
+
+							# add matches to matches
+							logger.debug('one or more matches found, adding to matches')
+							field,value = search_string.split('=')
+							value = urllib.parse.unquote(value)
+							
+							# check for matches attr
+							if not hasattr(self, "dpla_api_matches"):
+								logger.debug("setting self.dpla_api_matches")
+								self.dpla_api_matches = {}
+							
+							# add mapped field used for searching
+							if field not in self.dpla_api_matches.keys():
+								logger.debug("setting field")
+								self.dpla_api_matches[field] = []
+							
+							# add matches for values searched
+							for doc in api_r['docs']:
+								logger.debug('adding doc')
+								self.dpla_api_matches[field].append({
+										"search_term":value,
+										"hit":doc
+									})
+
+					else:
+						logger.debug(api_r)
 
 		# return None by default
-		self.dpla_api_doc = None
-		self.dpla_api_matches = matches
+		self.dpla_api_doc = None		
 		return self.dpla_api_doc
 
 
