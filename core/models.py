@@ -1905,25 +1905,20 @@ class Record(mongoengine.Document):
 					for local_mapped_field, target_dpla_field in opinionated_search_fields:
 
 						# if local_mapped_field in keys
-						if local_mapped_field in mapped_dpla_fields.keys():
-
-							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
+						if local_mapped_field in mapped_dpla_fields.keys():							
 
 							# get value for mapped field
 							field_value = mapped_dpla_fields[local_mapped_field]
 
 							# if list, loop through and attempt searches
-							if type(field_value) == list:
-								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
+							if type(field_value) == list:								
 
-								for val in field_value:
-									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+								for val in field_value:									
 									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
 									match_results = self.dpla_api_record_match(search_string=search_string)
 
 							# else if string, perform search
-							else:
-								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+							else:								
 								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
 								match_results = self.dpla_api_record_match(search_string=search_string)
 
@@ -1943,7 +1938,6 @@ class Record(mongoengine.Document):
 							self.dpla_api_doc = matches[0]['doc']
 
 						else:
-							logger.debug('more than one found')
 							self.dpla_api_doc = None
 
 					# return
@@ -1969,23 +1963,19 @@ class Record(mongoengine.Document):
 						if api_r['count'] >= 1:
 
 							# add matches to matches
-							logger.debug('one or more matches found, adding to matches')
 							field,value = search_string.split('=')
 							value = urllib.parse.unquote(value)
 							
 							# check for matches attr
 							if not hasattr(self, "dpla_api_matches"):
-								logger.debug("setting self.dpla_api_matches")
 								self.dpla_api_matches = {}
 							
 							# add mapped field used for searching
 							if field not in self.dpla_api_matches.keys():
-								logger.debug("setting field")
 								self.dpla_api_matches[field] = []
 							
 							# add matches for values searched
 							for doc in api_r['docs']:
-								logger.debug('adding doc')
 								self.dpla_api_matches[field].append({
 										"search_term":value,
 										"hit":doc
@@ -1995,7 +1985,7 @@ class Record(mongoengine.Document):
 						logger.debug(api_r)
 
 		# return None by default
-		self.dpla_api_doc = None		
+		self.dpla_api_doc = None
 		return self.dpla_api_doc
 
 
