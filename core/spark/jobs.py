@@ -87,13 +87,12 @@ class CombineRecordSchema(object):
 				StructField('record_id', StringType(), True),
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
-				StructField('unique', BooleanType(), True),
-				StructField('valid', BooleanType(), True),
+				StructField('unique', BooleanType(), True),				
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False),
 				StructField('fingerprint', IntegerType(), False),
-				StructField('transformed', BooleanType(), False)				
+				StructField('transformed', BooleanType(), False)
 			]
 		)
 
