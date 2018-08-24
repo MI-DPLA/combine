@@ -418,8 +418,8 @@
 										<tr>
 											<td><code>{{ dpla_bulk_data_matches.dbdd.s3_key }}</code></td>
 											<td>{{ record_count_details.records }}</td>
-											<td><a href="#">{{ dpla_bulk_data_matches.matches }}</a></td>
-											<td><a href="#">{{ dpla_bulk_data_matches.misses }}</a></td>
+											<td class="bg_light_green">{{ dpla_bulk_data_matches.matches }}</td>
+											<td class="bg_light_red">{{ dpla_bulk_data_matches.misses }}</td>
 									</tbody>
 								</table>
 							</div>
@@ -428,7 +428,7 @@
 						<!-- DataTable of DPLA Matches -->
 						<div class="row">
 							<div class="col-md-12">
-								<h4>Matches</h4>
+								<h4>Record Matches</h4>
 								<table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
@@ -442,7 +442,7 @@
 						<!-- DataTable of DPLA Misses -->
 						<div class="row">
 							<div class="col-md-12">
-								<h4>Misses</h4>
+								<h4>Record Misses</h4>
 								<table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover dt_table">
 									<thead>
 										<th>DB ID</th>
@@ -501,7 +501,7 @@
 
 						<div class="row">
 							<div class="col-md-12">
-								<p>No DPLA Bulk Data Comparisons were made, or no matches found.</p>
+								<p>No DPLA Bulk Data Comparisons have been done for this Job.</p>
 							</div>
 						</div>
 
