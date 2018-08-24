@@ -24,11 +24,13 @@ import pyjxslt
 try:
 	from es import ESIndex
 	from utils import PythonUDFRecord, refresh_django_db_connection	
-	from record_validation import ValidationScenarioSpark	
+	from record_validation import ValidationScenarioSpark
+	from console import get_job_es	
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 	from core.spark.record_validation import ValidationScenarioSpark
+	from core.spark.console import get_job_es
 
 # import Row from pyspark
 from pyspark import StorageLevel
@@ -92,7 +94,9 @@ class CombineRecordSchema(object):
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False),
 				StructField('fingerprint', IntegerType(), False),
-				StructField('transformed', BooleanType(), False)
+				StructField('transformed', BooleanType(), False),
+				StructField('valid', BooleanType(), False),
+				StructField('dbdm', BooleanType(), False)
 			]
 		)
 
@@ -206,6 +210,12 @@ class CombineSparkJob(object):
 			.over(Window.partitionBy('record_id')) == True)\
 			.cast('boolean'))
 
+		# add valid column
+		records_df = records_df.withColumn('valid', pyspark_sql_functions.lit(True))
+
+		# handle DPLA matching, resulting in dbdm boolean column
+		records_df = self.bulk_data_compare(records_df)
+
 		# ensure columns to avro and DB
 		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
 
@@ -214,10 +224,8 @@ class CombineSparkJob(object):
 			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
 			.write.format("com.databricks.spark.avro").save(self.job.job_output)
 
-		# add valid column
-		records_df_combine_cols = records_df_combine_cols.withColumn('valid', pyspark_sql_functions.lit(True))
-
 		# write records to MongoDB
+		self.update_jobGroup('Saving Records to DB')
 		records_df_combine_cols.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
 		.option("uri","mongodb://127.0.0.1")\
@@ -258,11 +266,7 @@ class CombineSparkJob(object):
 				)
 				vs.run_record_validation_scenarios()
 
-			# # run comparison against bulk data if provided
-			# db_records = self.bulk_data_compare(db_records)
-
-			# return db_records DataFrame
-
+			# return
 			return db_records
 
 		else:		
@@ -534,7 +538,7 @@ class CombineSparkJob(object):
 			return records_df
 
 
-	def bulk_data_compare(self, db_records):
+	def bulk_data_compare(self, records_df):
 
 		'''
 		Method to compare against bulk data if provided
@@ -555,36 +559,23 @@ class CombineSparkJob(object):
 			dbdd = DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
 			self.logger.info('DBDD retrieved: %s @ ES index %s' % (dbdd.s3_key, dbdd.es_index))
 
-			# get bulk data as DF from ES
-			dpla_rdd = self.spark.sparkContext.newAPIHadoopRDD(
-				inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
-				keyClass="org.apache.hadoop.io.NullWritable",
-				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
-				conf={ "es.resource" : "%s/item" % dbdd.es_index }
-			)
-			dpla_df = dpla_rdd.toDF()			
+			# get DPLA bulk data from ES as DF
+			dbdd = DPLABulkDataDownload.objects.get(pk=2)
+			dpla_rdd = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item', field_exclude='*', as_rdd=True)
+			dpla_df = dpla_rdd.map(lambda row: (row[0], )).toDF().withColumnRenamed('_1','dpla_id')
 
-			# check if records from job are in bulk data DF
-			in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select(db_records['id'])
+			# perform leftouter join, resulting in value/null dpla_id field
+			match_df = records_df.join(dpla_df, records_df['record_id'] == dpla_df['dpla_id'], 'leftouter')
 
-			# prepare matches DF
-			dbdd_id = dbdd.id
-			matches_to_write = in_dpla.withColumn('record_id', in_dpla['id']).withColumn('match', lit(1)).withColumn('dbdd_id', lit(dbdd_id)).select('match', 'record_id', 'dbdd_id')
-			
-			# write to DPLABulkDataMatch table
-			matches_to_write.write.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_dplabulkdatamatch',
-				properties=settings.COMBINE_DATABASE,
-				mode='append'
-			)
+			# set dbdm column: where dpla_id has value, True, else False
+			match_df = match_df.withColumn('dbdm', pyspark_sql_functions.when(match_df['dpla_id'].isNotNull(), True).otherwise(False))
 
-			# return
-			return db_records
+			# return			
+			return match_df
 
-		# else, return untouched
+		# else, return with dbdm column all False
 		else:
-			return db_records
+			return records_df.withColumn('dbdm', pyspark_sql_functions.lit(False))
 
 
 	def fingerprint_records(self, df):

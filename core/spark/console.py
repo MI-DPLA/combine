@@ -145,7 +145,7 @@ def get_job_as_df(spark, job_id, remove_id=False):
 	return mdf
 
 
-def get_job_es(spark, job_id=None, indices=None, es_query=None, field_exclude=None, as_rdd=False):
+def get_job_es(spark, job_id=None, indices=None, doc_type='record', es_query=None, field_exclude=None, as_rdd=False):
 
 	'''
 	Convenience method to retrieve ElasticSearch indices as DataFrame
@@ -159,7 +159,7 @@ def get_job_es(spark, job_id=None, indices=None, es_query=None, field_exclude=No
 
 	# prep conf
 	conf = {
-		"es.resource":"%s/record" % es_indexes,
+		"es.resource":"%s/%s" % (es_indexes,doc_type),
 		"es.output.json":"true",
 		"es.input.max.docs.per.partition":"10000"
 	}

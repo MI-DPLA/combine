@@ -1584,6 +1584,7 @@ class Record(mongoengine.Document):
 	unique = mongoengine.BooleanField(default=True)
 	unique_published = mongoengine.BooleanField(default=True)
 	valid = mongoengine.BooleanField(default=True)
+	dbdm = mongoengine.BooleanField(default=False)
 
 	# meta
 	meta = {
@@ -1598,7 +1599,8 @@ class Record(mongoengine.Document):
 			{'fields': ['success']},
 			{'fields': ['valid']},
 			{'fields': ['published']},
-			{'fields': ['publish_set_id']}
+			{'fields': ['publish_set_id']},
+			{'fields': ['dbdm']}
 		]
 	}
 
@@ -2774,20 +2776,73 @@ class DPLABulkDataDownload(models.Model):
 
 
 
-class DPLABulkDataMatch(models.Model):
+# class DPLABulkDataMatchOLD(models.Model):
 
-	'''
-	Class to record DPLA bulk data matches (DBDM)
-	'''
+# 	'''
+# 	Class to record DPLA bulk data matches (DBDM)
+# 	'''
 
-	# record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
-	match = models.BooleanField(default=True)
+# 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
+# 	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
+# 	match = models.BooleanField(default=True)
 
 
-	def __str__(self):
-		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
+# 	def __str__(self):
+# 		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
 
+
+
+# class DPLABulkDataMatch(mongoengine.Document):
+
+
+# 	# fields
+# 	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+# 	job_id = mongoengine.IntField()
+# 	dbdd_id = mongoengine.IntField()	
+# 	match = mongoengine.BooleanField(default=True)
+
+
+# 	# meta
+# 	meta = {
+# 		'index_options': {},
+#         'index_background': False,        
+#         'auto_create_index': False,
+#         'index_drop_dups': False,
+# 		'indexes': [
+# 			{'fields': ['record_id']},
+# 			{'fields': ['job_id']},
+# 			{'fields': ['dbdd']},
+# 		]
+# 	}
+
+
+# 	# cached attributes
+# 	_dbdd = None
+
+
+# 	def __str__(self):
+# 		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
+
+
+# 	# convenience method
+# 	@property
+# 	def record(self):
+# 		return self.record_id
+
+
+# 	# define job property
+# 	@property
+# 	def dbdd(self):
+
+# 		'''
+# 		Method to retrieve DPLA Bulk Data Download from Django ORM via dbdd_id
+# 		'''
+
+# 		if self._dbdd is None:
+# 			dbdd = DPLABulkDataDownload.objects.get(pk=self.dbdd_id)
+# 			self._dbdd = dbdd			
+# 		return self._dbdd
+	
 
 
 class CombineBackgroundTask(models.Model):
