@@ -369,7 +369,7 @@
 												{% for match in matches %}
 													<tr {% if field == 'isShownAt' %}style="background-color: rgba(255, 255, 0, 0.4);"{% endif %}>
 														<td><code>{{field}}</code></td>
-														<td>{{match.search_term}}</td>														
+														<td><code>{{match.search_term}}</code></td>
 														<td><code>{{match.hit.originalRecord.id}}</code></td>
 														<td><a target="_blank" href="https://dp.la/item/{{ match.hit.id }}">{{match.hit.id}}</a></td>
 													</tr>

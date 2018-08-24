@@ -213,8 +213,8 @@ class CombineSparkJob(object):
 		# add valid column
 		records_df = records_df.withColumn('valid', pyspark_sql_functions.lit(True))
 
-		# handle DPLA matching, resulting in dbdm boolean column
-		records_df = self.bulk_data_compare(records_df)
+		# add DPLA Bulk Data Match (dbdm) column
+		records_df = records_df.withColumn('dbdm', pyspark_sql_functions.lit(False))
 
 		# ensure columns to avro and DB
 		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
@@ -248,7 +248,7 @@ class CombineSparkJob(object):
 			# index to ElasticSearch			
 			self.update_jobGroup('Indexing to ElasticSearch')
 			if index_records and settings.INDEX_TO_ES:
-				ESIndex.index_job_to_es_spark(
+				es_rdd = ESIndex.index_job_to_es_spark(
 					self.spark,
 					job=self.job,
 					records_df=db_records,
@@ -265,6 +265,9 @@ class CombineSparkJob(object):
 					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
 				)
 				vs.run_record_validation_scenarios()
+
+			# handle DPLA Bulk Data matching, rewriting/updating records where match is found
+			self.dpla_bulk_data_compare(db_records, es_rdd)
 
 			# return
 			return db_records
@@ -538,13 +541,20 @@ class CombineSparkJob(object):
 			return records_df
 
 
-	def bulk_data_compare(self, records_df):
+	def dpla_bulk_data_compare(self, records_df, es_rdd):
 
 		'''
 		Method to compare against bulk data if provided
+
+		Args:
+			records_df (dataframe): records post-write to DB
+			es_rdd (rdd): RDD of documents as written to ElasticSearch
+				Columns:
+					_1 : boolean, 'success'/'failure'
+					_2 : map, mapped fields
 		'''
 
-		self.logger.info('running bulk data compare')
+		self.logger.info('Running DPLA Bulk Data Compare')
 		self.update_jobGroup('Running DPLA Bulk Data Compare')
 
 		# get dbdd ID from kwargs
@@ -560,21 +570,29 @@ class CombineSparkJob(object):
 			self.logger.info('DBDD retrieved: %s @ ES index %s' % (dbdd.s3_key, dbdd.es_index))
 
 			# get DPLA bulk data from ES as DF
-			dbdd = DPLABulkDataDownload.objects.get(pk=2)
-			dpla_rdd = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item', field_exclude='*', as_rdd=True)
-			dpla_df = dpla_rdd.map(lambda row: (row[0], )).toDF().withColumnRenamed('_1','dpla_id')
+			dpla_df = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item')
 
-			# perform leftouter join, resulting in value/null dpla_id field
-			match_df = records_df.join(dpla_df, records_df['record_id'] == dpla_df['dpla_id'], 'leftouter')
+			# get job mapped fields from es_rdd
+			es_df = es_rdd.toDF()			
 
-			# set dbdm column: where dpla_id has value, True, else False
-			match_df = match_df.withColumn('dbdm', pyspark_sql_functions.when(match_df['dpla_id'].isNotNull(), True).otherwise(False))
+			# join on isShownAt
+			matches_df = es_df.join(dpla_df, es_df['_2']['dpla_isShownAt'] == dpla_df['isShownAt'], 'leftsemi')
+
+			# select records from records_df for updating (writing)
+			update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['_2']['db_id'], 'leftsemi')
+
+			# set dbdm column to True
+			update_dbdm_df = update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
+
+			# write to DB
+			update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "record").save()
 
 			# writing params to job_details
-			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
-
-			# return			
-			return match_df
+			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})			
 
 		# else, return with dbdm column all False
 		else:

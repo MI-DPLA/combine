@@ -32,7 +32,10 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 
 # import xml2kvp
-from core.xml2kvp import XML2kvp
+try:
+	from core.xml2kvp import XML2kvp
+except:
+	from xml2kvp import XML2kvp
 
 
 class ESIndex(object):
@@ -163,6 +166,9 @@ class ESIndex(object):
 
 		# refresh index
 		es_handle_temp.indices.refresh(index_name)
+
+		# return
+		return to_index_rdd
 
 
 	@staticmethod

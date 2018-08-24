@@ -145,10 +145,27 @@ def get_job_as_df(spark, job_id, remove_id=False):
 	return mdf
 
 
-def get_job_es(spark, job_id=None, indices=None, doc_type='record', es_query=None, field_exclude=None, as_rdd=False):
+def get_job_es(spark,
+	job_id=None,
+	indices=None,
+	doc_type='record',
+	es_query=None,
+	field_include=None,
+	field_exclude=None,
+	as_rdd=False):
 
 	'''
-	Convenience method to retrieve ElasticSearch indices as DataFrame
+	Convenience method to retrieve documents from ElasticSearch
+
+	Args:
+
+		job_id (int): job to retrieve
+		indices (list): list of index strings to retrieve from
+		doc_type (str): defaults to 'record', but configurable (e.g. 'item')
+		es_query (str): JSON string of ES query
+		field_include (str): comma seperated list of fields to include in response
+		field_exclude (str): comma seperated list of fields to exclude in response
+		as_rdd (boolean): boolean to return as RDD, or False to convert to DF 
 	'''
 
 	# handle indices
@@ -171,6 +188,10 @@ def get_job_es(spark, job_id=None, indices=None, doc_type='record', es_query=Non
 	# handle field exclusion
 	if field_exclude:
 		conf['es.read.field.exclude'] = field_exclude
+
+	# handle field inclusion
+	if field_include:
+		conf['es.read.field.include'] = field_exclude
 
 	# get es index as RDD
 	es_rdd = spark.sparkContext.newAPIHadoopRDD(
