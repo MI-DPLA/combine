@@ -779,29 +779,6 @@ class Job(models.Model):
 			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
-	# @property
-	# def dpla_mapping(self):
-
-	# 	'''
-	# 	Method to return DPLA mapping for this job
-
-	# 	Args:
-	# 		None
-
-	# 	Returns:
-	# 		(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
-	# 	'''
-
-	# 	if not hasattr(self, '_dpla_mapping'):
-	# 		if self.dplajobmap_set.count() == 1:
-	# 			self._dpla_mapping = self.dplajobmap_set.first()
-	# 		else:
-	# 			self._dpla_mapping = None
-
-	# 	# return
-	# 	return self._dpla_mapping
-
-
 	def get_lineage(self, directionality='downstream'):
 
 		'''
@@ -1044,47 +1021,40 @@ class Job(models.Model):
 	def get_dpla_bulk_data_matches(self):
 
 		'''
-		Method to generate a QuerySet of DPLABulkDataMatch
+		Method to update counts and return overview of results of DPLA Bulk Data matching
 		'''
 
-		# MONGODEBUG
-		return False
+		# check job_details for dbdm key in job_details, indicating bulk data check
+		dbdm = self.job_details_dict.get('dbdm',False)
 
-		# # get match checks
-		# t_stime = time.time()
-		# match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
-		# logger.debug('match attempts returned: %s' % (time.time() - t_stime))
+		# if present
+		if dbdm:
 
-		# # if match_attempts more than zero, get associated dbdd
-		# if match_attempts.count() > 0:
-
-		# 	# get records from job
-		# 	records = self.get_records()
-
-		# 	# get the dbdd
-		# 	t_stime = time.time()
-		# 	dbdd = match_attempts.first().dbdd
-		# 	logger.debug('dbdd returned: %s' % (time.time() - t_stime))
-
-		# 	# get matches
-		# 	t_stime = time.time()
-		# 	matches = records.filter(id__in=match_attempts.values_list('record_id'))
-		# 	logger.debug('matches returned: %s' % (time.time() - t_stime))
-
-		# 	# get misses
-		# 	t_stime = time.time()
-		# 	misses = records.exclude(id__in=match_attempts.values_list('record_id'))
-		# 	logger.debug('misses returned: %s' % (time.time() - t_stime))
+			# retrieve DBDD
+			dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd_id'])
 			
-		# 	return {
-		# 		'dbdd':dbdd,
-		# 		'matches':matches,
-		# 		'misses': misses
-		# 	}
+			# get misses and matches, counting if not yet done
+			if dbdm['matches'] == None and dbdm['misses'] == None:
 
-		# else:
-		# 	logger.debug('DPLA Bulk comparison not run, or no matches found.')
-		# 	return False
+				# matches
+				dbdm['matches'] = self.get_records().filter(dbdm=True).count()
+
+				# misses
+				dbdm['misses'] = self.get_records().filter(dbdm=False).count()
+
+				# update job details
+				self.update_job_details(dbdm)
+
+			# return dict
+			return {
+				'dbdd':dbdd,
+				'matches':dbdm['matches'],
+				'misses': dbdm['misses']
+			}
+
+		else:
+			logger.debug('DPLA Bulk comparison not run, or no matches found.')
+			return False
 
 
 	def drop_es_index(self):
@@ -2774,75 +2744,6 @@ class DPLABulkDataDownload(models.Model):
 	def __str__(self):
 		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
 
-
-
-# class DPLABulkDataMatchOLD(models.Model):
-
-# 	'''
-# 	Class to record DPLA bulk data matches (DBDM)
-# 	'''
-
-# 	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-# 	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
-# 	match = models.BooleanField(default=True)
-
-
-# 	def __str__(self):
-# 		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
-
-
-
-# class DPLABulkDataMatch(mongoengine.Document):
-
-
-# 	# fields
-# 	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
-# 	job_id = mongoengine.IntField()
-# 	dbdd_id = mongoengine.IntField()	
-# 	match = mongoengine.BooleanField(default=True)
-
-
-# 	# meta
-# 	meta = {
-# 		'index_options': {},
-#         'index_background': False,        
-#         'auto_create_index': False,
-#         'index_drop_dups': False,
-# 		'indexes': [
-# 			{'fields': ['record_id']},
-# 			{'fields': ['job_id']},
-# 			{'fields': ['dbdd']},
-# 		]
-# 	}
-
-
-# 	# cached attributes
-# 	_dbdd = None
-
-
-# 	def __str__(self):
-# 		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
-
-
-# 	# convenience method
-# 	@property
-# 	def record(self):
-# 		return self.record_id
-
-
-# 	# define job property
-# 	@property
-# 	def dbdd(self):
-
-# 		'''
-# 		Method to retrieve DPLA Bulk Data Download from Django ORM via dbdd_id
-# 		'''
-
-# 		if self._dbdd is None:
-# 			dbdd = DPLABulkDataDownload.objects.get(pk=self.dbdd_id)
-# 			self._dbdd = dbdd			
-# 		return self._dbdd
-	
 
 
 class CombineBackgroundTask(models.Model):

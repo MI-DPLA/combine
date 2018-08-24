@@ -570,6 +570,9 @@ class CombineSparkJob(object):
 			# set dbdm column: where dpla_id has value, True, else False
 			match_df = match_df.withColumn('dbdm', pyspark_sql_functions.when(match_df['dpla_id'].isNotNull(), True).otherwise(False))
 
+			# writing params to job_details
+			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+
 			# return			
 			return match_df
 

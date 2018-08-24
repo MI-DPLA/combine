@@ -3302,23 +3302,20 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 			
 			# return queryset used as base for futher sorting/filtering
 			
-			# get job
+			# get job and records
 			job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
-			# get DPLA misses / matches
-			dpla_bulk_data_matches = job.get_dpla_bulk_data_matches()
-
-			# return queryset
+			# return queryset filtered for match/miss
 			if self.kwargs['match_type'] == 'matches':
-				return dpla_bulk_data_matches['matches']
+				return job.get_records().filter(dbdm=True)
 			elif self.kwargs['match_type'] == 'misses':
-				return dpla_bulk_data_matches['misses']
+				return job.get_records().filter(dbdm=False)
 
 
 		def render_column(self, row, column):
 
 			# determine record link
-			target_record = row.record
+			target_record = row
 			record_link = reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
@@ -3343,45 +3340,45 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 				return super(DTDPLABulkDataMatches, self).render_column(row, column)
 
 
-		def get_context_data(self, *args, **kwargs):
-			stime = time.time()
-			try:
-				self.initialize(*args, **kwargs)
+		# def get_context_data(self, *args, **kwargs):
+		# 	stime = time.time()
+		# 	try:
+		# 		self.initialize(*args, **kwargs)
 
-				qs = self.get_initial_queryset()
+		# 		qs = self.get_initial_queryset()
 
-				# number of records before filtering
-				total_records = qs.count()
+		# 		# number of records before filtering
+		# 		total_records = qs.count()
 
-				qs = self.filter_queryset(qs)
+		# 		qs = self.filter_queryset(qs)
 
-				# number of records after filtering
-				total_display_records = qs.count()
+		# 		# number of records after filtering
+		# 		total_display_records = qs.count()
 
-				qs = self.ordering(qs)
-				qs = self.paging(qs)
+		# 		qs = self.ordering(qs)
+		# 		qs = self.paging(qs)
 
-				# prepare output data
-				if self.pre_camel_case_notation:
-					aaData = self.prepare_results(qs)
+		# 		# prepare output data
+		# 		if self.pre_camel_case_notation:
+		# 			aaData = self.prepare_results(qs)
 
-					ret = {'sEcho': int(self._querydict.get('sEcho', 0)),
-						   'iTotalRecords': total_records,
-						   'iTotalDisplayRecords': total_display_records,
-						   'aaData': aaData
-						   }
-				else:
-					data = self.prepare_results(qs)
+		# 			ret = {'sEcho': int(self._querydict.get('sEcho', 0)),
+		# 				   'iTotalRecords': total_records,
+		# 				   'iTotalDisplayRecords': total_display_records,
+		# 				   'aaData': aaData
+		# 				   }
+		# 		else:
+		# 			data = self.prepare_results(qs)
 
-					ret = {'draw': int(self._querydict.get('draw', 0)),
-						   'recordsTotal': total_records,
-						   'recordsFiltered': total_display_records,
-						   'data': data
-						   }
-				logger.debug('context data total %s' % (time.time() - stime))
-				return ret
-			except Exception as e:
-				return self.handle_exception(e)
+		# 			ret = {'draw': int(self._querydict.get('draw', 0)),
+		# 				   'recordsTotal': total_records,
+		# 				   'recordsFiltered': total_display_records,
+		# 				   'data': data
+		# 				   }
+		# 		logger.debug('context data total %s' % (time.time() - stime))
+		# 		return ret
+		# 	except Exception as e:
+		# 		return self.handle_exception(e)
 
 
 
