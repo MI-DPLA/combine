@@ -1462,6 +1462,9 @@ def job_update(request, org_id, record_group_id, job_id):
 		field_mappers = models.FieldMapper.objects.all()
 		orig_fm_config_json = cjob.job.get_fm_config_json()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
 
@@ -1471,6 +1474,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
 				'field_mappers':field_mappers,
+				'bulk_downloads':bulk_downloads,
 				'xml2kvp_handle':models.XML2kvp(),
 				'orig_fm_config_json':orig_fm_config_json,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1519,6 +1523,17 @@ def job_update(request, org_id, record_group_id, job_id):
 
 			# initiate Combine BG Task
 			bg_task = cjob.remove_validation_bg_task(jv_id)
+
+			return redirect('bg_tasks')
+
+		# handle validation removal
+		if update_type == 'dbdm':
+
+			# get validation scenario to remove
+			dbdd_id = request.POST.get('dbdd', False)
+
+			# initiate Combine BG Task
+			bg_task = cjob.dbdm_bg_task(dbdd_id)
 
 			return redirect('bg_tasks')
 
@@ -2400,6 +2415,7 @@ def dpla_bulk_data_download(request):
 
 	if request.method == 'POST':
 
+		# OLD ######################################################################
 		logger.debug('initiating bulk data download')
 
 		# get DPLABulkDataClient
@@ -2410,6 +2426,7 @@ def dpla_bulk_data_download(request):
 
 		# return to configuration screen
 		return redirect('configuration')
+
 
 
 ####################################################################
@@ -3327,13 +3344,13 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 			if column == 'id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle all else
 			else:

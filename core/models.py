@@ -4453,6 +4453,31 @@ class CombineJob(object):
 		return bg_task
 
 
+	def dbdm_bg_task(self, dbdd_id):
+
+		'''
+		Method to run DPLA Bulk Data Match as bg task
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Run DPLA Bulk Data Match for Job: %s' % (self.job.name),
+			task_type = 'job_dbdm',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'dbdd_id':dbdd_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_dbdm(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
 
 class HarvestJob(CombineJob):
 

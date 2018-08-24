@@ -25,12 +25,12 @@ try:
 	from es import ESIndex
 	from utils import PythonUDFRecord, refresh_django_db_connection	
 	from record_validation import ValidationScenarioSpark
-	from console import get_job_es	
+	from console import get_job_as_df, get_job_es
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 	from core.spark.record_validation import ValidationScenarioSpark
-	from core.spark.console import get_job_es
+	from core.spark.console import get_job_as_df, get_job_es
 
 # import Row from pyspark
 from pyspark import StorageLevel
@@ -592,7 +592,7 @@ class CombineSparkJob(object):
 			.option("collection", "record").save()
 
 			# writing params to job_details
-			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})			
+			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
 
 		# else, return with dbdm column all False
 		else:
@@ -1440,6 +1440,57 @@ class RemoveValidationsSpark(CombineSparkPatch):
 					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
 				)
 				vs.remove_validation_scenarios()
+
+
+
+class RunDBDM(CombineSparkPatch):
+
+	'''
+	Class to run DPLA Bulk Data Match as patch job
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job
+			- dbdd_id (int): int of DBDD instance to use
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.update_jobGroup('Removing DPLA Bulk Data Match', self.job.id)
+
+		# get full dbdd es
+		dbdd = DPLABulkDataDownload.objects.get(pk=int(self.kwargs['dbdd_id']))
+		dpla_df = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item')
+
+		# get job mapped fields
+		es_df = get_job_es(self.spark, job_id=self.job.id)
+
+		# get job records
+		records_df = get_job_as_df(self.spark, self.job.id)
+
+		# join on isShownAt
+		matches_df = es_df.join(dpla_df, es_df['dpla_isShownAt'] == dpla_df['isShownAt'], 'leftsemi')
+
+		# select records_df for writing
+		update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['db_id'], 'leftsemi')
+
+		# set dbdm column to match
+		update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
+
+		# write to DB
+		update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
+
+		# writing params to job_details
+		self.job.update_job_details({'dbdm':{'dbdd_id':int(self.kwargs['dbdd_id']), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+
+
+
 
 
 
