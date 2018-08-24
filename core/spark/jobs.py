@@ -1477,7 +1477,7 @@ class RunDBDM(CombineSparkPatch):
 		update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['db_id'], 'leftsemi')
 
 		# set dbdm column to match
-		update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
+		update_dbdm_df = update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
 
 		# write to DB
 		update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
