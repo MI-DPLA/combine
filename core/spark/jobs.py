@@ -430,8 +430,8 @@ class CombineSparkJob(object):
 				match = rits.regex_match_payload
 				replace = rits.regex_replace_payload
 				trans_target = rits.transformation_target
-				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
-				records_df = records_rdd.toDF(schema=records_df.schema)
+				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))				
+				records_df = records_rdd.toDF()
 
 			# handle python
 			if rits.transformation_type == 'python':	
