@@ -463,7 +463,7 @@
 							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
 							        "searchDelay": 1000,
 							        "pageLength": 10,
-							        "order": [[ 1, "desc" ]],
+							        "order": [],
 							        "columns": [
 							            {
 							            	title: "DB ID"
@@ -483,7 +483,7 @@
 							        "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
 							        "searchDelay": 1000,
 							        "pageLength": 10,
-							        "order": [[ 1, "desc" ]],
+							        "order": [],
 							        "columns": [
 							            {
 							            	title: "DB ID"

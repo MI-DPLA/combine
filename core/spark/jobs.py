@@ -423,8 +423,7 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed,
-						unique = row.unique,
+						transformed = row.transformed,						
 						valid = row.valid
 					)
 
@@ -472,8 +471,7 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed,
-						unique = row.unique,
+						transformed = row.transformed,						
 						valid = row.valid
 					)
 
@@ -523,8 +521,7 @@ class CombineSparkJob(object):
 						oai_set = row.oai_set,
 						success = success,
 						fingerprint = row.fingerprint,
-						transformed = row.transformed,
-						unique = row.unique,
+						transformed = row.transformed,						
 						valid = row.valid
 					)
 
