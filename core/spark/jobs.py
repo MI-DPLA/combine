@@ -273,7 +273,7 @@ class CombineSparkJob(object):
 			return db_records
 
 		else:		
-			raise Exception("Nothing written to disk for Job: %s" % self.job.name)
+			raise Exception("No successful records written to disk for Job: %s" % self.job.name)
 
 
 	def record_input_filters(self, filtered_df):

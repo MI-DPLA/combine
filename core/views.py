@@ -2931,10 +2931,12 @@ class DTRecordsJson(BaseDatatableView):
 			
 			# if job present, filter by job
 			if 'job_id' in self.kwargs.keys():
+
 				# get jobself.kwargs['job_id']
 				job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
 				# return filtered queryset
-				return job.get_records()
+				return job.get_records(success=None)
 
 			# else, return all records
 			else:
