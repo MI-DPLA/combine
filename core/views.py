@@ -2443,6 +2443,7 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
+	# get field counts
 	if published.records.count() > 0:
 		# get count of fields for all published job indices
 		field_counts = published.count_indexed_fields()
@@ -2686,11 +2687,13 @@ def job_analysis(request):
 	# if GET, prepare form
 	if request.method == 'GET':
 
-		# check if published analysis
-		analysis_type = request.GET.get('type', None)
-
-		# retrieve all jobs
+		# retrieve jobs (limiting if needed)
 		input_jobs = models.Job.objects.all()
+
+		# limit if analysis_type set		
+		analysis_type = request.GET.get('type', None)
+		if analysis_type == 'published':
+			input_jobs = input_jobs.filter(published=True)
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()

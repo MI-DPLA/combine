@@ -1144,13 +1144,17 @@ class Job(models.Model):
 
 		'''
 		Method to publish Job
+			- remove 'published_field_counts' doc from combine.misc Mongo collection 
 
 		Args:
 			publish_set_id (str): identifier to group published Records
 		'''
 
 		# debug
-		logger.debug('publishing job #%s, with publish_set_id %s' % (self.id, publish_set_id))		
+		logger.debug('publishing job #%s, with publish_set_id %s' % (self.id, publish_set_id))
+
+		# remove previously saved published field counts
+		mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})		
 
 		# mongo db command
 		result = mc_handle.combine.record.update_many({'job_id':self.id},{'$set':{'published':True, 'publish_set_id':publish_set_id}}, upsert=False)
@@ -1169,10 +1173,14 @@ class Job(models.Model):
 
 		'''
 		Method to unpublish Job
+			- remove 'published_field_counts' doc from combine.misc Mongo collection
 		'''
 
 		# debug
 		logger.debug('unpublishing job #%s' % (self.id))
+
+		# remove previously saved published field counts
+		mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})
 
 		# mongo db command
 		result = mc_handle.combine.record.update_many({'job_id':self.id},{'$set':{'published':False, 'publish_set_id':None}}, upsert=False)
@@ -3618,8 +3626,7 @@ class ESIndex(object):
 			for index,index_properties in es_r.items():
 				fields = index_properties['mappings']['record']['properties']
 				# get fields as list and extend list
-				field_names.extend(list(fields.keys()))
-				logger.debug(field_names)
+				field_names.extend(list(fields.keys()))				
 			# get unique list
 			field_names = list(set(field_names))
 
@@ -3711,6 +3718,7 @@ class ESIndex(object):
 
 		Args:
 			cardinality_precision_threshold (int, 0:40-000): Cardinality precision threshold (see note above)
+			job_record_count (int): optional pre-count of records
 
 		Returns:
 			(dict):
@@ -3751,10 +3759,6 @@ class ESIndex(object):
 				# execute search and capture as dictionary
 				sr = s.execute()
 				sr_dict = sr.to_dict()
-
-				# calc field percentages and return as list			
-				# field_count = []
-				# for field_name in field_names:
 
 				# get metrics and append if field metrics found
 				field_metrics = self._calc_field_metrics(sr_dict, field_name)
@@ -3927,14 +3931,44 @@ class PublishedRecords(object):
 			return False
 
 
-	def count_indexed_fields(self):
+	def count_indexed_fields(self, force_recount=False):
 
 		'''
 		Wrapper for ESIndex.count_indexed_fields
+			- stores results in Mongo to avoid re-calcing everytime
+				- stored as misc/published_field_counts
+			- checks Mongo for stored metrics, if not found, calcs and stores
+			- when Jobs are published, this Mongo entry is removed forcing a re-calc
+
+		Args:
+			force_recount (boolean): force recount and update to stored doc in Mongo
 		'''
 
-		# return count
-		return self.esi.count_indexed_fields()
+		# check for stored field counts
+		published_field_counts = mc_handle.combine.misc.find_one('published_field_counts')
+
+		# if present, return and use
+		if published_field_counts and not force_recount:
+			logger.debug('saved published field counts found, using')
+			return published_field_counts
+
+		# else, calculate, store, and return
+		else:
+
+			logger.debug('calculating published field counts, saving, and returning')
+			
+			# calc
+			published_field_counts = self.esi.count_indexed_fields()			
+
+			# add id and replace (upsert if necessary)
+			published_field_counts['_id'] = 'published_field_counts'
+			doc = mc_handle.combine.misc.replace_one(
+				{'_id':'published_field_counts'},
+				published_field_counts,
+				upsert=True)
+
+			# return
+			return published_field_counts
 
 
 	def update_published_uniqueness(self):
