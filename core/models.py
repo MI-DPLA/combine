@@ -3090,20 +3090,20 @@ def delete_job_post_delete(sender, instance, **kwargs):
 	logger.debug('job %s was deleted successfully' % instance)
 
 
-@receiver(models.signals.post_delete, sender=Job)
-def update_uniqueness_of_published_records(sender, instance, **kwargs):
+# @receiver(models.signals.post_delete, sender=Job)
+# def update_uniqueness_of_published_records(sender, instance, **kwargs):
 
-	'''
-	After job delete, if Publish job, update uniquess of published records
-	'''
+# 	'''
+# 	After job delete, if Publish job, update uniquess of published records
+# 	'''
 
-	if instance.job_type == 'PublishJob':
+# 	if instance.job_type == 'PublishJob':
 
-		logger.debug('updating uniquess of published records')
+# 		logger.debug('updating uniquess of published records')
 
-		# get PublishedRecords instance and run method
-		pr = PublishedRecords()
-		pr.update_published_uniqueness()
+# 		# get PublishedRecords instance and run method
+# 		pr = PublishedRecords()
+# 		pr.update_published_uniqueness()
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
@@ -3971,27 +3971,27 @@ class PublishedRecords(object):
 			return published_field_counts
 
 
-	def update_published_uniqueness(self):
+	# def update_published_uniqueness(self):
 
-		'''
-		Method to update `unique_published` field from Record table for all published records
-		Note: Very likely possible to improve performance, currently about 1s per 10k records.
-		'''
+	# 	'''
+	# 	Method to update `unique_published` field from Record table for all published records
+	# 	Note: Very likely possible to improve performance, currently about 1s per 10k records.
+	# 	'''
 
-		stime = time.time()
+	# 	stime = time.time()
 
-		# get non-unique as QuerySet
-		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
+	# 	# get non-unique as QuerySet
+	# 	dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-		# set true in bulk
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-		set_true.update(unique_published=True)
+	# 	# set true in bulk
+	# 	set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_true.update(unique_published=True)
 
-		# set false in bulk
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-		set_false.update(unique_published=False)
+	# 	# set false in bulk
+	# 	set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_false.update(unique_published=False)
 
-		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
+	# 	logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
 	@staticmethod

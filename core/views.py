@@ -3030,8 +3030,8 @@ class DTPublishedJson(BaseDatatableView):
 			'record_id',
 			'job_id',
 			'publish_set_id', 
-			'oai_set',
-			'unique_published',
+			# 'oai_set',
+			# 'unique_published',
 			'document'
 		]
 
@@ -3044,8 +3044,8 @@ class DTPublishedJson(BaseDatatableView):
 			'record_id',
 			'job_id',
 			'publish_set_id', 
-			'oai_set',
-			'unique_published',
+			# 'oai_set',
+			# 'unique_published',
 			'document'
 		]
 
@@ -3084,10 +3084,11 @@ class DTPublishedJson(BaseDatatableView):
 					}), row.record_id)
 
 			if column == 'job_id':
-				return '<a href="%s">%s</a>' % (reverse(record_group, kwargs={
+				return '<a href="%s">%s</a>' % (reverse(job_details, kwargs={
 						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id
-					}), row.job.record_group.name)
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id
+					}), row.job.name)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -3101,12 +3102,12 @@ class DTPublishedJson(BaseDatatableView):
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 
-			# handle associated job
-			if column == 'unique_published':
-				if row.unique_published:
-					return '<span style="color:green;">True</span>'
-				else:
-					return '<span style="color:red;">False</span>'
+			# # handle associated job
+			# if column == 'unique_published':
+			# 	if row.unique_published:
+			# 		return '<span style="color:green;">True</span>'
+			# 	else:
+			# 		return '<span style="color:red;">False</span>'
 
 			else:
 				return super(DTPublishedJson, self).render_column(row, column)
@@ -3126,7 +3127,7 @@ class DTPublishedJson(BaseDatatableView):
 					except:
 						logger.debug('recieved 24 chars, but not ObjectId')
 				else:
-					qs = qs.filter(mongoengine.Q(record_id=search))
+					qs = qs.filter(mongoengine.Q(record_id=search) | mongoengine.Q(publish_set_id=search))
 
 			# return
 			return qs

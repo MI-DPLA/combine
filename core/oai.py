@@ -19,7 +19,7 @@ from core import models
 logger = logging.getLogger(__name__)
 
 
-# attempt to load metadataPrefix map from localConfig, otherwise provide default
+# attempt to load metadataPrefix map from localSettings, otherwise provide default
 if hasattr(settings, 'METADATA_PREFIXES'):
 	metadataPrefix_hash = settings.METADATA_PREFIXES
 else:	
@@ -68,8 +68,7 @@ class OAIProvider(object):
 
 		# published dataframe slice parameters
 		self.start = 0
-		self.chunk_size = settings.OAI_RESPONSE_SIZE
-		self.publish_set_id = None
+		self.chunk_size = settings.OAI_RESPONSE_SIZE		
 		if 'set' in self.args.keys() and self.args['set'] != '':
 			self.publish_set_id = self.args['set']
 		else:
