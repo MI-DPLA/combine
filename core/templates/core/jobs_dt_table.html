@@ -35,7 +35,7 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
+						<a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a>
 						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
 								{% csrf_token %}
@@ -96,7 +96,10 @@
 						</div>
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>					
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a></td>				
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a><br>
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details</button></a>
+					</td>				
 				</tr>
 			{% endfor %}
 			</tbody>

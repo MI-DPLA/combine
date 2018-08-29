@@ -24,9 +24,13 @@ Field Mapper Configurations
 
 Field Mapping is one of Combine's more advanced features, and subsequently, one of the most powerful.  Field Mapping is the process of a Record's sourece document (likely XML) and mapping it in a meaningful and predictable way to key/value pairs that are suitable for a search engine like ElasticSearch.
 
-Combine uses an internal library called ``XML2kvp``, which stands "XML to Key/Value Pairs", to map XML to ElasticSearch ready JSON documents.  Within Combine, the configurations passed to XML2kvp are referred to as "Field Mapper Configurations", and like many other parts of Combine, can be named and saved to the database for later, repeated use.  This section shows all saved Field Mapper Configurations.
+Mapping values from a Record's document to discrete fields is also used for querying the DPLA API, comparing against DPLA bulk data downloads, and other purposes.
 
-Additionally, a link to test field mapper configurations can be found here:
+Combine uses an internal library called ``XML2kvp``, which stands for "XML to Key/Value Pairs", to map XML to key/value JSON documents.  Within Combine, the configurations passed to XML2kvp are referred to as "Field Mapper Configurations", and like many other parts of Combine, can be named, saved, and updated in the database for later, repeated use.  This section describes the configurations that can be used for field mapping.
+
+
+
+Field Mapping can also be tested against a single record, accessible from a Record's page under the "Run/Test Scenarios for this Record" tab.  The following is a screenshot of this testing page:
 
 .. figure:: img/test_field_mapper.png
    :alt: Testing Field Mapper Configurations
