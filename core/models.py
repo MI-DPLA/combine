@@ -1527,6 +1527,61 @@ class Transformation(models.Model):
 			return str(e)
 
 
+	def _rewrite_xsl_http_includes(self):
+
+		'''
+		Method to check XSL payloads for external HTTP includes,
+		if found, download and rewrite
+
+			- do not save self (instance), firing during pre-save signal
+		'''
+
+		if self.transformation_type == 'xslt':
+			
+			logger.debug('XSLT transformation, checking for external HTTP includes')
+
+			# rewrite flag
+			rewrite = False
+
+			# output dir
+			transformations_dir = '%s/transformations' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+
+			# parse payload
+			xsl = etree.fromstring(self.payload.encode('utf-8'))
+
+			# xpath query for xsl:include
+			includes = xsl.xpath('//xsl:include', namespaces=xsl.nsmap)
+
+			# loop through includes and check for HTTP hrefs
+			for i in includes:
+
+				# get href 
+				href = i.attrib.get('href',False)
+				
+				# check for http
+				if href:
+					if href.lower().startswith('http'):
+
+						logger.debug('external HTTP href found for xsl:include: %s' % href)
+
+						# set flag for rewrite
+						rewrite = True
+
+						# download and save to transformations directory on filesystem
+						r = requests.get(href)
+						filepath = '%s/%s' % (transformations_dir, href.split('/')[-1])
+						with open(filepath, 'wb') as f:
+							f.write(r.content)
+
+						# rewrite href and add note
+						i.attrib['href'] = filepath						
+
+			# rewrite if need be
+			if rewrite:
+				logger.debug('rewriting XSL payload')
+				self.payload = etree.tostring(xsl, encoding='utf-8', xml_declaration=True).decode('utf-8')
+
+
 
 class OAITransaction(models.Model):
 
@@ -2996,27 +3051,11 @@ def delete_job_post_delete(sender, instance, **kwargs):
 	logger.debug('job %s was deleted successfully' % instance)
 
 
-# @receiver(models.signals.post_delete, sender=Job)
-# def update_uniqueness_of_published_records(sender, instance, **kwargs):
-
-# 	'''
-# 	After job delete, if Publish job, update uniquess of published records
-# 	'''
-
-# 	if instance.job_type == 'PublishJob':
-
-# 		logger.debug('updating uniquess of published records')
-
-# 		# get PublishedRecords instance and run method
-# 		pr = PublishedRecords()
-# 		pr.update_published_uniqueness()
-
-
 @receiver(models.signals.pre_save, sender=Transformation)
 def save_transformation_to_disk(sender, instance, **kwargs):
 
 	'''
-	When users enter a payload for a transformation, write to disk for use in Spark context
+	Pre-save work for Transformations
 
 	Args:
 		sender (auth.models.Transformation): class
@@ -3035,6 +3074,10 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 			os.remove(instance.filepath)
 		except:
 			logger.debug('could not remove transformation file: %s' % instance.filepath)
+
+	# fire transformation method to rewrite external HTTP includes for XSLT
+	if instance.transformation_type == 'xslt':
+		instance._rewrite_xsl_http_includes()
 
 	# write XSLT type transformation to disk
 	if instance.transformation_type == 'xslt':
@@ -3138,6 +3181,10 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 			shutil.rmtree(instance.task_output['export_dir'])
 		except:
 			logger.debug('could not parse task output as JSON')
+
+
+
+
 
 
 ####################################################################
