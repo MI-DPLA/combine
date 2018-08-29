@@ -1069,7 +1069,7 @@ def job_transform(request, org_id, record_group_id):
 			input_jobs = record_group.job_set.all()
 
 		# get all transformation scenarios
-		transformations = models.Transformation.objects.all()
+		transformations = models.Transformation.objects.filter(use_as_include=False)
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1940,7 +1940,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
 def configuration(request):
 
 	# get all transformations
-	transformations = models.Transformation.objects.all()
+	transformations = models.Transformation.objects.filter(use_as_include=False)
 
 	# get all OAI endpoints
 	oai_endpoints = models.OAIEndpoint.objects.all()
@@ -2019,7 +2019,7 @@ def test_transformation_scenario(request):
 	if request.method == 'GET':
 
 		# get validation scenarios
-		transformation_scenarios = models.Transformation.objects.all()
+		transformation_scenarios = models.Transformation.objects.filter(use_as_include=False)
 
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)

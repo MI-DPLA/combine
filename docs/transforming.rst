@@ -16,8 +16,6 @@ The first step is to select a **single** input Job to supply the Records for tra
 
    Selecting an input Job for transformation
 
-**Note:** When selecting an input Job for Transformation, you are limited to only Jobs within the same Record Group.
-
 Next, will be selecting your pre-configured Transformation Scenario:
 
 .. figure:: img/transformation_scenario_select.png

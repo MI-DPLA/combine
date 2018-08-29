@@ -69,9 +69,9 @@ The following fields are all required:
 Transformation Scenario
 =======================
 
-Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of transformation supported: XSLT and Python code snippets.  These are described in more detail below.
+Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of well-supported transformation supported: **XSLT** and **Python code snippets**.  A third type, transforming Records based on actions performed in `Open Refine <http://openrefine.org/>`_ exists, but is not well tested or documented at this time.  These are described in more detail below.
 
-It is worth considering, when thinking about Transformations of Records in Combine, that Combine allows for multiple transformations of the same Record.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a separate Transformation Scenario, and would be run as separate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
+It is worth considering, when thinking about transforming Records in Combine, that multiple transformations can be applied to same Record; "chained" together as separate Jobs.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a separate Transformation Scenario, and would be run as separate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
 
 All Transformations require the following information:
 
@@ -103,14 +103,77 @@ In this screenshot, a few things are happening:
 
   - at the very bottom, you can see the immediate results of the Transformation as applied to the selected Record
 
-Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for real-time testing of Transformation Scenarios.
+*Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for real-time testing of Transformation Scenarios.*
 
 XSLT
 ----
 
 XSLT transformations are performed by a small XSLT processor servlet called via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  Pyjxslt uses a built-in Saxon HE XSLT processor that supports XSLT 2.0.
 
-**Note:** Currently, XSLT stylesheets that **import** other stylesheets -- either locally or remotely -- are not supported.  There are designs to incorporate `Elsevier's "spark-xml-utils" <https://github.com/elsevierlabs-os/spark-xml-utils>`_ Spark library for XSLT transformations, which would address this issue, but this has not been implemented at this time.
+When creating an XSLT Transformation Scenario, one important thing to consider are XSLT **includes** and **imports**.  XSL stylesheets allow the inclusion of other, external stylesheets.  Usually, these includes come in two flavors:
+
+  - locally on the same filesystem, e.g. ``<xsl:include href="mimeType.xsl"/>``
+  - remote, retrieved via HTTP request, e.g. ``<xsl:include href="http://www.loc.gov/standards/mods/inc/mimeType.xsl"/>``
+
+In Combine, the primary XSL stylesheet provided for a Transformation Scenario is uploaded to the pyjxslt servlet to be run by Spark.  This has the effect of breaking XSL ``include`` s that use a **local, filesystem** ``href`` s.  Additionally, depending on server configurations, pyjxslt sometimes has trouble accessing **remote** XSL ``include`` s.  But Combine provides workarounds for both scenarios.
+
+
+Local Includes
+~~~~~~~~~~~~~~
+
+For XSL stylesheets that require local, filesystem ``include`` s, a workaround in Combine is to create Transformation Scenarios for each XSL stylesheet that is imported by the primary stylesheet.  Then, use the local filesystem path that Combine creates for that Transformation Scenario, and **update** the ``<xsl:include>`` in the original stylesheet with this new location on disk.
+
+For example, let's imagine a stylesheet called ``DC2MODS.xsl`` that has the following ``<xsl:include>`` s:
+
+.. code-block:: xml
+
+    <xsl:include href="dcmiType.xsl"/>
+    <xsl:include href="mimeType.xsl"/>
+
+Originally, ``DC2MODS.xsl`` was designed to be used in the *same directory* as two files: ``dcmiType.xsl`` and ``mimeType.xsl``.  This is not possible in Combine, as XSL stylesheets for Transformation Scenarios are uploaded to another location to be used.
+
+The workaround, would be to create two new special kinds of Transformation Scenarios by checking the box ``use_as_include``, perhaps with fitting names like "dcmiType" and "mimeType", that have payloads for those two stylesheets.  When creating those Transformation Scenarios, saving, and then re-opening the Transformation Scenario in Django admin, you can see a ``Filepath`` attribute has been made which is a copy written to disk.
+
+.. figure:: img/transformation_filepath.png
+   :alt: Filepath
+   :target: _images/transformation_filepath.png
+
+   Filepath for saved Transformation Scenarios
+
+This ``Filepath`` value can then be used to replace the original ``<xsl:include>`` s in the primary stylesheet, in our example, ``DC2MODS.xsl``:
+
+.. code-block:: xml
+
+    <xsl:include href="/home/combine/data/combine/transformations/a436a2d4997d449a96e008580f6dc699.xsl"/> <!-- formerly dcmiType.xsl -->
+    <xsl:include href="/home/combine/data/combine/transformations/00eada103f6a422db564a346ed74c0d7.xsl"/> <!-- formerly mimeType.xsl -->
+
+
+Remote Includes
+~~~~~~~~~~~~~~~
+
+When the ``href`` s for XSL ``includes`` s are remote HTTP URLs, Combine attempts to rewrite the primary XSL stylesheet automatically by:
+
+  - downloading the external, remote ``include`` s from the primary stylesheet
+  - saving them locally
+  - rewriting the ``<xsl:include>`` element with this local filesystem location
+
+This has the added advantage of effectively caching the remote include, such that it is not retrieved each transformation.
+
+For example, let's imagine our trusty stylesheet called ``DC2MODS.xsl``, but with this time external, remote URLs for ``href`` s:
+
+.. code-block:: xml
+
+    <xsl:include href="http://www.loc.gov/standards/mods/inc/dcmiType.xsl"/>
+    <xsl:include href="http://www.loc.gov/standards/mods/inc/mimeType.xsl"/>
+
+With no action by the user, when this Transformation Scenario is saved, Combine will attempt to download these dependencies and rewrite, resulting in ``include`` s that look like the following:
+
+.. code-block:: xml
+
+  <xsl:include href="/home/combine/data/combine/transformations/dcmiType.xsl"/>
+  <xsl:include href="/home/combine/data/combine/transformations/mimeType.xsl"/>
+
+**Note:** If sytlesheets that remote ``include`` s rely on external stylesheets that may change or update, the primary Transformation stylesheet -- e.g. ``DC2MODS.xsl`` -- will have to be re-entered, with the original URLs, and re-saved in Combine to update the local dependencies.
 
 
 Python Code Snippet

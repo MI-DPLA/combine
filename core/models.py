@@ -1371,6 +1371,7 @@ class Transformation(models.Model):
 		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
+	use_as_include = models.BooleanField(default=False)
 	
 
 	def __str__(self):
