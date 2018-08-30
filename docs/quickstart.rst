@@ -142,7 +142,7 @@ Currently, users are responsible for determining if the Livy session is
 ready, though there are plans to have this automatically handled.
 
 To check and/or start a new Livy session, navigate to:
-http://192.168.45.10/combine/livy_sessions. The important column is
+http://192.168.45.10/combine/system. The important column is
 ``status`` which should read ``idle``. If not, click ``Stop`` or
 ``Remove`` under the ``actions`` column, and once stopped, click the
 ``start new session`` link near the top. Takes anywhere from 10-20
@@ -161,8 +161,7 @@ seconds to become ``idle``.
    Idle Livy session
 
 You can check the status of the Livy session at a glance from the
-Combine navigation, which should read ``Livy/Spark Session (idle)`` and
-have a green background if active.
+Combine navigation, where ``Livy/Spark`` next to ``System`` should have a green background if active.
 
 Combine Data Model
 ==================

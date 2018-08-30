@@ -73,7 +73,7 @@
 
 	          </li>
 	           <li class="nav-item">
-	            <a class="nav-link" href="{% url 'system' %}">System [<span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Livy/Spark</span>, <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Background Tasks</span>]</a>
+	            <a class="nav-link" href="{% url 'system' %}">System <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Livy/Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Background Tasks</span></a>
 	          </li>	          
 
 	        </ul>
