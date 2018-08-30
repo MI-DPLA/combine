@@ -1,6 +1,7 @@
 # xml2kvp
 
 from collections import OrderedDict
+import dashtable
 import json
 from lxml import etree
 import logging
@@ -85,103 +86,103 @@ class XML2kvp(object):
 		"type": "object",
 		"properties": {
 			"add_literals": {
-				"description":"Key/value pairs for literals to mixin, e.g. 'foo':'bar' would create field 'foo' with value 'bar' [Default: {}]",				
+				"description":"Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]",				
 				"type": "object"
 			},
 			"capture_attribute_values": {
-				"description": "Array of attributes to capture values from and set as standalone field, e.g. if ['age'] is provided and encounters <foo age='42'/>, a field 'foo_@age@' would be created (note the additional trailing '@' to indicate an attribute value) with the value '42'. [Default: [], Before: copy_to, copy_to_regex]",
+				"description": "Array of attributes to capture values from and set as standalone field, e.g. if [``age``] is provided and encounters ``<foo age='42'/>``, a field ``foo_@age@`` would be created (note the additional trailing ``@`` to indicate an attribute value) with the value ``42``. [Default: ``[]``, Before: ``copy_to``, ``copy_to_regex``]",
 				"type": "array"
 			},
 			"concat_values_on_all_fields": {
-				"description": "Boolean or String to join all values from multivalued field on [Default: false]",
+				"description": "Boolean or String to join all values from multivalued field on [Default: ``false``]",
 				"type": ["boolean","string"]
 			},
 			"concat_values_on_fields": {
-				"description": "Key/value pairs for fields to concat on provided value, e.g. 'foo_bar':'-' would concatenate multiple values from 'foo_bar' with string '-' [Default: {}]",
+				"description": "Key/value pairs for fields to concat on provided value, e.g. ``foo_bar``:``-`` if encountering ``foo_bar``:[``goober``,``tronic``] would concatenate to ``foo_bar``:``goober-tronic`` [Default: ``{}``]",
 				"type": "object"
 			},
 			"copy_to": {
-				"description": "Key/value pairs to copy one field to another, e.g. 'foo':'bar' would create field 'bar' and copy all values when encountered for 'foo' to 'bar'.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':false, would remove field 'foo' [Default: {}}]",
+				"description": "Key/value pairs to copy one field to another, optionally removing original field, e.g. ``foo``:``bar`` would create field ``bar`` and copy all values when encountered for ``foo`` to ``bar``, removing ``foo``.  However, the original field can be retained by setting ``remove_copied_key`` to ``true``.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':``false``, would remove field ``foo``. [Default: ``{}``]",
 				"type": "object"
 			},
 			"copy_to_regex": {
-				"description": "Key/value pairs to copy one field to another based on regex match of field, e.g. '.*foo':'bar' would copy create field 'bar' and copy all values fields 'goober_foo' and 'tronic_foo' to 'bar'.  Note: Can also be used to remove fields by setting the target field as false, e.g. '.*bar':false, would remove fields matching regex '.*bar' [Default: {}]",
+				"description": "Key/value pairs to copy one field to another, optionally removing original field, based on regex match of field, e.g. ``.*foo``:``bar`` would copy create field ``bar`` and copy all values fields ``goober_foo`` and ``tronic_foo`` to ``bar``.  Note: Can also be used to remove fields by setting the target field as false, e.g. ``.*bar``:``false``, would remove fields matching regex ``.*bar`` [Default: ``{}``]",
 				"type": "object"
 			},
 			"copy_value_to_regex": {
-				"description": "Key/value pairs that match values based on regex and copy to new field if matching, e.g. 'http.*':'websites' would create new field 'websites' and copy 'http://exampl.com' and 'https://example.org' to new field 'websites' [Default: {}]",
+				"description": "Key/value pairs that match values based on regex and copy to new field if matching, e.g. ``http.*``:``websites`` would create new field ``websites`` and copy ``http://exampl.com`` and ``https://example.org`` to new field ``websites`` [Default: ``{}``]",
 				"type": "object"
 			},
 			"error_on_delims_collision": {
-				"description": "Boolean to raise DelimiterCollision exception if delimiter strings from either 'node_delim' or 'ns_prefix_delim' collide with field name or field value (False by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: false]",
+				"description": "Boolean to raise ``DelimiterCollision`` exception if delimiter strings from either ``node_delim`` or ``ns_prefix_delim`` collide with field name or field value (``false`` by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: ``false``]",
 				"type": "boolean"
 			},
 			"exclude_attributes": {
-				"description": "Array of attributes to skip when creating field names, e.g. ['baz'] when encountering XML '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would create field 'foo_bar_@goober=1000', skipping attribute 'baz' [Default: []]",
+				"description": "Array of attributes to skip when creating field names, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@goober=1000``, skipping attribute ``baz`` [Default: ``[]``]",
 				"type": "array"
 			},
 			"exclude_elements": {
-				"description": "Array of elements to skip when creating field names, e.g. ['baz'] when encountering field '<foo><baz><bar>tronic</bar></baz></foo>' would create field 'foo_bar', skipping element 'baz' [Default: [], After: include_all_attributes, include_attributes]",
+				"description": "Array of elements to skip when creating field names, e.g. [``baz``] when encountering field ``<foo><baz><bar>tronic</bar></baz></foo>`` would create field ``foo_bar``, skipping element ``baz`` [Default: ``[]``, After: ``include_all_attributes``, ``include_attributes``]",
 				"type": "array"
 			},
 			"include_attributes": {
-				"description": "Array of attributes to include when creating field names, e.g. ['baz'] when encountering XML '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would create field 'foo_bar_@baz=42' [Default: [], Before: exclude_attributes, After: include_all_attributes]",
+				"description": "Array of attributes to include when creating field names, despite setting of ``include_all_attributes``, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@baz=42`` [Default: ``[]``, Before: ``exclude_attributes``, After: ``include_all_attributes``]",
 				"type": "array"
 			},
 			"include_all_attributes": {
-				"description": "Boolean to consider and include attributes when creating field names, e.g. if False, XML elements '<foo><bar baz='42' goober='1000'>tronic</baz></foo>' would result in field name 'foo_bar' without attributes included [Default: true, Before: include_attributes, exclude_attributes]",
+				"description": "Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``]",
 				"type": "boolean"
 			},
 			"include_meta": {
-				"description": "Boolean to include 'xml2kvp_meta' field with output that contains these configurations [Default: false]",
+				"description": "Boolean to include ``xml2kvp_meta`` field with output that contains all these configurations [Default: ``false``]",
 				"type": "boolean"
 			},
 			"node_delim": {
-				"description": "String to use as delimiter between XML elements and attributes when creating field name, e.g. '___' will convert XML '<foo><bar>tronic</bar></foo>' to field name 'foo___bar' [Default: '_']",
+				"description": "String to use as delimiter between XML elements and attributes when creating field name, e.g. ``___`` will convert XML ``<foo><bar>tronic</bar></foo>`` to field name ``foo___bar`` [Default: ``_``]",
 				"type": "string"
 			},
 			"ns_prefix_delim": {
-				"description": "String to use as delimiter between XML namespace prefixes and elements, e.g. '|' XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will create field name 'ns|foo_ns:bar' [Default: '|']",
+				"description": "String to use as delimiter between XML namespace prefixes and elements, e.g. ``|`` for the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will create field name ``ns|foo_ns:bar``.  Note: a ``|`` pipe character is used to avoid using a colon in ElasticSearch fields, which can be problematic. [Default: ``|``]",
 				"type": "string"
 			},
 			"remove_copied_key": {
-				"description": "Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: true]",
+				"description": "Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: ``true``]",
 				"type": "boolean"
 			},
 			"remove_copied_value": {
-				"description": "Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: false]",
+				"description": "Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: ``false``]",
 				"type": "boolean"
 			},
 			"remove_ns_prefix": {
-				"description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if False, XML '<ns:foo><ns:bar>tronic</ns:bar></ns:foo>' will result in field name 'foo_bar' without 'ns' prefix [Default: true]",
+				"description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if ``false``, the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will result in field name ``foo_bar`` without ``ns`` prefix [Default: ``true``]",
 				"type": "boolean"
 			},
 			"self_describing": {
-				"description": "Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if True, and 'node_delim' is '___' and 'ns_prefix_delim' is '|', suffix will be '___3|1' [Default: false]",
+				"description": "Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if ``true``, and ``node_delim`` is ``___`` and ``ns_prefix_delim`` is ``|``, suffix will be ``___3|1``.  Can be useful to reverse engineer field name when not re-parsed by XML2kvp. [Default: ``false``]",
 				"type": "boolean"
 			},
 			"split_values_on_all_fields": {
-				"description": "If present, string to use for splitting values from all fields, e.g. ' ' will convert single value 'a foo bar please' into the array of values ['a','foo','bar','please'] for that field [Default: false]",
+				"description": "If present, string to use for splitting values from all fields, e.g. `` `` will convert single value ``a foo bar please`` into the array of values [``a``,``foo``,``bar``,``please``] for that field [Default: ``false``]",
 				"type": ["boolean","string"]
 			},
 			"split_values_on_fields": {
-				"description": "Key/value pairs of field names to split, and the string to split on, e.g. 'foo_bar':',' will split all values on field 'foo_bar' on comma ',' [Default: {}]",
+				"description": "Key/value pairs of field names to split, and the string to split on, e.g. ``foo_bar``:``,`` will split all values on field ``foo_bar`` on comma ``,`` [Default: ``{}``]",
 				"type": "object"
 			},
 			"skip_attribute_ns_declarations": {
-				"description": "Boolean to remove namespace declarations as considered attributes when creating field names [Default: true]",
+				"description": "Boolean to remove namespace declarations as considered attributes when creating field names [Default: ``true``]",
 				"type": "boolean"
 			},
 			"skip_repeating_values": {
-				"description": "Boolean to determine if a field is multivalued, if those values are allowed to repeat [Default: true]",
+				"description": "Boolean to determine if a field is multivalued, if those values are allowed to repeat, e.g. if set to ``false``, XML ``<foo><bar>42</bar><bar>42</bar></foo>`` would map to ``foo_bar``:``42``, removing the repeating instance of that value. [Default: ``true``]",
 				"type": "boolean"
 			},
 			"skip_root": {
-				"description": "Boolean to determine if the XML root element will be included in output field names [Default: false]",
+				"description": "Boolean to determine if the XML root element will be included in output field names [Default: ``false``]",
 				"type": "boolean"
 			}
 		}
-	}
+	}	
 
 
 	def __init__(self, **kwargs):
@@ -740,7 +741,74 @@ class XML2kvp(object):
 			XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
 		print("avg for %s iterations: %s" % (iterations, (time.time()-stime) / float(iterations)))
 
-		
+	
+	def schema_as_table(self, table_format='rst'):
+
+		'''
+		Method to export schema as tabular table
+			- converts list of lists into ASCII table
+
+		Args:
+			table_format (str) ['rst','md']
+		'''
+
+		# init table
+		table = []
+
+		# set headers
+		table.append(['Parameter','Type','Description'])
+
+		# loop through schema properties and add
+		props = self.schema['properties']
+		for k,v in props.items():
+			table.append([
+				"``%s``" % k,
+				self._table_format_type(v['type']),
+				self._table_format_desc(v['description'])
+			])
+
+		# sort by property name
+		table.sort(key=lambda x: x[0])
+
+		# return as table based on table_format
+		if table_format == 'rst':
+			return dashtable.data2rst(table, use_headers=True)
+		elif table_format == 'md':
+			return dashtable.data2md(table, use_headers=True)
+		elif table_format == 'html':
+			return None
+
+
+	def _table_format_type(self, prop_type):
+
+		'''
+		Method to format XML2kvp configuration property type for table
+		'''
+
+		# handle single
+		if type(prop_type) == str:
+			return "``%s``" % prop_type
+
+		# handle list
+		elif type(prop_type) == list:
+			return "[" + ",".join([ "``%s``" % t for t in prop_type ]) + "]"
+
+
+	def _table_format_desc(self, desc):
+
+		'''
+		Method to format XML2kvp configuration property description for table
+		'''
+
+		return desc
+
+
+
+
+
+
+
+
 
 
 

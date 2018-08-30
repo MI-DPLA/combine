@@ -7,6 +7,7 @@ chardet==3.0.4
 cloudpickle==0.4.0
 configparser==3.5.0
 cookies==2.2.1
+dashtable==1.4.5
 decorator==4.1.2
 Django==1.11.4
 django-background-tasks==1.1.13
