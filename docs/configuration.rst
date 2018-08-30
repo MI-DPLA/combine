@@ -228,6 +228,15 @@ Within Combine, the configurations passed to XML2kvp are referred to as "Field M
 | ``split_values_on_fields``         | ``object``               | Key/value pairs of field names to split, and the string to split on, e.g. ``foo_bar``:``,`` will split all values on field ``foo_bar`` on comma ``,`` [Default: ``{}``]                                                                                                                                                                                                                                                                                                                                                  |
 +------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
 
+Saving and Reusing
+------------------
+
+Field Mapper sonfigurations may be saved, named, and re-used.  This can be done anytime field mapper configurations are being set, e.g. when running a new Job, or re-indexing a previously run Job. 
+
+
+Testing 
+-------
+
 Field Mapping can also be tested against a single record, accessible from a Record's page under the "Run/Test Scenarios for this Record" tab.  The following is a screenshot of this testing page:
 
 .. figure:: img/test_field_mapper.png
