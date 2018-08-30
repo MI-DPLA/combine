@@ -7,6 +7,7 @@ import hashlib
 import json
 from lxml import etree
 import os
+import pdb
 import re
 import requests
 import shutil
@@ -23,13 +24,16 @@ import pyjxslt
 try:
 	from es import ESIndex
 	from utils import PythonUDFRecord, refresh_django_db_connection	
-	from record_validation import ValidationScenarioSpark	
+	from record_validation import ValidationScenarioSpark
+	from console import get_job_as_df, get_job_es
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 	from core.spark.record_validation import ValidationScenarioSpark
+	from core.spark.console import get_job_as_df, get_job_es
 
 # import Row from pyspark
+from pyspark import StorageLevel
 from pyspark.sql import Row
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
@@ -48,6 +52,13 @@ from django.db import connection
 
 # import select models from Core
 from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
+
+# import xml2kvp
+from core.xml2kvp import XML2kvp
+
+# import mongo dependencies
+from core.mongo import *
+
 
 
 
@@ -78,12 +89,14 @@ class CombineRecordSchema(object):
 				StructField('record_id', StringType(), True),
 				StructField('document', StringType(), True),
 				StructField('error', StringType(), True),
-				StructField('unique', BooleanType(), False),
+				StructField('unique', BooleanType(), True),				
 				StructField('job_id', IntegerType(), False),
 				StructField('oai_set', StringType(), True),
 				StructField('success', BooleanType(), False),
 				StructField('fingerprint', IntegerType(), False),
-				StructField('transformed', BooleanType(), False)				
+				StructField('transformed', BooleanType(), False),
+				StructField('valid', BooleanType(), False),
+				StructField('dbdm', BooleanType(), False)
 			]
 		)
 
@@ -133,9 +146,22 @@ class CombineSparkJob(object):
 
 	def close_job(self):
 
+		'''
+		Note to Job tracker that finished, and perform other long-running, one-time calculations
+		to speed up front-end
+		'''
+
+		refresh_django_db_connection()		
+
 		# finally, update finish_timestamp of job_track instance
 		self.job_track.finish_timestamp = datetime.datetime.now()
 		self.job_track.save()
+
+		# count new job validations		
+		for jv in self.job.jobvalidation_set.filter(failure_count=None):
+			jv.validation_failure_count(force_recount=True)
+		
+		
 
 
 	def update_jobGroup(self, description):
@@ -181,8 +207,14 @@ class CombineSparkJob(object):
 		# check uniqueness (overwrites if column already exists)	
 		records_df = records_df.withColumn("unique", (
 			pyspark_sql_functions.count('record_id')\
-			.over(Window.partitionBy('record_id')) == 1)\
-			.cast('integer'))
+			.over(Window.partitionBy('record_id')) == True)\
+			.cast('boolean'))
+
+		# add valid column
+		records_df = records_df.withColumn('valid', pyspark_sql_functions.lit(True))
+
+		# add DPLA Bulk Data Match (dbdm) column
+		records_df = records_df.withColumn('dbdm', pyspark_sql_functions.lit(False))
 
 		# ensure columns to avro and DB
 		records_df_combine_cols = records_df.select(CombineRecordSchema().field_names)
@@ -192,34 +224,31 @@ class CombineSparkJob(object):
 			records_df_combine_cols.coalesce(settings.SPARK_REPARTITION)\
 			.write.format("com.databricks.spark.avro").save(self.job.job_output)
 
-		# write records to DB
-		records_df_combine_cols.write.jdbc(
-			settings.COMBINE_DATABASE['jdbc_url'],
-			'core_record',
-			properties=settings.COMBINE_DATABASE,
-			mode='append')
+		# write records to MongoDB
+		self.update_jobGroup('Saving Records to DB')
+		records_df_combine_cols.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
 
 		# check if anything written to DB to continue, else abort
 		if self.job.get_records().count() > 0:
 
-			# read rows from DB for indexing to ES			
-			bounds = self.get_job_db_bounds(self.job)
-			sqldf = self.spark.read.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_record',
-					properties=settings.COMBINE_DATABASE,
-					column='id',
-					lowerBound=bounds['lowerBound'],
-					upperBound=bounds['upperBound'],
-					numPartitions=settings.SPARK_REPARTITION
-				)
-			job_id = self.job.id
-			db_records = sqldf.filter(sqldf.job_id == job_id).filter(sqldf.success == 1)
+			# read rows from Mongo with minted ID for future stages
+			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': True}})
+			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection","record")\
+			.option("partitioner","MongoSamplePartitioner")\
+			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+			.option("pipeline",pipeline).load()
 
 			# index to ElasticSearch			
 			self.update_jobGroup('Indexing to ElasticSearch')
 			if index_records and settings.INDEX_TO_ES:
-				ESIndex.index_job_to_es_spark(
+				es_rdd = ESIndex.index_job_to_es_spark(
 					self.spark,
 					job=self.job,
 					records_df=db_records,
@@ -237,35 +266,14 @@ class CombineSparkJob(object):
 				)
 				vs.run_record_validation_scenarios()
 
-			# update `valid` column for Records based on results of ValidationScenarios
-			cursor = connection.cursor()
-			query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+			# handle DPLA Bulk Data matching, rewriting/updating records where match is found
+			self.dpla_bulk_data_compare(db_records, es_rdd)
 
-			# run comparison against bulk data if provided
-			db_records = self.bulk_data_compare(db_records)
-
-			# return db_records DataFrame
+			# return
 			return db_records
 
 		else:		
-			raise Exception("Nothing written to disk for Job: %s" % self.job.name)
-
-
-	def get_job_db_bounds(self, job):
-
-		'''
-		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-		'''	
-
-		records = job.get_records()
-		records = records.order_by('id')
-		start_id = records.first().id
-		end_id = records.last().id
-
-		return {
-			'lowerBound':start_id,
-			'upperBound':end_id
-		}
+			raise Exception("No successful records written to disk for Job: %s" % self.job.name)
 
 
 	def record_input_filters(self, filtered_df):
@@ -305,6 +313,13 @@ class CombineSparkJob(object):
 			if input_es_query_valve not in [None,'{}']:
 				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
+		# filter duplicates
+		if 'filter_dupe_record_ids' in self.kwargs['input_filters'].keys() and self.kwargs['input_filters']['filter_dupe_record_ids'] == True:			
+			filtered_df = filtered_df.dropDuplicates(['record_id'])
+
+		# after input filtering which might leverage db_id, drop		
+		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
+
 		# return
 		return filtered_df
 
@@ -339,7 +354,7 @@ class CombineSparkJob(object):
 		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
 
 		# perform join on ES documents
-		filtered_df = filtered_df.join(es_df, filtered_df['combine_id'] == es_df['_1'], 'leftsemi')
+		filtered_df = filtered_df.join(es_df, filtered_df['_id']['oid'] == es_df['_1'], 'leftsemi')
 
 		# return
 		return filtered_df
@@ -372,6 +387,7 @@ class CombineSparkJob(object):
 		# if rits id provided
 		if rits_id and rits_id != None:
 
+			# get RITS 
 			rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
 
 			# handle regex
@@ -389,13 +405,13 @@ class CombineSparkJob(object):
 							trans_result = re.sub(match, replace, row.document)
 
 						# run transformation
-						success = 1
+						success = True
 						error = row.error
 
 					except Exception as e:
 						trans_result = str(e)
 						error = 'record_id transformation failure'
-						success = 0
+						success = False
 
 					# return Row
 					return Row(
@@ -405,14 +421,16 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed												
 					)
 
 				# transform via rdd.map and return			
 				match = rits.regex_match_payload
 				replace = rits.regex_replace_payload
 				trans_target = rits.transformation_target
-				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))
+				records_rdd = records_df.rdd.map(lambda row: regex_record_id_trans_udf(row, match, replace, trans_target))				
 				records_df = records_rdd.toDF()
 
 			# handle python
@@ -434,13 +452,13 @@ class CombineSparkJob(object):
 
 						# run transformation
 						trans_result = temp_mod.transform_identifier(pyudfr)
-						success = 1
+						success = True
 						error = row.error
 
 					except Exception as e:
 						trans_result = str(e)
 						error = 'record_id transformation failure'
-						success = 0
+						success = False
 
 					# return Row
 					return Row(
@@ -450,7 +468,9 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed						
 					)
 
 				# transform via rdd.map and return			
@@ -478,15 +498,15 @@ class CombineSparkJob(object):
 					xpath_query = pyudfr.xml.xpath(xpath, namespaces=pyudfr.nsmap)
 					if len(xpath_query) == 1:
 						trans_result = xpath_query[0].text
-						success = 1
+						success = True
 						error = row.error
 					elif len(xpath_query) == 0:
 						trans_result = 'xpath expression found nothing'
-						success = 0
+						success = False
 						error = 'record_id transformation failure'
 					else:
 						trans_result = 'more than one node found for XPath query'
-						success = 0
+						success = False
 						error = 'record_id transformation failure'
 
 					# return Row
@@ -497,7 +517,9 @@ class CombineSparkJob(object):
 						error = error,
 						job_id = row.job_id,
 						oai_set = row.oai_set,
-						success = success
+						success = success,
+						fingerprint = row.fingerprint,
+						transformed = row.transformed						
 					)
 
 				# transform via rdd.map and return			
@@ -513,13 +535,20 @@ class CombineSparkJob(object):
 			return records_df
 
 
-	def bulk_data_compare(self, db_records):
+	def dpla_bulk_data_compare(self, records_df, es_rdd):
 
 		'''
 		Method to compare against bulk data if provided
+
+		Args:
+			records_df (dataframe): records post-write to DB
+			es_rdd (rdd): RDD of documents as written to ElasticSearch
+				Columns:
+					_1 : boolean, 'success'/'failure'
+					_2 : map, mapped fields
 		'''
 
-		self.logger.info('running bulk data compare')
+		self.logger.info('Running DPLA Bulk Data Compare')
 		self.update_jobGroup('Running DPLA Bulk Data Compare')
 
 		# get dbdd ID from kwargs
@@ -534,36 +563,34 @@ class CombineSparkJob(object):
 			dbdd = DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
 			self.logger.info('DBDD retrieved: %s @ ES index %s' % (dbdd.s3_key, dbdd.es_index))
 
-			# get bulk data as DF from ES
-			dpla_rdd = self.spark.sparkContext.newAPIHadoopRDD(
-				inputFormatClass="org.elasticsearch.hadoop.mr.EsInputFormat",
-				keyClass="org.apache.hadoop.io.NullWritable",
-				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
-				conf={ "es.resource" : "%s/item" % dbdd.es_index }
-			)
-			dpla_df = dpla_rdd.toDF()			
+			# get DPLA bulk data from ES as DF
+			dpla_df = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item')
 
-			# check if records from job are in bulk data DF
-			in_dpla = db_records.join(dpla_df, db_records['record_id'] == dpla_df['_1'], 'leftsemi').select(db_records['id'])
+			# get job mapped fields from es_rdd
+			es_df = es_rdd.toDF()			
 
-			# prepare matches DF
-			dbdd_id = dbdd.id
-			matches_to_write = in_dpla.withColumn('record_id', in_dpla['id']).withColumn('match', lit(1)).withColumn('dbdd_id', lit(dbdd_id)).select('match', 'record_id', 'dbdd_id')
-			
-			# write to DPLABulkDataMatch table
-			matches_to_write.write.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_dplabulkdatamatch',
-				properties=settings.COMBINE_DATABASE,
-				mode='append'
-			)
+			# join on isShownAt
+			matches_df = es_df.join(dpla_df, es_df['_2']['dpla_isShownAt'] == dpla_df['isShownAt'], 'leftsemi')
 
-			# return
-			return db_records
+			# select records from records_df for updating (writing)
+			update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['_2']['db_id'], 'leftsemi')
 
-		# else, return untouched
+			# set dbdm column to True
+			update_dbdm_df = update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
+
+			# write to DB
+			update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "record").save()
+
+			# writing params to job_details
+			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+
+		# else, return with dbdm column all False
 		else:
-			return db_records
+			return records_df.withColumn('dbdm', pyspark_sql_functions.lit(False))
 
 
 	def fingerprint_records(self, df):
@@ -654,7 +681,7 @@ class HarvestOAISpark(CombineSparkJob):
 		records = records.filter(records.document != 'none')
 
 		# establish 'success' column, setting all success for Harvest
-		records = records.withColumn('success', pyspark_sql_functions.lit(1))
+		records = records.withColumn('success', pyspark_sql_functions.lit(True))
 
 		# copy 'id' from OAI harvest to 'record_id' column
 		records = records.withColumn('record_id', records.id)
@@ -673,7 +700,7 @@ class HarvestOAISpark(CombineSparkJob):
 
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(True))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -796,7 +823,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					error = '',
 					job_id = int(job_id),
 					oai_set = '',
-					success = 1
+					success = True
 				)
 
 			# catch missing or ambiguous identifiers
@@ -809,10 +836,10 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				return Row(
 					record_id = record_id,
 					document = etree.tostring(xml_root).decode('utf-8'),
-					error = str(e),
+					error = "AmbiguousIdentifier: %s" % str(e),
 					job_id = int(job_id),
 					oai_set = '',
-					success = 0
+					success = True
 				)
 
 			# handle all other exceptions
@@ -828,7 +855,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 					error = str(e),
 					job_id = int(job_id),
 					oai_set = '',
-					success = 0
+					success = False
 				)
 
 		# map with parse_records_udf 
@@ -842,7 +869,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(1))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(True))
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
@@ -892,26 +919,24 @@ class TransformSpark(CombineSparkJob):
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
 		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
-		bounds = self.get_job_db_bounds(input_job)
-		records = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job.id,
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
+
+		# retrieve from Mongo
+		pipeline = json.dumps({'$match': {'job_id': input_job.id}})
+		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()		
 
 		# fork as input_records		
 		input_records = records
 
 		# filter based on record validity
+		# NOTE: This split here with pre/post transformed, does not seem optimal, but keeping for now
 		input_records = self.record_input_filters(input_records)
 		records = self.record_input_filters(records)
-
-		# repartition
-		records = records.repartition(settings.SPARK_REPARTITION)
 
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(self.kwargs['transformation_id']))
@@ -926,7 +951,13 @@ class TransformSpark(CombineSparkJob):
 
 		# if OpenRefine type transformation
 		if transformation.transformation_type == 'openrefine':
-			records_trans = self.transform_openrefineactions(transformation, records)
+
+			# get XML2kvp settings from input Job
+			input_job_details = json.loads(input_job.job_details)
+			input_job_fm_config = json.loads(input_job_details['fm_config_json'])
+
+			# pass config json
+			records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
 
 		# convert back to DataFrame
 		records_trans = records_trans.toDF()
@@ -978,12 +1009,12 @@ class TransformSpark(CombineSparkJob):
 					valid_xml = etree.fromstring(result.encode('utf-8'))
 
 					# set trans_result tuple
-					trans_result = (result, '', 1)
+					trans_result = (result, '', True)
 
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# yield each Row in mapPartition
 				yield Row(
@@ -1056,7 +1087,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# return Row
 				yield Row(
@@ -1078,7 +1109,7 @@ class TransformSpark(CombineSparkJob):
 		return records_trans
 
 
-	def transform_openrefineactions(self, transformation, records):
+	def transform_openrefineactions(self, transformation, records, input_job_fm_config):
 
 		'''
 		Transform records per OpenRefine Actions JSON		
@@ -1093,65 +1124,6 @@ class TransformSpark(CombineSparkJob):
 		Return:
 			records_trans (rdd): transformed records as RDD
 		'''
-
-		def _field_name_to_xpath(field_name):
-
-			'''
-			TODO: This can be updated to use XML2kvp
-			'''
-
-			# for each column, reconstitue columnName --> XPath				
-			field_parts = field_name.split('_')[1:] # skip root element
-
-			# loop through pieces and build xpath
-			on_attrib = False
-			xpath = '/' # begin with single slash, will get appended to
-
-			for part in field_parts:
-
-				# if not attribute, assume node hop
-				if not part.startswith('@'):
-
-					# handle closing attrib if present
-					if on_attrib:
-						xpath += ']/'
-
-					# close previous element
-					else:
-						xpath += '/'
-				
-					# replace pipe with colon for prefix
-					part = part.replace('|',':')
-
-					# append to xpath string
-					xpath += '%s' % part
-
-				# if attribute, assume part of previous element and build
-				else:
-
-					# handle attribute
-					attrib, value = part.split('=')
-
-					# if not on_attrib, open xpath for attribute inclusion
-					if not on_attrib:
-						xpath += "[%s='%s'" % (attrib, value)
-
-					# else, currently in attribute write block, continue
-					else:
-						xpath += " and %s='%s'" % (attrib, value)
-
-					# set on_attrib flag for followup
-					on_attrib = True
-
-			# cleanup after loop
-			if on_attrib:
-
-				# close attrib brackets
-				xpath += ']'
-
-			# return 
-			return xpath
-
 
 		# define udf function for python transformation	
 		def transform_openrefine_pt_udf(pt):
@@ -1174,7 +1146,7 @@ class TransformSpark(CombineSparkJob):
 						if event['op'] == 'core/mass-edit':
 
 							# for each column, reconstitue columnName --> XPath	
-							xpath = _field_name_to_xpath(event['columnName'])
+							xpath = XML2kvp.k_to_xpath(event['columnName'], **input_job_fm_config)
 							
 							# find elements for potential edits
 							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1203,7 +1175,7 @@ class TransformSpark(CombineSparkJob):
 							exec(code, temp_pyts.__dict__)
 
 							# get xpath (unique to action, can't pre learn)
-							xpath = _field_name_to_xpath(event['columnName'])
+							xpath = XML2kvp.k_to_xpath(event['columnName'], **input_job_fm_config)
 							
 							# find elements for potential edits
 							eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1217,7 +1189,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), 0)
+					trans_result = ('', str(e), False)
 
 				# return Row
 				yield Row(
@@ -1235,7 +1207,7 @@ class TransformSpark(CombineSparkJob):
 
 		# transform via rdd.mapPartitions and return
 		job_id = self.job.id			
-		or_actions_json = transformation.payload
+		or_actions_json = transformation.payload		
 		records_trans = records.rdd.mapPartitions(transform_openrefine_pt_udf)
 		return records_trans
 
@@ -1273,59 +1245,28 @@ class MergeSpark(CombineSparkJob):
 		self.update_jobGroup('Running Merge/Duplicate Job')
 
 		# rehydrate list of input jobs
-		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
+		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])		
 
-		# loop through input jobs and append to input_jobs_rdds
-		input_jobs_rdds = []
-		input_schemas = []
-		for input_job_id in input_jobs_ids:
-
-			# get input Job
-			input_job_temp = Job.objects.get(pk=int(input_job_id))
-
-			# if Job has records, continue
-			if input_job_temp.get_records().count() > 0:
-
-				# get bounds
-				bounds = self.get_job_db_bounds(input_job_temp)
-
-				# get list of RDDs from input jobs
-				sqldf = self.spark.read.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'(SELECT * FROM core_record WHERE job_id = %s) tasql' % input_job_id,
-					properties=settings.COMBINE_DATABASE,
-					column='id',
-					lowerBound=bounds['lowerBound'],
-					upperBound=bounds['upperBound'],
-					numPartitions=settings.JDBC_NUMPARTITIONS
-				)
-
-				# append
-				sqldf = self.record_input_filters(sqldf)
-
-				# save schema
-				input_schemas.append(sqldf.schema)
-
-				# append to input jobs rdds
-				input_jobs_rdds.append(sqldf.rdd)
-			
-			else:
-				print("Job %s had no records, skipping" % input_job_temp.name)
-
-		# create aggregate rdd of frames
-		agg_rdd = self.spark.sparkContext.union([ rdd for rdd in input_jobs_rdds ])
-		agg_df = self.spark.createDataFrame(agg_rdd, schema=input_schemas[0])
-
-		# repartition
-		agg_df = agg_df.repartition(settings.SPARK_REPARTITION)
+		# retrieve from Mongo		
+		pipeline = json.dumps({'$match': {'job_id':{"$in":input_jobs_ids}}})
+		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()		
+		
+		# apply input filters
+		records = self.record_input_filters(records)
 
 		# update job column, overwriting job_id from input jobs in merge
 		job_id = self.job.id
 		job_id_udf = udf(lambda record_id: job_id, IntegerType())
-		agg_df = agg_df.withColumn('job_id', job_id_udf(agg_df.record_id))
+		records = records.withColumn('job_id', job_id_udf(records.record_id))
 
 		# set transformed column to False		
-		agg_df = agg_df.withColumn('transformed', pyspark_sql_functions.lit(0))
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(False))
 
 		# if Analysis Job, do not write avro
 		if self.job.job_type == 'AnalysisJob':
@@ -1335,136 +1276,9 @@ class MergeSpark(CombineSparkJob):
 
 		# index records to DB and index to ElasticSearch
 		self.save_records(			
-			records_df=agg_df,
+			records_df=records,
 			write_avro=write_avro
 		)
-
-		# close job
-		self.close_job()
-
-
-
-class PublishSpark(CombineSparkJob):
-
-	'''
-	Spark code for running Publish type jobs.	
-	'''
-	
-	def spark_function(self):
-
-		'''
-		Publish records in Combine, prepares for OAI server output
-
-		Args:
-			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs:
-				job_id (int): Job ID
-				job_input (str): location of avro files on disk				
-
-		Returns:
-			None
-			- creates symlinks from input job to new avro file symlinks on disk
-			- copies records in DB from input job to new published job
-			- copies documents in ES from input to new published job index
-		'''
-
-		# init job
-		self.init_job()
-		self.update_jobGroup('Running Publish Job')
-
-		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
-		bounds = self.get_job_db_bounds(input_job)
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
-		records = sqldf.filter(sqldf.job_id == int(self.kwargs['input_job_id']))
-
-		# repartition
-		records = records.repartition(settings.SPARK_REPARTITION)
-
-		# get rows with document content
-		records = records[records['document'] != '']
-
-		# update job column, overwriting job_id from input jobs in merge
-		job_id = self.job.id
-		job_id_udf = udf(lambda record_id: job_id, IntegerType())
-		records = records.withColumn('job_id', job_id_udf(records.record_id))
-
-		# set transformed column to False		
-		records = records.withColumn('transformed', pyspark_sql_functions.lit(0))
-
-		# write job output to avro
-		records.select(CombineRecordSchema().field_names).write.format("com.databricks.spark.avro").save(self.job.job_output)
-
-		# confirm directory exists
-		published_dir = '%s/published' % (settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'))
-		if not os.path.exists(published_dir):
-			os.mkdir(published_dir)
-
-		# get avro files
-		job_output_dir = self.job.job_output.split('file://')[-1]
-		avros = [f for f in os.listdir(job_output_dir) if f.endswith('.avro')]
-		for avro in avros:
-			os.symlink(os.path.join(job_output_dir, avro), os.path.join(published_dir, avro))
-
-		# index records to DB and index to ElasticSearch
-		self.save_records(			
-			records_df=records,
-			write_avro=False,
-			index_records=False
-		)
-
-		# copy index from input job to new Publish job
-		index_to_job_index = ESIndex.copy_es_index(
-			source_index = 'j%s' % input_job.id,
-			target_index = 'j%s' % self.job.id,
-			wait_for_completion=False
-		)
-
-		# copy index from new Publish Job to /published index
-		# NOTE: because back to back reindexes, and problems with timeouts on requests,
-		# wait on task from previous reindex
-		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
-		retry = 1
-		while retry <= 100:
-
-			# get task
-			task = es_handle_temp.tasks.get(index_to_job_index['task'])
-
-			# if task complete, index job index to published index
-			if task['completed']:
-				index_to_published_index = ESIndex.copy_es_index(
-					source_index = 'j%s' % self.job.id,
-					target_index = 'published',
-					wait_for_completion = False,
-					add_copied_from = job_id # do not use Job instance here, only pass string
-				)
-				break # break from retry loop
-
-			else:
-				print("indexing to /published, waiting on task node %s, retry: %s/100" % (task['task']['node'], retry))
-
-				# bump retries, sleep, and continue
-				retry += 1
-				time.sleep(3)
-				continue
-
-		# get PublishedRecords handle
-		pr = PublishedRecords()
-
-		# set records from job as published		
-		job_id = self.job.id
-		pr.set_published_field(job_id)
-
-		# update uniqueness of all published records
-		pr.update_published_uniqueness()
 
 		# close job
 		self.close_job()
@@ -1497,23 +1311,6 @@ class CombineSparkPatch(object):
 		self.logger = log4jLogger.LogManager.getLogger(__name__)
 
 
-	def get_job_db_bounds(self, job):
-
-		'''
-		Method to determine lower and upper bounds for job IDs, for more efficient MySQL retrieval
-		'''	
-
-		records = job.get_records()
-		records = records.order_by()
-		start_id = records.first().id
-		end_id = records.last().id
-
-		return {
-			'lowerBound':start_id,
-			'upperBound':end_id
-		}
-
-
 	def update_jobGroup(self, description, job_id):
 
 		'''
@@ -1539,20 +1336,17 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))		 
-		self.update_jobGroup('Running Re-Index Job', self.job.id)
+		self.update_jobGroup('Running Re-Index Job', self.job.id)		
 
-		# get records from job as DF
-		bounds = self.get_job_db_bounds(self.job)
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
-		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+		# get records as DF
+		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
+		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()
 
 		# reindex
 		ESIndex.index_job_to_es_spark(
@@ -1567,11 +1361,12 @@ class ReindexSparkPatch(CombineSparkPatch):
 class RunNewValidationsSpark(CombineSparkPatch):
 
 	'''
-	Class to handle Job re-indexing
+	Class to run new validations for Job
 
 	Args:
 		kwargs(dict):
-			- job_id (int): ID of Job to reindex
+			- job_id (int): ID of Job
+			- validation_scenarios (list): list of validation scenarios to run
 	'''
 
 	def spark_function(self):
@@ -1580,18 +1375,14 @@ class RunNewValidationsSpark(CombineSparkPatch):
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
 		self.update_jobGroup('Running New Validation Scenarios', self.job.id)
 
-		# get records from job as DF
-		bounds = self.get_job_db_bounds(self.job)
-		sqldf = self.spark.read.jdbc(
-				settings.COMBINE_DATABASE['jdbc_url'],
-				'core_record',
-				properties=settings.COMBINE_DATABASE,
-				column='id',
-				lowerBound=bounds['lowerBound'],
-				upperBound=bounds['upperBound'],
-				numPartitions=settings.JDBC_NUMPARTITIONS
-			)
-		db_records = sqldf.filter(sqldf.job_id == int(self.kwargs['job_id']))
+		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
+		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()
 
 		# run Validation Scenarios
 		if 'validation_scenarios' in self.kwargs.keys():
@@ -1603,10 +1394,97 @@ class RunNewValidationsSpark(CombineSparkPatch):
 			)
 			vs.run_record_validation_scenarios()
 
-		# update `valid` column for Records based on results of ValidationScenarios
-		self.logger.info('Updating Records with validation results via MySQL cursor execution')
-		cursor = connection.cursor()
-		query_results = cursor.execute("UPDATE core_record AS r LEFT OUTER JOIN core_recordvalidation AS rv ON r.id = rv.record_id SET r.valid = (SELECT IF(rv.id,0,1)) WHERE r.job_id = %s" % self.job.id)
+
+
+class RemoveValidationsSpark(CombineSparkPatch):
+
+	'''
+	Class to remove validations for Job
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job
+			- validation_scenarios (list): list of validation scenarios to run
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.update_jobGroup('Removing Validation Scenario', self.job.id)
+
+		# create pipeline to select INVALID records, that may become valid
+		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id},{'valid':False}]}})		
+		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection","record")\
+		.option("partitioner","MongoSamplePartitioner")\
+		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		.option("pipeline",pipeline).load()
+
+		# if not nothing to update, skip
+		if not db_records.rdd.isEmpty():
+			# run Validation Scenarios
+			if 'validation_scenarios' in self.kwargs.keys():
+				vs = ValidationScenarioSpark(
+					spark=self.spark,
+					job=self.job,
+					records_df=db_records,
+					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+				)
+				vs.remove_validation_scenarios()
+
+
+
+class RunDBDM(CombineSparkPatch):
+
+	'''
+	Class to run DPLA Bulk Data Match as patch job
+
+	Args:
+		kwargs(dict):
+			- job_id (int): ID of Job
+			- dbdd_id (int): int of DBDD instance to use
+	'''
+
+	def spark_function(self):
+
+		# get job and set to self
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		self.update_jobGroup('Removing DPLA Bulk Data Match', self.job.id)
+
+		# get full dbdd es
+		dbdd = DPLABulkDataDownload.objects.get(pk=int(self.kwargs['dbdd_id']))
+		dpla_df = get_job_es(self.spark, indices=[dbdd.es_index], doc_type='item')
+
+		# get job mapped fields
+		es_df = get_job_es(self.spark, job_id=self.job.id)
+
+		# get job records
+		records_df = get_job_as_df(self.spark, self.job.id)
+
+		# join on isShownAt
+		matches_df = es_df.join(dpla_df, es_df['dpla_isShownAt'] == dpla_df['isShownAt'], 'leftsemi')
+
+		# select records_df for writing
+		update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['db_id'], 'leftsemi')
+
+		# set dbdm column to match
+		update_dbdm_df = update_dbdm_df.withColumn('dbdm', pyspark_sql_functions.lit(True))
+
+		# write to DB
+		update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+		.mode("append")\
+		.option("uri","mongodb://127.0.0.1")\
+		.option("database","combine")\
+		.option("collection", "record").save()
+
+		# writing params to job_details
+		self.job.update_job_details({'dbdm':{'dbdd_id':int(self.kwargs['dbdd_id']), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+
+
+
 
 
 

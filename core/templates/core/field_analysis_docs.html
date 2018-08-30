@@ -59,10 +59,12 @@
 				};
 
 				$(document).ready(function() {
+					es_query = "{% url 'records_es_field_dt_json' es_index=esi.es_index_str search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}";
+					es_query = es_query.replace(/&#39;/g,"'");
 				    var oTable = $('#datatables_es_records').dataTable({
 				        "processing": true,
 				        "serverSide": true,
-				        "ajax": "{% url 'records_es_field_dt_json' es_index=esi.es_index search_type='fields_per_doc' %}?{{ dt_get_params_string|safe }}",
+				        "ajax": es_query,
 				        "searchDelay": 1000,
 				        "pageLength": 10,
 				        "order": [[ 1, "desc" ]],

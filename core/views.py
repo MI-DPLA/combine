@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic
+import ast
 import datetime
 import hashlib
 import json
@@ -46,6 +47,9 @@ from core import tasks
 
 # django-datatables-view
 from django_datatables_view.base_datatable_view import BaseDatatableView
+
+# import mongo dependencies
+from core.mongo import *
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -155,9 +159,9 @@ def breadcrumb_parser(request):
 			crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
 	# record
-	r_m = re.match(r'(.+?/record/([0-9]+))', request.path)
+	r_m = re.match(r'(.+?/record/([0-9a-z]+))', request.path)
 	if r_m:
-		r = models.Record.objects.get(pk=int(r_m.group(2)))
+		r = models.Record.objects.get(id=r_m.group(2))
 		crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
 	# background tasks
@@ -214,7 +218,7 @@ def index(request):
 ####################################################################
 
 @login_required
-def livy_sessions(request):
+def system(request):
 	
 	# single Livy session
 	logger.debug("checking or active Livy session")
@@ -224,9 +228,14 @@ def livy_sessions(request):
 	if livy_session:
 		livy_session.refresh_from_livy()
 
+	# get status of background jobs
+	sp = models.SupervisorRPCClient()
+	bgtasks_proc = sp.check_process('combine_background_tasks')
+
 	# return
-	return render(request, 'core/livy_sessions.html', {
+	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
+		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 
@@ -254,7 +263,7 @@ def livy_session_start(request):
 		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 	# redirect
-	return redirect('livy_sessions')
+	return redirect('system')
 
 
 @login_required
@@ -271,7 +280,40 @@ def livy_session_stop(request, session_id):
 	livy_session.delete()
 
 	# redirect
-	return redirect('livy_sessions')
+	return redirect('system')
+
+
+@login_required
+def bgtasks_proc_action(request, proc_action):
+	
+	logger.debug('performing %s on bgtasks_proc' % proc_action)
+
+	# get supervisor handle
+	sp = models.SupervisorRPCClient()
+
+	# fire action
+	actions = {
+		'start':sp.start_process,
+		'restart':sp.restart_process,
+		'stop':sp.stop_process
+	}
+	results = actions[proc_action]('combine_background_tasks') 
+	logger.debug(results)
+
+	# redirect
+	return redirect('system')
+
+
+@login_required
+def bgtasks_proc_stderr_log(request):
+
+	# get supervisor handle
+	sp = models.SupervisorRPCClient()
+
+	log_tail = sp.stderr_log_tail('combine_background_tasks')
+
+	# redirect
+	return HttpResponse(log_tail, content_type='text/plain')
 
 
 
@@ -448,7 +490,7 @@ def record_group(request, org_id, record_group_id):
 	job_lineage = record_group.get_jobs_lineage()
 
 	# get all currently applied publish set ids
-	publish_set_ids = models.PublishedRecords.get_publish_set_ids()
+	publish_set_ids = models.PublishedRecords.get_publish_set_ids()	
 
 	# loop through jobs
 	for job in jobs:
@@ -468,30 +510,6 @@ def record_group(request, org_id, record_group_id):
 			'record_groups':record_groups,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
-
-
-def record_group_update_publish_set_id(request, org_id, record_group_id):
-
-	if request.method == 'POST':
-
-		# get record group
-		record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
-
-		logger.debug(request.POST)
-
-		# update RecordGroup publish set id
-		if request.POST.get('new_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('new_publish_set_id')
-			record_group.save()
-		elif request.POST.get('existing_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
-			record_group.save()
-		else:
-			logger.debug('publish_set_id not set, skipping')
-
-		# redirect to
-		# return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
-		return redirect(request.META.get('HTTP_REFERER'))
 
 
 
@@ -659,9 +677,6 @@ def job_details(request, org_id, record_group_id, job_id):
 	# detailed record count
 	record_count_details = cjob.get_detailed_job_record_count()
 
-	# field analysis
-	field_counts = cjob.count_indexed_fields()
-
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
 
@@ -671,12 +686,52 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
-	# retrieve field mapper config json used
+	# attempt to retrieve fm_config_json
 	try:
 		job_details = json.loads(cjob.job.job_details)
 		job_fm_config_json = job_details['fm_config_json']
 	except:
 		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
+
+	# job details and job type specific augment
+	job_details = cjob.job.job_details_dict	
+
+	# mapped field analysis, generate if not part of job_details
+	if 'mapped_field_analysis' in job_details.keys():
+		field_counts = job_details['mapped_field_analysis']
+	else:
+		if cjob.job.finished:
+			field_counts = cjob.count_indexed_fields()
+			cjob.job.update_job_details({'mapped_field_analysis':field_counts}, save=True)
+		else:
+			logger.debug('job not finished, not setting')
+			field_counts = {}	
+
+	# OAI Harvest
+	if type(cjob) == models.HarvestOAIJob:
+
+		# get OAI endpoint used		
+		if 'oai_endpoint_id' in job_details:
+			job_details['oai_endpoint'] = models.OAIEndpoint.objects.get(pk=job_details['oai_endpoint_id'])
+
+	# Static Harvest
+	elif type(cjob) == models.HarvestStaticXMLJob:
+		pass
+
+	# Transform 
+	elif type(cjob) == models.TransformJob:
+		pass
+
+	# Merge/Duplicate 
+	elif type(cjob) == models.MergeJob:
+		pass
+
+	# Analysis
+	elif type(cjob) == models.AnalysisJob:
+		pass
+
+	# get published records, primarily for published sets
+	pr = models.PublishedRecords()
 
 	# return
 	return render(request, 'core/job_details.html', {
@@ -687,7 +742,9 @@ def job_details(request, org_id, record_group_id, job_id):
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
 			'q':q,
 			'job_fm_config_json':job_fm_config_json,
-			'es_index':cjob.esi.es_index,
+			'job_details':job_details,
+			'pr':pr,
+			'es_index_str':cjob.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -753,32 +810,30 @@ def job_update_name(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_dpla_field_map(request, org_id, record_group_id, job_id):
-	
-	if request.method == 'POST':
+def job_publish(request, org_id, record_group_id, job_id):
 
-		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(job_id)
+	# get preferred metadata index mapper
+	publish_set_id = request.GET.get('publish_set_id', None)
 
-		# get DPLAJobMap
-		djm = cjob.job.dpla_mapping
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
 
-		# get fields
-		dpla_field = request.POST.get('dpla_field')
-		es_field = request.POST.get('es_field')
+	# init publish
+	bg_task = cjob.publish_bg_task(publish_set_id=publish_set_id)
 
-		# if dpla none, get current dpla field for this es field, then set to None
-		if dpla_field == '':
-			if es_field in djm.inverted_mapped_fields().keys():
-				current_dpla_field = djm.inverted_mapped_fields()[es_field]
-				logger.debug('unsetting %s' % current_dpla_field)
-				dpla_field = current_dpla_field
-				es_field = None
-		
-		# update DPLAJobMap and redirect
-		setattr(djm, dpla_field, es_field)
-		djm.save()
-		return redirect(request.META.get('HTTP_REFERER'))
+	return redirect('bg_tasks')
+
+
+@login_required
+def job_unpublish(request, org_id, record_group_id, job_id):
+
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# init unpublish
+	bg_task = cjob.unpublish_bg_task()
+
+	return redirect('bg_tasks')
 
 
 @login_required
@@ -1052,7 +1107,7 @@ def job_transform(request, org_id, record_group_id):
 			input_jobs = record_group.job_set.all()
 
 		# get all transformation scenarios
-		transformations = models.Transformation.objects.all()
+		transformations = models.Transformation.objects.filter(use_as_include=False)
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -1123,9 +1178,6 @@ def job_transform(request, org_id, record_group_id):
 		if rits == '':
 			rits = None
 
-		# capture input record validity valve
-		# input_validity_valve = request.POST.get('input_validity_valve', None)
-
 		# capture input filters
 		input_filters = {
 			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
@@ -1141,6 +1193,13 @@ def job_transform(request, org_id, record_group_id):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1278,6 +1337,13 @@ def job_merge(request, org_id, record_group_id):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -1297,112 +1363,6 @@ def job_merge(request, org_id, record_group_id):
 			rits=rits,
 			input_filters=input_filters,
 			dbdd=dbdd
-		)
-		
-		# start job and update status
-		job_status = cjob.start_job()
-
-		# if job_status is absent, report job status as failed
-		if job_status == False:
-			cjob.job.status = 'failed'
-			cjob.job.save()
-
-		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
-
-
-@login_required
-def job_publish(request, org_id, record_group_id):
-
-	'''
-	Publish a single job for a Record Group
-	'''
-
-	# retrieve record group
-	record_group = models.RecordGroup.objects.get(pk=record_group_id)
-	
-	# if GET, prepare form
-	if request.method == 'GET':
-		
-		# get scope of input jobs and retrieve
-		input_job_scope = request.GET.get('scope', None)
-
-		# if all jobs, retrieve all jobs
-		if input_job_scope == 'all_jobs':
-			input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
-
-		# else, limit to RecordGroup
-		else:
-			input_jobs = record_group.job_set.all()
-
-		# get validation scenarios
-		validation_scenarios = models.ValidationScenario.objects.all()
-
-		# get job lineage for all jobs (filtered to input jobs scope)
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
-
-		# get all currently applied publish set ids
-		publish_set_ids = models.PublishedRecords.get_publish_set_ids()
-
-		# get all bulk downloads
-		bulk_downloads = models.DPLABulkDataDownload.objects.all()
-
-		# render page
-		return render(request, 'core/job_publish.html', {
-				'job_select_type':'single',
-				'record_group':record_group,
-				'input_jobs':input_jobs,
-				'input_job_scope':input_job_scope,
-				'validation_scenarios':validation_scenarios,
-				'job_lineage_json':json.dumps(ld),
-				'publish_set_ids':publish_set_ids,
-				'bulk_downloads':bulk_downloads,
-				'breadcrumbs':breadcrumb_parser(request)
-			})
-
-	# if POST, submit job
-	if request.method == 'POST':
-
-		logger.debug('Publishing job for Record Group: %s' % record_group.name)
-
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve input job
-		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
-		logger.debug('publishing job: %s' % input_job)
-
-		# update RecordGroup publish set id
-		'''
-		priority:
-			1) new, user input publish_set_id
-			2) pre-existing publish_set_id
-		'''
-		if request.POST.get('new_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('new_publish_set_id')
-			record_group.save()
-		elif request.POST.get('existing_publish_set_id') != '':
-			record_group.publish_set_id = request.POST.get('existing_publish_set_id')
-			record_group.save()
-		else:
-			logger.debug('publish_set_id not set, skipping')
-
-		# initiate job
-		cjob = models.PublishJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			input_job=input_job
 		)
 		
 		# start job and update status
@@ -1453,8 +1413,16 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 	# if GET, prepare form
 	if request.method == 'GET':
 
-		# field analysis
-		field_counts = cjob.count_indexed_fields()
+		# mapped field analysis, generate if not part of job_details		
+		if 'mapped_field_analysis' in cjob.job.job_details_dict.keys():
+			field_counts = cjob.job.job_details_dict['mapped_field_analysis']
+		else:
+			if cjob.job.finished:
+				field_counts = cjob.count_indexed_fields()
+				cjob.job.update_job_details({'mapped_field_analysis':field_counts}, save=True)
+			else:
+				logger.debug('job not finished, not setting')
+				field_counts = {}
 
 		# render page
 		return render(request, 'core/job_reports_create_validation.html', {
@@ -1479,9 +1447,16 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 			'job_id':cjob.job.id,
 			'report_name':report_name,
 			'report_format':request.POST.get('report_format'),
+			'compression_type':request.POST.get('compression_type'),
 			'validation_scenarios':request.POST.getlist('validation_scenario', []),
 			'mapped_field_include':request.POST.getlist('mapped_field_include', [])
 		}
+
+		# cast to int
+		task_params['validation_scenarios'] = [int(vs_id) for vs_id in task_params['validation_scenarios']]
+
+		# remove select, reserved fields if in mapped field request
+		task_params['mapped_field_include'] = [ f for f in task_params['mapped_field_include'] if f not in ['record_id','db_id','oid','_id']] 
 
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
@@ -1525,6 +1500,9 @@ def job_update(request, org_id, record_group_id, job_id):
 		field_mappers = models.FieldMapper.objects.all()
 		orig_fm_config_json = cjob.job.get_fm_config_json()
 
+		# get all bulk downloads
+		bulk_downloads = models.DPLABulkDataDownload.objects.all()
+
 		# get uptdate type from GET params
 		update_type = request.GET.get('update_type', None)
 
@@ -1534,6 +1512,7 @@ def job_update(request, org_id, record_group_id, job_id):
 				'update_type':update_type,
 				'validation_scenarios':validation_scenarios,
 				'field_mappers':field_mappers,
+				'bulk_downloads':bulk_downloads,
 				'xml2kvp_handle':models.XML2kvp(),
 				'orig_fm_config_json':orig_fm_config_json,
 				'breadcrumbs':breadcrumb_parser(request)
@@ -1556,25 +1535,10 @@ def job_update(request, org_id, record_group_id, job_id):
 		if update_type == 'reindex':
 
 			# get preferred metadata index mapper
-			field_mapper = request.POST.get('field_mapper')
 			fm_config_json = request.POST.get('fm_config_json')
 
-			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'Re-Map and Index Job: %s' % cjob.job.name,
-				task_type = 'job_reindex',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'field_mapper':field_mapper,
-					'fm_config_json':fm_config_json
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_reindex(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			# init re-index
+			bg_task = cjob.reindex_bg_task(fm_config_json)
 
 			return redirect('bg_tasks')
 
@@ -1584,21 +1548,8 @@ def job_update(request, org_id, record_group_id, job_id):
 			# get requested validation scenarios
 			validation_scenarios = request.POST.getlist('validation_scenario', [])
 
-			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'New Validations for Job: %s' % cjob.job.name,
-				task_type = 'job_new_validations',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'validation_scenarios':validation_scenarios
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_new_validations(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			# init bg task
+			bg_task = cjob.new_validations_bg_task(validation_scenarios)
 
 			return redirect('bg_tasks')
 
@@ -1609,20 +1560,18 @@ def job_update(request, org_id, record_group_id, job_id):
 			jv_id = request.POST.get('jv_id', False)
 
 			# initiate Combine BG Task
-			ct = models.CombineBackgroundTask(
-				name = 'Remove Validation %s for Job: %s' % (jv_id, cjob.job.name),
-				task_type = 'job_remove_validation',
-				task_params_json = json.dumps({
-					'job_id':cjob.job.id,
-					'jv_id':jv_id
-				})
-			)
-			ct.save()
-			bg_task = tasks.job_remove_validation(
-				ct.id,
-				verbose_name=ct.verbose_name,
-				creator=ct
-			)
+			bg_task = cjob.remove_validation_bg_task(jv_id)
+
+			return redirect('bg_tasks')
+
+		# handle validation removal
+		if update_type == 'dbdm':
+
+			# get validation scenario to remove
+			dbdd_id = request.POST.get('dbdd', False)
+
+			# initiate Combine BG Task
+			bg_task = cjob.dbdm_bg_task(dbdd_id)
 
 			return redirect('bg_tasks')
 
@@ -1650,6 +1599,22 @@ def document_download(request):
 		'csv':{
 			'extension':'.csv',
 			'content_type':'text/plain'
+		},
+		'tsv':{
+			'extension':'.tsv',
+			'content_type':'text/plain'
+		},
+		'json':{
+			'extension':'.json',
+			'content_type':'text/plain'
+		},
+		'zip':{
+			'extension':'.zip',
+			'content_type':'application/zip'
+		},
+		'targz':{
+			'extension':'.tar.gz',
+			'content_type':'application/gzip'
 		}
 	}
 
@@ -1667,10 +1632,10 @@ def document_download(request):
 		name = '%s%s' % (name, format_params['extension'])
 		content_type = format_params['content_type']
 
-	# NEW
+	# generate response
 	response = FileResponse(open(filepath, 'rb'))
 	if not preview:
-			response['Content-Disposition'] = 'attachment; filename="%s"' % name
+		response['Content-Disposition'] = 'attachment; filename="%s"' % name
 	return response
 
 
@@ -1685,8 +1650,8 @@ def field_analysis(request, es_index):
 	# get field name
 	field_name = request.GET.get('field_name')
 	
-	# get ESIndex
-	esi = models.ESIndex(es_index)
+	# get ESIndex, evaluating stringified list
+	esi = models.ESIndex(ast.literal_eval(es_index))
 
 	# get analysis for field
 	field_metrics = esi.field_analysis(field_name, metrics_only=True)
@@ -1714,21 +1679,6 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def remove_job_indexing_failures(request, org_id, record_group_id, job_id):
-
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(job_id)
-
-	# remove indexing failures
-	to_delete = models.IndexMappingFailure.objects.filter(job=cjob.job)
-	delete_results = to_delete._raw_delete(to_delete.db)
-	logger.debug(delete_results)
-
-	# return
-	return redirect(request.META.get('HTTP_REFERER'))
-
-
-@login_required
 def field_analysis_docs(request, es_index, filter_type):
 
 	'''
@@ -1744,7 +1694,7 @@ def field_analysis_docs(request, es_index, filter_type):
 	field_name = request.GET.get('field_name')
 
 	# get ESIndex
-	esi = models.ESIndex(es_index)
+	esi = models.ESIndex(ast.literal_eval(es_index))
 
 	# begin construction of DT GET params with 'fields_names'
 	dt_get_params = [
@@ -1831,8 +1781,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	Single Record page
 	'''
 	
-	# get single record based on Combine record DB id
-	record = models.Record.objects.get(pk=int(record_id))
+	# get record
+	record = models.Record.objects.get(id=record_id)
 
 	# build ancestry in both directions
 	record_stages = record.get_record_stages()
@@ -1894,7 +1844,7 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return document as XML
 	return HttpResponse(record.document, content_type='text/xml')
@@ -1907,7 +1857,7 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return ES document as JSON
 	return JsonResponse(record.get_es_doc())
@@ -1921,7 +1871,7 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# return document as XML
 	return HttpResponse("<pre>%s</pre>" % record.error)
@@ -1937,7 +1887,7 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# get validation scenario
 	vs = models.ValidationScenario.objects.get(pk=int(job_validation_id))
@@ -1966,7 +1916,7 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# get side_by_side diff as HTML
 	diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
@@ -1992,7 +1942,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
 	'''
 
 	# get record
-	record = models.Record.objects.get(pk=int(record_id))
+	record = models.Record.objects.get(id=record_id)
 
 	# check for embed flag
 	embed = request.GET.get('embed', False)
@@ -2028,7 +1978,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
 def configuration(request):
 
 	# get all transformations
-	transformations = models.Transformation.objects.all()
+	transformations = models.Transformation.objects.filter(use_as_include=False)
 
 	# get all OAI endpoints
 	oai_endpoints = models.OAIEndpoint.objects.all()
@@ -2107,7 +2057,7 @@ def test_transformation_scenario(request):
 	if request.method == 'GET':
 
 		# get validation scenarios
-		transformation_scenarios = models.Transformation.objects.all()
+		transformation_scenarios = models.Transformation.objects.filter(use_as_include=False)
 
 		# check if limiting to one, pre-existing record
 		q = request.GET.get('q', None)
@@ -2132,7 +2082,7 @@ def test_transformation_scenario(request):
 		response_type = request.POST.get('response_type', False)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		try:
 			
@@ -2145,7 +2095,7 @@ def test_transformation_scenario(request):
 			trans.save()
 
 			# validate with record
-			trans_results = trans.transform_record(record)
+			trans_results = trans.transform_record(record)			
 
 			# delete temporary trans
 			trans.delete()
@@ -2238,7 +2188,7 @@ def test_validation_scenario(request):
 		logger.debug(request.POST)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		try:
 			# init new validation scenario
@@ -2319,7 +2269,7 @@ def test_rits(request):
 
 			# get record
 			if request.POST.get('db_id', False):
-				record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+				record = models.Record.objects.get(id=request.POST.get('db_id'))
 			else:
 				return JsonResponse({'results':'Please select a record from the table above!','success':False})
 
@@ -2455,7 +2405,7 @@ def test_field_mapper(request):
 		logger.debug(request.POST)
 
 		# get record
-		record = models.Record.objects.get(pk=int(request.POST.get('db_id')))
+		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		# get field mapper info
 		field_mapper = request.POST.get('field_mapper')
@@ -2503,6 +2453,7 @@ def dpla_bulk_data_download(request):
 
 	if request.method == 'POST':
 
+		# OLD ######################################################################
 		logger.debug('initiating bulk data download')
 
 		# get DPLABulkDataClient
@@ -2513,6 +2464,7 @@ def dpla_bulk_data_download(request):
 
 		# return to configuration screen
 		return redirect('configuration')
+
 
 
 ####################################################################
@@ -2529,13 +2481,17 @@ def published(request):
 	# get instance of Published model
 	published = models.PublishedRecords()
 
-	# isolate field_counts for templated tabled
-	field_counts = published.count_indexed_fields()
+	# get field counts
+	if published.records.count() > 0:
+		# get count of fields for all published job indices
+		field_counts = published.count_indexed_fields()
+	else:
+		field_counts = {}
 
 	return render(request, 'core/published.html', {
 			'published':published,
 			'field_counts':field_counts,
-			'es_index':published.esi.es_index,
+			'es_index_str':published.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2591,12 +2547,70 @@ def search(request):
 # Export                   										   #
 ####################################################################
 
-def job_export_mapped_fields(request, org_id, record_group_id, job_id):
+def export_documents(request, export_source, job_id=None):
 
-	logger.debug('exporting mapped fields from Job')
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
 
-	# retrieve job
-	cjob = models.CombineJob.get_combine_job(int(job_id))
+	# get archive type
+	archive_type = request.POST.get('archive_type')
+
+	# export for single job
+	if export_source == 'job':
+
+		logger.debug('exporting documents from Job')
+
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Documents for Job: %s' % cjob.job.name,
+			task_type = 'export_documents',
+			task_params_json = json.dumps({
+				'job_id':cjob.job.id,
+				'records_per_file':int(records_per_file),
+				'archive_type':archive_type
+			})
+		)
+		ct.save()
+
+	# export for published
+	if export_source == 'published':
+
+		logger.debug('exporting documents from Job')
+
+		# get instance of Published model
+		published = models.PublishedRecords()
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Documents for Published Records',
+			task_type = 'export_documents',
+			task_params_json = json.dumps({
+				'published':True,
+				'records_per_file':int(records_per_file),
+				'archive_type':archive_type
+			})
+		)
+		ct.save()
+	
+	# fire bg_task
+	bg_task = tasks.export_documents(
+		ct.id,
+		verbose_name=ct.verbose_name,
+		creator=ct
+	)
+
+	return redirect('bg_tasks')
+
+
+def export_mapped_fields(request, export_source, job_id=None):
+
+	# get mapped fields export type
+	mapped_fields_export_type = request.POST.get('mapped_fields_export_type')
 
 	# check for Kibana check
 	kibana_style = request.POST.get('kibana_style', False)
@@ -2609,124 +2623,52 @@ def job_export_mapped_fields(request, org_id, record_group_id, job_id):
 	# get selected fields if present
 	mapped_field_include = request.POST.getlist('mapped_field_include',False)
 
-	# initiate Combine BG Task
-	ct = models.CombineBackgroundTask(
-		name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
-		task_type = 'export_mapped_fields',
-		task_params_json = json.dumps({
-			'job_id':cjob.job.id,
-			'kibana_style':kibana_style,
-			'archive_type':archive_type,
-			'mapped_field_include':mapped_field_include
-		})
-	)
-	ct.save()
+	# export for single job
+	if export_source == 'job':
+
+		logger.debug('exporting mapped fields from Job')
+
+		# retrieve job
+		cjob = models.CombineJob.get_combine_job(int(job_id))
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Mapped Fields for Job: %s' % cjob.job.name,
+			task_type = 'export_mapped_fields',
+			task_params_json = json.dumps({
+				'job_id':cjob.job.id,
+				'mapped_fields_export_type':mapped_fields_export_type,
+				'kibana_style':kibana_style,
+				'archive_type':archive_type,
+				'mapped_field_include':mapped_field_include
+			})
+		)
+		ct.save()		
+
+	# export for published
+	if export_source == 'published':
+
+		logger.debug('exporting mapped fields from published records')
+
+		# get instance of Published model
+		published = models.PublishedRecords()
+
+		# initiate Combine BG Task
+		ct = models.CombineBackgroundTask(
+			name = 'Export Mapped Fields for Published Records',
+			task_type = 'export_mapped_fields',
+			task_params_json = json.dumps({
+				'published':True,
+				'mapped_fields_export_type':mapped_fields_export_type,
+				'kibana_style':kibana_style,
+				'archive_type':archive_type,
+				'mapped_field_include':mapped_field_include
+			})
+		)
+		ct.save()
+	
+	# fire bg task
 	bg_task = tasks.export_mapped_fields(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
-
-	return redirect('bg_tasks')
-
-
-def job_export_documents(request, org_id, record_group_id, job_id):
-
-	logger.debug('exporting documents from Job')
-
-	# retrieve job
-	cjob = models.CombineJob.get_combine_job(int(job_id))
-
-	# get records per file
-	records_per_file = request.POST.get('records_per_file', False)
-	if records_per_file in ['',False]:
-		records_per_file = 500
-
-	# get archive type
-	archive_type = request.POST.get('archive_type')
-
-	# initiate Combine BG Task
-	ct = models.CombineBackgroundTask(
-		name = 'Export Documents for Job: %s' % cjob.job.name,
-		task_type = 'export_documents',
-		task_params_json = json.dumps({
-			'job_id':cjob.job.id,
-			'records_per_file':int(records_per_file),
-			'archive_type':archive_type
-		})
-	)
-	ct.save()
-	bg_task = tasks.export_documents(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
-
-	return redirect('bg_tasks')
-
-
-def published_export_mapped_fields(request):
-
-	logger.debug('exporting mapped fields from Published')
-
-	# get instance of Published model
-	published = models.PublishedRecords()
-
-	# check for Kibana check
-	kibana_style = request.POST.get('kibana_style', False)
-	if kibana_style:
-		kibana_style = True
-
-	# get selected fields if present
-	mapped_field_include = request.POST.getlist('mapped_field_include',False)
-
-	# initiate Combine BG Task
-	ct = models.CombineBackgroundTask(
-		name = 'Export Mapped Fields for Published Records',
-		task_type = 'export_mapped_fields',
-		task_params_json = json.dumps({
-			'published':True,
-			'kibana_style':kibana_style,
-			'mapped_field_include':mapped_field_include
-		})
-	)
-	ct.save()
-	bg_task = tasks.export_mapped_fields(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
-
-	return redirect('bg_tasks')
-
-
-def published_export_documents(request):
-
-	logger.debug('exporting documents from Job')
-
-	# get instance of Published model
-	published = models.PublishedRecords()
-
-	# get records per file
-	records_per_file = request.POST.get('records_per_file', False)
-	if records_per_file in ['',False]:
-		records_per_file = 500
-
-	# get archive type
-	archive_type = request.POST.get('archive_type')
-
-	# initiate Combine BG Task
-	ct = models.CombineBackgroundTask(
-		name = 'Export Documents for Published Records',
-		task_type = 'export_documents',
-		task_params_json = json.dumps({
-			'published':True,
-			'records_per_file':int(records_per_file),
-			'archive_type':archive_type
-		})
-	)
-	ct.save()
-	bg_task = tasks.export_documents(
 		ct.id,
 		verbose_name=ct.verbose_name,
 		creator=ct
@@ -2783,11 +2725,13 @@ def job_analysis(request):
 	# if GET, prepare form
 	if request.method == 'GET':
 
-		# check if published analysis
-		analysis_type = request.GET.get('type', None)
-
-		# retrieve all jobs
+		# retrieve jobs (limiting if needed)
 		input_jobs = models.Job.objects.all()
+
+		# limit if analysis_type set		
+		analysis_type = request.GET.get('type', None)
+		if analysis_type == 'published':
+			input_jobs = input_jobs.filter(published=True)
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -2866,6 +2810,13 @@ def job_analysis(request):
 		if input_es_query_valve == '':
 			input_es_query_valve = None
 		input_filters['input_es_query_valve'] = input_es_query_valve
+		# filter duplicates
+		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			filter_dupe_record_ids = True
+		else:
+			filter_dupe_record_ids = False
+		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
 
 		# handle requested record_id transform
 		dbdd = request.POST.get('dbdd', None)
@@ -2981,10 +2932,9 @@ class DTRecordsJson(BaseDatatableView):
 
 		# define the columns that will be returned
 		columns = [
-			'id',
-			'combine_id',
+			'_id',			
 			'record_id',
-			'job',
+			'job_id',
 			'oai_set',
 			'unique',
 			'document',
@@ -2998,10 +2948,9 @@ class DTRecordsJson(BaseDatatableView):
 		# value like ''
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
-			'id',
-			'combine_id',
+			'_id',			
 			'record_id',
-			'job',
+			'job_id',
 			'oai_set',
 			'unique',
 			'document',
@@ -3020,10 +2969,12 @@ class DTRecordsJson(BaseDatatableView):
 			
 			# if job present, filter by job
 			if 'job_id' in self.kwargs.keys():
-				# get job
+
+				# get jobself.kwargs['job_id']
 				job = models.Job.objects.get(pk=self.kwargs['job_id'])
+
 				# return filtered queryset
-				return models.Record.objects.filter(job=job)
+				return job.get_records(success=None)
 
 			# else, return all records
 			else:
@@ -3036,16 +2987,12 @@ class DTRecordsJson(BaseDatatableView):
 			record_link = reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					})
 
 			# handle db_id
-			if column == 'id':
-				return '<a href="%s"><code>%s</code></a>' % (record_link, row.id)
-
-			# handle combine_id
-			if column == 'combine_id':
-				return '<a href="%s"><code>%s</code></a>' % (record_link, row.combine_id)
+			if column == '_id':
+				return '<a href="%s"><code>%s</code></a>' % (record_link, str(row.id))
 
 			# handle record_id
 			if column == 'record_id':
@@ -3059,7 +3006,7 @@ class DTRecordsJson(BaseDatatableView):
 					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
@@ -3096,11 +3043,15 @@ class DTRecordsJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				try:
-					int(search)
-					qs = qs.filter(Q(id=search))
-				except:
-					qs = qs.filter(Q(id__contains=search) | Q(combine_id__contains=search) | Q(record_id__contains=search))
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
+				else:
+					qs = qs.filter(mongoengine.Q(record_id=search))
 
 			# return
 			return qs
@@ -3115,12 +3066,12 @@ class DTPublishedJson(BaseDatatableView):
 
 		# define the columns that will be returned
 		columns = [
-			'id',
+			'_id',
 			'record_id',
-			'job__record_group',
-			'job__record_group__publish_set_id', # note syntax for Django FKs
-			'oai_set',
-			'unique_published',
+			'job_id',
+			'publish_set_id', 
+			# 'oai_set',
+			# 'unique_published',
 			'document'
 		]
 
@@ -3129,12 +3080,12 @@ class DTPublishedJson(BaseDatatableView):
 		# displayed by datatables. For non sortable columns use empty
 		# value like ''
 		order_columns = [
-			'id',
+			'_id',
 			'record_id',
-			'job__record_group',
-			'job__record_group__publish_set_id', # note syntax for Django FKs
-			'oai_set',
-			'unique_published',
+			'job_id',
+			'publish_set_id', 
+			# 'oai_set',
+			# 'unique_published',
 			'document'
 		]
 
@@ -3158,18 +3109,26 @@ class DTPublishedJson(BaseDatatableView):
 			
 			# handle document metadata
 
+			if column == '_id':
+				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
+						'org_id':row.job.record_group.organization.id,
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id, 'record_id':str(row.id)
+					}), str(row.id))
+
 			if column == 'record_id':
 				return '<a href="%s">%s</a>' % (reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}), row.record_id)
 
-			if column == 'job__record_group':
-				return '<a href="%s">%s</a>' % (reverse(record_group, kwargs={
+			if column == 'job_id':
+				return '<a href="%s">%s</a>' % (reverse(job_details, kwargs={
 						'org_id':row.job.record_group.organization.id,
-						'record_group_id':row.job.record_group.id
-					}), row.job.record_group.name)
+						'record_group_id':row.job.record_group.id,
+						'job_id':row.job.id
+					}), row.job.name)
 
 			if column == 'document':
 				# attempt to parse as XML and return if valid or not
@@ -3178,21 +3137,17 @@ class DTPublishedJson(BaseDatatableView):
 					return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
-						'job_id':row.job.id, 'record_id':row.id
+						'job_id':row.job.id, 'record_id':str(row.id)
 					}))
 				except:
 					return '<span style="color: red;">Invalid XML</span>'
 
-			# handle associated job
-			if column == 'job__record_group__publish_set_id':
-				return row.job.record_group.publish_set_id
-
-			# handle associated job
-			if column == 'unique_published':
-				if row.unique_published:
-					return '<span style="color:green;">True</span>'
-				else:
-					return '<span style="color:red;">False</span>'
+			# # handle associated job
+			# if column == 'unique_published':
+			# 	if row.unique_published:
+			# 		return '<span style="color:green;">True</span>'
+			# 	else:
+			# 		return '<span style="color:red;">False</span>'
 
 			else:
 				return super(DTPublishedJson, self).render_column(row, column)
@@ -3203,28 +3158,18 @@ class DTPublishedJson(BaseDatatableView):
 
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
-
 			if search:
-
-				# determine if search is integer
-				try:
-					int_qs = int(search)
-				except:
-					int_qs = False
-
-				# if integer
-				if int_qs:
-					qs = qs.filter(
-						Q(id=search)
-					)
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
 				else:
-					# very slow to include the job's publish set id - removing from search
-					qs = qs.filter(
-						Q(record_id__contains=search) |
-						Q(document__contains=search)
-					)
+					qs = qs.filter(mongoengine.Q(record_id=search) | mongoengine.Q(publish_set_id=search))
 
-
+			# return
 			return qs
 
 
@@ -3236,14 +3181,10 @@ class DTIndexingFailuresJson(BaseDatatableView):
 		'''
 
 		# define the columns that will be returned
-		columns = ['id', 'combine_id', 'record_id', 'mapping_error']
+		columns = ['_id', 'record_id', 'mapping_error']
 
-		# define column names that will be used in sorting
-		# order is important and should be same as order of columns
-		# displayed by datatables. For non sortable columns use empty
-		# value like ''
-		# order_columns = ['number', 'user', 'state', '', '']
-		order_columns = ['id', 'combine_id', 'record_id', 'mapping_error']
+		# define column names that will be used in sorting		
+		order_columns = ['_id', 'record_id', 'mapping_error']
 
 		# set max limit of records returned, this is used to protect our site if someone tries to attack our site
 		# and make it return huge amount of data
@@ -3258,7 +3199,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 			job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
 			# return filtered queryset
-			return models.IndexMappingFailure.objects.filter(job=job)
+			return models.IndexMappingFailure.objects(job_id=job.id)
 
 
 		def render_column(self, row, column):
@@ -3272,11 +3213,8 @@ class DTIndexingFailuresJson(BaseDatatableView):
 					'record_id':target_record.id
 				})
 
-			if column == 'id':
+			if column == '_id':
 				return '<a href="%s">%s</a>' % (record_link, target_record.id)
-			
-			if column == 'combine_id':
-				return '<a href="%s">%s</a>' % (record_link, target_record.combine_id)
 
 			if column == 'record_id':
 				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
@@ -3289,15 +3227,15 @@ class DTIndexingFailuresJson(BaseDatatableView):
 				return super(DTIndexingFailuresJson, self).render_column(row, column)
 
 
-		def filter_queryset(self, qs):
+		# def filter_queryset(self, qs):
 
-			# handle search
-			search = self.request.GET.get(u'search[value]', None)
-			if search:
-				logger.debug('looking for: %s' % search)
-				qs = qs.filter(Q(id = search) | Q(combine_id = search) | Q(record_id = search) | Q(mapping_error__contains = search))
+		# 	# handle search
+		# 	search = self.request.GET.get(u'search[value]', None)
+		# 	if search:
+		# 		logger.debug('looking for: %s' % search)
+		# 		qs = qs.filter(Q(id = search) | Q(combine_id = search) | Q(record_id = search) | Q(mapping_error__contains = search))
 
-			return qs
+		# 	return qs
 
 
 
@@ -3310,7 +3248,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 		# define the columns that will be returned
 		columns = [
 			'id',
-			'record_id',
+			'record',
 			'results_payload',
 			'fail_count'
 		]
@@ -3322,7 +3260,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 		# order_columns = ['number', 'user', 'state', '', '']
 		order_columns = [
 			'id',
-			'record_id',
+			'record',
 			'results_payload',
 			'fail_count'
 		]
@@ -3347,7 +3285,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 			# determine record link
 			target_record = row.record
-			record_link = reverse(record, kwargs={
+			record_link = "%s#validation_tab" % reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
 					'job_id':target_record.job.id,
@@ -3361,7 +3299,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
-			elif column == 'record_id':
+			elif column == 'record':
 				# get target record from row
 				target_record = row.record
 				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
@@ -3382,8 +3320,13 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 			# handle search
 			search = self.request.GET.get(u'search[value]', None)
 			if search:
-				qs = qs.filter(Q(record__record_id__contains=search)|Q(results_payload__contains=search))
-
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(record_id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
 			# return
 			return qs
 
@@ -3420,23 +3363,20 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 			
 			# return queryset used as base for futher sorting/filtering
 			
-			# get job
+			# get job and records
 			job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
-			# get DPLA misses / matches
-			dpla_bulk_data_matches = job.get_dpla_bulk_data_matches()
-
-			# return queryset
+			# return queryset filtered for match/miss
 			if self.kwargs['match_type'] == 'matches':
-				return dpla_bulk_data_matches['matches']
+				return job.get_records().filter(dbdm=True)
 			elif self.kwargs['match_type'] == 'misses':
-				return dpla_bulk_data_matches['misses']
+				return job.get_records().filter(dbdm=False)
 
 
 		def render_column(self, row, column):
 
 			# determine record link
-			target_record = row.record
+			target_record = row
 			record_link = reverse(record, kwargs={
 					'org_id':target_record.job.record_group.organization.id,
 					'record_group_id':target_record.job.record_group.id,
@@ -3448,58 +3388,37 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 			if column == 'id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
 			# handle record record_id
 			elif column == 'record_id':
 				# get target record from row
 				target_record = row
-				return '<a href="%s" target="_blank">%s</a>' % (record_link, target_record.record_id)
+				return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
 			# handle all else
 			else:
 				return super(DTDPLABulkDataMatches, self).render_column(row, column)
 
 
-		def get_context_data(self, *args, **kwargs):
-			stime = time.time()
-			try:
-				self.initialize(*args, **kwargs)
+		def filter_queryset(self, qs):
+			# use parameters passed in GET request to filter queryset
 
-				qs = self.get_initial_queryset()
-
-				# number of records before filtering
-				total_records = qs.count()
-
-				qs = self.filter_queryset(qs)
-
-				# number of records after filtering
-				total_display_records = qs.count()
-
-				qs = self.ordering(qs)
-				qs = self.paging(qs)
-
-				# prepare output data
-				if self.pre_camel_case_notation:
-					aaData = self.prepare_results(qs)
-
-					ret = {'sEcho': int(self._querydict.get('sEcho', 0)),
-						   'iTotalRecords': total_records,
-						   'iTotalDisplayRecords': total_display_records,
-						   'aaData': aaData
-						   }
+			# handle search
+			search = self.request.GET.get(u'search[value]', None)
+			if search:
+				# sniff out ObjectId if present
+				if len(search) == 24:
+					try:
+						oid = ObjectId(search)					
+						qs = qs.filter(mongoengine.Q(id=oid))
+					except:
+						logger.debug('recieved 24 chars, but not ObjectId')
 				else:
-					data = self.prepare_results(qs)
+					qs = qs.filter(mongoengine.Q(record_id=search))
 
-					ret = {'draw': int(self._querydict.get('draw', 0)),
-						   'recordsTotal': total_records,
-						   'recordsFiltered': total_display_records,
-						   'data': data
-						   }
-				logger.debug('context data total %s' % (time.time() - stime))
-				return ret
-			except Exception as e:
-				return self.handle_exception(e)
+			# return
+			return qs
 
 
 
@@ -3574,6 +3493,7 @@ class JobRecordDiffs(BaseDatatableView):
 
 			# return
 			return qs
+
 
 
 class CombineBackgroundTasksDT(BaseDatatableView):

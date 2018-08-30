@@ -51,7 +51,7 @@
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
 				</li>				
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA Link</a>
+					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA API Query</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{% if record.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif record.job.job_type_family == 'TransformJob' %}Transform Details{% elif record.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif record.job.job_type_family == 'PublishJob' %}Publish Details{% elif record.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
@@ -152,12 +152,13 @@
 						<!-- Record Validations -->
 						{% if record.job.jobvalidation_set.count > 0 %}
 						<div class="col-md-12">
-							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>
-							<p>The following Validation Scenarios were run for this Job.</p>
-							{% if record.get_validation_errors.count > 0 %}			
+							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>							
+							{% if record.get_validation_errors.count > 0 %}
+								<p>This Record failed the following Validation Scenarios</p>
 								<table class="table table-bordered table-hover">
 									<tr>
 										<th>Validation Scenario</th>
+										<th>Validation Type</th>
 										<th>Test Failed</th>
 										<th>Actions</th>
 									</tr>
@@ -165,6 +166,7 @@
 										{% for failure in rv.failed %}
 											<tr>
 												<td>{{ rv.validation_scenario.name }}</td>
+												<td>{{ rv.validation_scenario.get_validation_type_display }}</td>
 												<td><code>{{ failure }}</code></td>												
 												<td><a target="_blank" href="{% url 'test_validation_scenario' %}?q={{record.id}}&validation_scenario={{rv.validation_scenario.id}}|{{rv.validation_scenario.validation_type}}"><button type="button" class="btn btn-info btn-sm">Run Validation</button></a></td>
 											</tr>
@@ -172,7 +174,7 @@
 									{% endfor %}
 								</table>
 							{% else %}
-								<p>The following Validation Scenarios passed!</p>
+								<p>This Record passed the following Validation Scenarios tests:</p>
 								<table class="table table-bordered table-hover">
 									<tr>
 										<th>Validation Scenario</th>
@@ -181,7 +183,7 @@
 									{% for jv in record.job.jobvalidation_set.all %}
 										<tr>
 											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.validation_type }}</td>							
+											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
 										</tr>
 									{% endfor %}
 								</table>
@@ -241,9 +243,7 @@
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>
 									<tr>
-										<th>Field Name</th>
-										<th>DPLA Mapped Field</th>
-										<th>Map DPLA Field</th>
+										<th>Field Name</th>										
 										<th>Field Value</th>
 									</tr>
 								</thead>
@@ -251,30 +251,6 @@
 									{% for field_name, field_value in record.get_es_doc.items %}
 									<tr>
 										<td><code>{{ field_name }}</code></td>
-
-										<!-- show mapped DPLA field if exists -->
-										{% if field_name in record.job.dpla_mapping.inverted_mapped_fields.keys %}
-											<td style="background-color:#cbdafb;">{{ record.job.dpla_mapping.inverted_mapped_fields|get_dict_value:field_name }}</td>
-										{% else %}
-											<td></td>
-										{% endif %}
-
-										<!-- provide in-place form for mapping field -->
-										<td>
-											<form method="POST" action="{% url 'job_dpla_field_map' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id %}">
-												{% csrf_token %}
-												<div class="form-group" style="margin-bottom:0rem;">
-													<select class="form-control form-control-sm" name='dpla_field' onchange="this.form.submit()">
-														<option value="">Select DPLA field</option>
-														<option value="">None</option>
-														{% for field_name in record.job.dpla_mapping.all_fields %}									
-															<option value="{{ field_name }}">{{ field_name }}</option>
-														{% endfor %}
-													</select>
-												</div>
-												<input type="hidden" name="es_field" value="{{ field_name }}"></input>
-											</form>
-										</td>
 
 										{% if 'http://' in field_value or 'https://' in field_value %}
 											<td><a href="{{ field_value }}" target="_blank">{{ field_value }}</a></td>
@@ -291,7 +267,7 @@
 								    	"pageLength": 100,
 								    	"lengthMenu": [ 10, 25, 100, 500 ],
 								    	"columnDefs": [
-											{ "searchable": false, "targets": 2 }
+											{ "searchable": false, "targets": 1 }
 										]
 								    });
 								} );
@@ -299,99 +275,122 @@
 						</div>
 					</div>
 
-					<div class="row">
-						<div class="col-md-12">							
-							<div>
-								<h4>Mapped DLPA Fields</h4>
-							
-								{% if record.job.dpla_mapping.preview %}
-									<a target="_blank" href="{{record.dpla_mapped_field_values.isShownAt}}"><img src="{{ record.dpla_mapped_field_values.preview }}"/></a>
-								{% endif %}
-								
-								<table class="table table-bordered table-hover">
-									{% for field, value in record.dpla_mapped_field_values.items  %}
-									<tr>
-										<td><strong>{{ field }}</strong></td>
-										<td>{% if field == 'isShownAt' %}<a href="{{ value }}" target="_blank">{{ value }}</a>{% else %}{{ value }}{% endif %}</td>
-									</tr>
-									{% endfor %}
-								</table>
-
-							</div>
-						</div>
-					</div>
-
 				</div>
 
 				<div id="dpla_link_tab" class="tab-pane full_width_tab">
 
-					<!-- if DPLA API hit -->
-					{% if dpla_api_doc %}
-					
-						<div class="row">
+					{% if DPLA_API_KEY %}
 
-							<div class="col-md-12">
-								<div>
-									<h4>DPLA API Item Match</h4>
-									<p>A matching DPLA Item was found!</p>
-									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
-									<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
-									<table class="table table-bordered table-hover">
-									{% for field, value in dpla_api_doc.sourceResource.items %}
-										<tr>
-											<td><strong>{{field}}</strong></td>
-											<td>{{value}}</td>
-										</tr>
-									{% endfor %}
-									</table>										
-								</div>
-							</div>
-
-						</div>						
-
-						<div class="row">
-							<div class="col-md-12">
-								<div id="dpla_api_result">
-									<h4>DPLA API Result</h4>
-									<!-- DPLA api results -->
-									<div id="jsonresults" style="height:450px;"></div>
-									<script>
-								        // create the editor
-								        var container = document.getElementById("jsonresults");
-								        var options = {
-								        	mode: 'view',
-											modes: ['code', 'text', 'view'],
-											sortObjectKeys: true,
-											name: 'xml2kvp_mapping_results',
-											onModeChange: function(nm, om){
-												if (nm == 'view'){
-													$("#jsonresults").css('height','');
-												}
-												else {
-													$("#jsonresults").css('height','450px');	
-												}
-											},
-
-											navigationBar:false
-								        };
-								        var editor_results = new JSONEditor(container, options);
-
-								        // set json to editor_results
-								        editor_results.set({{ dpla_api_json|safe }});		        
-								    </script>
-								</div>
-							</div>
-						</div>
+						<!-- if DPLA API document hit -->
+						{% if dpla_api_doc %}
 						
+							<div class="row">
+
+								<div class="col-md-12">
+									<div>
+										<h4>DPLA API Item Query</h4>
+										<p>A matching DPLA Item was found!</p>
+										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><img src="https://dp.la/thumb/{{ dpla_api_doc.id }}"/></a></p>
+										<p><a target="_blank" href="https://dp.la/item/{{ dpla_api_doc.id }}"><button type="button" class="btn btn-success btn-sm">View DPLA Item Record</button></a></p>
+										<table class="table table-bordered table-hover">
+										{% for field, value in dpla_api_doc.sourceResource.items %}
+											<tr>
+												<td><strong>{{field}}</strong></td>
+												<td>{{value}}</td>
+											</tr>
+										{% endfor %}
+										</table>										
+									</div>
+								</div>
+
+							</div>						
+
+							<div class="row">
+								<div class="col-md-12">
+									<div id="dpla_api_result">
+										<h4>DPLA API Result</h4>
+										<!-- DPLA api results -->
+										<div id="jsonresults" style="height:450px;"></div>
+										<script>
+									        // create the editor
+									        var container = document.getElementById("jsonresults");
+									        var options = {
+									        	mode: 'view',
+												modes: ['code', 'text', 'view'],
+												sortObjectKeys: true,
+												name: 'dpla_api_response',
+												onModeChange: function(nm, om){
+													if (nm == 'view'){
+														$("#jsonresults").css('height','');
+													}
+													else {
+														$("#jsonresults").css('height','450px');	
+													}
+												},
+
+												navigationBar:false
+									        };
+									        var editor_results = new JSONEditor(container, options);
+
+									        // set json to editor_results
+									        editor_results.set({{ dpla_api_json|safe }});		        
+									    </script>
+									</div>
+								</div>
+							</div>
+
+						{% else %}
+							<div class="row">
+								<div class="col-md-12">
+									<h4>DPLA API Item Query</h4>
+									<p>A single, matching DPLA item was not found.  Possible none were found, or multiple, which would be shown in the table below.</p>
+								</div>
+							</div>
+						{% endif %}
+
+						<!-- if DPLA API document hit -->
+						{% if record.dpla_api_matches %}
+							<div class="row">
+
+								<div class="col-md-12">
+									<h4>DPLA API Matches</h4>
+									<p>The following table shows DPLA API fields that were search, with what value, and what matches were returned.  Rows in yellow indicate queries against the <code>isShownAt</code> field, which should usually be unique to a single DPLA Item.</p>
+									<table class="table table-bordered table-hover">
+										<thead>
+											<tr>
+												<th>DPLA Field</th>
+												<th>Search Term</th>
+												<th>DPLA Original Record ID</th>
+												<th>DPLA Item ID</th>												
+											</tr>
+										</thead>
+										<tbody>
+											{% for field, matches in record.dpla_api_matches.items %}
+												{% for match in matches %}
+													<tr {% if field == 'isShownAt' %}style="background-color: rgba(255, 255, 0, 0.4);"{% endif %}>
+														<td><code>{{field}}</code></td>
+														<td><code>{{match.search_term}}</code></td>
+														<td><code>{{match.hit.originalRecord.id}}</code></td>
+														<td><a target="_blank" href="https://dp.la/item/{{ match.hit.id }}">{{match.hit.id}}</a></td>
+													</tr>
+												{% endfor %}
+											{% endfor %}
+										</tbody>												
+									</table>
+								</div>
+
+							</div>
+						
+						{% else %}
+
+						{% endif %}
+
 
 					{% else %}
-
-							<div class="col-md-12">
-								<h4>DPLA API Item Match</h4>
-								<p>No matching DPLA record found.  Try mapping the <code>isShownAt</code> field to your known live URL for the record from the "Indexed Fields" tab...</p>
-							</div>
-
+						<p>DPLA API key not set, set in <code>localsettings.py</code> to query DPLA API for Record matching.</p>
 					{% endif %}
+
+					
 
 				</div>
 

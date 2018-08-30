@@ -18,7 +18,7 @@ import pyjxslt
 try:
 	from pyspark.sql import Row
 	from pyspark.sql.types import StringType, IntegerType
-	from pyspark.sql.functions import udf
+	from pyspark.sql.functions import udf, lit
 except:
 	pass
 
@@ -32,7 +32,10 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 
 # import xml2kvp
-from core.xml2kvp import XML2kvp
+try:
+	from core.xml2kvp import XML2kvp
+except:
+	from xml2kvp import XML2kvp
 
 
 class ESIndex(object):
@@ -76,10 +79,10 @@ class ESIndex(object):
 
 				yield mapper.map_record(
 					record_string=row.document,
-					db_id=row.id,
+					db_id=row._id.oid,
 					combine_id=row.combine_id,
 					record_id=row.record_id,				
-					publish_set_id=job.record_group.publish_set_id,
+					publish_set_id=job.publish_set_id,
 					fingerprint=row.fingerprint
 				)
 
@@ -96,21 +99,22 @@ class ESIndex(object):
 
 			logger.info('###ES 3 -- writing indexing failures')
 
-			failures_df = failures_rdd.map(lambda row: Row(combine_id=row[1]['combine_id'], mapping_error=row[1]['mapping_error'])).toDF()
+			failures_df = failures_rdd.map(lambda row: Row(
+					db_id=row[1]['db_id'],
+					record_id=row[1]['record_id'],
+					mapping_error=row[1]['mapping_error']
+				)).toDF()
 
 			# add job_id as column
-			job_id = job.id
-			job_id_udf = udf(lambda id: job_id, IntegerType())
-			failures_df = failures_df.withColumn('job_id', job_id_udf(failures_df.combine_id))
+			failures_df = failures_df.withColumn('job_id', lit(job.id))
 
 			# write mapping failures to DB
-			failures_df.withColumn('combine_id', failures_df.combine_id).select(['combine_id', 'job_id', 'mapping_error'])\
-			.write.jdbc(
-					settings.COMBINE_DATABASE['jdbc_url'],
-					'core_indexmappingfailure',
-					properties=settings.COMBINE_DATABASE,
-					mode='append'
-				)
+			failures_df.select(['db_id', 'record_id', 'job_id', 'mapping_error'])\
+			.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "index_mapping_failure").save()
 		
 		# retrieve successes to index
 		logger.info('###ES 4 -- filtering successes')
@@ -121,20 +125,29 @@ class ESIndex(object):
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		if not es_handle_temp.indices.exists(index_name):
 			
-			# prepare mapping
-			mapping = {
-				'mappings':{
-					'record':{
-						'date_detection':False,
-						'properties':{
-							'combine_db_id':{'type':'integer'},
+			# put combine es index templates
+			template_body = {
+					'template':'*',
+					'settings':{
+						'number_of_shards':1,
+						'number_of_replicas':0,
+						'refresh_interval':-1
+					},
+					'mappings':{
+						'record':{
+							'date_detection':False,
+							'properties':{
+								'combine_db_id':{
+									'type':'integer'
+								}
+							}
 						}
 					}
 				}
-			}
+			es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
 			
 			# create index
-			es_handle_temp.indices.create(index_name, body=json.dumps(mapping))
+			es_handle_temp.indices.create(index_name)
 
 		# index to ES
 		logger.info('###ES 5 -- writing to ES')
@@ -151,13 +164,18 @@ class ESIndex(object):
 				}
 		)
 
+		# refresh index
+		es_handle_temp.indices.refresh(index_name)
+
+		# return
+		return to_index_rdd
+
 
 	@staticmethod
 	def copy_es_index(
 		source_index=None,
 		target_index=None,
-		create_target_index=True,
-		target_index_mapping={'mappings':{'record':{'date_detection':False}}},
+		create_target_index=True,		
 		refresh=True,
 		wait_for_completion=True,
 		add_copied_from=None):
@@ -168,8 +186,7 @@ class ESIndex(object):
 		Args:
 			create_target_index (boolean): If True, check for target and create
 			source_index (str): Source ES index to copy from
-			target_index (str): Target ES index to copy to
-			target_index_mapping (dict): Dictionary of mapping to create target index
+			target_index (str): Target ES index to copy to			
 
 		Returns:
 			(dict): results of reindex via elasticsearch client reindex request
@@ -178,9 +195,30 @@ class ESIndex(object):
 		# get ES handle
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 
+		# put/confirm combine es index templates
+		template_body = {
+				'template':'*',
+				'settings':{
+					'number_of_shards':1,
+					'number_of_replicas':0,
+					'refresh_interval':-1
+				},
+				'mappings':{
+					'record':{
+						'date_detection':False,
+						'properties':{
+							'combine_db_id':{
+								'type':'integer'
+							}
+						}
+					}
+				}
+			}
+		es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+
 		# if creating target index check if target index exists
 		if create_target_index and not es_handle_temp.indices.exists(target_index):
-			es_handle_temp.indices.create(target_index, body=json.dumps(target_index_mapping))
+			es_handle_temp.indices.create(target_index)
 
 		# prepare reindex query
 		dupe_dict = {
@@ -217,11 +255,9 @@ class BaseMapper(object):
 		- map_record()
 	'''
 
-	# pre-compiled regex
-	# checker for blank spaces
-	blank_check_regex = re.compile(r"[^ \t\n]")
-	# element tag name
-	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')
+	# pre-compiled regex	
+	blank_check_regex = re.compile(r"[^ \t\n]") # checker for blank spaces	
+	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)') # element tag name
 
 
 	def get_namespaces(self):
@@ -276,18 +312,20 @@ class XML2kvpMapper(BaseMapper):
 		Map record
 
 		Args:
-			record_id (str): record id
 			record_string (str): string of record document
-			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
+			db_id (str): mongo db id
+			combine_id (str): combine_id id
+			record_id (str): record id			
+			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build publish identifier
+			fingerprint (str): fingerprint
 
 		Returns:
 			(tuple):
 				0 (str): ['success','fail']
 				1 (dict): details from mapping process, success or failure
-
 		'''
 
-		try:
+		try:			
 
 			# prepare literals
 			if 'add_literals' not in self.fm_config.keys():
@@ -297,7 +335,7 @@ class XML2kvpMapper(BaseMapper):
 			self.fm_config['add_literals'].update({
 
 				# add temporary id field
-				'temp_id':combine_id,
+				'temp_id':db_id,
 
 				# add combine_id field
 				'combine_id':combine_id,
@@ -329,115 +367,8 @@ class XML2kvpMapper(BaseMapper):
 			return (
 				'fail',
 				{
-					'combine_id':combine_id,
-					'mapping_error':str(e)
-				}
-			)
-
-
-
-class MODSMapper(BaseMapper):
-
-	'''
-	Mapper for MODS metadata
-
-		- flattens MODS with XSLT transformation (derivation of Islandora and Fedora GSearch xslt)
-			- field names are combination of prefixes and attributes
-		- convert to dictionary with xmltodict
-	'''
-
-
-	# Index Mapper class attributes (needed for easy access in Django templates)
-	classname = "MODSMapper" # must be same as class name
-	name = "Custom MODS mapper"
-
-
-	def __init__(self, include_attributes=None, xslt_processor='lxml'):
-
-		'''
-		Initiates MODSMapper, with option of what XSLT processor to use.
-			- lxml: faster, but does not provide XSLT 2.0 support (though the included stylesheet does not require)
-			- pyjxslt: slower, but offers XSLT 2.0 support
-
-		Args:
-			xslt_processor (str)['lxml','pyjxslt']: Selects which XSLT processor to use.
-		'''
-
-		self.xslt_processor = xslt_processor
-		self.xslt_filepath = '/opt/combine/inc/xslt/MODS_extract.xsl'
-
-		if self.xslt_processor == 'lxml':
-
-			# set xslt transformer
-			xslt_tree = etree.parse(self.xslt_filepath)
-			self.xsl_transform = etree.XSLT(xslt_tree)
-
-		elif self.xslt_processor == 'pyjxslt':
-
-			# prepare pyjxslt gateway
-			self.gw = pyjxslt.Gateway(6767)
-			with open(self.xslt_filepath,'r') as f:
-				self.gw.add_transform('xslt_transform', f.read())
-
-
-	def map_record(self,
-			record_string=None,
-			db_id=None,
-			combine_id=None,
-			record_id=None,
-			publish_set_id=None,
-			fingerprint=None
-		):
-
-		try:
-			
-			if self.xslt_processor == 'lxml':
-				
-				# flatten file with XSLT transformation
-				xml_root = etree.fromstring(record_string.encode('utf-8'))
-				flat_xml = self.xsl_transform(xml_root)
-
-			elif self.xslt_processor == 'pyjxslt':
-
-				# flatten file with XSLT transformation
-				flat_xml = self.gw.transform('xslt_transform', record_string)
-
-			# convert to dictionary			
-			flat_dict = xmltodict.parse(flat_xml)
-
-			# prepare as flat mapped
-			fields = flat_dict['fields']['field']
-			mapped_dict = { field['@name']:field['#text'] for field in fields }
-
-			# add temporary id field
-			mapped_dict['temp_id'] = combine_id
-
-			# add combine_id field
-			mapped_dict['combine_id'] = combine_id
-
-			# add record_id field
-			mapped_dict['record_id'] = record_id
-
-			# add publish set id
-			mapped_dict['publish_set_id'] = publish_set_id
-
-			# add record's Combine DB id
-			mapped_dict['db_id'] = db_id
-
-			# add record's crc32 document hash, aka "fingerprint"
-			mapped_dict['fingerprint'] = db_id
-
-			return (
-				'success',
-				mapped_dict
-			)
-
-		except Exception as e:
-			
-			return (
-				'fail',
-				{
-					'combine_id':combine_id,
+					'db_id':db_id,
+					'record_id':record_id,
 					'mapping_error':str(e)
 				}
 			)

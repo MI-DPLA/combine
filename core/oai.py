@@ -19,7 +19,7 @@ from core import models
 logger = logging.getLogger(__name__)
 
 
-# attempt to load metadataPrefix map from localConfig, otherwise provide default
+# attempt to load metadataPrefix map from localSettings, otherwise provide default
 if hasattr(settings, 'METADATA_PREFIXES'):
 	metadataPrefix_hash = settings.METADATA_PREFIXES
 else:	
@@ -37,6 +37,7 @@ else:
 				'namespace':'http://purl.org/dc/elements/1.1/'
 			},
 	}
+
 
 
 class OAIProvider(object):
@@ -67,9 +68,8 @@ class OAIProvider(object):
 
 		# published dataframe slice parameters
 		self.start = 0
-		self.chunk_size = settings.OAI_RESPONSE_SIZE
-		self.publish_set_id = None
-		if 'set' in self.args.keys():
+		self.chunk_size = settings.OAI_RESPONSE_SIZE		
+		if 'set' in self.args.keys() and self.args['set'] != '':
 			self.publish_set_id = self.args['set']
 		else:
 			self.publish_set_id = None
@@ -157,20 +157,26 @@ class OAIProvider(object):
 
 		# if set present, filter by this set
 		if self.publish_set_id:
-			logger.debug('applying publish_set_id filter')
-			records = records.filter(job__record_group__publish_set_id = self.publish_set_id)
+			logger.debug('applying publish_set_id filter: %s' % self.publish_set_id)			
+			records = records.filter(publish_set_id = self.publish_set_id)
 
 		# loop through rows, limited by current OAI transaction start / chunk
-		for record in records[self.start:(self.start+self.chunk_size)]:
+		
+		# count records before slice
+		records_count = records.count()
+		
+		# get slice for iteration
+		records = records[self.start:(self.start+self.chunk_size)]				
+		for record in records:
 
 			record = OAIRecord(
 					args=self.args,
 					record_id=record.record_id,
-					publish_set_id=record.job.record_group.publish_set_id,
-					document=record.document,
+					publish_set_id=record.publish_set_id,
+					document=record.document,					
 					timestamp=self.request_timestamp_string
 				)
-
+			
 			# include full metadata in record
 			if include_metadata:
 				 record.include_metadata()
@@ -182,21 +188,21 @@ class OAIProvider(object):
 		for oai_record_node in self.record_nodes:
 			self.verb_node.append(oai_record_node)
 
-		# finally, set resumption token
-		self.set_resumption_token()
+		# finally, set resumption token		
+		self.set_resumption_token(records, completeListSize=records_count)
 
-		# report
-		etime = time.time()
-		logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
+		# report		
+		record_nodes_num = len(self.record_nodes)		
+		logger.debug("%s record(s) returned in %s" % (record_nodes_num, (float(time.time()) - float(stime))))
 
 
-	def set_resumption_token(self):
+	def set_resumption_token(self, records, completeListSize=None):
 
 		'''
 		Set resumption tokens in DB under OAITransaction model
 
 		Args:
-			None
+			completeListSize (int): total number of records based on passed parameters
 
 		Returns:
 			None
@@ -204,7 +210,7 @@ class OAIProvider(object):
 		'''
 
 		# set resumption token
-		if self.start + self.chunk_size < self.published.records.count():
+		if self.start + self.chunk_size < completeListSize:
 
 			# set token and slice parameters to DB
 			token = str(uuid.uuid4())
@@ -223,7 +229,7 @@ class OAIProvider(object):
 			self.resumptionToken_node = etree.Element('resumptionToken')
 			self.resumptionToken_node.attrib['expirationDate'] = (self.request_timestamp + datetime.timedelta(0,3600))\
 			.strftime('%Y-%m-%dT%H:%M:%SZ')
-			self.resumptionToken_node.attrib['completeListSize'] = str(self.published.records.count())
+			self.resumptionToken_node.attrib['completeListSize'] = str(completeListSize)
 			self.resumptionToken_node.attrib['cursor'] = str(self.start)
 			self.resumptionToken_node.text = token
 			self.verb_node.append(self.resumptionToken_node)
@@ -454,7 +460,7 @@ class OAIProvider(object):
 
 		'''
 		OAI-PMH verb: ListSets
-		Lists available sets.  Sets are derived from the associated Record Groups of all Publish jobs.
+		Lists available sets.  Sets are derived from the publish_set_id from a published Job
 
 		Args:
 			None
@@ -504,9 +510,8 @@ class OAIRecord(object):
 		if self.publish_set_id:
 			return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.publish_set_id, self.record_id)
 
-		# else
+		# else, without
 		else:
-
 			return '%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.record_id)
 
 

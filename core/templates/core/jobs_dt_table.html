@@ -20,6 +20,7 @@
 					<th>Status</th>
 					<th>Finished</th>
 					<th>Is Valid</th>
+					<th>Publishing</th>
 					<th>Elapsed</th>
 					<th>Input</th>
 					<th>Notes</th>
@@ -34,7 +35,7 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
+						<a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a>
 						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
 								{% csrf_token %}
@@ -55,6 +56,13 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						{% if job.published %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-danger btn-sm">Unpublish</button></a>
+						{% else %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-success btn-sm">Publish</button></a>
+						{% endif %}
+					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
 					{% if job.jobinput_set.all|length > 0 %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
@@ -88,7 +96,10 @@
 						</div>
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>					
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a></td>				
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a><br>
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details</button></a>
+					</td>				
 				</tr>
 			{% endfor %}
 			</tbody>
@@ -106,6 +117,7 @@
 					<th>Status</th>
 					<th>Finished</th>
 					<th>Is Valid</th>
+					<th></th>
 					<th></th>
 					<th></th>
 					<th></th>
@@ -200,7 +212,7 @@
 								{% endfor %} 						
 							</select>
 						</div>        	
-				    	<button type="button" id="move" class="btn btn-warning btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs</button>
+				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs</button>
 					</td>
 				</tr>
 				<tr>

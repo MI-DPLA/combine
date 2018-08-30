@@ -42,6 +42,7 @@
 				</div>
 			</div>
 
+		<!-- New Validations -->
 		{% elif update_type == 'validations' %}
 
 			<div class="row">
@@ -72,6 +73,36 @@
 				</div>
 			</div>
 
+		<!-- New Validations -->
+		{% elif update_type == 'dbdm' %}
+
+			<div class="row">
+				<div class="col-md-12">
+					<h4>DPLA Bulk Data Match</h4>					
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-6">					
+
+					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+
+						{% csrf_token %}
+
+						<div id="bulk_download_check" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+							{# Bulk Data Download Comparison #}
+							{% include 'core/bulk_download_compare_select.html' %}
+						</div>
+
+						<!-- submit job update form -->
+						<input type="hidden" name="update_type" value="dbdm" />
+						<button type="submit" class="btn btn-success btn-sm">Run new DPLA Bulk Data Match</button>
+
+					</form>
+
+				</div>
+			</div>
+
 		{% endif %}
 
 	{% else %}
@@ -83,6 +114,7 @@
 					<ul class="list-inline">
 						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Index Metadata</button></a></li>
 						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=rerun_validations"><button type="button" class="btn btn-success btn-sm">Run New Validations</button></a></li>
+						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm"><button type="button" class="btn btn-success btn-sm">Run DPLA Bulk Data Match</button></a></li>
 					</ul>
 				</p>
 			</div>

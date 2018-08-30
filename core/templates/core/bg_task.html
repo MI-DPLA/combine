@@ -41,14 +41,10 @@
 					<!-- handle different task types below -->
 					
 					{% if ct.task_type == 'validation_report' %}						
-						<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
-
-						{% if ct.task_params.report_format == 'csv' %}
-							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.report_output }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}&preview=true" target="_blank"><button type="button" class="btn btn-success btn-sm">View Raw CSV file in browser</button></a>
-						{% endif %}							
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
 					
 					{% elif ct.task_type == 'export_mapped_fields' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields .csv</button></a>
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields</button></a>
 
 					{% elif ct.task_type == 'export_documents' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive</button></a>
@@ -61,6 +57,12 @@
 
 					{% elif ct.task_type == 'job_remove_validation' %}
 					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations</button></a>
+
+					{% elif ct.task_type == 'job_publish' or ct.task_type == 'job_unpublish' %}
+					<a href="{% url 'published' %}"><button type="button" class="btn btn-success btn-sm">View Published Jobs</button></a>
+
+					{% elif ct.task_type == 'job_dbdm' %}
+					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results</button></a>
 
 					{% else %}
 						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>

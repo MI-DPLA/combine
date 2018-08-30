@@ -8,69 +8,6 @@
 		</div>
 	</div>
 
-	<div class="row">
-		<div class="col-md-5">			
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>Description</th>
-					<td>{{ record_group.description }}</td>
-					<td></td>
-				</tr>
-				<tr>
-					<th>Published?</th>
-					{% if record_group.is_published %}
-						{% for published in record_group.jobpublish_set.all %}
-							<td class="{{ record_group.jobpublish_set.all.first.job.job_type_family }} {% if record_group.jobpublish_set.all.first.job.deleted %}deleted{% endif %}">
-									<a href="{% url 'job_details' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}">Job #{{ published.job.id }}, {{ published.job.name }}</a>
-							</td>
-							<td>
-								<a href="{% url 'job_delete' org_id=record_group.organization.id record_group_id=record_group.id job_id=record_group.jobpublish_set.all.first.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a>
-							</td>
-						{% endfor %}
-					{% else %}
-						<td style="color:red;"><strong>This Record Group has not been published yet</strong></td>
-						<td><a href="{% url 'job_publish' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Publish</button></a></td>
-					{% endif %}
-				</tr>
-				{% if record_group.is_published %}
-				<tr>
-					<th>Publish Set ID</th>
-					<td>
-						{% if record_group.publish_set_id %}
-							<a href="{% url 'oai' %}?verb=ListRecords&set={{ record_group.publish_set_id }}" target="_blank">{{ record_group.publish_set_id }}</a>
-						{% else %}
-							<span style="color:red;"><strong>Not set - records will not sort under a Publish Set ID</strong></span>
-						{% endif %}
-					</td>
-					<td>
-						<a href="#" onclick="$('#publish_set_id_update').fadeToggle(); return false;"><button type="button" class="btn btn-primary btn-sm">Change Publish Set ID</button></a>
-						<div id="publish_set_id_update" style="display:none; margin-top:10px;">							
-							<form method="POST" action="{% url 'record_group_update_publish_set_id' org_id=record_group.organization.id record_group_id=record_group.id %}">
-								{% csrf_token %}
-
-								<div class="form-group">
-									<label for="existing_publish_set_id">Select a pre-existing Publish Set ID used from other RecordGroups</label>
-									<select class="form-control" id="existing_publish_set_id" name="existing_publish_set_id">
-										<option value=''>Select pre-existing Publish Set ID to use...</option>
-										{% for publish_set_id in publish_set_ids %}
-											<option value="{{ publish_set_id.publish_set_id }}">{{ publish_set_id.publish_set_id }}</option>						
-										{% endfor %}
-									</select>																	
-								</div>
-								<div class="form-group">
-									<label for="new_publish_set_id">Or enter a new one</label>
-									<input class="form-control" type="text" id="new_publish_set_id" name="new_publish_set_id" size=40 placeholder="e.g. 'fedora_records'"/>
-								</div>
-								<button type="submit" class="btn btn-primary btn-sm">Update</button>
-							</form>
-						</div>
-					</td>
-				</tr>
-				{% endif %}
-			</table>
-		</div>		
-	</div>
-
 	{% if jobs|length > 0 %}
 
 		<!-- optional job lineage network node graph -->
@@ -78,6 +15,7 @@
 
 		<!-- job datatable -->
 		{% include 'core/jobs_dt_table.html' %}
+		
 	{% else %}
 		<div class="row">
 			<div class="col-md-12">

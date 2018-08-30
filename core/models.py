@@ -2,6 +2,7 @@
 from __future__ import unicode_literals
 
 # generic imports
+import ast
 import binascii
 from collections import OrderedDict
 import datetime
@@ -32,6 +33,7 @@ import time
 from types import ModuleType
 import urllib.parse
 import uuid
+from xmlrpc import client as xmlrpc_client
 import xmltodict
 import zipfile
 
@@ -40,9 +42,6 @@ import pyjxslt
 
 # pandas
 import pandas as pd
-
-# django-pandas
-from django_pandas.io import read_frame
 
 # django imports
 from django.apps import AppConfig
@@ -81,6 +80,9 @@ from elasticsearch_dsl.utils import AttrList
 from sxsdiff import DiffCalculator
 from sxsdiff.generators.github import GitHubStyledGenerator
 
+# import mongo dependencies
+from core.mongo import *
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -96,7 +98,7 @@ import boto3
 
 
 ####################################################################
-# Django ORM																											 #
+# Django ORM 													   #
 ####################################################################
 
 class LivySession(models.Model):
@@ -273,6 +275,26 @@ class Organization(models.Model):
 		return 'Organization: %s' % self.name
 
 
+	def total_record_count(self):
+
+		'''
+		Method to determine total records under this Org
+		'''
+
+		total_record_count = 0
+			
+		# loop through record groups
+		for rg in self.recordgroup_set.all():
+
+			# loop through jobs
+			for job in rg.job_set.all():
+
+				total_record_count += job.record_count
+
+		# return
+		return total_record_count
+
+
 
 class RecordGroup(models.Model):
 
@@ -285,7 +307,7 @@ class RecordGroup(models.Model):
 	name = models.CharField(max_length=128)
 	description = models.CharField(max_length=255, null=True, default=None, blank=True)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
+	# publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
 	for_analysis = models.BooleanField(default=0)
 
 
@@ -334,6 +356,12 @@ class RecordGroup(models.Model):
 		return ld
 
 
+	def published_jobs(self):
+
+		# get published jobs for rg
+		return self.job_set.filter(published=True)
+
+
 	def is_published(self):
 
 		'''
@@ -346,14 +374,31 @@ class RecordGroup(models.Model):
 			(bool): if a job has been published for this RecordGroup, return True, else False
 		'''
 
-		# get published links
-		published = self.jobpublish_set.all()
+		# get jobs for rg
+		published = self.published_jobs()
 
 		# return True/False
 		if published.count() == 0:
 			return False
 		else:
 			return True
+
+
+	def total_record_count(self):
+
+		'''
+		Method to count total records under this RG
+		'''
+
+		total_record_count = 0
+
+		# loop through jobs
+		for job in self.job_set.all():
+
+			total_record_count += job.record_count
+
+		# return
+		return total_record_count
 
 
 
@@ -381,6 +426,7 @@ class Job(models.Model):
 	job_output = models.TextField(null=True, default=None)
 	record_count = models.IntegerField(null=True, default=0)
 	published = models.BooleanField(default=0)
+	publish_set_id = models.CharField(max_length=255, null=True, default=None, blank=True)
 	job_details = models.TextField(null=True, default=None)
 	timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	note = models.TextField(null=True, default=None)
@@ -629,19 +675,24 @@ class Job(models.Model):
 			return None
 
 
-	def get_records(self):
+	def get_records(self, success=True):
 
 		'''
-		Retrieve records associated with this job, if the document field is not blank.
+		Retrieve records associated with this job from Mongo
 
 		Args:
-			None
+			success (boolean): filter records on success column by this arg
+				- passing None will return unfiltered (success and failures)
 
 		Returns:
 			(django.db.models.query.QuerySet)
 		'''
 
-		records = self.record_set.filter(success=1)
+		if success == None:
+			records = Record.objects(job_id=self.id)
+
+		else:
+			records = Record.objects(job_id=self.id, success=True)			
 
 		# return
 		return records
@@ -658,12 +709,8 @@ class Job(models.Model):
 		Returns:
 			(django.db.models.query.QuerySet)
 		'''
-
-		stime = time.time()
-
-		errors = self.record_set.filter(success=0)
-
-		logger.debug('get_errors elapsed: %s' % (time.time() - stime))
+			
+		errors = Record.objects(job_id=251, success=False)
 
 		# return
 		return errors
@@ -672,7 +719,7 @@ class Job(models.Model):
 	def update_record_count(self, save=True):
 
 		'''
-		Get record count from DB, save to self
+		Get record count from Mongo from Record table, filtering by job_id
 
 		Args:
 			None
@@ -681,7 +728,7 @@ class Job(models.Model):
 			None
 		'''
 		
-		self.record_count = self.record_set.count()
+		self.record_count = Record.objects(job_id=self.id).count()
 		
 		# if save, save
 		if save:
@@ -735,29 +782,6 @@ class Job(models.Model):
 		# index results save path
 		return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
 			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
-
-
-	@property
-	def dpla_mapping(self):
-
-		'''
-		Method to return DPLA mapping for this job
-
-		Args:
-			None
-
-		Returns:
-			(core.models.DPLAJobMap, None): Instance of DPLAJobMap if exists, else None
-		'''
-
-		if not hasattr(self, '_dpla_mapping'):
-			if self.dplajobmap_set.count() == 1:
-				self._dpla_mapping = self.dplajobmap_set.first()
-			else:
-				self._dpla_mapping = None
-
-		# return
-		return self._dpla_mapping
 
 
 	def get_lineage(self, directionality='downstream'):
@@ -955,7 +979,7 @@ class Job(models.Model):
 	def validation_results(self):
 
 		'''
-		Method to return boolean whether job passes all/any validation tests run
+		Method to return boolean whether job passes all/any validation tests run		
 
 		Args:
 			None
@@ -963,7 +987,7 @@ class Job(models.Model):
 		Returns:
 			(dict):
 				verdict (boolean): True if all tests passed, or no tests performed, False is any fail
-				failure_count (int): Total number of validation failures
+				failure_count (int): Total number of distinct Records with 1+ validation failures
 				validation_scenarios (list): QuerySet of associated JobValidation
 		'''
 
@@ -982,14 +1006,8 @@ class Job(models.Model):
 		# validation tests run, loop through
 		else:
 
-			# bump failure count
-			for jv in self.jobvalidation_set.all():
-
-				# update validation failure count
-				failure_count = jv.validation_failure_count()
-
-				if failure_count:
-					results['failure_count'] += failure_count
+			# determine total number of distinct Records with 1+ validation failures
+			results['failure_count'] = Record.objects(job_id=self.id, valid=False).count()
 
 			# if failures found
 			if results['failure_count'] > 0:
@@ -1008,39 +1026,35 @@ class Job(models.Model):
 	def get_dpla_bulk_data_matches(self):
 
 		'''
-		Method to generate a QuerySet of DPLABulkDataMatch
+		Method to update counts and return overview of results of DPLA Bulk Data matching
 		'''
 
-		# get match checks
-		t_stime = time.time()
-		match_attempts = DPLABulkDataMatch.objects.filter(record__job_id=self.id)
-		logger.debug('match attempts returned: %s' % (time.time() - t_stime))
+		# check job_details for dbdm key in job_details, indicating bulk data check
+		dbdm = self.job_details_dict.get('dbdm',False)
 
-		# if match_attempts more than zero, get associated dbdd
-		if match_attempts.count() > 0:
+		# if present
+		if dbdm:
 
-			# get records from job
-			records = self.get_records()
-
-			# get the dbdd
-			t_stime = time.time()
-			dbdd = match_attempts.first().dbdd
-			logger.debug('dbdd returned: %s' % (time.time() - t_stime))
-
-			# get matches
-			t_stime = time.time()
-			matches = records.filter(id__in=match_attempts.values_list('record_id'))
-			logger.debug('matches returned: %s' % (time.time() - t_stime))
-
-			# get misses
-			t_stime = time.time()
-			misses = records.exclude(id__in=match_attempts.values_list('record_id'))
-			logger.debug('misses returned: %s' % (time.time() - t_stime))
+			# retrieve DBDD
+			dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd_id'])
 			
+			# get misses and matches, counting if not yet done
+			if dbdm['matches'] == None and dbdm['misses'] == None:
+
+				# matches
+				dbdm['matches'] = self.get_records().filter(dbdm=True).count()
+
+				# misses
+				dbdm['misses'] = self.get_records().filter(dbdm=False).count()
+
+				# update job details
+				self.update_job_details(dbdm)
+
+			# return dict
 			return {
 				'dbdd':dbdd,
-				'matches':matches,
-				'misses': misses
+				'matches':dbdm['matches'],
+				'misses': dbdm['misses']
 			}
 
 		else:
@@ -1059,6 +1073,7 @@ class Job(models.Model):
 			if es_handle.indices.exists('j%s' % self.id):
 				logger.debug('removing ES index: j%s' % self.id)
 				es_handle.indices.delete('j%s' % self.id)
+				logger.debug('ES index remove')
 		except:
 			logger.debug('could not remove ES index: j%s' % self.id)
 
@@ -1083,6 +1098,160 @@ class Job(models.Model):
 		except Exception as e:
 			logger.debug('error retrieving fm_config_json: %s' % str(e))
 			return False
+
+
+	@property
+	def job_details_dict(self):
+
+		'''
+		Property to return job_details json as dictionary
+		'''
+
+		if self.job_details:
+			return json.loads(self.job_details)
+		else:
+			return {}
+
+
+	def update_job_details(self, update_dict, save=True):
+
+		'''
+		Method to update job_details by providing a dictionary to update with, optiontally saving
+
+		Args:
+			update_dict (dict): dictionary of key/value pairs to update job_details JSON with
+			save (bool): if True, save Job instance
+		'''
+
+		# parse job details
+		try:
+			if self.job_details:
+				job_details = json.loads(self.job_details)
+			elif not self.job_details:
+				job_details = {}
+		except:
+			logger.debug('could not parse job details')
+			raise Exception('could not parse job details')
+
+		# update details with update_dict
+		job_details.update(update_dict)
+
+		# if saving
+		if save:
+			self.job_details = json.dumps(job_details)
+			self.save()
+
+		# return
+		return job_details
+
+
+	def publish(self, publish_set_id=None):
+
+		'''
+		Method to publish Job
+			- remove 'published_field_counts' doc from combine.misc Mongo collection 
+
+		Args:
+			publish_set_id (str): identifier to group published Records
+		'''
+
+		# debug
+		logger.debug('publishing job #%s, with publish_set_id %s' % (self.id, publish_set_id))
+
+		# remove previously saved published field counts
+		mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})		
+
+		# mongo db command
+		result = mc_handle.combine.record.update_many({'job_id':self.id},{'$set':{'published':True, 'publish_set_id':publish_set_id}}, upsert=False)
+		logger.debug('Matched %s, marked as published %s' % (result.matched_count, result.modified_count))
+
+		# set self as publish
+		self.publish_set_id = publish_set_id
+		self.published = True
+		self.save()
+
+		# return
+		return True
+
+
+	def unpublish(self):
+
+		'''
+		Method to unpublish Job
+			- remove 'published_field_counts' doc from combine.misc Mongo collection
+		'''
+
+		# debug
+		logger.debug('unpublishing job #%s' % (self.id))
+
+		# remove previously saved published field counts
+		mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})
+
+		# mongo db command
+		result = mc_handle.combine.record.update_many({'job_id':self.id},{'$set':{'published':False, 'publish_set_id':None}}, upsert=False)
+		logger.debug('Matched %s, marked as unpublished %s' % (result.matched_count, result.modified_count))
+
+		# set self as publish
+		self.publish_set_id = None
+		self.published = False
+		self.save()
+
+		# return 
+		return True
+
+
+	def remove_records_from_db(self):
+
+		'''
+		Method to remove records from DB, fired as pre_delete signal
+		'''
+
+		logger.debug('removing records from db')
+		mc_handle.combine.record.delete_many({'job_id':self.id})
+		logger.debug('removed records from db')
+		return True
+
+
+	def remove_validations_from_db(self):
+
+		'''
+		Method to remove validations from DB, fired as pre_delete signal			
+			- usually handled by signals, but method left as convenience
+		'''
+
+		logger.debug('removing validations from db')		
+		mc_handle.combine.record_validation.delete_many({'job_id':self.id})
+		logger.debug('removed validations from db')
+		return True
+
+
+	def remove_mapping_failures_from_db(self):
+
+		'''
+		Method to remove mapping failures from DB, fired as pre_delete signal
+		'''
+
+		logger.debug('removing mapping failures from db')
+		mc_handle.combine.index_mapping_failure.delete_many({'job_id':self.id})
+		logger.debug('removed mapping failures from db')
+		return True
+
+
+	def remove_validation_jobs(self, validation_scenarios=[]):
+
+		'''
+		Method to remove validation jobs that match validation scenarios provided
+			- NOTE: only one validation job should exist per validation scenario per Job
+		'''
+
+		for jv in self.jobvalidation_set.all():
+			# if validation scenarios provided
+			if jv.validation_scenario.id in validation_scenarios:				
+				logger.debug('validation scenario %s used for %s, removing' % (jv.validation_scenario.id, jv))
+				jv.delete()
+
+		# return 
+		return True
 
 
 
@@ -1149,22 +1318,6 @@ class JobInput(models.Model):
 
 
 
-class JobPublish(models.Model):
-
-	'''
-	Model to manage published jobs.
-	Provides a one-to-many relationship for a record group and published job
-	'''
-
-	record_group = models.ForeignKey(RecordGroup)
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-
-	def __str__(self):
-		return 'Published Set #%s, "%s" - from Job %s, Record Group %s - ' % (
-			self.id, self.record_group.publish_set_id, self.job.name, self.record_group.name)
-
-
-
 class OAIEndpoint(models.Model):
 
 	'''
@@ -1219,6 +1372,7 @@ class Transformation(models.Model):
 		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
+	use_as_include = models.BooleanField(default=False)
 	
 
 	def __str__(self):
@@ -1280,6 +1434,8 @@ class Transformation(models.Model):
 			
 		try:
 
+			logger.debug('python transformation running')
+
 			# prepare row as parsed document with PythonUDFRecord class
 			prtb = PythonUDFRecord(row)
 
@@ -1289,6 +1445,10 @@ class Transformation(models.Model):
 
 			# run transformation
 			trans_result = temp_pyts.python_record_transformation(prtb)
+
+			# check that trans_result is a list
+			if type(trans_result) != list:
+				raise Exception('Python transformation should return a list, but got type %s' % type(trans_result))
 
 			# convert any possible byte responses to string
 			if trans_result[2] == True:
@@ -1321,10 +1481,8 @@ class Transformation(models.Model):
 				if event['op'] == 'core/mass-edit':
 
 					# get xpath
-					xpath = XML2kvp.k_to_xpath(
-						event['columnName'],
-						node_delim='___',
-						ns_prefix_delim='|')
+					xpath = XML2kvp.k_to_xpath(event['columnName'])
+					logger.debug("using xpath value: %s" % xpath)
 					
 					# find elements for potential edits
 					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1353,10 +1511,8 @@ class Transformation(models.Model):
 					exec(code, temp_pyts.__dict__)
 
 					# get xpath
-					xpath = XML2kvp.k_to_xpath(
-						event['columnName'],
-						node_delim='___',
-						ns_prefix_delim='|')
+					xpath = XML2kvp.k_to_xpath(event['columnName'])
+					logger.debug("using xpath value: %s" % xpath)
 					
 					# find elements for potential edits
 					eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
@@ -1371,6 +1527,61 @@ class Transformation(models.Model):
 		except Exception as e:
 			# set trans_result tuple
 			return str(e)
+
+
+	def _rewrite_xsl_http_includes(self):
+
+		'''
+		Method to check XSL payloads for external HTTP includes,
+		if found, download and rewrite
+
+			- do not save self (instance), firing during pre-save signal
+		'''
+
+		if self.transformation_type == 'xslt':
+			
+			logger.debug('XSLT transformation, checking for external HTTP includes')
+
+			# rewrite flag
+			rewrite = False
+
+			# output dir
+			transformations_dir = '%s/transformations' % settings.BINARY_STORAGE.rstrip('/').split('file://')[-1]
+
+			# parse payload
+			xsl = etree.fromstring(self.payload.encode('utf-8'))
+
+			# xpath query for xsl:include
+			includes = xsl.xpath('//xsl:include', namespaces=xsl.nsmap)
+
+			# loop through includes and check for HTTP hrefs
+			for i in includes:
+
+				# get href 
+				href = i.attrib.get('href',False)
+				
+				# check for http
+				if href:
+					if href.lower().startswith('http'):
+
+						logger.debug('external HTTP href found for xsl:include: %s' % href)
+
+						# set flag for rewrite
+						rewrite = True
+
+						# download and save to transformations directory on filesystem
+						r = requests.get(href)
+						filepath = '%s/%s' % (transformations_dir, href.split('/')[-1])
+						with open(filepath, 'wb') as f:
+							f.write(r.content)
+
+						# rewrite href and add note
+						i.attrib['href'] = filepath						
+
+			# rewrite if need be
+			if rewrite:
+				logger.debug('rewriting XSL payload')
+				self.payload = etree.tostring(xsl, encoding='utf-8', xml_declaration=True).decode('utf-8')
 
 
 
@@ -1395,39 +1606,67 @@ class OAITransaction(models.Model):
 
 
 
-class Record(models.Model):
+class Record(mongoengine.Document):
 
-	'''
-	Model to manage individual records.
-	Records are the lowest level of granularity in Combine.	They are members of Jobs.
-	
-	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
-	combine/core/inc/combine_tables.sql
-	'''
+	# fields
+	combine_id = mongoengine.StringField()
+	document = mongoengine.StringField()
+	error = mongoengine.StringField()
+	fingerprint = mongoengine.IntField()
+	job_id = mongoengine.IntField()
+	oai_set = mongoengine.StringField()
+	publish_set_id = mongoengine.StringField()
+	published = mongoengine.BooleanField(default=False)
+	record_id = mongoengine.StringField()
+	success = mongoengine.BooleanField(default=True)
+	transformed = mongoengine.BooleanField(default=False)
+	unique = mongoengine.BooleanField(default=True)
+	unique_published = mongoengine.BooleanField(default=True)
+	valid = mongoengine.BooleanField(default=True)
+	dbdm = mongoengine.BooleanField(default=False)
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	combine_id = models.CharField(max_length=1024, null=True, default=None)
-	record_id = models.CharField(max_length=1024, null=True, default=None)
-	document = models.TextField(null=True, default=None)
-	error = models.TextField(null=True, default=None)
-	unique = models.BooleanField(default=1)
-	unique_published = models.NullBooleanField()
-	oai_set = models.CharField(max_length=255, null=True, default=None)
-	success = models.BooleanField(default=1)
-	published = models.BooleanField(default=0)
-	valid = models.BooleanField(default=1)
-	fingerprint = models.IntegerField(null=True, default=None)
-	transformed = models.BooleanField(default=0)
+	# meta
+	meta = {
+		'index_options': {},
+        'index_background': False,        
+        'auto_create_index': False,
+        'index_drop_dups': False,
+		'indexes': [
+			{'fields': ['job_id']},
+			{'fields': ['record_id']},
+			{'fields': ['combine_id']},
+			{'fields': ['success']},
+			{'fields': ['valid']},
+			{'fields': ['published']},
+			{'fields': ['publish_set_id']},
+			{'fields': ['dbdm']}
+		]
+	}
+
+	# cached attributes
+	_job = None
 
 
-	# this model is managed outside of Django
-	class Meta:
-		managed = False
+	# _id shim property
+	@property
+	def _id(self):
+		return self.id
 
 
-	def __str__(self):
-		return 'Record: #%s, record_id: %s, job_id: %s, job_type: %s' % (
-			self.id, self.record_id, self.job.id, self.job.job_type)
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+		if self._job is None:
+			try:
+				job = Job.objects.get(pk=self.job_id)
+			except:
+				job = False
+			self._job = job			
+		return self._job
 
 
 	def get_record_stages(self, input_record_only=False, remove_duplicates=True):
@@ -1460,7 +1699,9 @@ class Record(models.Model):
 				# loop through upstream jobs, look for record id
 				for upstream_job in upstream_job_query.all():
 					upstream_record_query = Record.objects.filter(
-						job=upstream_job.input_job).filter(combine_id=self.combine_id)
+							job_id=upstream_job.input_job.id,
+							combine_id=self.combine_id
+						)
 
 					# if count found, save record to record_stages and re-run
 					if upstream_record_query.count() > 0:
@@ -1484,7 +1725,9 @@ class Record(models.Model):
 				for downstream_job in downstream_job_query.all():
 
 					downstream_record_query = Record.objects.filter(
-						job=downstream_job.job).filter(combine_id=self.combine_id)
+						job_id=downstream_job.job.id,
+						combine_id=self.combine_id
+					)
 
 					# if count found, save record to record_stages and re-run
 					if downstream_record_query.count() > 0:
@@ -1521,7 +1764,7 @@ class Record(models.Model):
 
 		# init search
 		s = Search(using=es_handle, index='j%s' % self.job_id)
-		s = s.query('match', _id=self.combine_id)
+		s = s.query('match', _id=str(self.id))
 
 		# execute search and capture as dictionary
 		try:
@@ -1536,6 +1779,16 @@ class Record(models.Model):
 			return sr_dict['hits']['hits'][0]['_source']
 		except:
 			return {}
+
+
+	def get_dpla_mapped_fields(self):
+
+		'''
+		Method to return DPLA specific mapped fields from Record's mapped fields
+		'''
+
+		# get mapped fields and return filtered		
+		return {f:v for f,v in self.get_es_doc().items() if f.startswith('dpla_')}
 
 
 	def parse_document_xml(self):
@@ -1556,43 +1809,12 @@ class Record(models.Model):
 			return (False, str(e))
 
 
-	def dpla_mapped_field_values(self):
-
-		'''
-		Using self.dpla_mapped_fields, loop through and insert values from ES document
-		'''
-
-		# get mapped fields
-		mapped_fields = self.job.dpla_mapping.mapped_fields()
-
-		if mapped_fields:
-			
-			# get elasticsearch doc
-			es_doc = self.get_es_doc()
-			
-			# loop through and use mapped key for es doc
-			mapped_values = {}
-			for k,v in mapped_fields.items():
-				val = es_doc.get(v, None)
-				if val:
-					mapped_values[k] = es_doc[v]
-
-			# return mapped values
-			return mapped_values
-
-		else:
-			return None
-
-
 	def dpla_api_record_match(self, search_string=None):
 
 		'''
-		Method to query DPLA API for match against some known mappings.
-		NOTE: Experimental.
-
-		Loop through mapped fields in opinionated order from opinionated_search_hash
-		Update: Leaning towards exclusive use of 'isShownAt'
-			- close to binary True/False API match, removes any fuzzy connections
+		Method to query DPLA API for match against mapped fields
+			- querying is an ranked list of fields to consecutively search
+			- this method is recursive such that a preformatted search string can be fed back into it
 
 		Args:
 			search_string(str): Optional search_string override
@@ -1605,81 +1827,105 @@ class Record(models.Model):
 		if settings.DPLA_API_KEY:
 
 			# check for any mapped DPLA fields, skipping altogether if none
-			mapped_dpla_fields = self.dpla_mapped_field_values()
-			if mapped_dpla_fields:
+			mapped_dpla_fields = self.get_dpla_mapped_fields()
+			if len(mapped_dpla_fields) > 0:
 
 				# attempt search if mapped fields present and search_string not provided
 				if not search_string:
 
-					# opionated search hash
+					# ranked search fields
 					opinionated_search_fields = [
-						('isShownAt', 'isShownAt'),
-						('title', 'sourceResource.title'),
-						('description', 'sourceResource.description')
+						('dpla_isShownAt', 'isShownAt'),
+						('dpla_title', 'sourceResource.title'),
+						('dpla_description', 'sourceResource.description')
 					]
 
-					# loop through opionated search hash
+					# loop through ranked search fields
 					for local_mapped_field, target_dpla_field in opinionated_search_fields:
 
 						# if local_mapped_field in keys
-						if local_mapped_field in mapped_dpla_fields.keys():
-
-							logger.debug('searching on locally mapped field: %s' % local_mapped_field)
+						if local_mapped_field in mapped_dpla_fields.keys():							
 
 							# get value for mapped field
-							field_value = mapped_dpla_fields[local_mapped_field]
+							field_value = mapped_dpla_fields[local_mapped_field]							
 
 							# if list, loop through and attempt searches
-							if type(field_value) == list:
-								logger.debug('multiple values found for %s, searching...' % local_mapped_field)
+							if type(field_value) == list:								
 
-								for val in field_value:
-									logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, val))
+								for val in field_value:									
 									search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
 									match_results = self.dpla_api_record_match(search_string=search_string)
 
 							# else if string, perform search
-							else:
-								logger.debug('searching DPLA target field %s, for value %s' % (target_dpla_field, field_value))
+							else:								
 								search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
 								match_results = self.dpla_api_record_match(search_string=search_string)
 
-							# if match found from list iteration or single string search, use
-							if match_results:
-								self.dpla_api_doc = match_results
-								return self.dpla_api_doc
 
-				# preapre search query
-				api_q = requests.get(
-					'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
+					# parse results
+					# count instances of isShownAt, a single one is good enough
+					if 'isShownAt' in self.dpla_api_matches.keys() and len(self.dpla_api_matches['isShownAt']) == 1:
+						self.dpla_api_doc = self.dpla_api_matches['isShownAt'][0]['hit']
 
-				# attempt to parse response as JSON
-				try:
-					api_r = api_q.json()
-				except:
-					logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
-					self.dpla_api_doc = None
+					# otherwise, count all, and if only one, use
+					else:						
+						matches = []
+						for field,field_matches in self.dpla_api_matches.items():
+							matches.extend(field_matches)
+
+						if len(matches) == 1:
+							self.dpla_api_doc = matches[0]['doc']
+
+						else:
+							self.dpla_api_doc = None
+
+					# return
 					return self.dpla_api_doc
 
-				# if count present
-				if 'count' in api_r.keys():
-					# response
-					if api_r['count'] == 1:
-						dpla_api_doc = api_r['docs'][0]
-						logger.debug('DPLA API hit, item id: %s' % dpla_api_doc['id'])
-					elif api_r['count'] > 1:
-						logger.debug('multiple hits for DPLA API query')
-						dpla_api_doc = None
-					else:
-						logger.debug('no matches found')
-						dpla_api_doc = None
-				else:
-					logger.debug(api_r)
-					dpla_api_doc = None
+				else:					
+					# prepare search query
+					api_q = requests.get(
+						'https://api.dp.la/v2/items?%s&api_key=%s' % (search_string, settings.DPLA_API_KEY))
 
-				# save to record instance and return
-				self.dpla_api_doc = dpla_api_doc
-				return self.dpla_api_doc
+					# attempt to parse response as JSON
+					try:
+						api_r = api_q.json()
+					except:
+						logger.debug('DPLA API call unsuccessful: code: %s, response: %s' % (api_q.status_code, api_q.content))
+						self.dpla_api_doc = None
+						return self.dpla_api_doc
+
+					# if count present
+					if 'count' in api_r.keys():
+
+						# response
+						if api_r['count'] >= 1:
+
+							# add matches to matches
+							field,value = search_string.split('=')
+							value = urllib.parse.unquote(value)
+							
+							# check for matches attr
+							if not hasattr(self, "dpla_api_matches"):
+								self.dpla_api_matches = {}
+							
+							# add mapped field used for searching
+							if field not in self.dpla_api_matches.keys():
+								self.dpla_api_matches[field] = []
+							
+							# add matches for values searched
+							for doc in api_r['docs']:
+								self.dpla_api_matches[field].append({
+										"search_term":value,
+										"hit":doc
+									})
+
+						else:
+							if not hasattr(self, "dpla_api_matches"):
+								self.dpla_api_matches = {}
+
+					else:
+						logger.debug(api_r)
 
 		# return None by default
 		self.dpla_api_doc = None
@@ -1692,7 +1938,7 @@ class Record(models.Model):
 		Return validation errors associated with this record
 		'''
 
-		vfs = RecordValidation.objects.filter(record=self)
+		vfs = RecordValidation.objects.filter(record_id=self.id)
 		return vfs
 
 
@@ -1907,152 +2153,60 @@ class Record(models.Model):
 
 
 
-class IndexMappingFailure(models.Model):
+class IndexMappingFailure(mongoengine.Document):
 
-	'''
-	Model for accessing and updating indexing failures.
-	
-	NOTE: This DB model is not managed by Django for performance reasons.	The SQL for table creation is included in
-	combine/core/inc/combine_tables.sql
-	'''
+	db_id = mongoengine.StringField()
+	record_id = mongoengine.StringField()
+	job_id = mongoengine.IntField()	
+	mapping_error = mongoengine.StringField()
 
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	combine_id = models.CharField(max_length=1024, null=True, default=None)
-	mapping_error = models.TextField(null=True, default=None)
-
-
-	# this model is managed outside of Django
-	class Meta:
-		managed = False
-
+	# meta
+	meta = {
+		'index_options': {},
+		'index_background': False,        
+		'auto_create_index': False,
+		'index_drop_dups': False,
+		'indexes': [			
+			{'fields': ['job_id']},
+			{'fields': ['db_id']},
+		]
+	}
 
 	def __str__(self):
-		return 'Index Mapping Failure: #%s, combine_id: %s, job_id: %s' % (self.id, self.combine_id, self.job.id)
+		return 'Index Mapping Failure: #%s' % (self.id)
 
 
+	# cache	
+	_job = None
+	_record = None
+
+
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+
+		if self._job is None:
+			job = Job.objects.get(pk=self.job_id)
+			self._job = job			
+		return self._job
+
+
+	# convenience method
 	@property
 	def record(self):
-
-		'''
-		Property for one-off access to record the indexing failure stemmed from
-
-		Returns:
-			(core.models.Record): Record instance that relates to this indexing failure
-		'''
-
-		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
-
-
-	def get_record(self):
-
-		'''
-		Method to return target record, for performance purposes if accessed multiple times
-
-		Returns:
-			(core.models.Record): Record instance that relates to this indexing failure
-		'''
-
-		return Record.objects.filter(job=self.job, combine_id=self.combine_id).first()
-
-
-
-class DPLAJobMap(models.Model):
-
-	'''
-	#Experiemental#
-
-	Model to map parsed fields from ES index to DPLA record fields.	Values for each DPLA field correspond to an ES
-	field name for the associated Job.
-
-	Note: This mapping is meant to serve for preview/QA purposes only, this is currently not a final mapping
-	to the DPLA JSON model.
-
-	Inspiration for DPLA fields are taken from here:
-	https://github.com/dpla/ingestion3/blob/develop/src/main/scala/dpla/ingestion3/model/DplaMapData.scala
-	'''
-
-	# associate mapping with Job
-	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-
-	# DPLA fields
-	# thumbnails and access
-	isShownAt = models.CharField(max_length=255, null=True, default=None)
-	preview = models.CharField(max_length=255, null=True, default=None)
-
-	# descriptive metadata
-	contributor = models.CharField(max_length=255, null=True, default=None)
-	creator = models.CharField(max_length=255, null=True, default=None)
-	date = models.CharField(max_length=255, null=True, default=None)
-	description = models.CharField(max_length=255, null=True, default=None)
-	extent = models.CharField(max_length=255, null=True, default=None)
-	format = models.CharField(max_length=255, null=True, default=None)
-	genre = models.CharField(max_length=255, null=True, default=None)
-	identifier = models.CharField(max_length=255, null=True, default=None)
-	language = models.CharField(max_length=255, null=True, default=None)
-	place = models.CharField(max_length=255, null=True, default=None)
-	publisher = models.CharField(max_length=255, null=True, default=None)
-	relation = models.CharField(max_length=255, null=True, default=None)
-	rights = models.CharField(max_length=255, null=True, default=None)
-	subject = models.CharField(max_length=255, null=True, default=None)
-	temporal = models.CharField(max_length=255, null=True, default=None)
-	title = models.CharField(max_length=255, null=True, default=None)
-
-
-	def __str__(self):
-
-		# count mapped fields
-		mapped_fields = self.mapped_fields()
 		
-		return 'DPLA Preview Mapping - job_id: %s, mapped fields: %s' % (self.job.id, len(mapped_fields))
-
-
-	def all_fields(self):
-
 		'''
-		Return list of all potential field mappings
+		Method to retrieve Record from Django ORM via job_id
 		'''
 
-		all_fields = [ field.name for field in self._meta.get_fields() if field.name not in ['id','job'] ]
-		all_fields.sort()
-		return all_fields
-
-
-	def mapped_fields(self):
-
-		'''
-		Return dictionary of fields with associated mapping
-
-		Args:
-			None
-
-		Returns:
-			(dict): dictionary of instance mappings
-		'''
-
-		mapped_fields = {
-				field.name: getattr(self, field.name) for field in self._meta.get_fields()
-				if field.name not in ['id','job'] and type(getattr(self, field.name)) == str
-			}
-		return mapped_fields
-
-
-	def inverted_mapped_fields(self):
-
-		'''
-		Convenience method to invert mapping, using ES field name as key for DPLA field
-
-		Args:
-			None
-
-		Returns:
-			(dict): dictionary of inverted model instance mapping
-		'''
-		
-		# get mapped fields as dict
-		mapped_fields = self.mapped_fields()
-
-		# invert and return
-		return {v: k for k, v in mapped_fields.items()}
+		if self._record is None:
+			record = Record.objects.get(id=self.db_id)
+			self._record = record			
+		return self._record
 
 
 
@@ -2296,7 +2450,7 @@ class ValidationScenario(models.Model):
 			query = query.update_from_dict(t['es_query'])
 
 			# add row to query
-			query = query.query("term", db_id=row.id)
+			query = query.query("term", db_id=str(row.id))
 
 			# debug
 			logger.debug(query.to_dict())
@@ -2352,11 +2506,10 @@ class JobValidation(models.Model):
 		Returns:
 			(django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
 		'''
-		stime = time.time()
+
 		rvfs = RecordValidation.objects\
-			.filter(validation_scenario=self.validation_scenario)\
-			.filter(record__job=self.job)
-		logger.debug("job validation failures retrieval elapsed: %s" % (time.time()-stime))
+			.filter(validation_scenario_id=self.validation_scenario.id)\
+			.filter(job_id=self.job.id)		
 		return rvfs
 
 
@@ -2384,36 +2537,86 @@ class JobValidation(models.Model):
 		return self.failure_count
 
 
+	def delete_record_validation_failures(self):
 
-class RecordValidation(models.Model):
+		'''
+		Method to delete record validations associated with this validation job
+		'''
 
-	'''
-	Model to manage validation tests associated with a Record
-
-		- what is the performance hit of the FK?
-
-	'''
-
-	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	validation_scenario = models.ForeignKey(ValidationScenario, null=True, default=None, on_delete=models.SET_NULL)
-	valid = models.BooleanField(default=1)
-	results_payload = models.TextField(null=True, default=None)
-	fail_count = models.IntegerField(null=True, default=None)
+		rvfs = RecordValidation.objects\
+			.filter(validation_scenario_id=self.validation_scenario.id)\
+			.filter(job_id=self.job.id)
+		del_results = rvfs.delete()
+		logger.debug('%s validations removed' % del_results)
+		return del_results
 
 
-	def __str__(self):
-		return '%s, RecordValidation: #%s, for Record #: %s' % (self.validation_scenario.name, self.id, self.record.id)
+
+class RecordValidation(mongoengine.Document):
+
+	# fields
+	record_id = mongoengine.ReferenceField(Record, reverse_delete_rule=mongoengine.CASCADE)
+	record_identifier = mongoengine.StringField()
+	job_id = mongoengine.IntField()
+	validation_scenario_id = mongoengine.IntField()
+	validation_scenario_name = mongoengine.StringField()
+	valid = mongoengine.BooleanField(default=True)
+	results_payload = mongoengine.StringField()
+	fail_count = mongoengine.IntField()
+
+	# meta
+	meta = {
+		'index_options': {},
+        'index_background': False,        
+        'auto_create_index': False,
+        'index_drop_dups': False,
+		'indexes': [
+			{'fields': ['record_id']},
+			{'fields': ['job_id']},
+			{'fields': ['validation_scenario_id']}
+		]
+	}
+
+	# cache
+	_validation_scenario = None
+	_job = None
+
+	# define Validation Scenario property
+	@property
+	def validation_scenario(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+		if self._validation_scenario is None:
+			validation_scenario = ValidationScenario.objects.get(pk=self.validation_scenario_id)
+			self._validation_scenario = validation_scenario			
+		return self._validation_scenario
 
 
+	# define job property
+	@property
+	def job(self):
+
+		'''
+		Method to retrieve Job from Django ORM via job_id
+		'''
+		if self._job is None:
+			job = Job.objects.get(pk=self.job_id)
+			self._job = job			
+		return self._job
+
+
+	# convenience method
+	@property
+	def record(self):
+		return self.record_id
+
+
+	# failed tests as property
 	@property
 	def failed(self):
-
-		# if not set, set
-		if not hasattr(self, '_failures'):
-			self._failures = json.loads(self.results_payload)['failed']
-
-		# return
-		return self._failures
+		return json.loads(self.results_payload)['failed']
 
 
 
@@ -2511,22 +2714,6 @@ class DPLABulkDataDownload(models.Model):
 
 	def __str__(self):
 		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
-
-
-
-class DPLABulkDataMatch(models.Model):
-
-	'''
-	Class to record DPLA bulk data matches (DBDM)
-	'''
-
-	record = models.ForeignKey(Record, on_delete=models.CASCADE)
-	dbdd = models.ForeignKey(DPLABulkDataDownload, null=True, default=None, on_delete=models.SET_NULL)
-	match = models.BooleanField(default=True)
-
-
-	def __str__(self):
-		return 'DPLABulkDataMatch for Record %s on dbdd %s' % (self.record.id, self.dbdd.s3_key)
 
 
 
@@ -2695,7 +2882,7 @@ class CombineBackgroundTask(models.Model):
 
 
 ####################################################################
-# Signals Handlers																								 #
+# Signals Handlers												   #
 ####################################################################
 
 @receiver(signals.user_logged_in)
@@ -2764,14 +2951,6 @@ def save_job(sender, instance, created, **kwargs):
 		instance.save()
 
 
-	# create DPLAJobMap instance and save
-	if created:
-		djm = DPLAJobMap(
-			job = instance
-		)
-		djm.save()
-
-
 @receiver(models.signals.pre_delete, sender=Organization)
 def delete_org_pre_delete(sender, instance, **kwargs):
 
@@ -2810,10 +2989,10 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	'''
 	When jobs are removed, some actions are performed:
-		- if job is queued or running, stop
-		- if Publish job, remove symlinks
+		- if job is queued or running, stop		
 		- remove avro files from disk
 		- delete ES indexes (if present)
+		- delete from Mongo
 
 	Args:
 		sender (auth.models.Job): class
@@ -2835,66 +3014,37 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 		logger.debug('could not stop job in livy')
 		logger.debug(str(e))
 
-
-	# if publish job, remove symlinks to global /published
-	if instance.job_type == 'PublishJob':
-
-		logger.debug('Publish job detected, removing symlinks and removing record set from ES index')
-
-		# open cjob
-		cjob = CombineJob.get_combine_job(instance.id)
-
-		# loop through published symlinks and look for filename hash similarity
-		published_dir = os.path.join(settings.BINARY_STORAGE.split('file://')[-1].rstrip('/'), 'published')
-		job_output_filename_hash = cjob.get_job_output_filename_hash()
-		try:
-			for f in os.listdir(published_dir):
-				# if hash is part of filename, remove
-				if job_output_filename_hash in f:
-					os.remove(os.path.join(published_dir, f))
-		except:
-			logger.debug('could not delete symlinks from /published directory')
-
-		# attempting to delete from ES
-		try:
-			del_dsl = {
-				'query':{
-					'match':{
-						'source_job_id':instance.id
-					}
-				}
-			}
-			if es_handle.indices.exists('published'):
-				r = es_handle.delete_by_query(
-					index='published',
-					doc_type='record',
-					body=del_dsl
-				)
-			else:
-				logger.debug('published index not found in ES, skipping removal of records')
-		except Exception as e:
-			logger.debug('could not remove published records from ES index')
-			logger.debug(str(e))
-
-
-		# when removing publish job, unset RecordGroup publish_set_id
-		logger.debug('Unsetting RecordGroup publish_set_id')
-		instance.record_group.publish_set_id = None
-		instance.record_group.save()
-
-	# remove avro files from disk
-	# if file://
+	# remove avro files from disk	
 	if instance.job_output and instance.job_output.startswith('file://'):
 
 		try:
 			output_dir = instance.job_output.split('file://')[-1]
 			shutil.rmtree(output_dir)
+
 		except:
 			logger.debug('could not remove job output directory at: %s' % instance.job_output)
 
-
 	# remove ES index if exists
 	instance.drop_es_index()
+
+	# remove Records from Mongo
+	instance.remove_records_from_db()
+
+	# remove Validations from Mongo
+	# instance.remove_validations_from_db()
+
+	# remove Validations from Mongo
+	instance.remove_mapping_failures_from_db()
+
+
+@receiver(models.signals.pre_delete, sender=JobValidation)
+def delete_job_validation_pre_delete(sender, instance, **kwargs):
+
+	'''
+	Signal to remove RecordValidations from DB if JobValidation removed
+	'''
+
+	del_results = instance.delete_record_validation_failures()
 
 
 @receiver(models.signals.post_delete, sender=Job)
@@ -2903,27 +3053,11 @@ def delete_job_post_delete(sender, instance, **kwargs):
 	logger.debug('job %s was deleted successfully' % instance)
 
 
-@receiver(models.signals.post_delete, sender=Job)
-def update_uniqueness_of_published_records(sender, instance, **kwargs):
-
-	'''
-	After job delete, if Publish job, update uniquess of published records
-	'''
-
-	if instance.job_type == 'PublishJob':
-
-		logger.debug('updating uniquess of published records')
-
-		# get PublishedRecords instance and run method
-		pr = PublishedRecords()
-		pr.update_published_uniqueness()
-
-
 @receiver(models.signals.pre_save, sender=Transformation)
 def save_transformation_to_disk(sender, instance, **kwargs):
 
 	'''
-	When users enter a payload for a transformation, write to disk for use in Spark context
+	Pre-save work for Transformations
 
 	Args:
 		sender (auth.models.Transformation): class
@@ -2942,6 +3076,10 @@ def save_transformation_to_disk(sender, instance, **kwargs):
 			os.remove(instance.filepath)
 		except:
 			logger.debug('could not remove transformation file: %s' % instance.filepath)
+
+	# fire transformation method to rewrite external HTTP includes for XSLT
+	if instance.transformation_type == 'xslt':
+		instance._rewrite_xsl_http_includes()
 
 	# write XSLT type transformation to disk
 	if instance.transformation_type == 'xslt':
@@ -3045,6 +3183,10 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 			shutil.rmtree(instance.task_output['export_dir'])
 		except:
 			logger.debug('could not parse task output as JSON')
+
+
+
+
 
 
 ####################################################################
@@ -3396,7 +3538,7 @@ class SparkAppAPIClient(object):
 
 
 ####################################################################
-# Combine Models 													 #
+# Combine Models 												   #
 ####################################################################
 
 class ESIndex(object):
@@ -3405,9 +3547,16 @@ class ESIndex(object):
 	Model to aggregate methods useful for accessing and analyzing ElasticSearch indices
 	'''
 
-	def __init__(self, es_index):
+	def __init__(self, es_index):		
 
-		self.es_index = es_index
+		# convert single index to list
+		if type(es_index) == str:
+			self.es_index = [es_index]
+		else:
+			self.es_index = es_index
+
+		# also, save as string
+		self.es_index_str = str(self.es_index)
 
 
 	def get_index_fields(self):
@@ -3426,10 +3575,15 @@ class ESIndex(object):
 
 			# get mappings for job index
 			es_r = es_handle.indices.get(index=self.es_index)
-			self.index_mappings = es_r[self.es_index]['mappings']['record']['properties']
 
-			# get fields as list
-			field_names = list(self.index_mappings.keys())
+			# loop through indices and build field names
+			field_names = []
+			for index,index_properties in es_r.items():
+				fields = index_properties['mappings']['record']['properties']
+				# get fields as list and extend list
+				field_names.extend(list(fields.keys()))				
+			# get unique list
+			field_names = list(set(field_names))
 
 			# remove uninteresting fields
 			field_names = [ field for field in field_names if field not in [
@@ -3519,6 +3673,7 @@ class ESIndex(object):
 
 		Args:
 			cardinality_precision_threshold (int, 0:40-000): Cardinality precision threshold (see note above)
+			job_record_count (int): optional pre-count of records
 
 		Returns:
 			(dict):
@@ -3529,23 +3684,25 @@ class ESIndex(object):
 		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
 			# DEBUG
-			stime = time.time()
+			stime = time.time()			
 
 			# get field mappings for index
 			field_names = self.get_index_fields()
-			
-			'''
-			At this point, already mis-representing field names
-			'''
 
-			# init search
-			s = Search(using=es_handle, index=self.es_index)
-
-			# return no results, only aggs
-			s = s[0]
-
-			# add agg buckets for each field to count total and unique instances
+			# loop through fields and query ES
+			field_count = []
 			for field_name in field_names:
+
+				logger.debug('analyzing mapped field %s' % field_name)
+
+				# init search
+				s = Search(using=es_handle, index=self.es_index)
+
+				# return no results, only aggs
+				s = s[0]
+
+				# add agg buckets for each field to count total and unique instances
+				# for field_name in field_names:
 				s.aggs.bucket('%s_doc_instances' % field_name, A('filter', Q('exists', field=field_name)))
 				s.aggs.bucket('%s_val_instances' % field_name, A('value_count', field='%s.keyword' % field_name))
 				s.aggs.bucket('%s_distinct' % field_name, A(
@@ -3554,22 +3711,14 @@ class ESIndex(object):
 						precision_threshold = cardinality_precision_threshold
 					))
 
-			# execute search and capture as dictionary
-			sr = s.execute()
-			sr_dict = sr.to_dict()
+				# execute search and capture as dictionary
+				sr = s.execute()
+				sr_dict = sr.to_dict()
 
-			# calc field percentages and return as list
-			'''
-			Because this also acts on the `published` ES index, which might contain mappings for fields that no longer
-			exist, filter out fields with zero instances.
-			'''
-			field_count = []
-			for field_name in field_names:
-
-					# get metrics and append if field metrics found
-					field_metrics = self._calc_field_metrics(sr_dict, field_name)
-					if field_metrics:
-						field_count.append(field_metrics)
+				# get metrics and append if field metrics found
+				field_metrics = self._calc_field_metrics(sr_dict, field_name)
+				if field_metrics:
+					field_count.append(field_metrics)
 
 			# DEBUG
 			logger.debug('count indexed fields elapsed: %s' % (time.time()-stime))
@@ -3684,23 +3833,24 @@ class PublishedRecords(object):
 		self.record_group = 0
 
 		# get published jobs
-		self.publish_links = JobPublish.objects.all()
+		self.published_jobs = Job.objects.filter(published=True)
 
 		# get set IDs from record group of published jobs
 		sets = {}
-		for publish_link in self.publish_links:
-			publish_set_id = publish_link.record_group.publish_set_id
+		for job in self.published_jobs:
 			
-			# if set not seen, add as list
-			if publish_set_id not in sets.keys():
-				sets[publish_set_id] = []
+			if job.publish_set_id:
+			
+				# if set not seen, add as list
+				if job.publish_set_id not in sets.keys():
+					sets[job.publish_set_id] = []
 
-			# add publish job
-			sets[publish_set_id].append(publish_link.job)
+				# add publish job
+				sets[job.publish_set_id].append(job)
 		self.sets = sets
 
-		# setup ESIndex instance
-		self.esi = ESIndex('published')
+		# establish esi		
+		self.esi = ESIndex([ 'j%s' % job.id for job in self.published_jobs ])
 
 
 	@property
@@ -3736,63 +3886,67 @@ class PublishedRecords(object):
 			return False
 
 
-	def count_indexed_fields(self):
+	def count_indexed_fields(self, force_recount=False):
 
 		'''
 		Wrapper for ESIndex.count_indexed_fields
+			- stores results in Mongo to avoid re-calcing everytime
+				- stored as misc/published_field_counts
+			- checks Mongo for stored metrics, if not found, calcs and stores
+			- when Jobs are published, this Mongo entry is removed forcing a re-calc
+
+		Args:
+			force_recount (boolean): force recount and update to stored doc in Mongo
 		'''
 
-		# return count
-		return self.esi.count_indexed_fields()
+		# check for stored field counts
+		published_field_counts = mc_handle.combine.misc.find_one('published_field_counts')
+
+		# if present, return and use
+		if published_field_counts and not force_recount:
+			logger.debug('saved published field counts found, using')
+			return published_field_counts
+
+		# else, calculate, store, and return
+		else:
+
+			logger.debug('calculating published field counts, saving, and returning')
+			
+			# calc
+			published_field_counts = self.esi.count_indexed_fields()			
+
+			# add id and replace (upsert if necessary)
+			published_field_counts['_id'] = 'published_field_counts'
+			doc = mc_handle.combine.misc.replace_one(
+				{'_id':'published_field_counts'},
+				published_field_counts,
+				upsert=True)
+
+			# return
+			return published_field_counts
 
 
-	def field_analysis(self, field_name):
+	# def update_published_uniqueness(self):
 
-		'''
-		Wrapper for ESIndex.field_analysis
-		'''
+	# 	'''
+	# 	Method to update `unique_published` field from Record table for all published records
+	# 	Note: Very likely possible to improve performance, currently about 1s per 10k records.
+	# 	'''
 
-		# return field analysis
-		return self.esi.field_analysis(field_name)
+	# 	stime = time.time()
 
+	# 	# get non-unique as QuerySet
+	# 	dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
 
-	def update_published_uniqueness(self):
+	# 	# set true in bulk
+	# 	set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_true.update(unique_published=True)
 
-		'''
-		Method to update `unique_published` field from Record table for all published records
-		Note: Very likely possible to improve performance, currently about 1s per 10k records.
-		'''
+	# 	# set false in bulk
+	# 	set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
+	# 	set_false.update(unique_published=False)
 
-		stime = time.time()
-
-		# get non-unique as QuerySet
-		dupes = self.records.values('record_id').annotate(Count('id')).order_by().filter(id__count__gt=1)
-
-		# set true in bulk
-		set_true = self.records.exclude(record_id__in=[item['record_id'] for item in dupes])
-		set_true.update(unique_published=True)
-
-		# set false in bulk
-		set_false = self.records.filter(record_id__in=[item['record_id'] for item in dupes])
-		set_false.update(unique_published=False)
-
-		logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
-
-
-	def set_published_field(self, job_id=None):
-
-		'''
-		Method to set 'published' for all Records with Publish Job parent
-		'''
-
-		to_set_published = Record.objects.filter(job__job_type='PublishJob')
-
-		# if job_id
-		if job_id:
-			to_set_published.filter(job__id=job_id)
-
-		# update
-		to_set_published.update(published=True)
+	# 	logger.debug('uniqueness update elapsed: %s' % (time.time()-stime))
 
 
 	@staticmethod
@@ -3808,7 +3962,7 @@ class PublishedRecords(object):
 			(list): list of publish set ids
 		'''
 
-		publish_set_ids = RecordGroup.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
+		publish_set_ids = Job.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
 		return publish_set_ids
 
 
@@ -3906,11 +4060,10 @@ class CombineJob(object):
 		livy_sessions = LivySession.objects.filter(active=True)
 
 		# if single session, confirm active or starting
-		if livy_sessions.count() == 1:
-			
-			livy_session = livy_sessions.first()
-			logger.debug('single livy session found, confirming running')
+		if livy_sessions.count() == 1:			
 
+			livy_session = livy_sessions.first()
+			
 			try:
 				livy_session_status = LivyClient().session_status(livy_session.session_id)
 				if livy_session_status.status_code == 200:
@@ -4047,7 +4200,7 @@ class CombineJob(object):
 		'''
 
 		# load indexing failures for this job from DB
-		index_failures = IndexMappingFailure.objects.filter(job=self.job)
+		index_failures = IndexMappingFailure.objects.filter(job_id=self.job.id)
 		return index_failures
 
 
@@ -4149,125 +4302,170 @@ class CombineJob(object):
 			return False
 
 
-	def generate_validation_report(self,
-			report_format='csv',
-			validation_scenarios=None,
-			mapped_field_include=None,
-			return_dataframe_only=False,
-			chunk_size=1000
-		):
+	def reindex_bg_task(self, fm_config=None):
 
 		'''
-		Method to generate report based on validation scenarios run for this job
+		Method to reindex job as bg task
 
 		Args:
-			validation_scenarios (list): List of validation scenario IDs, run for this job, to include in report
-			mapped_field_include (list): List of mapped field as str to include in report
-			output_format (str)['csv','excel','pdf']: output format for report
-
-		Returns:
-			filepath (str): output filepath of report
-			report Dataframe (pandas.DataFrame): DataFrame of report
+			fm_config (dict|str): XML2kvp field mapper configurations, JSON or dictionary
+				- if None, saved configurations for Job will be used
 		'''
 
-		# DEBUG
-		stime = time.time()
-
-		# get QuerySet of all validation records failures (rvf) for job
-		rvfs = RecordValidation.objects.filter(record__job=self.job)
-
-		# if validation_scenarios passed, filter only those
-		if validation_scenarios:
-			rvfs = rvfs.filter(validation_scenario_id__in=validation_scenarios)
-
-		# create DataFrame with django-pands
-		rvf_df = read_frame(rvfs, fieldnames=[
-				'record__id', # DB ID
-				'record__combine_id', # Combine ID
-				'record__record_id', # Record string ID
-				'validation_scenario__name',
-				'fail_count',
-				'results_payload'
-			])
-
-		# rename columns to more human readable format
-		col_mapping = {
-			'record__id':'DB ID',
-			'record__combine_id':'Combine ID',
-			'record__record_id':'Record ID',
-			'validation_scenario__name':'Validation Scenario',
-			'fail_count':'Test Failure Count',
-			'results_payload':'Failure Message'
-		}
-		rvf_df = rvf_df.rename(index=str, columns=col_mapping)
-
-		# loop through requests mapped fields, add to dataframe
-		if mapped_field_include:
-
-			# prepare dictionary
-			field_values_dict = { field:[] for field in mapped_field_include }
-			
-			# establish chunking
-			tlen = rvf_df['Combine ID'].count()
-			start = 0
-			end = start + chunk_size
-
-			while start < tlen:
-
-				logger.debug('working on chunk_start: %s' % start)
-
-				# get doc chunks from es
-				chunk = list(rvf_df['Combine ID'].iloc[start:end])
-				docs = es_handle.mget(index='j%s' % self.job.id, doc_type='record', body={'ids':chunk})['docs']
-				
-				# grab values and add to dictionary
-				for es_doc in docs:
-					for field in mapped_field_include:
-						if field in es_doc['_source'].keys():
-							field_values_dict[field].append(es_doc['_source'][field])
-						else:
-							field_values_dict[field].append(None)
-				
-				# bump iterations
-				if tlen > (end + chunk_size):
-					start = end
-					end = end + chunk_size
-				elif tlen <= (end + chunk_size):
-					start = end
-					end = tlen
-
-			# add values to dataframe
-			for field, value_list in field_values_dict.items():
-				rvf_df[field] = value_list
-
-		# if only dataframe needed, return
-		if return_dataframe_only:
-			logger.debug('report generation elapsed: %s' % (time.time() - stime))
-			gc.collect() # manual garbage collection
-			return rvf_df
-
-		# else, output to file and return path
+		# handle fm_config
+		if not fm_config:
+			fm_config_json = self.job.get_fm_config_json()
 		else:
+			if type(fm_config) == dict:
+				fm_config_json = json.dumps(fm_config)
+			elif type(fm_config) == str:
+				fm_config_json = fm_config
 
-			# create filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Re-Map and Index Job: %s' % self.job.name,
+			task_type = 'job_reindex',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'fm_config_json':fm_config_json
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_reindex(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
 
-			# output csv
-			if report_format == 'csv':
-				full_path = '%s/validation_report.csv' % (output_path)
-				rvf_df.to_csv(full_path, encoding='utf-8')
+		return bg_task
 
-			# output excel
-			if report_format == 'excel':
-				full_path = '%s/validation_report.xlsx' % (output_path)
-				rvf_df.to_excel(full_path, encoding='utf-8')
 
-			# return
-			logger.debug('report written to :%s' % full_path)
-			logger.debug('report generation elapsed: %s' % (time.time() - stime))
-			gc.collect() # manual garbage collection
-			return full_path
+	def new_validations_bg_task(self, validation_scenarios):
+
+		'''
+		Method to run new validations for Job
+
+		Args:
+			validation_scenarios (list): List of Validation Scenarios ids
+		'''
+		
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'New Validations for Job: %s' % self.job.name,
+			task_type = 'job_new_validations',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'validation_scenarios':validation_scenarios
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_new_validations(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def remove_validation_bg_task(self, jv_id):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Remove Validation %s for Job: %s' % (jv_id, self.job.name),
+			task_type = 'job_remove_validation',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'jv_id':jv_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_remove_validation(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def publish_bg_task(self, publish_set_id=None):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Publish Job: %s' % (self.job.name),
+			task_type = 'job_publish',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'publish_set_id':publish_set_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_publish(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def unpublish_bg_task(self):
+
+		'''
+		Method to remove validations from Job based on Validation Job id
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Unpublish Job: %s' % (self.job.name),
+			task_type = 'job_unpublish',
+			task_params_json = json.dumps({
+				'job_id':self.job.id				
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_unpublish(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
+
+	def dbdm_bg_task(self, dbdd_id):
+
+		'''
+		Method to run DPLA Bulk Data Match as bg task
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Run DPLA Bulk Data Match for Job: %s' % (self.job.name),
+			task_type = 'job_dbdm',
+			task_params_json = json.dumps({
+				'job_id':self.job.id,
+				'dbdd_id':dbdd_id
+			})
+		)
+		ct.save()
+		bg_task = tasks.job_dbdm(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		return bg_task
+
 
 
 class HarvestJob(CombineJob):
@@ -4399,6 +4597,9 @@ class HarvestOAIJob(HarvestJob):
 			self.validation_scenarios = validation_scenarios
 			self.rits = rits
 			self.dbdd = dbdd
+
+			# write OAI endpoint to job_details
+			self.job.update_job_details({'oai_endpoint_id':self.oai_endpoint.id,'oai_overrides':self.overrides})
 
 			# write validation links
 			if len(self.validation_scenarios) > 0:
@@ -4911,122 +5112,6 @@ class MergeJob(CombineJob):
 
 
 
-class PublishJob(CombineJob):
-	
-	'''
-	Copy record output from job as published job set
-	'''
-
-	def __init__(self,
-		job_name=None,
-		job_note=None,
-		user=None,
-		record_group=None,
-		input_job=None,
-		job_id=None):
-
-		'''
-		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance this job belongs to
-			input_job (core.models.Job): Job that provides input records for this job's work
-			job_id (int): Not set on init, but acquired through self.job.save()
-
-		Returns:
-			None
-				- sets multiple attributes for self.job
-				- sets in motion the output of spark jobs from core.spark.jobs
-		'''
-
-		# perform CombineJob initialization
-		super().__init__(user=user, job_id=job_id)
-
-		# if job_id not provided, assumed new Job
-		if not job_id:
-
-			self.job_name = job_name
-			self.job_note = job_note
-			self.record_group = record_group
-			self.organization = self.record_group.organization
-			self.input_job = input_job
-
-			# if job name not provided, provide default
-			if not self.job_name:
-				self.job_name = self.default_job_name()
-
-			# create Job entry in DB
-			self.job = Job(
-				record_group = self.record_group,
-				job_type = type(self).__name__,
-				user = self.user,
-				name = self.job_name,
-				note = self.job_note,
-				spark_code = None,
-				job_id = None,
-				status = 'initializing',
-				url = None,
-				headers = None,
-				job_details = json.dumps(
-					{
-						'publish':
-							{
-								'publish_job_id':self.input_job.id,
-							}
-					})
-			)
-			self.job.save()
-
-			# save input job to JobInput table
-			job_input_link = JobInput(
-				job=self.job,
-				input_job=self.input_job,
-				input_validity_valve='all',
-				input_numerical_valve=None)
-			job_input_link.save()
-
-			# save publishing link from job to record_group
-			job_publish_link = JobPublish(record_group=self.record_group, job=self.job)
-			job_publish_link.save()
-
-
-	def prepare_job(self):
-
-		'''
-		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
-
-		Args:
-			None
-
-		Returns:
-			None
-				- submits job to Livy
-		'''
-
-		# prepare job code
-		job_code = {
-			'code':'from jobs import PublishSpark\nPublishSpark(spark, input_job_id="%(input_job_id)s", job_id="%(job_id)s").spark_function()' %
-			{
-				'input_job_id':self.input_job.id,
-				'job_id':self.job.id
-			}
-		}
-
-		# submit job
-		self.submit_job_to_livy(job_code)
-
-
-	def get_job_errors(self):
-
-		'''
-		Not implemented for Publish jobs, primarily just copying and indexing records
-		'''
-
-		pass
-
-
-
 class AnalysisJob(CombineJob):
 	
 	'''
@@ -5172,8 +5257,7 @@ class AnalysisJob(CombineJob):
 			analysis_record_group = RecordGroup(
 				organization = analysis_org,
 				name = record_group_name,
-				description = 'For the explicit use of aggregating Analysis jobs',
-				publish_set_id = None,
+				description = 'For the explicit use of aggregating Analysis jobs',				
 				for_analysis = True
 			)
 			analysis_record_group.save()
@@ -5472,9 +5556,14 @@ class DTElasticFieldSearch(View):
 			es_index (str): ES index
 		'''
 
-		# save parameters to self
+		# save request
 		self.request = request
-		self.es_index = es_index
+
+		# handle es index
+		esi = ESIndex(ast.literal_eval(es_index))
+		self.es_index = esi.es_index
+		
+		# save DT params
 		self.DTinput = self.request.GET
 
 		# time respond build
@@ -5538,7 +5627,7 @@ class DTElasticFieldSearch(View):
 		for hit in self.query_results.hits:
 
 			# get combine record
-			record = Record.objects.get(pk=int(hit.db_id))
+			record = Record.objects.get(id=hit.db_id)
 
 			# loop through rows, add to list while handling data types
 			row_data = []
@@ -6078,7 +6167,7 @@ class RITSClient(object):
 
 
 ####################################################################
-# DPLA Service Hub and Bulk Data									 #
+# DPLA Service Hub and Bulk Data 								   #
 ####################################################################
 
 class DPLABulkDataClient(object):
@@ -6114,8 +6203,6 @@ class DPLABulkDataClient(object):
 
 		'''
 		Method to bulk download a service hub's data from DPLA's S3 bucket
-
-		Note: Move to background task...
 		'''
 
 		# create bulk directory if not already present
@@ -6154,11 +6241,6 @@ class DPLABulkDataClient(object):
 		stime = time.time()
 
 		##	prepare index
-
-		# get single, sample record to retrieve ES index name
-		# sample_record = self.get_sample_record(filepath)
-		# index_name = sample_record.dpla_es_index
-
 		index_name = hashlib.md5(object_key.encode('utf-8')).hexdigest()
 		logger.debug('indexing to %s' % index_name)
 
@@ -6181,7 +6263,6 @@ class DPLABulkDataClient(object):
 
 		# index using streaming
 		for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
-			# logger.debug(i)
 			continue
 
 		logger.debug("index to ES elapsed: %s" % (time.time() - stime))
@@ -6368,7 +6449,7 @@ class DPLARecord(object):
 		
 
 ####################################################################
-# OpenRefine Actions Client 										 #
+# OpenRefine Actions Client 									   #
 ####################################################################
 
 class OpenRefineActionsClient(object):
@@ -6397,6 +6478,72 @@ class OpenRefineActionsClient(object):
 		else:
 			logger.debug('not parsing or_actions, storing as-is')
 			self.or_actions = or_actions
+
+
+
+####################################################################
+# Supervisor RPC Server Client   								   #
+####################################################################
+
+class SupervisorRPCClient(object):
+
+	def __init__(self):
+
+		self.server = xmlrpc_client.ServerProxy('http://localhost:9001/RPC2')
+
+
+	def get_server_state(self):
+
+		return self.server.supervisor.getState()
+
+
+	def list_processes(self):
+
+		return self.server.supervisor.getAllProcessInfo()
+
+
+	def check_process(self, process_name):
+
+		return self.server.supervisor.getProcessInfo(process_name)
+
+
+	def start_process(self, process_name):
+
+		return self.server.supervisor.startProcess(process_name)
+
+
+	def stop_process(self, process_name):
+
+		return self.server.supervisor.stopProcess(process_name)
+
+
+	def restart_process(self, process_name):
+
+		'''
+		RPC throws Fault 70 if not running, catch when stopping
+		'''
+		
+		# attempt to stop
+		try:
+			self.stop_process(process_name)
+		except Exception as e:
+			logger.debug(str(e))
+
+		# start process
+		return self.start_process(process_name)
+
+
+	def stdout_log_tail(self, process_name, offset=0, length=10000):
+
+		return self.server.supervisor.tailProcessStdoutLog(process_name, offset, length)[0]
+
+
+	def stderr_log_tail(self, process_name, offset=0, length=10000):
+
+		return self.server.supervisor.tailProcessStderrLog(process_name, offset, length)[0]
+
+
+
 
 
 

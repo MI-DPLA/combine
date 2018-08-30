@@ -6,6 +6,14 @@ Combine relies heavily on front-loading configuration, so that the process of ru
 
 This section will outline configuration options and associated configuration pages.
 
+  - `Field Mapping <#field-mapper-configurations>`__
+  - `OAI-PMH Harvesting Endpoints <#oai-server-endpoints>`__
+  - `Transformation Scenarios <#transformation-scenario>`__
+  - `Validation Scenarios <#validation-scenario>`__
+  - `Record Identifier Transformation Scenarios (RITS) <#record-identifier-transformation-scenario>`__
+  - `Built-In OAI-PMH server <#combine-oai-pmh-server>`__
+  - `DPLA Bulk Data Downloads <#dpla-bulk-data-downloads-dbdd>`__
+
 **Note:** Currently, Combine leverages Django's built-in admin interface for editing and creating model instances -- transformations, validations, and other scenarios -- below.  This will likely evolve into more tailored CRUDs for each, but for the time being, there is a link to the Django admin panel on the Configuration screen.
 
 **Note:** What settings are not configurable via the GUI in Combine, are configurable in the file ``combine/localsettings.py``.
@@ -14,11 +22,222 @@ This section will outline configuration options and associated configuration pag
 Field Mapper Configurations
 ===========================
 
-Field Mapping is one of Combine's more advanced features, and subsequently, one of the most powerful.  Field Mapping is the process of a Record's sourece document (likely XML) and mapping it in a meaningful and predictable way to key/value pairs that are suitable for a search engine like ElasticSearch.
+Field Mapping is the process of mapping values from a Record's sourece document (likely XML) and to meaningful and analyzable key/value pairs that can be stored in ElasticSearch.  These mapped values from a Record's document are used in Combine for:
 
-Combine uses an internal library called ``XML2kvp``, which stands "XML to Key/Value Pairs", to map XML to ElasticSearch ready JSON documents.  Within Combine, the configurations passed to XML2kvp are referred to as "Field Mapper Configurations", and like many other parts of Combine, can be named and saved to the database for later, repeated use.  This section shows all saved Field Mapper Configurations.
+  - analyzing distribution of XML elements and values across Records
+  - exporting to mapped field reports
+  - for single Records, querying the DPLA API to check existence
+  - comparing Records against DPLA bulk data downloads
+  - and much more!
 
-Additionally, a link to test field mapper configurations can be found here:
+To perform this mapping, Combine uses an internal library called ``XML2kvp``, which stands for "XML to Key/Value Pairs", to map XML to key/value JSON documents.  Under the hood, ``XML2kvp`` uses `xmltodict <https://github.com/martinblech/xmltodict>`_ to parse the Record XML into a hierarchical dictionary, and then loops through that, creating fields based on the configurations below.
+
+
+I've mapped DC or MODS to Solr or ElasticSearch, why not do something similar?
+------------------------------------------------------------------------------
+
+Each mapping is unique: to support different access, preservation, or analysis purposes.  A finely tuned mapping for one metadata format or institution, might be unusable for another, even for the same metadata format.  Combine strives to be metadata format agnostic for harvesting, transformation, and analysis, and furthermore, performing these actions before a mapping has even been created or considered.  To this end, a "generic" but customizable mapper was needed to take XML records and convert them into fields that can be used for developing an understanding about a group of Records.
+
+While applications like Solr and ElasticSearch more recently support hierarchical documents, and would likely support a straight XML to JSON converted document (with `xmltodict <https://github.com/martinblech/xmltodict>`_, or `Object Management Group (OMG)'s XML to JSON conversion standard <https://www.omg.org/cgi-bin/doc?ad/13-09-04>`_), the attributes in XML give it a dimensionality beyond simple hierarchy, and can be critical to understanding the nature and values of a particular XML element.  These direct mappings would function, but would not provide the same scannable, analysis of a group of XML records.  
+
+XML2kvp provides a way to blindly map most any XML document, providing a broad overview of fields and structures, with the ability to further narrow and configure.  A possible update/improvement would be the ability for users to upload mappers of their making (e.g. XSLT) that would result in a flat mapping, but that is currently not implemented.
+
+
+How does it work
+----------------
+
+XML2kvp converts elements from XML to key/value pairs by converting hierarchy in the XML document to character delimiters.
+
+Take for example the following, "unique" XML:
+
+.. code-block:: xml
+
+	<?xml version="1.0" encoding="UTF-8"?>
+	<root xmlns:internet="http://internet.com">
+		<foo>
+			<bar>42</bar>
+			<baz>109</baz>
+		</foo>
+		<foo>
+			<bar>42</bar>
+			<baz>109</baz>
+		</foo>
+		<foo>
+			<bar>9393943</bar>
+			<baz>3489234893</baz>
+		</foo>
+		<tronic type='tonguetwister'>Sally sells seashells by the seashore.</tronic>
+		<tronic type='tonguetwister'>Red leather, yellow leather.</tronic>
+		<tronic>You may disregard</tronic>
+		<goober scrog='true' tonk='false'>
+			<depths>
+				<plunder>Willy Wonka</plunder>
+			</depths>
+		</goober>
+		<nested_attribs type='first'>
+			<another type='second'>paydirt</another>
+		</nested_attribs>
+		<nested>
+			<empty></empty>
+		</nested>
+		<internet:url url='http://example.com'>see my url</internet:url>
+		<beat type="4/4">four on the floor</beat>
+		<beat type="3/4">waltz</beat>
+		<ordering>
+			<duck>100</duck>
+			<duck>101</duck>
+			<goose>102</goose>
+			<it>run!</it>
+		</ordering>
+		<ordering>
+			<duck>200</duck>
+			<duck>201</duck>
+			<goose>202</goose>
+			<it>run!</it>
+		</ordering>
+	</root>
+
+
+Converted with default options from XML2kvp, you would get the following key/value pairs in JSON form:
+
+.. code-block:: js
+
+	{'root_beat': ('four on the floor', 'waltz'),
+	 'root_foo_bar': ('42', '9393943'),
+	 'root_foo_baz': ('109', '3489234893'),
+	 'root_goober_depths_plunder': 'Willy Wonka',
+	 'root_nested_attribs_another': 'paydirt',
+	 'root_ordering_duck': ('100', '101', '200', '201'),
+	 'root_ordering_goose': ('102', '202'),
+	 'root_ordering_it': 'run!',
+	 'root_tronic': ('Sally sells seashells by the seashore.',
+	  'Red leather, yellow leather.',
+	  'You may disregard'),
+	 'root_url': 'see my url'}
+
+Some things to notice...
+
+  - the XML root element ``<root>`` is present for all fields as ``root``
+  - the XML hierarchy ``<root><foo><bar>`` repeats twice in the XML, but is collapsed into a single field ``root_foo_bar``
+    
+    - moreover, because ``skip_repeating_values`` is set to ``true``, the value ``42`` shows up only once, if set to ``false`` we would see the value ``('42', '42', '9393943')``
+
+  - a distinct absence of all attributes from the original XML, this is because ``include_all_attributes`` is set to ``false`` by default.
+
+Running with ``include_all_attributes`` set to ``true``, we see a more complex and verbose output, with ``@`` in various field names, indicating attributes:
+
+.. code-block:: js
+
+	{'root_beat_@type=3/4': 'waltz',
+	 'root_beat_@type=4/4': 'four on the floor',
+	 'root_foo_bar': ('42', '9393943'),
+	 'root_foo_baz': ('109', '3489234893'),
+	 'root_goober_@scrog=true_@tonk=false_depths_plunder': 'Willy Wonka',
+	 'root_nested_attribs_@type=first_another_@type=second': 'paydirt',
+	 'root_ordering_duck': ('100', '101', '200', '201'),
+	 'root_ordering_goose': ('102', '202'),
+	 'root_ordering_it': 'run!',
+	 'root_tronic': 'You may disregard',
+	 'root_tronic_@type=tonguetwister': ('Sally sells seashells by the seashore.',
+	  'Red leather, yellow leather.'),
+	 'root_url_@url=http://example.com': 'see my url'}
+
+A more familiar example may be Dublin Core XML:
+
+.. code-block:: xml
+
+	<oai_dc:dc xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:oai_dc="http://www.openarchives.org/OAI/2.0/oai_dc/" xmlns="http://www.openarchives.org/OAI/2.0/" xsi:schemaLocation="http://www.openarchives.org/OAI/2.0/oai_dc/ http://www.openarchives.org/OAI/2.0/oai_dc.xsd">
+		<dc:title>Fragments of old book</dc:title>
+		<dc:creator>Unknown</dc:creator>
+		<dc:date>1601</dc:date>
+		<dc:description>An object of immense cultural and historical worth</dc:description>
+		<dc:subject>Writing--Materials and instruments</dc:subject>
+		<dc:subject>Archaeology</dc:subject>
+		<dc:coverage>1600-1610</dc:coverage>
+		<dc:identifier>book_1234</dc:identifier>
+	</oai_dc:dc>
+
+And with default configurations, would map to:
+
+.. code-block:: js
+
+	{'dc_coverage': '1600-1610',
+	 'dc_creator': 'Unknown',
+	 'dc_date': '1601',
+	 'dc_description': 'An object of immense cultural and historical worth',
+	 'dc_identifier': 'book_1234',
+	 'dc_subject': ('Writing--Materials and instruments', 'Archaeology'),
+	 'dc_title': 'Fragments of old book'}
+
+
+Configurations
+--------------
+
+
+Within Combine, the configurations passed to XML2kvp are referred to as "Field Mapper Configurations", and like many other parts of Combine, can be named, saved, and updated in the database for later, repeated use.  This following table describes the configurations that can be used for field mapping.
+
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| Parameter                          | Type                     | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
++====================================+==========================+==========================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================================+
+| ``add_literals``                   | ``object``               | Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]                                                                                                                                                                                                                                                                                                                                                                                              |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``capture_attribute_values``       | ``array``                | Array of attributes to capture values from and set as standalone field, e.g. if [``age``] is provided and encounters ``<foo age='42'/>``, a field ``foo_@age@`` would be created (note the additional trailing ``@`` to indicate an attribute value) with the value ``42``. [Default: ``[]``, Before: ``copy_to``, ``copy_to_regex``]                                                                                                                                                                                    |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``concat_values_on_all_fields``    | [``boolean``,``string``] | Boolean or String to join all values from multivalued field on [Default: ``false``]                                                                                                                                                                                                                                                                                                                                                                                                                                      |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``concat_values_on_fields``        | ``object``               | Key/value pairs for fields to concat on provided value, e.g. ``foo_bar``:``-`` if encountering ``foo_bar``:[``goober``,``tronic``] would concatenate to ``foo_bar``:``goober-tronic`` [Default: ``{}``]                                                                                                                                                                                                                                                                                                                  |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``copy_to_regex``                  | ``object``               | Key/value pairs to copy one field to another, optionally removing original field, based on regex match of field, e.g. ``.*foo``:``bar`` would copy create field ``bar`` and copy all values fields ``goober_foo`` and ``tronic_foo`` to ``bar``.  Note: Can also be used to remove fields by setting the target field as false, e.g. ``.*bar``:``false``, would remove fields matching regex ``.*bar`` [Default: ``{}``]                                                                                                 |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``copy_to``                        | ``object``               | Key/value pairs to copy one field to another, optionally removing original field, e.g. ``foo``:``bar`` would create field ``bar`` and copy all values when encountered for ``foo`` to ``bar``, removing ``foo``.  However, the original field can be retained by setting ``remove_copied_key`` to ``true``.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':``false``, would remove field ``foo``. [Default: ``{}``]                                                           |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``copy_value_to_regex``            | ``object``               | Key/value pairs that match values based on regex and copy to new field if matching, e.g. ``http.*``:``websites`` would create new field ``websites`` and copy ``http://exampl.com`` and ``https://example.org`` to new field ``websites`` [Default: ``{}``]                                                                                                                                                                                                                                                              |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``error_on_delims_collision``      | ``boolean``              | Boolean to raise ``DelimiterCollision`` exception if delimiter strings from either ``node_delim`` or ``ns_prefix_delim`` collide with field name or field value (``false`` by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: ``false``]                                                                                                                                                                                                                             |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``exclude_attributes``             | ``array``                | Array of attributes to skip when creating field names, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@goober=1000``, skipping attribute ``baz`` [Default: ``[]``]                                                                                                                                                                                                                                                                            |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``exclude_elements``               | ``array``                | Array of elements to skip when creating field names, e.g. [``baz``] when encountering field ``<foo><baz><bar>tronic</bar></baz></foo>`` would create field ``foo_bar``, skipping element ``baz`` [Default: ``[]``, After: ``include_all_attributes``, ``include_attributes``]                                                                                                                                                                                                                                            |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``include_all_attributes``         | ``boolean``              | Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``] |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``include_attributes``             | ``array``                | Array of attributes to include when creating field names, despite setting of ``include_all_attributes``, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@baz=42`` [Default: ``[]``, Before: ``exclude_attributes``, After: ``include_all_attributes``]                                                                                                                                                                                        |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``include_meta``                   | ``boolean``              | Boolean to include ``xml2kvp_meta`` field with output that contains all these configurations [Default: ``false``]                                                                                                                                                                                                                                                                                                                                                                                                        |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``node_delim``                     | ``string``               | String to use as delimiter between XML elements and attributes when creating field name, e.g. ``___`` will convert XML ``<foo><bar>tronic</bar></foo>`` to field name ``foo___bar`` [Default: ``_``]                                                                                                                                                                                                                                                                                                                     |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``ns_prefix_delim``                | ``string``               | String to use as delimiter between XML namespace prefixes and elements, e.g. ``|`` for the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will create field name ``ns|foo_ns:bar``.  Note: a ``|`` pipe character is used to avoid using a colon in ElasticSearch fields, which can be problematic. [Default: ``|``]                                                                                                                                                                                                   |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``remove_copied_key``              | ``boolean``              | Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: ``true``]                                                                                                                                                                                                                                                                                                                                                                                       |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``remove_copied_value``            | ``boolean``              | Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: ``false``]                                                                                                                                                                                                                                                                                                                                                                                       |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``remove_ns_prefix``               | ``boolean``              | Boolean to determine if XML namespace prefixes are removed from field names, e.g. if ``false``, the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will result in field name ``foo_bar`` without ``ns`` prefix [Default: ``true``]                                                                                                                                                                                                                                                                                     |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``self_describing``                | ``boolean``              | Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if ``true``, and ``node_delim`` is ``___`` and ``ns_prefix_delim`` is ``|``, suffix will be ``___3|1``.  Can be useful to reverse engineer field name when not re-parsed by XML2kvp. [Default: ``false``]                                                                                                                                            |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``skip_attribute_ns_declarations`` | ``boolean``              | Boolean to remove namespace declarations as considered attributes when creating field names [Default: ``true``]                                                                                                                                                                                                                                                                                                                                                                                                          |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``skip_repeating_values``          | ``boolean``              | Boolean to determine if a field is multivalued, if those values are allowed to repeat, e.g. if set to ``false``, XML ``<foo><bar>42</bar><bar>42</bar></foo>`` would map to ``foo_bar``:``42``, removing the repeating instance of that value. [Default: ``true``]                                                                                                                                                                                                                                                       |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``skip_root``                      | ``boolean``              | Boolean to determine if the XML root element will be included in output field names [Default: ``false``]                                                                                                                                                                                                                                                                                                                                                                                                                 |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``split_values_on_all_fields``     | [``boolean``,``string``] | If present, string to use for splitting values from all fields, e.g. `` `` will convert single value ``a foo bar please`` into the array of values [``a``,``foo``,``bar``,``please``] for that field [Default: ``false``]                                                                                                                                                                                                                                                                                                |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| ``split_values_on_fields``         | ``object``               | Key/value pairs of field names to split, and the string to split on, e.g. ``foo_bar``:``,`` will split all values on field ``foo_bar`` on comma ``,`` [Default: ``{}``]                                                                                                                                                                                                                                                                                                                                                  |
++------------------------------------+--------------------------+--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+
+Saving and Reusing
+------------------
+
+Field Mapper sonfigurations may be saved, named, and re-used.  This can be done anytime field mapper configurations are being set, e.g. when running a new Job, or re-indexing a previously run Job. 
+
+
+Testing 
+-------
+
+Field Mapping can also be tested against a single record, accessible from a Record's page under the "Run/Test Scenarios for this Record" tab.  The following is a screenshot of this testing page:
 
 .. figure:: img/test_field_mapper.png
    :alt: Testing Field Mapper Configurations
@@ -61,9 +280,9 @@ The following fields are all required:
 Transformation Scenario
 =======================
 
-Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of transformation supported: XSLT and Python code snippets.  These are described in more detail below.
+Transformation Scenarios are used for transforming the XML of Records during Transformation Jobs.  Currently, there are two types of well-supported transformation supported: **XSLT** and **Python code snippets**.  A third type, transforming Records based on actions performed in `Open Refine <http://openrefine.org/>`_ exists, but is not well tested or documented at this time.  These are described in more detail below.
 
-It is worth considering, when thinking about Transformations of Records in Combine, that Combine allows for multiple transformations of the same Record.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a separate Transformation Scenario, and would be run as separate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
+It is worth considering, when thinking about transforming Records in Combine, that multiple transformations can be applied to same Record; "chained" together as separate Jobs.  Imagine a scenario where ``Transformation A`` crosswalks metadata from a repository to something more aligned with a state service hub, ``Transformation B`` fixes some particular date formats, and ``Transformation C`` -- a python transformation -- looks for a particular identifier field and creates a new field based on that.  Each of the transformations would be a separate Transformation Scenario, and would be run as separate Jobs in Combine, but in effect would be "chained" together by the user for a group of Records.
 
 All Transformations require the following information:
 
@@ -95,14 +314,77 @@ In this screenshot, a few things are happening:
 
   - at the very bottom, you can see the immediate results of the Transformation as applied to the selected Record
 
-Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for real-time testing of Transformation Scenarios.
+*Currently, there is no way to save changes to a Transformation Scenario, or add a new one, from this screen, but it allows for real-time testing of Transformation Scenarios.*
 
 XSLT
 ----
 
 XSLT transformations are performed by a small XSLT processor servlet called via `pyjxslt <https://github.com/cts2/pyjxslt>`_.  Pyjxslt uses a built-in Saxon HE XSLT processor that supports XSLT 2.0.
 
-**Note:** Currently, XSLT stylesheets that **import** other stylesheets -- either locally or remotely -- are not supported.  There are designs to incorporate `Elsevier's "spark-xml-utils" <https://github.com/elsevierlabs-os/spark-xml-utils>`_ Spark library for XSLT transformations, which would address this issue, but this has not been implemented at this time.
+When creating an XSLT Transformation Scenario, one important thing to consider are XSLT **includes** and **imports**.  XSL stylesheets allow the inclusion of other, external stylesheets.  Usually, these includes come in two flavors:
+
+  - locally on the same filesystem, e.g. ``<xsl:include href="mimeType.xsl"/>``
+  - remote, retrieved via HTTP request, e.g. ``<xsl:include href="http://www.loc.gov/standards/mods/inc/mimeType.xsl"/>``
+
+In Combine, the primary XSL stylesheet provided for a Transformation Scenario is uploaded to the pyjxslt servlet to be run by Spark.  This has the effect of breaking XSL ``include`` s that use a **local, filesystem** ``href`` s.  Additionally, depending on server configurations, pyjxslt sometimes has trouble accessing **remote** XSL ``include`` s.  But Combine provides workarounds for both scenarios.
+
+
+Local Includes
+~~~~~~~~~~~~~~
+
+For XSL stylesheets that require local, filesystem ``include`` s, a workaround in Combine is to create Transformation Scenarios for each XSL stylesheet that is imported by the primary stylesheet.  Then, use the local filesystem path that Combine creates for that Transformation Scenario, and **update** the ``<xsl:include>`` in the original stylesheet with this new location on disk.
+
+For example, let's imagine a stylesheet called ``DC2MODS.xsl`` that has the following ``<xsl:include>`` s:
+
+.. code-block:: xml
+
+    <xsl:include href="dcmiType.xsl"/>
+    <xsl:include href="mimeType.xsl"/>
+
+Originally, ``DC2MODS.xsl`` was designed to be used in the *same directory* as two files: ``dcmiType.xsl`` and ``mimeType.xsl``.  This is not possible in Combine, as XSL stylesheets for Transformation Scenarios are uploaded to another location to be used.
+
+The workaround, would be to create two new special kinds of Transformation Scenarios by checking the box ``use_as_include``, perhaps with fitting names like "dcmiType" and "mimeType", that have payloads for those two stylesheets.  When creating those Transformation Scenarios, saving, and then re-opening the Transformation Scenario in Django admin, you can see a ``Filepath`` attribute has been made which is a copy written to disk.
+
+.. figure:: img/transformation_filepath.png
+   :alt: Filepath
+   :target: _images/transformation_filepath.png
+
+   Filepath for saved Transformation Scenarios
+
+This ``Filepath`` value can then be used to replace the original ``<xsl:include>`` s in the primary stylesheet, in our example, ``DC2MODS.xsl``:
+
+.. code-block:: xml
+
+    <xsl:include href="/home/combine/data/combine/transformations/a436a2d4997d449a96e008580f6dc699.xsl"/> <!-- formerly dcmiType.xsl -->
+    <xsl:include href="/home/combine/data/combine/transformations/00eada103f6a422db564a346ed74c0d7.xsl"/> <!-- formerly mimeType.xsl -->
+
+
+Remote Includes
+~~~~~~~~~~~~~~~
+
+When the ``href`` s for XSL ``includes`` s are remote HTTP URLs, Combine attempts to rewrite the primary XSL stylesheet automatically by:
+
+  - downloading the external, remote ``include`` s from the primary stylesheet
+  - saving them locally
+  - rewriting the ``<xsl:include>`` element with this local filesystem location
+
+This has the added advantage of effectively caching the remote include, such that it is not retrieved each transformation.
+
+For example, let's imagine our trusty stylesheet called ``DC2MODS.xsl``, but with this time external, remote URLs for ``href`` s:
+
+.. code-block:: xml
+
+    <xsl:include href="http://www.loc.gov/standards/mods/inc/dcmiType.xsl"/>
+    <xsl:include href="http://www.loc.gov/standards/mods/inc/mimeType.xsl"/>
+
+With no action by the user, when this Transformation Scenario is saved, Combine will attempt to download these dependencies and rewrite, resulting in ``include`` s that look like the following:
+
+.. code-block:: xml
+
+  <xsl:include href="/home/combine/data/combine/transformations/dcmiType.xsl"/>
+  <xsl:include href="/home/combine/data/combine/transformations/mimeType.xsl"/>
+
+**Note:** If sytlesheets that remote ``include`` s rely on external stylesheets that may change or update, the primary Transformation stylesheet -- e.g. ``DC2MODS.xsl`` -- will have to be re-entered, with the original URLs, and re-saved in Combine to update the local dependencies.
 
 
 Python Code Snippet
@@ -316,7 +598,7 @@ ElasticSearch DSL query type Validations Scenarios are a bit different.  Instead
 
 These queries may be written such that Records matches are **valid**, or they may be written where matches are **invalid**.  
 
-An example structure of an ElasticSearch DSL query might like the following:
+An example structure of an ElasticSearch DSL query might look like the following:
 
 .. code-block:: json
 
@@ -352,7 +634,7 @@ This example contains **two** tests in a single Validation Scenario: checking fo
   - ``es_query``: the raw, ElasticSearch DSL query
 
 
-ElasticSearch DSL queries can be quite complex, resulting in a rich and powerful way to identify Records of interest.  
+ElasticSearch DSL queries can support complex querying (boolean, and/or, fuzzy, regex, etc.), resulting in an additional, rich and powerful way to validate Records.
 
 
 Record Identifier Transformation Scenario

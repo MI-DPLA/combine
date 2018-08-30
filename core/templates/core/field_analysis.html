@@ -79,10 +79,12 @@
 			<script>
 
 				$(document).ready(function() {
+					es_query = "{% url 'records_es_field_dt_json' es_index=esi.es_index_str|safe search_type='values_per_field' %}?field_names={{ field_name }}";
+					es_query = es_query.replace(/&#39;/g,"'");					
 				    var oTable = $('#dt_field_analysis').DataTable({
 				        "processing": true,
 				        "serverSide": true,
-				        "ajax": "{% url 'records_es_field_dt_json' es_index=esi.es_index search_type='values_per_field' %}?field_names={{ field_name }}",
+				        "ajax": es_query,
 				        "searchDelay": 1000,
 				        "pageLength": 10,
 				        "order": [[ 1, "desc" ]],

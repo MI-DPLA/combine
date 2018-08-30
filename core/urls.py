@@ -7,10 +7,12 @@ from .models import DTElasticFieldSearch, DTElasticGenericSearch
 
 urlpatterns = [
 
-	# User Livy sessions
-	url(r'^livy_sessions$', views.livy_sessions, name='livy_sessions'),
-	url(r'^livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
-	url(r'^livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
+	# System
+	url(r'^system$', views.system, name='system'),
+
+	# User Livy sessions	
+	url(r'^system/livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
+	url(r'^system/livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
 
 	# Organizations
 	url(r'^organization/all$', views.organizations, name='organizations'),
@@ -20,26 +22,23 @@ urlpatterns = [
 	# Record Groups
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/new$', views.record_group_new, name='record_group_new'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete, name='record_group_delete'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/update_publish_set_id$', views.record_group_update_publish_set_id, name='record_group_update_publish_set_id'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete, name='record_group_delete'),	
 
 	# Jobs
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/details$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/publish$', views.job_publish, name='job_publish'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/unpublish$', views.job_unpublish, name='job_unpublish'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/errors$', views.job_errors, name='job_errors'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update_note$', views.job_update_note, name='job_update_note'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update_name$', views.job_update_name, name='job_update_name'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_dpla_field_map$', views.job_dpla_field_map, name='job_dpla_field_map'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/harvest/oai/new$', views.job_harvest_oai, name='job_harvest_oai'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/harvest/static/xml/new$', views.job_harvest_static_xml, name='job_harvest_static_xml'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/transform/new$', views.job_transform, name='job_transform'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/publish/new$', views.job_publish, name='job_publish'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),	
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/reports/create_validation_report$', views.job_reports_create_validation, name='job_reports_create_validation'),
 	url(r'^organization/(?P<org_id>([0-9]|(DYNAMIC_ORG_ID))+)/record_group/(?P<record_group_id>([0-9]|(DYNAMIC_RG_ID))+)/job/(?P<job_id>([0-9]|(DYNAMIC_ID))+)/job_lineage_json$', views.job_lineage_json, name='job_lineage_json'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/mapped_fields$', views.job_export_mapped_fields, name='job_export_mapped_fields'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/export/documents$', views.job_export_documents, name='job_export_documents'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update$', views.job_update, name='job_update'),	
 
 	# Job Record Validation Scenarios
@@ -47,7 +46,6 @@ urlpatterns = [
 
 	# Record Group Job Analysis
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/indexing_failures$', views.job_indexing_failures, name='job_indexing_failures'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/analysis/indexing_failures/remove$', views.remove_job_indexing_failures, name='remove_job_indexing_failures'),
 
 	# ElasticSearch Analysis
 	url(r'^analysis/es/index/(?P<es_index>.+)/field_analysis$', views.field_analysis, name='field_analysis'),
@@ -56,16 +54,16 @@ urlpatterns = [
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),
 	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),
-        url(r'^jobs/move_jobs$', views.move_jobs, name='move_jobs'),
+	url(r'^jobs/move_jobs$', views.move_jobs, name='move_jobs'),
 
 	# Records
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)$', views.record, name='record'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/document$', views.record_document, name='record_document'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/indexed_document$', views.record_indexed_document, name='record_indexed_document'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/error$', views.record_error, name='record_error'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/diff/combined$', views.record_combined_diff_html, name='record_combined_diff_html'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9]+)/diff/side_by_side$', views.record_side_by_side_diff_html, name='record_side_by_side_diff_html'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)$', views.record, name='record'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/document$', views.record_document, name='record_document'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/indexed_document$', views.record_indexed_document, name='record_indexed_document'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/error$', views.record_error, name='record_error'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/validation_scenario/(?P<job_validation_id>[0-9]+)$', views.record_validation_scenario, name='record_validation_scenario'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/diff/combined$', views.record_combined_diff_html, name='record_combined_diff_html'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)/diff/side_by_side$', views.record_side_by_side_diff_html, name='record_side_by_side_diff_html'),
 
 	# Configuration
 	url(r'^configuration$', views.configuration, name='configuration'),
@@ -85,9 +83,13 @@ urlpatterns = [
 	# Publish
 	url(r'^published$', views.published, name='published'),
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
-	url(r'^published/export/mapped_fields$', views.published_export_mapped_fields, name='published_export_mapped_fields'),
-	url(r'^published/export/documents$', views.published_export_documents, name='published_export_documents'),
 
+	# Export
+	url(r'^export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
+	url(r'^export/mapped_fields/(?P<export_source>.+)$', views.export_mapped_fields, name='export_mapped_fields'),	
+	url(r'^export/documents/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_documents, name='export_documents'),
+	url(r'^export/documents/(?P<export_source>.+)$', views.export_documents, name='export_documents'),
+	
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
 
@@ -111,6 +113,8 @@ urlpatterns = [
 
 	# Background Tasks
 	url(r'^background_tasks$', views.bg_tasks, name='bg_tasks'),
+	url(r'^background_tasks/process/action/(?P<proc_action>[0-9a-z]+)$', views.bgtasks_proc_action, name='bgtasks_proc_action'),
+	url(r'^background_tasks/process/logs/err$', views.bgtasks_proc_stderr_log, name='bgtasks_proc_stderr_log'),
 	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)$', views.bg_task, name='bg_task'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),

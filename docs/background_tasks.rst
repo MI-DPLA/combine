@@ -9,6 +9,8 @@ Combine includes a section for viewing and managing long running tasks.  This ca
   - deleting of Organizations, Record Groups, or Jobs
   - generating reports of Validations run for a Job
   - exportings Jobs as mapped fields or XML documents
+  - re-indexing Job with optionally changed mapping parameters
+  - running new / removing validations from Job
 
 The following screenshot shows a table of all Background Tasks, and their current status:
 

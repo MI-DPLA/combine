@@ -1,8 +1,7 @@
 {% block content %}	
 <table id='datatables_records' class="dt_table">
 	<thead>
-		<th>DB ID</th>
-		<th>Combine ID</th>
+		<th>DB ID</th>		
 		<th>Record ID</th>
 		<th>Job</th>
 		<th>Originating OAI set</th>
@@ -25,7 +24,7 @@
 
 		// check for record limiter				
     	{% if q %}
-	    	q = {{ q }};
+	    	q = '{{ q }}';
 	    {% else %}
 	    	q = '';
     	{% endif %}
@@ -34,8 +33,9 @@
 			"processing": true,
 			"serverSide": true,
 			"search": {
-			    "search": q					    
+			    "search": q				    
 			},
+			"order": [],
 
 			{# if cjob is present, limit to Job records only #}
 			{% if cjob %}
@@ -48,18 +48,18 @@
 			"searchDelay": 1500,
 			"pageLength": 10,
 			"createdRow": function( row, data, dataIndex){
-                if( data[5] ==  false){
+                if( data[4] ==  false){
                     $(row).css('background-color','rgb(255, 241, 241)');
                 }
             },
             "columnDefs": [
 	            {
-					"targets": 8,
+					"targets": 7,
 					"orderable": true
 				},
 				{% if cjob %}
 				{
-					"targets": 3,
+					"targets": 2,
 					"visible": false
 				},
 				{% endif %}

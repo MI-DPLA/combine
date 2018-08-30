@@ -22,7 +22,7 @@ Livy creates Spark contexts that can receive jobs via what it calls "sessions". 
 Manage Livy Sessions
 --------------------
 
-Navigate to the "Livy/Spark Session" link at the top-most navigation of Combine.  If no Livy sessions are found or active, you will be presented with a screen that looks like this:
+Navigate to the "System" link at the top-most navigation of Combine.  If no Livy sessions are found or active, you will be presented with a screen that looks like this:
 
 .. figure:: img/livy_session_none.png
    :alt: Livy sessions management: No Livy sessions found
@@ -48,4 +48,4 @@ After 10-20 seconds, the page can be refreshed and it should show the Livy sessi
 
 Barring any errors with Livy, this is the only interaction with Livy that a Combine user needs to concern themselves with.
 
-The color of the always present "Livy/Spark Session" link at the top of Combine's navigation will reveal what state the Livy session is in.  If **red**, it needs attention and may need to be (re)started.  If **yellow**, it's busy, meaning starting or running a Job.  If **green**, it's ready for action!
+The color of the always present "Livy/Spark" link at the top of Combine's navigation will reveal what state the Livy session is in.  If **red**, it needs attention and may need to be (re)started.  If **yellow**, it's busy, meaning starting or running a Job.  If **green**, it's ready for action!
