@@ -1,5 +1,6 @@
 from django.conf import settings
-from core.models import LivySession
+from core.models import LivySession, SupervisorRPCClient
+
 
 def combine_settings(request):
 	
@@ -30,3 +31,26 @@ def livy_session(request):
 	return {
 		'LIVY_SESSION':lv
 	}
+
+
+def bgtasks_proc(request):
+
+	'''
+	Get status of Background Tasks
+		- improvements would be to determine if task running, but would require DB query
+	'''
+
+	try:
+		# get supervisor and status
+		sp = SupervisorRPCClient()
+		proc = sp.check_process('combine_background_tasks')
+
+		# return
+		return {
+			'BGTASKS_PROC':proc
+		}
+
+	except:
+		pass
+
+	

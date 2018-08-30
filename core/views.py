@@ -218,7 +218,7 @@ def index(request):
 ####################################################################
 
 @login_required
-def livy_sessions(request):
+def system(request):
 	
 	# single Livy session
 	logger.debug("checking or active Livy session")
@@ -228,9 +228,14 @@ def livy_sessions(request):
 	if livy_session:
 		livy_session.refresh_from_livy()
 
+	# get status of background jobs
+	sp = models.SupervisorRPCClient()
+	bgtasks_proc = sp.check_process('combine_background_tasks')
+
 	# return
-	return render(request, 'core/livy_sessions.html', {
+	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
+		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 
@@ -258,7 +263,7 @@ def livy_session_start(request):
 		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 	# redirect
-	return redirect('livy_sessions')
+	return redirect('system')
 
 
 @login_required
@@ -275,7 +280,40 @@ def livy_session_stop(request, session_id):
 	livy_session.delete()
 
 	# redirect
-	return redirect('livy_sessions')
+	return redirect('system')
+
+
+@login_required
+def bgtasks_proc_action(request, proc_action):
+	
+	logger.debug('performing %s on bgtasks_proc' % proc_action)
+
+	# get supervisor handle
+	sp = models.SupervisorRPCClient()
+
+	# fire action
+	actions = {
+		'start':sp.start_process,
+		'restart':sp.restart_process,
+		'stop':sp.stop_process
+	}
+	results = actions[proc_action]('combine_background_tasks') 
+	logger.debug(results)
+
+	# redirect
+	return redirect('system')
+
+
+@login_required
+def bgtasks_proc_stderr_log(request):
+
+	# get supervisor handle
+	sp = models.SupervisorRPCClient()
+
+	log_tail = sp.stderr_log_tail('combine_background_tasks')
+
+	# redirect
+	return HttpResponse(log_tail, content_type='text/plain')
 
 
 

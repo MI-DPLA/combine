@@ -3,13 +3,12 @@
 {% block content %}
 
 	<div class="row">
-		<div class="col-md-12">
-			<h2>Livy and Spark Sessions</h2>
-			<p>Apache Livy is what faciliates communciation between the Combine Django application, and a Spark context for processing Jobs.  Currently, only <span class="font-weight-bold">one</span> Livy session is permitted.  <a target="_blank" href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more about Spark and Livy in the Combine documentation</a>.</p>			
-		</div>
-	</div>
 
-	<div class="row">
+		<div class="col-md-12">
+			<h2>Livy/Spark Session</h2>
+			<p>Apache Livy is what faciliates communciation between the Combine Django application, and a Spark context for processing Jobs.  <a target="_blank" href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more about Spark and Livy in the Combine documentation</a>.</p>			
+		</div>
+
 		<div class="col-md-12">
 
 			{% if not livy_session %}
@@ -26,7 +25,7 @@
 					<th>Timestamp</th>
 					<th>Spark Application</th>
 					<th>Spark Cluster</th>
-					<th>actions</th>
+					<th>Actions</th>
 				</tr>
 				<tr>
 					<td>{{ livy_session.id }}</td>
@@ -44,6 +43,34 @@
 			{% endif %}
 
 		</div>
+
 	</div>
+
+	<div class="row">
+
+		<div class="col-md-12">
+			<h2>Background Tasks</h2>
+			<p>In addition to using Spark to run long-running Jobs, Combine also leverages background tasks to perform other non-Spark, long-running tasks.</p>
+		</div>
+
+		<div class="col-md-12">
+			
+			<table class="table table-bordered table-hover">
+				<tr>
+					<th>Name</th>
+					<th>PID and uptime</th>
+					<th>Status</th>
+					<th>Logs</th>
+					<th>Actions</th>
+				</tr>
+				<tr>
+					<td>Combine Background Tasks</td>
+					<td>{{bgtasks_proc.description}}</td>
+					<td class="{% if bgtasks_proc.statename == 'RUNNING' %}bg_light_green{% elif bgtasks_proc.statename == 'STARTING' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{bgtasks_proc.statename}}</td>
+					<td><a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}">View Logs Snippet</a></td>
+					<td>{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING'%}<a href="{% url 'bgtasks_proc_action' proc_action='stop' %}"><button type="button" class="btn btn-danger btn-sm">Stop</button></a> <a href="{% url 'bgtasks_proc_action' proc_action='restart' %}"><button type="button" class="btn btn-warning btn-sm">Restart</button></a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}"><button type="button" class="btn btn-success btn-sm">Start</button></a>{% endif %}</td>
+			</table>			
+
+		</div>
 
 {% endblock %}

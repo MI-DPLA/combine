@@ -70,9 +70,12 @@
 	          <li class="nav-item">
 	            <a class="nav-link" href="http://combine.readthedocs.io" target="_blank">Documentation</a>
 	          </li>
-	          <li class="nav-item">
-	            <a class="nav-link {% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}" href="{% url 'livy_sessions' %}">Livy/Spark session</a>
+
 	          </li>
+	           <li class="nav-item">
+	            <a class="nav-link" href="{% url 'system' %}">System [<span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Livy/Spark</span>, <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Background Tasks</span>]</a>
+	          </li>	          
+
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
 	          <input class="form-control mr-sm-2" type="text" name="q" placeholder="Search all records..." aria-label="Search" {% if search_string %}value="{{ search_string }}"{% endif %} />

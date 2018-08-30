@@ -7,10 +7,12 @@ from .models import DTElasticFieldSearch, DTElasticGenericSearch
 
 urlpatterns = [
 
-	# User Livy sessions
-	url(r'^livy_sessions$', views.livy_sessions, name='livy_sessions'),
-	url(r'^livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
-	url(r'^livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
+	# System
+	url(r'^system$', views.system, name='system'),
+
+	# User Livy sessions	
+	url(r'^system/livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
+	url(r'^system/livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
 
 	# Organizations
 	url(r'^organization/all$', views.organizations, name='organizations'),
@@ -111,6 +113,8 @@ urlpatterns = [
 
 	# Background Tasks
 	url(r'^background_tasks$', views.bg_tasks, name='bg_tasks'),
+	url(r'^background_tasks/process/action/(?P<proc_action>[0-9a-z]+)$', views.bgtasks_proc_action, name='bgtasks_proc_action'),
+	url(r'^background_tasks/process/logs/err$', views.bgtasks_proc_stderr_log, name='bgtasks_proc_stderr_log'),
 	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)$', views.bg_task, name='bg_task'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
