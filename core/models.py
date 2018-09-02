@@ -1254,6 +1254,38 @@ class Job(models.Model):
 		return True
 
 
+	def get_rerun_lineage(self):
+
+		'''
+		Method to retrieve ordered lineage of downstream jobs
+		to re-run
+		'''
+
+		def _job_recurse(job_node):
+
+			# add to list
+			job_list.add(job_node)
+
+			# get children
+			downstream_jobs = JobInput.objects.filter(input_job=job_node)
+
+			# if children, re-run
+			if downstream_jobs.count() > 0:
+
+				for downstream_job in downstream_jobs:
+
+					# recurse
+					_job_recurse(downstream_job.job)
+		
+		# capture terminal jobs
+		job_list = set()
+
+		# recurse
+		_job_recurse(self)
+
+		return sorted(list(job_list), key=lambda j: j.id)
+
+
 
 class JobTrack(models.Model):
 
