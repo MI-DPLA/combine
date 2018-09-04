@@ -151,7 +151,12 @@ class CombineSparkJob(object):
 		to speed up front-end
 		'''
 
-		refresh_django_db_connection()		
+		refresh_django_db_connection()
+
+		# if re-run, check if job was previously published
+		if self.job.published:
+			self.logger.info('re-publishing job after re-run')
+			self.job.publish(publish_set_id=self.job.publish_set_id)
 
 		# finally, update finish_timestamp of job_track instance
 		self.job_track.finish_timestamp = datetime.datetime.now()

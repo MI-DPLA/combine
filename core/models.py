@@ -492,6 +492,8 @@ class Job(models.Model):
 
 				# if finished, count
 				if self.finished:
+
+					# update record count
 					self.update_record_count(save=False)
 
 			# update elapsed
