@@ -850,6 +850,29 @@ def job_rerun(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def rerun_jobs(request):
+
+	logger.debug('re-running jobs')
+	
+	job_ids = request.POST.getlist('job_ids[]')
+	logger.debug(job_ids)
+
+	# loop through job_ids
+	for job_id in job_ids:
+
+		logger.debug('re-running job by id: %s' % job_id)
+		
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# get job note
+		cjob.rerun()
+
+	# return
+	return JsonResponse({'results':True})
+
+
+@login_required
 def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
