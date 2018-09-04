@@ -142,6 +142,9 @@
 					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped Fields</a>
 				</li>
 				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#rerun_tab">Re-Run</a>
+				</li>
+				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#publish_tab">Publish</a>
 				</li>
 				<li class="nav-item">
@@ -172,6 +175,16 @@
 						<div class="col-md-12">
 							<!-- Indexing Records DT Table -->
 							{% include 'core/records_dt_table.html' %}
+						</div>
+					</div>
+				</div>
+
+				<div id="rerun_tab" class="tab-pane full_width_tab">
+					<div class="row">
+						<div class="col-md-12">
+							<h4>Re-Run Job</h4>
+							<p>Re-running a Job will run the Job with the configurations as the Job was originally run, and  trigger all "downstream" Jobs (those Jobs that inherited Records from this Job, recursively) to do the same.</p>
+							<a onclick="return confirm('Are you sure you want to re-run this Job?  All Records and Validations will be removed for this Job, and all downstream Jobs.');" href="{% url 'job_rerun' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Re-Run</button></a>
 						</div>
 					</div>
 				</div>

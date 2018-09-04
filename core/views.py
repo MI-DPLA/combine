@@ -837,6 +837,19 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def job_rerun(request, org_id, record_group_id, job_id):
+	
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# get job note
+	cjob.rerun()
+
+	# redirect to Record Group
+	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
+
+
+@login_required
 def job_harvest_oai(request, org_id, record_group_id):
 
 	'''

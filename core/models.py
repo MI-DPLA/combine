@@ -1080,6 +1080,14 @@ class Job(models.Model):
 			logger.debug('could not remove ES index: j%s' % self.id)
 
 
+		# remove saved mapped_field_analysis in job_details, if exists
+		job_details = self.job_details_dict
+		if 'mapped_field_analysis' in job_details.keys():
+			job_details.pop('mapped_field_analysis')
+			self.job_details = json.dumps(job_details)
+			self.save()
+
+
 	def get_fm_config_json(self, as_dict=False):
 
 		'''
@@ -1286,45 +1294,6 @@ class Job(models.Model):
 		_job_recurse(self)
 
 		return sorted(list(job_list), key=lambda j: j.id)
-
-
-	# def rerun_lineage(self, run_downstream=True):
-
-	# 	'''
-	# 	Method to re-run job, and if flagged, all downstream Jobs in lineage
-	# 	'''
-
-	# 	# see notes
-	# 	# https://docs.google.com/document/d/1psbUam8lBtqk7UnhGfcJMU618Gn1hMPXIwMMt9IIHaI/edit#
-
-	# 	# get lineage
-	# 	rerun_jobs = self.get_rerun_lineage()
-
-	# 	# if not running downstream, select only this job
-	# 	if not run_downstream:
-	# 		rerun_jobs = [self]
-
-	# 	# loop through jobs
-	# 	for rejob in rerun_jobs:
-
-	# 		logger.debug('re-running job: %s' % rejob)
-
-	# 		# drop records
-	# 		rejob.remove_records_from_db()
-
-	# 		# drop es index
-	# 		rejob.drop_es_index()
-
-	# 		# update Job attributes
-	# 		rejob.status = 'init'
-	# 		rejob.record_count = 0
-	# 		rejob.finished = False
-	# 		rejob.elapsed = 0
-
-	# 		# re-submit to Livy
-
-
-		 
 
 
 
