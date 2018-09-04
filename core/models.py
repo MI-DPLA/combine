@@ -1286,6 +1286,45 @@ class Job(models.Model):
 		return sorted(list(job_list), key=lambda j: j.id)
 
 
+	# def rerun_lineage(self, run_downstream=True):
+
+	# 	'''
+	# 	Method to re-run job, and if flagged, all downstream Jobs in lineage
+	# 	'''
+
+	# 	# see notes
+	# 	# https://docs.google.com/document/d/1psbUam8lBtqk7UnhGfcJMU618Gn1hMPXIwMMt9IIHaI/edit#
+
+	# 	# get lineage
+	# 	rerun_jobs = self.get_rerun_lineage()
+
+	# 	# if not running downstream, select only this job
+	# 	if not run_downstream:
+	# 		rerun_jobs = [self]
+
+	# 	# loop through jobs
+	# 	for rejob in rerun_jobs:
+
+	# 		logger.debug('re-running job: %s' % rejob)
+
+	# 		# drop records
+	# 		rejob.remove_records_from_db()
+
+	# 		# drop es index
+	# 		rejob.drop_es_index()
+
+	# 		# update Job attributes
+	# 		rejob.status = 'init'
+	# 		rejob.record_count = 0
+	# 		rejob.finished = False
+	# 		rejob.elapsed = 0
+
+	# 		# re-submit to Livy
+
+
+		 
+
+
 
 class JobTrack(models.Model):
 
@@ -3063,7 +3102,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 	instance.remove_records_from_db()
 
 	# remove Validations from Mongo
-	# instance.remove_validations_from_db()
+	instance.remove_validations_from_db()
 
 	# remove Validations from Mongo
 	instance.remove_mapping_failures_from_db()
@@ -4497,6 +4536,47 @@ class CombineJob(object):
 		)
 
 		return bg_task
+
+
+	def rerun(self, run_downstream=True):
+
+		'''
+		Method to re-run job, and if flagged, all downstream Jobs in lineage
+		'''
+
+		# see notes
+		# https://docs.google.com/document/d/1psbUam8lBtqk7UnhGfcJMU618Gn1hMPXIwMMt9IIHaI/edit#
+
+		# get lineage
+		rerun_jobs = self.job.get_rerun_lineage()
+
+		# if not running downstream, select only this job
+		if not run_downstream:
+			rerun_jobs = [self.job]
+
+		# loop through jobs
+		for re_job in rerun_jobs:
+
+			logger.debug('re-running job: %s' % re_job)
+
+			# drop records
+			re_job.remove_records_from_db()
+
+			# drop es index
+			re_job.drop_es_index()
+
+			# update Job attributes and save
+			re_job.status = 'init'
+			re_job.record_count = 0
+			re_job.finished = False
+			re_job.elapsed = 0
+			re_job.save()
+
+			# get combine job
+			re_cjob = CombineJob.get_combine_job(re_job.id)
+
+			# re-submit to Livy
+			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
 
 
 
