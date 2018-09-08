@@ -915,70 +915,12 @@ def job_harvest_oai(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		# OLD ############################################################################################################################################################
-
-		# # # get job name
-		# # job_name = request.POST.get('job_name')
-		# # if job_name == '':
-		# # 	job_name = None
-
-		# # # get job note
-		# # job_note = request.POST.get('job_note')
-		# # if job_note == '':
-		# # 	job_note = None
-
-		# # # retrieve OAIEndpoint
-		# # oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
-
-		# # # add overrides if set
-		# # overrides = { override:request.POST[override]
-		# # 	for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
-		# # logger.debug(overrides)
-
-		# # # get field mapper configurations
-		# # field_mapper = request.POST.get('field_mapper')
-		# # fm_config_json = request.POST.get('fm_config_json')
-
-		# # # get requested validation scenarios
-		# # validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# # # handle requested record_id transform
-		# # rits = request.POST.get('rits', None)
-		# # if rits == '':
-		# # 	rits = None
-
-		# # # handle requested record_id transform
-		# # dbdd = request.POST.get('dbdd', None)
-		# # if dbdd == '':
-		# # 	dbdd = None
-
-		# # initiate job
-		# cjob = models.HarvestOAIJob(
-		# 	job_name=job_name,
-		# 	job_note=job_note,
-		# 	user=request.user,
-		# 	record_group=record_group,
-		# 	oai_endpoint=oai_endpoint,
-		# 	overrides=overrides,
-		# 	field_mapper=field_mapper,
-		# 	fm_config_json=fm_config_json,
-		# 	validation_scenarios=validation_scenarios,
-		# 	rits=rits,
-		# 	dbdd=dbdd
-		# )
-
-		# OLD ############################################################################################################################################################
-
-		# NEW ############################################################################################################################################################
-
 		cjob = models.CombineJob.init_combine_job(
 			user = request.user,
 			record_group = record_group,
 			job_type_class = models.HarvestOAIJob,
 			job_params = request.POST
 		)
-
-		# NEW ############################################################################################################################################################
 
 		# # start job and update status
 		# job_status = cjob.start_job()

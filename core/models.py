@@ -4080,7 +4080,7 @@ class CombineJob(object):
 		# capture and mix in job type specific params
 		job_details = job_type_class.parse_job_type_params(job_details, job_params)
 
-		# init job_type_class with record group and parsed job_details dict		
+		# init job_type_class with record group and parsed job_details dict
 		cjob = job_type_class(
 			user=user,
 			record_group=record_group,
@@ -4703,11 +4703,10 @@ class HarvestJob(CombineJob):
 
 		'''
 		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance that will be used for harvest
-			job_id (int): Not set on init, but acquired through self.job.save()
+			user (django.auth.User): user account
+			job_id (int): Job ID
+			record_group (core.models.RecordGroup): RecordGroup instance that Job falls under
+			job_details (dict): dictionary for all Job parameters
 
 		Returns:
 			None
@@ -4758,22 +4757,18 @@ class HarvestOAIJob(HarvestJob):
 
 		'''
 		Args:
-			HarvestJob args
-				see: core.models.HarvestJob
 			
-			HarvestOAIJob args (extending HarvestJob args)
-				oai_endpoint (core.models.OAIEndpoint): OAI endpoint to be used for OAI harvest
-				overrides (dict): optional dictionary of overrides to OAI endpoint
-				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			user (django.auth.User): user account
+			job_id (int): Job ID
+			record_group (core.models.RecordGroup): RecordGroup instance that Job falls under
+			job_details (dict): dictionary for all Job parameters
 
 		Returns:
 			None
 				- fires parent HarvestJob init
-				- captures args specific to OAI harvesting
 		'''
 
 		# perform HarvestJob initialization
-		# note: inits self.job		
 		super().__init__(
 			user=user,
 			job_id=job_id,
@@ -4797,11 +4792,24 @@ class HarvestOAIJob(HarvestJob):
 		Method to parse job type specific parameters
 		'''
 
-		# retrieve OAIEndpoint
+		# save OAIEndpoint id
 		job_details['oai_endpoint'] = job_params.get('oai_endpoint_id')
 
-		# add overrides if set
-		job_details['oai_overrides'] = { override:job_params.get(override) for override in ['verb','metadataPrefix','scope_type','scope_value'] if job_params.get(override) != '' }
+		# retrieve endpoint params
+		oai_params = OAIEndpoint.objects.get(pk=int(job_details['oai_endpoint'])).__dict__.copy()
+
+		# drop _state
+		oai_params.pop('_state')
+
+		# retrieve overrides
+		overrides = { override:job_params.get(override) for override in ['verb','metadataPrefix','scope_type','scope_value'] if job_params.get(override) != '' }
+
+		# mix in overrides
+		for param,value in overrides.items():
+			oai_params[param] = value
+
+		# save to job_details
+		job_details['oai_params'] = oai_params
 		
 		return job_details
 
@@ -4819,27 +4827,11 @@ class HarvestOAIJob(HarvestJob):
 				- submits job to Livy
 		'''		
 
-		# create shallow copy of oai_endpoint and mix in overrides
-		################################################################################################
-		# NOTE: will need to retrieve OAIEndpoint, as not yet retrieved yet
-		################################################################################################
-		# harvest_vars = self.oai_endpoint.__dict__.copy()
-		# harvest_vars.update(self.overrides)
-
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, endpoint="%(endpoint)s", verb="%(verb)s", metadataPrefix="%(metadataPrefix)s", scope_type="%(scope_type)s", scope_value="%(scope_value)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' %
+			'code':'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, job_id="%(job_id)s").spark_function()' %
 			{
-				'endpoint':harvest_vars['endpoint'],
-				'verb':harvest_vars['verb'],
-				'metadataPrefix':harvest_vars['metadataPrefix'],
-				'scope_type':harvest_vars['scope_type'],
-				'scope_value':harvest_vars['scope_value'],
-				'job_id':self.job.id,
-				'fm_config_json':self.fm_config_json,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits,
-				'dbdd':self.dbdd
+				'job_id':self.job.id				
 			}
 		}
 
