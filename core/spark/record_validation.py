@@ -46,7 +46,11 @@ class ValidationScenarioSpark(object):
 	Class to organize methods and attributes used for running validation scenarios
 	'''
 
-	def __init__(self, spark=None, job=None, records_df=None, validation_scenarios=None):
+	def __init__(self,
+		spark=None,
+		job=None,
+		records_df=None,
+		validation_scenarios=None):
 
 		'''
 		Args:
@@ -93,7 +97,7 @@ class ValidationScenarioSpark(object):
 		for vs_id in self.validation_scenarios:
 
 			# get validation scenario
-			vs = ValidationScenario.objects.get(pk=vs_id)
+			vs = ValidationScenario.objects.get(pk=int(vs_id))
 			vs_id = vs.id
 			vs_name = vs.name
 			vs_filepath = vs.filepath

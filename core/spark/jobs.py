@@ -143,6 +143,9 @@ class CombineSparkJob(object):
 		)
 		self.job_track.save()
 
+		# retrieve job_details
+		self.job_details = self.job.job_details_dict
+
 
 	def close_job(self):
 
@@ -257,17 +260,17 @@ class CombineSparkJob(object):
 					self.spark,
 					job=self.job,
 					records_df=db_records,
-					fm_config_json=self.kwargs['fm_config_json']
+					fm_config_json=self.job_details['fm_config_json']
 				)
 
 			# run Validation Scenarios
-			if 'validation_scenarios' in self.kwargs.keys():
+			if 'validation_scenarios' in self.job_details.keys():
 				self.update_jobGroup('Running Validation Scenarios')
 				vs = ValidationScenarioSpark(
 					spark=self.spark,
 					job=self.job,
 					records_df=db_records,
-					validation_scenarios = ast.literal_eval(self.kwargs['validation_scenarios'])
+					validation_scenarios = self.job_details['validation_scenarios']
 				)
 				vs.run_record_validation_scenarios()
 
@@ -289,14 +292,13 @@ class CombineSparkJob(object):
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
 			records_df (pyspark.sql.DataFrame): DataFrame of records pre validity filtering
-			kwargs (dict): kwargs
 
 		Returns:
 			(pyspark.sql.DataFrame): DataFrame of records post filtering
 		'''
 
 		# handle validity filters
-		input_validity_valve = self.kwargs['input_filters']['input_validity_valve']
+		input_validity_valve = self.job_details['input_filters']['input_validity_valve']
 
 		# filter to valid or invalid records
 		# return valid records		
@@ -308,18 +310,18 @@ class CombineSparkJob(object):
 			filtered_df = filtered_df.filter(filtered_df.valid == 0)
 
 		# handle numerical filters
-		input_numerical_valve = self.kwargs['input_filters']['input_numerical_valve']
+		input_numerical_valve = self.job_details['input_filters']['input_numerical_valve']
 		if input_numerical_valve != None:
 			filtered_df = filtered_df.limit(input_numerical_valve)
 
 		# handle es query valve
-		if 'input_es_query_valve' in self.kwargs['input_filters'].keys():
-			input_es_query_valve = self.kwargs['input_filters']['input_es_query_valve']
+		if 'input_es_query_valve' in self.job_details['input_filters'].keys():
+			input_es_query_valve = self.job_details['input_filters']['input_es_query_valve']
 			if input_es_query_valve not in [None,'{}']:
 				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
 		# filter duplicates
-		if 'filter_dupe_record_ids' in self.kwargs['input_filters'].keys() and self.kwargs['input_filters']['filter_dupe_record_ids'] == True:			
+		if 'filter_dupe_record_ids' in self.job_details['input_filters'].keys() and self.job_details['input_filters']['filter_dupe_record_ids'] == True:			
 			filtered_df = filtered_df.dropDuplicates(['record_id'])
 
 		# after input filtering which might leverage db_id, drop		
@@ -339,10 +341,10 @@ class CombineSparkJob(object):
 		'''
 
 		# prepare input jobs list
-		if 'input_jobs_ids' in self.kwargs:
-			input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])
-		elif 'input_job_id' in self.kwargs:
-			input_jobs_ids = [int(self.kwargs['input_job_id'])]
+		if 'input_jobs_ids' in self.job_details.keys():
+			input_jobs_ids = ast.literal_eval(self.job_details['input_jobs_ids'])
+		elif 'input_job_id' in self.job_details:
+			input_jobs_ids = [int(self.job_details['input_job_id'])]
 
 		# loop through and create es.resource string
 		es_indexes = ','.join([ 'j%s' % job_id for job_id in input_jobs_ids])
@@ -387,7 +389,7 @@ class CombineSparkJob(object):
 		'''
 
 		# get rits ID from kwargs
-		rits_id = self.kwargs.get('rits', False)
+		rits_id = self.job_details.get('rits', False)
 		
 		# if rits id provided
 		if rits_id and rits_id != None:
@@ -557,7 +559,7 @@ class CombineSparkJob(object):
 		self.update_jobGroup('Running DPLA Bulk Data Compare')
 
 		# get dbdd ID from kwargs
-		dbdd_id = self.kwargs.get('dbdd', False)
+		dbdd_id = self.job_details.get('dbdd', False)
 
 		# if rits id provided
 		if dbdd_id and dbdd_id != None:
@@ -630,14 +632,7 @@ class HarvestOAISpark(CombineSparkJob):
 
 		Args:
 			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs:				
-				endpoint (str): OAI endpoint
-				verb (str): OAI verb used
-				metadataPrefix (str): metadataPrefix for OAI harvest
-				scope_type (str): [setList, whiteList, blackList, harvestAllSets], used by DPLA Ingestion3
-				scope_value (str): value for scope_type
-				index_mapper (str): class name from core.spark.es, extending BaseMapper
-				validation_scenarios (list): list of Validadtion Scenario IDs
+			job_id (int): Job ID
 
 		Returns:
 			None:
@@ -652,10 +647,10 @@ class HarvestOAISpark(CombineSparkJob):
 
 		# harvest OAI records via Ingestion3
 		df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
-		.option("endpoint", self.kwargs['endpoint'])\
-		.option("verb", self.kwargs['verb'])\
-		.option("metadataPrefix", self.kwargs['metadataPrefix'])\
-		.option(self.kwargs['scope_type'], self.kwargs['scope_value'])\
+		.option("endpoint", self.job_details['oai_params']['endpoint'])\
+		.option("verb", self.job_details['oai_params']['verb'])\
+		.option("metadataPrefix", self.job_details['oai_params']['metadataPrefix'])\
+		.option(self.job_details['oai_params']['scope_type'], self.job_details['oai_params']['scope_value'])\
 		.load()
 
 		# select records with content

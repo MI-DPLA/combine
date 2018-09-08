@@ -538,7 +538,7 @@
 								<!-- HarvestJob -->
 								{% if cjob.job.job_type_family == 'HarvestJob' %}
 									
-									{% if job_details.oai_endpoint %}
+									{% if job_details.oai_params %}
 										<h4>OAI Endpoint for Harvest</h3>										
 										<table class="table table-bordered table-hover">
 											<thead>
@@ -555,14 +555,14 @@
 											</thead>
 											<tbody>
 												<tr>
-													<td>{{job_details.oai_endpoint.id}}</td>
-													<td>{{job_details.oai_endpoint.name}}</td>
-													<td><a href="{{job_details.oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{job_details.oai_endpoint.endpoint}}</a></td>
-													<td><code>{{job_details.oai_overrides.verb}}</code></td>
-													<td><code>{{job_details.oai_overrides.metadataPrefix}}</code></td>
-													<td><code>{{job_details.oai_overrides.scope_type}}</code></td>
-													<td><code>{{job_details.oai_overrides.scope_value}}</code></td>
-													<td><a href="{{job_details.oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+													<td>{{job_details.oai_params.id}}</td>
+													<td>{{job_details.oai_params.name}}</td>
+													<td><a href="{{job_details.oai_params.endpoint}}?verb=Identify" target="_blank">{{job_details.oai_params.endpoint}}</a></td>
+													<td><code>{{job_details.oai_params.verb}}</code></td>
+													<td><code>{{job_details.oai_params.metadataPrefix}}</code></td>
+													<td><code>{{job_details.oai_params.scope_type}}</code></td>
+													<td><code>{{job_details.oai_params.scope_value}}</code></td>
+													<td><a href="{{job_details.oai_params.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 												</tr>
 											</tbody>											
 										</table>
@@ -630,8 +630,8 @@
 					<!-- general Job details -->
 					<div class="row">
 						<div class="col-md-12">
-							<h4>Job Runtime Details</h3>
-							<div id="job_details_json" style="height:450px;"></div>
+							<h4>Job Parameters</h3>
+							<div id="job_details_json" style="height:640px;"></div>
 							<script>
 						        // create the editor
 						        var container = document.getElementById("job_details_json");

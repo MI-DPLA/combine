@@ -922,13 +922,13 @@ def job_harvest_oai(request, org_id, record_group_id):
 			job_params = request.POST
 		)
 
-		# # start job and update status
-		# job_status = cjob.start_job()
+		# start job and update status
+		job_status = cjob.start_job()
 
-		# # if job_status is absent, report job status as failed
-		# if job_status == False:
-		# 	cjob.job.status = 'failed'
-		# 	cjob.job.save()
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
 
 		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
 
