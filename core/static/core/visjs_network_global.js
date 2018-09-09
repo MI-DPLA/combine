@@ -81,6 +81,8 @@ function styleNetworkNodes(node){
 
 // function to style vis.js network edges
 function styleNetworkEdges(edge){
+
+	console.log(edge);
 	
 	// add arrow
 	edge.arrows = {
@@ -93,6 +95,14 @@ function styleNetworkEdges(edge){
 
 	// set edge label based on input validity type
 	edge.label = `${edge.input_validity_valve_pretty} (${edge.record_count})`;
+	// if ES query valve applied
+	if (edge.input_es_query_valve){
+		edge.label += `, ES query filtered`;
+	}
+	// if de-duping, add
+	if (edge.filter_dupe_record_ids){
+		edge.label += `, De-Duped`;
+	}
 	// if limited, add
 	if (edge.input_numerical_valve){
 		edge.label += `, Limit (${edge.input_numerical_valve})`;

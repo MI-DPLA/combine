@@ -899,8 +899,15 @@ class Job(models.Model):
 						'input_validity_valve':link.input_validity_valve,
 						'input_validity_valve_pretty':link.get_input_validity_valve_display(),
 						'input_numerical_valve':link.input_numerical_valve,
+						'filter_dupe_record_ids':link.filter_dupe_record_ids,						
 						'total_records_passed':link.calc_passed_records()
 					}
+
+					# add es query flag
+					if link.input_es_query_valve:
+						edge_dict['input_es_query_valve'] = True
+					else:
+						edge_dict['input_es_query_valve'] = False
 
 					# add record count depending in input_validity_valve
 					if link.input_validity_valve == 'all':
@@ -1331,6 +1338,8 @@ class JobInput(models.Model):
 			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
 		)
 	input_numerical_valve = models.IntegerField(null=True, default=None)
+	input_es_query_valve = models.TextField(null=True, default=None)
+	filter_dupe_record_ids = models.BooleanField(default=True)
 
 
 	def __str__(self):
@@ -4204,7 +4213,10 @@ class CombineJob(object):
 				job=self.job,
 				input_job=input_job,
 				input_validity_valve=job_details['input_filters']['input_validity_valve'],
-				input_numerical_valve=job_details['input_filters']['input_numerical_valve'])
+				input_numerical_valve=job_details['input_filters']['input_numerical_valve'],
+				input_es_query_valve=job_details['input_filters']['input_es_query_valve'],
+				filter_dupe_record_ids=job_details['input_filters']['filter_dupe_record_ids']
+			)
 			job_input_link.save()
 
 

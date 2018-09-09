@@ -341,8 +341,8 @@ class CombineSparkJob(object):
 		'''
 
 		# prepare input jobs list
-		if 'input_jobs_ids' in self.job_details.keys():
-			input_jobs_ids = ast.literal_eval(self.job_details['input_jobs_ids'])
+		if 'input_job_ids' in self.job_details.keys():
+			input_jobs_ids = [int(job_id) for job_id in self.job_details['input_job_ids']]
 		elif 'input_job_id' in self.job_details:
 			input_jobs_ids = [int(self.job_details['input_job_id'])]
 
