@@ -108,18 +108,18 @@ function styleNetworkEdges(edge){
 		edge.label += `, Limit (${edge.input_numerical_valve})`;
 	}
 
-	// color blue if limited
-	if (edge.input_numerical_valve){
-		edge.color = {
-			color:'purple'
-		};
-		edge.font = {
-			color:'purple'
-		}	
-	}
+	// // color blue if limited
+	// if (edge.input_numerical_valve){
+	// 	edge.color = {
+	// 		color:'purple'
+	// 	};
+	// 	edge.font = {
+	// 		color:'purple'
+	// 	}	
+	// }
 
 	// all records edge
-	else if (edge.input_validity_valve == 'all'){
+	if (edge.input_validity_valve == 'all'){
 		edge.color = {
 			color:'orange'
 		};

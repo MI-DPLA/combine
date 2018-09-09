@@ -1335,7 +1335,11 @@ class JobInput(models.Model):
 			max_length=255,
 			default=None,
 			null=True,
-			choices=[('all','All Records'),('valid','Valid Records'), ('invalid','Invalid Records')]
+			choices=[
+				('all','All'),
+				('valid','Valid'),
+				('invalid','Invalid')
+			]
 		)
 	input_numerical_valve = models.IntegerField(null=True, default=None)
 	input_es_query_valve = models.TextField(null=True, default=None)
