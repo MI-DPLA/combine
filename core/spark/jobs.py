@@ -1239,10 +1239,10 @@ class MergeSpark(CombineSparkJob):
 		self.update_jobGroup('Running Merge/Duplicate Job')
 
 		# rehydrate list of input jobs
-		input_jobs_ids = ast.literal_eval(self.kwargs['input_jobs_ids'])		
+		input_job_ids = [int(job_id) for job_id in self.job_details['input_job_ids']]
 
 		# retrieve from Mongo		
-		pipeline = json.dumps({'$match': {'job_id':{"$in":input_jobs_ids}}})
+		pipeline = json.dumps({'$match': {'job_id':{"$in":input_job_ids}}})
 		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
 		.option("uri","mongodb://127.0.0.1")\
 		.option("database","combine")\
