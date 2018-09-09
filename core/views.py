@@ -973,90 +973,15 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# if POST, submit job
 	if request.method == 'POST':
 
-		'''
-		When determining between user supplied file, and location on disk, favor location
-		'''
-		# establish payload dictionary
-		payload_dict = {}
-
-		# use location on disk
-		# When a location on disk is provided, set payload_dir as the location provided
-		if request.POST.get('static_filepath') != '':
-			payload_dict['type'] = 'location'
-			payload_dict['payload_dir'] = request.POST.get('static_filepath')
-
-		# use upload
-		# When a payload is uploaded, create payload_dir and set
-		else:
-			payload_dict['type'] = 'upload'
-
-			# get static file payload
-			payload_file = request.FILES['static_payload']
-
-			# grab content type
-			payload_dict['content_type'] = payload_file.content_type
-
-			# create payload dir
-			payload_dict['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
-			os.makedirs(payload_dict['payload_dir'])
-
-			# establish payload filename
-			if hash_payload_filename:
-				payload_dict['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
-			else:
-				payload_dict['payload_filename'] = payload_file.name
-			
-			with open(os.path.join(payload_dict['payload_dir'], payload_dict['payload_filename']), 'wb') as f:
-				f.write(payload_file.read())
-				payload_file.close()
-
-		# include other information for finding, parsing, and preparing identifiers
-		payload_dict['xpath_document_root'] = request.POST.get('xpath_document_root', None)
-		payload_dict['document_element_root'] = request.POST.get('document_element_root', None)
-		payload_dict['additional_namespace_decs'] = request.POST.get('additional_namespace_decs', None).replace("'",'"')
-		payload_dict['xpath_record_id'] = request.POST.get('xpath_record_id', None)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.HarvestStaticXMLJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			payload_dict=payload_dict,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			dbdd=dbdd
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.HarvestStaticXMLJob,
+			job_params = request.POST,
+			files = request.FILES,
+			hash_payload_filename = hash_payload_filename
 		)
-		
+
 		# start job and update status
 		job_status = cjob.start_job()
 

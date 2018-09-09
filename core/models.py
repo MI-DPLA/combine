@@ -4045,7 +4045,8 @@ class CombineJob(object):
 		record_group=None,
 		job_type_class=None,
 		job_params={},
-		job_details = {}):
+		job_details = {},
+		**kwargs):
 
 		'''
 		Static method to initiate a CombineJob			 
@@ -4057,6 +4058,7 @@ class CombineJob(object):
 			job_params (dict, QueryDict): parameters for Job
 				- accepts dictionary or Django QueryDict
 				- is converted to Django MultiValueDict
+			job_details (dict): optional, pre-loaded job_details dict
 
 		Returns:
 			- inititates core.models.Job instance
@@ -4075,10 +4077,10 @@ class CombineJob(object):
 		job_params = MultiValueDict(job_params)		
 
 		# init job_details by parsing job params shared across job types
-		job_details = CombineJob._parse_shared_job_params(job_details, job_params)		
+		job_details = CombineJob._parse_shared_job_params(job_details, job_params, kwargs)		
 
 		# capture and mix in job type specific params
-		job_details = job_type_class.parse_job_type_params(job_details, job_params)
+		job_details = job_type_class.parse_job_type_params(job_details, job_params, kwargs)
 
 		# init job_type_class with record group and parsed job_details dict
 		cjob = job_type_class(
@@ -4092,7 +4094,7 @@ class CombineJob(object):
 		
 
 	@staticmethod
-	def _parse_shared_job_params(job_details, job_params):
+	def _parse_shared_job_params(job_details, job_params, kwargs):
 
 		'''
 		Method to parse job parameters shared across all Job types
@@ -4786,7 +4788,7 @@ class HarvestOAIJob(HarvestJob):
 
 
 	@staticmethod
-	def parse_job_type_params(job_details, job_params):
+	def parse_job_type_params(job_details, job_params, kwargs):
 
 		'''
 		Method to parse job type specific parameters
@@ -4858,36 +4860,17 @@ class HarvestStaticXMLJob(HarvestJob):
 	'''
 
 	def __init__(self,
-		job_name=None,
-		job_note=None,
 		user=None,
-		record_group=None,
 		job_id=None,
-		field_mapper=None,
-		fm_config_json=None,
-		payload_dict=None,
-		validation_scenarios=[],
-		rits=None,
-		dbdd=None):
+		record_group=None,
+		job_details=None):
 
 		'''
 		Args:
-			HarvestJob args
-				see: core.models.HarvestJob
-			
-			HarvestOAIJob args (extending HarvestJob args)
-				payload_dict (dict): dictionary of user provided arguments for static harvest
-					static_filepath (str): location of metadata records on disk
-					type (str)['location','upload']: type of static harvest, uploaded content or location on disk
-					payload_dir (str): location on disk to work form, NOTE: for uploads this is a UUID
-						named directory at /tmp/combine/
-					static_payload (str): temporary filename from upload
-					content_type (str): mimetype of static file from upload
-					payload_filename (str): final filename of static payload on disk
-					xpath_document_root (str): XPath location of documents in parsed files
-					xpath_record_id (str): XPath to retrieve a unique identifier for each Record
-
-				validation_scenarios (list): List of ValidationScenario ids to perform after job completion
+			user (django.auth.User): user account
+			job_id (int): Job ID
+			record_group (core.models.RecordGroup): RecordGroup instance that Job falls under
+			job_details (dict): dictionary for all Job parameters
 
 		Returns:
 			None
@@ -4896,42 +4879,20 @@ class HarvestStaticXMLJob(HarvestJob):
 
 		# perform HarvestJob initialization
 		super().__init__(
-				user=user,
-				job_id=job_id,
-				job_name=job_name,
-				job_note=job_note,
-				record_group=record_group,
-				field_mapper=field_mapper,
-				fm_config_json=fm_config_json
-			)
+			user=user,
+			job_id=job_id,
+			record_group=record_group,
+			job_details=job_details)
 
-		# if job_id not provided, assumed new Job
+
+		# if job_id not provided, assume new Job
 		if not job_id:
 
-			# capture static XML specific args
-			logger.debug(payload_dict)
-			self.payload_dict = payload_dict
-
-			# prepare static files
-			self.prepare_static_files()
-
-			# get validation scenarios
-			self.validation_scenarios = validation_scenarios
-
-			# rits
-			self.rits = rits
-
-			# dbdd
-			self.dbdd = dbdd
-
+			# write job details
+			self.job.update_job_details(job_details)
+			
 			# write validation links
-			if len(self.validation_scenarios) > 0:
-				for vs_id in self.validation_scenarios:
-					val_job = JobValidation(
-						job=self.job,
-						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
-					)
-					val_job.save()
+			self.write_validation_job_links(job_details)
 
 
 	def prepare_static_files(self):
@@ -4942,16 +4903,65 @@ class HarvestStaticXMLJob(HarvestJob):
 			- leaving scaffolding here in case needed in future, but doing very little now
 		'''
 
-		# payload dictionary handle
-		p = self.payload_dict
-
 		# handle uploads
-		if p['type'] == 'upload':
+		if self.payload_dict['type'] == 'upload':
 			logger.debug('static harvest, processing upload type')
 
 		# handle disk locations
-		if p['type'] == 'location':
+		if self.payload_dict['type'] == 'location':
 			logger.debug('static harvest, processing location type')
+
+
+	@staticmethod
+	def parse_job_type_params(job_details, job_params, kwargs):
+
+		'''
+		Method to parse job type specific parameters
+
+		Args:
+			job_details (dict): in-process job_details dictionary
+			job_params (dict): original parameters passed to Job
+			kwargs (dict): optional, named args for Jobs
+		'''
+
+		# use location on disk
+		# When a location on disk is provided, set payload_dir as the location provided
+		if job_params.get('static_filepath') != '':
+			job_details['type'] = 'location'
+			job_details['payload_dir'] = job_params.get('static_filepath')
+
+		# use upload
+		# When a payload is uploaded, create payload_dir and set
+		else:
+			job_details['type'] = 'upload'
+
+			# get static file payload
+			payload_file = kwargs['files']['static_payload']
+
+			# grab content type
+			job_details['content_type'] = payload_file.content_type
+
+			# create payload dir
+			job_details['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
+			os.makedirs(job_details['payload_dir'])
+
+			# establish payload filename
+			if kwargs['hash_payload_filename']:
+				job_details['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
+			else:
+				job_details['payload_filename'] = payload_file.name
+			
+			with open(os.path.join(job_details['payload_dir'], job_details['payload_filename']), 'wb') as f:
+				f.write(payload_file.read())
+				payload_file.close()
+
+		# include other information for finding, parsing, and preparing identifiers
+		job_details['xpath_document_root'] = job_params.get('xpath_document_root', None)
+		job_details['document_element_root'] = job_params.get('document_element_root', None)
+		job_details['additional_namespace_decs'] = job_params.get('additional_namespace_decs', None).replace("'",'"')
+		job_details['xpath_record_id'] = job_params.get('xpath_record_id', None)
+
+		return job_details
 
 
 	def prepare_job(self):
@@ -4965,23 +4975,13 @@ class HarvestStaticXMLJob(HarvestJob):
 		Returns:
 			None
 				- submits job to Livy
-		'''
+		'''		
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, static_type="%(static_type)s", static_payload="%(static_payload)s", xpath_document_root="%(xpath_document_root)s", document_element_root="%(document_element_root)s", additional_namespace_decs=\'%(additional_namespace_decs)s\', xpath_record_id="%(xpath_record_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, dbdd=%(dbdd)s).spark_function()' %
+			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, job_id="%(job_id)s").spark_function()' %
 			{
-				'static_type':self.payload_dict['type'],
-				'static_payload':self.payload_dict['payload_dir'],
-				'xpath_document_root':self.payload_dict['xpath_document_root'],
-				'document_element_root':self.payload_dict['document_element_root'],
-				'additional_namespace_decs':self.payload_dict['additional_namespace_decs'],
-				'xpath_record_id':self.payload_dict['xpath_record_id'],
-				'job_id':self.job.id,
-				'fm_config_json':self.fm_config_json,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits,
-				'dbdd':self.dbdd
+				'job_id':self.job.id				
 			}
 		}
 
@@ -4996,161 +4996,6 @@ class HarvestStaticXMLJob(HarvestJob):
 		'''
 
 		return None
-
-
-
-	
-	'''
-	Apply an XSLT transformation to a record group
-	'''
-
-	def __init__(self,
-		job_name=None,
-		job_note=None,
-		user=None,
-		record_group=None,
-		input_job=None,
-		transformation=None,
-		job_id=None,
-		field_mapper=None,
-		fm_config_json=None,
-		validation_scenarios=[],
-		rits=None,
-		input_filters={
-			'input_validity_valve':'all',
-			'input_numerical_valve':None
-		},
-		dbdd=None):
-
-		'''
-		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance this job belongs to
-			input_job (core.models.Job): Job that provides input records for this job's work
-			transformation (core.models.Transformation): Transformation scenario to use for transforming records
-			job_id (int): Not set on init, but acquired through self.job.save()
-			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
-			rits (str): Identifier of Record Identifier Transformation Scenario
-
-		Returns:
-			None
-				- sets multiple attributes for self.job
-				- sets in motion the output of spark jobs from core.spark.jobs
-		'''
-
-		# perform CombineJob initialization
-		super().__init__(user=user, job_id=job_id)
-
-		# if job_id not provided, assumed new Job
-		if not job_id:
-
-			self.job_name = job_name
-			self.job_note = job_note
-			self.record_group = record_group
-			self.organization = self.record_group.organization
-			self.input_job = input_job
-			self.transformation = transformation
-			self.field_mapper = field_mapper
-			self.fm_config_json = fm_config_json
-			self.validation_scenarios = validation_scenarios
-			self.rits = rits
-			self.input_filters = input_filters
-			self.dbdd = dbdd
-
-			# if job name not provided, provide default
-			if not self.job_name:
-				self.job_name = self.default_job_name()
-
-			# create Job entry in DB
-			self.job = Job(
-				record_group = self.record_group,
-				job_type = type(self).__name__,
-				user = self.user,
-				name = self.job_name,
-				note = self.job_note,
-				spark_code = None,
-				job_id = None,
-				status = 'initializing',
-				url = None,
-				headers = None,
-				job_details = json.dumps(
-					{
-						'transformation':
-							{
-								'name':self.transformation.name,
-								'type':self.transformation.transformation_type,
-								'id':self.transformation.id
-							},
-						'fm_config_json':self.fm_config_json
-					})
-			)
-			self.job.save()
-
-			# save input job to JobInput table
-			job_input_link = JobInput(
-				job=self.job,
-				input_job=self.input_job,
-				input_validity_valve=self.input_filters['input_validity_valve'],
-				input_numerical_valve=self.input_filters['input_numerical_valve'])
-			job_input_link.save()
-
-			# write validation links
-			if len(self.validation_scenarios) > 0:
-				for vs_id in self.validation_scenarios:
-					val_job = JobValidation(
-						job=self.job,
-						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
-					)
-					val_job.save()
-
-
-	def prepare_job(self):
-
-		'''
-		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
-
-		Args:
-			None
-
-		Returns:
-			None
-				- submits job to Livy
-		'''
-
-		# prepare job code
-		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' %
-			{
-				'transformation_id':self.transformation.id,
-				'input_job_id':self.input_job.id,
-				'job_id':self.job.id,
-				'fm_config_json':self.fm_config_json,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits,
-				'input_filters':self.input_filters,
-				'dbdd':self.dbdd
-			}
-		}
-
-		# submit job
-		self.submit_job_to_livy(job_code)
-
-
-	def get_job_errors(self):
-
-		'''
-		Return errors from Job
-
-		Args:
-			None
-
-		Returns:
-			(django.db.models.query.QuerySet)
-		'''
-
-		return self.job.get_errors()
 
 
 

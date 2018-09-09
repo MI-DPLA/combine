@@ -759,13 +759,13 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 		# use Spark-XML's XmlInputFormat to stream globbed files, parsing with user provided `document_element_root`
 		static_rdd = self.spark.sparkContext.newAPIHadoopFile(
-			'file://%s/**' % self.kwargs['static_payload'].rstrip('/'),
+			'file://%s/**' % self.job_details['payload_dir'].rstrip('/'),
 			'com.databricks.spark.xml.XmlInputFormat',
 			'org.apache.hadoop.io.LongWritable',
 			'org.apache.hadoop.io.Text',
 			conf = {
-				'xmlinput.start':'<%s>' % self.kwargs['document_element_root'],
-				'xmlinput.end':'</%s>' % self.kwargs['document_element_root'],
+				'xmlinput.start':'<%s>' % self.job_details['document_element_root'],
+				'xmlinput.end':'</%s>' % self.job_details['document_element_root'],
 				'xmlinput.encoding': 'utf-8'
 			}
 		)
@@ -780,16 +780,16 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 			return nsmap
 
 
-		def parse_records_udf(job_id, row, kwargs):
+		def parse_records_udf(job_id, row, job_details):
 
 			# get doc string
 			doc_string = row[1]
 
 			# if optional (additional) namespace declaration provided, use
-			if kwargs['additional_namespace_decs']:
+			if job_details['additional_namespace_decs']:
 				doc_string = re.sub(
 					ns_regex,
-					r'<%s %s>' % (kwargs['document_element_root'], kwargs['additional_namespace_decs']),
+					r'<%s %s>' % (job_details['document_element_root'], job_details['additional_namespace_decs']),
 					doc_string
 				)	
 
@@ -805,14 +805,14 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				nsmap = get_namespaces(xml_root)
 
 				# get unique identifier
-				if kwargs['xpath_record_id'] != '':
-					record_id = xml_root.xpath(kwargs['xpath_record_id'], namespaces=nsmap)
+				if job_details['xpath_record_id'] != '':
+					record_id = xml_root.xpath(job_details['xpath_record_id'], namespaces=nsmap)
 					if len(record_id) == 1:
 						record_id = record_id[0].text
 					elif len(xml_root) > 1:
-						raise AmbiguousIdentifier('multiple elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+						raise AmbiguousIdentifier('multiple elements found for identifier xpath: %s' % job_details['xpath_record_id'])
 					elif len(xml_root) == 0:
-						raise AmbiguousIdentifier('no elements found for identifier xpath: %s' % kwargs['xpath_record_id'])
+						raise AmbiguousIdentifier('no elements found for identifier xpath: %s' % job_details['xpath_record_id'])
 				else:
 					record_id = hashlib.md5(doc_string.encode('utf-8')).hexdigest()
 
@@ -860,9 +860,9 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 		# map with parse_records_udf 
 		job_id = self.job.id
-		kwargs = self.kwargs
-		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.kwargs['document_element_root'])
-		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, kwargs))
+		job_details = self.job_details
+		ns_regex = re.compile(r'<%s(.?|.+?)>' % self.job_details['document_element_root'])
+		records = static_rdd.map(lambda row: parse_records_udf(job_id, row, job_details))
 
 		# convert back to DF
 		records = records.toDF()
@@ -878,8 +878,8 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		)
 
 		# remove temporary payload directory if static job was upload based, not location on disk
-		if self.kwargs['static_type'] == 'upload':
-			shutil.rmtree(self.kwargs['static_payload'])
+		if self.job_details['static_type'] == 'upload':
+			shutil.rmtree(self.job_details['static_payload'])
 
 		# close job
 		self.close_job()
