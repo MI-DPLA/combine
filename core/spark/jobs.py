@@ -51,7 +51,7 @@ from django.conf import settings
 from django.db import connection
 
 # import select models from Core
-from core.models import CombineJob, Job, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
+from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
 # import xml2kvp
 from core.xml2kvp import XML2kvp
@@ -326,6 +326,22 @@ class CombineSparkJob(object):
 
 		# after input filtering which might leverage db_id, drop		
 		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
+
+		# write records passed from input jobs
+		refresh_django_db_connection()
+		if 'input_job_id' in self.job_details.keys():
+			input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(self.job_details['input_job_id'])).first()
+			input_job.passed_records = filtered_df.count()
+			input_job.save()
+
+		elif 'input_job_ids' in self.job_details.keys():
+			# group by job_ids
+			record_counts = filtered_df.groupBy('job_id').count()
+			# loop through input jobs, init, and write
+			for input_job_count in record_counts.collect():
+				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_count['job_id'])).first()
+				input_job.passed_records = input_job_count['count']
+				input_job.save()
 
 		# return
 		return filtered_df

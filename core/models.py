@@ -900,7 +900,7 @@ class Job(models.Model):
 						'input_validity_valve_pretty':link.get_input_validity_valve_display(),
 						'input_numerical_valve':link.input_numerical_valve,
 						'filter_dupe_record_ids':link.filter_dupe_record_ids,						
-						'total_records_passed':link.calc_passed_records()
+						'total_records_passed':link.passed_records
 					}
 
 					# add es query flag
@@ -1344,34 +1344,11 @@ class JobInput(models.Model):
 	input_numerical_valve = models.IntegerField(null=True, default=None)
 	input_es_query_valve = models.TextField(null=True, default=None)
 	filter_dupe_record_ids = models.BooleanField(default=True)
+	passed_records = models.IntegerField(null=True, default=None)
 
 
 	def __str__(self):
 		return 'JobInputLink: input job #%s for job #%s' % (self.input_job.id, self.job.id)
-
-
-	def calc_passed_records(self):
-
-		'''
-		Method to determine total amount of passed records to target Job
-		'''
-
-		passed_count = 0
-
-		# set passed_count with validity valves
-		if self.input_validity_valve == 'all':
-			passed_count = self.input_job.record_count
-		elif self.input_validity_valve == 'valid':
-			passed_count = self.input_job.validation_results()['passed_count']
-		elif self.input_validity_valve == 'invalid':
-			passed_count = self.input_job.validation_results()['failure_count']
-
-		# factor numerical subsets
-		if self.input_numerical_valve and passed_count > self.input_numerical_valve:
-			passed_count = self.input_numerical_valve
-
-		# return
-		return passed_count
 
 
 
@@ -4440,7 +4417,7 @@ class CombineJob(object):
 				input_jobs_dict['jobs'].append(input_job)
 
 				# bump count
-				input_jobs_dict['total_input_record_count'] += input_job.calc_passed_records()
+				input_jobs_dict['total_input_record_count'] += input_job.passed_records
 
 			# return
 			return input_jobs_dict
