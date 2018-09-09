@@ -327,6 +327,9 @@ class CombineSparkJob(object):
 		# after input filtering which might leverage db_id, drop		
 		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
 
+		# cache
+		filtered_df = filtered_df.cache()
+
 		# write records passed from input jobs
 		refresh_django_db_connection()
 		if 'input_job_id' in self.job_details.keys():
