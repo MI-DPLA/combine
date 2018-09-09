@@ -1054,83 +1054,12 @@ def job_transform(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		# debug form
-		logger.debug(request.POST)
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.TransformJob,
+			job_params = request.POST)
 
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve input job
-		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
-		logger.debug('using job as input: %s' % input_job)
-
-		# retrieve transformation
-		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
-		logger.debug('using transformation: %s' % transformation)
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# capture input filters
-		input_filters = {
-			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
-		}
-		input_numerical_valve = request.POST.get('input_numerical_valve', None)
-		if input_numerical_valve == '':
-			input_numerical_valve = None
-		else:
-			input_numerical_valve = int(input_numerical_valve)
-		input_filters['input_numerical_valve'] = input_numerical_valve
-		# es query valve
-		input_es_query_valve = request.POST.get('input_es_query_valve', None)
-		if input_es_query_valve == '':
-			input_es_query_valve = None
-		input_filters['input_es_query_valve'] = input_es_query_valve
-		# filter duplicates
-		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
-		if filter_dupe_record_ids == 'true':
-			filter_dupe_record_ids = True
-		else:
-			filter_dupe_record_ids = False
-		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.TransformJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			input_job=input_job,
-			transformation=transformation,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			input_filters=input_filters,
-			dbdd=dbdd
-		)
-		
 		# start job and update status
 		job_status = cjob.start_job()
 

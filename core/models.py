@@ -4183,13 +4183,29 @@ class CombineJob(object):
 				val_job.save()
 
 
-	def write_input_job_links(self):
+	def write_input_job_links(self, job_details):
 
 		'''
 		Method to write links for all input Jobs used
 		'''
 
-		pass
+		# prepare as list
+		if type(job_details['input_job_id']) == str:
+			input_job_ids = [job_details['input_job_id']]
+		else:
+			input_job_ids = job_details['input_job_id']
+
+		# get input_jobs
+		input_jobs = [ Job.objects.get(pk=int(job_id)) for job_id in input_job_ids ]
+
+		# save input jobs to JobInput table
+		for input_job in input_jobs:
+			job_input_link = JobInput(
+				job=self.job,
+				input_job=input_job,
+				input_validity_valve=job_details['input_filters']['input_validity_valve'],
+				input_numerical_valve=job_details['input_filters']['input_numerical_valve'])
+			job_input_link.save()
 
 
 	@staticmethod
@@ -5002,38 +5018,21 @@ class HarvestStaticXMLJob(HarvestJob):
 class TransformJob(CombineJob):
 	
 	'''
-	Apply an XSLT transformation to a record group
+	Apply an XSLT transformation to a Job
 	'''
 
 	def __init__(self,
-		job_name=None,
-		job_note=None,
 		user=None,
-		record_group=None,
-		input_job=None,
-		transformation=None,
 		job_id=None,
-		field_mapper=None,
-		fm_config_json=None,
-		validation_scenarios=[],
-		rits=None,
-		input_filters={
-			'input_validity_valve':'all',
-			'input_numerical_valve':None
-		},
-		dbdd=None):
+		record_group=None,
+		job_details=None):
 
 		'''
 		Args:
-			job_name (str): Name for job
-			job_note (str): Free text note about job
-			user (auth.models.User): user that will issue job
-			record_group (core.models.RecordGroup): record group instance this job belongs to
-			input_job (core.models.Job): Job that provides input records for this job's work
-			transformation (core.models.Transformation): Transformation scenario to use for transforming records
-			job_id (int): Not set on init, but acquired through self.job.save()
-			validation_scenarios (list): List of ValidationScenario ids to perform after job completion
-			rits (str): Identifier of Record Identifier Transformation Scenario
+			user (django.auth.User): user account
+			job_id (int): Job ID
+			record_group (core.models.RecordGroup): RecordGroup instance that Job falls under
+			job_details (dict): dictionary for all Job parameters
 
 		Returns:
 			None
@@ -5047,64 +5046,60 @@ class TransformJob(CombineJob):
 		# if job_id not provided, assumed new Job
 		if not job_id:
 
-			self.job_name = job_name
-			self.job_note = job_note
-			self.record_group = record_group
-			self.organization = self.record_group.organization
-			self.input_job = input_job
-			self.transformation = transformation
-			self.field_mapper = field_mapper
-			self.fm_config_json = fm_config_json
-			self.validation_scenarios = validation_scenarios
-			self.rits = rits
-			self.input_filters = input_filters
-			self.dbdd = dbdd
-
 			# if job name not provided, provide default
-			if not self.job_name:
-				self.job_name = self.default_job_name()
+			if not job_details['job_name']:
+				job_details['job_name'] = self.default_job_name()
 
-			# create Job entry in DB
+			# create Job entry in DB and save			
 			self.job = Job(
-				record_group = self.record_group,
-				job_type = type(self).__name__,
-				user = self.user,
-				name = self.job_name,
-				note = self.job_note,
+				record_group = record_group,
+				job_type = type(self).__name__, # selects this level of class inheritance hierarchy
+				user = user,
+				name = job_details['job_name'],
+				note = job_details['job_note'],
 				spark_code = None,
 				job_id = None,
 				status = 'initializing',
 				url = None,
 				headers = None,
-				job_details = json.dumps(
-					{
-						'transformation':
-							{
-								'name':self.transformation.name,
-								'type':self.transformation.transformation_type,
-								'id':self.transformation.id
-							},
-						'fm_config_json':self.fm_config_json
-					})
+				job_details = json.dumps(job_details)
 			)
 			self.job.save()
 
-			# save input job to JobInput table
-			job_input_link = JobInput(
-				job=self.job,
-				input_job=self.input_job,
-				input_validity_valve=self.input_filters['input_validity_valve'],
-				input_numerical_valve=self.input_filters['input_numerical_valve'])
-			job_input_link.save()
+			# write job details
+			self.job.update_job_details(job_details)
+			
+			# write validation links
+			self.write_validation_job_links(job_details)
 
 			# write validation links
-			if len(self.validation_scenarios) > 0:
-				for vs_id in self.validation_scenarios:
-					val_job = JobValidation(
-						job=self.job,
-						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
-					)
-					val_job.save()
+			self.write_input_job_links(job_details)
+
+
+	@staticmethod
+	def parse_job_type_params(job_details, job_params, kwargs):
+
+		'''
+		Method to parse job type specific parameters
+
+		Args:
+			job_details (dict): in-process job_details dictionary
+			job_params (dict): original parameters passed to Job
+			kwargs (dict): optional, named args for Jobs
+		'''
+
+		# retrieve input job
+		job_details['input_job_id'] = job_params['input_job_id']
+
+		# retrieve transformation, add details to job details
+		transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
+		job_details['transformation'] = {
+				'name':transformation.name,
+				'type':transformation.transformation_type,
+				'id':transformation.id
+			}
+ 
+		return job_details
 
 
 	def prepare_job(self):
@@ -5118,20 +5113,13 @@ class TransformJob(CombineJob):
 		Returns:
 			None
 				- submits job to Livy
-		'''
+		'''		
 
 		# prepare job code
 		job_code = {
-			'code':'from jobs import TransformSpark\nTransformSpark(spark, transformation_id="%(transformation_id)s", input_job_id="%(input_job_id)s", job_id="%(job_id)s", fm_config_json=\'\'\'%(fm_config_json)s\'\'\', validation_scenarios="%(validation_scenarios)s", rits=%(rits)s, input_filters=%(input_filters)s, dbdd=%(dbdd)s).spark_function()' %
+			'code':'from jobs import TransformSpark\nTransformSpark(spark, job_id="%(job_id)s").spark_function()' %
 			{
-				'transformation_id':self.transformation.id,
-				'input_job_id':self.input_job.id,
-				'job_id':self.job.id,
-				'fm_config_json':self.fm_config_json,
-				'validation_scenarios':str([ int(vs_id) for vs_id in self.validation_scenarios ]),
-				'rits':self.rits,
-				'input_filters':self.input_filters,
-				'dbdd':self.dbdd
+				'job_id':self.job.id				
 			}
 		}
 
@@ -5259,6 +5247,32 @@ class MergeJob(CombineJob):
 						validation_scenario=ValidationScenario.objects.get(pk=vs_id)
 					)
 					val_job.save()
+
+
+	@staticmethod
+	def parse_job_type_params(job_details, job_params, kwargs):
+
+		'''
+		Method to parse job type specific parameters
+
+		Args:
+			job_details (dict): in-process job_details dictionary
+			job_params (dict): original parameters passed to Job
+			kwargs (dict): optional, named args for Jobs
+		'''
+
+		# retrieve input job
+		job_details['input_job_ids'] = job_details.getlist('input_job_id')
+
+		# retrieve transformation, add details to job details
+		transformation = models.Transformation.objects.get(pk=int(job_details['transformation_id']))
+		job_details['transformation'] = {
+				'name':self.transformation.name,
+				'type':self.transformation.transformation_type,
+				'id':self.transformation.id
+			}
+ 
+		return job_details
 
 
 	def prepare_job(self):

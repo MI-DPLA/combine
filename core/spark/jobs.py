@@ -918,7 +918,7 @@ class TransformSpark(CombineSparkJob):
 		self.update_jobGroup('Running Transform Job')
 
 		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(self.kwargs['input_job_id']))
+		input_job = Job.objects.get(pk=int(self.job_details['input_job_id']))
 
 		# retrieve from Mongo
 		pipeline = json.dumps({'$match': {'job_id': input_job.id}})
@@ -939,7 +939,7 @@ class TransformSpark(CombineSparkJob):
 		records = self.record_input_filters(records)
 
 		# get transformation
-		transformation = Transformation.objects.get(pk=int(self.kwargs['transformation_id']))
+		transformation = Transformation.objects.get(pk=int(self.job_details['transformation']['id']))
 
 		# if xslt type transformation
 		if transformation.transformation_type == 'xslt':
@@ -953,8 +953,8 @@ class TransformSpark(CombineSparkJob):
 		if transformation.transformation_type == 'openrefine':
 
 			# get XML2kvp settings from input Job
-			input_job_details = json.loads(input_job.job_details)
-			input_job_fm_config = json.loads(input_job_details['fm_config_json'])
+			input_job_details = input_job.job_details_dict
+			input_job_fm_config = input_job_details['fm_config_json']
 
 			# pass config json
 			records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
@@ -983,8 +983,6 @@ class TransformSpark(CombineSparkJob):
 		Method to transform records with XSLT, using pyjxslt server
 
 		Args:
-			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs (dict): kwargs from parent job
 			job: job from parent job
 			transformation: Transformation Scenario from parent job
 			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
@@ -1052,8 +1050,6 @@ class TransformSpark(CombineSparkJob):
 			- a function named `python_record_transformation(record)` in transformation.payload python code
 
 		Args:
-			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs (dict): kwargs from parent job
 			job: job from parent job
 			transformation: Transformation Scenario from parent job
 			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
@@ -1115,8 +1111,6 @@ class TransformSpark(CombineSparkJob):
 		Transform records per OpenRefine Actions JSON		
 
 		Args:
-			spark (pyspark.sql.session.SparkSession): provided by pyspark context
-			kwargs (dict): kwargs from parent job
 			job: job from parent job
 			transformation: Transformation Scenario from parent job
 			records (pyspark.sql.DataFrame): DataFrame of records pre-transformation
