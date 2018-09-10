@@ -904,25 +904,17 @@ class Job(models.Model):
 						'id':edge_id,
 						'from':from_node,
 						'to':to_node,
-						'input_validity_valve':link.input_validity_valve,						
-						'input_numerical_valve':link.input_numerical_valve,
-						'filter_dupe_record_ids':link.filter_dupe_record_ids,						
+						'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],						
+						'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
+						'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],						
 						'total_records_passed':link.passed_records
 					}
 
 					# add es query flag
-					if link.input_es_query_valve:
+					if self.job_details_dict['input_filters']['input_es_query_valve']:
 						edge_dict['input_es_query_valve'] = True
 					else:
 						edge_dict['input_es_query_valve'] = False
-
-					# add record count depending in input_validity_valve
-					if link.input_validity_valve == 'all':
-						edge_dict['record_count'] = link.input_job.record_count
-					elif link.input_validity_valve == 'valid':
-						edge_dict['record_count'] = link.input_job.validation_results()['passed_count']
-					elif link.input_validity_valve == 'invalid':
-						edge_dict['record_count'] = link.input_job.validation_results()['failure_count']
 
 					ld['edges'].append(edge_dict)
 
@@ -1337,20 +1329,7 @@ class JobInput(models.Model):
 	'''
 
 	job = models.ForeignKey(Job, on_delete=models.CASCADE)
-	input_job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='input_job')
-	input_validity_valve = models.CharField(
-			max_length=255,
-			default=None,
-			null=True,
-			choices=[
-				('all','All'),
-				('valid','Valid'),
-				('invalid','Invalid')
-			]
-		)
-	input_numerical_valve = models.IntegerField(null=True, default=None)
-	input_es_query_valve = models.TextField(null=True, default=None)
-	filter_dupe_record_ids = models.BooleanField(default=True)
+	input_job = models.ForeignKey(Job, on_delete=models.CASCADE, related_name='input_job')	
 	passed_records = models.IntegerField(null=True, default=None)
 
 
@@ -4193,11 +4172,7 @@ class CombineJob(object):
 		for input_job in input_jobs:
 			job_input_link = JobInput(
 				job=self.job,
-				input_job=input_job,
-				input_validity_valve=job_details['input_filters']['input_validity_valve'],
-				input_numerical_valve=job_details['input_filters']['input_numerical_valve'],
-				input_es_query_valve=job_details['input_filters']['input_es_query_valve'],
-				filter_dupe_record_ids=job_details['input_filters']['filter_dupe_record_ids']
+				input_job=input_job				
 			)
 			job_input_link.save()
 
@@ -4661,9 +4636,6 @@ class CombineJob(object):
 		Method to re-run job, and if flagged, all downstream Jobs in lineage
 		'''
 
-		# see notes
-		# https://docs.google.com/document/d/1psbUam8lBtqk7UnhGfcJMU618Gn1hMPXIwMMt9IIHaI/edit#
-
 		# get lineage
 		rerun_jobs = self.job.get_rerun_lineage()
 
@@ -4681,6 +4653,18 @@ class CombineJob(object):
 
 			# drop es index
 			re_job.drop_es_index()
+
+			# where Job is input for another, reset passed_records
+			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
+			for ji in as_input_job:
+				ji.passed_records = None
+				ji.save()
+
+			# where Job is input for another, reset passed_records
+			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
+			for ji in as_input_job:
+				ji.passed_records = None
+				ji.save()
 
 			# update Job attributes and save
 			re_job.status = 'init'

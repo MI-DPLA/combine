@@ -255,20 +255,26 @@
 								<tr>
 									<th>Input Job Name</th>
 									<th>Job Type</th>
-									<th>Validity of Records Passed</th>
-									<th>Record Limit</th>
+									<th>Validity</th>
+									<th>De-Dupe Records</th>
+									<th>Mapped Field Query Filtered</th>
+									<th>Numerical Limit</th>
 									<th>Total Passed Records</th>
 								</tr>
 								{% for input_job in cjob.job.jobinput_set.all %}
 								<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
 									<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 									<td>{{ input_job.input_job.job_type }}</td>
-									<td>{{ input_job.get_input_validity_valve_display }}</td>
-									<td>{{ input_job.input_numerical_valve }}</td>
+									<td>{% if cjob.job.job_details_dict.input_filters.input_validity_valve == 'invalid' %}Failed Validation{% elif cjob.job.job_details_dict.input_filters.input_validity_valve == 'valid'%}Passed Validation{% else %}Ignored Validation{% endif %}</td>
+									<td>{{ cjob.job.job_details_dict.input_filters.filter_dupe_record_ids }}</td>
+									<td><code>{{ cjob.job.job_details_dict.input_filters.input_es_query_valve|safe }}</code></td>
+									<td>{{ cjob.job.job_details_dict.input_filters.input_numerical_valve }}</td>
 									<td>{{ input_job.passed_records }}</td>
 								</tr>
 								{% endfor %}
 								<tr>
+									<td></td>
+									<td></td>
 									<td></td>
 									<td></td>
 									<td></td>
