@@ -4179,14 +4179,8 @@ class CombineJob(object):
 		Method to write links for all input Jobs used
 		'''
 		
-		# prepare as list
-		if 'input_job_id' in job_details.keys():
-			input_job_ids = [job_details['input_job_id']]
-		elif 'input_job_ids' in job_details.keys():
-			input_job_ids = job_details['input_job_ids']
-
 		# get input_jobs
-		input_jobs = [ Job.objects.get(pk=int(job_id)) for job_id in input_job_ids ]
+		input_jobs = [ Job.objects.get(pk=int(job_id)) for job_id in job_details['input_job_ids'] ]
 
 		# save input jobs to JobInput table
 		for input_job in input_jobs:
