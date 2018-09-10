@@ -351,24 +351,22 @@ class CombineSparkJob(object):
 		# after input filtering which might leverage db_id, drop		
 		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
 
-		# write records passed from input jobs
+		# count records from input jobs if > 1
+		# 	- otherwise assume Job.udpate_status() will calculate from single input job
 		refresh_django_db_connection()
-		if 'input_job_id' in self.job_details.keys():
-			input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(self.job_details['input_job_id'])).first()
-			input_job.passed_records = filtered_df.count()
-			input_job.save()
+		if 'input_job_ids' in self.job_details.keys() and len(self.job_details['input_job_ids']) > 1:
+			
+			# cache
+			filtered_df.cache()
 
-		elif 'input_job_ids' in self.job_details.keys():
 			# group by job_ids
 			record_counts = filtered_df.groupBy('job_id').count()
+			
 			# loop through input jobs, init, and write
 			for input_job_count in record_counts.collect():
 				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_count['job_id'])).first()
 				input_job.passed_records = input_job_count['count']
 				input_job.save()
-
-		# cache
-		filtered_df = filtered_df.cache()
 
 		# return
 		return filtered_df

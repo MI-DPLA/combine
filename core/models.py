@@ -732,7 +732,15 @@ class Job(models.Model):
 			None
 		'''
 		
+		# update record counts
 		self.record_count = Record.objects(job_id=self.id).count()
+
+		# if job has single input ID, and that is still None, set to record count
+		if self.jobinput_set.count() == 1:
+			ji = self.jobinput_set.first()
+			if ji.passed_records == None:				
+				ji.passed_records = self.record_count
+				ji.save()
 		
 		# if save, save
 		if save:
@@ -1343,7 +1351,7 @@ class JobInput(models.Model):
 	input_numerical_valve = models.IntegerField(null=True, default=None)
 	input_es_query_valve = models.TextField(null=True, default=None)
 	filter_dupe_record_ids = models.BooleanField(default=True)
-	passed_records = models.IntegerField(null=True, default=0)
+	passed_records = models.IntegerField(null=True, default=None)
 
 
 	def __str__(self):

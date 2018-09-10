@@ -101,6 +101,9 @@ function styleNetworkEdges(edge){
 	else if (edge.input_validity_valve == 'invalid') {
 		edge_label_comps.push('Failed Validation');
 	}
+	else if (edge.input_validity_valve == 'all') {
+		edge_label_comps.push('Ignore Validation');
+	}
 	
 	// add ES query valve if applied
 	if (edge.input_es_query_valve){		
@@ -117,8 +120,16 @@ function styleNetworkEdges(edge){
 		edge_label_comps.push(`Limit (${edge.input_numerical_valve})`);
 	}
 
+	// format count
+	if (edge.total_records_passed == null) {
+		count = '...';
+	}
+	else {
+		count = edge.total_records_passed;
+	}
+
 	// join as string	
-	edge.label = `(${edge.record_count}) ` + edge_label_comps.join(', ');
+	edge.label = `(${count}) ` + edge_label_comps.join(', ');
 
 	// all records edge
 	if (edge.input_validity_valve == 'all'){

@@ -25,6 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
+from django.db import connection
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
@@ -484,10 +485,7 @@ def record_group(request, org_id, record_group_id):
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
 	# get all jobs associated with record group
-	jobs = models.Job.objects.filter(record_group=record_group_id)
-
-	# get record group job lineage
-	job_lineage = record_group.get_jobs_lineage()
+	jobs = models.Job.objects.filter(record_group=record_group_id)	
 
 	# get all currently applied publish set ids
 	publish_set_ids = models.PublishedRecords.get_publish_set_ids()	
@@ -497,6 +495,9 @@ def record_group(request, org_id, record_group_id):
 
 		# update status
 		job.update_status()
+
+	# get record group job lineage
+	job_lineage = record_group.get_jobs_lineage()
 
 	# get all record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
