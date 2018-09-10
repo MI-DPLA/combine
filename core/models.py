@@ -1255,7 +1255,7 @@ class Job(models.Model):
 		return True
 
 
-	def remove_validation_jobs(self, validation_scenarios=[]):
+	def remove_validation_jobs(self, validation_scenarios=None):
 
 		'''
 		Method to remove validation jobs that match validation scenarios provided
@@ -1263,9 +1263,14 @@ class Job(models.Model):
 		'''
 
 		for jv in self.jobvalidation_set.all():
+
 			# if validation scenarios provided
-			if jv.validation_scenario.id in validation_scenarios:				
-				logger.debug('validation scenario %s used for %s, removing' % (jv.validation_scenario.id, jv))
+			if validation_scenarios != None and jv.validation_scenario.id in validation_scenarios:				
+					logger.debug('validation scenario %s used for %s, removing' % (jv.validation_scenario.id, jv))
+					jv.delete()
+
+			# else, remove all
+			else:
 				jv.delete()
 
 		# return 
@@ -4654,11 +4659,12 @@ class CombineJob(object):
 			# drop es index
 			re_job.drop_es_index()
 
-			# where Job is input for another, reset passed_records
-			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
-			for ji in as_input_job:
-				ji.passed_records = None
-				ji.save()
+			# remove previously run validations
+			re_job.remove_validation_jobs()
+			re_job.remove_validations_from_db()
+
+			# remove mapping failures
+			re_job.remove_mapping_failures_from_db()			
 
 			# where Job is input for another, reset passed_records
 			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
@@ -4675,6 +4681,9 @@ class CombineJob(object):
 
 			# get combine job
 			re_cjob = CombineJob.get_combine_job(re_job.id)
+
+			# write Validation links
+			re_cjob.write_validation_job_links(re_cjob.job.job_details_dict)
 
 			# re-submit to Livy
 			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
