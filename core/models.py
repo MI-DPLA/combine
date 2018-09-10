@@ -4418,7 +4418,8 @@ class CombineJob(object):
 				input_jobs_dict['jobs'].append(input_job)
 
 				# bump count
-				input_jobs_dict['total_input_record_count'] += input_job.passed_records
+				if input_job.passed_records != None:
+					input_jobs_dict['total_input_record_count'] += input_job.passed_records				
 
 			# return
 			return input_jobs_dict

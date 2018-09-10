@@ -359,13 +359,28 @@ class CombineSparkJob(object):
 			# cache
 			filtered_df.cache()
 
+			# copy input job ids to mark done (cast to int)
+			input_jobs = [int(job_id) for job_id in self.job_details['input_job_ids'].copy()]
+
 			# group by job_ids
 			record_counts = filtered_df.groupBy('job_id').count()
 			
-			# loop through input jobs, init, and write
+			# loop through input jobs, init, and write			
 			for input_job_count in record_counts.collect():
+
+				# remove from input_jobs
+				input_jobs.remove(input_job_count['job_id'])
+
+				# set passed records and save
 				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_count['job_id'])).first()
 				input_job.passed_records = input_job_count['count']
+				input_job.save()
+
+			# loop through any remaining jobs, where absence indicates 0 records passed
+			for input_job_id in input_jobs:
+
+				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_id)).first()
+				input_job.passed_records = 0
 				input_job.save()
 
 		# return
