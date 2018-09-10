@@ -1036,8 +1036,7 @@ def job_transform(request, org_id, record_group_id):
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
 		# render page
-		return render(request, 'core/job_transform.html', {
-				'job_select_type':'single',
+		return render(request, 'core/job_transform.html', {				
 				'record_group':record_group,
 				'input_jobs':input_jobs,
 				'input_job_scope':input_job_scope,
@@ -1559,7 +1558,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	# get details depending on job type
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
 	try:
-		job_details = json.loads(record.job.job_details)
+		job_details = record.job.job_details_dict
 
 		# TransformJob
 		if record.job.job_type == 'TransformJob':

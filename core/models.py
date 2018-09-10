@@ -1344,7 +1344,7 @@ class JobInput(models.Model):
 	input_numerical_valve = models.IntegerField(null=True, default=None)
 	input_es_query_valve = models.TextField(null=True, default=None)
 	filter_dupe_record_ids = models.BooleanField(default=True)
-	passed_records = models.IntegerField(null=True, default=None)
+	passed_records = models.IntegerField(null=True, default=0)
 
 
 	def __str__(self):
@@ -5081,8 +5081,8 @@ class TransformJob(CombineJob):
 			kwargs (dict): optional, named args for Jobs
 		'''
 
-		# retrieve input job
-		job_details['input_job_id'] = job_params['input_job_id']
+		# retrieve input jobs
+		job_details['input_job_ids'] = job_params.getlist('input_job_id')
 
 		# retrieve transformation, add details to job details
 		transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
@@ -5209,7 +5209,7 @@ class MergeJob(CombineJob):
 			kwargs (dict): optional, named args for Jobs
 		'''
 
-		# retrieve input job
+		# retrieve input jobs
 		job_details['input_job_ids'] = job_params.getlist('input_job_id')
 
 		return job_details

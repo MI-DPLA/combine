@@ -168,9 +168,10 @@ class CombineSparkJob(object):
 		# count new job validations		
 		for jv in self.job.jobvalidation_set.filter(failure_count=None):
 			jv.validation_failure_count(force_recount=True)
-		
-		
 
+		# unpersist cached dataframes
+		self.spark.catalog.clearCache()
+		
 
 	def update_jobGroup(self, description):
 
@@ -342,7 +343,6 @@ class CombineSparkJob(object):
 				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_count['job_id'])).first()
 				input_job.passed_records = input_job_count['count']
 				input_job.save()
-
 
 		# cache
 		filtered_df = filtered_df.cache()
@@ -937,11 +937,24 @@ class TransformSpark(CombineSparkJob):
 		self.init_job()
 		self.update_jobGroup('Running Transform Job')
 
-		# read output from input job, filtering by job_id, grabbing Combine Record schema fields
-		input_job = Job.objects.get(pk=int(self.job_details['input_job_id']))
+		# # read output from input job, filtering by job_id, grabbing Combine Record schema fields
+		# input_job = Job.objects.get(pk=int(self.job_details['input_job_id']))
 
-		# retrieve from Mongo
-		pipeline = json.dumps({'$match': {'job_id': input_job.id}})
+		# # retrieve from Mongo
+		# pipeline = json.dumps({'$match': {'job_id': input_job.id}})
+		# records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+		# .option("uri","mongodb://127.0.0.1")\
+		# .option("database","combine")\
+		# .option("collection","record")\
+		# .option("partitioner","MongoSamplePartitioner")\
+		# .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+		# .option("pipeline",pipeline).load()		
+
+		# rehydrate list of input jobs
+		input_job_ids = [int(job_id) for job_id in self.job_details['input_job_ids']]
+
+		# retrieve from Mongo		
+		pipeline = json.dumps({'$match': {'job_id':{"$in":input_job_ids}}})
 		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
 		.option("uri","mongodb://127.0.0.1")\
 		.option("database","combine")\
@@ -949,14 +962,17 @@ class TransformSpark(CombineSparkJob):
 		.option("partitioner","MongoSamplePartitioner")\
 		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
 		.option("pipeline",pipeline).load()		
+		
+		# apply input filters
+		records = self.record_input_filters(records)
 
 		# fork as input_records		
 		input_records = records
 
-		# filter based on record validity
-		# NOTE: This split here with pre/post transformed, does not seem optimal, but keeping for now
-		input_records = self.record_input_filters(input_records)
-		records = self.record_input_filters(records)
+		# # filter based on record validity
+		# # NOTE: This split here with pre/post transformed, does not seem optimal, but keeping for now
+		# input_records = self.record_input_filters(input_records)
+		# records = self.record_input_filters(records)
 
 		# get transformation
 		transformation = Transformation.objects.get(pk=int(self.job_details['transformation']['id']))
