@@ -157,7 +157,7 @@
 					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif cjob.job.job_type_family == 'PublishJob' %}Publish Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
+					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest and Job Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform and Job Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge and Job Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis and Job Details{% endif %}</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
@@ -642,10 +642,10 @@
 						        // create the editor
 						        var container = document.getElementById("job_details_json");
 						        var options = {
-						        	mode: 'code',
+						        	mode: 'view',
 			    					modes: ['code', 'text', 'view'],
 			    					sortObjectKeys: true,
-			    					name: 'field_mapping_configuration',
+			    					name: 'job_details',
 			    					onModeChange: function(nm, om){
 			    						if (nm == 'view'){
 			    							$("#job_details_json").css('height','');

@@ -1039,14 +1039,14 @@ class Job(models.Model):
 		Method to update counts and return overview of results of DPLA Bulk Data matching
 		'''
 
-		# check job_details for dbdm key in job_details, indicating bulk data check
-		dbdm = self.job_details_dict.get('dbdm',False)
+		# check job_details for dbdm key in job_details, indicating bulk data check		
+		if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and self.job_details_dict['dbdm']['dbdd'] != None:
 
-		# if present
-		if dbdm:
+			# get dbdm
+			dbdm = self.job_details_dict.get('dbdm', False)	
 
 			# retrieve DBDD
-			dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd_id'])
+			dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd'])
 			
 			# get misses and matches, counting if not yet done
 			if dbdm['matches'] == None and dbdm['misses'] == None:
@@ -4137,9 +4137,10 @@ class CombineJob(object):
 			job_details['rits'] = None
 
 		# handle requested record_id transform
-		job_details['dbdd'] = job_params.get('dbdd', None)
-		if job_details['dbdd'] == '':
-			job_details['dbdd'] = None		
+		job_details['dbdm'] = {}
+		job_details['dbdm']['dbdd'] = job_params.get('dbdd', None)
+		if job_details['dbdm']['dbdd'] == '':
+			job_details['dbdm']['dbdd'] = None		
 
 		# debug
 		logger.debug(job_details)

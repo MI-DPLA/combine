@@ -856,18 +856,30 @@ def rerun_jobs(request):
 	logger.debug('re-running jobs')
 	
 	job_ids = request.POST.getlist('job_ids[]')
-	logger.debug(job_ids)
+
+	# set of jobs to rerun
+	job_rerun_set = set()
 
 	# loop through job_ids
-	for job_id in job_ids:
-
-		logger.debug('re-running job by id: %s' % job_id)
+	for job_id in job_ids:		
 		
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(job_id)
 
-		# get job note
-		cjob.rerun()
+		# add rerun lineage for this job to set
+		job_rerun_set.update(cjob.job.get_rerun_lineage())
+
+	# sort and run
+	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)	
+
+	# loop through and run
+	for job in ordered_job_rerun_set:
+
+		# cjob
+		cjob = models.CombineJob.get_combine_job(job.id)
+
+		# rerun
+		cjob.rerun(run_downstream=False)
 
 	# return
 	return JsonResponse({'results':True})

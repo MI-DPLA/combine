@@ -614,8 +614,11 @@ class CombineSparkJob(object):
 		self.logger.info('Running DPLA Bulk Data Compare')
 		self.update_jobGroup('Running DPLA Bulk Data Compare')
 
-		# get dbdd ID from kwargs
-		dbdd_id = self.job_details.get('dbdd', False)
+		# check for dbdm params, get dbdd ID from kwargs
+		if 'dbdm' in self.job_details.keys():		
+			dbdd_id = self.job_details['dbdm'].get('dbdd', False)
+		else:
+			dbdd_id = False
 
 		# if rits id provided
 		if dbdd_id and dbdd_id != None:
@@ -649,7 +652,14 @@ class CombineSparkJob(object):
 			.option("collection", "record").save()
 
 			# writing params to job_details
-			self.job.update_job_details({'dbdm':{'dbdd_id':int(dbdd_id), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+			self.job.update_job_details({
+					'dbdm':{
+						'dbdd':int(dbdd_id),
+						'dbdd_s3_key':dbdd.s3_key,
+						'matches':None,
+						'misses':None
+					}
+				})
 
 		# else, return with dbdm column all False
 		else:
@@ -1502,8 +1512,15 @@ class RunDBDM(CombineSparkPatch):
 		.option("database","combine")\
 		.option("collection", "record").save()
 
-		# writing params to job_details
-		self.job.update_job_details({'dbdm':{'dbdd_id':int(self.kwargs['dbdd_id']), 'dbdd_s3_key':dbdd.s3_key, 'matches':None, 'misses':None}})
+		# writing params to job_details		
+		self.job.update_job_details({
+			'dbdm':{
+					'dbdd':int(self.kwargs['dbdd_id']),
+					'dbdd_s3_key':dbdd.s3_key,
+					'matches':None,
+					'misses':None
+				}
+			})
 
 
 
