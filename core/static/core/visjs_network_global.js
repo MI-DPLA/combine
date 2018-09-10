@@ -91,36 +91,34 @@ function styleNetworkEdges(edge){
 		}
 	};
 
-	// begin to build edge label based on validity
-	edge.label = `${edge.input_validity_valve_pretty}`;
+	// edge label components
+	edge_label_comps = [];
+
+	// include Validity filters
+	if (edge.input_validity_valve == 'valid'){
+		edge_label_comps.push('Passed Validation');
+	}
+	else if (edge.input_validity_valve == 'invalid') {
+		edge_label_comps.push('Failed Validation');
+	}
 	
-	// add ES query valve applied
-	if (edge.input_es_query_valve){
-		edge.label += `, Mapped Field Filtered`;
+	// add ES query valve if applied
+	if (edge.input_es_query_valve){		
+		edge_label_comps.push('Mapped Field Filtered');
 	}
 
 	// if de-duping, add
-	if (edge.filter_dupe_record_ids){
-		edge.label += `, De-Duped`;
+	if (edge.filter_dupe_record_ids){		
+		edge_label_comps.push('De-Duped');
 	}
 
 	// if limited, add
-	if (edge.input_numerical_valve){
-		edge.label += `, Limit (${edge.input_numerical_valve})`;
+	if (edge.input_numerical_valve){		
+		edge_label_comps.push(`Limit (${edge.input_numerical_valve})`);
 	}
 
-	// finally, add count
-	edge.label += ` (${edge.record_count})`;
-	
-	// // color blue if limited
-	// if (edge.input_numerical_valve){
-	// 	edge.color = {
-	// 		color:'purple'
-	// 	};
-	// 	edge.font = {
-	// 		color:'purple'
-	// 	}	
-	// }
+	// join as string	
+	edge.label = `(${edge.record_count}) ` + edge_label_comps.join(', ');
 
 	// all records edge
 	if (edge.input_validity_valve == 'all'){

@@ -896,8 +896,7 @@ class Job(models.Model):
 						'id':edge_id,
 						'from':from_node,
 						'to':to_node,
-						'input_validity_valve':link.input_validity_valve,
-						'input_validity_valve_pretty':link.get_input_validity_valve_display(),
+						'input_validity_valve':link.input_validity_valve,						
 						'input_numerical_valve':link.input_numerical_valve,
 						'filter_dupe_record_ids':link.filter_dupe_record_ids,						
 						'total_records_passed':link.passed_records
