@@ -17,7 +17,7 @@ Record Versioning
 
 In an effort to preserve various stages of a Record through harvest, possible multiple transformation, merges and sub-dividing, Combine takes the approach of copying the Record each time.
 
-As outlined in the `Data Model <data_model.html>`_, Records are represented in both MySQL and ElasticSearch.  Each time a Job is run, and a Record is duplicated, it gets a new row in MySQL, with the full XML of the Record duplicated.  Records are associated with each other across Jobs by their `Combine ID <data_model.html#identifiers>`_.
+As outlined in the `Data Model <data_model.html>`_, Records are represented in both MongoDB and ElasticSearch.  Each time a Job is run, and a Record is duplicated, it gets a new document in Mongo, with the full XML of the Record duplicated.  Records are associated with each other across Jobs by their `Combine ID <data_model.html#identifiers>`_.
 
 This approach has pros and cons:
 
@@ -137,6 +137,10 @@ Keep in mind, if multiple Validation Scenarios were run for a particular Job, it
 **Limit Number of Records**
 
 The simplest of the three, users can provide a number to limit the Records from *each* Job.  For example, if **4** Jobs are selected as input, and a limit of **100** is entered, the resulting Job will have **400** Records: **4 x 100 = 400**.
+
+**Filter Duplicates**
+
+Optionally, remove duplicate Records based on matching ``record_id`` values.  As these are used for publishing, this can be a way to ensure that Records are not published with duplicate ``record_id``.
 
 **Refine by Mapped Fields**
 
@@ -259,7 +263,8 @@ Also in this area is a button "Job Notes" which will reveal a panel for reading 
 Below that are tabs that organize the various parts of the Job Details page:
 
   - `Records <#records>`__
-  - `Mapped Fields <#field-analysis>`__
+  - `Mapped Fields <#mapped-fields>`__
+  - `Re-Run <#re-run>`__
   - `Publish <#publish>`__
   - `Input Jobs <#input-jobs>`__
   - `Validation <#validation>`__
@@ -280,7 +285,7 @@ Records
 
 This table shows all Records for this Job.  It is sortable and searchable (though limited to what fields), and contains the following fields:
 
-  - ``DB ID`` - Record's Primary Key in MySQL
+  - ``DB ID`` - Record's ObjectID in MongoDB
   - ``Combine ID`` - identifier assigned to Record on creation, sticks with Record through all stages and Jobs
   - ``Record ID`` - Record identifier that is acquired, or created, on Record creation, and is used for publishing downstream.  This may be modified across Jobs, unlike the ``Combine ID``.
   - ``Originating OAI set`` - what OAI set this record was harvested as part of
@@ -292,8 +297,8 @@ This table shows all Records for this Job.  It is sortable and searchable (thoug
 In many ways, this is the most direct and primary route to access Records from a Job.
 
 
-Field Analysis
---------------
+Mapped Fields
+-------------
 
 This tab provides a table of all indexed fields for this job, the nature of which `is covered in more detail here <analysis.html#analyzing-indexed-fields>`_:
 
@@ -301,7 +306,19 @@ This tab provides a table of all indexed fields for this job, the nature of whic
    :alt: Indexed field analysis for a Job, across all Records
    :target: _images/job_field_analysis.png
 
-   Indexed field analysis for a Job, across all Records
+   Indexed field analysis for a Job, across all 
+
+
+Re-Run
+------
+
+Jobs can be re-run "in place" such that all current parameters, applied scenarios, and linkages to other jobs are maintained.  All "downstream" Jobs -- Jobs that inherit Records from this Job -- are also automatically re-run.
+
+One way to think about re-running Jobs would be to think of a group of Jobs that that inherit Records from one another as a "pipeline".  
+
+Jobs may also be re-run, as well as in bulk with other Jobs, from a Record Group page.
+
+More information can be found here: `Re-Running Jobs documentation <rerunning_jobs.html>`__.
 
 
 Publish
