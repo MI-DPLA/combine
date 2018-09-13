@@ -5077,7 +5077,7 @@ class TransformJob(CombineJob):
 		'''
 
 		# retrieve input jobs
-		job_details['input_job_ids'] = job_params.getlist('input_job_id')
+		job_details['input_job_ids'] = [int(job_id) for job_id in job_params.getlist('input_job_id') ]
 
 		# retrieve transformation, add details to job details
 		transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
@@ -5205,7 +5205,7 @@ class MergeJob(CombineJob):
 		'''
 
 		# retrieve input jobs
-		job_details['input_job_ids'] = job_params.getlist('input_job_id')
+		job_details['input_job_ids'] = [int(job_id) for job_id in job_params.getlist('input_job_id') ]
 
 		return job_details
 
@@ -5384,7 +5384,7 @@ class AnalysisJob(CombineJob):
 		'''
 
 		# retrieve input job
-		job_details['input_job_ids'] = job_params.getlist('input_job_id')
+		job_details['input_job_ids'] = [int(job_id) for job_id in job_params.getlist('input_job_id') ]
 
 		return job_details
 

@@ -655,24 +655,30 @@
 
 					<div class="row">
 						<div class="col-md-12">
-							<div id="job_details_json" style="height:640px;"></div>
+							<div id="job_params" style="height:640px;"></div>
+							<!-- hidden textarea for JSON to submit with form -->
+							<textarea style="display:none;" rows=10 class="code_style form-control" name="job_params_json" id="job_params_json"></textarea>
 							<script>
 						        // create the editor
-						        var container = document.getElementById("job_details_json");
+						        var container = document.getElementById("job_params");
 						        var options = {
 						        	mode: 'code',
 			    					modes: ['code', 'text', 'view'],
 			    					sortObjectKeys: true,
 			    					name: 'job_parameters',
+			    					onChange: function(){
+			    						// update hidden textarea from editor contents
+			    						$("#job_params_json").val(JSON.stringify(job_details_editor.get()));
+			    					},
 			    					onModeChange: function(nm, om){
 			    						if (nm == 'view'){
-			    							$("#job_details_json").css('height','');
+			    							$("#job_params").css('height','');
 			    						}
 			    						else {
-			    							$("#job_details_json").css('height','450px');
+			    							$("#job_params").css('height','450px');
 			    						}
 			    					},
-			    					navigationBar:false
+			    					navigationBar:true
 						        };
 						        var job_details_editor = new JSONEditor(container, options);
 
@@ -685,21 +691,22 @@
 					<div class="row" style="margin-top:15px;">
 						<div class="col-md-12">
 							<p><button class="btn btn-outline-success btn-sm" onclick="update_job_params(); return false;">Update Job Parameters</button></p>
+							<div id="job_params_alerts"></div>
 						</div>
 
 						<script>
 
 							function update_job_params(){
 
+								// get job_details as JSON
+								job_details_json = JSON.stringify(job_details_editor.get());								
+
 								// fire ajax to update job_details
 								$.ajax({
 									type: "POST",
-									url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
+									url: "{% url 'job_parameters' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
 									data: {
-										'update_type':update_type,
-										'fm_id':fm_id,
-										'fm_config_json':fm_config_json,
-										'fm_name':fm_name,
+										'job_details_json':job_details_json,										
 										'csrfmiddlewaretoken': '{{ csrf_token }}'
 									},
 									dataType:'json',
@@ -712,7 +719,7 @@
 											<span aria-hidden="true">&times;</span>
 											</button>
 										</div>`
-										$("#fm_config_alerts").append(alert);
+										$("#job_params_alerts").append(alert);
 									},
 									error: function(data){
 										
@@ -723,10 +730,9 @@
 											<span aria-hidden="true">&times;</span>
 											</button>
 										</div>`
-										$("#fm_config_alerts").append(alert);
+										$("#job_params_alerts").append(alert);
 									}
 								});
-
 
 							}
 

@@ -883,6 +883,34 @@ def rerun_jobs(request):
 
 
 @login_required
+def job_parameters(request, org_id, record_group_id, job_id):
+	
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# if GET, return JSON
+	if request.method == 'GET':
+
+		# return
+		return JsonResponse(cjob.job.job_details_dict)
+
+
+	# if POST, udpate
+	if request.method == 'POST':
+
+		# get job_details as JSON
+		job_details_json = request.POST.get('job_details_json', None)
+
+		if job_details_json != None:
+
+			cjob.job.job_details = job_details_json
+			cjob.job.save()
+
+		return JsonResponse({"msg":"Job Parameters updated!"})
+
+
+
+@login_required
 def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
