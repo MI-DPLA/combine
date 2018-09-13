@@ -4900,23 +4900,6 @@ class HarvestStaticXMLJob(HarvestJob):
 			self.write_validation_job_links(job_details)
 
 
-	def prepare_static_files(self):
-
-		'''
-		Method to prepare static files for spark processing
-		Note: Simplified greatly after utilizing Spark-XML for reading input.
-			- leaving scaffolding here in case needed in future, but doing very little now
-		'''
-
-		# handle uploads
-		if self.payload_dict['type'] == 'upload':
-			logger.debug('static harvest, processing upload type')
-
-		# handle disk locations
-		if self.payload_dict['type'] == 'location':
-			logger.debug('static harvest, processing location type')
-
-
 	@staticmethod
 	def parse_job_type_params(job_details, job_params, kwargs):
 
@@ -4956,9 +4939,19 @@ class HarvestStaticXMLJob(HarvestJob):
 			else:
 				job_details['payload_filename'] = payload_file.name
 			
+			# write temporary Django file to disk
 			with open(os.path.join(job_details['payload_dir'], job_details['payload_filename']), 'wb') as f:
 				f.write(payload_file.read())
 				payload_file.close()
+
+			# handle zip files
+			if job_details['content_type'] == 'application/zip':
+				logger.debug('handling zip file upload')
+				zip_filepath = os.path.join(job_details['payload_dir'], job_details['payload_filename'])
+				zip_ref = zipfile.ZipFile(zip_filepath, 'r')
+				zip_ref.extractall(job_details['payload_dir'])
+				zip_ref.close()
+				os.remove(zip_filepath)				
 
 		# include other information for finding, parsing, and preparing identifiers
 		job_details['xpath_document_root'] = job_params.get('xpath_document_root', None)

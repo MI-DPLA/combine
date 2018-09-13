@@ -35,13 +35,7 @@
 						<!-- payload -->
 						<h5>Provide Static Content</h5>
 						<p>For static harvests, optionally upload content, or provide a folder location on the filesystem where content can be found.</p>
-
-						<div class="alert alert-warning alert-dismissible fade show" role="alert">
-							<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
+						
 						<ul class="nav nav-tabs">
 							<li class="nav-item">
 								<a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload</a>
@@ -53,7 +47,13 @@
 
 						<div class="tab-content">
 
-							<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+							<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+								<div class="alert alert-warning alert-dismissible fade show" role="alert">
+									Upload a single file with multiple XML records, or an archive of files in either .tar or .zip format
+									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+									</button>
+								</div>								
 								<div class="custom-file">
 								   <input type="file" id="static_payload" name="static_payload" class="custom-file-input">
 								   <label for="static_payload" class="custom-file-label">Choose file...</label>
@@ -67,6 +67,12 @@
 							</div>
 
 							<div id="filesystem_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+								<div class="alert alert-warning alert-dismissible fade show" role="alert">
+									<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
+									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+									<span aria-hidden="true">&times;</span>
+									</button>
+								</div>
 								<label for="static_filepath">Location of XML files on disk:</label>
 								<input type="text" class="form-control" id="static_filepath" name="static_filepath" placeholder="e.g. /foo/bar/baz">
 							</div>
