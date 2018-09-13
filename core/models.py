@@ -4102,7 +4102,7 @@ class CombineJob(object):
 
 		# get field mapper configurations
 		job_details['field_mapper'] = job_params.get('field_mapper', None)
-		if job_details['field_mapper'] != None:
+		if job_details['field_mapper'] != None and job_details['field_mapper'] != 'default':
 			job_details['field_mapper'] = int(job_details['field_mapper'])		
 		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
 
