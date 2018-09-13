@@ -4937,7 +4937,7 @@ class HarvestStaticXMLJob(HarvestJob):
 			job_details['content_type'] = payload_file.content_type
 
 			# create payload dir
-			job_details['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
+			job_details['payload_dir'] = '%s/static_uploads/%s' % (settings.BINARY_STORAGE.split('file://')[-1], str(uuid.uuid4()))
 			os.makedirs(job_details['payload_dir'])
 
 			# establish payload filename
