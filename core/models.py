@@ -4482,24 +4482,22 @@ class CombineJob(object):
 			return False
 
 
-	def reindex_bg_task(self, fm_config=None):
+	def reindex_bg_task(self, fm_config_json=None):
 
 		'''
 		Method to reindex job as bg task
 
 		Args:
-			fm_config (dict|str): XML2kvp field mapper configurations, JSON or dictionary
+			fm_config_json (dict|str): XML2kvp field mapper configurations, JSON or dictionary
 				- if None, saved configurations for Job will be used
 		'''
 
 		# handle fm_config
-		if not fm_config:
+		if not fm_config_json:
 			fm_config_json = self.job.get_fm_config_json()
 		else:
-			if type(fm_config) == dict:
-				fm_config_json = json.dumps(fm_config)
-			elif type(fm_config) == str:
-				fm_config_json = fm_config
+			if type(fm_config_json) == dict:
+				fm_config_json = json.dumps(fm_config_json)
 
 		# initiate Combine BG Task
 		ct = CombineBackgroundTask(

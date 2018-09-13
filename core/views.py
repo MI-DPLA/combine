@@ -1344,7 +1344,7 @@ def job_update(request, org_id, record_group_id, job_id):
 			fm_config_json = request.POST.get('fm_config_json')
 
 			# init re-index
-			bg_task = cjob.reindex_bg_task(fm_config_json)
+			bg_task = cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
 			return redirect('bg_tasks')
 
