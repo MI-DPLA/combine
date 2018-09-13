@@ -556,6 +556,9 @@ def export_documents(ct_id):
 def job_reindex(ct_id):
 
 	'''
+
+	Background tasks to re-index Job
+
 	- submit livy job and poll until complete
 		- use livy session from cjob (works, but awkward way to get this)	
 	'''
@@ -592,7 +595,7 @@ def job_reindex(ct_id):
 		# get new mapping
 		mapped_field_analysis = cjob.count_indexed_fields()
 		cjob.job.update_job_details({
-			'fm_config_json':ct.task_params['fm_config_json'],
+			'field_mapper_config':json.loads(ct.task_params['fm_config_json']),
 			'mapped_field_analysis':mapped_field_analysis
 			}, save=True)
 

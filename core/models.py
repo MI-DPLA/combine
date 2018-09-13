@@ -4490,6 +4490,7 @@ class CombineJob(object):
 		Args:
 			fm_config_json (dict|str): XML2kvp field mapper configurations, JSON or dictionary
 				- if None, saved configurations for Job will be used
+				- pass JSON to bg task for serialization
 		'''
 
 		# handle fm_config
