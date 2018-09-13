@@ -1039,37 +1039,42 @@ class Job(models.Model):
 		Method to update counts and return overview of results of DPLA Bulk Data matching
 		'''
 
-		# check job_details for dbdm key in job_details, indicating bulk data check		
-		if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and self.job_details_dict['dbdm']['dbdd'] != None:
+		if self.finished:
 
-			# get dbdm
-			dbdm = self.job_details_dict.get('dbdm', False)	
+			# check job_details for dbdm key in job_details, indicating bulk data check		
+			if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and self.job_details_dict['dbdm']['dbdd'] != None:
 
-			# retrieve DBDD
-			dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd'])
-			
-			# get misses and matches, counting if not yet done
-			if dbdm['matches'] == None and dbdm['misses'] == None:
+				# get dbdm
+				dbdm = self.job_details_dict.get('dbdm', False)	
 
-				# matches
-				dbdm['matches'] = self.get_records().filter(dbdm=True).count()
+				# retrieve DBDD
+				dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd'])
+				
+				# get misses and matches, counting if not yet done
+				if dbdm['matches'] == None and dbdm['misses'] == None:
 
-				# misses
-				dbdm['misses'] = self.get_records().filter(dbdm=False).count()
+					# matches
+					dbdm['matches'] = self.get_records().filter(dbdm=True).count()
 
-				# update job details
-				self.update_job_details(dbdm)
+					# misses
+					dbdm['misses'] = self.get_records().filter(dbdm=False).count()
 
-			# return dict
-			return {
-				'dbdd':dbdd,
-				'matches':dbdm['matches'],
-				'misses': dbdm['misses']
-			}
+					# update job details
+					self.update_job_details({'dbdm':dbdm})
+
+				# return dict
+				return {
+					'dbdd':dbdd,
+					'matches':dbdm['matches'],
+					'misses': dbdm['misses']
+				}
+
+			else:
+				logger.debug('DPLA Bulk comparison not run, or no matches found.')
+				return False
 
 		else:
-			logger.debug('DPLA Bulk comparison not run, or no matches found.')
-			return False
+			return False			
 
 
 	def drop_es_index(self):
@@ -4128,19 +4133,23 @@ class CombineJob(object):
 		# finish input filters
 		job_details['input_filters'] = input_filters
 
-		# get requested validation scenarios
-		job_details['validation_scenarios'] = job_params.getlist('validation_scenario', [])
+		# get requested validation scenarios and convert to int
+		job_details['validation_scenarios'] = [int(vs_id) for vs_id in job_params.getlist('validation_scenario', []) ]
 
 		# handle requested record_id transform
 		job_details['rits'] = job_params.get('rits', None)
 		if job_details['rits'] == '':
 			job_details['rits'] = None
+		if job_details['rits'] != None:
+			job_details['rits'] = int(job_details['rits'])
 
-		# handle requested record_id transform
+		# handle DPLA bulk data compare
 		job_details['dbdm'] = {}
 		job_details['dbdm']['dbdd'] = job_params.get('dbdd', None)
 		if job_details['dbdm']['dbdd'] == '':
-			job_details['dbdm']['dbdd'] = None		
+			job_details['dbdm']['dbdd'] = None
+		if job_details['dbdm']['dbdd'] != None:
+			job_details['dbdm']['dbdd'] = int(job_details['dbdm']['dbdd'])
 
 		# debug
 		logger.debug(job_details)
@@ -4799,11 +4808,8 @@ class HarvestOAIJob(HarvestJob):
 		Method to parse job type specific parameters
 		'''
 
-		# save OAIEndpoint id
-		job_details['oai_endpoint'] = job_params.get('oai_endpoint_id')
-
 		# retrieve endpoint params
-		oai_params = OAIEndpoint.objects.get(pk=int(job_details['oai_endpoint'])).__dict__.copy()
+		oai_params = OAIEndpoint.objects.get(pk=int(job_params.get('oai_endpoint_id'))).__dict__.copy()
 
 		# drop _state
 		oai_params.pop('_state')

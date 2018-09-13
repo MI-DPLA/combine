@@ -710,10 +710,7 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# OAI Harvest
 	if type(cjob) == models.HarvestOAIJob:
-
-		# get OAI endpoint used		
-		if 'oai_endpoint_id' in job_details:
-			job_details['oai_endpoint'] = models.OAIEndpoint.objects.get(pk=job_details['oai_endpoint_id'])
+		pass
 
 	# Static Harvest
 	elif type(cjob) == models.HarvestStaticXMLJob:

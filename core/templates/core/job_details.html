@@ -157,10 +157,13 @@
 					<a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest and Job Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform and Job Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge and Job Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis and Job Details{% endif %}</a>
+					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest  Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#job_params_tab">Job Parameters</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#spark_details_tab">Spark Details</a>
@@ -631,21 +634,36 @@
 
 							</div>
 						</div>
-					</div>
+					</div>				
 
-					<!-- general Job details -->
+				</div>
+
+				<div id="export_tab" class="tab-pane full_width_tab">
+					
+					<!-- export content -->
+					{% include 'core/export.html' %}
+
+				</div>
+
+				<div id="job_params_tab" class="tab-pane full_width_tab">
+					
 					<div class="row">
 						<div class="col-md-12">
-							<h4>Job Parameters</h3>
+							<h4>Job Parameters</h4>
+						</div>
+					</div>
+
+					<div class="row">
+						<div class="col-md-12">
 							<div id="job_details_json" style="height:640px;"></div>
 							<script>
 						        // create the editor
 						        var container = document.getElementById("job_details_json");
 						        var options = {
-						        	mode: 'view',
+						        	mode: 'code',
 			    					modes: ['code', 'text', 'view'],
 			    					sortObjectKeys: true,
-			    					name: 'job_details',
+			    					name: 'job_parameters',
 			    					onModeChange: function(nm, om){
 			    						if (nm == 'view'){
 			    							$("#job_details_json").css('height','');
@@ -664,12 +682,57 @@
 						</div>
 					</div>
 
-				</div>
+					<div class="row" style="margin-top:15px;">
+						<div class="col-md-12">
+							<p><button class="btn btn-outline-success btn-sm" onclick="update_job_params(); return false;">Update Job Parameters</button></p>
+						</div>
 
-				<div id="export_tab" class="tab-pane full_width_tab">
-					
-					<!-- export content -->
-					{% include 'core/export.html' %}
+						<script>
+
+							function update_job_params(){
+
+								// fire ajax to update job_details
+								$.ajax({
+									type: "POST",
+									url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
+									data: {
+										'update_type':update_type,
+										'fm_id':fm_id,
+										'fm_config_json':fm_config_json,
+										'fm_name':fm_name,
+										'csrfmiddlewaretoken': '{{ csrf_token }}'
+									},
+									dataType:'json',
+									success: function(data){
+										
+										// notify user
+										alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+											${data.msg}
+											<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+											</button>
+										</div>`
+										$("#fm_config_alerts").append(alert);
+									},
+									error: function(data){
+										
+										// notify user
+										alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+											${data.responseJSON.msg}
+											<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+											</button>
+										</div>`
+										$("#fm_config_alerts").append(alert);
+									}
+								});
+
+
+							}
+
+						</script>
+
+					</div>
 
 				</div>
 
