@@ -411,7 +411,7 @@
 						        var editor = new JSONEditor(container, options);
 
 						        // set json to editor
-						        editor.set({{ job_fm_config_json|safe }});
+						        editor.set({{ cjob.job.get_fm_config_json|safe }});
 						    </script>
 						</div>
 					</div>

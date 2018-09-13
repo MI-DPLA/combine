@@ -687,13 +687,6 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
-	# attempt to retrieve fm_config_json
-	try:
-		job_details = json.loads(cjob.job.job_details)
-		job_fm_config_json = job_details['fm_config_json']
-	except:
-		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
-
 	# job details and job type specific augment
 	job_details = cjob.job.job_details_dict	
 
@@ -738,8 +731,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
-			'q':q,
-			'job_fm_config_json':job_fm_config_json,
+			'q':q,			
 			'job_details':job_details,
 			'pr':pr,
 			'es_index_str':cjob.esi.es_index_str,
