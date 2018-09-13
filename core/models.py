@@ -1104,19 +1104,19 @@ class Job(models.Model):
 	def get_fm_config_json(self, as_dict=False):
 
 		'''
-		Method to return Field Mapper Configuration JSON used
+		Method to return used Field Mapper Configuration as JSON
 		'''
 
-		try:
+		try:			
 
-			job_details = json.loads(self.job_details)
-			fm_config_json = job_details['fm_config_json']
+			# get field mapper config as dictionary
+			fm_dict = self.job_details_dict['field_mapper_config']
 
 			# return as JSON
 			if as_dict:
-				return json.loads(fm_config_json)
+				return fm_dict
 			else:
-				return fm_config_json
+				return json.dumps(fm_dict)
 
 		except Exception as e:
 			logger.debug('error retrieving fm_config_json: %s' % str(e))
@@ -4101,8 +4101,10 @@ class CombineJob(object):
 			job_details['job_note'] = None		
 
 		# get field mapper configurations
-		job_details['field_mapper'] = job_params.get('field_mapper')
-		job_details['fm_config_json'] = job_params.get('fm_config_json')
+		job_details['field_mapper'] = job_params.get('field_mapper', None)
+		if job_details['field_mapper'] != None:
+			job_details['field_mapper'] = int(job_details['field_mapper'])		
+		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
 
 		# capture input filters
 		input_filters = {}

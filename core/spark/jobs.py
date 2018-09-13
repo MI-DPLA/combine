@@ -284,7 +284,7 @@ class CombineSparkJob(object):
 					self.spark,
 					job=self.job,
 					records_df=db_records,
-					fm_config_json=self.job_details['fm_config_json']
+					field_mapper_config=self.job_details['field_mapper_config']
 				)
 
 			# run Validation Scenarios
@@ -1005,7 +1005,7 @@ class TransformSpark(CombineSparkJob):
 
 			# get XML2kvp settings from input Job
 			input_job_details = input_job.job_details_dict
-			input_job_fm_config = input_job_details['fm_config_json']
+			input_job_fm_config = input_job_details['field_mapper_config']
 
 			# pass config json
 			records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
@@ -1385,7 +1385,7 @@ class ReindexSparkPatch(CombineSparkPatch):
 			self.spark,
 			job=self.job,
 			records_df=db_records,
-			fm_config_json=self.kwargs['fm_config_json']
+			field_mapper_config=json.loads(self.kwargs['fm_config_json'])
 		)
 
 
