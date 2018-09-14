@@ -45,7 +45,7 @@ class ESIndex(object):
 	'''
 
 	@staticmethod
-	def index_job_to_es_spark(spark, job, records_df, fm_config_json):
+	def index_job_to_es_spark(spark, job, records_df, field_mapper_config):
 
 		'''
 		Method to index records dataframe into ES
@@ -54,7 +54,7 @@ class ESIndex(object):
 			spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job for records
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
-			index_mapper (str): string of indexing mapper to use (e.g. MODSMapper)
+			field_mapper_config (dict): XML2kvp field mapper configurations
 
 		Returns:
 			None
@@ -73,7 +73,7 @@ class ESIndex(object):
 		def es_mapper_pt_udf(pt):
 
 			# init mapper once per partition
-			mapper = index_mapper_handle(fm_config=json.loads(fm_config_json))
+			mapper = index_mapper_handle(field_mapper_config=field_mapper_config)
 
 			for row in pt:
 
@@ -294,9 +294,9 @@ class XML2kvpMapper(BaseMapper):
 	'''
 
 
-	def __init__(self, fm_config=None):		
+	def __init__(self, field_mapper_config=None):		
 
-		self.fm_config = fm_config
+		self.field_mapper_config = field_mapper_config
 
 
 	def map_record(self,
@@ -328,11 +328,11 @@ class XML2kvpMapper(BaseMapper):
 		try:			
 
 			# prepare literals
-			if 'add_literals' not in self.fm_config.keys():
-				self.fm_config['add_literals'] = {}
+			if 'add_literals' not in self.field_mapper_config.keys():
+				self.field_mapper_config['add_literals'] = {}
 
 
-			self.fm_config['add_literals'].update({
+			self.field_mapper_config['add_literals'].update({
 
 				# add temporary id field
 				'temp_id':db_id,
@@ -355,7 +355,7 @@ class XML2kvpMapper(BaseMapper):
 			})
 
 			# map with XML2kvp
-			kvp_dict = XML2kvp.xml_to_kvp(record_string, **self.fm_config)
+			kvp_dict = XML2kvp.xml_to_kvp(record_string, **self.field_mapper_config)
 
 			return (
 					'success',

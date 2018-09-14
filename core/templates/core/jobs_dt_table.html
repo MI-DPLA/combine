@@ -95,7 +95,7 @@
 							</form>
 						</div>
 					</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>					
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>	
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a><br>
 						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details</button></a>
@@ -201,9 +201,9 @@
 		<table class="table table-bordered table-hover">
 			<tbody>				
 				<tr>
-					<th style="width:10%;">Move Jobs</th>
+					<th style="width:10%;">Move</th>
 					<td>Moves selected Jobs to another Record Group within this Organization</td>
-					<td style="width:20%; text-align:center;">
+					<td style="width:20%; text-align:left;">
 						<div class="form-group">							
 							<select class="form-control" id="record_group_id_select" name="record_group_id_select" required>
 								<option value=''>Select Record Group...</option>
@@ -218,8 +218,15 @@
 				<tr>
 					<th style="width:10%;">Delete Jobs</th>
 					<td>Marks selected Jobs for deletion as background task</td>
-					<td style="width:20%; text-align:center;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs</button>
+					<td style="width:20%; text-align:left;">
+						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected</button>
+					</td>
+				</tr>
+				<tr>
+					<th style="width:10%;">Re-Run</th>
+					<td>Re-run Job, and all downstream Jobs</td>
+					<td style="width:20%; text-align:left;">
+						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs</button>
 					</td>
 				</tr>
 			</tbody>
@@ -293,6 +300,37 @@
 				});     
 			}
 		} 
+
+		// handle bulk job deletion
+		function rerun_jobs(){
+
+			confirmation = confirm('Are you sure you want to re-run selected Jobs?  All Records and Validations will be removed for selected Jobs, and all their downstream Jobs.');
+			if (confirmation){
+
+				// get values for job_ids
+				job_ids = [];
+				$(".job_id_sel:checkbox:checked").each(function(i){
+					job_ids.push($(this).val());
+				});                     
+
+				// submit job ids via ajax
+				$.ajax({
+					type: "POST",
+					url: "{% url 'rerun_jobs' %}",
+					data: {
+						'job_ids':job_ids,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){
+						console.log(data);
+						if (data.results == true) {
+							location.reload();
+						}					
+					}
+				});
+			}
+		}
 
 	</script>
 

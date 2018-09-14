@@ -81,7 +81,7 @@ function styleNetworkNodes(node){
 
 // function to style vis.js network edges
 function styleNetworkEdges(edge){
-	
+
 	// add arrow
 	edge.arrows = {
 		to:{
@@ -91,25 +91,48 @@ function styleNetworkEdges(edge){
 		}
 	};
 
-	// set edge label based on input validity type
-	edge.label = `${edge.input_validity_valve_pretty} (${edge.record_count})`;
-	// if limited, add
-	if (edge.input_numerical_valve){
-		edge.label += `, Limit (${edge.input_numerical_valve})`;
+	// edge label components
+	edge_label_comps = [];
+
+	// include Validity filters
+	if (edge.input_validity_valve == 'valid'){
+		edge_label_comps.push('Passed Validation');
+	}
+	else if (edge.input_validity_valve == 'invalid') {
+		edge_label_comps.push('Failed Validation');
+	}
+	else if (edge.input_validity_valve == 'all') {
+		edge_label_comps.push('Ignore Validation');
+	}
+	
+	// add ES query valve if applied
+	if (edge.input_es_query_valve){		
+		edge_label_comps.push('Mapped Field Filtered');
 	}
 
-	// color blue if limited
-	if (edge.input_numerical_valve){
-		edge.color = {
-			color:'purple'
-		};
-		edge.font = {
-			color:'purple'
-		}	
+	// if de-duping, add
+	if (edge.filter_dupe_record_ids){		
+		edge_label_comps.push('De-Duped');
 	}
+
+	// if limited, add
+	if (edge.input_numerical_valve){		
+		edge_label_comps.push(`Limit (${edge.input_numerical_valve})`);
+	}
+
+	// format count
+	if (edge.total_records_passed == null) {
+		count = '...';
+	}
+	else {
+		count = edge.total_records_passed;
+	}
+
+	// join as string	
+	edge.label = `(${count}) ` + edge_label_comps.join(', ');
 
 	// all records edge
-	else if (edge.input_validity_valve == 'all'){
+	if (edge.input_validity_valve == 'all'){
 		edge.color = {
 			color:'orange'
 		};

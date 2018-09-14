@@ -556,6 +556,9 @@ def export_documents(ct_id):
 def job_reindex(ct_id):
 
 	'''
+
+	Background tasks to re-index Job
+
 	- submit livy job and poll until complete
 		- use livy session from cjob (works, but awkward way to get this)	
 	'''
@@ -592,7 +595,7 @@ def job_reindex(ct_id):
 		# get new mapping
 		mapped_field_analysis = cjob.count_indexed_fields()
 		cjob.job.update_job_details({
-			'fm_config_json':ct.task_params['fm_config_json'],
+			'field_mapper_config':json.loads(ct.task_params['fm_config_json']),
 			'mapped_field_analysis':mapped_field_analysis
 			}, save=True)
 
@@ -631,7 +634,14 @@ def job_new_validations(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# loop through validation jobs, and remove from DB if share validation scenario
-		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])		
+		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
+
+		# update job_details with validations
+		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+		validation_scenarios.extend(ct.task_params['validation_scenarios'])
+		cjob.job.update_job_details({
+			'validation_scenarios':validation_scenarios
+			}, save=True)
 
 		# generate spark code		
 		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
@@ -698,6 +708,13 @@ def job_remove_validation(ct_id):
 
 		# get Job Validation and delete
 		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
+
+		# remove Job Validation from job_details
+		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+		validation_scenarios.remove(str(jv.validation_scenario.id))
+		cjob.job.update_job_details({
+			'validation_scenarios':validation_scenarios
+			}, save=True)
 
 		# delete validation failures associated with Validation Scenario and Job
 		delete_results = jv.delete_record_validation_failures()
@@ -819,7 +836,7 @@ def job_dbdm(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# set dbdm as False for all Records in Job
-		clear_result = models.mc_handle.combine.record.update_many({'job_id':cjob.job.id},{'$set':{'dbdm':False}}, upsert=False)
+		clear_result = models.mc_handle.combine.record.update_many({'job_id':cjob.job.id},{'$set':{'dbdm':False}}, upsert=False)		
 
 		# generate spark code		
 		spark_code = 'from jobs import RunDBDM\nRunDBDM(spark, job_id="%(job_id)s", dbdd_id=%(dbdd_id)s).spark_function()' % {

@@ -46,7 +46,11 @@ class ValidationScenarioSpark(object):
 	Class to organize methods and attributes used for running validation scenarios
 	'''
 
-	def __init__(self, spark=None, job=None, records_df=None, validation_scenarios=None):
+	def __init__(self,
+		spark=None,
+		job=None,
+		records_df=None,
+		validation_scenarios=None):
 
 		'''
 		Args:
@@ -93,7 +97,7 @@ class ValidationScenarioSpark(object):
 		for vs_id in self.validation_scenarios:
 
 			# get validation scenario
-			vs = ValidationScenario.objects.get(pk=vs_id)
+			vs = ValidationScenario.objects.get(pk=int(vs_id))
 			vs_id = vs.id
 			vs_name = vs.name
 			vs_filepath = vs.filepath
@@ -144,43 +148,65 @@ class ValidationScenarioSpark(object):
 
 			for row in pt:
 
-				# get document xml
-				record_xml = etree.fromstring(row.document.encode('utf-8'))
+				try:
 
-				# validate
-				is_valid = validator.validate(record_xml)
+					# get document xml
+					record_xml = etree.fromstring(row.document.encode('utf-8'))
 
-				# if not valid, prepare Row
-				if not is_valid:
+					# validate
+					is_valid = validator.validate(record_xml)
 
-					# prepare results_dict
+					# if not valid, prepare Row
+					if not is_valid:
+
+						# prepare results_dict
+						results_dict = {
+							'fail_count':0,
+							'failed':[]
+						}
+
+						# get failed
+						report_root = validator.validation_report.getroot()
+						fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
+
+						# log fail_count
+						results_dict['fail_count'] = len(fails)
+
+						# loop through fails and add to dictionary
+						for fail in fails:
+							fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+							results_dict['failed'].append(fail_text_elem.text)
+						
+						yield Row(
+							record_id=row._id,
+							record_identifier=row.record_id,
+							job_id=row.job_id,
+							validation_scenario_id=int(vs_id),
+							validation_scenario_name=vs_name,
+							valid=False,
+							results_payload=json.dumps(results_dict),
+							fail_count=results_dict['fail_count']
+						)
+
+				except Exception as e:
+
 					results_dict = {
 						'fail_count':0,
 						'failed':[]
 					}
+					results_dict['fail_count'] += 1
+					results_dict['failed'].append("Schematron validation exception: %s" % (str(e)))
 
-					# get failed
-					report_root = validator.validation_report.getroot()
-					fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
-
-					# log fail_count
-					results_dict['fail_count'] = len(fails)
-
-					# loop through fails and add to dictionary
-					for fail in fails:
-						fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
-						results_dict['failed'].append(fail_text_elem.text)
-					
 					yield Row(
-						record_id=row._id,
-						record_identifier=row.record_id,
-						job_id=row.job_id,
-						validation_scenario_id=int(vs_id),
-						validation_scenario_name=vs_name,
-						valid=False,
-						results_payload=json.dumps(results_dict),
-						fail_count=results_dict['fail_count']
-					)
+							record_id=row._id,
+							record_identifier=row.record_id,
+							job_id=row.job_id,
+							validation_scenario_id=int(vs_id),
+							validation_scenario_name=vs_name,
+							valid=False,
+							results_payload=json.dumps(results_dict),
+							fail_count=results_dict['fail_count']
+						)
 
 		# run pt_udf map
 		validation_fails_rdd = self.records_df.rdd.mapPartitions(validate_schematron_pt_udf).filter(lambda row: row is not None)

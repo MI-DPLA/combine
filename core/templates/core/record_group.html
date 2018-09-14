@@ -41,7 +41,7 @@
 					<tr>
 						<th style="width:10%;">Harvest</th>
 						<td>Harvests Jobs are how Records are created and introduced to a Record Group.  Currently this includes OAI-PMH harvesting, or ingesting Records from static files on disk. </td>
-						<td style="width:20%; text-align:center;">
+						<td style="width:20%; text-align:left;">
 							<p>
 								<a href="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest OAI-PMH</button></a>
 							</p>
@@ -53,7 +53,7 @@
 					<tr>
 						<th style="width:10%;">Transform</th>
 						<td>Transformation Jobs change the Records within a Job some way.  Currently this includes transformation of the Record's XML document with XSLT or python code snippets.  Before running a Transformation, make a <a href="{% url 'configuration' %}">pre-configured Transformation Scenario</a> exists.</td>
-						<td style="width:20%; text-align:center;">
+						<td style="width:20%; text-align:left;">
 							<p>
 								<a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Transform Job</button></a>
 							</p>
@@ -62,7 +62,7 @@
 					<tr>
 						<th style="width:10%;">Duplicate / Merge</th>
 						<td>Duplicate / Merge Jobs do not modify the Record, but can be used to combine multiple Jobs into one Job, run new or different Validation Scenarios on a pre-existing Job, or index to ElasticSearch with a different mapping.</td>
-						<td style="width:20%; text-align:center;">
+						<td style="width:20%; text-align:left;">
 							<p>
 								<a href="{% url 'job_merge' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Duplicate / Merge Jobs</button></a>
 							</p>

@@ -25,6 +25,7 @@ from django.contrib.auth.decorators import login_required
 from django.core import serializers
 from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
+from django.db import connection
 from django.db.models import Q
 from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
@@ -484,10 +485,7 @@ def record_group(request, org_id, record_group_id):
 	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
 
 	# get all jobs associated with record group
-	jobs = models.Job.objects.filter(record_group=record_group_id)
-
-	# get record group job lineage
-	job_lineage = record_group.get_jobs_lineage()
+	jobs = models.Job.objects.filter(record_group=record_group_id)	
 
 	# get all currently applied publish set ids
 	publish_set_ids = models.PublishedRecords.get_publish_set_ids()	
@@ -497,6 +495,9 @@ def record_group(request, org_id, record_group_id):
 
 		# update status
 		job.update_status()
+
+	# get record group job lineage
+	job_lineage = record_group.get_jobs_lineage()
 
 	# get all record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
@@ -686,13 +687,6 @@ def job_details(request, org_id, record_group_id, job_id):
 	# check if limiting to one, pre-existing record
 	q = request.GET.get('q', None)
 
-	# attempt to retrieve fm_config_json
-	try:
-		job_details = json.loads(cjob.job.job_details)
-		job_fm_config_json = job_details['fm_config_json']
-	except:
-		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
-
 	# job details and job type specific augment
 	job_details = cjob.job.job_details_dict	
 
@@ -709,10 +703,7 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# OAI Harvest
 	if type(cjob) == models.HarvestOAIJob:
-
-		# get OAI endpoint used		
-		if 'oai_endpoint_id' in job_details:
-			job_details['oai_endpoint'] = models.OAIEndpoint.objects.get(pk=job_details['oai_endpoint_id'])
+		pass
 
 	# Static Harvest
 	elif type(cjob) == models.HarvestStaticXMLJob:
@@ -740,8 +731,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
 			'dpla_bulk_data_matches':dpla_bulk_data_matches,
-			'q':q,
-			'job_fm_config_json':job_fm_config_json,
+			'q':q,			
 			'job_details':job_details,
 			'pr':pr,
 			'es_index_str':cjob.esi.es_index_str,
@@ -837,6 +827,82 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def job_rerun(request, org_id, record_group_id, job_id):
+	
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# get job note
+	cjob.rerun()
+
+	# redirect to Record Group
+	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
+
+
+@login_required
+def rerun_jobs(request):
+
+	logger.debug('re-running jobs')
+	
+	job_ids = request.POST.getlist('job_ids[]')
+
+	# set of jobs to rerun
+	job_rerun_set = set()
+
+	# loop through job_ids
+	for job_id in job_ids:		
+		
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# add rerun lineage for this job to set
+		job_rerun_set.update(cjob.job.get_rerun_lineage())
+
+	# sort and run
+	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)	
+
+	# loop through and run
+	for job in ordered_job_rerun_set:
+
+		# cjob
+		cjob = models.CombineJob.get_combine_job(job.id)
+
+		# rerun
+		cjob.rerun(run_downstream=False)
+
+	# return
+	return JsonResponse({'results':True})
+
+
+@login_required
+def job_parameters(request, org_id, record_group_id, job_id):
+	
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# if GET, return JSON
+	if request.method == 'GET':
+
+		# return
+		return JsonResponse(cjob.job.job_details_dict)
+
+
+	# if POST, udpate
+	if request.method == 'POST':
+
+		# get job_details as JSON
+		job_details_json = request.POST.get('job_details_json', None)
+
+		if job_details_json != None:
+
+			cjob.job.job_details = job_details_json
+			cjob.job.save()
+
+		return JsonResponse({"msg":"Job Parameters updated!"})
+
+
+
+@login_required
 def job_harvest_oai(request, org_id, record_group_id):
 
 	'''
@@ -879,61 +945,13 @@ def job_harvest_oai(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beginning oai harvest for Record Group: %s' % record_group.name)
-
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve OAIEndpoint
-		oai_endpoint = models.OAIEndpoint.objects.get(pk=int(request.POST['oai_endpoint_id']))
-
-		# add overrides if set
-		overrides = { override:request.POST[override]
-			for override in ['verb','metadataPrefix','scope_type','scope_value'] if request.POST[override] != '' }
-		logger.debug(overrides)
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.HarvestOAIJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			oai_endpoint=oai_endpoint,
-			overrides=overrides,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			dbdd=dbdd
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.HarvestOAIJob,
+			job_params = request.POST
 		)
-		
+
 		# start job and update status
 		job_status = cjob.start_job()
 
@@ -985,92 +1003,15 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beginning static xml harvest for Record Group: %s' % record_group.name)
-
-		'''
-		When determining between user supplied file, and location on disk, favor location
-		'''
-		# establish payload dictionary
-		payload_dict = {}
-
-		# use location on disk
-		# When a location on disk is provided, set payload_dir as the location provided
-		if request.POST.get('static_filepath') != '':
-			payload_dict['type'] = 'location'
-			payload_dict['payload_dir'] = request.POST.get('static_filepath')
-
-		# use upload
-		# When a payload is uploaded, create payload_dir and set
-		else:
-			payload_dict['type'] = 'upload'
-
-			# get static file payload
-			payload_file = request.FILES['static_payload']
-
-			# grab content type
-			payload_dict['content_type'] = payload_file.content_type
-
-			# create payload dir
-			payload_dict['payload_dir'] = '/tmp/combine/%s' % str(uuid.uuid4())
-			os.makedirs(payload_dict['payload_dir'])
-
-			# establish payload filename
-			if hash_payload_filename:
-				payload_dict['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
-			else:
-				payload_dict['payload_filename'] = payload_file.name
-			
-			with open(os.path.join(payload_dict['payload_dir'], payload_dict['payload_filename']), 'wb') as f:
-				f.write(payload_file.read())
-				payload_file.close()
-
-		# include other information for finding, parsing, and preparing identifiers
-		payload_dict['xpath_document_root'] = request.POST.get('xpath_document_root', None)
-		payload_dict['document_element_root'] = request.POST.get('document_element_root', None)
-		payload_dict['additional_namespace_decs'] = request.POST.get('additional_namespace_decs', None).replace("'",'"')
-		payload_dict['xpath_record_id'] = request.POST.get('xpath_record_id', None)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.HarvestStaticXMLJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			payload_dict=payload_dict,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			dbdd=dbdd
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.HarvestStaticXMLJob,
+			job_params = request.POST,
+			files = request.FILES,
+			hash_payload_filename = hash_payload_filename
 		)
-		
+
 		# start job and update status
 		job_status = cjob.start_job()
 
@@ -1125,8 +1066,7 @@ def job_transform(request, org_id, record_group_id):
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
 		# render page
-		return render(request, 'core/job_transform.html', {
-				'job_select_type':'single',
+		return render(request, 'core/job_transform.html', {				
 				'record_group':record_group,
 				'input_jobs':input_jobs,
 				'input_job_scope':input_job_scope,
@@ -1143,85 +1083,12 @@ def job_transform(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('beginning transform for Record Group: %s' % record_group.name)
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.TransformJob,
+			job_params = request.POST)
 
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve input job
-		input_job = models.Job.objects.get(pk=int(request.POST['input_job_id']))
-		logger.debug('using job as input: %s' % input_job)
-
-		# retrieve transformation
-		transformation = models.Transformation.objects.get(pk=int(request.POST['transformation_id']))
-		logger.debug('using transformation: %s' % transformation)
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# capture input filters
-		input_filters = {
-			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
-		}
-		input_numerical_valve = request.POST.get('input_numerical_valve', None)
-		if input_numerical_valve == '':
-			input_numerical_valve = None
-		else:
-			input_numerical_valve = int(input_numerical_valve)
-		input_filters['input_numerical_valve'] = input_numerical_valve
-		# es query valve
-		input_es_query_valve = request.POST.get('input_es_query_valve', None)
-		if input_es_query_valve == '':
-			input_es_query_valve = None
-		input_filters['input_es_query_valve'] = input_es_query_valve
-		# filter duplicates
-		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
-		if filter_dupe_record_ids == 'true':
-			filter_dupe_record_ids = True
-		else:
-			filter_dupe_record_ids = False
-		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.TransformJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			input_job=input_job,
-			transformation=transformation,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			input_filters=input_filters,
-			dbdd=dbdd
-		)
-		
 		# start job and update status
 		job_status = cjob.start_job()
 
@@ -1290,81 +1157,12 @@ def job_merge(request, org_id, record_group_id):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('Merging jobs for Record Group: %s' % record_group.name)
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.MergeJob,
+			job_params = request.POST)
 
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve jobs to merge
-		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]
-		logger.debug('merging jobs: %s' % input_jobs)
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# capture input filters
-		input_filters = {
-			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
-		}
-		# numerical valve
-		input_numerical_valve = request.POST.get('input_numerical_valve', None)
-		if input_numerical_valve == '':
-			input_numerical_valve = None
-		else:
-			input_numerical_valve = int(input_numerical_valve)
-		input_filters['input_numerical_valve'] = input_numerical_valve
-		# es query valve
-		input_es_query_valve = request.POST.get('input_es_query_valve', None)
-		if input_es_query_valve == '':
-			input_es_query_valve = None
-		input_filters['input_es_query_valve'] = input_es_query_valve
-		# filter duplicates
-		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
-		if filter_dupe_record_ids == 'true':
-			filter_dupe_record_ids = True
-		else:
-			filter_dupe_record_ids = False
-		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.MergeJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			record_group=record_group,
-			input_jobs=input_jobs,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			input_filters=input_filters,
-			dbdd=dbdd
-		)
-		
 		# start job and update status
 		job_status = cjob.start_job()
 
@@ -1538,7 +1336,7 @@ def job_update(request, org_id, record_group_id, job_id):
 			fm_config_json = request.POST.get('fm_config_json')
 
 			# init re-index
-			bg_task = cjob.reindex_bg_task(fm_config_json)
+			bg_task = cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
 			return redirect('bg_tasks')
 
@@ -1790,7 +1588,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	# get details depending on job type
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
 	try:
-		job_details = json.loads(record.job.job_details)
+		job_details = record.job.job_details_dict
 
 		# TransformJob
 		if record.job.job_type == 'TransformJob':
@@ -2764,79 +2562,12 @@ def job_analysis(request):
 	# if POST, submit job
 	if request.method == 'POST':
 
-		logger.debug('Running new analysis job')
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.AnalysisJob,
+			job_params = request.POST)
 
-		# debug form
-		logger.debug(request.POST)
-
-		# get job name
-		job_name = request.POST.get('job_name')
-		if job_name == '':
-			job_name = None
-
-		# get job note
-		job_note = request.POST.get('job_note')
-		if job_note == '':
-			job_note = None
-
-		# retrieve jobs to merge
-		input_jobs = [ models.Job.objects.get(pk=int(job)) for job in request.POST.getlist('input_job_id') ]
-		logger.debug('analyzing jobs: %s' % input_jobs)
-
-		# get field mapper configurations
-		field_mapper = request.POST.get('field_mapper')
-		fm_config_json = request.POST.get('fm_config_json')
-
-		# get requested validation scenarios
-		validation_scenarios = request.POST.getlist('validation_scenario', [])
-
-		# handle requested record_id transform
-		rits = request.POST.get('rits', None)
-		if rits == '':
-			rits = None
-
-		# capture input filters
-		input_filters = {
-			'input_validity_valve':request.POST.get('input_validity_valve', 'all')
-		}
-		input_numerical_valve = request.POST.get('input_numerical_valve', None)
-		if input_numerical_valve == '':
-			input_numerical_valve = None
-		else:
-			input_numerical_valve = int(input_numerical_valve)
-		input_filters['input_numerical_valve'] = input_numerical_valve
-		# es query valve
-		input_es_query_valve = request.POST.get('input_es_query_valve', None)
-		if input_es_query_valve == '':
-			input_es_query_valve = None
-		input_filters['input_es_query_valve'] = input_es_query_valve
-		# filter duplicates
-		filter_dupe_record_ids = request.POST.get('filter_dupe_record_ids', 'true')
-		if filter_dupe_record_ids == 'true':
-			filter_dupe_record_ids = True
-		else:
-			filter_dupe_record_ids = False
-		input_filters['filter_dupe_record_ids'] = filter_dupe_record_ids
-
-		# handle requested record_id transform
-		dbdd = request.POST.get('dbdd', None)
-		if dbdd == '':
-			dbdd = None
-
-		# initiate job
-		cjob = models.AnalysisJob(
-			job_name=job_name,
-			job_note=job_note,
-			user=request.user,
-			input_jobs=input_jobs,
-			field_mapper=field_mapper,
-			fm_config_json=fm_config_json,
-			validation_scenarios=validation_scenarios,
-			rits=rits,
-			input_filters=input_filters,
-			dbdd=dbdd
-		)
-		
 		# start job and update status
 		job_status = cjob.start_job()
 

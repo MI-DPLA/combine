@@ -110,7 +110,7 @@ Record
 
 The most granular level of hierarchy in Combine is a single Record.  Records are part of Jobs.
 
-Record's actual XML content, and other attributes, are recorded in MySQL, while their indexed fields are stored in ElasticSearch.
+Record's actual XML content, and other attributes, are recorded in MongoDB, while their indexed fields are stored in ElasticSearch.
 
 Identifiers
 -----------
@@ -120,7 +120,7 @@ Additionally, Record's have three important identifiers:
   - **Database ID**
 
     - ``id`` (integer)
-    - This is the Primary Key (PK) in MySQL, unique for all Records
+    - This is the ObjectID in MongoDB, unique for all Records
 
   - **Combine ID**
 
