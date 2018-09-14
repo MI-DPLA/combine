@@ -156,10 +156,14 @@ class CombineSparkJob(object):
 
 		refresh_django_db_connection()
 
-		# if re-run, check if job was previously published
-		if self.job.published:
-			self.logger.info('re-publishing job after re-run')
-			self.job.publish(publish_set_id=self.job.publish_set_id)
+		# if re-run, check if job was previously published and republish
+		if 'published' in self.job.job_details_dict.keys():
+			if self.job.job_details_dict['published']['status'] == True:
+				self.logger.info('job params flagged for publishing')
+				self.job.publish(publish_set_id=self.job.publish_set_id)
+			elif self.job.job_details_dict['published']['status'] == False:
+				self.logger.info('job params flagged for unpublishing')
+				self.job.unpublish()
 
 		# finally, update finish_timestamp of job_track instance
 		self.job_track.finish_timestamp = datetime.datetime.now()

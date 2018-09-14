@@ -900,21 +900,33 @@ class Job(models.Model):
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
 					
 					# prepare edge dictionary
-					edge_dict = {
-						'id':edge_id,
-						'from':from_node,
-						'to':to_node,
-						'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],						
-						'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
-						'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],						
-						'total_records_passed':link.passed_records
-					}
+					try:
+						edge_dict = {
+							'id':edge_id,
+							'from':from_node,
+							'to':to_node,
+							'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],
+							'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
+							'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],
+							'total_records_passed':link.passed_records
+						}
+						# add es query flag
+						if self.job_details_dict['input_filters']['input_es_query_valve']:
+							edge_dict['input_es_query_valve'] = True
+						else:
+							edge_dict['input_es_query_valve'] = False
 
-					# add es query flag
-					if self.job_details_dict['input_filters']['input_es_query_valve']:
-						edge_dict['input_es_query_valve'] = True
-					else:
-						edge_dict['input_es_query_valve'] = False
+					except:
+						edge_dict = {
+							'id':edge_id,
+							'from':from_node,
+							'to':to_node,
+							'input_validity_valve':'unknown',
+							'input_numerical_valve':None,
+							'filter_dupe_record_ids':False,
+							'input_es_query_valve':False,
+							'total_records_passed':link.passed_records
+						}
 
 					ld['edges'].append(edge_dict)
 
@@ -1188,10 +1200,18 @@ class Job(models.Model):
 		result = mc_handle.combine.record.update_many({'job_id':self.id},{'$set':{'published':True, 'publish_set_id':publish_set_id}}, upsert=False)
 		logger.debug('Matched %s, marked as published %s' % (result.matched_count, result.modified_count))
 
-		# set self as publish
+		# set self as published
 		self.publish_set_id = publish_set_id
 		self.published = True
 		self.save()
+
+		# add to job details
+		self.update_job_details({
+				'published':{
+					'status':True,
+					'publish_set_id':self.publish_set_id
+				}
+			})
 
 		# return
 		return True
@@ -1218,6 +1238,14 @@ class Job(models.Model):
 		self.publish_set_id = None
 		self.published = False
 		self.save()
+
+		# add to job details
+		self.update_job_details({
+				'published':{
+					'status':False,
+					'publish_set_id':None
+				}
+			})
 
 		# return 
 		return True
