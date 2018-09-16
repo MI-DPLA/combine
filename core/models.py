@@ -3426,7 +3426,11 @@ class LivyClient(object):
 
 
 	@classmethod
-	def submit_job(self, session_id, python_code, stream=False):
+	def submit_job(self,
+		session_id,
+		python_code,
+		stream=False,
+		ensure_livy_session=True):
 
 		'''
 		Submit job via HTTP request to /statements
@@ -3439,8 +3443,10 @@ class LivyClient(object):
 			(dict): Livy server response
 		'''
 
-		logger.debug(python_code)
-		
+		# if ensure_livy_session, confirm and start if necessary
+		if ensure_livy_session:
+			logger.debug('ensuring Livy session')
+
 		# statement
 		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
 		logger.debug(job.json())
