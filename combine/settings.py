@@ -68,7 +68,8 @@ TEMPLATES = [
                 'django.contrib.messages.context_processors.messages',
                 'core.context_processors.combine_settings',
                 'core.context_processors.livy_session',
-                'core.context_processors.bgtasks_proc'
+                'core.context_processors.bgtasks_proc',
+                'core.context_processors.combine_git_info'
             ],
         },
     },
