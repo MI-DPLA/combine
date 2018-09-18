@@ -1063,7 +1063,7 @@ class TransformSpark(CombineSparkJob):
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), False)
+					trans_result = (row.document, str(e), False)
 
 				# yield each Row in mapPartition
 				yield Row(
@@ -1118,23 +1118,23 @@ class TransformSpark(CombineSparkJob):
 
 			for row in pt:
 
-				try:
+				# try:
 
-					# prepare row as parsed document with PythonUDFRecord class
-					prtb = PythonUDFRecord(row)
+				# prepare row as parsed document with PythonUDFRecord class
+				prtb = PythonUDFRecord(row)
 
-					# run transformation
-					trans_result = temp_pyts.python_record_transformation(prtb)
+				# run transformation
+				trans_result = temp_pyts.python_record_transformation(prtb)
 
-					# convert any possible byte responses to string
-					if type(trans_result[0]) == bytes:
-						trans_result[0] = trans_result[0].decode('utf-8')
-					if type(trans_result[1]) == bytes:
-						trans_result[1] = trans_result[1].decode('utf-8')
+				# convert any possible byte responses to string
+				if type(trans_result[0]) == bytes:
+					trans_result[0] = trans_result[0].decode('utf-8')
+				if type(trans_result[1]) == bytes:
+					trans_result[1] = trans_result[1].decode('utf-8')
 
-				except Exception as e:
-					# set trans_result tuple
-					trans_result = ('', str(e), False)
+				# except Exception as e:
+				# 	# set trans_result tuple
+				# 	trans_result = (row.document, str(e), False)
 
 				# return Row
 				yield Row(
@@ -1234,7 +1234,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), False)
+					trans_result = (row.document, str(e), False)
 
 				# return Row
 				yield Row(
