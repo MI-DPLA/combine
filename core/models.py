@@ -2011,7 +2011,7 @@ class Record(mongoengine.Document):
 		if parsed_doc[0]:
 			return etree.tostring(parsed_doc[1], pretty_print=True)
 		else:
-			return "Could not parse Record document:\n%s" % parsed_doc[1]
+			raise Exception(parsed_doc[1])
 
 
 	def get_lineage_url_paths(self):

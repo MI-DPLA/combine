@@ -75,7 +75,15 @@
 								
 								{% if record.document != '' %}
 									<div>
-										<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ record.document_pretty_print }}</code></pre>
+										{% if pretty_format_msg %}
+											<div class="alert alert-danger alert-dismissible fade show" role="alert">
+												The following error was had formatting this document:<br><code>{{ pretty_format_msg }}</code>
+												<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+												<span aria-hidden="true">&times;</span>
+												</button>
+											</div>
+										{% endif %}
+										<pre><code id="record_document_raw" style="padding:10px; border-radius:10px;" class="xml">{{ pretty_document }}</code></pre>
 									</div>
 								{% else %}
 									<p>This Record does not have a document associated with it, see below for any errors that may have been reported:</p>
