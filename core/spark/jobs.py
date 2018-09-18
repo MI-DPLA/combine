@@ -921,7 +921,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					document = '',
+					document = doc_string,
 					error = str(e),
 					job_id = int(job_id),
 					oai_set = '',
@@ -945,11 +945,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		self.save_records(			
 			records_df=records,
 			assign_combine_id=True
-		)
-
-		# remove temporary payload directory if static job was upload based, not location on disk
-		if self.job_details['static_type'] == 'upload':
-			shutil.rmtree(self.job_details['static_payload'])
+		)		
 
 		# close job
 		self.close_job()
