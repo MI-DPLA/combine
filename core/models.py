@@ -259,6 +259,21 @@ class LivySession(models.Model):
 			return active_livy_sessions
 
 
+	def get_log_lines(self, size=10):
+
+		'''
+		Method to return last 10 log lines
+		'''
+
+		log_response = LivyClient.get_log_lines(
+			self.session_id,			
+			size=size)
+
+		return log_response.json()
+
+
+
+
 
 class Organization(models.Model):
 
@@ -3275,6 +3290,7 @@ class LivyClient(object):
 			http_method,
 			url,
 			data=None,
+			params=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -3304,6 +3320,7 @@ class LivyClient(object):
 			self.server_port,
 			url.lstrip('/')),
 			data=data,
+			params=params,
 			headers=headers,
 			files=files)
 		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
@@ -3448,9 +3465,7 @@ class LivyClient(object):
 			logger.debug('ensuring Livy session')
 
 		# statement
-		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
-		logger.debug(job.json())
-		logger.debug(job.headers)
+		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)		
 		return job
 
 
@@ -3472,6 +3487,23 @@ class LivyClient(object):
 		return statement
 
 
+	@classmethod
+	def get_log_lines(self, session_id, size=10):
+
+		'''
+		Return lines from Livy log
+
+		Args:
+			session_id (str/int): Livy session id			
+			size (int): Max number of lines
+
+		Returns:
+			(list): Log lines
+		'''
+
+		return self.http_request('GET','sessions/%s/log' % session_id, params={'size':size})
+
+
 
 class SparkAppAPIClient(object):
 
@@ -3489,6 +3521,7 @@ class SparkAppAPIClient(object):
 			http_method,
 			url,
 			data=None,
+			params=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -3517,6 +3550,7 @@ class SparkAppAPIClient(object):
 			self.api_base,
 			url.lstrip('/')),
 			data=data,
+			params=params,
 			headers=headers,
 			files=files)
 		prepped_request = request.prepare()
