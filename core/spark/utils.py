@@ -91,8 +91,11 @@ class PythonUDFRecord(object):
 			# row
 			self._row = record_input
 
-			# get combine id
-			self.id = self._row._id
+			# get db id
+			try:
+				self.id = self._row._id
+			except:
+				pass
 
 			# get record id
 			self.record_id = self._row.record_id

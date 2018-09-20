@@ -921,7 +921,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 				# return error Row
 				return Row(
 					record_id = record_id,
-					document = '',
+					document = doc_string,
 					error = str(e),
 					job_id = int(job_id),
 					oai_set = '',
@@ -945,11 +945,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 		self.save_records(			
 			records_df=records,
 			assign_combine_id=True
-		)
-
-		# remove temporary payload directory if static job was upload based, not location on disk
-		if self.job_details['static_type'] == 'upload':
-			shutil.rmtree(self.job_details['static_payload'])
+		)		
 
 		# close job
 		self.close_job()
@@ -1067,7 +1063,7 @@ class TransformSpark(CombineSparkJob):
 				# catch transformation exception and save exception to 'error'
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), False)
+					trans_result = (row.document, str(e), False)
 
 				# yield each Row in mapPartition
 				yield Row(
@@ -1122,23 +1118,23 @@ class TransformSpark(CombineSparkJob):
 
 			for row in pt:
 
-				try:
+				# try:
 
-					# prepare row as parsed document with PythonUDFRecord class
-					prtb = PythonUDFRecord(row)
+				# prepare row as parsed document with PythonUDFRecord class
+				prtb = PythonUDFRecord(row)
 
-					# run transformation
-					trans_result = temp_pyts.python_record_transformation(prtb)
+				# run transformation
+				trans_result = temp_pyts.python_record_transformation(prtb)
 
-					# convert any possible byte responses to string
-					if type(trans_result[0]) == bytes:
-						trans_result[0] = trans_result[0].decode('utf-8')
-					if type(trans_result[1]) == bytes:
-						trans_result[1] = trans_result[1].decode('utf-8')
+				# convert any possible byte responses to string
+				if type(trans_result[0]) == bytes:
+					trans_result[0] = trans_result[0].decode('utf-8')
+				if type(trans_result[1]) == bytes:
+					trans_result[1] = trans_result[1].decode('utf-8')
 
-				except Exception as e:
-					# set trans_result tuple
-					trans_result = ('', str(e), False)
+				# except Exception as e:
+				# 	# set trans_result tuple
+				# 	trans_result = (row.document, str(e), False)
 
 				# return Row
 				yield Row(
@@ -1238,7 +1234,7 @@ class TransformSpark(CombineSparkJob):
 
 				except Exception as e:
 					# set trans_result tuple
-					trans_result = ('', str(e), False)
+					trans_result = (row.document, str(e), False)
 
 				# return Row
 				yield Row(

@@ -2011,7 +2011,7 @@ class Record(mongoengine.Document):
 		if parsed_doc[0]:
 			return etree.tostring(parsed_doc[1], pretty_print=True)
 		else:
-			return "Could not parse Record document:\n%s" % parsed_doc[1]
+			raise Exception(parsed_doc[1])
 
 
 	def get_lineage_url_paths(self):
@@ -3426,7 +3426,11 @@ class LivyClient(object):
 
 
 	@classmethod
-	def submit_job(self, session_id, python_code, stream=False):
+	def submit_job(self,
+		session_id,
+		python_code,
+		stream=False,
+		ensure_livy_session=True):
 
 		'''
 		Submit job via HTTP request to /statements
@@ -3439,8 +3443,10 @@ class LivyClient(object):
 			(dict): Livy server response
 		'''
 
-		logger.debug(python_code)
-		
+		# if ensure_livy_session, confirm and start if necessary
+		if ensure_livy_session:
+			logger.debug('ensuring Livy session')
+
 		# statement
 		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
 		logger.debug(job.json())

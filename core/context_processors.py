@@ -1,3 +1,5 @@
+import subprocess
+
 from django.conf import settings
 from core.models import LivySession, SupervisorRPCClient
 
@@ -53,4 +55,12 @@ def bgtasks_proc(request):
 	except:
 		pass
 
-	
+
+def combine_git_info(request):
+
+	'''
+	Return branch of combine git repo
+	'''
+
+	branch = subprocess.Popen("git rev-parse --abbrev-ref HEAD", shell=True, stdout=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+	return {'COMBINE_GIT_BRANCH':branch}

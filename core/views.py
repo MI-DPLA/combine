@@ -1621,6 +1621,14 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	except:
 		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
 
+	# attempt to get document as pretty print
+	try:
+		pretty_document = record.document_pretty_print()
+		pretty_format_msg = False
+	except Exception as e:
+		pretty_document = record.document
+		pretty_format_msg = str(e)
+
 	# return
 	return render(request, 'core/record.html', {
 		'record_id':record_id,
@@ -1630,6 +1638,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 		'dpla_api_doc':dpla_api_doc,
 		'dpla_api_json':dpla_api_json,
 		'record_diff_dict':record_diff_dict,
+		'pretty_document':pretty_document,
+		'pretty_format_msg':pretty_format_msg,
 		'job_fm_config_json':job_fm_config_json,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
