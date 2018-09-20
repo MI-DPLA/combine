@@ -2,7 +2,16 @@
 QuickStart
 **********
 
-    *This QuickStart guide provides a high level walkthrough of harvesting records from static files, transforming those records with XSLT, and publishing via Combine's built-in OAI server.  Though it lays the groundwork, this guide does NOT cover much in the way of analysis, an important, and arguably more fun, component of Combine.*
+
+Notes and Update
+================
+  
+  - This QuickStart guide provides a high level walkthrough of harvesting records from static files, transforming those records with XSLT, and publishing via Combine's built-in OAI server.      
+  - As of **9/20/2018**, with ``v0.3`` on the horizon for release, this quickstart is becoming very outdated.  Goal is to update soon, but in the interim, proceed at your own peril!
+
+
+Overview
+========
 
 Sometimes you can't beat kicking the tires to see how an application
 works. This "QuickStart" guide will walkthrough the harvesting,

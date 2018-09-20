@@ -37,7 +37,7 @@
 					<td>{{ livy_session.timestamp }}</td>
 					<td><a href="http://{{ APP_HOST }}:4040">http://{{ APP_HOST }}:4040</a></td>
 					<td><a href="http://{{ APP_HOST }}:8080">http://{{ APP_HOST }}:8080</a></td>
-					<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop{% else %}Remove{% endif %}</button></a></td>
+					<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop{% else %}Remove{% endif %}</button></a> <a href="{% url 'livy_session_start' %}?restart=true"><button type="button" class="btn btn-warning btn-sm" onclick="confirm('Are you sure you want to restart this Livy session?  If so, this may take a few moments to restart...');">Restart</button></a></td>
 				</tr>
 			</table>
 			{% endif %}

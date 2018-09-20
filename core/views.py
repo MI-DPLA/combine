@@ -246,22 +246,20 @@ def livy_session_start(request):
 	
 	logger.debug('Checking for pre-existing livy sessions')
 
-	# get "active" livy sessions
-	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
-	logger.debug(livy_sessions)
+	# get active livy sessions
+	active_ls = models.LivySession.get_active_session()
 
 	# none found
-	if livy_sessions.count() == 0:
-		logger.debug('no Livy sessions found, creating')
+	if not active_ls:
+		logger.debug('active livy session not found, starting')
 		livy_session = models.LivySession()
 		livy_session.start_session()
 
-	# if sessions present
-	elif livy_sessions.count() == 1:
-		logger.debug('single, active Livy session found, using')
+	elif type(active_ls) == models.LivySession and request.GET.get('restart') == 'true':
+		logger.debug('single, active session found, and restart flag passed, restarting')
 
-	elif livy_sessions.count() > 1:
-		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
+		# restart
+		new_ls = active_ls.restart_session()
 
 	# redirect
 	return redirect('system')

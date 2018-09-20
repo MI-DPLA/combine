@@ -270,11 +270,9 @@ class LivySession(models.Model):
 			return active_livy_sessions.first()
 
 		elif active_livy_sessions.count() == 0:
-			# logger.debug('no active livy sessions found, returning False')
 			return False
 
 		elif active_livy_sessions.count() > 1:
-			# logger.debug('multiple active livy sessions found, returning as list')
 			return active_livy_sessions
 
 
@@ -344,6 +342,30 @@ class LivySession(models.Model):
 		else:
 			logger.debug('requested livy session id does not match active livy session id')
 			return None
+
+
+	def restart_session(self):
+
+		'''
+		Method to restart Livy session
+		'''
+
+		# stop and destroy self
+		self.stop_session()
+		self.delete()
+
+		# start and poll for new one
+		new_ls = LivySession()
+		new_ls.start_session()
+
+		# poll until ready
+		def livy_session_ready(response):
+			return response == 'idle'
+
+		logger.debug('polling for Livy session to start...')
+		results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)
+
+		return new_ls
 
 
 
