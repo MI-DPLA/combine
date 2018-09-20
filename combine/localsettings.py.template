@@ -41,6 +41,17 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     	'file://%s/core/spark/utils.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/console.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     ]
+
+    # Spark application overrides
+		# commented out, will default to 2gb for driver and executor, and grab all available cpu/cores	
+		# uncommented, provides some limited configurations for tuning Spark application created by Livy 
+
+	# e.g. small(ish) server, 6gb RAM, 2 cpu/cores
+	# 'driverMemory':'512m',
+	# 'driverCores':1,
+	# 'executorMemory':'512m',
+	# 'executorCores':1,
+	# 'numExecutors':1
 }
 
 

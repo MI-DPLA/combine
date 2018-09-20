@@ -21,6 +21,7 @@ import logging
 from lxml import etree, isoschematron
 import os
 import pdb
+import polling
 import requests
 import shutil
 import sickle
@@ -143,43 +144,61 @@ class LivySession(models.Model):
 		# query Livy for session status
 		livy_response = LivyClient().session_status(self.session_id)
 
-		# parse response and set self values
-		response = livy_response.json()
-		headers = livy_response.headers
+		# if response
+		if livy_response != False:
 
-		# if status_code 404, set as gone
-		if livy_response.status_code == 404:
-			
-			logger.debug('session not found, setting status to gone')
-			self.status = 'gone'
-			# update
-			self.save()
+			# parse response and set self values
+			response = livy_response.json()
+			headers = livy_response.headers
 
-		elif livy_response.status_code == 200:
-			
-			# update Livy information
-			logger.debug('session found, updating status')
-			
-			# update status
-			self.status = response['state']
-			if self.status in ['starting','idle','busy']:
-				self.active = True
-			
-			self.session_timestamp = headers['Date']
+			# if status_code 404, set as gone
+			if livy_response.status_code == 404:
+				
+				logger.debug('session not found, setting status to gone')
+				self.status = 'gone'
+				
+				# update
+				self.save()
 
-			# gather information about registered application in spark cluster
-			try:
-				spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
-				self.appId = spark_app_id
-			except:
-				pass
+				# return self
+				return self.status
 
-			# update
-			self.save()
+			elif livy_response.status_code == 200:
+				
+				# update Livy information
+				logger.debug('session found, updating status')
+				
+				# update status
+				self.status = response['state']
+				if self.status in ['starting','idle','busy']:
+					self.active = True
+				
+				self.session_timestamp = headers['Date']
 
+				# gather information about registered application in spark cluster
+				try:
+					spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
+					self.appId = spark_app_id
+				except:
+					pass
+
+				# update
+				self.save()
+
+				# return self
+				return self.status
+
+			else:
+				
+				logger.debug('error: livy request http code: %s' % livy_response.status_code)
+				logger.debug('error: livy request content: %s' % livy_response.content)
+				return False
+
+		# else, do nothing
 		else:
-			
-			logger.debug('error retrieving information about Livy session')
+
+			logger.debug('error communicating with Livy, doing nothing')
+			return False
 
 
 	def start_session(self):
@@ -272,6 +291,59 @@ class LivySession(models.Model):
 		return log_response.json()
 
 
+	@staticmethod
+	def ensure_active_session_id(session_id):
+
+		'''
+		Method to ensure passed session id:
+			- matches current active Livy session saved to DB
+			- in a state to recieve additional jobs
+
+		Args:
+			session_id (int): session id to check
+
+		Returns:
+			(int): passed sessionid if active and ready,
+				or new session_id if started 
+		'''
+
+		# retrieve active livy session and refresh
+		active_ls = LivySession.get_active_session()
+		active_ls.refresh_from_livy()
+
+		# if passed session id matches and status is idle or busy
+		if session_id == active_ls.session_id:
+
+			if active_ls.status in ['idle','busy']:
+				logger.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job' % active_ls.status)
+
+			else:
+				logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
+
+				# destroy active livy session
+				active_ls.stop_session()
+				active_ls.delete()
+
+				# start and poll for new one
+				new_ls = LivySession()
+				new_ls.start_session()
+
+				# poll until ready
+				def livy_session_ready(response):
+					return response == 'idle'
+
+				logger.debug('polling for Livy session to start...')
+				results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)				
+
+				# pass new session id and continue to livy job submission
+				session_id = new_ls.session_id
+
+			# return 
+			return session_id
+
+		else:
+			logger.debug('requested livy session id does not match active livy session id')
+			return None
 
 
 
@@ -3313,8 +3385,10 @@ class LivyClient(object):
 		if type(data) != str:
 			data = json.dumps(data)
 
-		# build request
+		# build session
 		session = requests.Session()
+
+		# build request
 		request = requests.Request(http_method, "http://%s:%s/%s" % (
 			self.server_host,
 			self.server_port,
@@ -3324,11 +3398,21 @@ class LivyClient(object):
 			headers=headers,
 			files=files)
 		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
-		response = session.send(
-			prepped_request,
-			stream=stream,
-		)
-		return response
+
+		# send request
+		try:
+			response = session.send(
+				prepped_request,
+				stream=stream,
+			)
+
+			# return
+			return response
+
+		except requests.ConnectionError as e:
+			logger.debug("LivyClient: error sending http request to Livy")
+			logger.debug(str(e))
+			return False
 
 
 	@classmethod
@@ -3445,8 +3529,7 @@ class LivyClient(object):
 	@classmethod
 	def submit_job(self,
 		session_id,
-		python_code,
-		stream=False,
+		python_code,		
 		ensure_livy_session=True):
 
 		'''
@@ -3460,13 +3543,19 @@ class LivyClient(object):
 			(dict): Livy server response
 		'''
 
-		# if ensure_livy_session, confirm and start if necessary
+		# if ensure_livy_session
 		if ensure_livy_session:
 			logger.debug('ensuring Livy session')
+			session_id = LivySession.ensure_active_session_id(session_id)
 
-		# statement
-		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)		
-		return job
+		if session_id != None:
+
+			# submit statement
+			job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+			return job
+
+		else:
+			return False
 
 
 	@classmethod
@@ -4056,8 +4145,8 @@ class CombineJob(object):
 		job_id=None,
 		parse_job_output=True):
 
-		self.user = user
-		self.livy_session = self._get_active_livy_session()
+		self.user = user		
+		self.livy_session = LivySession.get_active_session()
 		self.df = None
 		self.job_id = job_id
 
@@ -4288,42 +4377,6 @@ class CombineJob(object):
 		return globals()[j.job_type](job_id=job_id)
 
 
-	def _get_active_livy_session(self):
-
-		'''
-		Method to retrieve active livy session
-
-		Args:
-			None
-
-		Returns:
-			(core.models.LivySession)
-		'''
-
-		# check for single, active livy session from LivyClient
-		livy_sessions = LivySession.objects.filter(active=True)
-
-		# if single session, confirm active or starting
-		if livy_sessions.count() == 1:			
-
-			livy_session = livy_sessions.first()
-			
-			try:
-				livy_session_status = LivyClient().session_status(livy_session.session_id)
-				if livy_session_status.status_code == 200:
-					status = livy_session_status.json()['state']
-					if status in ['starting','idle','busy']:
-						# return livy session
-						return livy_session
-					
-			except:
-				logger.debug('could not confirm session status')
-
-		elif livy_sessions.count() == 0:
-			logger.debug('no active livy sessions found')
-			return False
-
-
 	def start_job(self):
 
 		'''
@@ -4341,7 +4394,7 @@ class CombineJob(object):
 			self.prepare_job()
 
 		else:
-			logger.debug('could not submit livy job, not active livy session found')
+			logger.debug('could not start job, active livy session not found')
 			return False
 
 
@@ -4359,19 +4412,31 @@ class CombineJob(object):
 				- sets attributes to self
 		'''
 
-		# submit job
-		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
-		response = submit.json()
-		headers = submit.headers
+		# if livy session provided
+		if self.livy_session != None:
 
-		# update job in DB
-		self.job.response = json.dumps(response)
-		self.job.spark_code = job_code
-		self.job.job_id = int(response['id'])
-		self.job.status = response['state']
-		self.job.url = headers['Location']
-		self.job.headers = headers
-		self.job.save()
+			# submit job
+			submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
+			response = submit.json()
+			headers = submit.headers
+
+			# update job in DB
+			self.job.response = json.dumps(response)
+			self.job.spark_code = job_code
+			self.job.job_id = int(response['id'])
+			self.job.status = response['state']
+			self.job.url = headers['Location']
+			self.job.headers = headers
+			self.job.save()
+
+		else:
+
+			logger.debug('active livy session not found')
+
+			# update job in DB			
+			self.job.spark_code = job_code
+			self.job.status = 'failed'			
+			self.job.save()
 
 
 	def get_job(self, job_id):

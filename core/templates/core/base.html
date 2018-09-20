@@ -73,7 +73,7 @@
 
 	          </li>
 	           <li class="nav-item">
-	            <a class="nav-link" href="{% url 'system' %}">System (<span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Livy/Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Background Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=15 /> <code><span style="color:#e83e8c;">{{COMBINE_GIT_BRANCH}}</span></code>)</a>
+	            <a class="nav-link" href="{% url 'system' %}">System: <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span style="color:#e83e8c;">{{COMBINE_GIT_BRANCH}}</span></code></a>
 	          </li>
 
 	        </ul>
