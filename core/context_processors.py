@@ -62,5 +62,33 @@ def combine_git_info(request):
 	Return branch of combine git repo
 	'''
 
-	branch = subprocess.Popen("git rev-parse --abbrev-ref HEAD", shell=True, stdout=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+	# attempt to read tag
+	tag_query = subprocess.Popen("git describe --tags", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+	out = tag_query.stdout.read().decode('utf-8').rstrip("\n")
+	err = tag_query.stderr.read().decode('utf-8').rstrip("\n")
+
+	# if tag found, use
+	if out != '':
+		branch = out
+
+	# else, read branch 
+	else:
+		branch = subprocess.Popen("git rev-parse --abbrev-ref HEAD", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+
+	# return
 	return {'COMBINE_GIT_BRANCH':branch}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
