@@ -2663,7 +2663,7 @@ class ValidationScenario(models.Model):
 			'failed':[]
 		}
 		
-		# parse schematron
+		# parse xsd
 		xmlschema_doc = etree.parse(self.filepath)
 		xmlschema = etree.XMLSchema(xmlschema_doc)
 
