@@ -114,6 +114,10 @@ class ValidationScenarioSpark(object):
 			elif vs.validation_type == 'es_query':
 				validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_name, vs_filepath)
 
+			# XML Schema (XSD) based validation scenario
+			elif vs.validation_type == 'xsd':
+				validation_fails_rdd = self._xsd_validation(vs, vs_id, vs_name, vs_filepath)
+
 			# if results, append
 			if validation_fails_rdd and not validation_fails_rdd.isEmpty():
 				failure_rdds.append(validation_fails_rdd)
@@ -404,6 +408,72 @@ class ValidationScenarioSpark(object):
 			return None
 
 
+	def _xsd_validation(self, vs, vs_id, vs_name, vs_filepath):
+
+		self.logger.info('running xsd validation: %s' % vs.name)
+
+		def validate_xsd_pt_udf(pt):
+
+			# parse xsd
+			xmlschema_doc = etree.parse(vs_filepath)
+			xmlschema = etree.XMLSchema(xmlschema_doc)
+
+			for row in pt:
+
+				try:
+
+					# get document xml
+					record_xml = etree.fromstring(row.document.encode('utf-8'))
+
+					# validate
+					try:
+						xmlschema.assertValid(record_xml)						
+
+					except etree.DocumentInvalid as e:
+						
+						# prepare results_dict
+						results_dict = {
+							'fail_count':1,
+							'failed':[str(e)]
+						}
+						
+						yield Row(
+							record_id=row._id,
+							record_identifier=row.record_id,
+							job_id=row.job_id,
+							validation_scenario_id=int(vs_id),
+							validation_scenario_name=vs_name,
+							valid=False,
+							results_payload=json.dumps(results_dict),
+							fail_count=results_dict['fail_count']
+						)
+
+				except Exception as e:
+
+					results_dict = {
+						'fail_count':1,
+						'failed':[]
+					}
+					results_dict['failed'].append("XSD validation exception: %s" % (str(e)))
+
+					yield Row(
+							record_id=row._id,
+							record_identifier=row.record_id,
+							job_id=row.job_id,
+							validation_scenario_id=int(vs_id),
+							validation_scenario_name=vs_name,
+							valid=False,
+							results_payload=json.dumps(results_dict),
+							fail_count=results_dict['fail_count']
+						)
+
+		# run pt_udf map
+		validation_fails_rdd = self.records_df.rdd.mapPartitions(validate_xsd_pt_udf).filter(lambda row: row is not None)
+
+		# return
+		return validation_fails_rdd
+
+	
 	def remove_validation_scenarios(self):
 
 		'''

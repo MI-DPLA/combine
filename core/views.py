@@ -1990,8 +1990,7 @@ def test_validation_scenario(request):
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
 
-		logger.debug('running test validation and returning')
-		logger.debug(request.POST)
+		logger.debug('running test validation and returning')		
 
 		# get record
 		record = models.Record.objects.get(id=request.POST.get('db_id'))

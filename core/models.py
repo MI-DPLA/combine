@@ -2387,7 +2387,12 @@ class ValidationScenario(models.Model):
 	payload = models.TextField()
 	validation_type = models.CharField(
 		max_length=255,
-		choices=[('sch','Schematron'),('python','Python Code Snippet'),('es_query','ElasticSearch DSL Query')]
+		choices=[
+			('sch','Schematron'),
+			('python','Python Code Snippet'),
+			('es_query','ElasticSearch DSL Query'),
+			('xsd','XML Schema')
+		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	default_run = models.BooleanField(default=1)
@@ -2419,6 +2424,8 @@ class ValidationScenario(models.Model):
 			result = self._validate_python(row)
 		if self.validation_type == 'es_query':
 			result = self._validate_es_query(row)
+		if self.validation_type == 'xsd':
+			result = self._validate_xsd(row)
 
 		# return result
 		return result
@@ -2643,6 +2650,43 @@ class ValidationScenario(models.Model):
 		return {
 			'parsed':results_dict,
 			'raw':json.dumps(results_dict)
+		}
+
+
+	def _validate_xsd(self, row):
+
+		# prepare results_dict
+		results_dict = {
+			'total_tests':1,
+			'fail_count':0,
+			'passed':[],
+			'failed':[]
+		}
+		
+		# parse xsd
+		xmlschema_doc = etree.parse(self.filepath)
+		xmlschema = etree.XMLSchema(xmlschema_doc)
+
+		# get document xml
+		record_xml = etree.fromstring(row.document.encode('utf-8'))
+
+		# validate
+		try:
+			xmlschema.assertValid(record_xml)
+			is_valid = True
+			validation_msg = 'Document is valid'
+			results_dict['passed'].append(validation_msg)
+
+		except etree.DocumentInvalid as e:
+			is_valid = False
+			validation_msg = str(e)
+			results_dict['failed'].append(validation_msg)
+			results_dict['fail_count'] += 1
+
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':validation_msg
 		}
 
 
@@ -3291,6 +3335,8 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 		filename = 'file_%s.py' % uuid.uuid4().hex
 	if instance.validation_type == 'es_query':
 		filename = 'file_%s.json' % uuid.uuid4().hex
+	if instance.validation_type == 'xsd':
+		filename = 'file_%s.xsd' % uuid.uuid4().hex
 
 	filepath = '%s/%s' % (validations_dir, filename)
 	with open(filepath, 'w') as f:
