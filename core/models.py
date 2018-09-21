@@ -1814,6 +1814,10 @@ class Record(mongoengine.Document):
 	_job = None
 
 
+	def __str__(self):
+		return 'Record: %s, record_id: %s, Job: %s' % (self.id, self.record_id, self.job.name)
+
+
 	# _id shim property
 	@property
 	def _id(self):
@@ -4882,6 +4886,7 @@ class CombineJob(object):
 				ji.save()
 
 			# update Job attributes and save
+			re_job.timestamp = datetime.datetime.now()
 			re_job.status = 'init'
 			re_job.record_count = 0
 			re_job.finished = False

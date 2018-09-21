@@ -33,8 +33,8 @@ From the location ``/opt/combine`` run the following:
     ./runconsole.py
 
 
-Useful Commands
----------------
+Useful and Example Commands
+---------------------------
 
 **Convenience methods for retrieving instances of Organizations, Record Groups, Jobs, Records**
 
@@ -53,8 +53,8 @@ Useful Commands
     # retrieve Job #308
     j = get_j(308)
 
-    # retrive Record #1756676
-    r = get_r(1756676)
+    # retrive Record by id '5ba45e3f01762c474340e4de'
+    r = get_r('5ba45e3f01762c474340e4de')
 
     # confirm these retrievals
     '''
@@ -65,19 +65,47 @@ Useful Commands
     In [8]: j
     Out[8]: <Job: TransformJob @ May. 30, 2018, 4:10:21 PM, Job #308, from Record Group: TurboRG>
     In [10]: r
-    Out[10]: <Record: Record: #1756676, record_id: 175c099be37b52c4b278400fb64e738d, job_id: 308, job_type: TransformJob>
+    Out[10]: <Record: Record: 5ba45e3f01762c474340e4de, record_id: 0142feb40e122a7764e84630c0150f67, Job: MergeJob @ Sep. 21, 2018, 2:57:59 AM>
     '''
+
+
+**Loop through Records in Job and edit Document**
+
+This example shows how it would be possible to:
+
+  - retrieve a Job
+  - loop through Records of this Job
+  - alter Record, and save
+
+This is not a terribly efficient way to do this, but it demonstrates the data model as accessible via the command line for Combine.  A more efficient method would be to write a custom, Python snippet `Transformation Scenario <configuration.html#transformation-scenario>`_.
+
+.. code-block:: python
+
+    # retrieve Job model instance
+    In [3]: job = get_j(563)
+
+    # loop through records via get_records() method, updating record.document (replacing 'foo' with 'bar') and saving
+    In [5]: for record in job.get_records():
+       ...:     record.document = record.document.replace('foo', 'bar')
+       ...:     record.save()
+
 
 Pyspark Shell
 =============
 
 The pyspark shell is an instance of Pyspark, with some configurations that allow for loading models from Combine.
 
+**Note:**
+
 The pyspark shell requires the Hadoop Datanode and Namenode to be active.  These are likely running by defult, but in the event they are not, they can be started with the following (Note: the trailing ``:`` is required, as that indicates a group of processes in `Supervisor <http://supervisord.org/>`_):
 
 .. code-block:: bash
 
     sudo supervisorctl restart hdfs:
+
+**Note:**
+
+The pyspark shell when invoked as described below, will be launched in the same Spark cluster that Combine's Livy instance uses.  Depending on avaialble resources, it's likely that users will need to **stop** any active Livy sessions as `outlined here <spark_and_livy.html#manage-livy-sessions>`_ to allow this pyspark shell the resources to run. 
 
 
 Starting
@@ -90,8 +118,8 @@ From the location ``/opt/combine`` run the following:
     ./pyspark_shell.sh
 
 
-Useful Commands
----------------
+Useful and Example Commands
+---------------------------
 
 **Open Records from a Job as a Pyspark DataFrame**
 
