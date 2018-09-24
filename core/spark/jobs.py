@@ -316,7 +316,7 @@ class CombineSparkJob(object):
 				records = self.record_input_filters(records)
 
 		# count breakdown of input jobs/records, save to Job
-		self.count_input_records(unioned_records)
+		self.count_input_records(records)
 
 		# return
 		return records
