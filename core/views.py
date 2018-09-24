@@ -3298,7 +3298,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 				
 
 			elif column == 'actions':
-				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results</button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete</button></a>' % (
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
 					reverse(bg_task, kwargs={'task_id':row.id}),
 					reverse(bg_task_delete, kwargs={'task_id':row.id})
 				)

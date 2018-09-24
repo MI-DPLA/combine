@@ -187,7 +187,7 @@
 						<div class="col-md-12">
 							<h4>Re-Run Job</h4>
 							<p>Re-running a Job will run the Job with the configurations as the Job was originally run, and  trigger all "downstream" Jobs (those Jobs that inherited Records from this Job, recursively) to do the same.</p>
-							<a onclick="return confirm('Are you sure you want to re-run this Job?  All Records and Validations will be removed for this Job, and all downstream Jobs.');" href="{% url 'job_rerun' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Re-Run</button></a>
+							<a onclick="return confirm('Are you sure you want to re-run this Job?  All Records and Validations will be removed for this Job, and all downstream Jobs.');" href="{% url 'job_rerun' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Re-Run Job <i class="la la-refresh"></i></button></a>
 						</div>
 					</div>
 				</div>
@@ -221,7 +221,7 @@
 											{% endif %}
 										</td>
 										<td>{{ cjob.job.record_count }}</td>
-										<td><a onclick="return confirm('Are you sure you want to unpublish this Job?');" href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>										
+										<td><a onclick="return confirm('Are you sure you want to unpublish this Job?');" href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish <i class="la la-close"></i></button></a></td>										
 									</tr>
 								</tbody>
 							</table>
@@ -238,7 +238,7 @@
 									<label for="publish_set_id">Publish Set Id</label>
 									<input type="text" class="form-control" id="publish_set_id" name="publish_set_id" placeholder="e.g. fedora_records"/>
 								</div>
-								<button type="submit" class="btn btn-success btn-sm">Publish Job</button>
+								<button type="submit" class="btn btn-success btn-sm">Publish Job <i class="la la-bullhorn"></i></button>
 							</form>
 						</div>
 					</div>
@@ -326,7 +326,7 @@
 													{% if jv.validation_failure_count > 0 %}
 														<p><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures for this Validation</button></a></p>
 													{% endif %}
-													<p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job</button></form></p>
+													<p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job <i class="la la-close"></button></form></p>
 												</td>
 											</tr>
 										{% endfor %}
@@ -345,7 +345,7 @@
 
 					<div class="row">
 						<div class="col-md-12">
-							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job</button></a></p>
+							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job <i class="la la-plus"></i></button></a></p>
 						</div>
 					</div>
 
@@ -376,7 +376,7 @@
 												<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
 												<li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
 												<li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
-												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields</button></a></li>
+												<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields <i class="la la-refresh"></i></button></a></li>
 											</ul>
 										</td>
 									</tr>
@@ -531,7 +531,7 @@
 
 					<div class="row">
 						<div class="col-md-12">
-							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm"><button type="button" class="btn btn-success btn-sm">Run new DPLA Bulk Data match for this Job</button></a></p>
+							<p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm"><button type="button" class="btn btn-success btn-sm">Run new DPLA Bulk Data match for this Job <i class="la la-plus"></i></button></a></p>
 						</div>
 					</div>
 
@@ -746,10 +746,10 @@
 					<div class="row">
 						<div class="col-md-12">
 							<ul class="list-inline">
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement</button></a></li>
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs</button></a></li>
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI</button></a></li>
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI</button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement <i class="la la-info-circle"></i></button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i class="la la-info-circle"></i></button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
+								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI <i class="la la-info-circle"></i></button></a></li>
 							</ul>
 						</div>
 					</div>
