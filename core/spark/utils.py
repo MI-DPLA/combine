@@ -128,3 +128,13 @@ class PythonUDFRecord(object):
 				self.nsmap = None
 
 			
+def df_union_all(dfs):
+
+	'''
+	Function to merge list of DataFrames
+	'''
+
+	if len(dfs) > 1:
+		return dfs[0].unionAll(df_union_all(dfs[1:]))
+	else:
+		return dfs[0]

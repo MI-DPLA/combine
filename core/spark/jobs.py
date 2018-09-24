@@ -4,8 +4,10 @@ import datetime
 import django
 from elasticsearch import Elasticsearch
 import hashlib
+from itertools import groupby
 import json
 from lxml import etree
+from operator import itemgetter
 import os
 import pdb
 import re
@@ -23,12 +25,12 @@ import pyjxslt
 # import from core.spark
 try:
 	from es import ESIndex
-	from utils import PythonUDFRecord, refresh_django_db_connection	
+	from utils import PythonUDFRecord, refresh_django_db_connection, df_union_all	
 	from record_validation import ValidationScenarioSpark
 	from console import get_job_as_df, get_job_es
 except:
 	from core.spark.es import ESIndex
-	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
+	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection, df_union_all
 	from core.spark.record_validation import ValidationScenarioSpark
 	from core.spark.console import get_job_as_df, get_job_es
 
@@ -189,22 +191,132 @@ class CombineSparkJob(object):
 
 	def get_input_records(self, filter_input_records=True):
 
-		# rehydrate list of input jobs
+		# get input job ids
 		input_job_ids = [int(job_id) for job_id in self.job_details['input_job_ids']]
 
-		# retrieve from Mongo		
-		pipeline = json.dumps({'$match': {'job_id':{"$in":input_job_ids}}})
-		records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
-		.option("database","combine")\
-		.option("collection","record")\
-		.option("partitioner","MongoSamplePartitioner")\
-		.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
-		.option("pipeline",pipeline).load()
+		# if job_specific input filters set, handle
+		if 'job_specific' in self.job_details['input_filters'].keys() and len(self.job_details['input_filters']['job_specific']) > 0:
 
-		# optionally filter
-		if filter_input_records:			
-			records = self.record_input_filters(records)
+			# debug
+			self.logger.info("Job specific input filters found, handling")
+
+			# convenience dict
+			job_spec_dicts = self.job_details['input_filters']['job_specific']
+
+			# init list of dataframes to have union performed
+			job_spec_dfs = []			
+
+			# remove job_specific from input_jobs
+			for spec_input_job_id in self.job_details['input_filters']['job_specific'].keys():
+				input_job_ids.remove(int(spec_input_job_id))
+
+			# handle remaining, non-specified jobs as per normal
+			# retrieve from Mongo		
+			pipeline = json.dumps([
+				{
+					'$match': {
+						'job_id':{
+							'$in':input_job_ids
+						}
+					}
+				},
+				{
+					'$project': { field_name:1 for field_name in CombineRecordSchema().field_names }
+				}
+			])
+			records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection","record")\
+			.option("partitioner","MongoSamplePartitioner")\
+			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+			.option("pipeline",pipeline).load()
+
+			# optionally filter
+			if filter_input_records:			
+				records = self.record_input_filters(records)
+
+			# append to list of dataframes
+			job_spec_dfs.append(records)
+
+			# group like/identical input filter parameters, run together
+			# https://stackoverflow.com/questions/52484043/group-key-value-pairs-in-python-dictionary-by-value-maintaining-original-key-as
+			grouped_spec_dicts = [{'input_filters': k, 'job_ids': [int(job_id) for job_id in list(map(itemgetter(0), g))]} for k, g in groupby(sorted(job_spec_dicts.items(), key=lambda t: t[1].items()), itemgetter(1))]
+
+			# next, loop through spec'ed jobs, retrieve and filter			
+			for job_spec_group in grouped_spec_dicts:
+
+				# debug
+				self.logger.info("Handling specific input filters for job ids: %s" % job_spec_group['job_ids'])
+
+				# handle remaining, non-specified jobs as per normal
+				# retrieve from Mongo		
+				pipeline = json.dumps([
+					{
+						'$match': {
+							'job_id':{
+								'$in':job_spec_group['job_ids']
+							}
+						}
+					},
+					{
+						'$project': { field_name:1 for field_name in CombineRecordSchema().field_names }
+					}
+				])
+				job_spec_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection","record")\
+				.option("partitioner","MongoSamplePartitioner")\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+				.option("pipeline",pipeline).load()
+
+				# optionally filter
+				if filter_input_records:			
+					job_spec_records = self.record_input_filters(job_spec_records, input_filters=job_spec_group['input_filters'])
+
+				# append dataframe
+				job_spec_dfs.append(job_spec_records)
+
+			# union spec'ed jobs with unspec'ed records
+			self.logger.info("union-izing all job dataframes")						
+			unioned_records = df_union_all(job_spec_dfs)
+
+			# count breakdown of input jobs/records, save to Job
+			self.count_input_records(unioned_records)
+
+			# finally, return records			
+			return unioned_records
+		
+		# else, handle filtering and retrieval same for each input job
+		else:
+			# retrieve from Mongo		
+			pipeline = json.dumps([
+				{
+					'$match': {
+						'job_id':{
+							'$in':input_job_ids
+						}
+					}
+				},
+				{
+					'$project': { field_name:1 for field_name in CombineRecordSchema().field_names }
+				}
+			])
+			records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection","record")\
+			.option("partitioner","MongoSamplePartitioner")\
+			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+			.option("pipeline",pipeline).load()
+
+			# optionally filter
+			if filter_input_records:			
+				records = self.record_input_filters(records)
+
+		# count breakdown of input jobs/records, save to Job
+		self.count_input_records(unioned_records)
 
 		# return
 		return records
@@ -312,7 +424,7 @@ class CombineSparkJob(object):
 			raise Exception("No successful records written to disk for Job: %s" % self.job.name)
 
 
-	def record_input_filters(self, filtered_df):
+	def record_input_filters(self, filtered_df, input_filters=None):
 
 		'''
 		Method to apply filters to input Records
@@ -325,8 +437,15 @@ class CombineSparkJob(object):
 			(pyspark.sql.DataFrame): DataFrame of records post filtering
 		'''
 
+		# use input filters if provided, else fall back to job
+		if input_filters == None:
+			input_filters = self.job_details['input_filters']
+
+		# filter to input record appropriate field
+		# filtered_df = filtered_df.select(CombineRecordSchema().field_names)
+
 		# handle validity filters
-		input_validity_valve = self.job_details['input_filters']['input_validity_valve']
+		input_validity_valve = input_filters['input_validity_valve']
 
 		# filter to valid or invalid records
 		# return valid records		
@@ -338,36 +457,49 @@ class CombineSparkJob(object):
 			filtered_df = filtered_df.filter(filtered_df.valid == 0)
 
 		# handle numerical filters
-		input_numerical_valve = self.job_details['input_filters']['input_numerical_valve']
+		input_numerical_valve = input_filters['input_numerical_valve']
 		if input_numerical_valve != None:
 			filtered_df = filtered_df.limit(input_numerical_valve)
 
 		# handle es query valve
-		if 'input_es_query_valve' in self.job_details['input_filters'].keys():
-			input_es_query_valve = self.job_details['input_filters']['input_es_query_valve']
+		if 'input_es_query_valve' in input_filters.keys():
+			input_es_query_valve = input_filters['input_es_query_valve']
 			if input_es_query_valve not in [None,'{}']:
 				filtered_df = self.es_query_valve_filter(input_es_query_valve, filtered_df)
 
 		# filter duplicates
-		if 'filter_dupe_record_ids' in self.job_details['input_filters'].keys() and self.job_details['input_filters']['filter_dupe_record_ids'] == True:			
+		if 'filter_dupe_record_ids' in input_filters.keys() and input_filters['filter_dupe_record_ids'] == True:			
 			filtered_df = filtered_df.dropDuplicates(['record_id'])
 
 		# after input filtering which might leverage db_id, drop		
 		filtered_df = filtered_df.select([ c for c in filtered_df.columns if c != '_id' ])
 
-		# count records from input jobs if > 1
-		# 	- otherwise assume Job.udpate_status() will calculate from single input job
+		# return
+		return filtered_df
+
+
+	def count_input_records(self, records):
+
+		'''
+		Method to count records by job_id
+			- count records from input jobs if > 1
+			- otherwise assume Job.udpate_status() will calculate from single input job
+
+		Args:
+			records (dataframe): Records to count based on job_id
+		'''
+		
 		refresh_django_db_connection()
 		if 'input_job_ids' in self.job_details.keys() and len(self.job_details['input_job_ids']) > 1:
 			
 			# cache
-			filtered_df.cache()
+			records.cache()
 
 			# copy input job ids to mark done (cast to int)
 			input_jobs = [int(job_id) for job_id in self.job_details['input_job_ids'].copy()]
 
 			# group by job_ids
-			record_counts = filtered_df.groupBy('job_id').count()
+			record_counts = records.groupBy('job_id').count()
 			
 			# loop through input jobs, init, and write			
 			for input_job_count in record_counts.collect():
@@ -386,9 +518,6 @@ class CombineSparkJob(object):
 				input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_id)).first()
 				input_job.passed_records = 0
 				input_job.save()
-
-		# return
-		return filtered_df
 
 
 	def es_query_valve_filter(self, input_es_query_valve, filtered_df):

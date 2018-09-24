@@ -4333,7 +4333,9 @@ class CombineJob(object):
 		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
 
 		# capture input filters
-		input_filters = {}
+		input_filters = {
+			'job_specific':{}
+		}
 		
 		# validity valve
 		input_filters['input_validity_valve'] = job_params.get('input_validity_valve', 'all')
