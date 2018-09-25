@@ -355,7 +355,7 @@
 													{% if jv.validation_failure_count > 0 %}
 														<p><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures for this Validation</button></a></p>
 													{% endif %}
-													<p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job <i class="la la-close"></button></form></p>
+													<p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job <i class="la la-close"></i></button></form></p>
 												</td>
 											</tr>
 										{% endfor %}
