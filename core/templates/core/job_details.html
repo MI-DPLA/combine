@@ -5,20 +5,22 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_update').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#job_notes_section').fadeToggle();">Job Notes</button></h3>
-			<div id="job_name_update" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
+			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_notes_update').fadeToggle(); return false;"><i class="la la-pencil"></i></a></h3>			
+		</div>
+		<div id="job_name_notes_update" class="col-md-12" style="display:none;">
+
+			<div id="job_name_update" class="col-md-6">
 				<form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
 					<div class="form-group">
 						<label for="job_name">Enter new job name</label>
 						<input type="text" class="form-control" id="job_name" name="job_name" placeholder="Better Job Name">
 					</div>
-					<button type="submit" class="btn btn-primary btn-sm">Update</button>
+					<button type="submit" class="btn btn-primary btn-sm">Update Name</button>
 				</form>
 			</div>
-		</div>
-		<div class="col-md-12">
-			<div id="job_notes_section" style="display:none;">
+
+			<div id="job_notes_section" class="col-md-6" style="margin-top:20px;">
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
 					
@@ -30,6 +32,7 @@
 					<button type="submit" class="btn btn-primary btn-sm">Update Notes</button>
 				</form>
 			</div>
+
 		</div>
 	</div>
 

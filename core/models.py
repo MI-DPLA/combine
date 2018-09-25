@@ -638,7 +638,11 @@ class Job(models.Model):
 
 			# else, if finished, calc time between job_track start and finish
 			else:
-				return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+				try:
+					return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+				except Exception as e:
+					logger.debug('error with calculating elapsed: %s' % str(e))
+					return 0
 
 		# else, return zero
 		else:
@@ -4940,6 +4944,9 @@ class CombineJob(object):
 
 			# write Validation links
 			re_cjob.write_validation_job_links(re_cjob.job.job_details_dict)
+
+			# remove old JobTrack instance
+			JobTrack.objects.filter(job=self.job).delete()
 
 			# re-submit to Livy
 			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
