@@ -10,9 +10,9 @@
 		<table id="index_analysis" class="table table-bordered table-hover">
 			<thead>
 				<tr>
-					<th>Field Name</th>					
-					<th>Documents with Field (of total {{ field_counts.total_docs }})</th>
-					<th>Documents without</th>
+					<th>Field Name <i class="la la-external-link"></i></th>					
+					<th>Documents with Field (of total {{ field_counts.total_docs }}) <i class="la la-external-link"></i></th>
+					<th>Documents without <i class="la la-external-link"></i></th>
 					<th>Count of Total Values for Field</th>
 					<th>Count of Distinct Values for Field</th>
 					<th>Percentage of Field Values that are Unique</th>
@@ -22,9 +22,9 @@
 			<tbody>
 				{% for field in field_counts.fields %}
 					<tr>
-						<td {% if field.one_distinct_per_doc %}style="background-color:rgba(255, 255, 0, 0.4);"{% endif %}><a href="{% url 'field_analysis' es_index=es_index_str %}?field_name={{ field.field_name }}" target="_blank"><code>{{ field.field_name }}</code> <i class="la la-external-link"></i></a></td>
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }} <i class="la la-external-link"></i></a></td>
-						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }} <i class="la la-external-link"></i></a></td>
+						<td {% if field.one_distinct_per_doc %}style="background-color:rgba(255, 255, 0, 0.4);"{% endif %}><a href="{% url 'field_analysis' es_index=es_index_str %}?field_name={{ field.field_name }}" target="_blank"><code>{{ field.field_name }}</code></a></td>
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=true">{{ field.doc_instances }}</a></td>
+						<td><a target="_blank" href="{% url 'field_analysis_docs' es_index=es_index_str filter_type='exists' %}?field_name={{ field.field_name }}&exists=false">{{ field.doc_missing }}</a></td>
 						<td>{{ field.val_instances }}</td>
 						<td>{{ field.distinct }}</td>
 						<td>
