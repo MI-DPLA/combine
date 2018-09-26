@@ -96,7 +96,7 @@
 
 							<div class="alert alert-{{gm.class}} alert-dismissible fade show" role="alert">
 								{{gm.html|safe}}
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="del_gm('{{gm.id}}');">
 								<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
@@ -105,6 +105,13 @@
 
 					</div>
 				</div>
+				<script>
+
+					function del_gm(gm_id) {
+						console.log('removing gm_id',gm_id);
+					}
+
+				</script>
 			</div> 
 	    	
 	    	<!-- breadcrumbs -->

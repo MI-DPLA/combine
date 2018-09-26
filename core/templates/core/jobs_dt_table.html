@@ -125,15 +125,14 @@
 					<th></th>
 					{# Jinja logic for including RecordGroups #}
 					{% if not for_analysis %}
-						<th>Record Group</th>
+						<th></th>
+						<th></th>
 					{% endif %}
-					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
-					<th>Is Valid</th>
+					<th></th>
+					<th></th>					
 					<th></th>
 					<th></th>
-					<th></th>
+					<th></th>					
 					<th></th>
 					<th></th>
 					<th></th>
@@ -153,24 +152,24 @@
 				    	"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[9] == 'False'){
-		                    	$('td:nth-child(10)', row).addClass('invalid_job');
+		                    if (data[8] == 'False'){
+		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
 			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[8] == 'False'){                    	
-		                    	$('td:nth-child(9)', row).addClass('invalid_job');
+		                    if (data[7] == 'False'){                    	
+		                    	$('td:nth-child(8)', row).addClass('invalid_job');
 		                    }
 			            },
 		            {% endif %}
 		            initComplete: function () {
 		            	{% if not for_analysis %}
-		            		filter_cols = [4,5,6,7,8,9];
+		            		filter_cols = [4,5,6,8];
 	            		{% else %}	            			
-	            			filter_cols = [4,5,6,7,8];
+	            			filter_cols = [4,6];
             			{% endif %}
 			            this.api().columns(filter_cols).every( function () {
 			                var column = this;			                

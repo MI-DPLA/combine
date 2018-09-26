@@ -1014,74 +1014,90 @@ class Job(models.Model):
 				edge_id = '%s_to_%s' % (from_node, to_node)
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
 
-					# check for job specific filters to use for edge
-					if 'job_specific' in self.job_details_dict['input_filters'].keys() and str(from_node) in self.job_details_dict['input_filters']['job_specific'].keys():
+					if 'input_filters' in self.job_details_dict:
 
-						logger.debug('found job type specifics for input job: %s, applying to edge' % from_node)
+						# check for job specific filters to use for edge
+						if 'job_specific' in self.job_details_dict['input_filters'].keys() and str(from_node) in self.job_details_dict['input_filters']['job_specific'].keys():
 
-						# get job_spec_dict
-						job_spec_dict = self.job_details_dict['input_filters']['job_specific'][str(from_node)]
+							logger.debug('found job type specifics for input job: %s, applying to edge' % from_node)
 
-						# prepare edge dictionary
-						try:
-							edge_dict = {
-								'id':edge_id,
-								'from':from_node,
-								'to':to_node,
-								'input_validity_valve':job_spec_dict['input_validity_valve'],
-								'input_numerical_valve':job_spec_dict['input_numerical_valve'],
-								'filter_dupe_record_ids':job_spec_dict['filter_dupe_record_ids'],
-								'total_records_passed':link.passed_records
-							}
-							# add es query flag
-							if job_spec_dict['input_es_query_valve']:
-								edge_dict['input_es_query_valve'] = True
-							else:
-								edge_dict['input_es_query_valve'] = False
+							# get job_spec_dict
+							job_spec_dict = self.job_details_dict['input_filters']['job_specific'][str(from_node)]
 
-						except:
-							edge_dict = {
-								'id':edge_id,
-								'from':from_node,
-								'to':to_node,
-								'input_validity_valve':'unknown',
-								'input_numerical_valve':None,
-								'filter_dupe_record_ids':False,
-								'input_es_query_valve':False,
-								'total_records_passed':link.passed_records
-							}
+							# prepare edge dictionary
+							try:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':job_spec_dict['input_validity_valve'],
+									'input_numerical_valve':job_spec_dict['input_numerical_valve'],
+									'filter_dupe_record_ids':job_spec_dict['filter_dupe_record_ids'],
+									'total_records_passed':link.passed_records
+								}
+								# add es query flag
+								if job_spec_dict['input_es_query_valve']:
+									edge_dict['input_es_query_valve'] = True
+								else:
+									edge_dict['input_es_query_valve'] = False
 
-					# else, use global input job filters
+							except:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':'unknown',
+									'input_numerical_valve':None,
+									'filter_dupe_record_ids':False,
+									'input_es_query_valve':False,
+									'total_records_passed':link.passed_records
+								}
+
+						# else, use global input job filters
+						else:
+
+							# prepare edge dictionary
+							try:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],
+									'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
+									'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],
+									'total_records_passed':link.passed_records
+								}
+								# add es query flag
+								if self.job_details_dict['input_filters']['input_es_query_valve']:
+									edge_dict['input_es_query_valve'] = True
+								else:
+									edge_dict['input_es_query_valve'] = False
+
+							except:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':'unknown',
+									'input_numerical_valve':None,
+									'filter_dupe_record_ids':False,
+									'input_es_query_valve':False,
+									'total_records_passed':link.passed_records
+								}
+
 					else:
 
-						# prepare edge dictionary
-						try:
-							edge_dict = {
-								'id':edge_id,
-								'from':from_node,
-								'to':to_node,
-								'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],
-								'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
-								'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],
-								'total_records_passed':link.passed_records
-							}
-							# add es query flag
-							if self.job_details_dict['input_filters']['input_es_query_valve']:
-								edge_dict['input_es_query_valve'] = True
-							else:
-								edge_dict['input_es_query_valve'] = False
-
-						except:
-							edge_dict = {
-								'id':edge_id,
-								'from':from_node,
-								'to':to_node,
-								'input_validity_valve':'unknown',
-								'input_numerical_valve':None,
-								'filter_dupe_record_ids':False,
-								'input_es_query_valve':False,
-								'total_records_passed':link.passed_records
-							}
+						logger.debug('no input filters were found for job: %s' % self.id)
+						edge_dict = {
+							'id':edge_id,
+							'from':from_node,
+							'to':to_node,
+							'input_validity_valve':'unknown',
+							'input_numerical_valve':None,
+							'filter_dupe_record_ids':False,
+							'input_es_query_valve':False,
+							'total_records_passed':link.passed_records
+						}
 
 					ld['edges'].append(edge_dict)
 
@@ -6909,6 +6925,12 @@ class GlobalMessageClient(object):
 
 	'''
 	Client to handle CRUD for global messages
+
+	Message dictionary structure {
+		html (str): string of HTML content to display
+		class (str): class of Bootstrap styling, [success, warning, danger, info]
+		id (uuid4): unique id for removing
+	}
 	'''
 
 	def __init__(self, session=None):
@@ -6938,15 +6960,39 @@ class GlobalMessageClient(object):
 
 	def add_msg(self, gm_dict):
 
+		'''
+		Method to add message
+		'''
+
 		# check for 'gms' key in session, create if not present
 		if 'gms' not in self.session:
 			self.session['gms'] = []
+
+		# create unique id and add
+		if 'id' not in gm_dict:
+			gm_dict['id'] = uuid.uuid4().hex
 
 		# append gm dictionary
 		self.session['gms'].append(gm_dict)
 
 		# save
 		self.session.save()
+
+
+	def delete_msg(self, gm_id):
+
+		'''
+		Method to remove message
+		'''
+
+		if 'gms' not in self.session:
+			logger.debug('no global messages found, returning False')
+			return False
+
+		else:
+
+			# loop through messages to find and remove
+			self.session['gms'][:] = [gm for gm in self.session['gms'] if d.get('id') != gm_id]
 
 
 	def clear(self):
