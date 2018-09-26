@@ -2430,6 +2430,26 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
+		# fire bg_task
+		bg_task = tasks.export_documents(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = "Job:</strong><br>%s" % cjob.job.name
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('job_details',
+			org_id=cjob.job.record_group.organization.id,
+			record_group_id=cjob.job.record_group.id,
+			job_id=cjob.job.id)
+
 	# export for published
 	if export_source == 'published':
 
@@ -2449,15 +2469,23 @@ def export_documents(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
-	
-	# fire bg_task
-	bg_task = tasks.export_documents(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
 
-	return redirect('bg_tasks')
+		# fire bg_task
+		bg_task = tasks.export_documents(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = ":</strong><br>Published Records"
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('published')
 
 
 def export_mapped_fields(request, export_source, job_id=None):
@@ -2496,7 +2524,27 @@ def export_mapped_fields(request, export_source, job_id=None):
 				'mapped_field_include':mapped_field_include
 			})
 		)
-		ct.save()		
+		ct.save()
+
+		# fire bg task
+		bg_task = tasks.export_mapped_fields(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = "Job:</strong><br>%s" % cjob.job.name
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('job_details',
+			org_id=cjob.job.record_group.organization.id,
+			record_group_id=cjob.job.record_group.id,
+			job_id=cjob.job.id)
 
 	# export for published
 	if export_source == 'published':
@@ -2519,15 +2567,23 @@ def export_mapped_fields(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
-	
-	# fire bg task
-	bg_task = tasks.export_mapped_fields(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
 
-	return redirect('bg_tasks')
+		# fire bg task
+		bg_task = tasks.export_mapped_fields(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = ":</strong><br>Published Records"
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('published')
 
 
 
