@@ -17,8 +17,7 @@
 						<th>Organization</th>
 					{% endif %}
 					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
+					<th>Status</th>					
 					<th>Is Valid</th>
 					<th>Publishing</th>
 					<th>Elapsed</th>
@@ -53,8 +52,23 @@
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>				
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						{% if job.status in 'init,waiting' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
+						</div>
+						{% elif job.status == 'running' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
+						</div>
+						{% elif job.status in 'available,gone' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar bg-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">finished</div>
+						</div>
+						{% else %}
+						{{ job.status }}
+						{% endif %}
+					</td>					
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 						{% if job.published %}

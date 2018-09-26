@@ -4912,7 +4912,7 @@ class CombineJob(object):
 
 			logger.debug('re-running job: %s' % re_job)
 
-			# drop records
+			# drop records			
 			re_job.remove_records_from_db()
 
 			# drop es index

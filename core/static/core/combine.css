@@ -53,6 +53,13 @@ label {
 	padding:20px;
 	border-radius:10px;
 }
+#global_msg_row{
+	top:4px;
+	width:50%;
+	left:25%;
+	position:fixed;
+	z-index:1030;
+}
 
 /* consider darkening lines in table with something similar */
 .table-bordered td, .table-bordered th {

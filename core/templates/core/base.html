@@ -72,13 +72,10 @@
 	          </li>
 	          <li class="nav-item">
 	            <a class="nav-link" href="http://combine.readthedocs.io/en/{{COMBINE_GIT_BRANCH}}" target="_blank">Documentation</a>
-	          </li>
-
-	          </li>
-	           <li class="nav-item">
+	          </li>	          
+	          <li class="nav-item">
 	            <a class="nav-link" href="{% url 'system' %}">System: <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
 	          </li>
-
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
 	          <input class="form-control mr-sm-2" type="text" name="q" placeholder="Search all records..." aria-label="Search" {% if search_string %}value="{{ search_string }}"{% endif %} />
@@ -87,7 +84,28 @@
 	      </div>
 	    </nav>
 
+
+
 	    <main role="main" class="container">
+
+			<div class="row" id="global_msg_row">
+				<div class="col-md-12">
+					<div id="global_msg_container">
+
+						{% for gm in request.session.gms %}
+
+							<div class="alert alert-{{gm.msg_class}} alert-dismissible fade show" role="alert">
+								{{gm.html|safe}}
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+
+						{% endfor %}
+
+					</div>
+				</div>
+			</div> 
 	    	
 	    	<!-- breadcrumbs -->
 	    	<div id="breadcrumbs" class="row">
