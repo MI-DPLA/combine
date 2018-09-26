@@ -26,7 +26,7 @@
 				<tbody>
 				{% for job in input_jobs %}
 					<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" /> <i class="la la-filter"></i></td>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" /><button style="margin-left:10px;" type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#exampleModal" data-input_job_id="{{ job.id }}" data-input_job_name="{{ job.name }}"><i class="la la-filter"></i></button></td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.organization.name }}</td>
@@ -135,6 +135,167 @@
 			</script>
 		</div>
 	</div>
+
+
+	<!-- modals -->
+	<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	  <div class="modal-dialog modal-lg combine_modal_lg" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="exampleModalLabel">New message</h5>
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	          <span aria-hidden="true">&times;</span>
+	        </button>
+	      </div>
+
+	      <div class="modal-body">
+	        <div class="row">
+				<div class="col-md-12">
+					<div class="alert alert-warning alert-dismissible fade show" role="alert">
+						<span id="job_spec_name"></span>
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
+					<div class="gray_box">				
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Refine by Record Validity</h5>
+								<p>Filter Records based on Validation Results:</p>
+								
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
+									<label class="form-check-label" for="all">
+									<span class="text-warning">All records</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="input_validity_valve" id="valid" value="valid">
+									<label class="form-check-label" for="valid">
+									<span class="text-success">Passed validation</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="input_validity_valve" id="invalid" value="invalid">
+									<label class="form-check-label" for="invalid">
+									<span class="text-danger">Failed validation</span>
+									</label>
+								</div>
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Limit Number of Records</h5>
+								<p>Numerically limit Records from each input Job:</p>
+
+								<div style="width:50%" class="form-group">							
+									<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000"/>
+								</div>						
+								
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Filter Duplicates</h5>
+								<p>Remove duplicates based on Record Identifier (<code>record_id</code>):</p>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="filter_dupe_record_ids" id="filter_dupes_yes" value="true" checked>
+									<label class="form-check-label" for="filter_dupes_yes">
+									<span>Yes</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="filter_dupe_record_ids" id="filter_dupes_no" value="false">
+									<label class="form-check-label" for="filter_dupes_no">
+									<span>No</span>
+									</label>
+								</div>					
+								
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Refine by Mapped Fields</h5>
+								<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
+								<div class="form-group">
+									<label for="job_spec_input_es_query_valve">ElasticSearch Query DSL</label>
+
+									<textarea style="display:none;" rows=10 class="code_style form-control" id="job_spec_input_es_query_valve" name="job_spec_input_es_query_valve" placeholder='e.g. {"query":{"match":{"mods_subject_topic":"Scaffolding"}}}'></textarea>
+
+									<!-- visible JSON editor -->
+									<div id="job_spec_es_query_json" style="height:450px;"></div>
+									
+									<script>
+								        // create the editor
+								        var container = document.getElementById("job_spec_es_query_json");
+								        var options = {
+								        	mode: 'code',
+					    					modes: ['code', 'text', 'tree'],
+					    					onChange: function(){
+					    						// update hidden textarea from editor contents
+					    						$("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+					    					},
+					    					sortObjectKeys: true,
+					    					name: 'elasticsearch_query',
+					    					// schema: {{xml2kvp_handle.schema|safe}},			    					
+								        };
+								        var es_query_editor = new JSONEditor(container, options);
+
+								        // // set json to editor
+								        // es_query_editor.set();
+
+								        // // update textarea
+								        // $("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+								    </script>
+
+								</div>
+							</div>
+						</div>
+						
+					</div>
+				</div>
+			</div>
+	      </div>
+
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary" data-dismiss="modal">Cancel</button>
+	        <button type="button" class="btn btn-primary">Set Job Specific Input Filters</button>
+	      </div>
+
+	    </div>
+	  </div>
+	</div>
+
+	<script>
+
+	$('#exampleModal').on('show.bs.modal', function (event) {
+
+		var button = $(event.relatedTarget) // Button that triggered the modal
+
+		var input_job_id = button.data('input_job_id') // Extract info from data-* attributes
+		var input_job_name = button.data('input_job_name') // Extract info from data-* attributes
+		// If necessary, you could initiate an AJAX request here (and then do the updating in a callback).
+		// Update the modal's content. We'll use jQuery here, but you could use a data binding library or other methods instead.
+		var modal = $(this)
+		modal.find('.modal-title').text('Set Job Specific Record Input Filters');
+		modal.find('.modal-body input').val(input_job_id);
+		modal.find('#job_spec_name').html('Use the form below to set <strong>Record Input Filters</strong> for Input Job: <strong>' +  input_job_name + '</strong>');
+	})
+
+	</script>
 
 
 {% endblock %}
