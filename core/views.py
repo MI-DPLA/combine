@@ -500,13 +500,6 @@ def record_group(request, org_id, record_group_id):
 	# get all record groups for this organization
 	record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(for_analysis=True)
 
-	# global messages
-	request.session.gms = []
-	request.session.gms.append({
-			'html':'<strong>Message:</strong> This works!',
-			'msg_class':'success'
-		})
-
 	# render page
 	return render(request, 'core/record_group.html', {
 			'record_group':record_group,

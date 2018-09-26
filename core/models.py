@@ -49,6 +49,8 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import connection, models
@@ -6900,6 +6902,62 @@ class SupervisorRPCClient(object):
 	def stderr_log_tail(self, process_name, offset=0, length=10000):
 
 		return self.server.supervisor.tailProcessStderrLog(process_name, offset, length)[0]
+
+
+
+class GlobalMessageClient(object):
+
+	'''
+	Client to handle CRUD for global messages
+	'''
+
+	def __init__(self, session=None):
+
+		# use session if provided
+		if type(session) == SessionStore:
+			self.session = session
+
+		# if session_key provided, use
+		elif type(session) == str:			
+			self.session = SessionStore(session_key=session)
+
+		# else, set to session
+		else:
+			self.session = session
+
+
+	def load_most_recent_session(self):
+
+		'''
+		Method to retrieve most recent session
+		'''
+
+		s = Session.objects.order_by('expire_date').last()		
+		self.__init__(s.session_key)
+
+
+	def add_msg(self, gm_dict):
+
+		# check for 'gms' key in session, create if not present
+		if 'gms' not in self.session:
+			self.session['gms'] = []
+
+		# append gm dictionary
+		self.session['gms'].append(gm_dict)
+
+		# save
+		self.session.save()
+
+
+	def clear(self):
+
+		'''
+		Method to clear all messages
+		'''
+
+		self.session.clear()
+		self.session.save()
+
 
 
 
