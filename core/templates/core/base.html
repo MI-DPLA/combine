@@ -107,8 +107,18 @@
 				</div>
 				<script>
 
-					function del_gm(gm_id) {
-						console.log('removing gm_id',gm_id);
+					function del_gm(gm_id) {						
+
+						// ajax call
+						$.ajax({
+							type: "POST",
+							url: "{% url 'gm_delete' %}",
+							data: {
+								'gm_id':gm_id,
+								'csrfmiddlewaretoken': '{{ csrf_token }}'
+							},
+							dataType:'json'							
+						});
 					}
 
 				</script>

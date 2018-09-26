@@ -6956,9 +6956,10 @@ class GlobalMessageClient(object):
 
 		s = Session.objects.order_by('expire_date').last()		
 		self.__init__(s.session_key)
+		return self
 
 
-	def add_msg(self, gm_dict):
+	def add_gm(self, gm_dict):
 
 		'''
 		Method to add message
@@ -6979,7 +6980,7 @@ class GlobalMessageClient(object):
 		self.session.save()
 
 
-	def delete_msg(self, gm_id):
+	def delete_gm(self, gm_id):
 
 		'''
 		Method to remove message
@@ -6991,8 +6992,17 @@ class GlobalMessageClient(object):
 
 		else:
 
+			logger.debug('removing gm: %s' % gm_id)
+
+			# grab total gms
+			pre_len = len(self.session['gms'])
+			
 			# loop through messages to find and remove
-			self.session['gms'][:] = [gm for gm in self.session['gms'] if d.get('id') != gm_id]
+			self.session['gms'][:] = [gm for gm in self.session['gms'] if gm.get('id') != gm_id]
+			self.session.save()
+
+			# return results
+			return pre_len - len(self.session['gms'])
 
 
 	def clear(self):

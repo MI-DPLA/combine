@@ -825,19 +825,6 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 
 
 @login_required
-def job_rerun(request, org_id, record_group_id, job_id):
-	
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(job_id)
-
-	# get job note
-	cjob.rerun()
-
-	# redirect to Record Group
-	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
-
-
-@login_required
 def rerun_jobs(request):
 
 	logger.debug('re-running jobs')
@@ -867,6 +854,13 @@ def rerun_jobs(request):
 
 		# rerun
 		cjob.rerun(run_downstream=False)
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<strong>Re-Running Job(s):</strong><br>%s' %  '<br>'.join([str(j.name) for j in ordered_job_rerun_set]),
+		'class':'success'
+	})
 
 	# return
 	return JsonResponse({'results':True})
@@ -3317,4 +3311,47 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 			# return
 			return qs
+
+
+
+####################################################################
+# Global Messages												   #
+####################################################################
+
+@login_required
+def gm_delete(request):
+	
+	if request.method == 'POST':
+
+		# get gm_id
+		gm_id = request.POST.get('gm_id')
+
+		# init GlobalMessageClient
+		gmc = models.GlobalMessageClient(request.session)
+
+		# delete by id
+		results = gmc.delete_gm(gm_id)
+
+		# redirect
+		return JsonResponse({			
+			'gm_id':gm_id,
+			'num_removed':results	
+		})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

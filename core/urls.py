@@ -126,6 +126,9 @@ urlpatterns = [
 	# Documente Download
 	url(r'^document_download$', views.document_download, name='document_download'),
 
+	# Global Messages (GMs)
+	url(r'^gm/delete$', views.gm_delete, name='gm_delete'),
+
 	# General
 	url(r'^login$', auth_views.login, name='login'),
 	url(r'^logout$', auth_views.logout, name='logout'),
