@@ -1,10 +1,9 @@
 {% block content %}
 
 	<div class="row">
-		<div class="col-md-8">
+		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				Use the form below <strong>filter</strong> input Records from input Jobs.<br>
-				<strong>Note:</strong> by default, filtering is applied to <strong>all</strong> input Jobs, but Job-specific filtering can be applied by clicking the filter icon <span style="font-size:150%;"><i class="la la-filter"></i></span> next to the Job checkbox in the table above.
+				Use the form below <strong>filter</strong> input Records from input Jobs.  <strong>Note:</strong> by default, filtering is applied to <strong>all</strong> input Jobs, but Job-specific filtering can be applied by clicking the filter icon <span style="font-size:150%;"><i class="la la-filter"></i></span> next to the Job checkbox in the table above.
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
@@ -102,15 +101,9 @@
 			    					},
 			    					sortObjectKeys: true,
 			    					name: 'elasticsearch_query',
-			    					// schema: {{xml2kvp_handle.schema|safe}},			    					
+			    					// schema: SCHEMA JSON HERE,
 						        };
-						        var es_query_editor = new JSONEditor(container, options);
-
-						        // // set json to editor
-						        // es_query_editor.set();
-
-						        // // update textarea
-						        // $("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+						        var es_query_editor = new JSONEditor(container, options);						        
 						    </script>
 
 						</div>
