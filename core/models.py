@@ -4782,7 +4782,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def new_validations_bg_task(self, validation_scenarios):
@@ -4810,7 +4810,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def remove_validation_bg_task(self, jv_id):
@@ -4835,7 +4835,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def publish_bg_task(self, publish_set_id=None):
@@ -4860,7 +4860,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def unpublish_bg_task(self):
@@ -4884,7 +4884,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def dbdm_bg_task(self, dbdd_id):
@@ -4909,7 +4909,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def rerun(self, run_downstream=True):
@@ -6926,7 +6926,7 @@ class GlobalMessageClient(object):
 	'''
 	Client to handle CRUD for global messages
 
-	Message dictionary structure {
+	Message dictionary structure {		
 		html (str): string of HTML content to display
 		class (str): class of Bootstrap styling, [success, warning, danger, info]
 		id (uuid4): unique id for removing

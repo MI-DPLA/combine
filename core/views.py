@@ -475,7 +475,7 @@ def record_group(request, org_id, record_group_id):
 
 	Args:
 		record_group_id (str/int): PK for RecordGroup table
-	'''
+	'''	
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
@@ -605,12 +605,14 @@ def delete_jobs(request):
 	logger.debug(job_ids)
 
 	# loop through job_ids
+	jobs = []
 	for job_id in job_ids:
 
 		logger.debug('deleting job by ids: %s' % job_id)
 		
 		# get job
 		job = models.Job.objects.get(pk=int(job_id))
+		jobs.append(job)
 
 		# set job status to deleting
 		job.name = "%s (DELETING)" % job.name
@@ -634,6 +636,13 @@ def delete_jobs(request):
 			verbose_name=ct.verbose_name,
 			creator=ct
 		)
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  ('<br>'.join([j.name for j in jobs ]), reverse('bg_tasks')),
+		'class':'success'
+	})
 
 	# return
 	return JsonResponse({'results':True})
@@ -1294,7 +1303,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
 		# get uptdate type from GET params
-		update_type = request.GET.get('update_type', None)
+		update_type = request.GET.get('update_type', None)		
 
 		# render page
 		return render(request, 'core/job_update.html', {
@@ -1328,9 +1337,19 @@ def job_update(request, org_id, record_group_id, job_id):
 			fm_config_json = request.POST.get('fm_config_json')
 
 			# init re-index
-			bg_task = cjob.reindex_bg_task(fm_config_json=fm_config_json)
+			ct = cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
-			return redirect('bg_tasks')
+			# set gms
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Re-Indexing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle new validations
 		if update_type == 'validations':
@@ -1338,10 +1357,23 @@ def job_update(request, org_id, record_group_id, job_id):
 			# get requested validation scenarios
 			validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+			# get validations
+			validations = models.ValidationScenario.objects.filter(id__in=[ int(vs_id) for vs_id in validation_scenarios ])
+
 			# init bg task
 			bg_task = cjob.new_validations_bg_task(validation_scenarios)
 
-			return redirect('bg_tasks')
+			# set gms
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Running New Validations for Job:</strong><br>%s<br><br><strong>Validation Scenarios:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, '<br>'.join([vs.name for vs in validations]), reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle validation removal
 		if update_type == 'remove_validation':
@@ -1352,7 +1384,18 @@ def job_update(request, org_id, record_group_id, job_id):
 			# initiate Combine BG Task
 			bg_task = cjob.remove_validation_bg_task(jv_id)
 
-			return redirect('bg_tasks')
+			# set gms
+			vs = models.JobValidation.objects.get(pk=int(jv_id)).validation_scenario
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Removing Validation for Job:</strong><br>%s<br><br><strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, vs.name, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle validation removal
 		if update_type == 'dbdm':
@@ -1363,7 +1406,18 @@ def job_update(request, org_id, record_group_id, job_id):
 			# initiate Combine BG Task
 			bg_task = cjob.dbdm_bg_task(dbdd_id)
 
-			return redirect('bg_tasks')
+			# set gms
+			dbdd = models.DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Running DPLA Bulk Data comparison for Job:</strong><br>%s<br><br><strong>Bulk Data S3 key:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, dbdd.s3_key, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 
 
