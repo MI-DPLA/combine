@@ -190,8 +190,7 @@
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Re-Run Job</h4>
-							<p>Re-running a Job will run the Job with the configurations as the Job was originally run, and  trigger all "downstream" Jobs (those Jobs that inherited Records from this Job, recursively) to do the same.</p>
-							<!-- <a onclick="return confirm('Are you sure you want to re-run this Job?  All Records and Validations will be removed for this Job, and all downstream Jobs.');" href="{% url 'job_rerun' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Re-Run Job <i class="la la-refresh"></i></button></a> -->
+							<p>Re-running a Job will run the Job with the configurations as the Job was originally run, and  trigger all "downstream" Jobs (those Jobs that inherited Records from this Job, recursively) to do the same.</p>							
 							<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Job <i class="la la-refresh"></i></button>
 						</div>
 					</div>
