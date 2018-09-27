@@ -177,11 +177,8 @@
 
 			// write to hidden input form
 			var target_textarea = "job_spec_json_" + input_job_id;
-			$("#job_init_form").append('<textarea style="display:none;" class="code_style form-control" id="' + target_textarea + '" name="' + target_textarea + '"></textarea>');
-			$("#" + target_textarea).html(JSON.stringify(job_spec_form_obj));
-
-			// // dispose of modal
-			// $("#exampleModal").modal('dispose');
+			$("#job_init_form").append('<textarea style="display:none;" class="code_style form-control" id="' + target_textarea + '" name="job_spec_json"></textarea>');
+			$("#" + target_textarea).html(JSON.stringify(job_spec_form_obj));	
 
 			return false;
 

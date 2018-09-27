@@ -4394,6 +4394,48 @@ class CombineJob(object):
 			job_details['field_mapper'] = int(job_details['field_mapper'])		
 		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
 
+		# finish input filters
+		job_details['input_filters'] = CombineJob._parse_input_filters(job_params)
+
+		# get requested validation scenarios and convert to int
+		job_details['validation_scenarios'] = [int(vs_id) for vs_id in job_params.getlist('validation_scenario', []) ]
+
+		# handle requested record_id transform
+		job_details['rits'] = job_params.get('rits', None)
+		if job_details['rits'] == '':
+			job_details['rits'] = None
+		if job_details['rits'] != None:
+			job_details['rits'] = int(job_details['rits'])
+
+		# handle DPLA bulk data compare
+		job_details['dbdm'] = {}
+		job_details['dbdm']['dbdd'] = job_params.get('dbdd', None)
+		if job_details['dbdm']['dbdd'] == '':
+			job_details['dbdm']['dbdd'] = None
+		if job_details['dbdm']['dbdd'] != None:
+			job_details['dbdm']['dbdd'] = int(job_details['dbdm']['dbdd'])
+
+		# debug
+		logger.debug(job_details)
+
+		# return
+		return job_details
+
+
+	@staticmethod
+	def _parse_input_filters(job_params):
+
+		'''
+		Method to handle parsing input filters, including Job specific filters
+		TODO: refactor duplicative parsing for global and job specific
+
+		Args:
+			job_params (dict): parameters passed
+
+		Returns:
+			(dict): dictionary to be set as job_details['input_filters']
+		'''
+
 		# capture input filters
 		input_filters = {
 			'job_specific':{}
@@ -4420,34 +4462,46 @@ class CombineJob(object):
 		if filter_dupe_record_ids == 'true':
 			input_filters['filter_dupe_record_ids'] = True
 		else:
-			input_filters['filter_dupe_record_ids'] = False		
+			input_filters['filter_dupe_record_ids'] = False
+
+		# check for any Job specific filters, and append
+		job_specs = job_params.getlist('job_spec_json')
+		for job_spec_json in job_specs:
+
+			# parse JSON and make similar to global input filters structure
+			job_spec_form_dict = { f['name'].lstrip('job_spec_'):f['value'] for f in json.loads(job_spec_json) }
+
+			# prepare job_spec
+			job_spec_dict = {}
+
+			# validity valve
+			job_spec_dict['input_validity_valve'] = job_spec_form_dict.get('input_validity_valve', 'all')
+			
+			# numerical valve
+			input_numerical_valve = job_spec_form_dict.get('input_numerical_valve', None)
+			if input_numerical_valve in ('', None):
+				job_spec_dict['input_numerical_valve'] = None
+			else:
+				job_spec_dict['input_numerical_valve'] = int(input_numerical_valve)		
+
+			# es query valve
+			input_es_query_valve = job_spec_form_dict.get('input_es_query_valve', None)
+			if input_es_query_valve in ('', None):
+				input_es_query_valve = None
+			job_spec_dict['input_es_query_valve'] = input_es_query_valve
+			
+			# duplicates valve
+			filter_dupe_record_ids = job_spec_form_dict.get('filter_dupe_record_ids', 'true')
+			if filter_dupe_record_ids == 'true':
+				job_spec_dict['filter_dupe_record_ids'] = True
+			else:
+				job_spec_dict['filter_dupe_record_ids'] = False
+
+			# finally, append to job_specific dictionary for input_filters
+			input_filters['job_specific'][job_spec_form_dict['input_job_id']] = job_spec_dict
 
 		# finish input filters
-		job_details['input_filters'] = input_filters
-
-		# get requested validation scenarios and convert to int
-		job_details['validation_scenarios'] = [int(vs_id) for vs_id in job_params.getlist('validation_scenario', []) ]
-
-		# handle requested record_id transform
-		job_details['rits'] = job_params.get('rits', None)
-		if job_details['rits'] == '':
-			job_details['rits'] = None
-		if job_details['rits'] != None:
-			job_details['rits'] = int(job_details['rits'])
-
-		# handle DPLA bulk data compare
-		job_details['dbdm'] = {}
-		job_details['dbdm']['dbdd'] = job_params.get('dbdd', None)
-		if job_details['dbdm']['dbdd'] == '':
-			job_details['dbdm']['dbdd'] = None
-		if job_details['dbdm']['dbdd'] != None:
-			job_details['dbdm']['dbdd'] = int(job_details['dbdm']['dbdd'])
-
-		# debug
-		logger.debug(job_details)
-
-		# return
-		return job_details
+		return input_filters
 
 
 	def write_validation_job_links(self, job_details):

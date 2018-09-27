@@ -312,7 +312,7 @@
 										{% with input_job.input_job.id|slugify as job_id_str %}
 											{% with cjob.job.job_details_dict.input_filters.job_specific|get_dict_value:job_id_str as job_spec_filters %}
 												<td>True</td>
-												<td>{% if job_spec_filters.input_validity_valve == 'invalid' %}<span class="text-danger">Failed Validation</span>{% elif job_spec_filters.input_validity_valve == 'valid'%}<span class="text-success">Passed HORSE Validation</span>{% else %}<span class="text-warning">Ignored Validation</span>{% endif %}</td>
+												<td>{% if job_spec_filters.input_validity_valve == 'invalid' %}<span class="text-danger">Failed Validation</span>{% elif job_spec_filters.input_validity_valve == 'valid'%}<span class="text-success">Passed Validation</span>{% else %}<span class="text-warning">Ignored Validation</span>{% endif %}</td>
 												<td>{{ job_spec_filters.filter_dupe_record_ids }}</td>
 												<td>{% if job_spec_filters.input_es_query_valve %}<code>{{ job_spec_filters.input_es_query_valve|safe }}</code>{% else %}None{% endif %}</td>
 												<td>{{ job_spec_filters.input_numerical_valve }}</td>
