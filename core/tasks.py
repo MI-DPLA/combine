@@ -6,6 +6,7 @@ import fileinput
 import json
 import math
 import os
+import pdb
 import polling
 import shutil
 import subprocess
@@ -888,7 +889,7 @@ def rerun_jobs_prep(ct_id):
 			# cjob
 			cjob = models.CombineJob.get_combine_job(job_id)
 
-			# rerun
+			# rerun			
 			cjob.rerun(run_downstream=False)
 
 		# save export output to Combine Task output

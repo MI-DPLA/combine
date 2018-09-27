@@ -4995,7 +4995,7 @@ class CombineJob(object):
 			re_job.remove_validations_from_db()
 
 			# remove mapping failures
-			re_job.remove_mapping_failures_from_db()			
+			re_job.remove_mapping_failures_from_db()
 
 			# where Job is input for another, reset passed_records
 			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
@@ -5011,6 +5011,10 @@ class CombineJob(object):
 
 			# remove old JobTrack instance
 			JobTrack.objects.filter(job=self.job).delete()
+
+			# set as undeleted
+			re_cjob.job.deleted = False
+			re_cjob.job.save()
 
 			# re-submit to Livy
 			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
