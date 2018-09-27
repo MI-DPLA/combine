@@ -210,34 +210,35 @@ class CombineSparkJob(object):
 			for spec_input_job_id in self.job_details['input_filters']['job_specific'].keys():
 				input_job_ids.remove(int(spec_input_job_id))
 
-			# handle remaining, non-specified jobs as per normal
-			# retrieve from Mongo		
-			pipeline = json.dumps([
-				{
-					'$match': {
-						'job_id':{
-							'$in':input_job_ids
+			# handle remaining, if any, non-specified jobs as per normal
+			if len(input_job_ids) > 0:
+				# retrieve from Mongo		
+				pipeline = json.dumps([
+					{
+						'$match': {
+							'job_id':{
+								'$in':input_job_ids
+							}
 						}
+					},
+					{
+						'$project': { field_name:1 for field_name in CombineRecordSchema().field_names }
 					}
-				},
-				{
-					'$project': { field_name:1 for field_name in CombineRecordSchema().field_names }
-				}
-			])
-			records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-			.option("uri","mongodb://127.0.0.1")\
-			.option("database","combine")\
-			.option("collection","record")\
-			.option("partitioner","MongoSamplePartitioner")\
-			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
-			.option("pipeline",pipeline).load()
+				])
+				records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection","record")\
+				.option("partitioner","MongoSamplePartitioner")\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+				.option("pipeline",pipeline).load()
 
-			# optionally filter
-			if filter_input_records:			
-				records = self.record_input_filters(records)
+				# optionally filter
+				if filter_input_records:			
+					records = self.record_input_filters(records)
 
-			# append to list of dataframes
-			job_spec_dfs.append(records)
+				# append to list of dataframes
+				job_spec_dfs.append(records)
 
 			# group like/identical input filter parameters, run together
 			# https://stackoverflow.com/questions/52484043/group-key-value-pairs-in-python-dictionary-by-value-maintaining-original-key-as

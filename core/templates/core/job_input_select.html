@@ -25,7 +25,7 @@
 				<tbody>
 				{% for job in input_jobs %}
 					<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" /><button style="margin-left:10px;" type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#exampleModal" data-input_job_id="{{ job.id }}" data-input_job_name="{{ job.name }}"><i class="la la-filter"></i></button></td>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" /><button style="margin-left:10px;" type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#jobSpecModal" data-input_job_id="{{ job.id }}" data-input_job_name="{{ job.name }}"><i class="la la-filter"></i></button></td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.name }}</td>
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_group.organization.name }}</td>

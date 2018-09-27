@@ -1,7 +1,7 @@
 {% block content %}	
 
 	<!-- modals -->
-	<div class="modal fade" id="exampleModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	<div class="modal fade" id="jobSpecModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
 	  <div class="modal-dialog modal-lg combine_modal_lg" role="document">
 	    <div class="modal-content">
 	      <div class="modal-header">
@@ -144,7 +144,7 @@
 
 	<script>
 
-		$('#exampleModal').on('show.bs.modal', function (event) {
+		$('#jobSpecModal').on('show.bs.modal', function (event) {
 
 			// modal creation
 			var button = $(event.relatedTarget)
@@ -162,6 +162,11 @@
 
 		})
 
+		$('#jobSpecModal').on('hidden.bs.modal', function(){
+			console.log('firing');
+			$(this).find('form')[0].reset();
+		});
+
 		// function to serialize and write form		
 		function serializeForm(){
 
@@ -178,7 +183,7 @@
 			// write to hidden input form
 			var target_textarea = "job_spec_json_" + input_job_id;
 			$("#job_init_form").append('<textarea style="display:none;" class="code_style form-control" id="' + target_textarea + '" name="job_spec_json"></textarea>');
-			$("#" + target_textarea).html(JSON.stringify(job_spec_form_obj));	
+			$("#" + target_textarea).html(JSON.stringify(job_spec_form_obj));
 
 			return false;
 
