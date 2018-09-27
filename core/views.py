@@ -839,7 +839,7 @@ def rerun_jobs(request):
 	logger.debug('re-running jobs')
 	
 	job_ids = request.POST.getlist('job_ids[]')
-
+	
 	# set of jobs to rerun
 	job_rerun_set = set()
 
@@ -853,25 +853,44 @@ def rerun_jobs(request):
 		job_rerun_set.update(cjob.job.get_rerun_lineage())
 
 	# sort and run
-	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)	
+	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
 
-	# loop through and run
-	for job in ordered_job_rerun_set:
+	# loop through and update visible elements of Job for front-end
+	for rerun_job in ordered_job_rerun_set:
 
-		# cjob
-		cjob = models.CombineJob.get_combine_job(job.id)
+		rerun_job.timestamp = datetime.datetime.now()
+		rerun_job.status = 'init'
+		rerun_job.record_count = 0
+		rerun_job.finished = False
+		rerun_job.elapsed = 0
+		rerun_job.save()
 
-		# rerun
-		cjob.rerun(run_downstream=False)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = "Rerun Jobs Prep",
+		task_type = 'rerun_jobs_prep',
+		task_params_json = json.dumps({
+			'ordered_job_rerun_set':[j.id for j in ordered_job_rerun_set]
+		})
+	)
+	ct.save()
+
+	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
+	# and setting creator and verbose_name params
+	bt = tasks.rerun_jobs_prep(
+		ct.id,
+		verbose_name = ct.verbose_name,
+		creator = ct
+	)
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
 	gmc.add_gm({
-		'html':'<strong>Re-Running Job(s):</strong><br>%s' %  '<br>'.join([str(j.name) for j in ordered_job_rerun_set]),
+		'html':'<strong>Preparing to Rerun Job(s):</strong><br>%s<br><br>Refresh this page to update status of Jobs rerunning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' %  '<br>'.join([str(j.name) for j in ordered_job_rerun_set]),
 		'class':'success'
 	})
 
-	# return
+	# return, as requested via Ajax which will reload page
 	return JsonResponse({'results':True})
 
 

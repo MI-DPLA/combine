@@ -5003,14 +5003,6 @@ class CombineJob(object):
 				ji.passed_records = None
 				ji.save()
 
-			# update Job attributes and save
-			re_job.timestamp = datetime.datetime.now()
-			re_job.status = 'init'
-			re_job.record_count = 0
-			re_job.finished = False
-			re_job.elapsed = 0
-			re_job.save()
-
 			# get combine job
 			re_cjob = CombineJob.get_combine_job(re_job.id)
 
