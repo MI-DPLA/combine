@@ -115,4 +115,4 @@ combine/localsettings.py
 ._.DS_Store
 
 # Combine static files
-static/
+/static
