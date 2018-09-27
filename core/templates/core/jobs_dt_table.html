@@ -68,7 +68,7 @@
 						{% else %}
 						{{ job.status }}
 						{% endif %}
-					</td>					
+					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 						{% if job.published %}
