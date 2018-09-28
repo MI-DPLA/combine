@@ -4167,7 +4167,7 @@ class PublishedRecords(object):
 				sets[job.publish_set_id].append(job)
 		self.sets = sets
 
-		# establish esi		
+		# establish ElasticSearchIndex (esi) instance 		
 		self.esi = ESIndex([ 'j%s' % job.id for job in self.published_jobs ])
 
 
