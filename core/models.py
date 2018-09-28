@@ -275,7 +275,7 @@ class LivySession(models.Model):
 			return False
 
 		elif active_livy_sessions.count() > 1:
-			return active_livy_sessions
+			return active_livy_sessions			
 
 
 	def get_log_lines(self, size=10):
@@ -362,10 +362,10 @@ class LivySession(models.Model):
 
 		# poll until ready
 		def livy_session_ready(response):
-			return response == 'idle'
+			return response in ['idle','gone']
 
 		logger.debug('polling for Livy session to start...')
-		results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)
+		results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, timeout=120)
 
 		return new_ls
 

@@ -27,18 +27,20 @@
 					<th>Spark Cluster</th>
 					<th>Actions</th>
 				</tr>
-				<tr>
-					<td>{{ livy_session.id }}</td>
-					<td>{{ livy_session.active }}</td>
-					<td>{{ livy_session.name }}</td>
-					<td>{{ livy_session.session_id }}</td>
-					<td><a href="http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}">http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}</a></td>
-					<td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
-					<td>{{ livy_session.timestamp }}</td>
-					<td><a href="http://{{ APP_HOST }}:4040">http://{{ APP_HOST }}:4040</a></td>
-					<td><a href="http://{{ APP_HOST }}:8080">http://{{ APP_HOST }}:8080</a></td>
-					<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}" onclick="return confirm('Are you sure you want to stop/remove this Livy session?  If so, it will have to be manually restarted for any jobs to run!');"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop <i class="la la-close"></i>{% else %}Remove <i class="la la-close"></i>{% endif %}</button></a> <a href="{% url 'livy_session_start' %}?restart=true" onclick="return confirm('Are you sure you want to restart this Livy session?  If so, this may take a few moments to restart...');"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a></td>
-				</tr>
+				{% for livy_session in livy_sessions %}
+					<tr>
+						<td>{{ livy_session.id }}</td>
+						<td>{{ livy_session.active }}</td>
+						<td>{{ livy_session.name }}</td>
+						<td>{{ livy_session.session_id }}</td>
+						<td><a href="http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}">http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}</a></td>
+						<td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
+						<td>{{ livy_session.timestamp }}</td>
+						<td><a href="http://{{ APP_HOST }}:4040">http://{{ APP_HOST }}:4040</a></td>
+						<td><a href="http://{{ APP_HOST }}:8080">http://{{ APP_HOST }}:8080</a></td>
+						<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}" onclick="return confirm('Are you sure you want to stop/remove this Livy session?  If so, it will have to be manually restarted for any jobs to run!');"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop <i class="la la-close"></i>{% else %}Remove <i class="la la-close"></i>{% endif %}</button></a> <a href="{% url 'livy_session_start' %}?restart=true" onclick="return confirm('Are you sure you want to restart this Livy session?  If so, this may take a few moments to restart...');"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a></td>
+					</tr>
+				{% endfor %}
 			</table>
 			{% endif %}
 

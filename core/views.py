@@ -27,6 +27,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
+from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
@@ -226,8 +227,25 @@ def system(request):
 	livy_session = models.LivySession.get_active_session()
 
 	# if session found, refresh
-	if livy_session:
+	if type(livy_session) == models.LivySession:
+
+		# refresh
 		livy_session.refresh_from_livy()
+		
+		# create and append to list
+		livy_sessions = [livy_session]
+
+	elif type(livy_session) == QuerySet:
+		
+		# loop and refresh
+		for s in livy_session:
+			s.refresh_from_livy()
+		
+		# set as list
+		livy_sessions = livy_session
+
+	else:
+		livy_sessions = livy_session
 
 	# get status of background jobs
 	sp = models.SupervisorRPCClient()
@@ -236,6 +254,7 @@ def system(request):
 	# return
 	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
+		'livy_sessions':livy_sessions,
 		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
