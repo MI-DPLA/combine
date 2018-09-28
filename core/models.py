@@ -5020,6 +5020,44 @@ class CombineJob(object):
 			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
 
 
+	def clone(self):
+
+		'''
+		Method to clone Job
+
+		Operations:
+			- clone ORM instance
+			- set status to 'cloning', maybe visual GUI hint as well
+			- loop through JobInputs, if any, recreate
+			- clone JobValidation
+			- clone records
+			- clone elasticsearch index
+		'''
+
+		# establish clone handle by duplicating in ORM
+		clone = Job.objects.get(pk=self.job.id)
+		clone.pk = None
+		clone.save()
+		logger.debug('Cloned Job #%s --> #%s' % (self.job.id, clone.id))
+
+		# recreate JobInput links		
+		for ji in self.job.jobinput_set.all():
+			logger.debug('cloning input job link: %s' % ji.input_job)
+			ji.pk = None
+			ji.job = clone
+			ji.save()
+
+		# recreate JobValidation links		
+		for jv in self.job.jobvalidation_set.all():
+			logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
+			jv.pk = None
+			jv.job
+			jv.save()
+
+		# return clone
+		return CombineJob.get_combine_job(clone.id)
+
+
 
 class HarvestJob(CombineJob):
 
