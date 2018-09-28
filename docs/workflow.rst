@@ -112,11 +112,56 @@ For the most part, a user is required to pre-configure these in the `Configurati
 Record Input Filters
 ~~~~~~~~~~~~~~~~~~~~
 
-When running a new Job, various filters can be applied to refine or limit the Records that will come from input Jobs selected.  Currently, the following filters are supported:
+When running a new Transform or Duplicate/Merge Job, which both rely on other Jobs as Input Jobs, filters can be applied to filter incoming Records.   These filters are settable via the "Record Input Filter" tab.
 
-**Refine by Record Validity**
+There are two ways in which filters can be applied:
 
-Users can select if **all**, **valid**, or **invalid** Records should be included.
+  - "Globally", where all filters are applied to all Jobs
+  - "Job Specific", where a set of filters can be applied to individual Jobs, overriding any "Global" filters
+
+Setting filters for individual Jobs is performed by clicking the filter icon next to a Job's checklist in the Input Job selection table:
+
+.. figure:: img/job_spec_filter_buttons.png
+   :alt: Click the filter button to set filters for a specific Job
+   :target: _images/job_spec_filter_buttons.png
+
+   Click the filter button to set filters for a specific Job
+
+This will bring up a modal window where filters can be set for that Job, and that Job only.  When the modal window is saved, and filters applied to that Job, the filter icon will turn orange indicating that Job has unique filters applied:
+
+.. figure:: img/job_spec_filter_buttons_set.png
+   :alt: Orange filter buttons indicate filters have been set for a specific Job
+   :target: _images/job_spec_filter_buttons_set.png
+
+   Orange filter buttons indicate filters have been set for a specific Job
+
+When filters are applied to specific Jobs, this will be reflected in the Job lineage graph:
+
+.. figure:: img/job_lineage_with_job_spec_filters.png
+   :alt: Job lineage showing Job specific filters applied
+   :target: _images/job_lineage_with_job_spec_filters.png
+
+   Job lineage showing Job specific filters applied
+
+and the Input Jobs tab for the Job as well:
+
+.. figure:: img/input_jobs_with_job_spec_filters.png
+   :alt: Job lineage showing Job specific filters applied
+   :target: _images/input_jobs_with_job_spec_filters.png
+
+   Job lineage showing Job specific filters applied
+
+
+Currently, the following input Record filters are supported:
+
+  - Filter by Record Validity
+  - Limit Number of Records
+  - Filter Duplicates
+  - Filter by Mapped Fields
+
+**Filter by Record Validity**
+
+Users can select if **all**, **valid**, or **invalid** Records will be included.
 
 .. figure:: img/select_input_validity.png
    :alt: Selecting Record Input Validity Valve for Job
@@ -136,13 +181,15 @@ Keep in mind, if multiple Validation Scenarios were run for a particular Job, it
 
 **Limit Number of Records**
 
-The simplest of the three, users can provide a number to limit the Records from *each* Job.  For example, if **4** Jobs are selected as input, and a limit of **100** is entered, the resulting Job will have **400** Records: **4 x 100 = 400**.
+Arguably the simplest filter, users can provide a number to limit **total** number of Records that will be used as input.  This numerical filter is applied after other filters have been applied, and the Records from each Input Job have been mixed.  Given Input Jobs ``A``, ``B``, and ``C``, all with 1,000 Records, given a numerical limit of 50, it's quite possible that all 50 will come from Job ``A``, and 0 from ``B`` and ``C``.
+
+This filter is likely most helpful for testing and sampling.
 
 **Filter Duplicates**
 
 Optionally, remove duplicate Records based on matching ``record_id`` values.  As these are used for publishing, this can be a way to ensure that Records are not published with duplicate ``record_id``.
 
-**Refine by Mapped Fields**
+**Filter by Mapped Fields**
 
 Users can provide an ElasticSearch DSL query, as JSON, to refine the records that will be used for this Job.
 
