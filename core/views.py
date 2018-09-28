@@ -818,7 +818,16 @@ def job_publish(request, org_id, record_group_id, job_id):
 	# init publish
 	bg_task = cjob.publish_bg_task(publish_set_id=publish_set_id)
 
-	return redirect('bg_tasks')
+	# set gms	
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Publishing Job:</strong><br>%s<br><br><strong>Publish Set ID:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' %  (cjob.job.name, publish_set_id, reverse('published')),
+		'class':'success'
+	})
+
+	return redirect('record_group',
+		org_id=cjob.job.record_group.organization.id,
+		record_group_id=cjob.job.record_group.id)	
 
 
 @login_required
@@ -830,7 +839,16 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 	# init unpublish
 	bg_task = cjob.unpublish_bg_task()
 
-	return redirect('bg_tasks')
+	# set gms	
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Unpublishing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' %  (cjob.job.name, reverse('published')),
+		'class':'success'
+	})
+
+	return redirect('record_group',
+		org_id=cjob.job.record_group.organization.id,
+		record_group_id=cjob.job.record_group.id)
 
 
 @login_required

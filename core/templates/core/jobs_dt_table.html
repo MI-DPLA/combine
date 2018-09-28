@@ -70,11 +70,11 @@
 						{% endif %}
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">						
 						{% if job.published %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-danger btn-sm">Unpublish <i class="la la-close"></i></button></a>
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}danger{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Unpublish <i class="la la-close"></i></button></a>
 						{% else %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-success btn-sm">Publish <i class="la la-bullhorn"></i></button></a>
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}success{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Publish <i class="la la-bullhorn"></i></button></a>
 						{% endif %}
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
