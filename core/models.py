@@ -5051,7 +5051,7 @@ class CombineJob(object):
 		for jv in self.job.jobvalidation_set.all():
 			logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
 			jv.pk = None
-			jv.job
+			jv.job = clone
 			jv.save()
 
 		# return clone
