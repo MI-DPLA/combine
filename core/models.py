@@ -3734,7 +3734,12 @@ class LivyClient(object):
 class SparkAppAPIClient(object):
 
 	'''
-	
+	Client to communicate with Spark Application created by Livy Session
+
+	TODO:
+		- the Spark Application port can change (https://github.com/WSULib/combine/issues/243)
+			- SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_PORT
+			- increment from 4040, consider looping through until valid app found? 
 	'''
 
 
