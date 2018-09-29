@@ -743,7 +743,6 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 
 
-	@property
 	def get_spark_jobs(self):
 
 		'''
@@ -774,7 +773,6 @@ class Job(models.Model):
 			return False
 
 
-	@property
 	def has_spark_failures(self):
 
 		'''
@@ -782,7 +780,7 @@ class Job(models.Model):
 		'''
 
 		# get spark jobs
-		spark_jobs = self.get_spark_jobs
+		spark_jobs = self.get_spark_jobs()
 
 		if spark_jobs:
 			failed = [ job for job in spark_jobs if job['status'] == 'FAILED' ]
