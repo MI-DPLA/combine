@@ -5042,7 +5042,7 @@ class CombineJob(object):
 			- clone elasticsearch index
 		'''
 
-		# establish clone handle by duplicating in ORM
+		# establish clone handle
 		clone = CombineJob.get_combine_job(self.job.id)
 
 		# drop PK
@@ -5051,12 +5051,23 @@ class CombineJob(object):
 		# update name
 		clone.job.name = "%s (CLONE)" % self.job.name
 
-		# save
+		# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()
 		clone.job.save()
 		logger.debug('Cloned Job #%s --> #%s' % (self.job.id, clone.job.id))
 
 		# update spark_code
 		clone.job.spark_code = clone.prepare_job(return_job_code=True)
+
+		# # update other attributes of clone
+		# clone.job.timestamp = datetime.datetime.now()
+		# clone.job.status = 'initializing'
+		# clone.job.record_count = 0
+		# clone.job.finished = False
+		# clone.job.elapsed = 0
+		# clone.job.url = None
+		# clone.job.deleted = True
+
+		# save changes to clone
 		clone.job.save()
 
 		# recreate JobInput links		
