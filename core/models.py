@@ -2129,33 +2129,38 @@ class Record(mongoengine.Document):
 						return self.dpla_api_doc
 
 					# if count present
-					if 'count' in api_r.keys():
+					if type(api_r) == dict:
+						if 'count' in api_r.keys():
 
-						# response
-						if api_r['count'] >= 1:
+							# response
+							if api_r['count'] >= 1:
 
-							# add matches to matches
-							field,value = search_string.split('=')
-							value = urllib.parse.unquote(value)
-							
-							# check for matches attr
-							if not hasattr(self, "dpla_api_matches"):
-								self.dpla_api_matches = {}
-							
-							# add mapped field used for searching
-							if field not in self.dpla_api_matches.keys():
-								self.dpla_api_matches[field] = []
-							
-							# add matches for values searched
-							for doc in api_r['docs']:
-								self.dpla_api_matches[field].append({
-										"search_term":value,
-										"hit":doc
-									})
+								# add matches to matches
+								field,value = search_string.split('=')
+								value = urllib.parse.unquote(value)
+								
+								# check for matches attr
+								if not hasattr(self, "dpla_api_matches"):
+									self.dpla_api_matches = {}
+								
+								# add mapped field used for searching
+								if field not in self.dpla_api_matches.keys():
+									self.dpla_api_matches[field] = []
+								
+								# add matches for values searched
+								for doc in api_r['docs']:
+									self.dpla_api_matches[field].append({
+											"search_term":value,
+											"hit":doc
+										})
 
+							else:
+								if not hasattr(self, "dpla_api_matches"):
+									self.dpla_api_matches = {}
 						else:
+							logger.debug('non-JSON response from DPLA API: %s' % api_r)
 							if not hasattr(self, "dpla_api_matches"):
-								self.dpla_api_matches = {}
+									self.dpla_api_matches = {}
 
 					else:
 						logger.debug(api_r)
@@ -5035,27 +5040,38 @@ class CombineJob(object):
 		'''
 
 		# establish clone handle by duplicating in ORM
-		clone = Job.objects.get(pk=self.job.id)
-		clone.pk = None
-		clone.save()
-		logger.debug('Cloned Job #%s --> #%s' % (self.job.id, clone.id))
+		clone = CombineJob.get_combine_job(self.job.id)
+
+		# drop PK
+		clone.job.pk = None
+
+		# update name
+		clone.job.name = "%s (CLONE)" % self.job.name
+
+		# save
+		clone.job.save()
+		logger.debug('Cloned Job #%s --> #%s' % (self.job.id, clone.job.id))
+
+		# update spark_code
+		clone.job.spark_code = clone.prepare_job(return_job_code=True)
+		clone.job.save()
 
 		# recreate JobInput links		
 		for ji in self.job.jobinput_set.all():
 			logger.debug('cloning input job link: %s' % ji.input_job)
 			ji.pk = None
-			ji.job = clone
+			ji.job = clone.job
 			ji.save()
 
 		# recreate JobValidation links		
 		for jv in self.job.jobvalidation_set.all():
 			logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
 			jv.pk = None
-			jv.job = clone
+			jv.job = clone.job
 			jv.save()
 
 		# return clone
-		return CombineJob.get_combine_job(clone.id)
+		return clone
 
 
 
@@ -5186,7 +5202,7 @@ class HarvestOAIJob(HarvestJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5206,6 +5222,10 @@ class HarvestOAIJob(HarvestJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5327,7 +5347,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5347,6 +5367,10 @@ class HarvestStaticXMLJob(HarvestJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5449,7 +5473,7 @@ class TransformJob(CombineJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5469,6 +5493,10 @@ class TransformJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5569,7 +5597,7 @@ class MergeJob(CombineJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5589,6 +5617,10 @@ class MergeJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5748,7 +5780,7 @@ class AnalysisJob(CombineJob):
 		return job_details
 
 		
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5768,6 +5800,10 @@ class AnalysisJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
