@@ -3821,12 +3821,12 @@ class SparkAppAPIClient(object):
 		'''
 		Method to retrieve all Jobs from application, then filter by jobGroup
 		'''
-
+		
 		# get all jobs from application
-		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()
+		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()		
 
 		# loop through and filter
-		filtered_jobs = [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
+		filtered_jobs = [ job for job in jobs if 'jobGroup' in job.keys() and job['jobGroup'] == str(jobGroup) ]
 
 		# convert to datetimes
 		if parse_dates:
