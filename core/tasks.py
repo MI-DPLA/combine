@@ -890,7 +890,7 @@ def rerun_jobs_prep(ct_id):
 			cjob = models.CombineJob.get_combine_job(job_id)
 
 			# rerun			
-			cjob.rerun(run_downstream=False)
+			cjob.rerun(run_downstream=False, set_gui_status=False)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		

@@ -4974,7 +4974,7 @@ class CombineJob(object):
 		return ct
 
 
-	def rerun(self, run_downstream=True):
+	def rerun(self, run_downstream=True, set_gui_status=True):
 
 		'''
 		Method to re-run job, and if flagged, all downstream Jobs in lineage
@@ -4991,6 +4991,17 @@ class CombineJob(object):
 		for re_job in rerun_jobs:
 
 			logger.debug('re-running job: %s' % re_job)
+
+			# optionally, update status for GUI representation
+			if set_gui_status:
+
+				re_job.timestamp = datetime.datetime.now()
+				re_job.status = 'initializing'
+				re_job.record_count = 0
+				re_job.finished = False
+				re_job.elapsed = 0
+				re_job.deleted = True
+				re_job.save()
 
 			# drop records			
 			re_job.remove_records_from_db()
@@ -5028,7 +5039,7 @@ class CombineJob(object):
 			re_cjob.job.save()
 
 
-	def clone(self):
+	def clone(self, rerun=True):
 
 		'''
 		Method to clone Job
@@ -5058,15 +5069,6 @@ class CombineJob(object):
 		# update spark_code
 		clone.job.spark_code = clone.prepare_job(return_job_code=True)
 
-		# # update other attributes of clone
-		# clone.job.timestamp = datetime.datetime.now()
-		# clone.job.status = 'initializing'
-		# clone.job.record_count = 0
-		# clone.job.finished = False
-		# clone.job.elapsed = 0
-		# clone.job.url = None
-		# clone.job.deleted = True
-
 		# save changes to clone
 		clone.job.save()
 
@@ -5083,6 +5085,11 @@ class CombineJob(object):
 			jv.pk = None
 			jv.job = clone.job
 			jv.save()
+
+		# rerun clone
+		if rerun:
+			clone.job.refresh_from_db()
+			clone.rerun()
 
 		# return clone
 		return clone
