@@ -4974,7 +4974,7 @@ class CombineJob(object):
 		return ct
 
 
-	def rerun(self, run_downstream=True, set_gui_status=True):
+	def rerun(self, rerun_downstream=True, set_gui_status=True):
 
 		'''
 		Method to re-run job, and if flagged, all downstream Jobs in lineage
@@ -4984,7 +4984,7 @@ class CombineJob(object):
 		rerun_jobs = self.job.get_rerun_lineage()
 
 		# if not running downstream, select only this job
-		if not run_downstream:
+		if not rerun_downstream:
 			rerun_jobs = [self.job]
 
 		# loop through jobs
@@ -5039,19 +5039,17 @@ class CombineJob(object):
 			re_cjob.job.save()
 
 
-	def clone(self, rerun=True):
+	def clone(self, rerun=True, clone_downstream=True):
 
 		'''
 		Method to clone Job
 
-		Operations:
-			- clone ORM instance
-			- set status to 'cloning', maybe visual GUI hint as well
-			- loop through JobInputs, if any, recreate
-			- clone JobValidation
-			- clone records
-			- clone elasticsearch index
+		Args:
+			rerun (bool): If True, Job(s) are automatically rerun after cloning
+			clone_downstream (bool): If True, downstream Jobs are cloned as well
 		'''
+
+
 
 		# establish clone handle
 		clone = CombineJob.get_combine_job(self.job.id)

@@ -203,12 +203,10 @@
 </div>
 
 <div class="row">
+
 	<div class="col-md-12">
 		<h4>Job Management</h4>
 	</div>
-</div>
-
-<div class="row">
 
 	<div class="col-md-12">
 		<table class="table table-bordered table-hover">
@@ -226,20 +224,48 @@
 							</select>
 						</div>        	
 				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs <i class="la la-arrow-right"></i></button>
+			    		<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_move_toggle">
+							<label style="font-weight:normal;" for="downstream_move_toggle">Include Downstream?</label>
+						</span>
 					</td>
 				</tr>
 				<tr>
 					<th style="width:10%;">Delete Jobs</th>
-					<td>Marks selected Jobs for deletion as background task</td>
+					<td>Delete Job(s)</td>
 					<td style="width:20%; text-align:left;">
 						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs <i class="la la-close"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_delete_toggle">
+							<label style="font-weight:normal;" for="downstream_delete_toggle">Include Downstream?</label>
+						</span>
+
 					</td>
 				</tr>
 				<tr>
 					<th style="width:10%;">Re-Run</th>
-					<td>Re-run Job, and all downstream Jobs</td>
+					<td>Re-run Job</td>
 					<td style="width:20%; text-align:left;">
 						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs <i class="la la-refresh"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
+							<label style="font-weight:normal;" for="downstream_rerun_toggle">Include Downstream?</label>
+						</span>
+					</td>
+				</tr>
+				<tr>
+					<th style="width:10%;">Clone</th>
+					<td>Clone Job</td>
+					<td style="width:20%; text-align:left;">
+						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Clone Selected Jobs <i class="la la-refresh"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
+							<label style="font-weight:normal;" for="downstream_clone_toggle">Include Downstream?</label>
+						</span>
 					</td>
 				</tr>
 			</tbody>
