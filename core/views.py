@@ -900,7 +900,6 @@ def rerun_jobs(request):
 		re_job.record_count = 0
 		re_job.finished = False
 		re_job.elapsed = 0
-		re_job.url = None
 		re_job.deleted = True
 		re_job.save()
 

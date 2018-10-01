@@ -705,7 +705,7 @@ class Job(models.Model):
 
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
-		
+
 		# if status_code 400 or 404, set as gone
 		if livy_response.status_code in [400,404]:
 			
@@ -5009,7 +5009,7 @@ class CombineJob(object):
 			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
 			for ji in as_input_job:
 				ji.passed_records = None
-				ji.save()
+				ji.save()			
 
 			# get combine job
 			re_cjob = CombineJob.get_combine_job(re_job.id)
@@ -5018,14 +5018,14 @@ class CombineJob(object):
 			re_cjob.write_validation_job_links(re_cjob.job.job_details_dict)
 
 			# remove old JobTrack instance
-			JobTrack.objects.filter(job=self.job).delete()
+			JobTrack.objects.filter(job=self.job).delete()			
+
+			# re-submit to Livy
+			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
 
 			# set as undeleted
 			re_cjob.job.deleted = False
 			re_cjob.job.save()
-
-			# re-submit to Livy
-			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
 
 
 	def clone(self):

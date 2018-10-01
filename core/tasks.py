@@ -898,7 +898,7 @@ def rerun_jobs_prep(ct_id):
 			'msg':'Jobs prepared for rerunning, running or queued as Spark jobs'
 		})
 		ct.save()
-		logger.debug(ct.task_output_json)		
+		logger.debug(ct.task_output_json)
 
 	except Exception as e:
 
