@@ -623,6 +623,41 @@ def delete_jobs(request):
 	job_ids = request.POST.getlist('job_ids[]')
 	logger.debug(job_ids)
 
+	###########################################################################
+	# # get downstream toggle
+	# downstream_toggle = request.POST.get('downstream_delete_toggle', False);
+	# if downstream_toggle == 'true':
+	# 	downstream_toggle = True
+	# elif downstream_toggle == 'false':
+	# 	downstream_toggle = False
+	
+	# # set of jobs to rerun
+	# job_rerun_set = set()
+
+	# # loop through job_ids
+	# for job_id in job_ids:		
+		
+	# 	# get CombineJob
+	# 	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# 	# if including downstream
+	# 	if downstream_toggle:
+
+	# 		# add rerun lineage for this job to set
+	# 		job_rerun_set.update(cjob.job.get_rerun_lineage())
+
+	# 	# else, just job
+	# 	else:
+
+	# 		job_rerun_set.add(cjob.job)
+
+	# # sort and run
+	# ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
+
+	# # # loop through and update visible elements of Job for front-end
+	# for re_job in ordered_job_rerun_set:
+	###########################################################################
+
 	# loop through job_ids
 	jobs = []
 	for job_id in job_ids:
@@ -875,7 +910,15 @@ def rerun_jobs(request):
 
 	logger.debug('re-running jobs')
 	
+	# get job ids
 	job_ids = request.POST.getlist('job_ids[]')
+
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_rerun_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
 	
 	# set of jobs to rerun
 	job_rerun_set = set()
@@ -886,8 +929,16 @@ def rerun_jobs(request):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(job_id)
 
-		# add rerun lineage for this job to set
-		job_rerun_set.update(cjob.job.get_rerun_lineage())
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_rerun_set.update(cjob.job.get_rerun_lineage())
+
+		# else, just job
+		else:
+
+			job_rerun_set.add(cjob.job)
 
 	# sort and run
 	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
@@ -935,49 +986,50 @@ def rerun_jobs(request):
 @login_required
 def clone_jobs(request):
 
-	logger.debug('re-running jobs')
+	logger.debug('cloning jobs')
 	
 	job_ids = request.POST.getlist('job_ids[]')
 	
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_clone_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+
+	# get rerun toggle
+	rerun_on_clone = request.POST.get('rerun_on_clone', False);
+	if rerun_on_clone == 'true':
+		rerun_on_clone = True
+	elif rerun_on_clone == 'false':
+		rerun_on_clone = False
+	
 	# set of jobs to rerun
-	job_rerun_set = set()
+	job_clone_set = set()
 
-	# loop through job_ids
-	for job_id in job_ids:		
-		
-		# get CombineJob
+	# loop through job_ids and add
+	for job_id in job_ids:
 		cjob = models.CombineJob.get_combine_job(job_id)
-
-		# add rerun lineage for this job to set
-		job_rerun_set.update(cjob.job.get_rerun_lineage())
+		job_clone_set.add(cjob.job)
 
 	# sort and run
-	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
-
-	# # loop through and update visible elements of Job for front-end
-	for re_job in ordered_job_rerun_set:
-
-		re_job.timestamp = datetime.datetime.now()
-		re_job.status = 'initializing'
-		re_job.record_count = 0
-		re_job.finished = False
-		re_job.elapsed = 0
-		re_job.deleted = True
-		re_job.save()
+	ordered_job_clone_set = sorted(list(job_clone_set), key=lambda j: j.id)
 
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
-		name = "Rerun Jobs Prep",
-		task_type = 'rerun_jobs_prep',
+		name = "Clone Jobs",
+		task_type = 'clone_jobs',
 		task_params_json = json.dumps({
-			'ordered_job_rerun_set':[j.id for j in ordered_job_rerun_set]
+			'ordered_job_clone_set':[j.id for j in ordered_job_clone_set],
+			'downstream_toggle':downstream_toggle,
+			'rerun_on_clone':rerun_on_clone
 		})
 	)
 	ct.save()
 
 	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
 	# and setting creator and verbose_name params
-	bt = tasks.rerun_jobs_prep(
+	bt = tasks.clone_jobs(
 		ct.id,
 		verbose_name = ct.verbose_name,
 		creator = ct
@@ -986,7 +1038,7 @@ def clone_jobs(request):
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
 	gmc.add_gm({
-		'html':'<strong>Preparing to Rerun Job(s):</strong><br>%s<br><br>Refresh this page to update status of Jobs rerunning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' %  '<br>'.join([str(j.name) for j in ordered_job_rerun_set]),
+		'html':'<strong>Cloning Job(s):</strong><br>%s<br><br>Including downstream? <strong>%s</strong><br><br>Refresh this page to update status of Jobs cloning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' %  ('<br>'.join([str(j.name) for j in ordered_job_clone_set]), downstream_toggle),
 		'class':'success'
 	})
 

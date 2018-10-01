@@ -5049,48 +5049,84 @@ class CombineJob(object):
 			clone_downstream (bool): If True, downstream Jobs are cloned as well
 		'''
 
+		if clone_downstream:
+			to_clone = self.job.get_rerun_lineage()		
+		else:
+			to_clone = [self.job]
 
+		# loop through to clone
+		logger.debug('preparing to clone: %s' % to_clone)
+		clones = []
+		for i, job in enumerate(to_clone):
 
-		# establish clone handle
-		clone = CombineJob.get_combine_job(self.job.id)
+			'''
+			Looping through enumerated list
+				- if index 0, do not ammend JobInput links
+				- else, if JobInput.input_link == to_clone[i].id, rewrite to clones[-1]
+			'''
 
-		# drop PK
-		clone.job.pk = None
+			logger.debug('cloning %s' % job)
+		
+			# establish clone handle
+			clone = CombineJob.get_combine_job(job.id)
 
-		# update name
-		clone.job.name = "%s (CLONE)" % self.job.name
+			# drop PK
+			clone.job.pk = None
 
-		# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()
-		clone.job.save()
-		logger.debug('Cloned Job #%s --> #%s' % (self.job.id, clone.job.id))
+			# update name
+			clone.job.name = "%s (CLONE)" % job.name
 
-		# update spark_code
-		clone.job.spark_code = clone.prepare_job(return_job_code=True)
+			# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()
+			clone.job.save()
+			logger.debug('Cloned Job #%s --> #%s' % (job.id, clone.job.id))
 
-		# save changes to clone
-		clone.job.save()
+			# update spark_code
+			clone.job.spark_code = clone.prepare_job(return_job_code=True)
 
-		# recreate JobInput links		
-		for ji in self.job.jobinput_set.all():
-			logger.debug('cloning input job link: %s' % ji.input_job)
-			ji.pk = None
-			ji.job = clone.job
-			ji.save()
+			# save changes to clone
+			clone.job.save()
 
-		# recreate JobValidation links		
-		for jv in self.job.jobvalidation_set.all():
-			logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
-			jv.pk = None
-			jv.job = clone.job
-			jv.save()
+			# recreate JobInput links		
+			for ji in job.jobinput_set.all():
+				logger.debug('cloning input job link: %s' % ji.input_job)
+				ji.pk = None
+				
+				# if input job was parent clone, rewrite input jobs links
+				if i > 0 and ji.input_job.id == to_clone[i-1].id:
 
-		# rerun clone
-		if rerun:
-			clone.job.refresh_from_db()
-			clone.rerun()
+					# DEBUG
+					logger.debug('ENCOUNTERING PARENT CLONE')
+					
+					# parent clone job
+					parent_clone = clones[-1].job
 
-		# return clone
-		return clone
+					# alter job.job_details.input_jobs
+					updated_input_jobs = [ parent_clone.id if job_id==ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids'] ]
+					clone.job.update_job_details({'input_job_ids':updated_input_jobs})
+					
+					# rewrite JobInput.input_job
+					ji.input_job = parent_clone
+
+				ji.job = clone.job
+				ji.save()
+
+			# recreate JobValidation links		
+			for jv in job.jobvalidation_set.all():
+				logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
+				jv.pk = None
+				jv.job = clone.job
+				jv.save()
+
+			# rerun clone
+			if rerun:
+				clone.job.refresh_from_db()
+				clone.rerun()
+
+			# return clone
+			clones.append(clone)
+
+		# return
+		return clones
 
 
 

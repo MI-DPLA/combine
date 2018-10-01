@@ -248,10 +248,10 @@
 					<th style="width:10%;">Re-Run</th>
 					<td>Re-run Job</td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs <i class="la la-refresh"></i></button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs <i class="la la-refresh"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
-							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
+							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle">
 							<label style="font-weight:normal;" for="downstream_rerun_toggle">Include Downstream?</label>
 						</span>
 					</td>
@@ -260,11 +260,15 @@
 					<th style="width:10%;">Clone</th>
 					<td>Clone Job</td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Clone Selected Jobs <i class="la la-refresh"></i></button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">Clone Selected Jobs <i class="la la-refresh"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
-							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
+							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle">
 							<label style="font-weight:normal;" for="downstream_clone_toggle">Include Downstream?</label>
+						</span>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="rerun_on_clone" checked>
+							<label style="font-weight:normal;" for="rerun_on_clone">Re-Run on Clone?</label>
 						</span>
 					</td>
 				</tr>
@@ -284,7 +288,10 @@
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
+
+				// get value of downstream toggle
+				var downstream_delete_toggle = $("#downstream_delete_toggle")[0].checked
 
 				// submit job ids via ajax
 				$.ajax({
@@ -292,6 +299,7 @@
 					url: "{% url 'delete_jobs' %}",
 					data: {
 						'job_ids':job_ids,
+						'downstream_delete_toggle':downstream_delete_toggle,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
@@ -340,17 +348,20 @@
 			}
 		} 
 
-		// handle bulk job deletion
+		// handle rerunning jobs
 		function rerun_jobs(){
 
-			confirmation = confirm('Are you sure you want to re-run selected Jobs?  All Records and Validations will be removed for selected Jobs, and all their downstream Jobs.');
+			confirmation = confirm('Are you sure you want to re-run selected Jobs?');
 			if (confirmation){
 
 				// get values for job_ids
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
+
+				// get value of downstream toggle
+				var downstream_rerun_toggle = $("#downstream_rerun_toggle")[0].checked
 
 				// submit job ids via ajax
 				$.ajax({
@@ -358,6 +369,46 @@
 					url: "{% url 'rerun_jobs' %}",
 					data: {
 						'job_ids':job_ids,
+						'downstream_rerun_toggle':downstream_rerun_toggle,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){
+						console.log(data);
+						if (data.results == true) {
+							location.reload();
+						}					
+					}
+				});
+			}
+		}
+
+		// handle job cloning
+		function clone_jobs(){
+
+			confirmation = confirm('Are you sure you want to clone selected Jobs?');
+			if (confirmation){
+
+				// get values for job_ids
+				job_ids = [];
+				$(".job_id_sel:checkbox:checked").each(function(i){
+					job_ids.push($(this).val());
+				});
+
+				// get value of downstream toggle
+				var downstream_clone_toggle = $("#downstream_clone_toggle")[0].checked
+
+				// get value of downstream toggle
+				var rerun_on_clone = $("#rerun_on_clone")[0].checked
+
+				// submit job ids via ajax
+				$.ajax({
+					type: "POST",
+					url: "{% url 'clone_jobs' %}",
+					data: {
+						'job_ids':job_ids,
+						'downstream_clone_toggle':downstream_clone_toggle,
+						'rerun_on_clone':rerun_on_clone,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
