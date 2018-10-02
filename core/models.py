@@ -5057,6 +5057,7 @@ class CombineJob(object):
 		# loop through to clone
 		logger.debug('preparing to clone Jobs: %s' % to_clone)
 		clones = {}
+		clones_ids = {}
 		for job in to_clone:			
 
 			logger.debug('cloning %s' % job)
@@ -5080,8 +5081,9 @@ class CombineJob(object):
 			# save changes to clone, resulting in new pk/id
 			clone.job.save()
 
-			# save to clones dictionary
+			# save to clones and clones_ids dictionary
 			clones[job] = clone.job
+			clones_ids[job.id] = clone.job.id
 
 			# recreate JobInput links		
 			for ji in job.jobinput_set.all():
@@ -5101,7 +5103,12 @@ class CombineJob(object):
 					update_dict['input_job_ids'] = [ clones[ji.input_job].id if job_id == ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids'] ]					
 
 					# handle record input filters					
-					
+					update_dict['input_filters'] = clone.job.job_details_dict['input_filters']
+					for job_id in update_dict['input_filters']['job_specific'].keys():
+						
+						if int(job_id) in clones_ids.keys():							
+							job_spec_dict = update_dict['input_filters']['job_specific'].pop(job_id)
+							update_dict['input_filters']['job_specific'][str(clones_ids[ji.input_job.id])] = job_spec_dict
 
 					# update
 					clone.job.update_job_details(update_dict)
