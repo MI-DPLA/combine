@@ -5038,7 +5038,7 @@ class CombineJob(object):
 			re_cjob.job.save()
 
 
-	def clone(self, rerun=True, clone_downstream=True):
+	def clone(self, rerun=True, clone_downstream=True, skip_clones=[]):
 
 		'''
 		Method to clone Job
@@ -5056,7 +5056,11 @@ class CombineJob(object):
 		# loop through jobs to clone		
 		clones = {} # dictionary of original:clone 
 		clones_ids = {} # dictionary of original.id:clone.id
-		for job in to_clone:			
+		for job in to_clone:
+
+			# confirm that job is itself not a clone made during lineage from another Job			
+			if job in skip_clones:
+				continue
 
 			# establish clone handle
 			clone = CombineJob.get_combine_job(job.id)

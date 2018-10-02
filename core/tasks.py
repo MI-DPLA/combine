@@ -914,12 +914,22 @@ def rerun_jobs_prep(ct_id):
 @background(schedule=1)
 def clone_jobs(ct_id):
 
+	'''
+	Background task to clone Job(s)
+
+		- because multiple Jobs can be run through this method,
+		that might result in newly created clones as downstream for Jobs
+		run through later, need to pass newly created clones under skip_clones[]
+		list to cjob.clone() to pass on
+	'''
+
 	# get CombineTask (ct)
 	try:
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.debug('using %s' % ct)
 
 		# loop through and run
+		skip_clones = []
 		for job_id in ct.task_params['ordered_job_clone_set']:
 
 			# cjob
@@ -928,7 +938,12 @@ def clone_jobs(ct_id):
 			# clone		
 			clones = cjob.clone(
 				rerun=ct.task_params['rerun_on_clone'],
-				clone_downstream=ct.task_params['downstream_toggle'])
+				clone_downstream=ct.task_params['downstream_toggle'],
+				skip_clones=skip_clones)
+
+			# append newly created clones to skip_clones
+			for job, clone in clones.items():
+				skip_clones.append(clone)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
