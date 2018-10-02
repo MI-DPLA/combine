@@ -926,7 +926,7 @@ def clone_jobs(ct_id):
 		cjob = models.CombineJob.get_combine_job(job_id)
 
 		# clone
-		cjob.clone(
+		clones = cjob.clone(
 			rerun=ct.task_params['rerun_on_clone'],
 			clone_downstream=ct.task_params['downstream_toggle'])
 

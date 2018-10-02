@@ -50,7 +50,7 @@ if not hasattr(django, 'apps'):
 
 # import django settings
 from django.conf import settings
-from django.db import connection
+from django.db import connection, transaction
 
 # import select models from Core
 from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
@@ -137,7 +137,8 @@ class CombineSparkJob(object):
 		refresh_django_db_connection()
 
 		# get job
-		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		with transaction.atomic():
+			self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
 
 		# start job_track instance, marking job start
 		self.job_track = JobTrack(

@@ -53,7 +53,7 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.db import connection, models
+from django.db import connection, models, transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.http.request import QueryDict
@@ -5054,14 +5054,11 @@ class CombineJob(object):
 		else:
 			to_clone = [self.job]
 
-		# loop through to clone
-		logger.debug('preparing to clone Jobs: %s' % to_clone)
+		# loop through jobs to clone		
 		clones = {}
 		clones_ids = {}
 		for job in to_clone:			
 
-			logger.debug('cloning %s' % job)
-		
 			# establish clone handle
 			clone = CombineJob.get_combine_job(job.id)
 
@@ -5092,9 +5089,6 @@ class CombineJob(object):
 				
 				# if input job was parent clone, rewrite input jobs links
 				if ji.input_job in clones.keys():
-
-					# DEBUG
-					logger.debug('ENCOUNTERING PARENT CLONE: %s' % ji.input_job)					
 
 					# alter job.job_details
 					update_dict = {}
@@ -5127,9 +5121,10 @@ class CombineJob(object):
 				jv.save()
 
 			# rerun clone
-			if rerun:
-				clone.job.refresh_from_db()
-				clone.rerun()			
+			if rerun:				
+				# reopen and run
+				clone = CombineJob.get_combine_job(clone.job.id)
+				clone.rerun(rerun_downstream=False)
 
 		# return
 		return clones
