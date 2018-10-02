@@ -623,7 +623,6 @@ def delete_jobs(request):
 	job_ids = request.POST.getlist('job_ids[]')
 	logger.debug(job_ids)
 
-	###########################################################################
 	# get downstream toggle
 	downstream_toggle = request.POST.get('downstream_delete_toggle', False);
 	if downstream_toggle == 'true':
@@ -692,76 +691,76 @@ def delete_jobs(request):
 	# return
 	return JsonResponse({'results':True})
 
-	###########################################################################
-
-	# # loop through job_ids
-	# jobs = []
-	# for job_id in job_ids:
-
-	# 	logger.debug('deleting job by id: %s' % job_id)
-		
-	# 	# get job
-	# 	job = models.Job.objects.get(pk=int(job_id))
-	# 	jobs.append(job)
-
-	# 	# set job status to deleting
-	# 	job.name = "%s (DELETING)" % job.name
-	# 	job.deleted = True
-	# 	job.status = 'deleting'
-	# 	job.save()
-
-	# 	# initiate Combine BG Task
-	# 	ct = models.CombineBackgroundTask(
-	# 		name = 'Delete Job: #%s' % job.name,
-	# 		task_type = 'job_delete',
-	# 		task_params_json = json.dumps({
-	# 			'model':'Job',
-	# 			'job_id':job.id
-	# 		})
-	# 	)
-	# 	ct.save()
-	# 	bg_task = tasks.delete_model_instance(
-	# 		'Job',
-	# 		job.id,
-	# 		verbose_name=ct.verbose_name,
-	# 		creator=ct
-	# 	)
-
-	# # set gms
-	# gmc = models.GlobalMessageClient(request.session)
-	# gmc.add_gm({
-	# 	'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in jobs ])),
-	# 	'class':'success'
-	# })
-
-	# # return
-	# return JsonResponse({'results':True})
-
 
 @login_required
 def move_jobs(request):
 
-	logger.debug('moving jobs')
-
-	stime = time.time()
+	logger.debug('moving jobs')	
 
 	job_ids = request.POST.getlist('job_ids[]')
 	record_group_id = request.POST.getlist('record_group_id')[0]
 
-	# loop through job_ids
-	for job_id in job_ids:
+	################################################################################################
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_move_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
+	# set of jobs to rerun
+	job_move_set = set()
 
-		logger.debug('moving job by ids: %s' % job_id)
+	# loop through job_ids
+	for job_id in job_ids:		
 		
+		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_move_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_move_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_move_set = sorted(list(job_move_set), key=lambda j: j.id)
+
+	# loop through jobs
+	for job in ordered_job_move_set:
+
+		logger.debug('moving Job: %s' % job)		
+		
 		new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
-		cjob.job.record_group = new_record_group
-		cjob.job.save()
+		job.record_group = new_record_group
+		job.save()
 
 		logger.debug('job has been moved ids: %s' % job_id)
 
 	# redirect
 	return JsonResponse({'results':True})
+
+	################################################################################################
+
+	# # loop through job_ids
+	# for job_id in job_ids:
+
+	# 	logger.debug('moving job by ids: %s' % job_id)
+		
+	# 	cjob = models.CombineJob.get_combine_job(job_id)
+	# 	new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
+	# 	cjob.job.record_group = new_record_group
+	# 	cjob.job.save()
+
+	# 	logger.debug('job has been moved ids: %s' % job_id)
+
+	# # redirect
+	# return JsonResponse({'results':True})
 
 
 @login_required

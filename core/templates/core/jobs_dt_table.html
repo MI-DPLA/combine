@@ -323,7 +323,10 @@
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
+
+				// get value of downstream toggle
+				var downstream_move_toggle = $("#downstream_move_toggle")[0].checked
 
 				// get value for record_group_id
 				var e = document.getElementById("record_group_id_select");
@@ -336,6 +339,7 @@
 					data: {
 						'job_ids':job_ids,
 						'record_group_id':record_group_id,
+						'downstream_move_toggle':downstream_move_toggle,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
