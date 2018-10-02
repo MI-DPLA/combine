@@ -10,6 +10,7 @@ from lxml import etree
 from operator import itemgetter
 import os
 import pdb
+import polling
 import re
 import requests
 import shutil
@@ -136,9 +137,9 @@ class CombineSparkJob(object):
 		# refresh Django DB Connection
 		refresh_django_db_connection()
 
-		# get job
-		with transaction.atomic():
-			self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
+		# get job		
+		results = polling.poll(lambda: Job.objects.filter(id=int(self.kwargs['job_id'])).count() == 1, step=1, timeout=60)
+		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
 
 		# start job_track instance, marking job start
 		self.job_track = JobTrack(

@@ -137,6 +137,6 @@ ANALYSIS_JOBS_HIERARCHY = {
 
 # Django-Background-Tasks
 # http://django-background-tasks.readthedocs.io/en/latest/#
-MAX_ATTEMPTS = 3
+MAX_ATTEMPTS = 1
 MAX_RUN_TIME = 14800
 BACKGROUND_TASK_RUN_ASYNC = False

@@ -5055,8 +5055,8 @@ class CombineJob(object):
 			to_clone = [self.job]
 
 		# loop through jobs to clone		
-		clones = {}
-		clones_ids = {}
+		clones = {} # dictionary of original:clone 
+		clones_ids = {} # dictionary of original.id:clone.id
 		for job in to_clone:			
 
 			# establish clone handle
@@ -5068,14 +5068,12 @@ class CombineJob(object):
 			# update name
 			clone.job.name = "%s (CLONE)" % job.name
 
-			# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()
+			# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()			
 			clone.job.save()
 			logger.debug('Cloned Job #%s --> #%s' % (job.id, clone.job.id))
 
 			# update spark_code
 			clone.job.spark_code = clone.prepare_job(return_job_code=True)
-
-			# save changes to clone, resulting in new pk/id
 			clone.job.save()
 
 			# save to clones and clones_ids dictionary
@@ -5121,7 +5119,7 @@ class CombineJob(object):
 				jv.save()
 
 			# rerun clone
-			if rerun:				
+			if rerun:								
 				# reopen and run
 				clone = CombineJob.get_combine_job(clone.job.id)
 				clone.rerun(rerun_downstream=False)
