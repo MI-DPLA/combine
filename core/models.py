@@ -1479,11 +1479,10 @@ class Job(models.Model):
 		return True
 
 
-	def get_rerun_lineage(self):
+	def get_downstream_lineage(self):
 
 		'''
-		Method to retrieve ordered lineage of downstream jobs
-		to re-run
+		Method to retrieve ordered lineage of downstream jobs		
 		'''
 
 		def _job_recurse(job_node):
@@ -4981,7 +4980,7 @@ class CombineJob(object):
 		'''
 
 		# get lineage
-		rerun_jobs = self.job.get_rerun_lineage()
+		rerun_jobs = self.job.get_downstream_lineage()
 
 		# if not running downstream, select only this job
 		if not rerun_downstream:
@@ -5050,7 +5049,7 @@ class CombineJob(object):
 		'''
 
 		if clone_downstream:
-			to_clone = self.job.get_rerun_lineage()		
+			to_clone = self.job.get_downstream_lineage()		
 		else:
 			to_clone = [self.job]
 

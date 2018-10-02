@@ -644,7 +644,7 @@ def delete_jobs(request):
 	# 	if downstream_toggle:
 
 	# 		# add rerun lineage for this job to set
-	# 		job_rerun_set.update(cjob.job.get_rerun_lineage())
+	# 		job_rerun_set.update(cjob.job.get_downstream_lineage())
 
 	# 	# else, just job
 	# 	else:
@@ -933,7 +933,7 @@ def rerun_jobs(request):
 		if downstream_toggle:
 
 			# add rerun lineage for this job to set
-			job_rerun_set.update(cjob.job.get_rerun_lineage())
+			job_rerun_set.update(cjob.job.get_downstream_lineage())
 
 		# else, just job
 		else:
