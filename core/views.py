@@ -694,7 +694,7 @@ def delete_jobs(request):
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
 	gmc.add_gm({
-		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  ('<br>'.join([j.name for j in jobs ]), reverse('bg_tasks')),
+		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in jobs ])),
 		'class':'success'
 	})
 

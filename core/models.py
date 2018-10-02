@@ -5055,15 +5055,9 @@ class CombineJob(object):
 			to_clone = [self.job]
 
 		# loop through to clone
-		logger.debug('preparing to clone: %s' % to_clone)
-		clones = []
-		for i, job in enumerate(to_clone):
-
-			'''
-			Looping through enumerated list
-				- if index 0, do not ammend JobInput links
-				- else, if JobInput.input_link == to_clone[i].id, rewrite to clones[-1]
-			'''
+		logger.debug('preparing to clone Jobs: %s' % to_clone)
+		clones = {}
+		for job in to_clone:			
 
 			logger.debug('cloning %s' % job)
 		
@@ -5083,8 +5077,11 @@ class CombineJob(object):
 			# update spark_code
 			clone.job.spark_code = clone.prepare_job(return_job_code=True)
 
-			# save changes to clone
+			# save changes to clone, resulting in new pk/id
 			clone.job.save()
+
+			# save to clones dictionary
+			clones[job] = clone.job
 
 			# recreate JobInput links		
 			for ji in job.jobinput_set.all():
@@ -5092,20 +5089,25 @@ class CombineJob(object):
 				ji.pk = None
 				
 				# if input job was parent clone, rewrite input jobs links
-				if i > 0 and ji.input_job.id == to_clone[i-1].id:
+				if ji.input_job in clones.keys():
 
 					# DEBUG
-					logger.debug('ENCOUNTERING PARENT CLONE')
-					
-					# parent clone job
-					parent_clone = clones[-1].job
+					logger.debug('ENCOUNTERING PARENT CLONE: %s' % ji.input_job)					
 
-					# alter job.job_details.input_jobs
-					updated_input_jobs = [ parent_clone.id if job_id==ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids'] ]
-					clone.job.update_job_details({'input_job_ids':updated_input_jobs})
+					# alter job.job_details
+					update_dict = {}
+
+					# handle input_job_ids
+					update_dict['input_job_ids'] = [ clones[ji.input_job].id if job_id == ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids'] ]					
+
+					# handle record input filters					
+					
+
+					# update
+					clone.job.update_job_details(update_dict)
 					
 					# rewrite JobInput.input_job
-					ji.input_job = parent_clone
+					ji.input_job = clones[ji.input_job]
 
 				ji.job = clone.job
 				ji.save()
@@ -5120,10 +5122,7 @@ class CombineJob(object):
 			# rerun clone
 			if rerun:
 				clone.job.refresh_from_db()
-				clone.rerun()
-
-			# return clone
-			clones.append(clone)
+				clone.rerun()			
 
 		# return
 		return clones
