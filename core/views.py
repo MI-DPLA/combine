@@ -624,49 +624,40 @@ def delete_jobs(request):
 	logger.debug(job_ids)
 
 	###########################################################################
-	# # get downstream toggle
-	# downstream_toggle = request.POST.get('downstream_delete_toggle', False);
-	# if downstream_toggle == 'true':
-	# 	downstream_toggle = True
-	# elif downstream_toggle == 'false':
-	# 	downstream_toggle = False
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_delete_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
 	
-	# # set of jobs to rerun
-	# job_rerun_set = set()
-
-	# # loop through job_ids
-	# for job_id in job_ids:		
-		
-	# 	# get CombineJob
-	# 	cjob = models.CombineJob.get_combine_job(job_id)
-
-	# 	# if including downstream
-	# 	if downstream_toggle:
-
-	# 		# add rerun lineage for this job to set
-	# 		job_rerun_set.update(cjob.job.get_downstream_lineage())
-
-	# 	# else, just job
-	# 	else:
-
-	# 		job_rerun_set.add(cjob.job)
-
-	# # sort and run
-	# ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
-
-	# # # loop through and update visible elements of Job for front-end
-	# for re_job in ordered_job_rerun_set:
-	###########################################################################
+	# set of jobs to rerun
+	job_delete_set = set()
 
 	# loop through job_ids
-	jobs = []
-	for job_id in job_ids:
-
-		logger.debug('deleting job by ids: %s' % job_id)
+	for job_id in job_ids:		
 		
-		# get job
-		job = models.Job.objects.get(pk=int(job_id))
-		jobs.append(job)
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_delete_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_delete_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_delete_set = sorted(list(job_delete_set), key=lambda j: j.id)
+
+	# # loop through and update visible elements of Job for front-end
+	for job in ordered_job_delete_set:
+
+		logger.debug('deleting Job: %s' % job)		
 
 		# set job status to deleting
 		job.name = "%s (DELETING)" % job.name
@@ -694,12 +685,57 @@ def delete_jobs(request):
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
 	gmc.add_gm({
-		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in jobs ])),
+		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in ordered_job_delete_set ])),
 		'class':'success'
 	})
 
 	# return
 	return JsonResponse({'results':True})
+
+	###########################################################################
+
+	# # loop through job_ids
+	# jobs = []
+	# for job_id in job_ids:
+
+	# 	logger.debug('deleting job by id: %s' % job_id)
+		
+	# 	# get job
+	# 	job = models.Job.objects.get(pk=int(job_id))
+	# 	jobs.append(job)
+
+	# 	# set job status to deleting
+	# 	job.name = "%s (DELETING)" % job.name
+	# 	job.deleted = True
+	# 	job.status = 'deleting'
+	# 	job.save()
+
+	# 	# initiate Combine BG Task
+	# 	ct = models.CombineBackgroundTask(
+	# 		name = 'Delete Job: #%s' % job.name,
+	# 		task_type = 'job_delete',
+	# 		task_params_json = json.dumps({
+	# 			'model':'Job',
+	# 			'job_id':job.id
+	# 		})
+	# 	)
+	# 	ct.save()
+	# 	bg_task = tasks.delete_model_instance(
+	# 		'Job',
+	# 		job.id,
+	# 		verbose_name=ct.verbose_name,
+	# 		creator=ct
+	# 	)
+
+	# # set gms
+	# gmc = models.GlobalMessageClient(request.session)
+	# gmc.add_gm({
+	# 	'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in jobs ])),
+	# 	'class':'success'
+	# })
+
+	# # return
+	# return JsonResponse({'results':True})
 
 
 @login_required
