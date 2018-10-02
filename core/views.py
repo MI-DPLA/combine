@@ -700,7 +700,6 @@ def move_jobs(request):
 	job_ids = request.POST.getlist('job_ids[]')
 	record_group_id = request.POST.getlist('record_group_id')[0]
 
-	################################################################################################
 	# get downstream toggle
 	downstream_toggle = request.POST.get('downstream_move_toggle', False);
 	if downstream_toggle == 'true':
@@ -740,27 +739,10 @@ def move_jobs(request):
 		job.record_group = new_record_group
 		job.save()
 
-		logger.debug('job has been moved ids: %s' % job_id)
+		logger.debug('Job %s has been moved' % job)
 
 	# redirect
 	return JsonResponse({'results':True})
-
-	################################################################################################
-
-	# # loop through job_ids
-	# for job_id in job_ids:
-
-	# 	logger.debug('moving job by ids: %s' % job_id)
-		
-	# 	cjob = models.CombineJob.get_combine_job(job_id)
-	# 	new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
-	# 	cjob.job.record_group = new_record_group
-	# 	cjob.job.save()
-
-	# 	logger.debug('job has been moved ids: %s' % job_id)
-
-	# # redirect
-	# return JsonResponse({'results':True})
 
 
 @login_required
