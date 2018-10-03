@@ -486,7 +486,7 @@ def record_group_delete(request, org_id, record_group_id):
 	return redirect('organization', org_id=org_id)
 
 
-
+@login_required
 def record_group(request, org_id, record_group_id):
 
 	'''
@@ -752,6 +752,9 @@ def job_details(request, org_id, record_group_id, job_id):
 
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
+
+	# update status
+	cjob.job.update_status()
 
 	# detailed record count
 	record_count_details = cjob.get_detailed_job_record_count()
