@@ -179,7 +179,7 @@ class LivySession(models.Model):
 
 				# gather information about registered application in spark cluster
 				try:
-					spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
+					spark_app_id = SparkAppAPIClient.get_application_id(self, self.session_id)
 					self.appId = spark_app_id
 				except:
 					pass
@@ -215,8 +215,24 @@ class LivySession(models.Model):
 			None
 		'''
 
+		# get default config from localsettings
+		livy_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
+
+		# confirm SPARK_APPLICATION_ROOT_PORT is open
+		# increment if need be, attempting 100 port increment, setting to livy_session_config
+		spark_ui_port = settings.SPARK_APPLICATION_ROOT_PORT		
+		for x in range(0,100):
+			try:
+				r = requests.get('http://localhost:%s' % spark_ui_port)
+				logger.debug('port %s in use, incrementing...' % spark_ui_port)		
+				spark_ui_port += 1
+			except requests.ConnectionError:
+				logger.debug('port %s open, using for LivySession' % spark_ui_port)
+				livy_session_config['conf']['spark_ui_port'] = spark_ui_port
+				break		
+
 		# create livy session, get response
-		livy_response = LivyClient().create_session()
+		livy_response = LivyClient().create_session(config=livy_session_config)
 
 		# parse response and set instance values
 		response = livy_response.json()
@@ -228,6 +244,7 @@ class LivySession(models.Model):
 		self.status = response['state']
 		self.session_timestamp = headers['Date']
 		self.active = True
+		self.sparkUiUrl = '%s:%s' % (settings.APP_HOST, spark_ui_port)
 
 		# update db
 		self.save()
@@ -760,7 +777,7 @@ class Job(models.Model):
 
 			# get list of Jobs, filter by jobGroup for this Combine Job
 			try:
-				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls, ls.appId, self.id)
 			except:
 				logger.warning('trouble retrieving Jobs from Spark App API')
 				filtered_jobs = []
@@ -3737,17 +3754,13 @@ class SparkAppAPIClient(object):
 
 	TODO:
 		- the Spark Application port can change (https://github.com/WSULib/combine/issues/243)
-			- SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_PORT
+			- SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_ROOT_PORT
 			- increment from 4040, consider looping through until valid app found? 
 	'''
 
-
-	# set API base
-	api_base = settings.SPARK_APPLICATION_API_BASE
-
-
 	@classmethod
 	def http_request(self,
+			livy_session,
 			http_method,
 			url,
 			data=None,
@@ -3761,6 +3774,7 @@ class SparkAppAPIClient(object):
 		Make HTTP request to Spark Application API
 
 		Args:
+			livy_session (core.models.LivySession): instance of LivySession that contains sparkUiUrl
 			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
 			url (str): expecting path only, as host is provided by settings
 			data (str,file): payload of data to send for request
@@ -3776,8 +3790,8 @@ class SparkAppAPIClient(object):
 
 		# build request
 		session = requests.Session()
-		request = requests.Request(http_method, "%s%s" % (
-			self.api_base,
+		request = requests.Request(http_method, "http://%s%s" % (
+			"%s/api/v1/" % livy_session.sparkUiUrl,
 			url.lstrip('/')),
 			data=data,
 			params=params,
@@ -3792,7 +3806,7 @@ class SparkAppAPIClient(object):
 
 
 	@classmethod
-	def get_application_id(self, livy_session_id):
+	def get_application_id(self, livy_session, livy_session_id):
 
 		'''
 		Attempt to retrieve application ID based on Livy Session ID
@@ -3805,7 +3819,7 @@ class SparkAppAPIClient(object):
 		'''
 
 		# get list of applications
-		applications = self.http_request('GET','applications').json()
+		applications = self.http_request(livy_session, 'GET','applications').json()
 
 		# loop through and look for Livy session
 		for app in applications:
@@ -3815,14 +3829,14 @@ class SparkAppAPIClient(object):
 
 
 	@classmethod
-	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
+	def get_spark_jobs_by_jobGroup(self, livy_session, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
 
 		'''
 		Method to retrieve all Jobs from application, then filter by jobGroup
 		'''
 		
 		# get all jobs from application
-		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()		
+		jobs = self.http_request(livy_session, 'GET','applications/%s/jobs' % spark_app_id).json()		
 
 		# loop through and filter
 		filtered_jobs = [ job for job in jobs if 'jobGroup' in job.keys() and job['jobGroup'] == str(jobGroup) ]

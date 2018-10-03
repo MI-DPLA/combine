@@ -11,8 +11,7 @@ APP_HOST = '192.168.45.10'
 # Spark Cluster Information
 SPARK_HOST = 'localhost'
 SPARK_PORT = 8080
-SPARK_APPLICATION_PORT = 4040 # if taken, will automatically increment from here
-SPARK_APPLICATION_API_BASE = 'http://%s:%s/api/v1/' % (SPARK_HOST, SPARK_APPLICATION_PORT)
+SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100 from here until open port is found
 
 
 # Spark tuning
@@ -40,13 +39,18 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     	'file://%s/core/spark/record_validation.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/utils.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/console.py' % COMBINE_INSTALL_PATH.rstrip('/'),
-    ]
+    ],
+
+    # Spark conf overrides
+	'conf':{
+		'spark.ui.port':SPARK_APPLICATION_ROOT_PORT
+	},
 
     # Spark application overrides
 		# commented out, will default to 2gb for driver and executor, and grab all available cpu/cores	
 		# uncommented, provides some limited configurations for tuning Spark application created by Livy 
 
-	# e.g. small(ish) server, 6gb RAM, 2 cpu/cores
+	# e.g. small(ish) server, 4gb RAM, 2 cpu/cores
 	# 'driverMemory':'512m',
 	# 'driverCores':1,
 	# 'executorMemory':'512m',

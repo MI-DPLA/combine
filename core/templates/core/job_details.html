@@ -808,7 +808,7 @@
 							<ul class="list-inline">
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement <i class="la la-info-circle"></i></button></a></li>
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:8998/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i class="la la-info-circle"></i></button></a></li>
-								<li style="display:inline;"><a href="http://{{APP_HOST}}:4040" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
+								<li style="display:inline;"><a href="http://{{LIVY_SESSION.sparkUiUrl}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
 								<li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI <i class="la la-info-circle"></i></button></a></li>
 							</ul>
 						</div>
