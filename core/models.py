@@ -1527,6 +1527,47 @@ class Job(models.Model):
 		return sorted(list(job_list), key=lambda j: j.id)
 
 
+	def stop_job(self):
+
+		'''
+		Stop running Job in Livy/Spark
+			- cancel Livy statement
+				- unnecessary if running Spark app, but helpful if queued by Livy
+			- issue "kill" commands to Spark app
+				- Livy statement cancels do not stop Spark jobs, but we can kill them manually
+		'''
+
+		logger.debug('Stopping Job: %s' % self)
+
+		# get active livy session
+		ls = LivySession.get_active_session()
+
+		# if active session
+		if ls:			
+
+			# send cancel to Livy
+			try:
+				livy_response = LivyClient().stop_job(self.url).json()
+				logger.debug('Livy statement cancel result: %s' % livy_response)
+			except:
+				logger.debug('error canceling Livy statement: %s' % self.url)
+
+			# retrieve list of spark jobs, killing two most recent
+			# note: repeate x3 if job turnover so quick enough that kill is missed
+			try:
+				for x in range(0,3):
+					sjs = self.get_spark_jobs()
+					sj = sjs[0]
+					logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
+					kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
+					logger.debug('kill result: %s' % kill_result)
+			except:
+				logger.debug('error killing Spark jobs')
+
+		else:
+			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
+
+
 
 class JobTrack(models.Model):
 
@@ -3296,19 +3337,10 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 		kwargs: not used
 	'''
 
-	logger.debug('removing job_output for job id %s' % instance.id)
+	logger.debug('pre-delete sequence for Job: #%s' % instance.id)
 
-	# check if job running or queued, attempt to stop
-	try:
-		instance.refresh_from_livy()
-		if instance.status in ['waiting','running']:
-			# attempt to stop job
-			livy_response = LivyClient().stop_job(instance.url)
-			logger.debug(livy_response)
-
-	except Exception as e:
-		logger.debug('could not stop job in livy')
-		logger.debug(str(e))
+	# stop Job
+	instance.stop_job()
 
 	# remove avro files from disk	
 	if instance.job_output and instance.job_output.startswith('file://'):
@@ -3632,6 +3664,8 @@ class LivyClient(object):
 			- as opposed to passing session row, which while convenient, would limit this method to
 			only stopping sessions with a LivySession row in the DB
 
+		QUESTION: Should this attempt to kill all Jobs in spark app upon closing?
+
 		Args:
 			session_id (str/int): Livy session id
 
@@ -3790,9 +3824,7 @@ class SparkAppAPIClient(object):
 
 		# build request
 		session = requests.Session()
-		request = requests.Request(http_method, "http://%s%s" % (
-			"%s/api/v1/" % livy_session.sparkUiUrl,
-			url.lstrip('/')),
+		request = requests.Request(http_method, "http://%s%s" % ("%s" % livy_session.sparkUiUrl, url),
 			data=data,
 			params=params,
 			headers=headers,
@@ -3819,7 +3851,7 @@ class SparkAppAPIClient(object):
 		'''
 
 		# get list of applications
-		applications = self.http_request(livy_session, 'GET','applications').json()
+		applications = self.http_request(livy_session, 'GET','/api/v1/applications').json()
 
 		# loop through and look for Livy session
 		for app in applications:
@@ -3836,7 +3868,7 @@ class SparkAppAPIClient(object):
 		'''
 		
 		# get all jobs from application
-		jobs = self.http_request(livy_session, 'GET','applications/%s/jobs' % spark_app_id).json()		
+		jobs = self.http_request(livy_session, 'GET','/api/v1/applications/%s/jobs' % spark_app_id).json()		
 
 		# loop through and filter
 		filtered_jobs = [ job for job in jobs if 'jobGroup' in job.keys() and job['jobGroup'] == str(jobGroup) ]
@@ -3874,6 +3906,19 @@ class SparkAppAPIClient(object):
 
 		return filtered_jobs
 		
+
+	@classmethod
+	def kill_job(self, livy_session, job_id):
+
+		'''
+		Method to send kill command via GET request to Spark Job id
+		'''
+
+		kill_request = self.http_request(livy_session, 'GET','/jobs/job/kill/', params={'id':job_id})
+		if kill_request.status_code == 200:
+			return True
+		else:
+			return False
 
 
 ####################################################################
