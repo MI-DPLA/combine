@@ -616,6 +616,63 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def stop_jobs(request):
+
+	logger.debug('stopping jobs')
+	
+	job_ids = request.POST.getlist('job_ids[]')
+	logger.debug(job_ids)
+
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_stop_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
+	# set of jobs to rerun
+	job_stop_set = set()
+
+	# loop through job_ids
+	for job_id in job_ids:		
+		
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_stop_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_stop_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_delete_set = sorted(list(job_stop_set), key=lambda j: j.id)
+
+	# # loop through and update visible elements of Job for front-end
+	for job in ordered_job_delete_set:
+
+		logger.debug('stopping Job: %s' % job)		
+
+		# stop job
+		job.stop_job()
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Stopped Job(s):</strong><br>%s</p>' %  ('<br>'.join([j.name for j in ordered_job_delete_set ])),
+		'class':'danger'
+	})
+
+	# return
+	return JsonResponse({'results':True})
+
+
+@login_required
 def delete_jobs(request):
 
 	logger.debug('deleting jobs')
@@ -685,7 +742,7 @@ def delete_jobs(request):
 	gmc = models.GlobalMessageClient(request.session)
 	gmc.add_gm({
 		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in ordered_job_delete_set ])),
-		'class':'success'
+		'class':'danger'
 	})
 
 	# return

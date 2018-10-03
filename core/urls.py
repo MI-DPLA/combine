@@ -55,8 +55,9 @@ urlpatterns = [
 
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),
-	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),
 	url(r'^jobs/move_jobs$', views.move_jobs, name='move_jobs'),
+	url(r'^jobs/stop_jobs$', views.stop_jobs, name='stop_jobs'),
+	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),	
 	url(r'^jobs/rerun_jobs$', views.rerun_jobs, name='rerun_jobs'),
 	url(r'^jobs/clone_jobs$', views.clone_jobs, name='clone_jobs'),
 
