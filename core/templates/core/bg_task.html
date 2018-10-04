@@ -68,6 +68,10 @@
 						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
 					{% endif %}
 
+					{% if 'job_id' in ct.task_params %}
+					<a href="{% url 'job_id_redirect' job_id=ct.task_params.job_id %}"><button type="button" class="btn btn-success btn-sm">View Originating Job <i class="la la-info-circle"></i></button></a>
+					{% endif %}
+
 				</div>
 			</div>
 

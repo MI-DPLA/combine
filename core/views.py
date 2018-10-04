@@ -535,6 +535,24 @@ def record_group(request, org_id, record_group_id):
 # Jobs 															   #
 ####################################################################
 
+
+@login_required
+def job_id_redirect(request, job_id):
+
+	'''
+	Route to redirect to more verbose Jobs URL
+	'''
+
+	# get job
+	job = models.Job.objects.get(pk=job_id)
+
+	# redirect
+	return redirect('job_details',
+		org_id=job.record_group.organization.id,
+		record_group_id=job.record_group.id,
+		job_id=job.id)
+
+
 @login_required
 def all_jobs(request):
 
