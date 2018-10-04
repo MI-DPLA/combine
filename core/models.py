@@ -5100,9 +5100,15 @@ class CombineJob(object):
 			# remove mapping failures
 			re_job.remove_mapping_failures_from_db()
 
+			# where Job has Input Job, reset passed records
+			parent_input_jobs = JobInput.objects.filter(job_id = re_job.id)
+			for ji in parent_input_jobs:
+				ji.passed_records = None
+				ji.save()
+
 			# where Job is input for another, reset passed_records
-			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
-			for ji in as_input_job:
+			as_input_jobs = JobInput.objects.filter(input_job_id = re_job.id)
+			for ji in as_input_jobs:
 				ji.passed_records = None
 				ji.save()			
 
