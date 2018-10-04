@@ -120,7 +120,7 @@
 					<td>{{ cjob.job.job_type }}</td>
 					<td>{{ record_count_details.input_jobs.total_input_records }}</td>
 					<td>{{ record_count_details.records }}</td>
-					<td>{{ record_count_details.errors }}</td>
+					<td style="{% if record_count_details.errors > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ record_count_details.errors }}</td>
 					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
 			</table>
@@ -129,13 +129,6 @@
 
 	<div class="row">
 		<div class="col-md-12">
-
-			<!-- <div class="alert alert-info alert-dismissible fade show" role="alert">
-				The following tabs provide additional information about this Job
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-				<span aria-hidden="true">&times;</span>
-				</button>
-			</div> -->
 
 			<!-- Navigation -->
 			<ul id="tabs" class="nav nav-tabs">

@@ -468,10 +468,10 @@ class RecordGroup(models.Model):
 		record_group_jobs = self.job_set.order_by('-id').all()
 
 		# loop through jobs
-		for job in record_group_jobs:
+		for job in record_group_jobs:				
 				job_ld = job.get_lineage(directionality='downstream')
 				ld['edges'].extend(job_ld['edges'])
-				ld['nodes'].extend(job_ld['nodes'])
+				ld['nodes'].extend(job_ld['nodes'])				
 
 		# filter for unique
 		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
@@ -844,7 +844,7 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 			
-		errors = Record.objects(job_id=251, success=False)
+		errors = Record.objects(job_id=self.id, success=False)
 
 		# return
 		return errors
@@ -856,15 +856,18 @@ class Job(models.Model):
 		Get record count from Mongo from Record table, filtering by job_id
 
 		Args:
-			None
+			save (bool): Save instance on calculation			
 
 		Returns:
 			None
 		'''
-		
-		# update record counts
-		self.record_count = Record.objects(job_id=self.id).count()
 
+		# det detailed record count
+		drc = self.get_detailed_job_record_count(force_recount=True)
+
+		# update Job record count
+		self.record_count = drc['records'] + drc['errors']
+		
 		# if job has single input ID, and that is still None, set to record count
 		if self.jobinput_set.count() == 1:
 			ji = self.jobinput_set.first()
@@ -875,6 +878,82 @@ class Job(models.Model):
 		# if save, save
 		if save:
 			self.save()
+
+
+	def get_total_input_job_record_count(self):
+
+		'''
+		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records
+		'''
+
+		if self.jobinput_set.count() > 0:
+
+			# init dict
+			input_jobs_dict = {
+				'total_input_record_count':0				
+			}
+			
+			# loop through input jobs
+			for input_job in self.jobinput_set.all():				
+
+				# bump count
+				if input_job.passed_records != None:
+					input_jobs_dict['total_input_record_count'] += input_job.passed_records				
+
+			# return
+			return input_jobs_dict
+		else:
+			return None
+
+
+	def get_detailed_job_record_count(self, force_recount=False):
+
+		'''
+		Return details of record counts for input jobs, successes, and errors
+
+		Args:
+			force_recount (bool): If True, force recount from db
+
+		Returns:
+			(dict): Dictionary of record counts
+		'''
+
+		# debug
+		stime = time.time()
+
+		if 'detailed_record_count' in self.job_details_dict.keys() and not force_recount:
+			logger.debug('total detailed record count retrieve elapsed: %s' % (time.time()-stime))
+			return self.job_details_dict['detailed_record_count']
+
+		else:
+
+			r_count_dict = {}
+
+			# get counts
+			r_count_dict['records'] = self.get_records().count()
+			r_count_dict['errors'] = self.get_errors().count()
+
+			# include input jobs
+			r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
+
+			# calc success percentages, based on records ratio to job record count (which includes both success and error)
+			if r_count_dict['records'] != 0:
+				r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)
+			else:
+				r_count_dict['success_percentage'] = 0.0
+
+			# saving to job_details
+			self.update_job_details({'detailed_record_count':r_count_dict})
+
+			# return
+			logger.debug('total detailed record count calc elapsed: %s' % (time.time()-stime))
+			return r_count_dict
 
 
 	def job_output_as_filesystem(self):
@@ -961,7 +1040,7 @@ class Job(models.Model):
 		# update lineage dictionary recursively
 		self._get_parent_jobs(self, ld, directionality=directionality)
 
-		# return
+		# return		
 		return ld
 
 
@@ -1199,17 +1278,26 @@ class Job(models.Model):
 				validation_scenarios (list): QuerySet of associated JobValidation
 		'''
 
+		# DEBUG
+		stime = time.time()
+
 		# return dict
 		results = {
 			'verdict':True,
 			'passed_count':self.record_count,
 			'failure_count':0,
 			'validation_scenarios':[]
-		}
+		}		
 
 		# no validation tests run, return True
 		if self.jobvalidation_set.count() == 0:
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
 			return results
+
+		# check if already calculated, and use
+		elif 'validation_results' in self.job_details_dict.keys():
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
+			return self.job_details_dict['validation_results']
 
 		# validation tests run, loop through
 		else:
@@ -1225,9 +1313,14 @@ class Job(models.Model):
 				results['passed_count'] -= results['failure_count']
 
 			# add all validation scenarios
-			results['validation_scenarios'] = self.jobvalidation_set.all()
+			# results['validation_scenarios'] = self.jobvalidation_set.all()
+
+			# save to job_details
+			logger.debug("saving validation results for %s to job_details" % self)
+			self.update_job_details({'validation_results':results})
 
 			# return
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
 			return results
 
 
@@ -4767,73 +4860,6 @@ class CombineJob(object):
 		# load indexing failures for this job from DB
 		index_failures = IndexMappingFailure.objects.filter(job_id=self.job.id)
 		return index_failures
-
-
-	def get_total_input_job_record_count(self):
-
-		'''
-		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
-
-		Args:
-			None
-
-		Returns:
-			(int): count of records
-		'''
-
-		if self.job.jobinput_set.count() > 0:
-
-			# init dict
-			input_jobs_dict = {
-				'total_input_record_count':0,
-				'jobs':[]
-			}
-			
-			# loop through input jobs
-			for input_job in self.job.jobinput_set.all():
-
-				# add to jobs
-				input_jobs_dict['jobs'].append(input_job)
-
-				# bump count
-				if input_job.passed_records != None:
-					input_jobs_dict['total_input_record_count'] += input_job.passed_records				
-
-			# return
-			return input_jobs_dict
-		else:
-			return None
-
-
-	def get_detailed_job_record_count(self):
-
-		'''
-		Return details of record counts for input jobs, successes, and errors
-
-		Args:
-			None
-
-		Returns:
-			(dict): Dictionary of record counts
-		'''
-
-		r_count_dict = {}
-
-		# get counts
-		r_count_dict['records'] = self.job.get_records().count()
-		r_count_dict['errors'] = self.job.get_errors().count()
-
-		# include input jobs
-		r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
-
-		# calc success percentages, based on records ratio to job record count (which includes both success and error)
-		if r_count_dict['records'] != 0:
-			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)
-		else:
-			r_count_dict['success_percentage'] = 0.0
-
-		# return
-		return r_count_dict
 
 
 	def get_job_output_filename_hash(self):

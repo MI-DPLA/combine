@@ -499,7 +499,7 @@ def record_group(request, org_id, record_group_id):
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
 	# retrieve record group
-	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
 
 	# get all jobs associated with record group
 	jobs = models.Job.objects.filter(record_group=record_group_id)	
@@ -513,7 +513,7 @@ def record_group(request, org_id, record_group_id):
 		# update status
 		job.update_status()
 
-	# get record group job lineage
+	# get record group job lineage	
 	job_lineage = record_group.get_jobs_lineage()
 
 	# get all record groups for this organization
@@ -813,8 +813,8 @@ def job_details(request, org_id, record_group_id, job_id):
 	# update status
 	cjob.job.update_status()
 
-	# detailed record count
-	record_count_details = cjob.get_detailed_job_record_count()
+	# detailed record count	
+	record_count_details = cjob.job.get_detailed_job_record_count()	
 
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
