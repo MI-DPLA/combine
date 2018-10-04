@@ -9,7 +9,7 @@
 				<tr>
 					<th></th>
 					<th>Job ID</th>
-					<th>Timestamp</th>
+					<th>Last Updated</th>
 					<th>Name</th>
 					{# Jinja logic for including Organization and RecordGroups #}					
 					{% if not for_analysis %}						
@@ -17,8 +17,7 @@
 						<th>Organization</th>
 					{% endif %}
 					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
+					<th>Status</th>					
 					<th>Is Valid</th>
 					<th>Publishing</th>
 					<th>Elapsed</th>
@@ -35,7 +34,7 @@
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a> <a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a>
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><i class="la la-pencil"></i></a>
 						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
 							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
 								{% csrf_token %}
@@ -53,14 +52,33 @@
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>				
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.status }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.finished }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						{% if job.published %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-danger btn-sm">Unpublish</button></a>
+						{% if job.status in 'initializing,resetting,waiting' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
+						</div>
+						{% elif job.status == 'running' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
+						</div>
+						{% elif job.status in 'available,gone' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar bg-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">finished</div>
+						</div>						
+						{% elif job.status in 'cancelled,cancelling' %}
+						<div class="progress">
+							<div class="progress-bar progress-bar bg-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">cancelled</div>
+						</div>
 						{% else %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-success btn-sm">Publish</button></a>
+						{{ job.status }}
+						{% endif %}
+					</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
+					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">						
+						{% if job.published %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}danger{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Unpublish <i class="la la-close"></i></button></a>
+						{% else %}
+							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}success{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Publish <i class="la la-bullhorn"></i></button></a>
 						{% endif %}
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
@@ -82,7 +100,7 @@
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><img src="{% static 'core/img/pencil.png' %}" height=10 /></a>
+						{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><i class="la la-pencil"></i></a>
 						<div id="job_notes_{{ job.id }}" style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
 							<form method="POST" action="{% url 'job_update_note' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
 								{% csrf_token %}
@@ -97,8 +115,8 @@
 					</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>	
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor</strong>{% else %}Monitor{% endif %}</button></a><br>
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details</button></a>
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor <i class="la la-history"></i></strong>{% else %}Monitor <i class="la la-history"></i>{% endif %}</button></a><br>
+						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details <i class="la la-info-circle"></i></button></a>
 					</td>				
 				</tr>
 			{% endfor %}
@@ -111,15 +129,14 @@
 					<th></th>
 					{# Jinja logic for including RecordGroups #}
 					{% if not for_analysis %}
-						<th>Record Group</th>
+						<th></th>
+						<th></th>
 					{% endif %}
-					<th>Job Type</th>
-					<th>Status</th>
-					<th>Finished</th>
-					<th>Is Valid</th>
+					<th></th>
+					<th></th>					
 					<th></th>
 					<th></th>
-					<th></th>
+					<th></th>					
 					<th></th>
 					<th></th>
 					<th></th>
@@ -139,24 +156,24 @@
 				    	"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[9] == 'False'){
-		                    	$('td:nth-child(10)', row).addClass('invalid_job');
+		                    if (data[8] == 'False'){
+		                    	$('td:nth-child(9)', row).addClass('invalid_job');
 		                    }
 			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
 
 		                    // show job valid
-		                    if (data[8] == 'False'){                    	
-		                    	$('td:nth-child(9)', row).addClass('invalid_job');
+		                    if (data[7] == 'False'){                    	
+		                    	$('td:nth-child(8)', row).addClass('invalid_job');
 		                    }
 			            },
 		            {% endif %}
 		            initComplete: function () {
 		            	{% if not for_analysis %}
-		            		filter_cols = [4,5,6,7,8,9];
+		            		filter_cols = [4,5,6,8];
 	            		{% else %}	            			
-	            			filter_cols = [4,5,6,7,8];
+	            			filter_cols = [4,6];
             			{% endif %}
 			            this.api().columns(filter_cols).every( function () {
 			                var column = this;			                
@@ -190,12 +207,10 @@
 </div>
 
 <div class="row">
+
 	<div class="col-md-12">
 		<h4>Job Management</h4>
 	</div>
-</div>
-
-<div class="row">
 
 	<div class="col-md-12">
 		<table class="table table-bordered table-hover">
@@ -212,21 +227,66 @@
 								{% endfor %} 						
 							</select>
 						</div>        	
-				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs</button>
+				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs <i class="la la-arrow-right"></i></button>
+			    		<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_move_toggle">
+							<label style="font-weight:normal;" for="downstream_move_toggle">Include Downstream?</label>
+						</span>
+					</td>
+				</tr>
+				<tr>
+					<th style="width:10%;">Stop Jobs</th>
+					<td>Stop Job(s)</td>
+					<td style="width:20%; text-align:left;">
+						<button type="button" class="btn btn-danger btn-sm" onclick="stop_jobs(); return false;">Stop Selected Jobs <i class="la la-stop"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_stop_toggle">
+							<label style="font-weight:normal;" for="downstream_stop_toggle">Include Downstream?</label>
+						</span>
+
 					</td>
 				</tr>
 				<tr>
 					<th style="width:10%;">Delete Jobs</th>
-					<td>Marks selected Jobs for deletion as background task</td>
+					<td>Delete Job(s)</td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected</button>
+						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs <i class="la la-close"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_delete_toggle">
+							<label style="font-weight:normal;" for="downstream_delete_toggle">Include Downstream?</label>
+						</span>
+
 					</td>
 				</tr>
 				<tr>
 					<th style="width:10%;">Re-Run</th>
-					<td>Re-run Job, and all downstream Jobs</td>
+					<td>Re-run Job</td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs</button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs <i class="la la-refresh"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
+							<label style="font-weight:normal;" for="downstream_rerun_toggle">Include Downstream?</label>
+						</span>
+					</td>
+				</tr>
+				<tr>
+					<th style="width:10%;">Clone</th>
+					<td>Clone Job</td>
+					<td style="width:20%; text-align:left;">
+						<button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">Clone Selected Jobs <i class="la la-clone"></i></button>
+						<br><br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
+							<label style="font-weight:normal;" for="downstream_clone_toggle">Include Downstream?</label>
+						</span>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="rerun_on_clone" checked>
+							<label style="font-weight:normal;" for="rerun_on_clone">Re-Run on Clone?</label>
+						</span>
 					</td>
 				</tr>
 			</tbody>
@@ -235,24 +295,67 @@
 
 	<script>
 
-        // handle bulk job deletion
-		function delete_jobs(){
+        // handle bulk moving of jobs
+		function move_jobs(){
 
-			confirmation = confirm('Are you sure you want to delete the selected Jobs?');
+			confirmation = confirm('Are you sure you want to move these job(s)?');
 			if (confirmation){
 
 				// get values for job_ids
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
+
+				// get value of downstream toggle
+				var downstream_move_toggle = $("#downstream_move_toggle")[0].checked
+
+				// get value for record_group_id
+				var e = document.getElementById("record_group_id_select");
+				var record_group_id = e.options[e.selectedIndex].value;
 
 				// submit job ids via ajax
 				$.ajax({
 					type: "POST",
-					url: "{% url 'delete_jobs' %}",
+					url: "{% url 'move_jobs' %}",
 					data: {
 						'job_ids':job_ids,
+						'record_group_id':record_group_id,
+						'downstream_move_toggle':downstream_move_toggle,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){					
+						if (data.results == true) {
+							location.reload();
+						}					
+					}
+				});     
+			}
+		} 
+
+        // handle bulk job deletion
+		function stop_jobs(){
+
+			confirmation = confirm('Are you sure you want to stop the selected Jobs?');
+			if (confirmation){
+
+				// get values for job_ids
+				job_ids = [];
+				$(".job_id_sel:checkbox:checked").each(function(i){
+					job_ids.push($(this).val());
+				});
+
+				// get value of downstream toggle
+				var downstream_stop_toggle = $("#downstream_stop_toggle")[0].checked
+
+				// submit job ids via ajax
+				$.ajax({
+					type: "POST",
+					url: "{% url 'stop_jobs' %}",
+					data: {
+						'job_ids':job_ids,
+						'downstream_stop_toggle':downstream_stop_toggle,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
@@ -266,52 +369,55 @@
 			}
 		}
 
-		// handle bulk moving of jobs
-		function move_jobs(){
+        // handle bulk job deletion
+		function delete_jobs(){
 
-			confirmation = confirm('Are you sure you want to move these job(s)?');
+			confirmation = confirm('Are you sure you want to delete the selected Jobs?');
 			if (confirmation){
 
 				// get values for job_ids
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
 
-				// get value for record_group_id
-				var e = document.getElementById("record_group_id_select");
-				var record_group_id = e.options[e.selectedIndex].value;
+				// get value of downstream toggle
+				var downstream_delete_toggle = $("#downstream_delete_toggle")[0].checked
 
 				// submit job ids via ajax
 				$.ajax({
 					type: "POST",
-					url: "{% url 'move_jobs' %}",
+					url: "{% url 'delete_jobs' %}",
 					data: {
 						'job_ids':job_ids,
-						'record_group_id':record_group_id,
+						'downstream_delete_toggle':downstream_delete_toggle,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
-					success: function(data){					
+					success: function(data){
+						console.log(data);
 						if (data.results == true) {
 							location.reload();
 						}					
 					}
-				});     
+				});
 			}
-		} 
+		}		
 
-		// handle bulk job deletion
+		// handle rerunning jobs
 		function rerun_jobs(){
 
-			confirmation = confirm('Are you sure you want to re-run selected Jobs?  All Records and Validations will be removed for selected Jobs, and all their downstream Jobs.');
+			confirmation = confirm('Are you sure you want to re-run selected Jobs?');
 			if (confirmation){
 
 				// get values for job_ids
 				job_ids = [];
 				$(".job_id_sel:checkbox:checked").each(function(i){
 					job_ids.push($(this).val());
-				});                     
+				});
+
+				// get value of downstream toggle
+				var downstream_rerun_toggle = $("#downstream_rerun_toggle")[0].checked
 
 				// submit job ids via ajax
 				$.ajax({
@@ -319,6 +425,46 @@
 					url: "{% url 'rerun_jobs' %}",
 					data: {
 						'job_ids':job_ids,
+						'downstream_rerun_toggle':downstream_rerun_toggle,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){
+						console.log(data);
+						if (data.results == true) {
+							location.reload();
+						}					
+					}
+				});
+			}
+		}
+
+		// handle job cloning
+		function clone_jobs(){
+
+			confirmation = confirm('Are you sure you want to clone selected Jobs?');
+			if (confirmation){
+
+				// get values for job_ids
+				job_ids = [];
+				$(".job_id_sel:checkbox:checked").each(function(i){
+					job_ids.push($(this).val());
+				});
+
+				// get value of downstream toggle
+				var downstream_clone_toggle = $("#downstream_clone_toggle")[0].checked
+
+				// get value of downstream toggle
+				var rerun_on_clone = $("#rerun_on_clone")[0].checked
+
+				// submit job ids via ajax
+				$.ajax({
+					type: "POST",
+					url: "{% url 'clone_jobs' %}",
+					data: {
+						'job_ids':job_ids,
+						'downstream_clone_toggle':downstream_clone_toggle,
+						'rerun_on_clone':rerun_on_clone,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',

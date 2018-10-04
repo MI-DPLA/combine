@@ -41,31 +41,35 @@
 					<!-- handle different task types below -->
 					
 					{% if ct.task_type == 'validation_report' %}						
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report</button></a>
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report <i class="la la-download"></i></button></a>
 					
 					{% elif ct.task_type == 'export_mapped_fields' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields</button></a>
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i class="la la-download"></i></button></a>
 
 					{% elif ct.task_type == 'export_documents' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive</button></a>
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i class="la la-download"></i></button></a>
 
 					{% elif ct.task_type == 'job_reindex' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields</button></a>
+					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_new_validations' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations</button></a>
+					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_remove_validation' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations</button></a>
+					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_publish' or ct.task_type == 'job_unpublish' %}
-					<a href="{% url 'published' %}"><button type="button" class="btn btn-success btn-sm">View Published Jobs</button></a>
+					<a href="{% url 'published' %}"><button type="button" class="btn btn-success btn-sm">View Published Jobs <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_dbdm' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results</button></a>
+					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i class="la la-info-circle"></i></button></a>
 
 					{% else %}
 						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
+					{% endif %}
+
+					{% if 'job_id' in ct.task_params %}
+					<a href="{% url 'job_id_redirect' job_id=ct.task_params.job_id %}"><button type="button" class="btn btn-success btn-sm">View Originating Job <i class="la la-info-circle"></i></button></a>
 					{% endif %}
 
 				</div>
@@ -107,7 +111,7 @@
 
 			<div class="row">
 				<div class="col-md-12">
-					<p><a href="{% url 'bg_task_delete' task_id=ct.id %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task</button></a></p>
+					<p><a href="{% url 'bg_task_delete' task_id=ct.id %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task <i class="la la-close"></i></button></a></p>
 				</div>
 			</div>
 

@@ -1,0 +1,251 @@
+{% block content %}	
+
+	<!-- modals -->
+	<div class="modal fade" id="jobSpecModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+	  <div class="modal-dialog modal-lg combine_modal_lg" role="document">
+	    <div class="modal-content">
+	      <div class="modal-header">
+	        <h5 class="modal-title" id="exampleModalLabel"></h5>
+	        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+	          <span aria-hidden="true">&times;</span>
+	        </button>
+	      </div>
+
+	      <div class="modal-body">
+	        <div class="row">
+				<div class="col-md-12">
+					<div class="alert alert-warning alert-dismissible fade show" role="alert">
+						<span id="job_spec_name"></span>
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<div class="row">
+				<div class="col-md-12">
+
+					<!-- init form for serialization -->
+					<form id="job_spec_form">
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Filter by Record Validity</h5>
+								<p>Filter Records based on Validation Results:</p>
+								
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="job_spec_input_validity_valve" id="job_spec_input_validity_valve_all" value="all" checked>
+									<label class="form-check-label" for="job_spec_input_validity_valve_all">
+									<span class="text-warning">All records</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="job_spec_input_validity_valve" id="job_spec_input_validity_valve_valid" value="valid">
+									<label class="form-check-label" for="job_spec_input_validity_valve_valid">
+									<span class="text-success">Passed validation</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="job_spec_input_validity_valve" id="job_spec_input_validity_valve_invalid" value="invalid">
+									<label class="form-check-label" for="job_spec_input_validity_valve_invalid">
+									<span class="text-danger">Failed validation</span>
+									</label>
+								</div>
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Limit Number of Records</h5>
+								<p>Numerically limit Records from each input Job:</p>
+
+								<div style="width:50%" class="form-group">							
+									<input type="text" class="form-control" id="job_spec_input_numerical_valve" name="job_spec_input_numerical_valve" placeholder="e.g. 1000"/>
+								</div>						
+								
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Filter Duplicates</h5>
+								<p>Remove duplicates based on Record Identifier (<code>record_id</code>):</p>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="job_spec_filter_dupe_record_ids" id="job_spec_filter_dupe_record_ids_yes" value="true" checked>
+									<label class="form-check-label" for="job_spec_filter_dupe_record_ids_yes">
+									<span>Yes</span>
+									</label>
+								</div>
+
+								<div class="form-check">
+									<input class="form-check-input" type="radio" name="job_spec_filter_dupe_record_ids" id="job_spec_filter_dupe_record_ids_no" value="false">
+									<label class="form-check-label" for="job_spec_filter_dupe_record_ids_no">
+									<span>No</span>
+									</label>
+								</div>					
+								
+							</div>
+						</div>
+
+						<div class="row">
+							<div class="col-md-12">
+								<h5>Filter by Mapped Fields</h5>
+								<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
+								<div class="form-group">
+									<label for="job_spec_input_es_query_valve">ElasticSearch Query DSL</label>
+
+									<textarea style="display:none;" rows=10 class="code_style form-control" id="job_spec_input_es_query_valve" name="job_spec_input_es_query_valve"></textarea>
+
+									<!-- visible JSON editor -->
+									<div id="job_spec_es_query_json" style="height:450px;"></div>
+									
+									<script>
+
+								      //   // create the editor
+								      //   container = document.getElementById("job_spec_es_query_json");
+								      //   options = {
+								      //   	mode: 'code',
+					    					// modes: ['code', 'text', 'tree'],
+					    					// onChange: function(){
+					    					// 	// update hidden textarea from editor contents
+					    					// 	$("#job_spec_input_es_query_valve").val(JSON.stringify(job_spec_es_query_editor.get()));
+					    					// },
+					    					// sortObjectKeys: true,
+					    					// name: 'elasticsearch_query',
+					    					// // schema: SCHEMA JSON HERE,
+								      //   };
+								      //   job_spec_es_query_editor = new JSONEditor(container, options);
+
+								    </script>
+
+								</div>
+							</div>
+						</div>		
+
+						<!-- hidden -->
+						<input type="hidden" name="input_job_id" id="input_job_id"></input>				
+						
+					</form>
+
+				</div>
+			</div>
+	      </div>
+
+	      <div class="modal-footer">
+	        <button type="button" class="btn btn-secondary btn-sm" data-dismiss="modal">Cancel</button>
+	        <button type="button" class="btn btn-danger btn-sm" onclick="remove_job_spec_filters();" data-dismiss="modal">Remove Job Specific Input Filters <i class="la la-close"></i></button>
+	        <button type="button" class="btn btn-success btn-sm" onclick="set_job_spec_filters();" data-dismiss="modal">Set Job Specific Input Filters <i class="la la-plus"></i></button>
+	      </div>
+
+	    </div>
+	  </div>
+	</div>
+
+	<script>
+
+		$('#jobSpecModal').on('show.bs.modal', function (event) {
+
+			// modal creation
+			var button = $(event.relatedTarget)
+
+			// Extract info from data-* attributes
+			var input_job_id = button.data('input_job_id') 
+			var input_job_name = button.data('input_job_name')
+
+			// Update modal
+			var modal = $(this)
+			modal.find('.modal-title').text('Set Job Specific Record Input Filters');		
+			modal.find('#job_spec_name').html('Use the form below to set specific <strong>Record Input Filters</strong> for Input Job: <strong>#' + input_job_id + ', ' +  input_job_name + '</strong>.  The filters will apply to this Job only.');
+			modal.find('#input_job_id').val(input_job_id);
+
+			// init editor			
+	        container = document.getElementById("job_spec_es_query_json");
+	        options = {
+	        	mode: 'code',
+				modes: ['code', 'text', 'tree'],
+				onChange: function(){
+					// update hidden textarea from editor contents
+					$("#job_spec_input_es_query_valve").val(JSON.stringify(job_spec_es_query_editor.get()));
+				},
+				sortObjectKeys: true,
+				name: 'elasticsearch_query',
+				// schema: SCHEMA JSON HERE,
+	        };
+	        job_spec_es_query_editor = new JSONEditor(container, options);
+
+		})
+
+		// reset form on modal close
+		$('#jobSpecModal').on('hidden.bs.modal', function(event){
+			
+			// reset all typical inputs
+			$(this).find('form')[0].reset();
+
+			// reset more complex JSON editor
+			$("#job_spec_input_es_query_valve").empty();
+			$("#job_spec_es_query_json").empty();
+
+		});
+
+		// function to serialize and write form		
+		function set_job_spec_filters(){
+
+			// serialize form
+			var job_spec_form_obj = $("#job_spec_form").serializeArray();		
+
+			// get job spec id
+			for (var i = 0; i < job_spec_form_obj.length; i++) {
+				if (job_spec_form_obj[i]['name'] == 'input_job_id'){
+					input_job_id = job_spec_form_obj[i]['value'];				
+				}
+			}
+
+			// write to hidden input form
+			var target_textarea = "job_spec_json_" + input_job_id;
+
+			// destroy and create
+			$("#" + target_textarea).remove();
+			$("#job_init_form").append('<textarea style="display:none;" class="code_style form-control" id="' + target_textarea + '" name="job_spec_json"></textarea>');
+			$("#" + target_textarea).html(JSON.stringify(job_spec_form_obj));
+
+			// update filter button			
+			$($(":checkbox[value=" + input_job_id + "]").siblings()[0]).removeClass('btn-outline-primary').addClass('btn-warning');			
+
+			// return
+			return false;
+
+		}
+
+		function remove_job_spec_filters(){
+
+			// serialize form
+			var job_spec_form_obj = $("#job_spec_form").serializeArray();		
+
+			// get job spec id
+			for (var i = 0; i < job_spec_form_obj.length; i++) {
+				if (job_spec_form_obj[i]['name'] == 'input_job_id'){
+					input_job_id = job_spec_form_obj[i]['value'];				
+				}
+			}
+
+			// write to hidden input form
+			var target_textarea = "job_spec_json_" + input_job_id;
+
+			// remove textarea from main job init form
+			$("#" + target_textarea).remove();
+
+			// update filter button			
+			$($(":checkbox[value=" + input_job_id + "]").siblings()[0]).removeClass('btn-warning').addClass('btn-outline-primary');
+
+			// return
+			return false;
+
+		}
+
+	</script>
+
+{% endblock %}

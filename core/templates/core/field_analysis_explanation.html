@@ -1,6 +1,6 @@
 {% block content %}	
 <div class="col-md-12">	
-	<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').fadeToggle();">What do these numbers mean?</button>
+	<p><button type="button" class="btn btn-outline-info btn-sm" onclick="$('#field_analysis_explanation').fadeToggle();">What do these numbers mean? <i class="la la-question-circle"></i></button>
 		<div class="bg-light" id="field_analysis_explanation" style="display:none;">
 			<p>In Combine, Records undergo a processing of <span class="font-weight-bold">mapping</span> to extract discrete metadata fields from their original XML record for analysis and comparison across Records.  Mapping is performed by flattening the Record's XML document into field names that still retain semantic hints as to what XML fields they pertain too.  This mapping can be configured (and configurations saved) for each Job, <a href="https://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">read more about that here</a>.</p> 
 

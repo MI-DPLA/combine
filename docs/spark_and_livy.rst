@@ -2,15 +2,13 @@
 Spark and Livy
 **************
 
-Combine was created to provide a single point of interaction for metadata harvesting, transformation, analysis, and publishing.  Another guiding factor was a desire to utilize `DPLA's Ingestion 3 <https://github.com/dpla/ingestion3>`_ codebase where possible, which itself, uses `Apache Spark <https://spark.apache.org/>`_ for processing large numbers of records.  The decision to use Ingestion 3 drove the architecture of Combine to use Apache Spark as the primary, background context and environment for processing Records.
+Combine was designed to provide a single point of interaction for metadata harvesting, transformation, analysis, and publishing.  Another guiding factor was a desire to utilize `DPLA's Ingestion 3 <https://github.com/dpla/ingestion3>`_ codebase where possible, which itself, uses `Apache Spark <https://spark.apache.org/>`_ for processing large numbers of records.  The decision to use Ingestion 3 drove the architecture of Combine to use Apache Spark as the primary, background context and environment for processing Records.
 
 This is well and good from a command line, issuing individual tasks to be performed, but how would this translate to a GUI that could be used to initiate tasks, queue them, and view the results?  It became evident that an intermediary piece was needed to facilitate running Spark "jobs" from a request/response oriented front-end GUI.  `Apache Livy <https://livy.incubator.apache.org/>`_ was suggested as just such a piece, and fit the bill perfectly.  Livy allows for the submission of jobs to a running Spark context via JSON, and the subsequent ability to "check" on the status of those jobs.
 
 As Spark natively allows python code as a language for submitting jobs, Django was chosen as the front-end framework for Combine, to have some parity between the language of the GUI front-end and the language of the actual code submitted to Spark for batch processing records.
 
-All this conspires to make Combine relatively fast and efficient, but adds a level of complexity.  When Jobs are run in Combine, they are submitted to this running, background Spark context via Livy.  While Livy is utilized in a similar fashion at scale for large enterprise systems, it is often obfuscated from the front-end interface.  Though a projected goal, obfuscating Livy from a user's concerns has not yet been realized, and as such, currently some minor attention must be paid by Combine users to make sure Livy is "ready" to submit Spark jobs.
-
-Explanations be what they may, most important for Combine users is: `how to start and stop Livy sessions <#manage-livy-sessions>`__.
+This all conspires to make Combine relatively fast and efficient, but adds a level of complexity.  When Jobs are run in Combine, they are submitted to this running, background Spark context via Livy.  While Livy is utilized in a similar fashion at scale for large enterprise systems, it is often obfuscated from users and the front-end GUI.  This is partially the case for Combine.
 
 
 Livy Sessions
@@ -46,6 +44,7 @@ After 10-20 seconds, the page can be refreshed and it should show the Livy sessi
 
    Livy sessions management: Livy sesesion idle
 
-Barring any errors with Livy, this is the only interaction with Livy that a Combine user needs to concern themselves with.
+Barring any errors with Livy, this is the only interaction with Livy that a Combine user needs to concern themselves with.  If this Livy Session grows stale, or is lost, Combine will attempt to automatically restart when it's needed.  This will actually remove and begin a new session, but this should remain invisible to the casual user.  
 
-The color of the always present "Livy/Spark" link at the top of Combine's navigation will reveal what state the Livy session is in.  If **red**, it needs attention and may need to be (re)started.  If **yellow**, it's busy, meaning starting or running a Job.  If **green**, it's ready for action!
+However, a more advanced user may choose to **remove** an active Livy session from Combine from this screen.  When this happens, Combine cannot automatically refresh the Livy connection when needed, and all work requiring Spark will fail.  To begin using Livy/Spark again, a new Livy session will need to be manually started per the instructions above.
+

@@ -460,7 +460,7 @@ In many if not most cases, XSLT will fit the bill and provide the needed transfo
 Validation Scenario
 ===================
 
-Validation Scenarios are by which Records in Combine are validated against.  Validation Scenarios may be written in the following formats: Schematron, Python code snippets, and ElasticSearch DSL queries.  Each Validation Scenario requires the following fields:
+Validation Scenarios are by which Records in Combine are validated against.  Validation Scenarios may be written in the following formats: XML Schema (XSD), Schematron, Python code snippets, and ElasticSearch DSL queries.  Each Validation Scenario requires the following fields:
 
   - ``Name`` - human readable name for Validation Scenario
   - ``Payload`` - pasted Schematron or python code
@@ -499,6 +499,11 @@ In this screenshot, we an see the following happening:
     - ``Raw Validation Results`` - raw results of Validation Scenario, in this case XML from the Schematron response, but would be a JSON string for a python code snippet Validation Scenario
 
 As mentioned, two types of Validation Scenarios are currently supported, Schematron and python code snippets, and are detailed below.
+
+XML Schema (XSD)
+----------------
+
+XML Schemas (XSD) may be used to validate a Record's document.  One limitation of XML Schema is that many python based validators will bail on the first error encountered in a document, meaning the resulting Validation failure will only show the **first** invalid XML segment encountered, though there may be many.  However, knowing that a Record has failed even one part of an XML Schema, might be sufficient to look in more detail with an external validator and determine where else it is invalid, or, fix that problem through a transform or re-harvest, and continue to run the XML Schema validations.
 
 Schematron
 ----------

@@ -6,6 +6,7 @@ import fileinput
 import json
 import math
 import os
+import pdb
 import polling
 import shutil
 import subprocess
@@ -27,7 +28,7 @@ from core import models as models
 This file provides background tasks that are performed with Django-Background-Tasks
 '''
 
-# TODO: need some handling for failed Jobs which may not be available, but will not be changing
+# TODO: need some handling for failed Jobs which may not be available, but will not be changing,
 # to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
 def spark_job_done(response):
 	return response['state'] == 'available'
@@ -626,69 +627,69 @@ def job_new_validations(ct_id):
 	'''
 
 	# get CombineTask (ct)
-	try:
-		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-		logger.debug('using %s' % ct)
+	# try:
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.debug('using %s' % ct)
 
-		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+	# get CombineJob
+	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-		# loop through validation jobs, and remove from DB if share validation scenario
-		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
+	# loop through validation jobs, and remove from DB if share validation scenario
+	cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
 
-		# update job_details with validations
-		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
-		validation_scenarios.extend(ct.task_params['validation_scenarios'])
-		cjob.job.update_job_details({
-			'validation_scenarios':validation_scenarios
-			}, save=True)
+	# update job_details with validations
+	validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+	validation_scenarios.extend(ct.task_params['validation_scenarios'])
+	cjob.job.update_job_details({
+		'validation_scenarios':validation_scenarios
+		}, save=True)
 
-		# generate spark code		
-		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
-			'job_id':cjob.job.id,
-			'validation_scenarios':str([ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ]),
-		}
-		logger.debug(spark_code)
+	# generate spark code		
+	spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
+		'job_id':cjob.job.id,
+		'validation_scenarios':str([ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ]),
+	}
+	logger.debug(spark_code)
 
-		# submit to livy
-		logger.debug('submitting code to Spark')
-		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+	# submit to livy
+	logger.debug('submitting code to Spark')
+	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
-		# poll until complete
-		logger.debug('polling for Spark job to complete...')
-		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
-		logger.debug(results)
+	# poll until complete
+	logger.debug('polling for Spark job to complete...')
+	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+	logger.debug(results)
 
-		# write validation links		
-		logger.debug('writing validations job links')
-		for vs_id in ct.task_params['validation_scenarios']:
-			val_job = models.JobValidation(
-				job=cjob.job,
-				validation_scenario=models.ValidationScenario.objects.get(pk=vs_id)
-			)
-			val_job.save()
+	# write validation links		
+	logger.debug('writing validations job links')
+	for vs_id in ct.task_params['validation_scenarios']:
+		val_job = models.JobValidation(
+			job=cjob.job,
+			validation_scenario=models.ValidationScenario.objects.get(pk=vs_id)
+		)
+		val_job.save()
 
-		# update failure counts
-		logger.debug('updating failure counts for new validation jobs')
-		for jv in cjob.job.jobvalidation_set.filter(failure_count=None):					
-			jv.validation_failure_count(force_recount=True)
+	# update failure counts
+	logger.debug('updating failure counts for new validation jobs')
+	for jv in cjob.job.jobvalidation_set.filter(failure_count=None):					
+		jv.validation_failure_count(force_recount=True)
 
-		# save export output to Combine Task output
-		ct.task_output_json = json.dumps({		
-			'run_new_validations':results
-		})
-		ct.save()
-		logger.debug(ct.task_output_json)
+	# save export output to Combine Task output
+	ct.task_output_json = json.dumps({		
+		'run_new_validations':results
+	})
+	ct.save()
+	logger.debug(ct.task_output_json)
 
-	except Exception as e:
+	# except Exception as e:
 
-		logger.debug(str(e))
+	# 	logger.debug(str(e))
 
-		# attempt to capture error and return for task
-		ct.task_output_json = json.dumps({		
-			'error':str(e)
-		})
-		ct.save()
+	# 	# attempt to capture error and return for task
+	# 	ct.task_output_json = json.dumps({		
+	# 		'error':str(e)
+	# 	})
+	# 	ct.save()
 
 
 @background(schedule=1)
@@ -873,3 +874,91 @@ def job_dbdm(ct_id):
 		})
 		ct.save()
 
+
+@background(schedule=1)
+def rerun_jobs_prep(ct_id):
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# loop through and run
+		for job_id in ct.task_params['ordered_job_rerun_set']:
+
+			# cjob
+			cjob = models.CombineJob.get_combine_job(job_id)
+
+			# rerun			
+			cjob.rerun(rerun_downstream=False, set_gui_status=False)
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'ordered_job_rerun_set':ct.task_params['ordered_job_rerun_set'],
+			'msg':'Jobs prepared for rerunning, running or queued as Spark jobs'
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
+
+
+@background(schedule=1)
+def clone_jobs(ct_id):
+
+	'''
+	Background task to clone Job(s)
+
+		- because multiple Jobs can be run through this method,
+		that might result in newly created clones as downstream for Jobs
+		run through later, need to pass newly created clones under skip_clones[]
+		list to cjob.clone() to pass on
+	'''
+
+	# get CombineTask (ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
+
+		# loop through and run
+		skip_clones = []
+		for job_id in ct.task_params['ordered_job_clone_set']:
+
+			# cjob
+			cjob = models.CombineJob.get_combine_job(job_id)
+
+			# clone		
+			clones = cjob.clone(
+				rerun=ct.task_params['rerun_on_clone'],
+				clone_downstream=ct.task_params['downstream_toggle'],
+				skip_clones=skip_clones)
+
+			# append newly created clones to skip_clones
+			for job, clone in clones.items():
+				skip_clones.append(clone)
+
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'ordered_job_clone_set':ct.task_params['ordered_job_clone_set'],
+			'msg':'Jobs cloned'
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
+
+	except Exception as e:
+
+		logger.debug(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()

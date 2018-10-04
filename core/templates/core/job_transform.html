@@ -10,7 +10,7 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<form method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
+			<form id="job_init_form" method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 				{% csrf_token %}
 	
@@ -39,7 +39,7 @@
 							</div>
 						{% endif %}
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
-							For a <strong>Transform</strong> Job, a <strong>single input</strong> Job is required.  Select from the table below.
+							<strong>Transform</strong> Jobs require a single, or multiple, <strong>input Job(s)</strong>.  Select from the table below.
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 							</button>
@@ -71,9 +71,13 @@
 				<!-- Optional Job Processing -->
 				{% include 'core/job_optional_processing.html' %}
 				
-				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
+				<button type="submit" class="btn btn-success btn-sm">Run Transform Job <i class="la la-plus"></i></button>
 
 			</form>
+
+			<!-- Modals -->
+			{% include 'core/job_spec_input_filters.html' %}
+			
 		</div>
 	</div>
 

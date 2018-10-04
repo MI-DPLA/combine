@@ -35,7 +35,8 @@
 
 			<tr>
 				<th>Publish Set ID</th>
-				<th>Record Group</th>				
+				<th>Organization</th>
+				<th>Record Group</th>
 				<th>Published Job</th>
 				<th>Record Count</th>
 				<th>Action</th>
@@ -50,6 +51,7 @@
 							<span style="color:red;"><strong>None</strong></span>
 						{% endif %}
 					</td>
+					<td><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>
 					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 					<td>{{ job.record_count }}</td>
@@ -58,6 +60,7 @@
 			{% endfor %}
 
 			<tr>
+				<td></td>
 				<td></td>
 				<td></td>
 				<td><strong>Total:</strong></td>

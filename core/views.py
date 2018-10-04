@@ -27,6 +27,7 @@ from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUpload
 from django.core.urlresolvers import reverse
 from django.db import connection
 from django.db.models import Q
+from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
@@ -226,8 +227,25 @@ def system(request):
 	livy_session = models.LivySession.get_active_session()
 
 	# if session found, refresh
-	if livy_session:
+	if type(livy_session) == models.LivySession:
+
+		# refresh
 		livy_session.refresh_from_livy()
+		
+		# create and append to list
+		livy_sessions = [livy_session]
+
+	elif type(livy_session) == QuerySet:
+		
+		# loop and refresh
+		for s in livy_session:
+			s.refresh_from_livy()
+		
+		# set as list
+		livy_sessions = livy_session
+
+	else:
+		livy_sessions = livy_session
 
 	# get status of background jobs
 	sp = models.SupervisorRPCClient()
@@ -236,6 +254,7 @@ def system(request):
 	# return
 	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
+		'livy_sessions':livy_sessions,
 		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
@@ -246,22 +265,20 @@ def livy_session_start(request):
 	
 	logger.debug('Checking for pre-existing livy sessions')
 
-	# get "active" livy sessions
-	livy_sessions = models.LivySession.objects.filter(status__in=['starting','running','idle'])
-	logger.debug(livy_sessions)
+	# get active livy sessions
+	active_ls = models.LivySession.get_active_session()
 
 	# none found
-	if livy_sessions.count() == 0:
-		logger.debug('no Livy sessions found, creating')
+	if not active_ls:
+		logger.debug('active livy session not found, starting')
 		livy_session = models.LivySession()
 		livy_session.start_session()
 
-	# if sessions present
-	elif livy_sessions.count() == 1:
-		logger.debug('single, active Livy session found, using')
+	elif type(active_ls) == models.LivySession and request.GET.get('restart') == 'true':
+		logger.debug('single, active session found, and restart flag passed, restarting')
 
-	elif livy_sessions.count() > 1:
-		logger.debug('multiple Livy sessions found, sending to sessions page to select one')
+		# restart
+		new_ls = active_ls.restart_session()
 
 	# redirect
 	return redirect('system')
@@ -469,7 +486,7 @@ def record_group_delete(request, org_id, record_group_id):
 	return redirect('organization', org_id=org_id)
 
 
-
+@login_required
 def record_group(request, org_id, record_group_id):
 
 	'''
@@ -477,12 +494,12 @@ def record_group(request, org_id, record_group_id):
 
 	Args:
 		record_group_id (str/int): PK for RecordGroup table
-	'''
+	'''	
 	
 	logger.debug('retrieving record group ID: %s' % record_group_id)
 
 	# retrieve record group
-	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	record_group = models.RecordGroup.objects.get(pk=int(record_group_id))
 
 	# get all jobs associated with record group
 	jobs = models.Job.objects.filter(record_group=record_group_id)	
@@ -496,7 +513,7 @@ def record_group(request, org_id, record_group_id):
 		# update status
 		job.update_status()
 
-	# get record group job lineage
+	# get record group job lineage	
 	job_lineage = record_group.get_jobs_lineage()
 
 	# get all record groups for this organization
@@ -508,7 +525,7 @@ def record_group(request, org_id, record_group_id):
 			'jobs':jobs,
 			'job_lineage_json':json.dumps(job_lineage),
 			'publish_set_ids':publish_set_ids,
-			'record_groups':record_groups,
+			'record_groups':record_groups,			
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -517,6 +534,24 @@ def record_group(request, org_id, record_group_id):
 ####################################################################
 # Jobs 															   #
 ####################################################################
+
+
+@login_required
+def job_id_redirect(request, job_id):
+
+	'''
+	Route to redirect to more verbose Jobs URL
+	'''
+
+	# get job
+	job = models.Job.objects.get(pk=job_id)
+
+	# redirect
+	return redirect('job_details',
+		org_id=job.record_group.organization.id,
+		record_group_id=job.record_group.id,
+		job_id=job.id)
+
 
 @login_required
 def all_jobs(request):
@@ -599,6 +634,63 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 
 @login_required
+def stop_jobs(request):
+
+	logger.debug('stopping jobs')
+	
+	job_ids = request.POST.getlist('job_ids[]')
+	logger.debug(job_ids)
+
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_stop_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
+	# set of jobs to rerun
+	job_stop_set = set()
+
+	# loop through job_ids
+	for job_id in job_ids:		
+		
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_stop_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_stop_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_delete_set = sorted(list(job_stop_set), key=lambda j: j.id)
+
+	# # loop through and update visible elements of Job for front-end
+	for job in ordered_job_delete_set:
+
+		logger.debug('stopping Job: %s' % job)		
+
+		# stop job
+		job.stop_job()
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Stopped Job(s):</strong><br>%s</p>' %  ('<br>'.join([j.name for j in ordered_job_delete_set ])),
+		'class':'danger'
+	})
+
+	# return
+	return JsonResponse({'results':True})
+
+
+@login_required
 def delete_jobs(request):
 
 	logger.debug('deleting jobs')
@@ -606,13 +698,40 @@ def delete_jobs(request):
 	job_ids = request.POST.getlist('job_ids[]')
 	logger.debug(job_ids)
 
-	# loop through job_ids
-	for job_id in job_ids:
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_delete_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
+	# set of jobs to rerun
+	job_delete_set = set()
 
-		logger.debug('deleting job by ids: %s' % job_id)
+	# loop through job_ids
+	for job_id in job_ids:		
 		
-		# get job
-		job = models.Job.objects.get(pk=int(job_id))
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(job_id)
+
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_delete_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_delete_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_delete_set = sorted(list(job_delete_set), key=lambda j: j.id)
+
+	# # loop through and update visible elements of Job for front-end
+	for job in ordered_job_delete_set:
+
+		logger.debug('deleting Job: %s' % job)		
 
 		# set job status to deleting
 		job.name = "%s (DELETING)" % job.name
@@ -637,6 +756,13 @@ def delete_jobs(request):
 			creator=ct
 		)
 
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' %  ('<br>'.join([j.name for j in ordered_job_delete_set ])),
+		'class':'danger'
+	})
+
 	# return
 	return JsonResponse({'results':True})
 
@@ -644,24 +770,51 @@ def delete_jobs(request):
 @login_required
 def move_jobs(request):
 
-	logger.debug('moving jobs')
-
-	stime = time.time()
+	logger.debug('moving jobs')	
 
 	job_ids = request.POST.getlist('job_ids[]')
 	record_group_id = request.POST.getlist('record_group_id')[0]
 
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_move_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
+	# set of jobs to rerun
+	job_move_set = set()
+
 	# loop through job_ids
-	for job_id in job_ids:
-
-		logger.debug('moving job by ids: %s' % job_id)
+	for job_id in job_ids:		
 		
+		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(job_id)
-		new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
-		cjob.job.record_group = new_record_group
-		cjob.job.save()
 
-		logger.debug('job has been moved ids: %s' % job_id)
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_move_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_move_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_move_set = sorted(list(job_move_set), key=lambda j: j.id)
+
+	# loop through jobs
+	for job in ordered_job_move_set:
+
+		logger.debug('moving Job: %s' % job)		
+		
+		new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
+		job.record_group = new_record_group
+		job.save()
+
+		logger.debug('Job %s has been moved' % job)
 
 	# redirect
 	return JsonResponse({'results':True})
@@ -675,8 +828,11 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
-	# detailed record count
-	record_count_details = cjob.get_detailed_job_record_count()
+	# update status
+	cjob.job.update_status()
+
+	# detailed record count	
+	record_count_details = cjob.job.get_detailed_job_record_count()	
 
 	# get job lineage
 	job_lineage = cjob.job.get_lineage()
@@ -811,7 +967,16 @@ def job_publish(request, org_id, record_group_id, job_id):
 	# init publish
 	bg_task = cjob.publish_bg_task(publish_set_id=publish_set_id)
 
-	return redirect('bg_tasks')
+	# set gms	
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Publishing Job:</strong><br>%s<br><br><strong>Publish Set ID:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' %  (cjob.job.name, publish_set_id, reverse('published')),
+		'class':'success'
+	})
+
+	return redirect('record_group',
+		org_id=cjob.job.record_group.organization.id,
+		record_group_id=cjob.job.record_group.id)	
 
 
 @login_required
@@ -823,20 +988,16 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 	# init unpublish
 	bg_task = cjob.unpublish_bg_task()
 
-	return redirect('bg_tasks')
+	# set gms	
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<p><strong>Unpublishing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' %  (cjob.job.name, reverse('published')),
+		'class':'success'
+	})
 
-
-@login_required
-def job_rerun(request, org_id, record_group_id, job_id):
-	
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(job_id)
-
-	# get job note
-	cjob.rerun()
-
-	# redirect to Record Group
-	return redirect('record_group', org_id=org_id, record_group_id=record_group_id)
+	return redirect('record_group',
+		org_id=cjob.job.record_group.organization.id,
+		record_group_id=cjob.job.record_group.id)
 
 
 @login_required
@@ -844,8 +1005,16 @@ def rerun_jobs(request):
 
 	logger.debug('re-running jobs')
 	
+	# get job ids
 	job_ids = request.POST.getlist('job_ids[]')
 
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_rerun_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+	
 	# set of jobs to rerun
 	job_rerun_set = set()
 
@@ -855,22 +1024,120 @@ def rerun_jobs(request):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(job_id)
 
-		# add rerun lineage for this job to set
-		job_rerun_set.update(cjob.job.get_rerun_lineage())
+		# if including downstream
+		if downstream_toggle:
+
+			# add rerun lineage for this job to set
+			job_rerun_set.update(cjob.job.get_downstream_lineage())
+
+		# else, just job
+		else:
+
+			job_rerun_set.add(cjob.job)
 
 	# sort and run
-	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)	
+	ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
 
-	# loop through and run
-	for job in ordered_job_rerun_set:
+	# # loop through and update visible elements of Job for front-end
+	for re_job in ordered_job_rerun_set:
 
-		# cjob
-		cjob = models.CombineJob.get_combine_job(job.id)
+		re_job.timestamp = datetime.datetime.now()
+		re_job.status = 'initializing'
+		re_job.record_count = 0
+		re_job.finished = False
+		re_job.elapsed = 0
+		re_job.deleted = True
+		re_job.save()
 
-		# rerun
-		cjob.rerun(run_downstream=False)
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = "Rerun Jobs Prep",
+		task_type = 'rerun_jobs_prep',
+		task_params_json = json.dumps({
+			'ordered_job_rerun_set':[j.id for j in ordered_job_rerun_set]
+		})
+	)
+	ct.save()
 
-	# return
+	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
+	# and setting creator and verbose_name params
+	bt = tasks.rerun_jobs_prep(
+		ct.id,
+		verbose_name = ct.verbose_name,
+		creator = ct
+	)
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<strong>Preparing to Rerun Job(s):</strong><br>%s<br><br>Refresh this page to update status of Jobs rerunning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' %  '<br>'.join([str(j.name) for j in ordered_job_rerun_set]),
+		'class':'success'
+	})
+
+	# return, as requested via Ajax which will reload page
+	return JsonResponse({'results':True})
+
+
+@login_required
+def clone_jobs(request):
+
+	logger.debug('cloning jobs')
+	
+	job_ids = request.POST.getlist('job_ids[]')
+	
+	# get downstream toggle
+	downstream_toggle = request.POST.get('downstream_clone_toggle', False);
+	if downstream_toggle == 'true':
+		downstream_toggle = True
+	elif downstream_toggle == 'false':
+		downstream_toggle = False
+
+	# get rerun toggle
+	rerun_on_clone = request.POST.get('rerun_on_clone', False);
+	if rerun_on_clone == 'true':
+		rerun_on_clone = True
+	elif rerun_on_clone == 'false':
+		rerun_on_clone = False
+	
+	# set of jobs to rerun
+	job_clone_set = set()
+
+	# loop through job_ids and add
+	for job_id in job_ids:
+		cjob = models.CombineJob.get_combine_job(job_id)
+		job_clone_set.add(cjob.job)
+
+	# sort and run
+	ordered_job_clone_set = sorted(list(job_clone_set), key=lambda j: j.id)
+
+	# initiate Combine BG Task
+	ct = models.CombineBackgroundTask(
+		name = "Clone Jobs",
+		task_type = 'clone_jobs',
+		task_params_json = json.dumps({
+			'ordered_job_clone_set':[j.id for j in ordered_job_clone_set],
+			'downstream_toggle':downstream_toggle,
+			'rerun_on_clone':rerun_on_clone
+		})
+	)
+	ct.save()
+
+	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
+	# and setting creator and verbose_name params
+	bt = tasks.clone_jobs(
+		ct.id,
+		verbose_name = ct.verbose_name,
+		creator = ct
+	)
+
+	# set gms
+	gmc = models.GlobalMessageClient(request.session)
+	gmc.add_gm({
+		'html':'<strong>Cloning Job(s):</strong><br>%s<br><br>Including downstream? <strong>%s</strong><br><br>Refresh this page to update status of Jobs cloning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' %  ('<br>'.join([str(j.name) for j in ordered_job_clone_set]), downstream_toggle),
+		'class':'success'
+	})
+
+	# return, as requested via Ajax which will reload page
 	return JsonResponse({'results':True})
 
 
@@ -1302,7 +1569,7 @@ def job_update(request, org_id, record_group_id, job_id):
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
 		# get uptdate type from GET params
-		update_type = request.GET.get('update_type', None)
+		update_type = request.GET.get('update_type', None)		
 
 		# render page
 		return render(request, 'core/job_update.html', {
@@ -1336,9 +1603,19 @@ def job_update(request, org_id, record_group_id, job_id):
 			fm_config_json = request.POST.get('fm_config_json')
 
 			# init re-index
-			bg_task = cjob.reindex_bg_task(fm_config_json=fm_config_json)
+			ct = cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
-			return redirect('bg_tasks')
+			# set gms
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Re-Indexing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle new validations
 		if update_type == 'validations':
@@ -1346,10 +1623,23 @@ def job_update(request, org_id, record_group_id, job_id):
 			# get requested validation scenarios
 			validation_scenarios = request.POST.getlist('validation_scenario', [])
 
+			# get validations
+			validations = models.ValidationScenario.objects.filter(id__in=[ int(vs_id) for vs_id in validation_scenarios ])
+
 			# init bg task
 			bg_task = cjob.new_validations_bg_task(validation_scenarios)
 
-			return redirect('bg_tasks')
+			# set gms
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Running New Validations for Job:</strong><br>%s<br><br><strong>Validation Scenarios:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, '<br>'.join([vs.name for vs in validations]), reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle validation removal
 		if update_type == 'remove_validation':
@@ -1360,7 +1650,18 @@ def job_update(request, org_id, record_group_id, job_id):
 			# initiate Combine BG Task
 			bg_task = cjob.remove_validation_bg_task(jv_id)
 
-			return redirect('bg_tasks')
+			# set gms
+			vs = models.JobValidation.objects.get(pk=int(jv_id)).validation_scenario
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Removing Validation for Job:</strong><br>%s<br><br><strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, vs.name, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 		# handle validation removal
 		if update_type == 'dbdm':
@@ -1371,7 +1672,18 @@ def job_update(request, org_id, record_group_id, job_id):
 			# initiate Combine BG Task
 			bg_task = cjob.dbdm_bg_task(dbdd_id)
 
-			return redirect('bg_tasks')
+			# set gms
+			dbdd = models.DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
+			gmc = models.GlobalMessageClient(request.session)
+			gmc.add_gm({
+				'html':'<p><strong>Running DPLA Bulk Data comparison for Job:</strong><br>%s<br><br><strong>Bulk Data S3 key:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (cjob.job.name, dbdd.s3_key, reverse('bg_tasks')),
+				'class':'success'
+			})
+
+			return redirect('job_details',
+				org_id=cjob.job.record_group.organization.id,
+				record_group_id=cjob.job.record_group.id,
+				job_id=cjob.job.id)
 
 
 
@@ -1992,8 +2304,7 @@ def test_validation_scenario(request):
 	# If POST, provide raw result of validation test
 	if request.method == 'POST':
 
-		logger.debug('running test validation and returning')
-		logger.debug(request.POST)
+		logger.debug('running test validation and returning')		
 
 		# get record
 		record = models.Record.objects.get(id=request.POST.get('db_id'))
@@ -2385,6 +2696,26 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
+		# fire bg_task
+		bg_task = tasks.export_documents(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = "Job:</strong><br>%s" % cjob.job.name
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('job_details',
+			org_id=cjob.job.record_group.organization.id,
+			record_group_id=cjob.job.record_group.id,
+			job_id=cjob.job.id)
+
 	# export for published
 	if export_source == 'published':
 
@@ -2404,15 +2735,23 @@ def export_documents(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
-	
-	# fire bg_task
-	bg_task = tasks.export_documents(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
 
-	return redirect('bg_tasks')
+		# fire bg_task
+		bg_task = tasks.export_documents(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = ":</strong><br>Published Records"
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('published')
 
 
 def export_mapped_fields(request, export_source, job_id=None):
@@ -2451,7 +2790,27 @@ def export_mapped_fields(request, export_source, job_id=None):
 				'mapped_field_include':mapped_field_include
 			})
 		)
-		ct.save()		
+		ct.save()
+
+		# fire bg task
+		bg_task = tasks.export_mapped_fields(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = "Job:</strong><br>%s" % cjob.job.name
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('job_details',
+			org_id=cjob.job.record_group.organization.id,
+			record_group_id=cjob.job.record_group.id,
+			job_id=cjob.job.id)
 
 	# export for published
 	if export_source == 'published':
@@ -2474,15 +2833,23 @@ def export_mapped_fields(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
-	
-	# fire bg task
-	bg_task = tasks.export_mapped_fields(
-		ct.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
 
-	return redirect('bg_tasks')
+		# fire bg task
+		bg_task = tasks.export_mapped_fields(
+			ct.id,
+			verbose_name=ct.verbose_name,
+			creator=ct
+		)
+
+		# set gm
+		gmc = models.GlobalMessageClient(request.session)
+		target = ":</strong><br>Published Records"
+		gmc.add_gm({
+			'html':'<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' %  (target, reverse('bg_tasks')),
+			'class':'success'
+		})
+
+		return redirect('published')
 
 
 
@@ -3301,7 +3668,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 				
 
 			elif column == 'actions':
-				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results</button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete</button></a>' % (
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
 					reverse(bg_task, kwargs={'task_id':row.id}),
 					reverse(bg_task_delete, kwargs={'task_id':row.id})
 				)
@@ -3320,4 +3687,47 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 			# return
 			return qs
+
+
+
+####################################################################
+# Global Messages												   #
+####################################################################
+
+@login_required
+def gm_delete(request):
+	
+	if request.method == 'POST':
+
+		# get gm_id
+		gm_id = request.POST.get('gm_id')
+
+		# init GlobalMessageClient
+		gmc = models.GlobalMessageClient(request.session)
+
+		# delete by id
+		results = gmc.delete_gm(gm_id)
+
+		# redirect
+		return JsonResponse({			
+			'gm_id':gm_id,
+			'num_removed':results	
+		})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 

@@ -2,7 +2,7 @@
 {% block content %}
 {% load core_template_filters %}
 
-	<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields</button></a></p>
+	<p><a href="#" onclick="$('#mapped_fields').toggle(); update_table_widths(); return false;"><button type="button" class="btn btn-outline-primary btn-sm">Select Mapped Fields <i class="la la-wrench"></i></button></a></p>
 	<div id="mapped_fields" style="display:none;">
 		<p><button type="button" class="btn btn-primary btn-sm" onclick="return false;" id="select_all_fields">Toggle all fields</button></p>
 		<table id="select_mapped_fields" class="table table-bordered table-hover">

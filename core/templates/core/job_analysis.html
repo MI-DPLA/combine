@@ -12,7 +12,7 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<form method="POST" action="{% url 'job_analysis' %}">
+			<form id="job_init_form" method="POST" action="{% url 'job_analysis' %}">
 
 				{% csrf_token %}
 
@@ -41,7 +41,7 @@
 								</button>
 							</div>
 							<div class="alert alert-danger alert-dismissible fade show" role="alert">
-								For an <strong>Analysis</strong> Job, at <strong>least one</strong> input Job is required, and <strong>multiple</strong> are allowed.  Select from the table below.
+								<strong>Analysis</strong> Jobs require a single, or multiple, <strong>input Job(s)</strong>.  Select from the table below.
 								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 								<span aria-hidden="true">&times;</span>
 								</button>

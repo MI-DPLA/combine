@@ -34,7 +34,10 @@
 		<link href="{% static 'core/jsoneditor-5.18.0/dist/jsoneditor.min.css' %}" rel="stylesheet" type="text/css"></link>
 		<script src="{% static 'core/jsoneditor-5.18.0/dist/jsoneditor.min.js' %}"></script>
 
-		<!-- Combine CSS -->
+    	<!-- Line Awesome icon font -->    	
+    	<link rel="stylesheet" href="{% static 'core/line-awesome/css/line-awesome.min.css' %}">
+
+    	<!-- Combine CSS -->
     	<link rel="stylesheet" type="text/css" href="{% static 'core/combine.css' %}">
 
     	<title>Combine{{page_title}}</title>
@@ -68,14 +71,11 @@
 	            <a class="nav-link" href="{% url 'bg_tasks' %}">Background Tasks</a>
 	          </li>
 	          <li class="nav-item">
-	            <a class="nav-link" href="http://combine.readthedocs.io" target="_blank">Documentation</a>
+	            <a class="nav-link" href="http://combine.readthedocs.io/en/{{COMBINE_GIT_BRANCH}}" target="_blank">Documentation</a>
+	          </li>	          
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'system' %}">System: <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
 	          </li>
-
-	          </li>
-	           <li class="nav-item">
-	            <a class="nav-link" href="{% url 'system' %}">System (<span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Livy/Spark</span> / <span class="{% if BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Background Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=15 /> <code><span style="color:#e83e8c;">{{COMBINE_GIT_BRANCH}}</span></code>)</a>
-	          </li>
-
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
 	          <input class="form-control mr-sm-2" type="text" name="q" placeholder="Search all records..." aria-label="Search" {% if search_string %}value="{{ search_string }}"{% endif %} />
@@ -84,7 +84,45 @@
 	      </div>
 	    </nav>
 
+
+
 	    <main role="main" class="container">
+
+			<div class="row" id="global_msg_row">
+				<div class="col-md-12">
+					<div id="global_msg_container">
+
+						{% for gm in request.session.gms %}
+
+							<div class="alert alert-{{gm.class}} alert-dismissible fade show" role="alert">
+								{{gm.html|safe}}
+								<button type="button" class="close" data-dismiss="alert" aria-label="Close" onclick="del_gm('{{gm.id}}');">
+								<span aria-hidden="true">&times;</span>
+								</button>
+							</div>
+
+						{% endfor %}
+
+					</div>
+				</div>
+				<script>
+
+					function del_gm(gm_id) {						
+
+						// ajax call
+						$.ajax({
+							type: "POST",
+							url: "{% url 'gm_delete' %}",
+							data: {
+								'gm_id':gm_id,
+								'csrfmiddlewaretoken': '{{ csrf_token }}'
+							},
+							dataType:'json'							
+						});
+					}
+
+				</script>
+			</div> 
 	    	
 	    	<!-- breadcrumbs -->
 	    	<div id="breadcrumbs" class="row">

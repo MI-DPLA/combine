@@ -2,13 +2,22 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<div class="gray_box">
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+				Use the form below <strong>filter</strong> input Records from input Jobs.  <strong>Note:</strong> by default, filtering is applied to <strong>all</strong> input Jobs, but Job-specific filtering can be applied by clicking the filter icon <span style="font-size:150%;"><i class="la la-filter"></i></span> next to the Job checkbox in the table above.
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+		</div>
+	</div>
 
-				<p>Filter Records from each Job used as input for this Job.  Default settings <strong>do not</strong> filter, and include <strong>all</strong> Records from <strong>all</strong> input Jobs.</p>
+	<div class="row">
+		<div class="col-md-12">
+			<div class="gray_box">				
 
 				<div class="row">
 					<div class="col-md-12">
-						<h5>Refine by Record Validity</h5>
+						<h5>Filter by Record Validity</h5>
 						<p>Filter Records based on Validation Results:</p>
 						
 						<div class="form-check">
@@ -37,7 +46,7 @@
 				<div class="row">
 					<div class="col-md-12">
 						<h5>Limit Number of Records</h5>
-						<p>Numerically limit Records from each in Job:</p>
+						<p>Numerically limit Records from each input Job:</p>
 
 						<div style="width:50%" class="form-group">							
 							<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000"/>
@@ -70,7 +79,7 @@
 
 				<div class="row">
 					<div class="col-md-12">
-						<h5>Refine by Mapped Fields</h5>
+						<h5>Filter by Mapped Fields</h5>
 						<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
 						<div class="form-group">
 							<label for="input_es_query_valve">ElasticSearch Query DSL</label>
@@ -92,15 +101,9 @@
 			    					},
 			    					sortObjectKeys: true,
 			    					name: 'elasticsearch_query',
-			    					// schema: {{xml2kvp_handle.schema|safe}},			    					
+			    					// schema: SCHEMA JSON HERE,
 						        };
-						        var es_query_editor = new JSONEditor(container, options);
-
-						        // // set json to editor
-						        // es_query_editor.set();
-
-						        // // update textarea
-						        // $("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+						        var es_query_editor = new JSONEditor(container, options);						        
 						    </script>
 
 						</div>

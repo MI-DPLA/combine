@@ -21,6 +21,7 @@ import logging
 from lxml import etree, isoschematron
 import os
 import pdb
+import polling
 import requests
 import shutil
 import sickle
@@ -48,9 +49,11 @@ from django.apps import AppConfig
 from django.conf import settings
 from django.contrib.auth.models import User
 from django.contrib.auth import signals
+from django.contrib.sessions.backends.db import SessionStore
+from django.contrib.sessions.models import Session
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
-from django.db import connection, models
+from django.db import connection, models, transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.http.request import QueryDict
@@ -143,43 +146,61 @@ class LivySession(models.Model):
 		# query Livy for session status
 		livy_response = LivyClient().session_status(self.session_id)
 
-		# parse response and set self values
-		response = livy_response.json()
-		headers = livy_response.headers
+		# if response
+		if livy_response != False:
 
-		# if status_code 404, set as gone
-		if livy_response.status_code == 404:
-			
-			logger.debug('session not found, setting status to gone')
-			self.status = 'gone'
-			# update
-			self.save()
+			# parse response and set self values
+			response = livy_response.json()
+			headers = livy_response.headers
 
-		elif livy_response.status_code == 200:
-			
-			# update Livy information
-			logger.debug('session found, updating status')
-			
-			# update status
-			self.status = response['state']
-			if self.status in ['starting','idle','busy']:
-				self.active = True
-			
-			self.session_timestamp = headers['Date']
+			# if status_code 404, set as gone
+			if livy_response.status_code == 404:
+				
+				logger.debug('session not found, setting status to gone')
+				self.status = 'gone'
+				
+				# update
+				self.save()
 
-			# gather information about registered application in spark cluster
-			try:
-				spark_app_id = SparkAppAPIClient.get_application_id(self.session_id)
-				self.appId = spark_app_id
-			except:
-				pass
+				# return self
+				return self.status
 
-			# update
-			self.save()
+			elif livy_response.status_code == 200:
+				
+				# update Livy information
+				logger.debug('session found, updating status')
+				
+				# update status
+				self.status = response['state']
+				if self.status in ['starting','idle','busy']:
+					self.active = True
+				
+				self.session_timestamp = headers['Date']
 
+				# gather information about registered application in spark cluster
+				try:
+					spark_app_id = SparkAppAPIClient.get_application_id(self, self.session_id)
+					self.appId = spark_app_id
+				except:
+					pass
+
+				# update
+				self.save()
+
+				# return self
+				return self.status
+
+			else:
+				
+				logger.debug('error: livy request http code: %s' % livy_response.status_code)
+				logger.debug('error: livy request content: %s' % livy_response.content)
+				return False
+
+		# else, do nothing
 		else:
-			
-			logger.debug('error retrieving information about Livy session')
+
+			logger.debug('error communicating with Livy, doing nothing')
+			return False
 
 
 	def start_session(self):
@@ -194,8 +215,24 @@ class LivySession(models.Model):
 			None
 		'''
 
+		# get default config from localsettings
+		livy_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
+
+		# confirm SPARK_APPLICATION_ROOT_PORT is open
+		# increment if need be, attempting 100 port increment, setting to livy_session_config
+		spark_ui_port = settings.SPARK_APPLICATION_ROOT_PORT		
+		for x in range(0,100):
+			try:
+				r = requests.get('http://localhost:%s' % spark_ui_port)
+				logger.debug('port %s in use, incrementing...' % spark_ui_port)		
+				spark_ui_port += 1
+			except requests.ConnectionError:
+				logger.debug('port %s open, using for LivySession' % spark_ui_port)
+				livy_session_config['conf']['spark_ui_port'] = spark_ui_port
+				break		
+
 		# create livy session, get response
-		livy_response = LivyClient().create_session()
+		livy_response = LivyClient().create_session(config=livy_session_config)
 
 		# parse response and set instance values
 		response = livy_response.json()
@@ -207,6 +244,7 @@ class LivySession(models.Model):
 		self.status = response['state']
 		self.session_timestamp = headers['Date']
 		self.active = True
+		self.sparkUiUrl = '%s:%s' % (settings.APP_HOST, spark_ui_port)
 
 		# update db
 		self.save()
@@ -251,12 +289,102 @@ class LivySession(models.Model):
 			return active_livy_sessions.first()
 
 		elif active_livy_sessions.count() == 0:
-			# logger.debug('no active livy sessions found, returning False')
 			return False
 
 		elif active_livy_sessions.count() > 1:
-			# logger.debug('multiple active livy sessions found, returning as list')
-			return active_livy_sessions
+			return active_livy_sessions			
+
+
+	def get_log_lines(self, size=10):
+
+		'''
+		Method to return last 10 log lines
+		'''
+
+		log_response = LivyClient.get_log_lines(
+			self.session_id,			
+			size=size)
+
+		return log_response.json()
+
+
+	@staticmethod
+	def ensure_active_session_id(session_id):
+
+		'''
+		Method to ensure passed session id:
+			- matches current active Livy session saved to DB
+			- in a state to recieve additional jobs
+
+		Args:
+			session_id (int): session id to check
+
+		Returns:
+			(int): passed sessionid if active and ready,
+				or new session_id if started 
+		'''
+
+		# retrieve active livy session and refresh
+		active_ls = LivySession.get_active_session()
+		active_ls.refresh_from_livy()
+
+		# if passed session id matches and status is idle or busy
+		if session_id == active_ls.session_id:
+
+			if active_ls.status in ['idle','busy']:
+				logger.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job' % active_ls.status)
+
+			else:
+				logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
+
+				# destroy active livy session
+				active_ls.stop_session()
+				active_ls.delete()
+
+				# start and poll for new one
+				new_ls = LivySession()
+				new_ls.start_session()
+
+				# poll until ready
+				def livy_session_ready(response):
+					return response == 'idle'
+
+				logger.debug('polling for Livy session to start...')
+				results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)				
+
+				# pass new session id and continue to livy job submission
+				session_id = new_ls.session_id
+
+			# return 
+			return session_id
+
+		else:
+			logger.debug('requested livy session id does not match active livy session id')
+			return None
+
+
+	def restart_session(self):
+
+		'''
+		Method to restart Livy session
+		'''
+
+		# stop and destroy self
+		self.stop_session()
+		self.delete()
+
+		# start and poll for new one
+		new_ls = LivySession()
+		new_ls.start_session()
+
+		# poll until ready
+		def livy_session_ready(response):
+			return response in ['idle','gone']
+
+		logger.debug('polling for Livy session to start...')
+		results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, timeout=120)
+
+		return new_ls
 
 
 
@@ -340,10 +468,10 @@ class RecordGroup(models.Model):
 		record_group_jobs = self.job_set.order_by('-id').all()
 
 		# loop through jobs
-		for job in record_group_jobs:
+		for job in record_group_jobs:				
 				job_ld = job.get_lineage(directionality='downstream')
 				ld['edges'].extend(job_ld['edges'])
-				ld['nodes'].extend(job_ld['nodes'])
+				ld['nodes'].extend(job_ld['nodes'])				
 
 		# filter for unique
 		ld['nodes'] = list({node['id']:node for node in ld['nodes']}.values())
@@ -529,7 +657,11 @@ class Job(models.Model):
 
 			# else, if finished, calc time between job_track start and finish
 			else:
-				return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+				try:
+					return (job_track.finish_timestamp - job_track.start_timestamp).seconds
+				except Exception as e:
+					logger.debug('error with calculating elapsed: %s' % str(e))
+					return 0
 
 		# else, return zero
 		else:
@@ -590,7 +722,7 @@ class Job(models.Model):
 
 		# query Livy for statement status
 		livy_response = LivyClient().job_status(self.url)
-		
+
 		# if status_code 400 or 404, set as gone
 		if livy_response.status_code in [400,404]:
 			
@@ -628,7 +760,6 @@ class Job(models.Model):
 			logger.debug(livy_response.json())
 
 
-	@property
 	def get_spark_jobs(self):
 
 		'''
@@ -646,7 +777,7 @@ class Job(models.Model):
 
 			# get list of Jobs, filter by jobGroup for this Combine Job
 			try:
-				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls.appId, self.id)
+				filtered_jobs = SparkAppAPIClient.get_spark_jobs_by_jobGroup(ls, ls.appId, self.id)
 			except:
 				logger.warning('trouble retrieving Jobs from Spark App API')
 				filtered_jobs = []
@@ -659,7 +790,6 @@ class Job(models.Model):
 			return False
 
 
-	@property
 	def has_spark_failures(self):
 
 		'''
@@ -667,7 +797,7 @@ class Job(models.Model):
 		'''
 
 		# get spark jobs
-		spark_jobs = self.get_spark_jobs
+		spark_jobs = self.get_spark_jobs()
 
 		if spark_jobs:
 			failed = [ job for job in spark_jobs if job['status'] == 'FAILED' ]
@@ -714,7 +844,7 @@ class Job(models.Model):
 			(django.db.models.query.QuerySet)
 		'''
 			
-		errors = Record.objects(job_id=251, success=False)
+		errors = Record.objects(job_id=self.id, success=False)
 
 		# return
 		return errors
@@ -726,15 +856,18 @@ class Job(models.Model):
 		Get record count from Mongo from Record table, filtering by job_id
 
 		Args:
-			None
+			save (bool): Save instance on calculation			
 
 		Returns:
 			None
 		'''
-		
-		# update record counts
-		self.record_count = Record.objects(job_id=self.id).count()
 
+		# det detailed record count
+		drc = self.get_detailed_job_record_count(force_recount=True)
+
+		# update Job record count
+		self.record_count = drc['records'] + drc['errors']
+		
 		# if job has single input ID, and that is still None, set to record count
 		if self.jobinput_set.count() == 1:
 			ji = self.jobinput_set.first()
@@ -745,6 +878,82 @@ class Job(models.Model):
 		# if save, save
 		if save:
 			self.save()
+
+
+	def get_total_input_job_record_count(self):
+
+		'''
+		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
+
+		Args:
+			None
+
+		Returns:
+			(int): count of records
+		'''
+
+		if self.jobinput_set.count() > 0:
+
+			# init dict
+			input_jobs_dict = {
+				'total_input_record_count':0				
+			}
+			
+			# loop through input jobs
+			for input_job in self.jobinput_set.all():				
+
+				# bump count
+				if input_job.passed_records != None:
+					input_jobs_dict['total_input_record_count'] += input_job.passed_records				
+
+			# return
+			return input_jobs_dict
+		else:
+			return None
+
+
+	def get_detailed_job_record_count(self, force_recount=False):
+
+		'''
+		Return details of record counts for input jobs, successes, and errors
+
+		Args:
+			force_recount (bool): If True, force recount from db
+
+		Returns:
+			(dict): Dictionary of record counts
+		'''
+
+		# debug
+		stime = time.time()
+
+		if 'detailed_record_count' in self.job_details_dict.keys() and not force_recount:
+			logger.debug('total detailed record count retrieve elapsed: %s' % (time.time()-stime))
+			return self.job_details_dict['detailed_record_count']
+
+		else:
+
+			r_count_dict = {}
+
+			# get counts
+			r_count_dict['records'] = self.get_records().count()
+			r_count_dict['errors'] = self.get_errors().count()
+
+			# include input jobs
+			r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
+
+			# calc success percentages, based on records ratio to job record count (which includes both success and error)
+			if r_count_dict['records'] != 0:
+				r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)
+			else:
+				r_count_dict['success_percentage'] = 0.0
+
+			# saving to job_details
+			self.update_job_details({'detailed_record_count':r_count_dict})
+
+			# return
+			logger.debug('total detailed record count calc elapsed: %s' % (time.time()-stime))
+			return r_count_dict
 
 
 	def job_output_as_filesystem(self):
@@ -831,7 +1040,7 @@ class Job(models.Model):
 		# update lineage dictionary recursively
 		self._get_parent_jobs(self, ld, directionality=directionality)
 
-		# return
+		# return		
 		return ld
 
 
@@ -898,25 +1107,81 @@ class Job(models.Model):
 				# add edge
 				edge_id = '%s_to_%s' % (from_node, to_node)
 				if edge_id not in [ edge['id'] for edge in ld['edges'] ]:
-					
-					# prepare edge dictionary
-					try:
-						edge_dict = {
-							'id':edge_id,
-							'from':from_node,
-							'to':to_node,
-							'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],
-							'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
-							'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],
-							'total_records_passed':link.passed_records
-						}
-						# add es query flag
-						if self.job_details_dict['input_filters']['input_es_query_valve']:
-							edge_dict['input_es_query_valve'] = True
-						else:
-							edge_dict['input_es_query_valve'] = False
 
-					except:
+					if 'input_filters' in self.job_details_dict:
+
+						# check for job specific filters to use for edge
+						if 'job_specific' in self.job_details_dict['input_filters'].keys() and str(from_node) in self.job_details_dict['input_filters']['job_specific'].keys():
+
+							logger.debug('found job type specifics for input job: %s, applying to edge' % from_node)
+
+							# get job_spec_dict
+							job_spec_dict = self.job_details_dict['input_filters']['job_specific'][str(from_node)]
+
+							# prepare edge dictionary
+							try:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':job_spec_dict['input_validity_valve'],
+									'input_numerical_valve':job_spec_dict['input_numerical_valve'],
+									'filter_dupe_record_ids':job_spec_dict['filter_dupe_record_ids'],
+									'total_records_passed':link.passed_records
+								}
+								# add es query flag
+								if job_spec_dict['input_es_query_valve']:
+									edge_dict['input_es_query_valve'] = True
+								else:
+									edge_dict['input_es_query_valve'] = False
+
+							except:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':'unknown',
+									'input_numerical_valve':None,
+									'filter_dupe_record_ids':False,
+									'input_es_query_valve':False,
+									'total_records_passed':link.passed_records
+								}
+
+						# else, use global input job filters
+						else:
+
+							# prepare edge dictionary
+							try:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':self.job_details_dict['input_filters']['input_validity_valve'],
+									'input_numerical_valve':self.job_details_dict['input_filters']['input_numerical_valve'],
+									'filter_dupe_record_ids':self.job_details_dict['input_filters']['filter_dupe_record_ids'],
+									'total_records_passed':link.passed_records
+								}
+								# add es query flag
+								if self.job_details_dict['input_filters']['input_es_query_valve']:
+									edge_dict['input_es_query_valve'] = True
+								else:
+									edge_dict['input_es_query_valve'] = False
+
+							except:
+								edge_dict = {
+									'id':edge_id,
+									'from':from_node,
+									'to':to_node,
+									'input_validity_valve':'unknown',
+									'input_numerical_valve':None,
+									'filter_dupe_record_ids':False,
+									'input_es_query_valve':False,
+									'total_records_passed':link.passed_records
+								}
+
+					else:
+
+						logger.debug('no input filters were found for job: %s' % self.id)
 						edge_dict = {
 							'id':edge_id,
 							'from':from_node,
@@ -1013,17 +1278,26 @@ class Job(models.Model):
 				validation_scenarios (list): QuerySet of associated JobValidation
 		'''
 
+		# DEBUG
+		stime = time.time()
+
 		# return dict
 		results = {
 			'verdict':True,
 			'passed_count':self.record_count,
 			'failure_count':0,
 			'validation_scenarios':[]
-		}
+		}		
 
 		# no validation tests run, return True
 		if self.jobvalidation_set.count() == 0:
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
 			return results
+
+		# check if already calculated, and use
+		elif 'validation_results' in self.job_details_dict.keys():
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
+			return self.job_details_dict['validation_results']
 
 		# validation tests run, loop through
 		else:
@@ -1039,9 +1313,14 @@ class Job(models.Model):
 				results['passed_count'] -= results['failure_count']
 
 			# add all validation scenarios
-			results['validation_scenarios'] = self.jobvalidation_set.all()
+			# results['validation_scenarios'] = self.jobvalidation_set.all()
+
+			# save to job_details
+			logger.debug("saving validation results for %s to job_details" % self)
+			self.update_job_details({'validation_results':results})
 
 			# return
+			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
 			return results
 
 
@@ -1310,11 +1589,10 @@ class Job(models.Model):
 		return True
 
 
-	def get_rerun_lineage(self):
+	def get_downstream_lineage(self):
 
 		'''
-		Method to retrieve ordered lineage of downstream jobs
-		to re-run
+		Method to retrieve ordered lineage of downstream jobs		
 		'''
 
 		def _job_recurse(job_node):
@@ -1340,6 +1618,47 @@ class Job(models.Model):
 		_job_recurse(self)
 
 		return sorted(list(job_list), key=lambda j: j.id)
+
+
+	def stop_job(self):
+
+		'''
+		Stop running Job in Livy/Spark
+			- cancel Livy statement
+				- unnecessary if running Spark app, but helpful if queued by Livy
+			- issue "kill" commands to Spark app
+				- Livy statement cancels do not stop Spark jobs, but we can kill them manually
+		'''
+
+		logger.debug('Stopping Job: %s' % self)
+
+		# get active livy session
+		ls = LivySession.get_active_session()
+
+		# if active session
+		if ls:			
+
+			# send cancel to Livy
+			try:
+				livy_response = LivyClient().stop_job(self.url).json()
+				logger.debug('Livy statement cancel result: %s' % livy_response)
+			except:
+				logger.debug('error canceling Livy statement: %s' % self.url)
+
+			# retrieve list of spark jobs, killing two most recent
+			# note: repeate x3 if job turnover so quick enough that kill is missed
+			try:
+				for x in range(0,3):
+					sjs = self.get_spark_jobs()
+					sj = sjs[0]
+					logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
+					kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
+					logger.debug('kill result: %s' % kill_result)
+			except:
+				logger.debug('error killing Spark jobs')
+
+		else:
+			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
 
 
 
@@ -1705,6 +2024,10 @@ class Record(mongoengine.Document):
 	_job = None
 
 
+	def __str__(self):
+		return 'Record: %s, record_id: %s, Job: %s' % (self.id, self.record_id, self.job.name)
+
+
 	# _id shim property
 	@property
 	def _id(self):
@@ -1954,33 +2277,38 @@ class Record(mongoengine.Document):
 						return self.dpla_api_doc
 
 					# if count present
-					if 'count' in api_r.keys():
+					if type(api_r) == dict:
+						if 'count' in api_r.keys():
 
-						# response
-						if api_r['count'] >= 1:
+							# response
+							if api_r['count'] >= 1:
 
-							# add matches to matches
-							field,value = search_string.split('=')
-							value = urllib.parse.unquote(value)
-							
-							# check for matches attr
-							if not hasattr(self, "dpla_api_matches"):
-								self.dpla_api_matches = {}
-							
-							# add mapped field used for searching
-							if field not in self.dpla_api_matches.keys():
-								self.dpla_api_matches[field] = []
-							
-							# add matches for values searched
-							for doc in api_r['docs']:
-								self.dpla_api_matches[field].append({
-										"search_term":value,
-										"hit":doc
-									})
+								# add matches to matches
+								field,value = search_string.split('=')
+								value = urllib.parse.unquote(value)
+								
+								# check for matches attr
+								if not hasattr(self, "dpla_api_matches"):
+									self.dpla_api_matches = {}
+								
+								# add mapped field used for searching
+								if field not in self.dpla_api_matches.keys():
+									self.dpla_api_matches[field] = []
+								
+								# add matches for values searched
+								for doc in api_r['docs']:
+									self.dpla_api_matches[field].append({
+											"search_term":value,
+											"hit":doc
+										})
 
+							else:
+								if not hasattr(self, "dpla_api_matches"):
+									self.dpla_api_matches = {}
 						else:
+							logger.debug('non-JSON response from DPLA API: %s' % api_r)
 							if not hasattr(self, "dpla_api_matches"):
-								self.dpla_api_matches = {}
+									self.dpla_api_matches = {}
 
 					else:
 						logger.debug(api_r)
@@ -2278,7 +2606,12 @@ class ValidationScenario(models.Model):
 	payload = models.TextField()
 	validation_type = models.CharField(
 		max_length=255,
-		choices=[('sch','Schematron'),('python','Python Code Snippet'),('es_query','ElasticSearch DSL Query')]
+		choices=[
+			('sch','Schematron'),
+			('python','Python Code Snippet'),
+			('es_query','ElasticSearch DSL Query'),
+			('xsd','XML Schema')
+		]
 	)
 	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
 	default_run = models.BooleanField(default=1)
@@ -2310,6 +2643,8 @@ class ValidationScenario(models.Model):
 			result = self._validate_python(row)
 		if self.validation_type == 'es_query':
 			result = self._validate_es_query(row)
+		if self.validation_type == 'xsd':
+			result = self._validate_xsd(row)
 
 		# return result
 		return result
@@ -2534,6 +2869,43 @@ class ValidationScenario(models.Model):
 		return {
 			'parsed':results_dict,
 			'raw':json.dumps(results_dict)
+		}
+
+
+	def _validate_xsd(self, row):
+
+		# prepare results_dict
+		results_dict = {
+			'total_tests':1,
+			'fail_count':0,
+			'passed':[],
+			'failed':[]
+		}
+		
+		# parse xsd
+		xmlschema_doc = etree.parse(self.filepath)
+		xmlschema = etree.XMLSchema(xmlschema_doc)
+
+		# get document xml
+		record_xml = etree.fromstring(row.document.encode('utf-8'))
+
+		# validate
+		try:
+			xmlschema.assertValid(record_xml)
+			is_valid = True
+			validation_msg = 'Document is valid'
+			results_dict['passed'].append(validation_msg)
+
+		except etree.DocumentInvalid as e:
+			is_valid = False
+			validation_msg = str(e)
+			results_dict['failed'].append(validation_msg)
+			results_dict['fail_count'] += 1
+
+		# return
+		return {
+			'parsed':results_dict,
+			'raw':validation_msg
 		}
 
 
@@ -3058,19 +3430,10 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 		kwargs: not used
 	'''
 
-	logger.debug('removing job_output for job id %s' % instance.id)
+	logger.debug('pre-delete sequence for Job: #%s' % instance.id)
 
-	# check if job running or queued, attempt to stop
-	try:
-		instance.refresh_from_livy()
-		if instance.status in ['waiting','running']:
-			# attempt to stop job
-			livy_response = LivyClient().stop_job(instance.url)
-			logger.debug(livy_response)
-
-	except Exception as e:
-		logger.debug('could not stop job in livy')
-		logger.debug(str(e))
+	# stop Job
+	instance.stop_job()
 
 	# remove avro files from disk	
 	if instance.job_output and instance.job_output.startswith('file://'):
@@ -3182,6 +3545,8 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 		filename = 'file_%s.py' % uuid.uuid4().hex
 	if instance.validation_type == 'es_query':
 		filename = 'file_%s.json' % uuid.uuid4().hex
+	if instance.validation_type == 'xsd':
+		filename = 'file_%s.xsd' % uuid.uuid4().hex
 
 	filepath = '%s/%s' % (validations_dir, filename)
 	with open(filepath, 'w') as f:
@@ -3275,6 +3640,7 @@ class LivyClient(object):
 			http_method,
 			url,
 			data=None,
+			params=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -3297,21 +3663,34 @@ class LivyClient(object):
 		if type(data) != str:
 			data = json.dumps(data)
 
-		# build request
+		# build session
 		session = requests.Session()
+
+		# build request
 		request = requests.Request(http_method, "http://%s:%s/%s" % (
 			self.server_host,
 			self.server_port,
 			url.lstrip('/')),
 			data=data,
+			params=params,
 			headers=headers,
 			files=files)
 		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
-		response = session.send(
-			prepped_request,
-			stream=stream,
-		)
-		return response
+
+		# send request
+		try:
+			response = session.send(
+				prepped_request,
+				stream=stream,
+			)
+
+			# return
+			return response
+
+		except requests.ConnectionError as e:
+			logger.debug("LivyClient: error sending http request to Livy")
+			logger.debug(str(e))
+			return False
 
 
 	@classmethod
@@ -3378,6 +3757,8 @@ class LivyClient(object):
 			- as opposed to passing session row, which while convenient, would limit this method to
 			only stopping sessions with a LivySession row in the DB
 
+		QUESTION: Should this attempt to kill all Jobs in spark app upon closing?
+
 		Args:
 			session_id (str/int): Livy session id
 
@@ -3428,8 +3809,7 @@ class LivyClient(object):
 	@classmethod
 	def submit_job(self,
 		session_id,
-		python_code,
-		stream=False,
+		python_code,		
 		ensure_livy_session=True):
 
 		'''
@@ -3443,15 +3823,19 @@ class LivyClient(object):
 			(dict): Livy server response
 		'''
 
-		# if ensure_livy_session, confirm and start if necessary
+		# if ensure_livy_session
 		if ensure_livy_session:
 			logger.debug('ensuring Livy session')
+			session_id = LivySession.ensure_active_session_id(session_id)
 
-		# statement
-		job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code), stream=stream)
-		logger.debug(job.json())
-		logger.debug(job.headers)
-		return job
+		if session_id != None:
+
+			# submit statement
+			job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+			return job
+
+		else:
+			return False
 
 
 	@classmethod
@@ -3472,23 +3856,42 @@ class LivyClient(object):
 		return statement
 
 
+	@classmethod
+	def get_log_lines(self, session_id, size=10):
+
+		'''
+		Return lines from Livy log
+
+		Args:
+			session_id (str/int): Livy session id			
+			size (int): Max number of lines
+
+		Returns:
+			(list): Log lines
+		'''
+
+		return self.http_request('GET','sessions/%s/log' % session_id, params={'size':size})
+
+
 
 class SparkAppAPIClient(object):
 
 	'''
-	
+	Client to communicate with Spark Application created by Livy Session
+
+	TODO:
+		- the Spark Application port can change (https://github.com/WSULib/combine/issues/243)
+			- SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_ROOT_PORT
+			- increment from 4040, consider looping through until valid app found? 
 	'''
-
-
-	# set API base
-	api_base = settings.SPARK_APPLICATION_API_BASE
-
 
 	@classmethod
 	def http_request(self,
+			livy_session,
 			http_method,
 			url,
 			data=None,
+			params=None,
 			headers={'Content-Type':'application/json'},
 			files=None,
 			stream=False
@@ -3498,6 +3901,7 @@ class SparkAppAPIClient(object):
 		Make HTTP request to Spark Application API
 
 		Args:
+			livy_session (core.models.LivySession): instance of LivySession that contains sparkUiUrl
 			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
 			url (str): expecting path only, as host is provided by settings
 			data (str,file): payload of data to send for request
@@ -3513,10 +3917,9 @@ class SparkAppAPIClient(object):
 
 		# build request
 		session = requests.Session()
-		request = requests.Request(http_method, "%s%s" % (
-			self.api_base,
-			url.lstrip('/')),
+		request = requests.Request(http_method, "http://%s%s" % ("%s" % livy_session.sparkUiUrl, url),
 			data=data,
+			params=params,
 			headers=headers,
 			files=files)
 		prepped_request = request.prepare()
@@ -3528,7 +3931,7 @@ class SparkAppAPIClient(object):
 
 
 	@classmethod
-	def get_application_id(self, livy_session_id):
+	def get_application_id(self, livy_session, livy_session_id):
 
 		'''
 		Attempt to retrieve application ID based on Livy Session ID
@@ -3541,7 +3944,7 @@ class SparkAppAPIClient(object):
 		'''
 
 		# get list of applications
-		applications = self.http_request('GET','applications').json()
+		applications = self.http_request(livy_session, 'GET','/api/v1/applications').json()
 
 		# loop through and look for Livy session
 		for app in applications:
@@ -3551,17 +3954,17 @@ class SparkAppAPIClient(object):
 
 
 	@classmethod
-	def get_spark_jobs_by_jobGroup(self, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
+	def get_spark_jobs_by_jobGroup(self, livy_session, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
 
 		'''
 		Method to retrieve all Jobs from application, then filter by jobGroup
 		'''
-
+		
 		# get all jobs from application
-		jobs = self.http_request('GET','applications/%s/jobs' % spark_app_id).json()
+		jobs = self.http_request(livy_session, 'GET','/api/v1/applications/%s/jobs' % spark_app_id).json()		
 
 		# loop through and filter
-		filtered_jobs = [ job for job in jobs if job['jobGroup'] == str(jobGroup) ]
+		filtered_jobs = [ job for job in jobs if 'jobGroup' in job.keys() and job['jobGroup'] == str(jobGroup) ]
 
 		# convert to datetimes
 		if parse_dates:
@@ -3594,11 +3997,21 @@ class SparkAppAPIClient(object):
 				h, m = divmod(m, 60)
 				job['duration_s'] = "%d:%02d:%02d" % (h, m, s)
 
-				
-
-
 		return filtered_jobs
 		
+
+	@classmethod
+	def kill_job(self, livy_session, job_id):
+
+		'''
+		Method to send kill command via GET request to Spark Job id
+		'''
+
+		kill_request = self.http_request(livy_session, 'GET','/jobs/job/kill/', params={'id':job_id})
+		if kill_request.status_code == 200:
+			return True
+		else:
+			return False
 
 
 ####################################################################
@@ -3913,7 +4326,7 @@ class PublishedRecords(object):
 				sets[job.publish_set_id].append(job)
 		self.sets = sets
 
-		# establish esi		
+		# establish ElasticSearchIndex (esi) instance 		
 		self.esi = ESIndex([ 'j%s' % job.id for job in self.published_jobs ])
 
 
@@ -4025,8 +4438,8 @@ class CombineJob(object):
 		job_id=None,
 		parse_job_output=True):
 
-		self.user = user
-		self.livy_session = self._get_active_livy_session()
+		self.user = user		
+		self.livy_session = LivySession.get_active_session()
 		self.df = None
 		self.job_id = job_id
 
@@ -4140,34 +4553,8 @@ class CombineJob(object):
 			job_details['field_mapper'] = int(job_details['field_mapper'])		
 		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
 
-		# capture input filters
-		input_filters = {}
-		
-		# validity valve
-		input_filters['input_validity_valve'] = job_params.get('input_validity_valve', 'all')
-		
-		# numerical valve
-		input_numerical_valve = job_params.get('input_numerical_valve', None)
-		if input_numerical_valve in ('', None):
-			input_filters['input_numerical_valve'] = None
-		else:
-			input_filters['input_numerical_valve'] = int(input_numerical_valve)		
-
-		# es query valve
-		input_es_query_valve = job_params.get('input_es_query_valve', None)
-		if input_es_query_valve in ('', None):
-			input_es_query_valve = None
-		input_filters['input_es_query_valve'] = input_es_query_valve
-		
-		# duplicates valve
-		filter_dupe_record_ids = job_params.get('filter_dupe_record_ids', 'true')
-		if filter_dupe_record_ids == 'true':
-			input_filters['filter_dupe_record_ids'] = True
-		else:
-			input_filters['filter_dupe_record_ids'] = False		
-
 		# finish input filters
-		job_details['input_filters'] = input_filters
+		job_details['input_filters'] = CombineJob._parse_input_filters(job_params)
 
 		# get requested validation scenarios and convert to int
 		job_details['validation_scenarios'] = [int(vs_id) for vs_id in job_params.getlist('validation_scenario', []) ]
@@ -4192,6 +4579,88 @@ class CombineJob(object):
 
 		# return
 		return job_details
+
+
+	@staticmethod
+	def _parse_input_filters(job_params):
+
+		'''
+		Method to handle parsing input filters, including Job specific filters
+		TODO: refactor duplicative parsing for global and job specific
+
+		Args:
+			job_params (dict): parameters passed
+
+		Returns:
+			(dict): dictionary to be set as job_details['input_filters']
+		'''
+
+		# capture input filters
+		input_filters = {
+			'job_specific':{}
+		}
+		
+		# validity valve
+		input_filters['input_validity_valve'] = job_params.get('input_validity_valve', 'all')
+		
+		# numerical valve
+		input_numerical_valve = job_params.get('input_numerical_valve', None)
+		if input_numerical_valve in ('', None):
+			input_filters['input_numerical_valve'] = None
+		else:
+			input_filters['input_numerical_valve'] = int(input_numerical_valve)		
+
+		# es query valve
+		input_es_query_valve = job_params.get('input_es_query_valve', None)
+		if input_es_query_valve in ('', None):
+			input_es_query_valve = None
+		input_filters['input_es_query_valve'] = input_es_query_valve
+		
+		# duplicates valve
+		filter_dupe_record_ids = job_params.get('filter_dupe_record_ids', 'true')
+		if filter_dupe_record_ids == 'true':
+			input_filters['filter_dupe_record_ids'] = True
+		else:
+			input_filters['filter_dupe_record_ids'] = False
+
+		# check for any Job specific filters, and append
+		job_specs = job_params.getlist('job_spec_json')
+		for job_spec_json in job_specs:
+
+			# parse JSON and make similar to global input filters structure
+			job_spec_form_dict = { f['name'].lstrip('job_spec_'):f['value'] for f in json.loads(job_spec_json) }
+
+			# prepare job_spec
+			job_spec_dict = {}
+
+			# validity valve
+			job_spec_dict['input_validity_valve'] = job_spec_form_dict.get('input_validity_valve', 'all')
+			
+			# numerical valve
+			input_numerical_valve = job_spec_form_dict.get('input_numerical_valve', None)
+			if input_numerical_valve in ('', None):
+				job_spec_dict['input_numerical_valve'] = None
+			else:
+				job_spec_dict['input_numerical_valve'] = int(input_numerical_valve)		
+
+			# es query valve
+			input_es_query_valve = job_spec_form_dict.get('input_es_query_valve', None)
+			if input_es_query_valve in ('', None):
+				input_es_query_valve = None
+			job_spec_dict['input_es_query_valve'] = input_es_query_valve
+			
+			# duplicates valve
+			filter_dupe_record_ids = job_spec_form_dict.get('filter_dupe_record_ids', 'true')
+			if filter_dupe_record_ids == 'true':
+				job_spec_dict['filter_dupe_record_ids'] = True
+			else:
+				job_spec_dict['filter_dupe_record_ids'] = False
+
+			# finally, append to job_specific dictionary for input_filters
+			input_filters['job_specific'][job_spec_form_dict['input_job_id']] = job_spec_dict
+
+		# finish input filters
+		return input_filters
 
 
 	def write_validation_job_links(self, job_details):
@@ -4257,42 +4726,6 @@ class CombineJob(object):
 		return globals()[j.job_type](job_id=job_id)
 
 
-	def _get_active_livy_session(self):
-
-		'''
-		Method to retrieve active livy session
-
-		Args:
-			None
-
-		Returns:
-			(core.models.LivySession)
-		'''
-
-		# check for single, active livy session from LivyClient
-		livy_sessions = LivySession.objects.filter(active=True)
-
-		# if single session, confirm active or starting
-		if livy_sessions.count() == 1:			
-
-			livy_session = livy_sessions.first()
-			
-			try:
-				livy_session_status = LivyClient().session_status(livy_session.session_id)
-				if livy_session_status.status_code == 200:
-					status = livy_session_status.json()['state']
-					if status in ['starting','idle','busy']:
-						# return livy session
-						return livy_session
-					
-			except:
-				logger.debug('could not confirm session status')
-
-		elif livy_sessions.count() == 0:
-			logger.debug('no active livy sessions found')
-			return False
-
-
 	def start_job(self):
 
 		'''
@@ -4310,7 +4743,7 @@ class CombineJob(object):
 			self.prepare_job()
 
 		else:
-			logger.debug('could not submit livy job, not active livy session found')
+			logger.debug('could not start job, active livy session not found')
 			return False
 
 
@@ -4328,19 +4761,31 @@ class CombineJob(object):
 				- sets attributes to self
 		'''
 
-		# submit job
-		submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
-		response = submit.json()
-		headers = submit.headers
+		# if livy session provided
+		if self.livy_session != None:
 
-		# update job in DB
-		self.job.response = json.dumps(response)
-		self.job.spark_code = job_code
-		self.job.job_id = int(response['id'])
-		self.job.status = response['state']
-		self.job.url = headers['Location']
-		self.job.headers = headers
-		self.job.save()
+			# submit job
+			submit = LivyClient().submit_job(self.livy_session.session_id, job_code)
+			response = submit.json()
+			headers = submit.headers
+
+			# update job in DB
+			self.job.response = json.dumps(response)
+			self.job.spark_code = job_code
+			self.job.job_id = int(response['id'])
+			self.job.status = response['state']
+			self.job.url = headers['Location']
+			self.job.headers = headers
+			self.job.save()
+
+		else:
+
+			logger.debug('active livy session not found')
+
+			# update job in DB			
+			self.job.spark_code = job_code
+			self.job.status = 'failed'			
+			self.job.save()
 
 
 	def get_job(self, job_id):
@@ -4417,73 +4862,6 @@ class CombineJob(object):
 		return index_failures
 
 
-	def get_total_input_job_record_count(self):
-
-		'''
-		Calc record count sum from all input jobs, factoring in whether record input validity was all, valid, or invalid
-
-		Args:
-			None
-
-		Returns:
-			(int): count of records
-		'''
-
-		if self.job.jobinput_set.count() > 0:
-
-			# init dict
-			input_jobs_dict = {
-				'total_input_record_count':0,
-				'jobs':[]
-			}
-			
-			# loop through input jobs
-			for input_job in self.job.jobinput_set.all():
-
-				# add to jobs
-				input_jobs_dict['jobs'].append(input_job)
-
-				# bump count
-				if input_job.passed_records != None:
-					input_jobs_dict['total_input_record_count'] += input_job.passed_records				
-
-			# return
-			return input_jobs_dict
-		else:
-			return None
-
-
-	def get_detailed_job_record_count(self):
-
-		'''
-		Return details of record counts for input jobs, successes, and errors
-
-		Args:
-			None
-
-		Returns:
-			(dict): Dictionary of record counts
-		'''
-
-		r_count_dict = {}
-
-		# get counts
-		r_count_dict['records'] = self.job.get_records().count()
-		r_count_dict['errors'] = self.job.get_errors().count()
-
-		# include input jobs
-		r_count_dict['input_jobs'] = self.get_total_input_job_record_count()
-
-		# calc success percentages, based on records ratio to job record count (which includes both success and error)
-		if r_count_dict['records'] != 0:
-			r_count_dict['success_percentage'] = round((float(r_count_dict['records']) / float(r_count_dict['records'])), 4)
-		else:
-			r_count_dict['success_percentage'] = 0.0
-
-		# return
-		return r_count_dict
-
-
 	def get_job_output_filename_hash(self):
 
 		'''
@@ -4550,7 +4928,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def new_validations_bg_task(self, validation_scenarios):
@@ -4578,7 +4956,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def remove_validation_bg_task(self, jv_id):
@@ -4603,7 +4981,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def publish_bg_task(self, publish_set_id=None):
@@ -4628,7 +5006,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def unpublish_bg_task(self):
@@ -4652,7 +5030,7 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
 	def dbdm_bg_task(self, dbdd_id):
@@ -4677,20 +5055,20 @@ class CombineJob(object):
 			creator=ct
 		)
 
-		return bg_task
+		return ct
 
 
-	def rerun(self, run_downstream=True):
+	def rerun(self, rerun_downstream=True, set_gui_status=True):
 
 		'''
 		Method to re-run job, and if flagged, all downstream Jobs in lineage
 		'''
 
 		# get lineage
-		rerun_jobs = self.job.get_rerun_lineage()
+		rerun_jobs = self.job.get_downstream_lineage()
 
 		# if not running downstream, select only this job
-		if not run_downstream:
+		if not rerun_downstream:
 			rerun_jobs = [self.job]
 
 		# loop through jobs
@@ -4698,7 +5076,18 @@ class CombineJob(object):
 
 			logger.debug('re-running job: %s' % re_job)
 
-			# drop records
+			# optionally, update status for GUI representation
+			if set_gui_status:
+
+				re_job.timestamp = datetime.datetime.now()
+				re_job.status = 'initializing'
+				re_job.record_count = 0
+				re_job.finished = False
+				re_job.elapsed = 0
+				re_job.deleted = True
+				re_job.save()
+
+			# drop records			
 			re_job.remove_records_from_db()
 
 			# drop es index
@@ -4709,20 +5098,13 @@ class CombineJob(object):
 			re_job.remove_validations_from_db()
 
 			# remove mapping failures
-			re_job.remove_mapping_failures_from_db()			
+			re_job.remove_mapping_failures_from_db()
 
 			# where Job is input for another, reset passed_records
 			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
 			for ji in as_input_job:
 				ji.passed_records = None
-				ji.save()
-
-			# update Job attributes and save
-			re_job.status = 'init'
-			re_job.record_count = 0
-			re_job.finished = False
-			re_job.elapsed = 0
-			re_job.save()
+				ji.save()			
 
 			# get combine job
 			re_cjob = CombineJob.get_combine_job(re_job.id)
@@ -4730,8 +5112,108 @@ class CombineJob(object):
 			# write Validation links
 			re_cjob.write_validation_job_links(re_cjob.job.job_details_dict)
 
+			# remove old JobTrack instance
+			JobTrack.objects.filter(job=self.job).delete()			
+
 			# re-submit to Livy
 			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
+
+			# set as undeleted
+			re_cjob.job.deleted = False
+			re_cjob.job.save()
+
+
+	def clone(self, rerun=True, clone_downstream=True, skip_clones=[]):
+
+		'''
+		Method to clone Job
+
+		Args:
+			rerun (bool): If True, Job(s) are automatically rerun after cloning
+			clone_downstream (bool): If True, downstream Jobs are cloned as well
+		'''
+
+		if clone_downstream:
+			to_clone = self.job.get_downstream_lineage()		
+		else:
+			to_clone = [self.job]
+
+		# loop through jobs to clone		
+		clones = {} # dictionary of original:clone 
+		clones_ids = {} # dictionary of original.id:clone.id
+		for job in to_clone:
+
+			# confirm that job is itself not a clone made during lineage from another Job			
+			if job in skip_clones:
+				continue
+
+			# establish clone handle
+			clone = CombineJob.get_combine_job(job.id)
+
+			# drop PK
+			clone.job.pk = None
+
+			# update name
+			clone.job.name = "%s (CLONE)" % job.name
+
+			# save, cloning in ORM and generating new Job ID which is needed for clone.prepare_job()			
+			clone.job.save()
+			logger.debug('Cloned Job #%s --> #%s' % (job.id, clone.job.id))
+
+			# update spark_code
+			clone.job.spark_code = clone.prepare_job(return_job_code=True)
+			clone.job.save()
+
+			# save to clones and clones_ids dictionary
+			clones[job] = clone.job
+			clones_ids[job.id] = clone.job.id
+
+			# recreate JobInput links		
+			for ji in job.jobinput_set.all():
+				logger.debug('cloning input job link: %s' % ji.input_job)
+				ji.pk = None
+				
+				# if input job was parent clone, rewrite input jobs links
+				if ji.input_job in clones.keys():
+
+					# alter job.job_details
+					update_dict = {}
+
+					# handle input_job_ids
+					update_dict['input_job_ids'] = [ clones[ji.input_job].id if job_id == ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids'] ]					
+
+					# handle record input filters					
+					update_dict['input_filters'] = clone.job.job_details_dict['input_filters']
+					for job_id in update_dict['input_filters']['job_specific'].keys():
+						
+						if int(job_id) in clones_ids.keys():							
+							job_spec_dict = update_dict['input_filters']['job_specific'].pop(job_id)
+							update_dict['input_filters']['job_specific'][str(clones_ids[ji.input_job.id])] = job_spec_dict
+
+					# update
+					clone.job.update_job_details(update_dict)
+					
+					# rewrite JobInput.input_job
+					ji.input_job = clones[ji.input_job]
+
+				ji.job = clone.job
+				ji.save()
+
+			# recreate JobValidation links		
+			for jv in job.jobvalidation_set.all():
+				logger.debug('cloning validation link: %s' % jv.validation_scenario.name)
+				jv.pk = None
+				jv.job = clone.job
+				jv.save()
+
+			# rerun clone
+			if rerun:								
+				# reopen and run
+				clone = CombineJob.get_combine_job(clone.job.id)
+				clone.rerun(rerun_downstream=False)
+
+		# return
+		return clones
 
 
 
@@ -4862,7 +5344,7 @@ class HarvestOAIJob(HarvestJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -4882,6 +5364,10 @@ class HarvestOAIJob(HarvestJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5003,7 +5489,7 @@ class HarvestStaticXMLJob(HarvestJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5023,6 +5509,10 @@ class HarvestStaticXMLJob(HarvestJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5125,7 +5615,7 @@ class TransformJob(CombineJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5145,6 +5635,10 @@ class TransformJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5245,7 +5739,7 @@ class MergeJob(CombineJob):
 		return job_details
 
 
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5265,6 +5759,10 @@ class MergeJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -5424,7 +5922,7 @@ class AnalysisJob(CombineJob):
 		return job_details
 
 		
-	def prepare_job(self):
+	def prepare_job(self, return_job_code=False):
 
 		'''
 		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
@@ -5444,6 +5942,10 @@ class AnalysisJob(CombineJob):
 				'job_id':self.job.id				
 			}
 		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
 
 		# submit job
 		self.submit_job_to_livy(job_code)
@@ -6682,6 +7184,102 @@ class SupervisorRPCClient(object):
 	def stderr_log_tail(self, process_name, offset=0, length=10000):
 
 		return self.server.supervisor.tailProcessStderrLog(process_name, offset, length)[0]
+
+
+
+class GlobalMessageClient(object):
+
+	'''
+	Client to handle CRUD for global messages
+
+	Message dictionary structure {		
+		html (str): string of HTML content to display
+		class (str): class of Bootstrap styling, [success, warning, danger, info]
+		id (uuid4): unique id for removing
+	}
+	'''
+
+	def __init__(self, session=None):
+
+		# use session if provided
+		if type(session) == SessionStore:
+			self.session = session
+
+		# if session_key provided, use
+		elif type(session) == str:			
+			self.session = SessionStore(session_key=session)
+
+		# else, set to session
+		else:
+			self.session = session
+
+
+	def load_most_recent_session(self):
+
+		'''
+		Method to retrieve most recent session
+		'''
+
+		s = Session.objects.order_by('expire_date').last()		
+		self.__init__(s.session_key)
+		return self
+
+
+	def add_gm(self, gm_dict):
+
+		'''
+		Method to add message
+		'''
+
+		# check for 'gms' key in session, create if not present
+		if 'gms' not in self.session:
+			self.session['gms'] = []
+
+		# create unique id and add
+		if 'id' not in gm_dict:
+			gm_dict['id'] = uuid.uuid4().hex
+
+		# append gm dictionary
+		self.session['gms'].append(gm_dict)
+
+		# save
+		self.session.save()
+
+
+	def delete_gm(self, gm_id):
+
+		'''
+		Method to remove message
+		'''
+
+		if 'gms' not in self.session:
+			logger.debug('no global messages found, returning False')
+			return False
+
+		else:
+
+			logger.debug('removing gm: %s' % gm_id)
+
+			# grab total gms
+			pre_len = len(self.session['gms'])
+			
+			# loop through messages to find and remove
+			self.session['gms'][:] = [gm for gm in self.session['gms'] if gm.get('id') != gm_id]
+			self.session.save()
+
+			# return results
+			return pre_len - len(self.session['gms'])
+
+
+	def clear(self):
+
+		'''
+		Method to clear all messages
+		'''
+
+		self.session.clear()
+		self.session.save()
+
 
 
 

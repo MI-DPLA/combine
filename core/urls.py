@@ -25,6 +25,7 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete, name='record_group_delete'),	
 
 	# Jobs
+	url(r'^job/(?P<job_id>[0-9]+)$', views.job_id_redirect, name='job_id_redirect'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/details$', views.job_details, name='job_details'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/delete$', views.job_delete, name='job_delete'),
@@ -39,8 +40,7 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/merge/new$', views.job_merge, name='job_merge'),	
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/reports/create_validation_report$', views.job_reports_create_validation, name='job_reports_create_validation'),
 	url(r'^organization/(?P<org_id>([0-9]|(DYNAMIC_ORG_ID))+)/record_group/(?P<record_group_id>([0-9]|(DYNAMIC_RG_ID))+)/job/(?P<job_id>([0-9]|(DYNAMIC_ID))+)/job_lineage_json$', views.job_lineage_json, name='job_lineage_json'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update$', views.job_update, name='job_update'),
-	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/rerun$', views.job_rerun, name='job_rerun'),
+	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/update$', views.job_update, name='job_update'),	
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/job_parameters$', views.job_parameters, name='job_parameters'),	
 
 
@@ -56,9 +56,11 @@ urlpatterns = [
 
 	# Jobs General
 	url(r'^jobs/all$', views.all_jobs, name='all_jobs'),
-	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),
 	url(r'^jobs/move_jobs$', views.move_jobs, name='move_jobs'),
+	url(r'^jobs/stop_jobs$', views.stop_jobs, name='stop_jobs'),
+	url(r'^jobs/delete_jobs$', views.delete_jobs, name='delete_jobs'),	
 	url(r'^jobs/rerun_jobs$', views.rerun_jobs, name='rerun_jobs'),
+	url(r'^jobs/clone_jobs$', views.clone_jobs, name='clone_jobs'),
 
 	# Records
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/job/(?P<job_id>[0-9]+)/record/(?P<record_id>[0-9a-z]+)$', views.record, name='record'),
@@ -125,6 +127,9 @@ urlpatterns = [
 
 	# Documente Download
 	url(r'^document_download$', views.document_download, name='document_download'),
+
+	# Global Messages (GMs)
+	url(r'^gm/delete$', views.gm_delete, name='gm_delete'),
 
 	# General
 	url(r'^login$', auth_views.login, name='login'),

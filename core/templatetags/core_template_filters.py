@@ -34,7 +34,7 @@ def get_dict_value(dictionary, key):
 	Return value from dictionary with variable key
 	'''
 
-	return dictionary.get(key)
+	return dictionary.get(key, False)
 
 
 def es_field_name_format(field_name):

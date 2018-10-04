@@ -71,7 +71,7 @@
 								<h4>Record Document</h4>
 								<p>This tab previews and provides information about the document stored for this Record.  Below is the raw, stored document for this Record, or see the buttons for more options.
 
-								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Document in new Tab</button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
+								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Raw Document <i class="la la-external-link"></i></button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
 								
 								{% if record.document != '' %}
 									<div>
@@ -214,7 +214,7 @@
 							<p>
 								<ul class="list-inline">
 									<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-outline-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
-									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document</button></a></li>									
+									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document <i class="la la-external-link"></i></button></a></li>									
 								</ul>
 							</p>
 
@@ -362,7 +362,7 @@
 
 								<div class="col-md-12">
 									<h4>DPLA API Matches</h4>
-									<p>The following table shows DPLA API fields that were search, with what value, and what matches were returned.  Rows in yellow indicate queries against the <code>isShownAt</code> field, which should usually be unique to a single DPLA Item.</p>
+									<p>The following table shows DPLA API fields that were searched, with what value, and what matches were returned.  Rows in yellow indicate queries against the <code>isShownAt</code> field, which should usually be unique to a single DPLA Item.</p>
 									<table class="table table-bordered table-hover">
 										<thead>
 											<tr>
@@ -532,10 +532,10 @@
 							
 							<p>
 								<ul class="list-inline">
-									<li style="margin-top:5px;"><a href="{% url 'test_field_mapper' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Field Mapping for this Record</button></a></li>
-									<li style="margin-top:5px;"><a href="{% url 'test_transformation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Transformation Scenario for this Record</button></a></li>
-									<li style="margin-top:5px;"><a href="{% url 'test_validation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario for this Record</button></a></li>
-									<li style="margin-top:5px;"><a href="{% url 'test_rits' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transform for this Record</button></a></li>
+									<li style="margin-top:5px;"><a href="{% url 'test_field_mapper' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Field Mapping for this Record <i class="la la-wrench"></i></button></a></li>
+									<li style="margin-top:5px;"><a href="{% url 'test_transformation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Transformation Scenario for this Record <i class="la la-wrench"></i></button></a></li>
+									<li style="margin-top:5px;"><a href="{% url 'test_validation_scenario' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario for this Record <i class="la la-wrench"></i></button></a></li>
+									<li style="margin-top:5px;"><a href="{% url 'test_rits' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transform for this Record <i class="la la-wrench"></i></button></a></li>
 								</ul>
 							</p>
 

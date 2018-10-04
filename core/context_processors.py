@@ -1,6 +1,7 @@
 import subprocess
 
 from django.conf import settings
+from django.db.models.query import QuerySet
 from core.models import LivySession, SupervisorRPCClient
 
 
@@ -26,9 +27,17 @@ def livy_session(request):
 	'''
 
 	# get active livy session
-	lv = LivySession.get_active_session()
+	lv = LivySession.get_active_session()	
 	if lv:
-		lv.refresh_from_livy()
+		if type(lv) == LivySession:
+			# refresh single session
+			lv.refresh_from_livy()
+		elif type(lv) == QuerySet:
+			# multiple Combine LivySession founds, loop through
+			for s in lv:
+				s.refresh_from_livy()
+		else:
+			pass
 
 	return {
 		'LIVY_SESSION':lv

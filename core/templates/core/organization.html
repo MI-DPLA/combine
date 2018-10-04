@@ -51,7 +51,7 @@
 									<td></td>
 								{% endif %}
 								<td>{{ record_group.timestamp }}</td>
-								<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');"><button type="button" class="btn btn-danger btn-sm">Delete</button></a></td>
+								<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');"><button type="button" class="btn btn-danger btn-sm">Delete <i class="la la-close"></i></button></a></td>
 							</tr>
 						{% endfor %}
 					</tbody>
@@ -107,7 +107,7 @@
 			    
 			    <input type="hidden" name="organization" value="{{ org.id }}">
 			    <input type="hidden" name="org_id" value="{{ org.id }}">
-			    <button type="submit" class="btn btn-primary btn-sm">Submit</button>
+			    <button type="submit" class="btn btn-success btn-sm">Create new Record Group <i class="la la-plus"></i></button>
 
 			</form>
 		</div>
