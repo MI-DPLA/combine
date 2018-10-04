@@ -328,7 +328,7 @@ class LivySession(models.Model):
 
 		# retrieve active livy session and refresh
 		active_ls = LivySession.get_active_session()
-		active_ls.refresh_from_livy(save=False)
+		active_ls.refresh_from_livy(save=False)		
 
 		# if passed session id matches and status is idle or busy
 		if session_id == active_ls.session_id:
@@ -345,14 +345,10 @@ class LivySession(models.Model):
 
 				# start and poll for new one
 				new_ls = LivySession()
-				new_ls.start_session()
-
-				# poll until ready
-				def livy_session_ready(response):
-					return response == 'idle'
+				new_ls.start_session()				
 
 				logger.debug('polling for Livy session to start...')
-				results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)				
+				results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
 
 				# pass new session id and continue to livy job submission
 				session_id = new_ls.session_id
@@ -771,7 +767,7 @@ class Job(models.Model):
 		# get active livy session, and refresh, which contains spark_app_id as appId
 		ls = LivySession.get_active_session()
 
-		if ls:
+		if ls and type(ls) == LivySession:
 
 			# if appId not set, attempt to retrieve
 			if not ls.appId:
