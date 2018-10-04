@@ -95,7 +95,7 @@ DATABASES = {
 
 
 # Turn off Atomic Requests
-ATOMIC_REQUESTS = False
+# ATOMIC_REQUESTS = False
 
 
 # Password validation

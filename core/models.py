@@ -629,7 +629,7 @@ class Job(models.Model):
 			# update elapsed
 			self.elapsed = self.calc_elapsed()
 
-			# finally, save
+			# finally, save			
 			self.save()
 
 
@@ -3354,33 +3354,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-@receiver(models.signals.post_save, sender=Job)
-def save_job(sender, instance, created, **kwargs):
-
-	'''
-	After job is saved, update job output
-
-	Args:
-		sender (auth.models.Job): class
-		user (auth.models.Job): instance
-		created (bool): indicates if newly created, or just save/update
-		kwargs: not used
-	'''
-
-	# if the record was just created, then update job output (ensures this only runs once)
-	if created and instance.job_type != 'AnalysisJob':
-
-		# set output based on job type
-		logger.debug('setting job output for job')
-		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
-			settings.BINARY_STORAGE.rstrip('/'),
-			instance.record_group.organization.id,
-			instance.record_group.id,
-			instance.job_type,
-			instance.id)
-		instance.save()
-
-
 @receiver(models.signals.pre_delete, sender=Organization)
 def delete_org_pre_delete(sender, instance, **kwargs):
 
@@ -3412,6 +3385,33 @@ def delete_record_group_pre_delete(sender, instance, **kwargs):
 		job.deleted = True
 		job.status = 'deleting'
 		job.save()
+
+
+@receiver(models.signals.post_save, sender=Job)
+def save_job_post_save(sender, instance, created, **kwargs):
+
+	'''
+	After job is saved, update job output
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		created (bool): indicates if newly created, or just save/update
+		kwargs: not used
+	'''
+
+	# if the record was just created, then update job output (ensures this only runs once)
+	if created and instance.job_type != 'AnalysisJob':
+
+		# set output based on job type
+		logger.debug('setting job output for job')
+		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.job_type,
+			instance.id)
+		instance.save()
 
 
 @receiver(models.signals.pre_delete, sender=Job)
@@ -3577,7 +3577,7 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 def background_task_post_init(sender, instance, **kwargs):
 
 	# if exists already, update status
-	if instance.id:
+	if instance.id:		
 		instance.update()
 
 	# else, assign random uuid
@@ -4920,7 +4920,7 @@ class CombineJob(object):
 				'job_id':self.job.id,
 				'fm_config_json':fm_config_json
 			})
-		)
+		)		
 		ct.save()
 		bg_task = tasks.job_reindex(
 			ct.id,

@@ -1627,7 +1627,7 @@ def job_update(request, org_id, record_group_id, job_id):
 			validations = models.ValidationScenario.objects.filter(id__in=[ int(vs_id) for vs_id in validation_scenarios ])
 
 			# init bg task
-			bg_task = cjob.new_validations_bg_task(validation_scenarios)
+			bg_task = cjob.new_validations_bg_task([ vs.id for vs in validations ])
 
 			# set gms
 			gmc = models.GlobalMessageClient(request.session)

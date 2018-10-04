@@ -627,69 +627,69 @@ def job_new_validations(ct_id):
 	'''
 
 	# get CombineTask (ct)
-	# try:
-	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-	logger.debug('using %s' % ct)
+	try:
+		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+		logger.debug('using %s' % ct)
 
-	# get CombineJob
-	cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-	# loop through validation jobs, and remove from DB if share validation scenario
-	cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
+		# loop through validation jobs, and remove from DB if share validation scenario
+		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
 
-	# update job_details with validations
-	validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
-	validation_scenarios.extend(ct.task_params['validation_scenarios'])
-	cjob.job.update_job_details({
-		'validation_scenarios':validation_scenarios
-		}, save=True)
+		# update job_details with validations	
+		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+		validation_scenarios.extend(ct.task_params['validation_scenarios'])
+		cjob.job.update_job_details({
+			'validation_scenarios':validation_scenarios
+			}, save=True)
 
-	# generate spark code		
-	spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
-		'job_id':cjob.job.id,
-		'validation_scenarios':str([ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ]),
-	}
-	logger.debug(spark_code)
+		# generate spark code		
+		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
+			'job_id':cjob.job.id,
+			'validation_scenarios':str([ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ]),
+		}
+		logger.debug(spark_code)
 
-	# submit to livy
-	logger.debug('submitting code to Spark')
-	submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
+		# submit to livy
+		logger.debug('submitting code to Spark')
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
-	# poll until complete
-	logger.debug('polling for Spark job to complete...')
-	results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
-	logger.debug(results)
+		# poll until complete
+		logger.debug('polling for Spark job to complete...')
+		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+		logger.debug(results)
 
-	# write validation links		
-	logger.debug('writing validations job links')
-	for vs_id in ct.task_params['validation_scenarios']:
-		val_job = models.JobValidation(
-			job=cjob.job,
-			validation_scenario=models.ValidationScenario.objects.get(pk=vs_id)
-		)
-		val_job.save()
+		# write validation links		
+		logger.debug('writing validations job links')
+		for vs_id in ct.task_params['validation_scenarios']:
+			val_job = models.JobValidation(
+				job=cjob.job,
+				validation_scenario=models.ValidationScenario.objects.get(pk=vs_id)
+			)
+			val_job.save()
 
-	# update failure counts
-	logger.debug('updating failure counts for new validation jobs')
-	for jv in cjob.job.jobvalidation_set.filter(failure_count=None):					
-		jv.validation_failure_count(force_recount=True)
+		# update failure counts
+		logger.debug('updating failure counts for new validation jobs')
+		for jv in cjob.job.jobvalidation_set.filter(failure_count=None):					
+			jv.validation_failure_count(force_recount=True)
 
-	# save export output to Combine Task output
-	ct.task_output_json = json.dumps({		
-		'run_new_validations':results
-	})
-	ct.save()
-	logger.debug(ct.task_output_json)
+		# save export output to Combine Task output
+		ct.task_output_json = json.dumps({		
+			'run_new_validations':results
+		})
+		ct.save()
+		logger.debug(ct.task_output_json)
 
-	# except Exception as e:
+	except Exception as e:
 
-	# 	logger.debug(str(e))
+		logger.debug(str(e))
 
-	# 	# attempt to capture error and return for task
-	# 	ct.task_output_json = json.dumps({		
-	# 		'error':str(e)
-	# 	})
-	# 	ct.save()
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({		
+			'error':str(e)
+		})
+		ct.save()
 
 
 @background(schedule=1)
@@ -710,9 +710,10 @@ def job_remove_validation(ct_id):
 		# get Job Validation and delete
 		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
 
-		# remove Job Validation from job_details
+		# remove Job Validation from job_details	
 		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
-		validation_scenarios.remove(str(jv.validation_scenario.id))
+		if jv.validation_scenario.id in validation_scenarios:
+			validation_scenarios.remove(jv.validation_scenario.id)
 		cjob.job.update_job_details({
 			'validation_scenarios':validation_scenarios
 			}, save=True)
