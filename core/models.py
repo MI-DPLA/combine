@@ -128,7 +128,7 @@ class LivySession(models.Model):
 		return 'Livy session: %s, status: %s' % (self.name, self.status)
 
 
-	def refresh_from_livy(self):
+	def refresh_from_livy(self, save=True):
 
 		'''
 		Method to ping Livy for session status and update DB
@@ -160,7 +160,8 @@ class LivySession(models.Model):
 				self.status = 'gone'
 				
 				# update
-				self.save()
+				if save:
+					self.save()
 
 				# return self
 				return self.status
@@ -185,7 +186,8 @@ class LivySession(models.Model):
 					pass
 
 				# update
-				self.save()
+				if save:
+					self.save()
 
 				# return self
 				return self.status
@@ -326,7 +328,7 @@ class LivySession(models.Model):
 
 		# retrieve active livy session and refresh
 		active_ls = LivySession.get_active_session()
-		active_ls.refresh_from_livy()
+		active_ls.refresh_from_livy(save=False)
 
 		# if passed session id matches and status is idle or busy
 		if session_id == active_ls.session_id:
@@ -1368,7 +1370,7 @@ class Job(models.Model):
 			return False			
 
 
-	def drop_es_index(self):
+	def drop_es_index(self, clear_mapped_field_analysis=True):
 
 		'''
 		Method to drop associated ES index
@@ -1385,11 +1387,13 @@ class Job(models.Model):
 
 
 		# remove saved mapped_field_analysis in job_details, if exists
-		job_details = self.job_details_dict
-		if 'mapped_field_analysis' in job_details.keys():
-			job_details.pop('mapped_field_analysis')
-			self.job_details = json.dumps(job_details)
-			self.save()
+		if clear_mapped_field_analysis:
+			job_details = self.job_details_dict
+			if 'mapped_field_analysis' in job_details.keys():
+				job_details.pop('mapped_field_analysis')
+				self.job_details = json.dumps(job_details)
+				with transaction.atomic():
+					self.save()
 
 
 	def get_fm_config_json(self, as_dict=False):

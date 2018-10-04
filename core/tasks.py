@@ -573,7 +573,7 @@ def job_reindex(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# drop Job's ES index
-		cjob.job.drop_es_index()
+		cjob.job.drop_es_index(clear_mapped_field_analysis=False)
 
 		# drop previous index mapping failures
 		cjob.job.remove_mapping_failures_from_db()
@@ -632,17 +632,7 @@ def job_new_validations(ct_id):
 		logger.debug('using %s' % ct)
 
 		# get CombineJob
-		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
-
-		# loop through validation jobs, and remove from DB if share validation scenario
-		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
-
-		# update job_details with validations	
-		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
-		validation_scenarios.extend(ct.task_params['validation_scenarios'])
-		cjob.job.update_job_details({
-			'validation_scenarios':validation_scenarios
-			}, save=True)
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))		
 
 		# generate spark code		
 		spark_code = 'from jobs import RunNewValidationsSpark\nRunNewValidationsSpark(spark, job_id="%(job_id)s", validation_scenarios="%(validation_scenarios)s").spark_function()' % {
@@ -659,6 +649,16 @@ def job_new_validations(ct_id):
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
+
+		# loop through validation jobs, and remove from DB if share validation scenario
+		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
+
+		# update job_details with validations	
+		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+		validation_scenarios.extend(ct.task_params['validation_scenarios'])
+		cjob.job.update_job_details({
+			'validation_scenarios':validation_scenarios
+			}, save=True)
 
 		# write validation links		
 		logger.debug('writing validations job links')
@@ -708,15 +708,7 @@ def job_remove_validation(ct_id):
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
 		# get Job Validation and delete
-		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))
-
-		# remove Job Validation from job_details	
-		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
-		if jv.validation_scenario.id in validation_scenarios:
-			validation_scenarios.remove(jv.validation_scenario.id)
-		cjob.job.update_job_details({
-			'validation_scenarios':validation_scenarios
-			}, save=True)
+		jv = models.JobValidation.objects.get(pk=int(ct.task_params['jv_id']))		
 
 		# delete validation failures associated with Validation Scenario and Job
 		delete_results = jv.delete_record_validation_failures()
@@ -737,6 +729,14 @@ def job_remove_validation(ct_id):
 		logger.debug('polling for Spark job to complete...')
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.debug(results)
+
+		# remove Job Validation from job_details	
+		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
+		if jv.validation_scenario.id in validation_scenarios:
+			validation_scenarios.remove(jv.validation_scenario.id)
+		cjob.job.update_job_details({
+			'validation_scenarios':validation_scenarios
+			}, save=True)
 
 		# save export output to Combine Task output
 		ct.task_output_json = json.dumps({		
