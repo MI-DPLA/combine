@@ -6944,12 +6944,21 @@ class DPLABulkDataClient(object):
 		# save
 		dbdd.save()
 
-		# hand off to background tasks
-		bg_task = tasks.download_and_index_bulk_data(dbdd.id)
-		logger.debug('bulk data download as background task: %s' % bg_task.task_hash)
-
-		# return
-		return bg_task.task_hash
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Download and Index DPLA Bulk Data: %s' % dbdd.s3_key,
+			task_type = 'download_and_index_bulk_data',
+			task_params_json = json.dumps({
+				'dbdd_id':dbdd.id
+			})
+		)		
+		ct.save()
+		
+		# run celery task
+		bg_task = tasks.download_and_index_bulk_data.delay(dbdd.id)
+		logger.debug('firing bg task: %s' % bg_task)	
+		ct.celery_task_id = bg_task.task_id
+		ct.save()	
 
 
 

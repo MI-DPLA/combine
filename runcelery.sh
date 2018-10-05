@@ -1,1 +1,1 @@
-celery -A core worker -l debug --concurrency 1
+celery -A core worker -l info --concurrency 1
