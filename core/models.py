@@ -338,7 +338,7 @@ class LivySession(models.Model):
 
 			else:
 				logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
-
+				
 				# destroy active livy session
 				active_ls.stop_session()
 				active_ls.delete()
