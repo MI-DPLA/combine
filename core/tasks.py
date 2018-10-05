@@ -963,3 +963,40 @@ def clone_jobs(ct_id):
 			'error':str(e)
 		})
 		ct.save()
+
+
+
+# CELERY ############################################################################################################################################
+
+from .celery import celery_app
+
+@celery_app.task(bind=True)
+def cel_logging(self):
+	logger.debug('can I log?')
+
+
+@celery_app.task(bind=True)
+def cel_db(self, job_id=850):
+
+	# retrieve Job	
+	j = models.Job.objects.get(pk=job_id)
+	logger.debug(j)
+
+	for x in range(0,10):
+
+		# rename and save
+		j.name = 'GOOBERTRONIC - %s' % x
+		j.save()
+
+		time.sleep(2)	
+
+	# rename and save
+	j.name = 'finis'
+	j.save()
+
+
+
+
+
+
+
