@@ -144,3 +144,8 @@ ANALYSIS_JOBS_HIERARCHY = {
 MAX_ATTEMPTS = 1
 MAX_RUN_TIME = 14800
 BACKGROUND_TASK_RUN_ASYNC = False
+
+
+# Celery Configurations
+CELERY_BROKER_URL = 'redis://localhost:6379/0'
+CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'

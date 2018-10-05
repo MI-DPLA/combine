@@ -1480,6 +1480,7 @@ class Job(models.Model):
 		logger.debug('Matched %s, marked as published %s' % (result.matched_count, result.modified_count))
 
 		# set self as published
+		self.refresh_from_db()
 		self.publish_set_id = publish_set_id
 		self.published = True
 		self.save()
@@ -1514,6 +1515,7 @@ class Job(models.Model):
 		logger.debug('Matched %s, marked as unpublished %s' % (result.matched_count, result.modified_count))
 
 		# set self as publish
+		self.refresh_from_db()
 		self.publish_set_id = None
 		self.published = False
 		self.save()
@@ -3150,10 +3152,7 @@ class DPLABulkDataDownload(models.Model):
 class CombineBackgroundTask(models.Model):
 
 	'''
-	Model for long running, background tasks
-		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)
-
-	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
+	Model for long running, background tasks	
 	'''
 
 	name = models.CharField(max_length=255, null=True, default=None)
@@ -5000,11 +4999,10 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_publish(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		
+		# run celery task
+		bg_task = tasks.job_publish.delay(ct.id)
+		logger.debug(bg_task)
 
 		return ct
 
@@ -5024,11 +5022,10 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_unpublish(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_unpublish.delay(ct.id)
+		logger.debug(bg_task)
 
 		return ct
 

@@ -22,6 +22,10 @@ from django.db import connection, transaction
 import logging
 logger = logging.getLogger(__name__)
 
+# import celery app
+from .celery import celery_app
+
+# Combine imports
 from core import models as models
 
 '''
@@ -760,7 +764,7 @@ def job_remove_validation(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_publish(ct_id):
 
 	# get CombineTask (ct)
@@ -793,7 +797,7 @@ def job_publish(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_unpublish(ct_id):
 
 	# get CombineTask (ct)
@@ -804,7 +808,7 @@ def job_unpublish(ct_id):
 		# get CombineJob
 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-		# publish job
+		# publish job		
 		unpublish_results = cjob.job.unpublish()
 
 		# save export output to Combine Task output
@@ -966,9 +970,7 @@ def clone_jobs(ct_id):
 
 
 
-# CELERY ############################################################################################################################################
-
-from .celery import celery_app
+# CELERY DEBUG ############################################################################################################################################
 
 @celery_app.task(bind=True)
 def cel_logging(self):
@@ -994,6 +996,18 @@ def cel_db(self, job_id=850):
 	j.name = 'finis'
 	j.save()
 
+
+@celery_app.task(bind=True)
+def cel_results(self, msg, sleep=20):
+	time.sleep(sleep)
+	return msg
+
+
+@celery_app.task(bind=True, retries=5)
+def cel_retries(self):
+	raise Exception('This will never work')
+
+# CELERY DEBUG ############################################################################################################################################
 
 
 
