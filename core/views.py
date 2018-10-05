@@ -411,19 +411,19 @@ def organization_delete(request, org_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete Organization: %s' % org.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
-			'model':'Job',
-			'job_id':org.id
+			'model':'Organization',
+			'org_id':org.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'Organization',
-		org.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('Organization',org.id,)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	return redirect('organizations')
 
@@ -468,19 +468,19 @@ def record_group_delete(request, org_id, record_group_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete RecordGroup: %s' % record_group.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
-			'model':'Job',
-			'job_id':record_group.id
+			'model':'RecordGroup',
+			'record_group_id':record_group.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'RecordGroup',
-		record_group.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('RecordGroup',record_group.id,)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# redirect to organization page
 	return redirect('organization', org_id=org_id)
@@ -606,28 +606,24 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job.name = "%s (DELETING)" % job.name
 	job.deleted = True
 	job.status = 'deleting'
-	job.save()
-	
-	# remove via background tasks
-	# bg_task = tasks.delete_model_instance('Job', job.id)
-	# logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+	job.save()	
 
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete Job: %s' % job.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
 			'model':'Job',
 			'job_id':job.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'Job',
-		job.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+	
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('Job',job.id)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# redirect
 	return redirect(request.META.get('HTTP_REFERER'))
@@ -742,19 +738,19 @@ def delete_jobs(request):
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = 'Delete Job: #%s' % job.name,
-			task_type = 'job_delete',
+			task_type = 'delete_model_instance',
 			task_params_json = json.dumps({
 				'model':'Job',
 				'job_id':job.id
 			})
 		)
 		ct.save()
-		bg_task = tasks.delete_model_instance(
-			'Job',
-			job.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.delete_model_instance.delay('Job',job.id,)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)

@@ -38,8 +38,8 @@ def spark_job_done(response):
 	return response['state'] == 'available'
 
 
-@background(schedule=1)
-def delete_model_instance(instance_model, instance_id, verbose_name=uuid.uuid4().urn):
+@celery_app.task()
+def delete_model_instance(instance_model, instance_id):
 
 	'''
 	Background task to delete generic DB model instance
@@ -64,7 +64,7 @@ def delete_model_instance(instance_model, instance_id, verbose_name=uuid.uuid4()
 
 
 @background(schedule=1)
-def download_and_index_bulk_data(dbdd_id, verbose_name=uuid.uuid4().urn):
+def download_and_index_bulk_data(dbdd_id):
 
 	'''
 	Background task driver to manage downloading and indexing of bulk data
