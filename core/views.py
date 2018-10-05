@@ -1523,13 +1523,11 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		)
 		ct.save()
 
-		# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
-		# and setting creator and verbose_name params
-		bt = tasks.create_validation_report(
-			ct.id,
-			verbose_name = ct.verbose_name,
-			creator = ct
-		)
+		# run celery task
+		bg_task = tasks.create_validation_report.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# redirect to Background Tasks
 		return redirect('bg_tasks')
@@ -2688,12 +2686,11 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg_task
-		bg_task = tasks.export_documents(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_documents.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2728,12 +2725,11 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg_task
-		bg_task = tasks.export_documents(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_documents.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2784,12 +2780,11 @@ def export_mapped_fields(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg task
-		bg_task = tasks.export_mapped_fields(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_mapped_fields.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2826,12 +2821,11 @@ def export_mapped_fields(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg task
-		bg_task = tasks.export_mapped_fields(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_mapped_fields.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)

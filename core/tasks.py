@@ -97,7 +97,7 @@ def download_and_index_bulk_data(dbdd_id):
 	dbdd.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def create_validation_report(ct_id):
 
 	'''
@@ -236,7 +236,7 @@ def create_validation_report(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def export_mapped_fields(ct_id):
 
 	# get CombineTask (ct)
@@ -391,6 +391,7 @@ def export_mapped_fields(ct_id):
 		export_output = export_output_archive
 
 	# save export output to Combine Task output
+	ct.refresh_from_db()
 	ct.task_output_json = json.dumps({		
 		'export_output':export_output,
 		'name':export_output.split('/')[-1],
@@ -399,7 +400,7 @@ def export_mapped_fields(ct_id):
 	ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def export_documents(ct_id):
 
 	'''
@@ -537,6 +538,7 @@ def export_documents(ct_id):
 			shutil.rmtree(d)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'export_output':export_output_archive,
 			'name':export_output_archive.split('/')[-1],
