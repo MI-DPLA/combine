@@ -605,6 +605,7 @@ def job_reindex(ct_id):
 			}, save=True)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'reindex_results':results
 		})
@@ -678,11 +679,11 @@ def job_new_validations(ct_id):
 			jv.validation_failure_count(force_recount=True)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'run_new_validations':results
 		})
-		ct.save()
-		logger.debug(ct.task_output_json)
+		ct.save()		
 
 	except Exception as e:
 
@@ -742,12 +743,12 @@ def job_remove_validation(ct_id):
 			}, save=True)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'delete_job_validation':str(jv),			
 			'validation_failures_removed_':delete_results
 		})
-		ct.save()
-		logger.debug(ct.task_output_json)
+		ct.save()		
 
 		# remove job validation link
 		jv.delete()
@@ -778,6 +779,7 @@ def job_publish(ct_id):
 		publish_results = cjob.job.publish(publish_set_id=ct.task_params['publish_set_id'])
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'job_id':ct.task_params['job_id'],
 			'publish_results':publish_results
@@ -810,6 +812,7 @@ def job_unpublish(ct_id):
 		unpublish_results = cjob.job.unpublish()
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'job_id':ct.task_params['job_id'],
 			'unpublish_results':unpublish_results
@@ -827,7 +830,7 @@ def job_unpublish(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_dbdm(ct_id):
 
 	# get CombineTask (ct)
@@ -858,6 +861,7 @@ def job_dbdm(ct_id):
 		logger.debug(results)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'job_id':ct.task_params['job_id'],			
 			'dbdd_id':ct.task_params['dbdd_id'],
@@ -895,6 +899,7 @@ def rerun_jobs_prep(ct_id):
 			cjob.rerun(rerun_downstream=False, set_gui_status=False)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'ordered_job_rerun_set':ct.task_params['ordered_job_rerun_set'],
 			'msg':'Jobs prepared for rerunning, running or queued as Spark jobs'
@@ -948,6 +953,7 @@ def clone_jobs(ct_id):
 				skip_clones.append(clone)
 
 		# save export output to Combine Task output
+		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		
 			'ordered_job_clone_set':ct.task_params['ordered_job_clone_set'],
 			'msg':'Jobs cloned'

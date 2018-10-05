@@ -1118,8 +1118,8 @@ def clone_jobs(request):
 	
 	# run celery task
 	bg_task = tasks.clone_jobs.delay(ct.id)
-	logger.debug('firing bg task: %s' % bg_task)
-	ct.celery_task_id = bg_task.task_id
+	logger.debug('firing bg task: %s' % bg_task)	
+	ct.celery_task_id = bg_task.task_id	
 	ct.save()
 
 	# set gms

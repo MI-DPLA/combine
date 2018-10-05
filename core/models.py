@@ -3195,37 +3195,43 @@ class CombineBackgroundTask(models.Model):
 		'''
 
 		# get async task from Redis
-		self.celery_task = AsyncResult(self.celery_task_id)
-		self.celery_status = self.celery_task.status
+		try:		
+			self.celery_task = AsyncResult(self.celery_task_id)
+			self.celery_status = self.celery_task.status
 
-		if not self.completed:
+			if not self.completed:
 
-			# if ready (finished)
-			if self.celery_task.ready():
+				# if ready (finished)
+				if self.celery_task.ready():
 
-				# set completed
-				self.completed = True
+					# set completed
+					self.completed = True
 
-				# update timestamp
-				self.finish_timestamp = datetime.datetime.now()
+					# update timestamp
+					self.finish_timestamp = datetime.datetime.now()
 
-				# handle result type
-				if type(self.celery_task.result) == Exception:
-					result = str(self.celery_task.result)
-				else:
-					result = self.celery_task.result
+					# handle result type
+					if type(self.celery_task.result) == Exception:
+						result = str(self.celery_task.result)
+					else:
+						result = self.celery_task.result
 
-				# save json of async task output
-				task_output = {
-					'result':result,
-					'status':self.celery_task.status,
-					'task_id':self.celery_task.task_id,
-					'traceback':self.celery_task.traceback
-				}
-				self.celery_task_output = json.dumps(task_output)
+					# save json of async task output
+					task_output = {
+						'result':result,
+						'status':self.celery_task.status,
+						'task_id':self.celery_task.task_id,
+						'traceback':self.celery_task.traceback
+					}
+					self.celery_task_output = json.dumps(task_output)
 
-				# save 
-				self.save()
+					# save 
+					self.save()
+
+		except Exception as e:
+			self.celery_task = None
+			self.celery_status = None			
+			logger.debug(str(e))
 
 
 	def calc_elapsed_as_string(self):
@@ -5001,11 +5007,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_dbdm(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_dbdm.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
