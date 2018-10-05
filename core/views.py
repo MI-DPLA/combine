@@ -3616,7 +3616,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'start_timestamp',
 			'name',
 			'task_type',
-			'verbose_name',
+			'celery_task_id',
 			'completed',
 			'duration',
 			'actions'
@@ -3632,7 +3632,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'start_timestamp',
 			'name',
 			'task_type',
-			'verbose_name',
+			'celery_task_id',
 			'completed',
 			'duration',
 			'actions'
@@ -3654,14 +3654,14 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			if column == 'task_type':
 				return row.get_task_type_display()
 
-			elif column == 'verbose_name':
-				return '<code>%s</code>' % row.verbose_name
+			elif column == 'celery_task_id':
+				return '<code>%s</code>' % row.celery_task_id
 
 			elif column == 'completed':
 				if row.completed:
-					return "<span style='color:green;'>Finished</span>"
+					return "<span style='color:green;'>%s</span>" % row.celery_status
 				else:
-					return "<span style='color:orange;'>Running</span>"
+					return "<span style='color:orange;'>%s</span>" % row.celery_status
 
 			elif column == 'duration':
 				return row.calc_elapsed_as_string()

@@ -100,6 +100,9 @@ from core.spark.utils import PythonUDFRecord
 # AWS
 import boto3
 
+# celery
+from celery.result import AsyncResult
+
 
 
 ####################################################################
@@ -3172,19 +3175,17 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
-	verbose_name = models.CharField(max_length=128, null=True, default=None)
+	celery_task_id = models.CharField(max_length=128, null=True, default=None)
+	celery_task_output = models.TextField(null=True, default=None)
 	task_params_json = models.TextField(null=True, default=None)
 	task_output_json = models.TextField(null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
 	
-	# instance of Task if retrieved
-	task = None # placeholder for Task/CompletedTask Instance
-
 
 	def __str__(self):
-		return 'CombineBackgroundTask: %s, %s, #%s' % (self.name, self.verbose_name, self.id)
+		return 'CombineBackgroundTask: %s, ID #%s, Celery Task ID #%s' % (self.name, self.id, self.celery_task_id)
 
 
 	def update(self):
@@ -3193,75 +3194,38 @@ class CombineBackgroundTask(models.Model):
 		Method to update completed status, and affix task to instance
 		'''
 
-		# if completed, retrieve completed task
-		if self.completed:
-			self._get_completed_task()
+		# get async task from Redis
+		self.celery_task = AsyncResult(self.celery_task_id)
+		self.celery_status = self.celery_task.status
 
-		# else, determine if running or completed and get task
-		else:
+		if not self.completed:
 
-			# check if running
-			task = self._get_running_task()
+			# if ready (finished)
+			if self.celery_task.ready():
 
-			# if not found, check if completed
-			if not task:
-				task = self._get_completed_task()
-				
-				if task:
-					# update completed status
-					self.completed = True
+				# set completed
+				self.completed = True
 
-					# set finish timestamp
-					self.finish_timestamp = task.locked_at
+				# update timestamp
+				self.finish_timestamp = datetime.datetime.now()
 
-					# save
-					self.save()
-				
+				# handle result type
+				if type(self.celery_task.result) == Exception:
+					result = str(self.celery_task.result)
 				else:
-					self.task = False
+					result = self.celery_task.result
 
+				# save json of async task output
+				task_output = {
+					'result':result,
+					'status':self.celery_task.status,
+					'task_id':self.celery_task.task_id,
+					'traceback':self.celery_task.traceback
+				}
+				self.celery_task_output = json.dumps(task_output)
 
-	def _get_completed_task(self):
-
-		'''
-		Method to check for, and return, completed task
-		'''
-
-		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
-		if completed.count() == 1:
-			self.task = completed.first()
-			return self.task
-		elif completed.count() > 1:
-			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
-			self._handle_multiple_tasks_found
-		else:
-			return False
-
-
-	def _get_running_task(self):
-
-		'''
-		Method to check for, and return, running/queued task
-		'''
-
-		running = Task.objects.filter(verbose_name=self.verbose_name)
-		if running.count() == 1:
-			self.task = running.first()
-			return self.task
-		elif running.count() > 1:
-			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
-			self._handle_multiple_tasks_found
-		else:
-			return False
-
-
-	def _handle_multiple_tasks_found(self):
-
-		'''
-		Method to handle multiple tasks found with same verbose_name
-		'''
-
-		pass
+				# save 
+				self.save()
 
 
 	def calc_elapsed_as_string(self):
@@ -3304,9 +3268,6 @@ class CombineBackgroundTask(models.Model):
 			return json.loads(self.task_output_json)
 		else:
 			return {}
-
-
-
 
 
 
@@ -3579,24 +3540,9 @@ def background_task_post_init(sender, instance, **kwargs):
 	if instance.id:		
 		instance.update()
 
-	# else, assign random uuid
-	else:
-		instance.verbose_name = uuid.uuid4().urn
-
 
 @receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
 def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
-
-	# remove verbose_name from Django Background Task tables
-	running = Task.objects.filter(verbose_name=instance.verbose_name)
-	if running.count() > 0:
-		for task in running:
-			task.delete()
-
-	completed = CompletedTask.objects.filter(verbose_name=instance.verbose_name)
-	if completed.count() > 0:
-		for task in completed:
-			task.delete()
 
 	# if export dir exists in task_output, delete as well
 	if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
@@ -4921,11 +4867,12 @@ class CombineJob(object):
 			})
 		)		
 		ct.save()
-		bg_task = tasks.job_reindex(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		
+		# run celery task
+		bg_task = tasks.job_reindex.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -4998,12 +4945,15 @@ class CombineJob(object):
 				'publish_set_id':publish_set_id
 			})
 		)
-		ct.save()
+		ct.save()		
 		
 		# run celery task
 		bg_task = tasks.job_publish.delay(ct.id)
-		logger.debug(bg_task)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
+		# return ct		
 		return ct
 
 
@@ -5025,8 +4975,11 @@ class CombineJob(object):
 
 		# run celery task
 		bg_task = tasks.job_unpublish.delay(ct.id)
-		logger.debug(bg_task)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
+		# return			
 		return ct
 
 

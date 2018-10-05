@@ -557,7 +557,7 @@ def export_documents(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_reindex(ct_id):
 
 	'''
@@ -608,8 +608,7 @@ def job_reindex(ct_id):
 		ct.task_output_json = json.dumps({		
 			'reindex_results':results
 		})
-		ct.save()
-		logger.debug(ct.task_output_json)
+		ct.save()		
 
 	except Exception as e:
 
@@ -783,8 +782,7 @@ def job_publish(ct_id):
 			'job_id':ct.task_params['job_id'],
 			'publish_results':publish_results
 		})
-		ct.save()
-		logger.debug(ct.task_output_json)		
+		ct.save()		
 
 	except Exception as e:
 
@@ -816,8 +814,7 @@ def job_unpublish(ct_id):
 			'job_id':ct.task_params['job_id'],
 			'unpublish_results':unpublish_results
 		})
-		ct.save()
-		logger.debug(ct.task_output_json)		
+		ct.save()		
 
 	except Exception as e:
 

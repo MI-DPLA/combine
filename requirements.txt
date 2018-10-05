@@ -12,7 +12,6 @@ cookies==2.2.1
 dashtable==1.4.5
 decorator==4.1.2
 Django==1.11.4
-django-background-tasks==1.1.13
 django-datatables-view==1.14.0
 django-extensions==1.9.0
 django-filter==1.1.0
