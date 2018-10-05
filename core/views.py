@@ -1117,14 +1117,12 @@ def clone_jobs(request):
 		})
 	)
 	ct.save()
-
-	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
-	# and setting creator and verbose_name params
-	bt = tasks.clone_jobs(
-		ct.id,
-		verbose_name = ct.verbose_name,
-		creator = ct
-	)
+	
+	# run celery task
+	bg_task = tasks.clone_jobs.delay(ct.id)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)

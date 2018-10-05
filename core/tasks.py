@@ -913,7 +913,7 @@ def rerun_jobs_prep(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def clone_jobs(ct_id):
 
 	'''
@@ -964,47 +964,6 @@ def clone_jobs(ct_id):
 			'error':str(e)
 		})
 		ct.save()
-
-
-
-# CELERY DEBUG ############################################################################################################################################
-
-@celery_app.task(bind=True)
-def cel_logging(self):
-	logger.debug('can I log?')
-
-
-@celery_app.task(bind=True)
-def cel_db(self, job_id=850):
-
-	# retrieve Job	
-	j = models.Job.objects.get(pk=job_id)
-	logger.debug(j)
-
-	for x in range(0,10):
-
-		# rename and save
-		j.name = 'GOOBERTRONIC - %s' % x
-		j.save()
-
-		time.sleep(2)	
-
-	# rename and save
-	j.name = 'finis'
-	j.save()
-
-
-@celery_app.task(bind=True)
-def cel_results(self, msg, sleep=20):
-	time.sleep(sleep)
-	return msg
-
-
-@celery_app.task(bind=True, retries=5)
-def cel_retries(self):
-	raise Exception('This will never work')
-
-# CELERY DEBUG ############################################################################################################################################
 
 
 
