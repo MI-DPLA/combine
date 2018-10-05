@@ -621,7 +621,7 @@ def job_reindex(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_new_validations(ct_id):
 
 	'''
@@ -695,7 +695,7 @@ def job_new_validations(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def job_remove_validation(ct_id):
 
 	'''
@@ -877,7 +877,7 @@ def job_dbdm(ct_id):
 		ct.save()
 
 
-@background(schedule=1)
+@celery_app.task()
 def rerun_jobs_prep(ct_id):
 
 	# get CombineTask (ct)

@@ -4896,11 +4896,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_new_validations(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_new_validations.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -4921,11 +4922,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_remove_validation(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_remove_validation.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
