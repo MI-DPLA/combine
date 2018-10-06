@@ -139,7 +139,7 @@
 					<a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped Fields</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#rerun_tab">Re-Run</a>
+					<a class="nav-link" data-toggle="tab" href="#manage_tab">Manage</a>
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#publish_tab">Publish</a>
@@ -179,44 +179,14 @@
 					</div>
 				</div>
 
-				<div id="rerun_tab" class="tab-pane full_width_tab">
-					<div class="row">
-						<div class="col-md-12">
-							<h4>Re-Run Job</h4>
-							<p>Re-running a Job will run the Job with the configurations as the Job was originally run, and  trigger all "downstream" Jobs (those Jobs that inherited Records from this Job, recursively) to do the same.</p>							
-							<button type="button" class="btn btn-danger btn-sm" onclick="rerun_jobs(); return false;">Re-Run Job <i class="la la-refresh"></i></button>
-						</div>
-					</div>
-					<script>
+				<div id="manage_tab" class="tab-pane full_width_tab">
 
-						function rerun_jobs(){
+					<!-- hidden input for pre-selected jobs -->
+					<input style="display:none;" class="job_id_sel" type="checkbox" value="{{ cjob.job.id }}" name="job_id" checked>
+					
+					<!-- job management blocks -->
+					{% include 'core/job_management.html' %}
 
-							confirmation = confirm('Are you sure you want to re-run this Job?  All Records and Validations will be removed for this Job, and all their downstream Jobs.');
-							if (confirmation){
-
-								// set job id
-								job_ids = [{{cjob.job.id}}];								
-
-								// submit job ids via ajax
-								$.ajax({
-									type: "POST",
-									url: "{% url 'rerun_jobs' %}",
-									data: {
-										'job_ids':job_ids,
-										'csrfmiddlewaretoken': '{{ csrf_token }}'
-									},
-									dataType:'json',
-									success: function(data){
-										console.log(data);
-										if (data.results == true) {
-											window.location.replace("{% url 'record_group' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}");
-										}					
-									}
-								});
-							}
-						}
-
-					</script>
 				</div>
 
 				<div id="publish_tab" class="tab-pane full_width_tab">

@@ -20,6 +20,7 @@ urlpatterns = [
 	url(r'^organization/(?P<org_id>[0-9]+)/delete$', views.organization_delete, name='organization_delete'),
 
 	# Record Groups
+	url(r'^record_group/(?P<record_group_id>[0-9]+)$', views.record_group_id_redirect, name='record_group_id_redirect'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/new$', views.record_group_new, name='record_group_new'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)$', views.record_group, name='record_group'),
 	url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete, name='record_group_delete'),	

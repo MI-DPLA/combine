@@ -249,7 +249,7 @@ def system(request):
 
 	# get status of background jobs
 	sp = models.SupervisorRPCClient()
-	bgtasks_proc = sp.check_process('combine_background_tasks')
+	bgtasks_proc = sp.check_process('celery')
 
 	# return
 	return render(request, 'core/system.html', {
@@ -315,7 +315,7 @@ def bgtasks_proc_action(request, proc_action):
 		'restart':sp.restart_process,
 		'stop':sp.stop_process
 	}
-	results = actions[proc_action]('combine_background_tasks') 
+	results = actions[proc_action]('celery') 
 	logger.debug(results)
 
 	# redirect
@@ -328,7 +328,7 @@ def bgtasks_proc_stderr_log(request):
 	# get supervisor handle
 	sp = models.SupervisorRPCClient()
 
-	log_tail = sp.stderr_log_tail('combine_background_tasks')
+	log_tail = sp.stderr_log_tail('celery')
 
 	# redirect
 	return HttpResponse(log_tail, content_type='text/plain')
@@ -432,6 +432,22 @@ def organization_delete(request, org_id):
 ####################################################################
 # Record Groups 												   #
 ####################################################################
+
+@login_required
+def record_group_id_redirect(request, record_group_id):
+
+	'''
+	Route to redirect to more verbose Record Group URL
+	'''
+
+	# get job
+	record_group = models.RecordGroup.objects.get(pk=record_group_id)
+
+	# redirect
+	return redirect('record_group',
+		org_id=record_group.organization.id,
+		record_group_id=record_group.id)
+
 
 def record_group_new(request, org_id):
 
@@ -879,6 +895,7 @@ def job_details(request, org_id, record_group_id, job_id):
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
+			'record_group':cjob.job.record_group,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),

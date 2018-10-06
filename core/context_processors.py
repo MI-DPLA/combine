@@ -2,7 +2,7 @@ import subprocess
 
 from django.conf import settings
 from django.db.models.query import QuerySet
-from core.models import LivySession, SupervisorRPCClient
+from core.models import LivySession, SupervisorRPCClient, CombineBackgroundTask
 
 
 def combine_settings(request):
@@ -51,18 +51,32 @@ def bgtasks_proc(request):
 		- improvements would be to determine if task running, but would require DB query
 	'''
 
-	try:
-		# get supervisor and status
-		sp = SupervisorRPCClient()
-		proc = sp.check_process('combine_background_tasks')
+	# try:
 
-		# return
-		return {
-			'BGTASKS_PROC':proc
-		}
+	# get supervisor and status
+	sp = SupervisorRPCClient()
+	proc = sp.check_process('celery')
 
-	except:
-		pass
+	# check for uncompleted CombineBackgroundTask instances
+	for ct in CombineBackgroundTask.objects.filter(completed=False):
+		ct.update()
+	
+	if CombineBackgroundTask.objects.filter(completed=False).count() > 0:
+	 	
+	 	# set status
+		bg_tasks_busy = True
+
+	else:
+		bg_tasks_busy = False		
+
+	# return
+	return {
+		'BGTASKS_PROC':proc,
+		'BGTASKS_BUSY':bg_tasks_busy
+	}
+
+	# except:
+	# 	pass
 
 
 def combine_git_info(request):
