@@ -3029,6 +3029,18 @@ def bg_task_delete(request, task_id):
 	return redirect('bg_tasks')
 
 
+def bg_task_cancel(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('cancelling task: %s' % ct)
+
+	# cancel
+	ct.cancel()
+
+	return redirect('bg_tasks')
+
+
 
 ####################################################################
 # Datatables endpoints 											   #
@@ -3662,18 +3674,22 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
 			elif column == 'completed':
 				if row.completed:
-					return "<span style='color:green;'>%s</span>" % row.celery_status
+					if row.celery_status in ['STOPPED','REVOKED']:
+						return "<span class='text-danger'>%s</span>" % row.celery_status
+					else:
+						return "<span class='text-success'>%s</span>" % row.celery_status
 				else:
-					return "<span style='color:orange;'>%s</span>" % row.celery_status
+					return "<span class='text-warning'>%s</span>" % row.celery_status
 
 			elif column == 'duration':
 				return row.calc_elapsed_as_string()
 				
 
 			elif column == 'actions':
-				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to cancel this task?\');">Stop <i class="la la-stop"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
 					reverse(bg_task, kwargs={'task_id':row.id}),
-					reverse(bg_task_delete, kwargs={'task_id':row.id})
+					reverse(bg_task_cancel, kwargs={'task_id':row.id}),
+					reverse(bg_task_delete, kwargs={'task_id':row.id}),					
 				)
 
 			else:

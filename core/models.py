@@ -102,6 +102,7 @@ import boto3
 
 # celery
 from celery.result import AsyncResult
+from celery.task.control import revoke
 
 
 
@@ -1625,7 +1626,7 @@ class Job(models.Model):
 		return sorted(list(job_list), key=lambda j: j.id)
 
 
-	def stop_job(self):
+	def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
 
 		'''
 		Stop running Job in Livy/Spark
@@ -1644,23 +1645,25 @@ class Job(models.Model):
 		if ls:			
 
 			# send cancel to Livy
-			try:
-				livy_response = LivyClient().stop_job(self.url).json()
-				logger.debug('Livy statement cancel result: %s' % livy_response)
-			except:
-				logger.debug('error canceling Livy statement: %s' % self.url)
+			if cancel_livy_statement:
+				try:
+					livy_response = LivyClient().stop_job(self.url).json()
+					logger.debug('Livy statement cancel result: %s' % livy_response)
+				except:
+					logger.debug('error canceling Livy statement: %s' % self.url)
 
 			# retrieve list of spark jobs, killing two most recent
 			# note: repeate x3 if job turnover so quick enough that kill is missed
-			try:
-				for x in range(0,3):
-					sjs = self.get_spark_jobs()
-					sj = sjs[0]
-					logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
-					kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
-					logger.debug('kill result: %s' % kill_result)
-			except:
-				logger.debug('error killing Spark jobs')
+			if kill_spark_jobs:
+				try:
+					for x in range(0,3):
+						sjs = self.get_spark_jobs()
+						sj = sjs[0]
+						logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
+						kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
+						logger.debug('kill result: %s' % kill_result)
+				except:
+					logger.debug('error killing Spark jobs')
 
 		else:
 			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
@@ -3230,7 +3233,7 @@ class CombineBackgroundTask(models.Model):
 
 		except Exception as e:
 			self.celery_task = None
-			self.celery_status = None			
+			self.celery_status = 'STOPPED'
 			logger.debug(str(e))
 
 
@@ -3274,6 +3277,29 @@ class CombineBackgroundTask(models.Model):
 			return json.loads(self.task_output_json)
 		else:
 			return {}
+
+
+	def cancel(self):
+
+		'''
+		Method to cancel background task
+		'''
+
+		# attempt to stop any Spark jobs
+		if 'job_id' in self.task_params.keys():
+			job_id = self.task_params['job_id']
+			logger.debug('attempt to kill spark jobs related to Job: %s' % job_id)
+			j = Job.objects.get(pk=int(job_id))
+			j.stop_job(cancel_livy_statement=False, kill_spark_jobs=True)
+
+		# revoke celery task
+		if self.celery_task_id:
+			revoke(self.celery_task_id, terminate=True)
+
+		# update status
+		self.refresh_from_db()
+		self.completed = True
+		self.save()
 
 
 

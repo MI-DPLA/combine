@@ -36,5 +36,5 @@ def tail_livy():
 
 
 # tail django
-def tail_bg():
-	os.system('tail -f /var/log/combine_background_tasks.stdout')
+def tail_celery():
+	os.system('tail -f /var/log/celery.stdout')
