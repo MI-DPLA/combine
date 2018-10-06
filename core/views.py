@@ -249,7 +249,7 @@ def system(request):
 
 	# get status of background jobs
 	sp = models.SupervisorRPCClient()
-	bgtasks_proc = sp.check_process('combine_background_tasks')
+	bgtasks_proc = sp.check_process('celery')
 
 	# return
 	return render(request, 'core/system.html', {
@@ -315,7 +315,7 @@ def bgtasks_proc_action(request, proc_action):
 		'restart':sp.restart_process,
 		'stop':sp.stop_process
 	}
-	results = actions[proc_action]('combine_background_tasks') 
+	results = actions[proc_action]('celery') 
 	logger.debug(results)
 
 	# redirect
@@ -328,7 +328,7 @@ def bgtasks_proc_stderr_log(request):
 	# get supervisor handle
 	sp = models.SupervisorRPCClient()
 
-	log_tail = sp.stderr_log_tail('combine_background_tasks')
+	log_tail = sp.stderr_log_tail('celery')
 
 	# redirect
 	return HttpResponse(log_tail, content_type='text/plain')
@@ -411,19 +411,19 @@ def organization_delete(request, org_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete Organization: %s' % org.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
-			'model':'Job',
-			'job_id':org.id
+			'model':'Organization',
+			'org_id':org.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'Organization',
-		org.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('Organization',org.id,)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	return redirect('organizations')
 
@@ -432,6 +432,22 @@ def organization_delete(request, org_id):
 ####################################################################
 # Record Groups 												   #
 ####################################################################
+
+@login_required
+def record_group_id_redirect(request, record_group_id):
+
+	'''
+	Route to redirect to more verbose Record Group URL
+	'''
+
+	# get job
+	record_group = models.RecordGroup.objects.get(pk=record_group_id)
+
+	# redirect
+	return redirect('record_group',
+		org_id=record_group.organization.id,
+		record_group_id=record_group.id)
+
 
 def record_group_new(request, org_id):
 
@@ -468,19 +484,19 @@ def record_group_delete(request, org_id, record_group_id):
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete RecordGroup: %s' % record_group.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
-			'model':'Job',
-			'job_id':record_group.id
+			'model':'RecordGroup',
+			'record_group_id':record_group.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'RecordGroup',
-		record_group.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('RecordGroup',record_group.id,)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# redirect to organization page
 	return redirect('organization', org_id=org_id)
@@ -606,28 +622,24 @@ def job_delete(request, org_id, record_group_id, job_id):
 	job.name = "%s (DELETING)" % job.name
 	job.deleted = True
 	job.status = 'deleting'
-	job.save()
-	
-	# remove via background tasks
-	# bg_task = tasks.delete_model_instance('Job', job.id)
-	# logger.debug('job scheduled for delete as background task: %s' % bg_task.task_hash)
+	job.save()	
 
 	# initiate Combine BG Task
 	ct = models.CombineBackgroundTask(
 		name = 'Delete Job: %s' % job.name,
-		task_type = 'job_delete',
+		task_type = 'delete_model_instance',
 		task_params_json = json.dumps({
 			'model':'Job',
 			'job_id':job.id
 		})
 	)
 	ct.save()
-	bg_task = tasks.delete_model_instance(
-		'Job',
-		job.id,
-		verbose_name=ct.verbose_name,
-		creator=ct
-	)
+	
+	# run celery task
+	bg_task = tasks.delete_model_instance.delay('Job',job.id)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# redirect
 	return redirect(request.META.get('HTTP_REFERER'))
@@ -742,19 +754,19 @@ def delete_jobs(request):
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = 'Delete Job: #%s' % job.name,
-			task_type = 'job_delete',
+			task_type = 'delete_model_instance',
 			task_params_json = json.dumps({
 				'model':'Job',
 				'job_id':job.id
 			})
 		)
 		ct.save()
-		bg_task = tasks.delete_model_instance(
-			'Job',
-			job.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.delete_model_instance.delay('Job',job.id,)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
@@ -883,6 +895,7 @@ def job_details(request, org_id, record_group_id, job_id):
 	# return
 	return render(request, 'core/job_details.html', {
 			'cjob':cjob,
+			'record_group':cjob.job.record_group,
 			'record_count_details':record_count_details,
 			'field_counts':field_counts,
 			'job_lineage_json':json.dumps(job_lineage),
@@ -1059,13 +1072,11 @@ def rerun_jobs(request):
 	)
 	ct.save()
 
-	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
-	# and setting creator and verbose_name params
-	bt = tasks.rerun_jobs_prep(
-		ct.id,
-		verbose_name = ct.verbose_name,
-		creator = ct
-	)
+	# run celery task
+	bg_task = tasks.rerun_jobs_prep.delay(ct.id)
+	logger.debug('firing bg task: %s' % bg_task)
+	ct.celery_task_id = bg_task.task_id
+	ct.save()
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
@@ -1121,14 +1132,12 @@ def clone_jobs(request):
 		})
 	)
 	ct.save()
-
-	# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
-	# and setting creator and verbose_name params
-	bt = tasks.clone_jobs(
-		ct.id,
-		verbose_name = ct.verbose_name,
-		creator = ct
-	)
+	
+	# run celery task
+	bg_task = tasks.clone_jobs.delay(ct.id)
+	logger.debug('firing bg task: %s' % bg_task)	
+	ct.celery_task_id = bg_task.task_id	
+	ct.save()
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
@@ -1531,13 +1540,11 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 		)
 		ct.save()
 
-		# run actual background task, passing CombineTask (ct) id (must be JSON serializable),
-		# and setting creator and verbose_name params
-		bt = tasks.create_validation_report(
-			ct.id,
-			verbose_name = ct.verbose_name,
-			creator = ct
-		)
+		# run celery task
+		bg_task = tasks.create_validation_report.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# redirect to Background Tasks
 		return redirect('bg_tasks')
@@ -1627,7 +1634,7 @@ def job_update(request, org_id, record_group_id, job_id):
 			validations = models.ValidationScenario.objects.filter(id__in=[ int(vs_id) for vs_id in validation_scenarios ])
 
 			# init bg task
-			bg_task = cjob.new_validations_bg_task(validation_scenarios)
+			bg_task = cjob.new_validations_bg_task([ vs.id for vs in validations ])
 
 			# set gms
 			gmc = models.GlobalMessageClient(request.session)
@@ -2696,12 +2703,11 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg_task
-		bg_task = tasks.export_documents(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_documents.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2736,12 +2742,11 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg_task
-		bg_task = tasks.export_documents(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_documents.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2792,12 +2797,11 @@ def export_mapped_fields(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg task
-		bg_task = tasks.export_mapped_fields(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_mapped_fields.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -2834,12 +2838,11 @@ def export_mapped_fields(request, export_source, job_id=None):
 		)
 		ct.save()
 
-		# fire bg task
-		bg_task = tasks.export_mapped_fields(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		# run celery task
+		bg_task = tasks.export_mapped_fields.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		# set gm
 		gmc = models.GlobalMessageClient(request.session)
@@ -3022,6 +3025,18 @@ def bg_task_delete(request, task_id):
 	logger.debug('deleting task: %s' % ct)
 
 	ct.delete()
+
+	return redirect('bg_tasks')
+
+
+def bg_task_cancel(request, task_id):
+
+	# get task
+	ct = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+	logger.debug('cancelling task: %s' % ct)
+
+	# cancel
+	ct.cancel()
 
 	return redirect('bg_tasks')
 
@@ -3616,7 +3631,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'start_timestamp',
 			'name',
 			'task_type',
-			'verbose_name',
+			'celery_task_id',
 			'completed',
 			'duration',
 			'actions'
@@ -3632,7 +3647,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			'start_timestamp',
 			'name',
 			'task_type',
-			'verbose_name',
+			'celery_task_id',
 			'completed',
 			'duration',
 			'actions'
@@ -3654,23 +3669,27 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 			if column == 'task_type':
 				return row.get_task_type_display()
 
-			elif column == 'verbose_name':
-				return '<code>%s</code>' % row.verbose_name
+			elif column == 'celery_task_id':
+				return '<code>%s</code>' % row.celery_task_id
 
 			elif column == 'completed':
 				if row.completed:
-					return "<span style='color:green;'>Finished</span>"
+					if row.celery_status in ['STOPPED','REVOKED']:
+						return "<span class='text-danger'>%s</span>" % row.celery_status
+					else:
+						return "<span class='text-success'>%s</span>" % row.celery_status
 				else:
-					return "<span style='color:orange;'>Running</span>"
+					return "<span class='text-warning'>%s</span>" % row.celery_status
 
 			elif column == 'duration':
 				return row.calc_elapsed_as_string()
 				
 
 			elif column == 'actions':
-				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-outline-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
+				return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to cancel this task?\');">Stop <i class="la la-stop"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
 					reverse(bg_task, kwargs={'task_id':row.id}),
-					reverse(bg_task_delete, kwargs={'task_id':row.id})
+					reverse(bg_task_cancel, kwargs={'task_id':row.id}),
+					reverse(bg_task_delete, kwargs={'task_id':row.id}),					
 				)
 
 			else:

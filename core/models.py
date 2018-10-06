@@ -100,6 +100,10 @@ from core.spark.utils import PythonUDFRecord
 # AWS
 import boto3
 
+# celery
+from celery.result import AsyncResult
+from celery.task.control import revoke
+
 
 
 ####################################################################
@@ -128,7 +132,7 @@ class LivySession(models.Model):
 		return 'Livy session: %s, status: %s' % (self.name, self.status)
 
 
-	def refresh_from_livy(self):
+	def refresh_from_livy(self, save=True):
 
 		'''
 		Method to ping Livy for session status and update DB
@@ -160,7 +164,8 @@ class LivySession(models.Model):
 				self.status = 'gone'
 				
 				# update
-				self.save()
+				if save:
+					self.save()
 
 				# return self
 				return self.status
@@ -185,7 +190,8 @@ class LivySession(models.Model):
 					pass
 
 				# update
-				self.save()
+				if save:
+					self.save()
 
 				# return self
 				return self.status
@@ -326,7 +332,7 @@ class LivySession(models.Model):
 
 		# retrieve active livy session and refresh
 		active_ls = LivySession.get_active_session()
-		active_ls.refresh_from_livy()
+		active_ls.refresh_from_livy(save=False)		
 
 		# if passed session id matches and status is idle or busy
 		if session_id == active_ls.session_id:
@@ -336,21 +342,17 @@ class LivySession(models.Model):
 
 			else:
 				logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
-
+				
 				# destroy active livy session
 				active_ls.stop_session()
 				active_ls.delete()
 
 				# start and poll for new one
 				new_ls = LivySession()
-				new_ls.start_session()
-
-				# poll until ready
-				def livy_session_ready(response):
-					return response == 'idle'
+				new_ls.start_session()				
 
 				logger.debug('polling for Livy session to start...')
-				results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, poll_forever=True)				
+				results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
 
 				# pass new session id and continue to livy job submission
 				session_id = new_ls.session_id
@@ -629,7 +631,7 @@ class Job(models.Model):
 			# update elapsed
 			self.elapsed = self.calc_elapsed()
 
-			# finally, save
+			# finally, save			
 			self.save()
 
 
@@ -769,7 +771,7 @@ class Job(models.Model):
 		# get active livy session, and refresh, which contains spark_app_id as appId
 		ls = LivySession.get_active_session()
 
-		if ls:
+		if ls and type(ls) == LivySession:
 
 			# if appId not set, attempt to retrieve
 			if not ls.appId:
@@ -1368,7 +1370,7 @@ class Job(models.Model):
 			return False			
 
 
-	def drop_es_index(self):
+	def drop_es_index(self, clear_mapped_field_analysis=True):
 
 		'''
 		Method to drop associated ES index
@@ -1385,11 +1387,13 @@ class Job(models.Model):
 
 
 		# remove saved mapped_field_analysis in job_details, if exists
-		job_details = self.job_details_dict
-		if 'mapped_field_analysis' in job_details.keys():
-			job_details.pop('mapped_field_analysis')
-			self.job_details = json.dumps(job_details)
-			self.save()
+		if clear_mapped_field_analysis:
+			job_details = self.job_details_dict
+			if 'mapped_field_analysis' in job_details.keys():
+				job_details.pop('mapped_field_analysis')
+				self.job_details = json.dumps(job_details)
+				with transaction.atomic():
+					self.save()
 
 
 	def get_fm_config_json(self, as_dict=False):
@@ -1480,6 +1484,7 @@ class Job(models.Model):
 		logger.debug('Matched %s, marked as published %s' % (result.matched_count, result.modified_count))
 
 		# set self as published
+		self.refresh_from_db()
 		self.publish_set_id = publish_set_id
 		self.published = True
 		self.save()
@@ -1514,6 +1519,7 @@ class Job(models.Model):
 		logger.debug('Matched %s, marked as unpublished %s' % (result.matched_count, result.modified_count))
 
 		# set self as publish
+		self.refresh_from_db()
 		self.publish_set_id = None
 		self.published = False
 		self.save()
@@ -1620,7 +1626,7 @@ class Job(models.Model):
 		return sorted(list(job_list), key=lambda j: j.id)
 
 
-	def stop_job(self):
+	def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
 
 		'''
 		Stop running Job in Livy/Spark
@@ -1639,23 +1645,25 @@ class Job(models.Model):
 		if ls:			
 
 			# send cancel to Livy
-			try:
-				livy_response = LivyClient().stop_job(self.url).json()
-				logger.debug('Livy statement cancel result: %s' % livy_response)
-			except:
-				logger.debug('error canceling Livy statement: %s' % self.url)
+			if cancel_livy_statement:
+				try:
+					livy_response = LivyClient().stop_job(self.url).json()
+					logger.debug('Livy statement cancel result: %s' % livy_response)
+				except:
+					logger.debug('error canceling Livy statement: %s' % self.url)
 
 			# retrieve list of spark jobs, killing two most recent
 			# note: repeate x3 if job turnover so quick enough that kill is missed
-			try:
-				for x in range(0,3):
-					sjs = self.get_spark_jobs()
-					sj = sjs[0]
-					logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
-					kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
-					logger.debug('kill result: %s' % kill_result)
-			except:
-				logger.debug('error killing Spark jobs')
+			if kill_spark_jobs:
+				try:
+					for x in range(0,3):
+						sjs = self.get_spark_jobs()
+						sj = sjs[0]
+						logger.debug('Killing Spark Job: #%s, %s' % (sj['jobId'],sj.get('description','DESCRIPTION NOT FOUND')))
+						kill_result = SparkAppAPIClient.kill_job(ls, sj['jobId'])
+						logger.debug('kill result: %s' % kill_result)
+				except:
+					logger.debug('error killing Spark jobs')
 
 		else:
 			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
@@ -3150,10 +3158,7 @@ class DPLABulkDataDownload(models.Model):
 class CombineBackgroundTask(models.Model):
 
 	'''
-	Model for long running, background tasks
-		- likely a wrapper around Django-Background-Task (https://github.com/lilspikey/django-background-task)
-
-	Note: "cbgt" prefix = Combine Background Task, to distinguish from Django-Background-Tasks instance dbgt
+	Model for long running, background tasks	
 	'''
 
 	name = models.CharField(max_length=255, null=True, default=None)
@@ -3173,19 +3178,17 @@ class CombineBackgroundTask(models.Model):
 		default=None,
 		null=True
 	)
-	verbose_name = models.CharField(max_length=128, null=True, default=None)
+	celery_task_id = models.CharField(max_length=128, null=True, default=None)
+	celery_task_output = models.TextField(null=True, default=None)
 	task_params_json = models.TextField(null=True, default=None)
 	task_output_json = models.TextField(null=True, default=None)
 	start_timestamp = models.DateTimeField(null=True, auto_now_add=True)
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
 	
-	# instance of Task if retrieved
-	task = None # placeholder for Task/CompletedTask Instance
-
 
 	def __str__(self):
-		return 'CombineBackgroundTask: %s, %s, #%s' % (self.name, self.verbose_name, self.id)
+		return 'CombineBackgroundTask: %s, ID #%s, Celery Task ID #%s' % (self.name, self.id, self.celery_task_id)
 
 
 	def update(self):
@@ -3194,75 +3197,44 @@ class CombineBackgroundTask(models.Model):
 		Method to update completed status, and affix task to instance
 		'''
 
-		# if completed, retrieve completed task
-		if self.completed:
-			self._get_completed_task()
+		# get async task from Redis
+		try:		
+			self.celery_task = AsyncResult(self.celery_task_id)
+			self.celery_status = self.celery_task.status
 
-		# else, determine if running or completed and get task
-		else:
+			if not self.completed:
 
-			# check if running
-			task = self._get_running_task()
+				# if ready (finished)
+				if self.celery_task.ready():
 
-			# if not found, check if completed
-			if not task:
-				task = self._get_completed_task()
-				
-				if task:
-					# update completed status
+					# set completed
 					self.completed = True
 
-					# set finish timestamp
-					self.finish_timestamp = task.locked_at
+					# update timestamp
+					self.finish_timestamp = datetime.datetime.now()
 
-					# save
+					# handle result type
+					if type(self.celery_task.result) == Exception:
+						result = str(self.celery_task.result)
+					else:
+						result = self.celery_task.result
+
+					# save json of async task output
+					task_output = {
+						'result':result,
+						'status':self.celery_task.status,
+						'task_id':self.celery_task.task_id,
+						'traceback':self.celery_task.traceback
+					}
+					self.celery_task_output = json.dumps(task_output)
+
+					# save 
 					self.save()
-				
-				else:
-					self.task = False
 
-
-	def _get_completed_task(self):
-
-		'''
-		Method to check for, and return, completed task
-		'''
-
-		completed = CompletedTask.objects.filter(verbose_name=self.verbose_name)
-		if completed.count() == 1:
-			self.task = completed.first()
-			return self.task
-		elif completed.count() > 1:
-			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
-			self._handle_multiple_tasks_found
-		else:
-			return False
-
-
-	def _get_running_task(self):
-
-		'''
-		Method to check for, and return, running/queued task
-		'''
-
-		running = Task.objects.filter(verbose_name=self.verbose_name)
-		if running.count() == 1:
-			self.task = running.first()
-			return self.task
-		elif running.count() > 1:
-			logger.debug('multiple tasks found with verbose_name: %s, handling' % self.verbose_name)
-			self._handle_multiple_tasks_found
-		else:
-			return False
-
-
-	def _handle_multiple_tasks_found(self):
-
-		'''
-		Method to handle multiple tasks found with same verbose_name
-		'''
-
-		pass
+		except Exception as e:
+			self.celery_task = None
+			self.celery_status = 'STOPPED'
+			logger.debug(str(e))
 
 
 	def calc_elapsed_as_string(self):
@@ -3307,7 +3279,27 @@ class CombineBackgroundTask(models.Model):
 			return {}
 
 
+	def cancel(self):
 
+		'''
+		Method to cancel background task
+		'''
+
+		# attempt to stop any Spark jobs
+		if 'job_id' in self.task_params.keys():
+			job_id = self.task_params['job_id']
+			logger.debug('attempt to kill spark jobs related to Job: %s' % job_id)
+			j = Job.objects.get(pk=int(job_id))
+			j.stop_job(cancel_livy_statement=False, kill_spark_jobs=True)
+
+		# revoke celery task
+		if self.celery_task_id:
+			revoke(self.celery_task_id, terminate=True)
+
+		# update status
+		self.refresh_from_db()
+		self.completed = True
+		self.save()
 
 
 
@@ -3354,33 +3346,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 			logger.debug('multiple Livy sessions found, sending to sessions page to select one')
 
 
-@receiver(models.signals.post_save, sender=Job)
-def save_job(sender, instance, created, **kwargs):
-
-	'''
-	After job is saved, update job output
-
-	Args:
-		sender (auth.models.Job): class
-		user (auth.models.Job): instance
-		created (bool): indicates if newly created, or just save/update
-		kwargs: not used
-	'''
-
-	# if the record was just created, then update job output (ensures this only runs once)
-	if created and instance.job_type != 'AnalysisJob':
-
-		# set output based on job type
-		logger.debug('setting job output for job')
-		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
-			settings.BINARY_STORAGE.rstrip('/'),
-			instance.record_group.organization.id,
-			instance.record_group.id,
-			instance.job_type,
-			instance.id)
-		instance.save()
-
-
 @receiver(models.signals.pre_delete, sender=Organization)
 def delete_org_pre_delete(sender, instance, **kwargs):
 
@@ -3412,6 +3377,33 @@ def delete_record_group_pre_delete(sender, instance, **kwargs):
 		job.deleted = True
 		job.status = 'deleting'
 		job.save()
+
+
+@receiver(models.signals.post_save, sender=Job)
+def save_job_post_save(sender, instance, created, **kwargs):
+
+	'''
+	After job is saved, update job output
+
+	Args:
+		sender (auth.models.Job): class
+		user (auth.models.Job): instance
+		created (bool): indicates if newly created, or just save/update
+		kwargs: not used
+	'''
+
+	# if the record was just created, then update job output (ensures this only runs once)
+	if created and instance.job_type != 'AnalysisJob':
+
+		# set output based on job type
+		logger.debug('setting job output for job')
+		instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
+			settings.BINARY_STORAGE.rstrip('/'),
+			instance.record_group.organization.id,
+			instance.record_group.id,
+			instance.job_type,
+			instance.id)
+		instance.save()
 
 
 @receiver(models.signals.pre_delete, sender=Job)
@@ -3577,27 +3569,12 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 def background_task_post_init(sender, instance, **kwargs):
 
 	# if exists already, update status
-	if instance.id:
+	if instance.id:		
 		instance.update()
-
-	# else, assign random uuid
-	else:
-		instance.verbose_name = uuid.uuid4().urn
 
 
 @receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
 def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
-
-	# remove verbose_name from Django Background Task tables
-	running = Task.objects.filter(verbose_name=instance.verbose_name)
-	if running.count() > 0:
-		for task in running:
-			task.delete()
-
-	completed = CompletedTask.objects.filter(verbose_name=instance.verbose_name)
-	if completed.count() > 0:
-		for task in completed:
-			task.delete()
 
 	# if export dir exists in task_output, delete as well
 	if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
@@ -4920,13 +4897,14 @@ class CombineJob(object):
 				'job_id':self.job.id,
 				'fm_config_json':fm_config_json
 			})
-		)
+		)		
 		ct.save()
-		bg_task = tasks.job_reindex(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+		
+		# run celery task
+		bg_task = tasks.job_reindex.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -4950,11 +4928,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_new_validations(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_new_validations.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -4975,11 +4954,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_remove_validation(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_remove_validation.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -4999,13 +4979,15 @@ class CombineJob(object):
 				'publish_set_id':publish_set_id
 			})
 		)
+		ct.save()		
+		
+		# run celery task
+		bg_task = tasks.job_publish.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
 		ct.save()
-		bg_task = tasks.job_publish(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
 
+		# return ct		
 		return ct
 
 
@@ -5024,12 +5006,14 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_unpublish(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
 
+		# run celery task
+		bg_task = tasks.job_unpublish.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
+
+		# return			
 		return ct
 
 
@@ -5049,11 +5033,12 @@ class CombineJob(object):
 			})
 		)
 		ct.save()
-		bg_task = tasks.job_dbdm(
-			ct.id,
-			verbose_name=ct.verbose_name,
-			creator=ct
-		)
+
+		# run celery task
+		bg_task = tasks.job_dbdm.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
 
 		return ct
 
@@ -5100,9 +5085,15 @@ class CombineJob(object):
 			# remove mapping failures
 			re_job.remove_mapping_failures_from_db()
 
+			# where Job has Input Job, reset passed records
+			parent_input_jobs = JobInput.objects.filter(job_id = re_job.id)
+			for ji in parent_input_jobs:
+				ji.passed_records = None
+				ji.save()
+
 			# where Job is input for another, reset passed_records
-			as_input_job = JobInput.objects.filter(input_job_id = re_job.id)
-			for ji in as_input_job:
+			as_input_jobs = JobInput.objects.filter(input_job_id = re_job.id)
+			for ji in as_input_jobs:
 				ji.passed_records = None
 				ji.save()			
 
@@ -6979,12 +6970,21 @@ class DPLABulkDataClient(object):
 		# save
 		dbdd.save()
 
-		# hand off to background tasks
-		bg_task = tasks.download_and_index_bulk_data(dbdd.id)
-		logger.debug('bulk data download as background task: %s' % bg_task.task_hash)
-
-		# return
-		return bg_task.task_hash
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Download and Index DPLA Bulk Data: %s' % dbdd.s3_key,
+			task_type = 'download_and_index_bulk_data',
+			task_params_json = json.dumps({
+				'dbdd_id':dbdd.id
+			})
+		)		
+		ct.save()
+		
+		# run celery task
+		bg_task = tasks.download_and_index_bulk_data.delay(dbdd.id)
+		logger.debug('firing bg task: %s' % bg_task)	
+		ct.celery_task_id = bg_task.task_id
+		ct.save()	
 
 
 

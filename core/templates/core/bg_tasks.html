@@ -23,7 +23,7 @@
 					<th>Started</th>
 					<th>Name</th>
 					<th>Type</th>					
-					<th>Task ID</th>
+					<th>Celery Task ID</th>
 					<th>Status</th>
 					<th>Duration</th>
 					<th>Actions</th>
@@ -40,7 +40,7 @@
 				        "ajax": "{% url 'bg_tasks_dt' %}",
 				        "searchDelay": 1000,
 				        "pageLength": 10,
-				        "order": [[ 5, "asc" ], [ 1, "desc" ]]
+				        "order": [[ 1, "desc" ]]
 				    });
 				});
 			</script>

@@ -16,7 +16,7 @@
 						<th>Type</th>
 						<th>Started</th>
 						<th>Duration</th>
-						<th>Task ID</th>
+						<th>Celery Task ID</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -24,7 +24,7 @@
 						<td>{{ ct.get_task_type_display }}</td>
 						<td>{{ ct.start_timestamp }}</td>
 						<td>{{ ct.calc_elapsed_as_string }}</td>
-						<td><code>{{ ct.verbose_name }}</code></td>
+						<td><code>{{ ct.celery_task_id }}</code></td>
 					</tr>
 				</tbody>
 			</table>
