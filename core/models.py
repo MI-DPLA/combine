@@ -68,8 +68,6 @@ from core.xml2kvp import XML2kvp
 
 # import background tasks
 from core import tasks
-from background_task.models_completed import CompletedTask
-from background_task.models import Task
 
 # Livy
 from livy.client import HttpClient

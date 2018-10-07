@@ -1,5 +1,3 @@
-from background_task import background
-
 # generic imports 
 import glob
 import fileinput

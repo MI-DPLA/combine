@@ -138,14 +138,6 @@ ANALYSIS_JOBS_HIERARCHY = {
 	'record_group':'AnalysisRecordGroupf660bb4826bea8b63fd773d27d687cfd' # suffix is md5 hash of 'AnalysisRecordGroup'
 }
 
-
-# Django-Background-Tasks
-# http://django-background-tasks.readthedocs.io/en/latest/#
-MAX_ATTEMPTS = 1
-MAX_RUN_TIME = 14800
-BACKGROUND_TASK_RUN_ASYNC = False
-
-
 # Celery Configurations
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
 CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'

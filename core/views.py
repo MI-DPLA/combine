@@ -33,10 +33,6 @@ from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.views import View
 
-# Django Background Tasks
-from background_task.models_completed import CompletedTask
-from background_task.models import Task
-
 # import models
 from core import models, forms
 from core.es import es_handle
