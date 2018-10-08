@@ -420,21 +420,74 @@ class OAIProvider(object):
 	def _ListMetadataFormats(self):
 
 		'''
-		OAI-PMH verb: ListMetadataFormats
-		List all metadataformats, or optionally, available metadataformats for
-		one item based on available metadata datastreams
+		# OAI-PMH verb: ListMetadataFormats
+		# List all metadataformats, or optionally, available metadataformats for
+		# one item based on published metadata formats
 
-		NOTE: Currently not implemented.  Metadata prefixes are ignored entirely.
-
-		Args:
-			None
-
-		Returns:
-			None
-				sets multiple record nodes to self.record.nodes
+			NOTE: Currently, Combine does not support Metadata Formats for the outgoing OAI-PMH server.
+			All published Records are undoubtedly of a metadata format, but this is opaque to Combine.  This
+			may change in the future, but for now, a shim is in place to return valid OAI-PMH responses for
+			the verb ListMetadataForamts
 		'''
 
-		return self.raise_error('generic','At this time, metadataPrefixes are not implemented for the Combine OAI server')
+		# generic metadata prefix shim
+		generic_metadata_hash = {
+			'prefix':'generic',
+			'schema':'http://generic.org/schema',
+			'namespace':'gnc'
+		}
+
+
+		# identifier provided
+		if 'identifier' in self.args.keys():
+
+			try:
+				logging.debug("identifier provided for ListMetadataFormats, confirming that identifier exists...")
+				single_record = self.published.get_record(self.args['identifier'])
+
+				if single_record != False:					
+
+					mf_node = etree.Element('metadataFormat')
+
+					# write metadataPrefix node
+					prefix = etree.SubElement(mf_node,'metadataPrefix')
+					prefix.text = generic_metadata_hash['prefix']
+
+					# write schema node
+					schema = etree.SubElement(mf_node,'schema')
+					schema.text = generic_metadata_hash['schema']
+
+					# write schema node
+					namespace = etree.SubElement(mf_node,'metadataNamespace')
+					namespace.text = generic_metadata_hash['namespace']
+
+					# append to verb_node and return
+					self.verb_node.append(mf_node)
+					
+				else:
+					raise Exception('record could not be located')
+			except:
+				return self.raise_error('idDoesNotExist','The identifier %s is not found.' % self.args['identifier'])
+			
+		# no identifier, return all available metadataPrefixes
+		else:
+			
+			mf_node = etree.Element('metadataFormat')
+
+			# write metadataPrefix node
+			prefix = etree.SubElement(mf_node,'metadataPrefix')
+			prefix.text = generic_metadata_hash['prefix']
+
+			# write schema node
+			schema = etree.SubElement(mf_node,'schema')
+			schema.text = generic_metadata_hash['schema']
+
+			# write schema node
+			namespace = etree.SubElement(mf_node,'metadataNamespace')
+			namespace.text = generic_metadata_hash['namespace']
+
+			# append to verb_node and return
+			self.verb_node.append(mf_node)
 
 
 	# ListRecords
