@@ -4326,8 +4326,8 @@ class PublishedRecords(object):
 		Returns:
 			(core.model.Record): single Record instance
 		'''
-
-		record_query = self.records.filter(record_id = id)
+		
+		record_query = self.records.filter(record_id = record_id)
 
 		# if one, return
 		if record_query.count() == 1:
