@@ -54,14 +54,14 @@
 								<p style="margin-top:10px;"><a target="_blank" id="oai_endpoint_Identify" href="#"><button type="button" class="btn btn-outline-info btn-sm">Identify <i class="la la-binoculars"></i></button></a> <a target="_blank" id="oai_endpoint_ListSets" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Sets <i class="la la-th-list"></i></button></a> <a target="_blank" id="oai_endpoint_ListMetadataFormats" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Metadata Formats <i class="la la-th-list"></i></button></a></p>
 							</div>
 
-							<!-- <div class="form-group">
+							<div style="display:none;" class="form-group">
 								<label for="verb">OAI Verb</label>
 								<select class="form-control" id="verb" name="verb">
 									<option value="">Select OAI verb...</option>
 									<option value="ListRecords">ListRecords</option>
 									<option value="ListSets">ListSets</option>						
 								</select>
-							</div> -->
+							</div>
 
 							<div class="form-group">
 								<label for="metadataPrefix">OAI metadata format (<code>metadataPrefix</code>)</label>
@@ -72,8 +72,8 @@
 								<label for="scope_type">Harvest type</label>								
 								<select class="form-control" id="scope_type" name="scope_type">									
 									<option value="harvestAllSets">Harvest all sets</option>
-									<option value="setList">Provide comma seperated list of sets to harvest</option>
-									<option value="blackList">Harvest all sets, but provide comma seperated list of sets to exclude</option>
+									<option value="setList">List of sets to harvest (comma separated)</option>
+									<option value="blackList">Harvest all sets, but with list of sets to exclude (comma separated)</option>
 								</select>
 							</div>
 
