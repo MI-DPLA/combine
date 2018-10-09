@@ -49,11 +49,12 @@
 							</div>
 							
 							<div class="form-group">
-								<label for="endpoint">OAI endpoint</label>
+								<label for="endpoint">OAI URL endpoint</label>
 								<input type="text" class="form-control" id="endpoint" name="endpoint" placeholder="http://example.org/oai" disabled>
+								<p style="margin-top:10px;"><a target="_blank" id="oai_endpoint_Identify" href="#"><button type="button" class="btn btn-outline-info btn-sm">Identify <i class="la la-binoculars"></i></button></a> <a target="_blank" id="oai_endpoint_ListSets" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Sets <i class="la la-th-list"></i></button></a> <a target="_blank" id="oai_endpoint_ListMetadataFormats" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Metadata Formats <i class="la la-th-list"></i></button></a></p>
 							</div>
 
-							<div class="form-group">
+							<div style="display:none;" class="form-group">
 								<label for="verb">OAI Verb</label>
 								<select class="form-control" id="verb" name="verb">
 									<option value="">Select OAI verb...</option>
@@ -63,23 +64,21 @@
 							</div>
 
 							<div class="form-group">
-								<label for="metadataPrefix">OAI metadata prefix</label>
-								<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="e.g. mods, MODS, oai_dc, etc.">
+								<label for="metadataPrefix">OAI metadata format (<code>metadataPrefix</code>)</label>
+								<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="note: is case sensitive, e.g. mods, MODS, oai_dc, etc.">
 							</div>
 
 							<div class="form-group">
-								<label for="scope_type">Scope type</label>
-								<select class="form-control" id="scope_type" name="scope_type">
-									<option value="">Select scope type...</option>
-									<option value="setList">setList</option>
-									<option value="whiteList">whiteList</option>
-									<option value="blackList">blackList</option>
-									<option value="harvestAllSets">harvestAllSets</option>					
+								<label for="scope_type">Harvest type</label>								
+								<select class="form-control" id="scope_type" name="scope_type">									
+									<option value="harvestAllSets">Harvest all sets</option>
+									<option value="setList">List of sets to harvest (comma separated)</option>
+									<option value="blackList">Harvest all sets, but with list of sets to exclude (comma separated)</option>
 								</select>
 							</div>
 
-							<div class="form-group">
-								<label for="scope_value">Scope value</label>
+							<div id="scope_value_block" class="form-group">
+								<label id="scope_value_label" for="scope_value">Scope value</label>
 								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
 							</div>
 						</div>
@@ -99,8 +98,38 @@
 			oes = {}
 			{% for oai_endpoint in oai_endpoints %}
 				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};				
-			{% endfor %}			
+			{% endfor %}
 
+			// listen for scope type change
+			$(function() {
+			    $("#scope_type").change(function() {			    	
+
+			    	// harvest all sets
+			    	if ($("#scope_type").val() == 'harvestAllSets') {			    		
+			    		// hide scope value block
+			    		$("#scope_value_block").fadeOut();
+			    	}
+
+			    	// harvest all sets
+			    	if ($("#scope_type").val() == 'setList') {		
+			    		// set scope value lable
+			    		$("#scope_value_label").html('OAI sets to <span class="text-success">include</span>');	    		
+			    		// show scope value block
+			    		$("#scope_value_block").fadeIn();
+			    	}
+
+			    	// harvest all sets
+			    	if ($("#scope_type").val() == 'blackList') {
+			    		// set scope value lable
+			    		$("#scope_value_label").html('OAI sets to <span class="text-danger">exclude</span>');
+			    		// show scope value block
+			    		$("#scope_value_block").fadeIn();
+			    	}
+
+		    	});
+	    	});
+
+			// listen for OAI endpoint change
 			$(function() {
 			    $("#oai_endpoint_id").change(function() {
 
@@ -110,6 +139,11 @@
 			        // set endpoint URL
 			        $('#endpoint').val(oes[oe_id].endpoint);
 
+			        // update identify and list sets buttons
+			        $("#oai_endpoint_Identify").attr('href',(oes[oe_id].endpoint + '?verb=Identify'));
+			        $("#oai_endpoint_ListSets").attr('href',(oes[oe_id].endpoint + '?verb=ListSets'));
+			        $("#oai_endpoint_ListMetadataFormats").attr('href',(oes[oe_id].endpoint + '?verb=ListMetadataFormats'));
+
 			        // set verb
 			        $('#verb option[value="'+oes[oe_id].verb+'"]').attr("selected", "selected");
 
@@ -118,6 +152,7 @@
 
 			        // set scope type
 			        $('#scope_type option[value="'+oes[oe_id].scope_type+'"]').attr("selected", "selected");
+			        $("#scope_type").change();
 
 			        // set scope value
 			        $('#scope_value').val(oes[oe_id].scope_value);
@@ -130,5 +165,6 @@
 			</script>
 		</p>
 	</p>
+
 
 {% endblock %}

@@ -4326,8 +4326,8 @@ class PublishedRecords(object):
 		Returns:
 			(core.model.Record): single Record instance
 		'''
-
-		record_query = self.records.filter(record_id = id)
+		
+		record_query = self.records.filter(record_id = record_id)
 
 		# if one, return
 		if record_query.count() == 1:
@@ -5104,8 +5104,14 @@ class CombineJob(object):
 			# remove old JobTrack instance
 			JobTrack.objects.filter(job=self.job).delete()			
 
-			# re-submit to Livy
-			re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
+			# re-submit to Livy			
+			if re_cjob.job.spark_code != None:
+				re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
+			else:
+				logger.debug('Spark code not set for Job, attempt to re-prepare...')
+				re_cjob.job.spark_code = re_cjob.prepare_job(return_job_code=True)
+				re_cjob.job.save()
+				re_cjob.submit_job_to_livy(eval(re_cjob.job.spark_code))
 
 			# set as undeleted
 			re_cjob.job.deleted = False
