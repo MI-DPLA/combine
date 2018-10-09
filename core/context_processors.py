@@ -82,24 +82,16 @@ def bgtasks_proc(request):
 def combine_git_info(request):
 
 	'''
-	Return branch of combine git repo
-	'''
+	Return state of HEAD for Combine git repo
+	'''	
 
-	# attempt to read tag
-	tag_query = subprocess.Popen("git describe --tags", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-	out = tag_query.stdout.read().decode('utf-8').rstrip("\n")
-	err = tag_query.stderr.read().decode('utf-8').rstrip("\n")
-
-	# if tag found, use
-	if out != '':
-		branch = out
-
-	# else, read branch 
-	else:
-		branch = subprocess.Popen("git rev-parse --abbrev-ref HEAD", shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+	# one liner for branch or tag
+	git_head = subprocess.Popen('head_name="$(git symbolic-ref HEAD 2>/dev/null)" || head_name="$(git describe --tags)"; echo $head_name', shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+	if "/" in git_head:
+		git_head = git_head.split('/')[-1]
 
 	# return
-	return {'COMBINE_GIT_BRANCH':branch}
+	return {'COMBINE_GIT_BRANCH':git_head}
 
 
 
