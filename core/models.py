@@ -5467,13 +5467,13 @@ class HarvestStaticXMLJob(HarvestJob):
 				payload_file.close()
 
 			# handle zip files
-			if job_details['content_type'] == 'application/zip':
+			if job_details['content_type'] in ['application/zip','application/x-zip-compressed']:
 				logger.debug('handling zip file upload')
 				zip_filepath = os.path.join(job_details['payload_dir'], job_details['payload_filename'])
 				zip_ref = zipfile.ZipFile(zip_filepath, 'r')
 				zip_ref.extractall(job_details['payload_dir'])
 				zip_ref.close()
-				os.remove(zip_filepath)				
+				os.remove(zip_filepath)
 
 		# include other information for finding, parsing, and preparing identifiers
 		job_details['xpath_document_root'] = job_params.get('xpath_document_root', None)

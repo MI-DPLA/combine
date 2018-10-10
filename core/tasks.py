@@ -657,7 +657,12 @@ def job_new_validations(ct_id):
 		# loop through validation jobs, and remove from DB if share validation scenario
 		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
 
-		# update job_details with validations	
+		# update job_details
+		cjob.job.refresh_from_db()
+		# remove validation results
+		cjob.job.job_details = json.dumps({ k:v for k,v in cjob.job.job_details_dict.items() if k != 'validation_results' })
+		cjob.job.save()
+		# update scenarios
 		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
 		validation_scenarios.extend(ct.task_params['validation_scenarios'])
 		cjob.job.update_job_details({
@@ -734,7 +739,11 @@ def job_remove_validation(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
-		# remove Job Validation from job_details	
+		# remove Job Validation from job_details
+		cjob.job.refresh_from_db()
+		# remove validation results
+		cjob.job.job_details = json.dumps({ k:v for k,v in cjob.job.job_details_dict.items() if k != 'validation_results' })
+		cjob.job.save()
 		validation_scenarios = cjob.job.job_details_dict['validation_scenarios']
 		if jv.validation_scenario.id in validation_scenarios:
 			validation_scenarios.remove(jv.validation_scenario.id)
