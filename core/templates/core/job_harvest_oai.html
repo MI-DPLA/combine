@@ -17,10 +17,11 @@
 				{% csrf_token %}
 
 				<div class="row">
+
 					<div class="col-md-12">
 
 						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
+						{% include 'core/job_optional_details.html' %}						
 
 						<!-- OAI endpoint -->
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -82,7 +83,9 @@
 								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
 							</div>
 						</div>
+
 					</div>
+
 				</div>				
 
 				<!-- Optional Job Processing -->

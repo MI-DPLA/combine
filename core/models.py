@@ -1287,7 +1287,11 @@ class Job(models.Model):
 			'passed_count':self.record_count,
 			'failure_count':0,
 			'validation_scenarios':[]
-		}		
+		}	
+
+		# if not finished, don't bother counting at all
+		if not self.finished:
+			return results	
 
 		# no validation tests run, return True
 		if self.jobvalidation_set.count() == 0:
