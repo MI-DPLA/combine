@@ -654,7 +654,7 @@ def job_new_validations(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
-		# loop through validation jobs, and remove from DB if share validation scenario
+		# loop through validation jobs, and remove from DB if share validation scenario		
 		cjob.job.remove_validation_jobs(validation_scenarios=[ int(vs_id) for vs_id in ct.task_params['validation_scenarios'] ])
 
 		# update job_details

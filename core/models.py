@@ -1578,15 +1578,24 @@ class Job(models.Model):
 			- NOTE: only one validation job should exist per validation scenario per Job
 		'''
 
-		for jv in self.jobvalidation_set.all():
+		# if validation scenarios provided
+		if validation_scenarios != None:
 
-			# if validation scenarios provided
-			if validation_scenarios != None and jv.validation_scenario.id in validation_scenarios:				
-					logger.debug('validation scenario %s used for %s, removing' % (jv.validation_scenario.id, jv))
-					jv.delete()
+			for vs_id in validation_scenarios:				
 
-			# else, remove all
-			else:
+					logger.debug('removing JobValidations for Job %s, using vs_id %s' % (self, vs_id))
+
+					# attempt to retrieve JobValidation
+					jvs = JobValidation.objects.filter(validation_scenario=ValidationScenario.objects.get(pk=int(vs_id)), job=self)
+
+					# if any found, delete all
+					if jvs.count() > 0:
+						for jv in jvs:
+							jv.delete()
+					
+		# loop through and delete all
+		else:			
+			for jv in self.jobvalidation_set.all():								
 				jv.delete()
 
 		# return 
