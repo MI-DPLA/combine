@@ -26,7 +26,7 @@
 {% else %}
 
 <div class="row">
-	<div class="col-md-6">
+	<div class="col-md-8">
 		<h4>Published Sets</h4>
 		
 		<p>Showing all published Record Groups, where one Job from each Record Group may be published with an optional <code>Publish Set ID</code>.  This <code>Publish Set ID</code> is used during publishing for the outgoing OAI set.  In some cases this may be <span class="text-danger">"None"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
@@ -46,7 +46,7 @@
 				<tr>
 					<td>
 						{% if job.publish_set_id %}
-							<a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank">{{ job.publish_set_id }}</a>
+							<code>{{ job.publish_set_id }}</code>
 						{% else %}
 							<span style="color:red;"><strong>None</strong></span>
 						{% endif %}
@@ -55,7 +55,7 @@
 					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 					<td>{{ job.record_count }}</td>
-					<td><a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish</button></a></td>
+					<td><a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View OAI set <i class="la la-binoculars"></i></button></a> <a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish <i class="la la-close"></i></button></a></td>
 				</tr>
 			{% endfor %}
 
@@ -72,10 +72,10 @@
 
 	</div>
 
-	<div class="col-md-6">
+	<div class="col-md-4">
 		<h4>Analysis</h4>
 		<p>Run Analysis over all Published Records.  This may be useful for double checking uniqueness, record validity, or checking existence in previous DPLA bulk data sets.</p>
-		<a href="{% url 'job_analysis' %}?type=published"><button type="submit" class="btn btn-success btn-sm">Run Analysis for Published Records</button></a>
+		<a href="{% url 'job_analysis' %}?type=published"><button type="submit" class="btn btn-success btn-sm">Run Analysis for Published Records <i class="la la-plus"></i></button></a>
 	</div>
 
 </div>
