@@ -1680,6 +1680,64 @@ class Job(models.Model):
 			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
 
 
+	def add_input_job(self, input_job):
+
+		'''
+		Method to add input Job to self
+			- add JobInput instance
+			- modify self.job_details_dict.input_job_ids
+
+		Args:
+			input_job (int,str,core.models.Job): Input Job to add
+		'''
+
+		# handle types
+		if type(input_job) in [int,str]:
+			input_job = Job.objects.get(pk=int(input_job))
+
+		# create JobInput instance
+		jv = JobInput(job=self, input_job=input_job)
+		jv.save()
+
+		# add input_job.id to input_job_ids
+		input_job_ids = self.job_details_dict['input_job_ids']
+		input_job_ids.append(input_job.id)
+		self.update_job_details({'input_job_ids':input_job_ids})
+
+		# return
+		logger.debug('%s added as input job' % input_job)
+		return True
+
+
+	def remove_input_job(self, input_job):
+
+		'''
+		Method to remove input Job from self
+			- remove JobInput instance
+			- modify self.job_details_dict.input_job_ids
+
+		Args:
+			input_job (int,str,core.models.Job): Input Job to remove
+		'''
+
+		# handle types
+		if type(input_job) in [int,str]:
+			input_job = Job.objects.get(pk=int(input_job))
+
+		# create JobInput instance
+		jv = JobInput.objects.filter(job=self, input_job=input_job)
+		jv.delete()
+
+		# add input_job.id to input_job_ids
+		input_job_ids = self.job_details_dict['input_job_ids']
+		input_job_ids.remove(input_job.id)
+		self.update_job_details({'input_job_ids':input_job_ids})
+
+		# return
+		logger.debug('%s removed as input job' % input_job)
+		return True
+
+
 
 class JobTrack(models.Model):
 
