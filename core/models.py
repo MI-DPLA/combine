@@ -469,7 +469,7 @@ class RecordGroup(models.Model):
 
 		# loop through jobs
 		for job in record_group_jobs:				
-				job_ld = job.get_lineage(directionality='downstream')
+				job_ld = job.get_lineage()
 				ld['edges'].extend(job_ld['edges'])
 				ld['nodes'].extend(job_ld['nodes'])				
 
@@ -1005,10 +1005,11 @@ class Job(models.Model):
 			settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
 
 
-	def get_lineage(self, directionality='downstream'):
+	def get_lineage(self):
 
 		'''
-		Method to retrieve lineage of self
+		Method to retrieve lineage of self.
+			- creates nodes and edges dictionary of all "upstream" Jobs
 		'''
 
 		# lineage dict
@@ -1038,21 +1039,20 @@ class Job(models.Model):
 		ld['nodes'].append(node_dict)
 
 		# update lineage dictionary recursively
-		self._get_parent_jobs(self, ld, directionality=directionality)
+		self._get_parent_jobs(self, ld)
 
 		# return		
 		return ld
 
 
-	def _get_parent_jobs(self, job, ld, directionality='downstream'):
+	def _get_parent_jobs(self, job, ld):
 
 		'''
 		Method to recursively find parent jobs and add to lineage dictionary
 
 		Args:
 			job (core.models.Job): job to derive all upstream jobs from
-			ld (dict): lineage dictionary
-			directionality (str)['upstream','downstream']: directionality for edges
+			ld (dict): lineage dictionary			
 
 		Returns:
 			(dict): lineage dictionary, updated with upstream parents
@@ -1096,13 +1096,9 @@ class Job(models.Model):
 					# append to nodes
 					ld['nodes'].append(node_dict)
 
-				# determine directionality
-				if directionality == 'upstream':
-					from_node = job.id
-					to_node = pj.id
-				elif directionality == 'downstream':
-					from_node = pj.id
-					to_node = job.id
+				# set edge directionality				
+				from_node = pj.id
+				to_node = job.id
 
 				# add edge
 				edge_id = '%s_to_%s' % (from_node, to_node)
@@ -1196,14 +1192,13 @@ class Job(models.Model):
 					ld['edges'].append(edge_dict)
 
 				# recurse
-				self._get_parent_jobs(pj, ld, directionality=directionality)
+				self._get_parent_jobs(pj, ld)
 
 
 	@staticmethod
 	def get_all_jobs_lineage(
 		organization=None,
 		record_group=None,
-		directionality='downstream',
 		jobs_query_set=None,
 		exclude_analysis_jobs=True):
 
@@ -1214,7 +1209,6 @@ class Job(models.Model):
 		Args:
 			organization(core.models.Organization): Organization to filter results by
 			record_group(core.models.RecordGroup): RecordGroup to filter results by
-			directionality(str)['upstream','downstream']: directionality of network edges
 			jobs_query_set(django.db.models.query.QuerySet): optional pre-constructed Job model QuerySet
 
 		Returns:
@@ -1247,7 +1241,7 @@ class Job(models.Model):
 
 		# loop through jobs
 		for job in jobs:
-				job_ld = job.get_lineage(directionality=directionality)
+				job_ld = job.get_lineage()
 				ld['edges'].extend(job_ld['edges'])
 				ld['nodes'].extend(job_ld['nodes'])
 
@@ -1606,16 +1600,16 @@ class Job(models.Model):
 		return True
 
 
-	def get_downstream_lineage(self):
+	def get_downstream_jobs(self):
 
 		'''
-		Method to retrieve ordered lineage of downstream jobs		
+		Method to retrieve downstream jobs, ordered by order required for re-running
 		'''
 
 		def _job_recurse(job_node):
 
 			# add to list
-			job_list.add(job_node)
+			job_set.add(job_node)
 
 			# get children
 			downstream_jobs = JobInput.objects.filter(input_job=job_node)
@@ -1623,18 +1617,44 @@ class Job(models.Model):
 			# if children, re-run
 			if downstream_jobs.count() > 0:
 
+				# TODO: Need to determine if any of these use each other for input...
+				# JobInput.objects.filter(job_id__in=[63,64,65], input_job_id__in=[63,64,65])
+
+				# determine order of siblings to parent				
+				siblings = [ downstream_job.job.id for downstream_job in downstream_jobs ]
+
+				# add to list
+				for downstream_job in downstream_jobs:
+
+					# append to list if not in job_list
+					if downstream_job.job not in job_list:
+						job_list.append(downstream_job.job)
+
+				# recurse
 				for downstream_job in downstream_jobs:
 
 					# recurse
 					_job_recurse(downstream_job.job)
 		
-		# capture terminal jobs
-		job_list = set()
+		# set lists and seed
+		job_set = set()
+		job_list = [self]
 
 		# recurse
 		_job_recurse(self)
 
-		return sorted(list(job_list), key=lambda j: j.id)
+		# sort by id
+		return job_list
+		return sorted(list(job_set), key=lambda j: j.id)
+
+
+	def get_upstream_jobs(self):
+
+		'''
+		Method to retrieve downstream jobs, ordered by order required for re-running
+		'''
+
+		pass		
 
 
 	def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
@@ -1680,7 +1700,7 @@ class Job(models.Model):
 			logger.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
 
 
-	def add_input_job(self, input_job):
+	def add_input_job(self, input_job, job_spec_input_filters=None):
 
 		'''
 		Method to add input Job to self
@@ -1689,24 +1709,38 @@ class Job(models.Model):
 
 		Args:
 			input_job (int,str,core.models.Job): Input Job to add
+			job_spec_input_filters (dict): dictionary of Job specific input filters
 		'''
 
-		# handle types
-		if type(input_job) in [int,str]:
-			input_job = Job.objects.get(pk=int(input_job))
+		if self.job_type_family() not in ['HarvestJob']:
 
-		# create JobInput instance
-		jv = JobInput(job=self, input_job=input_job)
-		jv.save()
+			# handle types
+			if type(input_job) in [int,str]:
+				input_job = Job.objects.get(pk=int(input_job))
 
-		# add input_job.id to input_job_ids
-		input_job_ids = self.job_details_dict['input_job_ids']
-		input_job_ids.append(input_job.id)
-		self.update_job_details({'input_job_ids':input_job_ids})
+			# create JobInput instance
+			jv = JobInput(job=self, input_job=input_job)
+			jv.save()
 
-		# return
-		logger.debug('%s added as input job' % input_job)
-		return True
+			# add input_job.id to input_job_ids		
+			input_job_ids = self.job_details_dict['input_job_ids']
+			input_job_ids.append(input_job.id)
+			self.update_job_details({'input_job_ids':input_job_ids})
+
+			# if job spec input filteres provided, add
+			if job_spec_input_filters != None:
+				input_filters = self.job_details_dict['input_filters']
+				input_filters['job_specific'][str(input_job.id)] = job_spec_input_filters
+				self.update_job_details({'input_filters':input_filters})
+
+			# return
+			logger.debug('%s added as input job' % input_job)
+			return True
+
+		else:
+
+			logger.debug('cannot add Input Job to Job type: %s' % self.job_type_family())
+			return False
 
 
 	def remove_input_job(self, input_job):
@@ -1717,25 +1751,41 @@ class Job(models.Model):
 			- modify self.job_details_dict.input_job_ids
 
 		Args:
-			input_job (int,str,core.models.Job): Input Job to remove
+			input_job (int,str,core.models.Job): Input Job to remove			
 		'''
 
-		# handle types
-		if type(input_job) in [int,str]:
-			input_job = Job.objects.get(pk=int(input_job))
+		if self.job_type_family() not in ['HarvestJob']:
 
-		# create JobInput instance
-		jv = JobInput.objects.filter(job=self, input_job=input_job)
-		jv.delete()
+			# handle types
+			if type(input_job) in [int,str]:
+				input_job = Job.objects.get(pk=int(input_job))
 
-		# add input_job.id to input_job_ids
-		input_job_ids = self.job_details_dict['input_job_ids']
-		input_job_ids.remove(input_job.id)
-		self.update_job_details({'input_job_ids':input_job_ids})
+			# create JobInput instance
+			jv = JobInput.objects.filter(job=self, input_job=input_job)
+			jv.delete()
 
-		# return
-		logger.debug('%s removed as input job' % input_job)
-		return True
+			# add input_job.id to input_job_ids
+			input_job_ids = self.job_details_dict['input_job_ids']
+			try:
+				input_job_ids.remove(input_job.id)
+			except:
+				logger.debug('input job_id not found in input_job_ids: %s' % input_job.id)
+			self.update_job_details({'input_job_ids':input_job_ids})
+
+			# check for job in job spec filters, remove if found
+			if str(input_job.id) in self.job_details_dict['input_filters']['job_specific'].keys():
+				input_filters = self.job_details_dict['input_filters']
+				input_filters['job_specific'].pop(str(input_job.id))
+				self.update_job_details({'input_filters':input_filters})
+
+			# return
+			logger.debug('%s removed as input job' % input_job)
+			return True
+
+		else:
+
+			logger.debug('cannot add Input Job to Job type: %s' % self.job_type_family())
+			return False
 
 
 
@@ -5119,7 +5169,7 @@ class CombineJob(object):
 		'''
 
 		# get lineage
-		rerun_jobs = self.job.get_downstream_lineage()
+		rerun_jobs = self.job.get_downstream_jobs()
 
 		# if not running downstream, select only this job
 		if not rerun_downstream:
@@ -5200,7 +5250,7 @@ class CombineJob(object):
 		'''
 
 		if clone_downstream:
-			to_clone = self.job.get_downstream_lineage()		
+			to_clone = self.job.get_downstream_jobs()		
 		else:
 			to_clone = [self.job]
 

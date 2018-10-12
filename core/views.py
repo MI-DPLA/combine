@@ -589,9 +589,9 @@ def all_jobs(request):
 
 	# get job lineage for all jobs
 	if include_analysis:
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=False)
+		ld = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=False)
 	else:
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', exclude_analysis_jobs=True)
+		ld = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=True)
 
 	# loop through jobs and update status
 	for job in jobs:
@@ -669,7 +669,7 @@ def stop_jobs(request):
 		if downstream_toggle:
 
 			# add rerun lineage for this job to set
-			job_stop_set.update(cjob.job.get_downstream_lineage())
+			job_stop_set.update(cjob.job.get_downstream_jobs())
 
 		# else, just job
 		else:
@@ -726,7 +726,7 @@ def delete_jobs(request):
 		if downstream_toggle:
 
 			# add rerun lineage for this job to set
-			job_delete_set.update(cjob.job.get_downstream_lineage())
+			job_delete_set.update(cjob.job.get_downstream_jobs())
 
 		# else, just job
 		else:
@@ -803,7 +803,7 @@ def move_jobs(request):
 		if downstream_toggle:
 
 			# add rerun lineage for this job to set
-			job_move_set.update(cjob.job.get_downstream_lineage())
+			job_move_set.update(cjob.job.get_downstream_jobs())
 
 		# else, just job
 		else:
@@ -1037,7 +1037,7 @@ def rerun_jobs(request):
 		if downstream_toggle:
 
 			# add rerun lineage for this job to set
-			job_rerun_set.update(cjob.job.get_downstream_lineage())
+			job_rerun_set.update(cjob.job.get_downstream_jobs())
 
 		# else, just job
 		else:
@@ -1332,7 +1332,7 @@ def job_transform(request, org_id, record_group_id):
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
 		# get job lineage for all jobs (filtered to input jobs scope)
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+		ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -1406,7 +1406,7 @@ def job_merge(request, org_id, record_group_id):
 		field_mappers = models.FieldMapper.objects.all()
 
 		# get job lineage for all jobs (filtered to input jobs scope)
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+		ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -2917,7 +2917,7 @@ def job_analysis(request):
 		rits = models.RecordIdentifierTransformationScenario.objects.all()
 
 		# get job lineage for all jobs (filtered to input jobs scope)
-		ld = models.Job.get_all_jobs_lineage(directionality='downstream', jobs_query_set=input_jobs)
+		ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
 		# get all bulk downloads
 		bulk_downloads = models.DPLABulkDataDownload.objects.all()
