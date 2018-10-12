@@ -62,6 +62,7 @@ sphinx-autobuild==0.7.1
 sphinx-rtd-theme==0.3.0
 SQLAlchemy==1.1.13
 sxsdiff==0.3.0
+toposort
 traitlets==4.3.2
 urllib3==1.22
 wcwidth==0.1.7
