@@ -102,6 +102,8 @@ import boto3
 from celery.result import AsyncResult
 from celery.task.control import revoke
 
+# toposort
+from toposort import toposort, toposort_flatten, CircularDependencyError
 
 
 ####################################################################
@@ -1600,16 +1602,13 @@ class Job(models.Model):
 		return True
 
 
-	def get_downstream_jobs(self):
+	def get_downstream_jobs(self, topographic_sort=True):
 
 		'''
 		Method to retrieve downstream jobs, ordered by order required for re-running
 		'''
 
-		def _job_recurse(job_node):
-
-			# add to list
-			job_set.add(job_node)
+		def _job_recurse(job_node):			
 
 			# get children
 			downstream_jobs = JobInput.objects.filter(input_job=job_node)
@@ -1617,44 +1616,70 @@ class Job(models.Model):
 			# if children, re-run
 			if downstream_jobs.count() > 0:
 
-				# TODO: Need to determine if any of these use each other for input...
-				# JobInput.objects.filter(job_id__in=[63,64,65], input_job_id__in=[63,64,65])
-
-				# determine order of siblings to parent				
-				siblings = [ downstream_job.job.id for downstream_job in downstream_jobs ]
-
-				# add to list
-				for downstream_job in downstream_jobs:
-
-					# append to list if not in job_list
-					if downstream_job.job not in job_list:
-						job_list.append(downstream_job.job)
-
 				# recurse
 				for downstream_job in downstream_jobs:
 
+					# add to sets
+					job_set.add(downstream_job.job)
+					visited.add(downstream_job.job)
+
 					# recurse
-					_job_recurse(downstream_job.job)
+					if downstream_job.job not in visited:
+						_job_recurse(downstream_job.job)
 		
-		# set lists and seed
-		job_set = set()
-		job_list = [self]
+		# set lists and seed		
+		visited = set()
+		job_set = {self}
 
 		# recurse
-		_job_recurse(self)
+		_job_recurse(self)		
 
-		# sort by id
-		return job_list
-		return sorted(list(job_set), key=lambda j: j.id)
+		# return topographically sorted
+		if topographic_sort:
+			return self._topographic_sort_jobs(job_set)
+		else:
+			return list(job_set)	
 
 
-	def get_upstream_jobs(self):
+	def get_upstream_jobs(self, topographic_sort=True):
 
 		'''
-		Method to retrieve downstream jobs, ordered by order required for re-running
+		Method to retrieve upstream jobs
+			- placheholder for now
 		'''
 
 		pass		
+
+
+	def _topographic_sort_jobs(self, job_set):
+
+		'''
+		Method to topographically sort set of Jobs,
+		using toposort (https://bitbucket.org/ericvsmith/toposort)
+
+			- informed by cartesian JobInput links that exist between all Jobs in job_set
+
+		Args:
+			job_set (set): set of unordered jobs
+		'''
+
+		# get all lineage edges given Job set
+		lineage_edges = JobInput.objects.filter(job__in=job_set, input_job__in=job_set)
+
+		# loop through and build graph
+		edge_hash = {}
+		for edge in lineage_edges:
+
+			# if not in hash, add
+			if edge.job not in edge_hash:
+				edge_hash[edge.job] = set()
+
+			# append required input job
+			edge_hash[edge.job].add(edge.input_job)
+
+		# topographically sort and return		
+		topo_sorted_jobs = list(toposort_flatten(edge_hash, sort=False))		
+		return topo_sorted_jobs
 
 
 	def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
@@ -1717,6 +1742,12 @@ class Job(models.Model):
 			# handle types
 			if type(input_job) in [int,str]:
 				input_job = Job.objects.get(pk=int(input_job))
+
+			# check that inverse relationship does not exist,
+			#  resulting in circular dependency
+			if JobInput.objects.filter(job=input_job, input_job=self).count() > 0:
+				logger.debug('cannot add %s as Input Job, would result in circular dependency' % input_job)
+				return False
 
 			# create JobInput instance
 			jv = JobInput(job=self, input_job=input_job)
