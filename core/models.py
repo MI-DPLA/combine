@@ -5485,6 +5485,13 @@ class HarvestOAIJob(HarvestJob):
 		for param,value in overrides.items():
 			oai_params[param] = value
 
+		# get include <header> toggle
+		include_oai_record_header = job_params.get('include_oai_record_header', False);
+		if include_oai_record_header == 'true':
+			oai_params['include_oai_record_header'] = True
+		elif include_oai_record_header == False:
+			oai_params['include_oai_record_header'] = False
+
 		# save to job_details
 		job_details['oai_params'] = oai_params
 		

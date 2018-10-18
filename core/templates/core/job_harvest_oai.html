@@ -41,7 +41,7 @@
 						</div>
 
 						<!-- optional OAI endpoint defaults overrides -->				
-						<div id="oai_endpoint_defaults" style="background-color:#E4E4E3; padding:10px; border-radius:10px; margin-bottom:20px; display:none;">							
+						<div id="oai_endpoint_defaults" style="background-color:rgb(245,245,245); padding:10px; border-radius:10px; margin-bottom:20px; display:none;">							
 							<div class="alert alert-warning alert-dismissible fade show" role="alert">
 								The following are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job
 								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -82,6 +82,15 @@
 								<label id="scope_value_label" for="scope_value">Scope value</label>
 								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
 							</div>
+
+							<!-- include header toggle -->
+							<div class="form-group">
+								<span class="switch switch-sm">
+									<input type="checkbox" class="switch-sm" id="include_oai_record_header" name="include_oai_record_header" value="true">
+									<label style="font-weight:bold; font-size:110%;" for="include_oai_record_header">Include <code>&lt;header&gt;</code> with OAI record XML?</label>
+								</span>
+							</div>
+
 						</div>
 
 					</div>

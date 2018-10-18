@@ -861,25 +861,29 @@ class HarvestOAISpark(CombineSparkJob):
 		# repartition
 		records = records.repartition(settings.SPARK_REPARTITION)
 
-		# attempt to find and select <metadata> element from OAI record, else filter out
-		def find_metadata_udf(document):
-			if type(document) == str:
-				xml_root = etree.fromstring(document)
-				m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
-				if m_root is not None:
-					# expecting only one child to <metadata> element
-					m_children = m_root.getchildren()
-					if len(m_children) == 1:
-						m_child = m_children[0]
-						m_string = etree.tostring(m_child).decode('utf-8')
-						return m_string
+		# if removing OAI record <header>
+		if not self.job_details['oai_params']['include_oai_record_header']:
+			# attempt to find and select <metadata> element from OAI record, else filter out
+			def find_metadata_udf(document):
+				if type(document) == str:
+					xml_root = etree.fromstring(document)
+					m_root = xml_root.find('{http://www.openarchives.org/OAI/2.0/}metadata')
+					if m_root is not None:
+						# expecting only one child to <metadata> element
+						m_children = m_root.getchildren()
+						if len(m_children) == 1:
+							m_child = m_children[0]
+							m_string = etree.tostring(m_child).decode('utf-8')
+							return m_string
+					else:
+						return 'none'
 				else:
 					return 'none'
-			else:
-				return 'none'
 
-		metadata_udf = udf(lambda col_val: find_metadata_udf(col_val), StringType())
-		records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
+			metadata_udf = udf(lambda col_val: find_metadata_udf(col_val), StringType())
+			records = records.select(*[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
+		
+		# filter where not none
 		records = records.filter(records.document != 'none')
 
 		# establish 'success' column, setting all success for Harvest
