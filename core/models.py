@@ -51,6 +51,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth import signals
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
+from django.core import serializers
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.urlresolvers import reverse
 from django.db import connection, models, transaction
@@ -1620,12 +1621,12 @@ class Job(models.Model):
 				for downstream_job in downstream_jobs:
 
 					# add to sets
-					job_set.add(downstream_job.job)
-					visited.add(downstream_job.job)
+					job_set.add(downstream_job.job)					
 
 					# recurse
 					if downstream_job.job not in visited:
 						_job_recurse(downstream_job.job)
+						visited.add(downstream_job.job)
 		
 		# set lists and seed		
 		visited = set()
@@ -7445,6 +7446,287 @@ class GlobalMessageClient(object):
 
 
 
+class StateIOClient(object):
+
+	'''
+	Client to facilitate export and import of Organization, Record Group,
+	and Job states in Combine
+
+	Considerations:
+		- some kind of metadata/manifest, JSON, to accompany package
+		- tar.gz outbound
+	'''
+
+
+	def __init__(self):
+		self.export_dict = {}
+
+
+	def export_state(self, model_instance):
+
+		'''
+		Method to export state of model instance: Org, RecordGroup, or Job
+		'''
+
+		# set model_instance
+		self.model_instance = model_instance
+
+		# prepare tmp location for export
+		self.export_path = '/tmp/%s' % uuid.uuid4().hex
+		os.mkdir(self.export_path)
+
+		# handle model instance types
+		if type(self.model_instance) == Organization:
+			logger.debug('preparing to export Organization: %s' % self.model_instance)
+
+		elif type(self.model_instance) == RecordGroup:
+			logger.debug('preparing to export RecordGroup: %s' % self.model_instance)
+
+		elif type(self.model_instance) in [Job, CombineJob]:
+
+			logger.debug('preparing to export Job: %s' % self.model_instance)
+
+			# collect components
+			components = self._job_collect_related()
+
+			# serialize for export
+			self.package_export()
+
+		else:
+			logger.debug('Unsure how to export %s, type %s' % (self.model_instance, type(self.model_instance)))
+
+
+	def _job_collect_related(self):
+
+		'''
+		Method to collect components needed for export
+			- Connected Jobs from lineage
+				- upstream, downstream?
+			- Related scenarios (mostly, to facilitate re-running once re-imported)
+				- OAI endpoint 
+				- transformation
+				- validation
+				- RITS <------- waiting
+				- DBDD <------- waiting
+				- field mapper configurations <------- waiting, might need to store ID in job_details?
+			- ElasticSearch index for each Job
+				- will need to rewrite job_id
+			- Records from Mongo
+				- will need to rewrite job_id
+			- Validations from Mongo
+
+		TODO:
+			- break pieces into sub-methods
+		'''
+
+		############################ 
+		# JOBS
+		############################ 
+
+		# prepare unique Job set
+		self.export_dict['jobs'] = set()
+
+		# get downstream
+		downstream_jobs = self.model_instance.get_downstream_jobs()
+		self.export_dict['jobs'].update(downstream_jobs)
+
+		# get upstream for all Jobs
+		upstream_jobs = []
+		for job in self.export_dict['jobs']:
+
+			# get lineage
+			# TODO: replace with new upstream lineage method that's coming
+			lineage = job.get_lineage()
+
+			# loop through nodes and add to set
+			for lineage_job_dict in lineage['nodes']:
+				upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
+
+		# update set
+		self.export_dict['jobs'].update(upstream_jobs)
+
+
+		############################ 
+		# TRANSFORMATION SCENARIOS
+		############################
+
+		# prepare trans dict
+		self.export_dict['transformations'] = set()
+
+		# loop through Jobs, looking for Transformation Scenarios
+		for job in self.export_dict['jobs']:
+
+			# check job details for transformation used
+			if 'transformation' in job.job_details_dict.keys():
+				self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
+
+
+		############################ 
+		# VALIDATION SCENARIOS
+		############################
+
+		# prepare val dict
+		self.export_dict['validations'] = set()
+
+		# loop through Jobs, looking for Validations applied Scenarios
+		for job in self.export_dict['jobs']:
+
+			# check for JobValidation instances
+			jvs = JobValidation.objects.filter(job=job)
+
+			# loop through and add to set
+			for jv in jvs:
+				self.export_dict['validations'].add(jv.validation_scenario)				
+
+
+		############################ 
+		# OAI ENDPOINTS
+		############################
+
+		# prepare val dict
+		self.export_dict['oai_endpoints'] = set()
+
+		# loop through Jobs, looking for OAI endpoints that need exporting
+		for job in self.export_dict['jobs']:
+
+			if job.job_type == 'HarvestOAIJob':
+
+				# read OAI endpoint from params
+				self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
+
+
+		############################ 
+		# JOB RECORDS (Mongo)
+		############################
+		'''
+		Consider: mongoexport
+			- make temp dir where exports will go
+			- loop through Jobs, exporting as JSONlines
+				- keep job_id for now, as do not yet know updates
+			- tar and compress, add filepath to export_dict 
+		'''
+
+		# prepare records export dir
+		record_exports_path = '%s/record_exports' % self.export_path
+		os.mkdir(record_exports_path)
+
+		# loop through jobs and export
+		for job in self.export_dict['jobs']:
+
+			# prepare command
+			cmd = 'mongoexport --db combine --collection record --out %(record_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
+				'job_id':job.id,
+				'record_exports_path':record_exports_path
+			}
+
+			logger.debug("mongoexport cmd: %s" % cmd)
+
+			# run
+			os.system(cmd)
+
+
+		############################ 
+		# JOB VALIDATIONS (Mongo)
+		############################
+
+		# prepare records export dir
+		validation_exports_path = '%s/validation_exports' % self.export_path
+		os.mkdir(validation_exports_path)
+
+		# loop through jobs and export
+		for job in self.export_dict['jobs']:
+
+			# prepare command
+			cmd = 'mongoexport --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
+				'job_id':job.id,
+				'validation_exports_path':validation_exports_path
+			}
+
+			logger.debug("mongoexport cmd: %s" % cmd)
+
+			# run
+			os.system(cmd)
+
+
+		############################ 
+		# JOB MAPPED FIELDS (ES)
+		############################
+		'''
+		Consider: elasticdump
+		'''
+
+		# prepare records export dir
+		es_export_path = '%s/mapped_fields_exports' % self.export_path
+		os.mkdir(es_export_path)
+
+		# loop through jobs and export
+		for job in self.export_dict['jobs']:
+
+			# build command list
+			cmd = [
+				"elasticdump",
+				"--input=http://localhost:9200/j%s" % job.id,
+				"--output=%(es_export_path)s/j%(job_id)s_mapped_fields.json" % {'es_export_path':es_export_path, 'job_id':job.id},
+				"--type=data",
+				"--sourceOnly",
+				"--ignore-errors",
+				"--noRefresh"
+			]
+
+			logger.debug("elasticdump cmd: %s" % cmd)
+
+			# run cmd
+			os.system(" ".join(cmd))
+
+	
+	def package_export(self):
+
+		'''
+		Method to serialize model instances, and combine with serializations already on disk
+
+			- for each model instance, serialize to JSON
+			- write as JSON lines (?) to file, save to disk
+			- likely, thinking through now, a directory that was started at export_state()
+				- this can be where Records and ES go as well, all tar.gz'ed at the end
+
+			- OR, consider sql dumping?
+				- will have organized list of model instances, across multiple tables
+					- command line:
+					mysqldump -ucombine -p combine core_job --skip-create-options --skip-add-drop-table --no-create-info --where="id IN (4,5)" > /tmp/sqldump.sql
+					- SQL statement, which could be issued from python
+
+		'''
+
+		# serialize Django model instances
+		# Jobs
+		with open('%s/django_objects.json' % self.export_path,'w') as f:
+			
+			# combine all model instances, across model types
+			to_serialize = []
+			for k in ['jobs','transformations','validations','oai_endpoints']:
+				to_serialize.extend(self.export_dict[k])
+
+			# write as single JSON file
+			f.write(serializers.serialize('json', to_serialize))
+
+
+	def import_state(self):
+
+		'''
+		Method to import state package
+			** Do some fuzzy matching, not adding if clearly duplicate?
+			** If payload is different, but names identical, add (CLONE) to name? 
+
+		Approach:
+			- loop through model instances
+			- store pk in hash, remove, and save(), adding new pk to hash connected to old one
+			- use this hash when rewriting:
+				- Mongo records
+				- Mongo validations
+				- ES mapped fields
+		'''
+
+		pass	
 
 
 
