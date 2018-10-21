@@ -4517,14 +4517,17 @@ class PublishedRecords(object):
 			logger.debug('calculating published field counts, saving, and returning')
 			
 			# calc
-			published_field_counts = self.esi.count_indexed_fields()			
+			published_field_counts = self.esi.count_indexed_fields()
 
-			# add id and replace (upsert if necessary)
-			published_field_counts['_id'] = 'published_field_counts'
-			doc = mc_handle.combine.misc.replace_one(
-				{'_id':'published_field_counts'},
-				published_field_counts,
-				upsert=True)
+			# if published_field_counts
+			if published_field_counts:			
+
+				# add id and replace (upsert if necessary)
+				published_field_counts['_id'] = 'published_field_counts'
+				doc = mc_handle.combine.misc.replace_one(
+					{'_id':'published_field_counts'},
+					published_field_counts,
+					upsert=True)
 
 			# return
 			return published_field_counts
