@@ -7478,6 +7478,19 @@ class StateIOClient(object):
 		self.export_path = '/tmp/%s' % uuid.uuid4().hex
 		os.mkdir(self.export_path)
 
+		# init export manifest dictionary
+		self.export_manifest = {
+			'root_instance_id':model_instance.id,
+			'root_instance_type':type(model_instance).__name__,
+			'downstream_jobs_ordered':[],
+			'upstream_jobs_ordered':[],
+			'pk_hash':{
+				'jobs':{},
+				'record_groups':{},
+				'organizations':{}
+			}
+		}
+
 		# handle model instance types
 		if type(self.model_instance) == Organization:
 			logger.debug('preparing to export Organization: %s' % self.model_instance)
@@ -7533,20 +7546,24 @@ class StateIOClient(object):
 		downstream_jobs = self.model_instance.get_downstream_jobs()
 		self.export_dict['jobs'].update(downstream_jobs)
 
-		# get upstream for all Jobs
-		upstream_jobs = []
-		for job in self.export_dict['jobs']:
+		# write to manifest
+		for job in downstream_jobs:
+			self.export_manifest['downstream_jobs_ordered'].append(job.id)
 
-			# get lineage
-			# TODO: replace with new upstream lineage method that's coming
-			lineage = job.get_lineage()
+		# # get upstream for all Jobs
+		# upstream_jobs = []
+		# for job in self.export_dict['jobs']:
 
-			# loop through nodes and add to set
-			for lineage_job_dict in lineage['nodes']:
-				upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
+		# 	# get lineage
+		# 	# TODO: replace with new upstream lineage method that's coming
+		# 	lineage = job.get_lineage()
 
-		# update set
-		self.export_dict['jobs'].update(upstream_jobs)
+		# 	# loop through nodes and add to set
+		# 	for lineage_job_dict in lineage['nodes']:
+		# 		upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
+
+		# # update set with upstream
+		# self.export_dict['jobs'].update(upstream_jobs)
 
 
 		############################ 
@@ -7701,7 +7718,6 @@ class StateIOClient(object):
 		'''
 
 		# serialize Django model instances
-		# Jobs
 		with open('%s/django_objects.json' % self.export_path,'w') as f:
 			
 			# combine all model instances, across model types
@@ -7712,24 +7728,89 @@ class StateIOClient(object):
 			# write as single JSON file
 			f.write(serializers.serialize('json', to_serialize))
 
+		# write manifest to directory
+		with open('%s/export_manifest.json' % self.export_path,'w') as f:
+			f.write(json.dumps(self.export_manifest))
 
-	def import_state(self):
+		# return export_path
+		return self.export_path
+
+
+	def import_state(self, export_path, load_only=False):
 
 		'''
-		Method to import state package
-			** Do some fuzzy matching, not adding if clearly duplicate?
-			** If payload is different, but names identical, add (CLONE) to name? 
+		Import exported state
 
-		Approach:
-			- loop through model instances
-			- store pk in hash, remove, and save(), adding new pk to hash connected to old one
-			- use this hash when rewriting:
-				- Mongo records
-				- Mongo validations
-				- ES mapped fields
+		Args:
+			export_path (str): location on disk of unzipped export directory
+
+		Returns:
+
 		'''
 
-		pass	
+		# set export path
+		self.export_path = export_path
+
+		# parse export_manifest
+		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
+			self.export_manifest = json.loads(f.read())
+
+
+		############################ 
+		# DJANGO OBJECTS
+		############################ 
+		# load UNORDERED, serialized django objects
+		self.deser_django_objects = []
+		with open('%s/django_objects.json' % self.export_path, 'r') as f:
+			django_objects_json = f.read()
+		for obj in serializers.deserialize('json', django_objects_json):
+			self.deser_django_objects.append(obj)
+
+		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
+		for job_id in self.export_manifest['downstream_jobs_ordered']:
+
+			logger.debug('reconstituting original job_id %s' % job_id)
+
+			# retrieve deserialized job
+			job = self._get_django_model_instance(job_id, Job)
+
+			# drop pk, save, and note new id
+			job.object.id = None
+			job.save()
+
+			# update pk_hash
+			self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
+
+
+
+	def _get_django_model_instance(self, instance_id, instance_type, instances=None):
+
+		'''
+		Method to retrieve model instance from deserialized "bag", 
+		by instance type and id.
+
+		Could be more performant, but length of deserialized objects 
+		makes it relatively negligable.
+
+		Args:
+			instance_id (int): model instance PK
+			intsance_type (django.models.model): model instance type
+		'''
+
+		# if instances not provided, assumed self.deser_django_objects
+		if instances == None:
+			instances = self.deser_django_objects
+
+		# loop through deserialized objects
+		for obj in instances:
+			if obj.object.id == instance_id and type(obj.object) == instance_type:
+				logger.debug('deserialized object found: %s' % obj.object)		
+				return obj
+
+
+
+
+
 
 
 
