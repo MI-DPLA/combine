@@ -7758,7 +7758,7 @@ class StateIOClient(object):
 
 		############################ 
 		# DJANGO OBJECTS
-		############################ 
+		############################
 		# load UNORDERED, serialized django objects
 		self.deser_django_objects = []
 		with open('%s/django_objects.json' % self.export_path, 'r') as f:
@@ -7766,6 +7766,10 @@ class StateIOClient(object):
 		for obj in serializers.deserialize('json', django_objects_json):
 			self.deser_django_objects.append(obj)
 
+
+		############################ 
+		# DJANGO OBJECTS: JOBS
+		############################
 		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
 		for job_id in self.export_manifest['downstream_jobs_ordered']:
 
@@ -7781,6 +7785,20 @@ class StateIOClient(object):
 			# update pk_hash
 			self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
 
+
+		############################ 
+		# DJANGO OBJECTS: JOB INPUTS
+		############################
+
+		# get all related Job Inputs
+		job_inputs = JobInput.objects.filter(job__in=self.export_manifest['downstream_jobs_ordered'], input_job__in=self.export_manifest['downstream_jobs_ordered'])
+
+		# loop through, remove PK, and rewrite based on hash
+		for ji in job_inputs:
+			ji.id = None
+			ji.job_id = self.export_manifest['pk_hash']['jobs'][ji.job_id]
+			ji.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.input_job_id]
+			ji.save()
 
 
 	def _get_django_model_instance(self, instance_id, instance_type, instances=None):
