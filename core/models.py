@@ -7475,7 +7475,7 @@ class StateIOClient(object):
 		self.model_instance = model_instance
 
 		# prepare tmp location for export
-		self.export_path = '/tmp/%s' % uuid.uuid4().hex
+		self.export_path = '/tmp/stateio/%s' % uuid.uuid4().hex
 		os.mkdir(self.export_path)
 
 		# init export manifest dictionary
@@ -7487,7 +7487,10 @@ class StateIOClient(object):
 			'pk_hash':{
 				'jobs':{},
 				'record_groups':{},
-				'organizations':{}
+				'organizations':{},
+				'transformation_scenarios':{},
+				'validation_scenarios':{},
+				'oai_endpoints':{}				
 			}
 		}
 
@@ -7766,7 +7769,7 @@ class StateIOClient(object):
 		return self.export_path
 
 
-	def import_state(self, export_path, load_only=False):
+	def import_state(self, export_path):
 
 		'''
 		Import exported state
@@ -7776,11 +7779,225 @@ class StateIOClient(object):
 
 		Returns:
 
+
 		'''
 
 		############################ 
 		# LOAD STATE DATA
 		############################
+		self.load_state(export_path)
+
+
+		############################ 
+		# IMPORT STATE
+		############################
+		# load configuration dependencies
+		self._import_config_dependencies()
+
+		# load model instances
+		self._import_model_instances()
+
+		# load Mongo and ES DB records
+		self._import_db_records()
+
+
+	def _import_config_dependencies(self):
+
+		'''
+		Method to import supporting configurations and scenarios before other model instances
+		'''
+
+		#################################
+		# TRANSFORMATION SCENARIOS
+		#################################
+		# loop through and create
+		for ts in self._get_django_model_type(Transformation):
+			logger.debug('rehydrating %s' % ts)
+
+			# check for identical name and payload
+			ts_match = Transformation.objects.filter(name=ts.object.name, payload=ts.object.payload)
+			
+			# matching scenario found
+			if ts_match.count() > 0:
+				logger.debug('found identical Transformation, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['transformation_scenarios'][ts.object.id] = ts_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('Transformation not found, creating')
+				ts_orig_id = ts.object.id
+				ts.object.id = None
+				ts.save()
+				self.export_manifest['pk_hash']['transformation_scenarios'][ts_orig_id] = ts.object.id
+
+
+		#################################
+		# VALIDATION SCENARIOS
+		#################################
+		# loop through and create
+		for vs in self._get_django_model_type(ValidationScenario):
+			logger.debug('rehydrating %s' % vs)
+
+			# check for identical name and payload
+			vs_match = ValidationScenario.objects.filter(name=vs.object.name, payload=vs.object.payload)
+			
+			# matching scenario found
+			if vs_match.count() > 0:
+				logger.debug('found identical ValidationScenario, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['validation_scenarios'][vs.object.id] = vs_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('ValidationScenario not found, creating')
+				vs_orig_id = vs.object.id
+				vs.object.id = None
+				vs.save()
+				self.export_manifest['pk_hash']['transformation_scenarios'][vs_orig_id] = vs.object.id
+
+
+
+	def _import_model_instances(self):
+
+		'''
+		Method to import Organization, Record Group, and Job model instances
+		'''
+
+		############################ 
+		# DJANGO OBJECTS: JOBS
+		############################
+		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
+		for job_id in self.export_manifest['downstream_jobs_ordered']:
+
+			logger.debug('reconstituting original job_id %s' % job_id)
+
+			# retrieve deserialized job
+			job = self._get_django_model_instance(job_id, Job)
+
+			# drop pk, save, and note new id
+			job.object.id = None
+			job.save()
+
+			# update pk_hash
+			self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
+
+			# Job, update job_details
+			self._update_job_details(job.object)
+
+
+		#############################
+		# DJANGO OBJECTS: JOB INPUTS 
+		#############################
+		# loop through and create
+		for ji in self._get_django_model_type(JobInput):
+			logger.debug('rehydrating %s' % ji)
+			ji.object.id = None
+			ji.object.job_id = self.export_manifest['pk_hash']['jobs'][ji.object.job_id]
+			ji.object.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.object.input_job_id]
+			ji.save()
+
+
+		#################################
+		# DJANGO OBJECTS: JOB VALIDATIONS 
+		#################################
+		# loop through and create
+		for jv in self._get_django_model_type(JobValidation):
+			logger.debug('rehydrating %s' % jv)
+			jv.object.id = None
+			jv.object.job_id = self.export_manifest['pk_hash']['jobs'][jv.object.job_id]
+			jv.save()
+
+
+	def _import_db_records(self):
+
+		'''
+		Method to import DB records from:
+			- Mongo
+			- ElasticSearch
+		'''
+
+		pass
+
+
+	def _update_job_details(self, job):
+
+		'''
+		Handle the various ways in which Job.job_details must
+		be updated in light of changing model instance PKs.
+
+			- Generic
+				- validation_scenarios: list of integers
+				- input_job_ids: list of integers
+				- input_filters.job_specific: dictionary with string of job_id as key
+			
+			- OAI Harvest
+				- oai_params
+			
+			- Transformation
+				- transformation
+
+		Args:
+			job (core.models.Job): newly minted Job instance to update
+
+		Returns:
+			None
+		'''
+
+		logger.debug('updating job_details for %s' % job)
+
+		# pk_hash
+		pk_hash = self.export_manifest['pk_hash']
+
+		# update dictionary
+		update_dict = {}
+
+		# update validation_scenarios
+		if 'validation_scenarios' in job.job_details_dict.keys():
+			validation_scenarios = job.job_details_dict['validation_scenarios']
+			validation_scenarios_updated = [ pk_hash['validation_scenarios'].get(vs_id, vs_id) for vs_id in validation_scenarios ]
+			update_dict['validation_scenarios'] = validation_scenarios_updated
+
+		# update input_job_ids		
+		if 'input_job_ids' in job.job_details_dict.keys():
+			input_job_ids = job.job_details_dict['input_job_ids']
+			input_job_ids_updated = [ pk_hash['jobs'].get(job_id, job_id) for job_id in input_job_ids ]
+			update_dict['input_job_ids'] = input_job_ids_updated
+
+		# update input_filters.job_specific
+		if 'input_filters' in job.job_details_dict.keys():
+			input_filters = job.job_details_dict['input_filters']
+			job_specific_updated = { str(pk_hash['jobs'].get(int(k), int(k))):v for k,v in input_filters['job_specific'].items() }
+			input_filters['job_specific'] = job_specific_updated
+			update_dict['input_filters'] = input_filters
+
+		# if OAIHarvest, update oai_params
+		if job.job_type == 'HarvestOAIJob':
+			logger.debug('HarvestOAIJob encountered, updating job details')
+			oai_params = job.job_details_dict['oai_params']
+			oai_params['id'] = pk_hash['oai_endpoints'].get(oai_params['id'], oai_params['id'])
+			update_dict['oai_params'] = oai_params
+
+		# if Transform, update transformation
+		if job.job_type == 'TransformJob':
+			logger.debug('TransformJob encountered, updating job details')
+			transformation = job.job_details_dict['transformation']
+			transformation['id'] = pk_hash['transformation_scenarios'].get(transformation['id'], transformation['id'])
+			update_dict['transformation'] = transformation
+
+		# update job details
+		job.update_job_details(update_dict)
+
+
+	def load_state(self, export_path):
+
+		'''
+		Method to load state data in preparation for import
+
+		Args:
+			export_path (str): location on disk of unzipped export directory
+
+		Returns:
+			None
+		'''
 
 		# set export path
 		self.export_path = export_path
@@ -7789,57 +8006,12 @@ class StateIOClient(object):
 		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
 			self.export_manifest = json.loads(f.read())
 
-		# load UNORDERED, serialized django objects
+		# deserialize django objects
 		self.deser_django_objects = []
 		with open('%s/django_objects.json' % self.export_path, 'r') as f:
 			django_objects_json = f.read()
 		for obj in serializers.deserialize('json', django_objects_json):
 			self.deser_django_objects.append(obj)
-
-
-		############################ 
-		# IMPORT STATE
-		############################
-		if not load_only:
-
-			############################ 
-			# DJANGO OBJECTS: JOBS
-			############################
-			# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
-			for job_id in self.export_manifest['downstream_jobs_ordered']:
-
-				logger.debug('reconstituting original job_id %s' % job_id)
-
-				# retrieve deserialized job
-				job = self._get_django_model_instance(job_id, Job)
-
-				# drop pk, save, and note new id
-				job.object.id = None
-				job.save()
-
-				# update pk_hash
-				self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
-
-
-			#############################
-			# DJANGO OBJECTS: JOB INPUTS 
-			#############################
-			# loop through and update
-			for ji in self._get_django_model_type(JobInput):
-				ji.object.id = None
-				ji.object.job_id = self.export_manifest['pk_hash']['jobs'][ji.object.job_id]
-				ji.object.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.object.input_job_id]
-				ji.save()
-
-
-			#################################
-			# DJANGO OBJECTS: JOB VALIDATIONS 
-			#################################
-			# loop through and update
-			for jv in self._get_django_model_type(JobValidation):
-				jv.object.id = None
-				jv.object.job_id = self.export_manifest['pk_hash']['jobs'][jv.object.job_id]
-				jv.save()
 
 
 	def _get_django_model_instance(self, instance_id, instance_type, instances=None):
