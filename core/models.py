@@ -7986,6 +7986,11 @@ class StateIOClient(object):
 		# update job details
 		job.update_job_details(update_dict)
 
+		# update spark code		
+		cjob = CombineJob.get_combine_job(job.id)
+		cjob.job.spark_code = cjob.prepare_job(return_job_code=True)
+		cjob.job.save()
+
 
 	def load_state(self, export_path):
 
