@@ -7474,12 +7474,16 @@ class StateIOClient(object):
 		# set model_instance
 		self.model_instance = model_instance
 
+		# unique hash for export, used for filepath and manifest
+		export_id = uuid.uuid4().hex
+
 		# prepare tmp location for export
-		self.export_path = '/tmp/stateio/%s' % uuid.uuid4().hex
+		self.export_path = '/tmp/stateio/%s' % export_id
 		os.mkdir(self.export_path)
 
 		# init export manifest dictionary
 		self.export_manifest = {
+			'export_id':export_id,
 			'root_instance_id':model_instance.id,
 			'root_instance_type':type(model_instance).__name__,
 			'downstream_jobs_ordered':[],
@@ -7915,7 +7919,17 @@ class StateIOClient(object):
 			- ElasticSearch
 		'''
 
-		pass
+		#################################
+		# WRITE MONGO RECORDS 
+		#################################
+		'''
+		df = spark.read.json('file:///tmp/stateio/d3f3816963004b63a456bc69d71fc5c3/record_exports/j967_mongo_records.json')
+		'''
+
+
+		#################################
+		# WRITE MONGO VALIDATIONS 
+		#################################
 
 
 	def _update_job_details(self, job):

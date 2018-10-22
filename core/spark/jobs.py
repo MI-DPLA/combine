@@ -1504,7 +1504,7 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))		 
-		self.update_jobGroup('Running Re-Index Job', self.job.id)		
+		self.update_jobGroup('Running Re-Index Job', self.job.id)
 
 		# get records as DF
 		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
@@ -1657,6 +1657,151 @@ class RunDBDM(CombineSparkPatch):
 					'misses':None
 				}
 			})
+
+
+
+####################################################################
+# State IO          											   #
+####################################################################
+
+class CombineStateIO(object):
+
+	'''
+	Base class for Combine State IO work.		
+
+	Example export_manifest:
+		{'downstream_jobs_ordered': [967, 968, 969, 970],
+		 'pk_hash': {'jobs': {967: 976, 968: 977, 969: 978, 970: 979},
+		  'oai_endpoints': {},
+		  'organizations': {},
+		  'record_groups': {},
+		  'transformation_scenarios': {1: 1},
+		  'validation_scenarios': {1: 1}},
+		 'root_instance_id': 967,
+		 'root_instance_type': 'Job',
+		 'upstream_jobs_ordered': []}
+
+	 Example export_path:
+	 	/tmp/stateio/6158b74daee44116837d37f70e4939bf
+		├── django_objects.json
+		├── export_manifest.json
+		├── mapped_fields_exports
+		│   ├── j967_mapped_fields.json
+		│   ├── j968_mapped_fields.json
+		│   ├── j969_mapped_fields.json
+		│   └── j970_mapped_fields.json
+		├── record_exports
+		│   ├── j967_mongo_records.json
+		│   ├── j968_mongo_records.json
+		│   ├── j969_mongo_records.json
+		│   └── j970_mongo_records.json
+		└── validation_exports
+		    ├── j967_mongo_records.json
+		    ├── j968_mongo_records.json
+		    ├── j969_mongo_records.json
+		    └── j970_mongo_records.json
+	'''
+
+	def __init__(self, spark, **kwargs):
+
+		self.spark = spark
+
+		self.kwargs = kwargs
+
+		# capture common params		
+		self.export_path = kwargs.get('export_path', None)
+		self.export_manifest = kwargs.get('export_manifest', None)
+
+		# init logging support
+		spark.sparkContext.setLogLevel('INFO')
+		log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+		self.logger = log4jLogger.LogManager.getLogger(__name__)
+
+
+	def update_jobGroup(self, group_id, description):
+
+		'''
+		Method to update spark jobGroup
+		'''
+		
+		self.spark.sparkContext.setJobGroup(group_id, description)
+
+
+class CombineStateIOImport(CombineStateIO):
+
+	'''
+	Class to handle state imports
+
+	Args:
+		kwargs(dict):
+			- export_path (str): string of unzipped export directory on disk
+			- export_manifest (dict): dictionary of newly created Django model instances and scenarios
+	'''
+
+	def spark_function(self):
+
+		# import records
+		self._import_records()
+
+		# import validations
+		self._import_validations()
+
+		# import mapped fields (ES)
+		self._import_mapped_fields()
+
+
+
+	def _import_records(self):
+
+		'''
+		Method to import records to Mongo
+		'''
+
+		# import records
+		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Records')
+
+		# loop through jobs
+		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+
+			# assemple location of export
+			records_json_filepath = '%s/record_exports/j%s_mongo_records.json' % (self.export_path, orig_job_id)
+
+			# load as dataframe
+			records_df = self.spark.read.json(records_json_filepath)
+			self.logger.info(records_df.count())
+
+			# drop id
+			records_df = records_df.select([col for col in records_df.columns if col != '_id'])
+			
+			# flatten fingerprint column
+			records_df = records_df.withColumn('fingerprint', records_df.fingerprint['$numberLong'])
+
+			# update job_id
+			records_df = records_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)))
+
+			# write records to MongoDB			
+			records_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			.mode("append")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection", "record").save()
+
+
+	def _import_validations(self):
+
+		'''
+		'''
+		pass
+
+
+	def _import_mapped_fields(self):
+
+		'''
+		'''
+		pass
+
+
+
 
 
 
