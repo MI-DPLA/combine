@@ -7567,6 +7567,36 @@ class StateIOClient(object):
 
 
 		############################ 
+		# JOBS: Job Input
+		############################
+
+		# prepare unique JobInputs
+		self.export_dict['job_inputs'] = set()
+
+		# get all related Job Inputs
+		job_inputs = JobInput.objects.filter(
+			job__in=self.export_manifest['downstream_jobs_ordered'],
+			input_job__in=self.export_manifest['downstream_jobs_ordered'])
+
+		# write to serialize set
+		self.export_dict['job_inputs'].update(job_inputs)
+
+
+		############################ 
+		# JOBS: Job Validation
+		############################
+
+		# prepare unique JobInputs
+		self.export_dict['job_validations'] = set()
+
+		# get all related Job Inputs
+		job_validations = JobValidation.objects.filter(job__in=self.export_manifest['downstream_jobs_ordered'])
+
+		# write to serialize set
+		self.export_dict['job_validations'].update(job_validations)
+
+
+		############################ 
 		# TRANSFORMATION SCENARIOS
 		############################
 
@@ -7618,13 +7648,6 @@ class StateIOClient(object):
 		############################ 
 		# JOB RECORDS (Mongo)
 		############################
-		'''
-		Consider: mongoexport
-			- make temp dir where exports will go
-			- loop through Jobs, exporting as JSONlines
-				- keep job_id for now, as do not yet know updates
-			- tar and compress, add filepath to export_dict 
-		'''
 
 		# prepare records export dir
 		record_exports_path = '%s/record_exports' % self.export_path
@@ -7722,7 +7745,14 @@ class StateIOClient(object):
 			
 			# combine all model instances, across model types
 			to_serialize = []
-			for k in ['jobs','transformations','validations','oai_endpoints']:
+			for k in [
+					'jobs',
+					'transformations',
+					'validations',
+					'oai_endpoints',
+					'job_inputs',
+					'job_validations'
+				]:
 				to_serialize.extend(self.export_dict[k])
 
 			# write as single JSON file
@@ -7748,6 +7778,10 @@ class StateIOClient(object):
 
 		'''
 
+		############################ 
+		# LOAD STATE DATA
+		############################
+
 		# set export path
 		self.export_path = export_path
 
@@ -7755,10 +7789,6 @@ class StateIOClient(object):
 		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
 			self.export_manifest = json.loads(f.read())
 
-
-		############################ 
-		# DJANGO OBJECTS
-		############################
 		# load UNORDERED, serialized django objects
 		self.deser_django_objects = []
 		with open('%s/django_objects.json' % self.export_path, 'r') as f:
@@ -7768,37 +7798,48 @@ class StateIOClient(object):
 
 
 		############################ 
-		# DJANGO OBJECTS: JOBS
+		# IMPORT STATE
 		############################
-		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
-		for job_id in self.export_manifest['downstream_jobs_ordered']:
+		if not load_only:
 
-			logger.debug('reconstituting original job_id %s' % job_id)
+			############################ 
+			# DJANGO OBJECTS: JOBS
+			############################
+			# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
+			for job_id in self.export_manifest['downstream_jobs_ordered']:
 
-			# retrieve deserialized job
-			job = self._get_django_model_instance(job_id, Job)
+				logger.debug('reconstituting original job_id %s' % job_id)
 
-			# drop pk, save, and note new id
-			job.object.id = None
-			job.save()
+				# retrieve deserialized job
+				job = self._get_django_model_instance(job_id, Job)
 
-			# update pk_hash
-			self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
+				# drop pk, save, and note new id
+				job.object.id = None
+				job.save()
+
+				# update pk_hash
+				self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
 
 
-		############################ 
-		# DJANGO OBJECTS: JOB INPUTS
-		############################
+			#############################
+			# DJANGO OBJECTS: JOB INPUTS 
+			#############################
+			# loop through and update
+			for ji in self._get_django_model_type(JobInput):
+				ji.object.id = None
+				ji.object.job_id = self.export_manifest['pk_hash']['jobs'][ji.object.job_id]
+				ji.object.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.object.input_job_id]
+				ji.save()
 
-		# get all related Job Inputs
-		job_inputs = JobInput.objects.filter(job__in=self.export_manifest['downstream_jobs_ordered'], input_job__in=self.export_manifest['downstream_jobs_ordered'])
 
-		# loop through, remove PK, and rewrite based on hash
-		for ji in job_inputs:
-			ji.id = None
-			ji.job_id = self.export_manifest['pk_hash']['jobs'][ji.job_id]
-			ji.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.input_job_id]
-			ji.save()
+			#################################
+			# DJANGO OBJECTS: JOB VALIDATIONS 
+			#################################
+			# loop through and update
+			for jv in self._get_django_model_type(JobValidation):
+				jv.object.id = None
+				jv.object.job_id = self.export_manifest['pk_hash']['jobs'][jv.object.job_id]
+				jv.save()
 
 
 	def _get_django_model_instance(self, instance_id, instance_type, instances=None):
@@ -7813,6 +7854,9 @@ class StateIOClient(object):
 		Args:
 			instance_id (int): model instance PK
 			intsance_type (django.models.model): model instance type
+
+		Returns:
+			(core.models.model): Model instance based on matching id and type
 		'''
 
 		# if instances not provided, assumed self.deser_django_objects
@@ -7824,6 +7868,27 @@ class StateIOClient(object):
 			if obj.object.id == instance_id and type(obj.object) == instance_type:
 				logger.debug('deserialized object found: %s' % obj.object)		
 				return obj
+
+
+
+	def _get_django_model_type(self, instance_type, instances=None):
+
+		'''
+		Method to retrieve types from deserialized objects
+
+		Args:
+			instance_type (core.models.model): Model type to return
+
+		Return:
+			(list): List of model instances that match type
+		'''
+
+		# if instances not provided, assumed self.deser_django_objects
+		if instances == None:
+			instances = self.deser_django_objects
+
+		# return list
+		return [ obj for obj in instances if type(obj.object) == instance_type ]
 
 
 
