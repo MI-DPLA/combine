@@ -1696,10 +1696,10 @@ class CombineStateIO(object):
 		│   ├── j969_mongo_records.json
 		│   └── j970_mongo_records.json
 		└── validation_exports
-		    ├── j967_mongo_records.json
-		    ├── j968_mongo_records.json
-		    ├── j969_mongo_records.json
-		    └── j970_mongo_records.json
+		    ├── j967_mongo_validations.json
+		    ├── j968_mongo_validations.json
+		    ├── j969_mongo_validations.json
+		    └── j970_mongo_validations.json
 	'''
 
 	def __init__(self, spark, **kwargs):
@@ -1750,7 +1750,6 @@ class CombineStateIOImport(CombineStateIO):
 		self._import_mapped_fields()
 
 
-
 	def _import_records(self):
 
 		'''
@@ -1767,11 +1766,11 @@ class CombineStateIOImport(CombineStateIO):
 			records_json_filepath = '%s/record_exports/j%s_mongo_records.json' % (self.export_path, orig_job_id)
 
 			# load as dataframe
-			records_df = self.spark.read.json(records_json_filepath)
-			self.logger.info(records_df.count())
+			records_df = self.spark.read.json(records_json_filepath)			
 
-			# drop id
-			records_df = records_df.select([col for col in records_df.columns if col != '_id'])
+			# copy original _id
+			records_df = records_df\
+				.withColumn('orig_id', records_df['_id']['$oid'])
 			
 			# flatten fingerprint column
 			records_df = records_df.withColumn('fingerprint', records_df.fingerprint['$numberLong'])
@@ -1779,8 +1778,9 @@ class CombineStateIOImport(CombineStateIO):
 			# update job_id
 			records_df = records_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)))
 
-			# write records to MongoDB			
-			records_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+			# write records to MongoDB, dropping _id in process
+			records_df.select([col for col in records_df.columns if col != '_id'])\
+			.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
@@ -1791,7 +1791,31 @@ class CombineStateIOImport(CombineStateIO):
 
 		'''
 		'''
+
 		pass
+		
+		# # import records
+		# self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
+
+		# # loop through jobs
+		# for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+
+		# 	# assemple location of export
+		# 	validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.export_path, orig_job_id)
+
+		# 	# load as dataframe
+		# 	validations_df = self.spark.read.json(validations_json_filepath)
+
+		# 	# flatten fields
+		# 	validations_df = validations_df\
+		# 		.withColumn('fail_count', validations_df)
+
+		# 	# write records to MongoDB			
+		# 	validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+		# 	.mode("append")\
+		# 	.option("uri","mongodb://127.0.0.1")\
+		# 	.option("database","combine")\
+		# 	.option("collection", "record").save()
 
 
 	def _import_mapped_fields(self):

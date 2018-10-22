@@ -7687,7 +7687,7 @@ class StateIOClient(object):
 		for job in self.export_dict['jobs']:
 
 			# prepare command
-			cmd = 'mongoexport --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
+			cmd = 'mongoexport --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_validations.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
 				'job_id':job.id,
 				'validation_exports_path':validation_exports_path
 			}
