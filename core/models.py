@@ -1096,6 +1096,11 @@ class Job(models.Model):
 						node_dict['record_group_id'] = pj.record_group.id
 						node_dict['org_id'] = pj.record_group.organization.id
 
+					# if from another Record Group, note in node
+					if pj.record_group != self.record_group:
+						logger.debug('WE GOT A JOB FROM ANOTHER RECORD GROUP')
+						node_dict['external_record_group'] = True
+
 					# append to nodes
 					ld['nodes'].append(node_dict)
 
@@ -7597,12 +7602,6 @@ class StateIOClient(object):
 		# re-sort topopgraphically with ALL jobs, and write to manifest
 		self.export_dict['jobs'] = Job._topographic_sort_jobs(self.export_dict['jobs'])		
 		self.export_manifest['jobs'] = [ job.id for job in self.export_dict['jobs'] ]
-
-
-		########################################## 
-		# JOBS: Record Groups and Organizations
-		##########################################
-
 
 
 		############################ 

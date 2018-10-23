@@ -63,9 +63,26 @@ function styleNetworkNodes(node){
 		};
 	}
 
+	// override if job is from external Record Group, visually indicate
+	if (node.hasOwnProperty('external_record_group')) {
+		
+		// update node				
+		node.shapeProperties.borderDashes = true;
+		node.font.color = '#7c7c7c';
+
+
+		// update edges
+		node_edges = getEdgesOfNode(node.id)									
+		node_edges.forEach(function(edge){
+			edge.dashes = true;			
+			edges.update(edge);
+		})
+
+	}
+
 	// override if job is slated for deletion
 	if (node.deleted) {
-		node.color = '#efefef';
+		node.color = '#afafaf';
 
 		// gray out all edges to this node									
 		node_edges = getEdgesOfNode(node.id)									
