@@ -1632,7 +1632,7 @@ class Job(models.Model):
 
 		# return topographically sorted
 		if topographic_sort:
-			return self._topographic_sort_jobs(job_set)
+			return Job._topographic_sort_jobs(job_set)
 		else:
 			return list(job_set)	
 
@@ -1647,7 +1647,8 @@ class Job(models.Model):
 		pass		
 
 
-	def _topographic_sort_jobs(self, job_set):
+	@staticmethod
+	def _topographic_sort_jobs(job_set):
 
 		'''
 		Method to topographically sort set of Jobs,
@@ -1659,23 +1660,30 @@ class Job(models.Model):
 			job_set (set): set of unordered jobs
 		'''
 
-		# get all lineage edges given Job set
-		lineage_edges = JobInput.objects.filter(job__in=job_set, input_job__in=job_set)
+		# if single job, return
+		if len(job_set) == 1:
+			return job_set
 
-		# loop through and build graph
-		edge_hash = {}
-		for edge in lineage_edges:
+		# else, topographically sort
+		else:
 
-			# if not in hash, add
-			if edge.job not in edge_hash:
-				edge_hash[edge.job] = set()
+			# get all lineage edges given Job set
+			lineage_edges = JobInput.objects.filter(job__in=job_set, input_job__in=job_set)
 
-			# append required input job
-			edge_hash[edge.job].add(edge.input_job)
+			# loop through and build graph
+			edge_hash = {}
+			for edge in lineage_edges:
 
-		# topographically sort and return		
-		topo_sorted_jobs = list(toposort_flatten(edge_hash, sort=False))		
-		return topo_sorted_jobs
+				# if not in hash, add
+				if edge.job not in edge_hash:
+					edge_hash[edge.job] = set()
+
+				# append required input job
+				edge_hash[edge.job].add(edge.input_job)
+
+			# topographically sort and return		
+			topo_sorted_jobs = list(toposort_flatten(edge_hash, sort=False))		
+			return topo_sorted_jobs
 
 
 	def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
@@ -2171,8 +2179,7 @@ class Record(mongoengine.Document):
 			{'fields': ['valid']},
 			{'fields': ['published']},
 			{'fields': ['publish_set_id']},
-			{'fields': ['dbdm']},
-			{'fields': ['orig_id']}
+			{'fields': ['dbdm']}			
 		]
 	}
 
@@ -7483,8 +7490,7 @@ class StateIOClient(object):
 			'export_id':export_id,
 			'root_instance_id':model_instance.id,
 			'root_instance_type':type(model_instance).__name__,
-			'downstream_jobs_ordered':[],
-			'upstream_jobs_ordered':[],
+			'jobs':[],
 			'pk_hash':{
 				'jobs':{},
 				'record_groups':{},
@@ -7496,12 +7502,17 @@ class StateIOClient(object):
 		}
 
 		# handle model instance types
+		# org
 		if type(self.model_instance) == Organization:
+
 			logger.debug('preparing to export Organization: %s' % self.model_instance)
 
+		# record group
 		elif type(self.model_instance) == RecordGroup:
+
 			logger.debug('preparing to export RecordGroup: %s' % self.model_instance)
 
+		# job
 		elif type(self.model_instance) in [Job, CombineJob]:
 
 			logger.debug('preparing to export Job: %s' % self.model_instance)
@@ -7516,10 +7527,28 @@ class StateIOClient(object):
 			logger.debug('Unsure how to export %s, type %s' % (self.model_instance, type(self.model_instance)))
 
 
-	def _job_collect_related(self):
+	def _org_collect_related(self):
 
 		'''
-		Method to collect components needed for export
+		Method to collect and export an Organization
+		'''
+
+		pass
+
+
+	def _record_group_collect_related(self):
+
+		'''
+		Method to collect and export a Record Gruop
+		'''
+
+		pass
+
+
+	def _job_collect_related(self, include_upstream=True):
+
+		'''
+		Method to collect and export a Job
 			- Connected Jobs from lineage
 				- upstream, downstream
 			- Related scenarios (mostly, to facilitate re-running once re-imported)
@@ -7546,26 +7575,34 @@ class StateIOClient(object):
 
 		# get downstream
 		downstream_jobs = self.model_instance.get_downstream_jobs()
-		self.export_dict['jobs'].update(downstream_jobs)
+		self.export_dict['jobs'].update(downstream_jobs)		
 
-		# write to manifest
-		for job in downstream_jobs:
-			self.export_manifest['downstream_jobs_ordered'].append(job.id)
+		if include_upstream:
+			
+			# get upstream for all Jobs
+			upstream_jobs = []
+			for job in self.export_dict['jobs']:
 
-		# # get upstream for all Jobs
-		# upstream_jobs = []
-		# for job in self.export_dict['jobs']:
+				# get lineage
+				# TODO: replace with new upstream lineage method that's coming
+				lineage = job.get_lineage()
 
-		# 	# get lineage
-		# 	# TODO: replace with new upstream lineage method that's coming
-		# 	lineage = job.get_lineage()
+				# loop through nodes and add to set
+				for lineage_job_dict in lineage['nodes']:
+					upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
 
-		# 	# loop through nodes and add to set
-		# 	for lineage_job_dict in lineage['nodes']:
-		# 		upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
+			# update set with upstream
+			self.export_dict['jobs'].update(upstream_jobs)
 
-		# # update set with upstream
-		# self.export_dict['jobs'].update(upstream_jobs)
+		# re-sort topopgraphically with ALL jobs, and write to manifest
+		self.export_dict['jobs'] = Job._topographic_sort_jobs(self.export_dict['jobs'])		
+		self.export_manifest['jobs'] = [ job.id for job in self.export_dict['jobs'] ]
+
+
+		########################################## 
+		# JOBS: Record Groups and Organizations
+		##########################################
+
 
 
 		############################ 
@@ -7577,8 +7614,8 @@ class StateIOClient(object):
 
 		# get all related Job Inputs
 		job_inputs = JobInput.objects.filter(
-			job__in=self.export_manifest['downstream_jobs_ordered'],
-			input_job__in=self.export_manifest['downstream_jobs_ordered'])
+			job__in=self.export_manifest['jobs'],
+			input_job__in=self.export_manifest['jobs'])
 
 		# write to serialize set
 		self.export_dict['job_inputs'].update(job_inputs)
@@ -7592,7 +7629,7 @@ class StateIOClient(object):
 		self.export_dict['job_validations'] = set()
 
 		# get all related Job Inputs
-		job_validations = JobValidation.objects.filter(job__in=self.export_manifest['downstream_jobs_ordered'])
+		job_validations = JobValidation.objects.filter(job__in=self.export_manifest['jobs'])
 
 		# write to serialize set
 		self.export_dict['job_validations'].update(job_validations)
@@ -7865,7 +7902,7 @@ class StateIOClient(object):
 		# DJANGO OBJECTS: JOBS
 		############################
 		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
-		for job_id in self.export_manifest['downstream_jobs_ordered']:
+		for job_id in self.export_manifest['jobs']:
 
 			logger.debug('reconstituting original job_id %s' % job_id)
 

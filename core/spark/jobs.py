@@ -1818,7 +1818,7 @@ class CombineStateIOImport(CombineStateIO):
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
-				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",4)\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
 				.option("pipeline",pipeline).load()
 
 				# join on validations_df.record_id : records_df.orig_id
@@ -1843,12 +1843,15 @@ class CombineStateIOImport(CombineStateIO):
 				.option("collection", "record_validation").save()
 
 
-	def _import_mapped_fields(self):
+	def _import_mapped_fields(self, reindex=True):
 
 		'''
 		Method to import mapped fields to ElasticSearch
 			- re-map and index, based on saved Job params
 			- inefficient to export/import ElasticSearch records, when modifying values
+
+		QUESTION: Why is this partitioned to 200, when reading from Mongo appears to be 
+			the same for Re-Indexing?
 		'''
 
 		# import mapped fields
@@ -1857,26 +1860,137 @@ class CombineStateIOImport(CombineStateIO):
 		# loop through jobs
 		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
 
-			# get job and set to self
-			job = Job.objects.get(pk=int(clone_job_id))
+			# re-index (default)
+			if reindex:
 
-			# get records as DF
-			pipeline = json.dumps({'$match': {'job_id': job.id}})
-			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-			.option("uri","mongodb://127.0.0.1")\
-			.option("database","combine")\
-			.option("collection","record")\
-			.option("partitioner","MongoSamplePartitioner")\
-			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
-			.option("pipeline",pipeline).load()
+				# get job and set to self
+				job = Job.objects.get(pk=int(clone_job_id))
 
-			# reindex
-			ESIndex.index_job_to_es_spark(
-				self.spark,
-				job=job,
-				records_df=db_records,
-				field_mapper_config=job.job_details_dict.get('field_mapper_config')
-			)
+				# get records as DF
+				pipeline = json.dumps({'$match': {'job_id': job.id}})
+				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection","record")\
+				.option("partitioner","MongoSamplePartitioner")\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",settings.MONGO_READ_PARTITION_SIZE_MB)\
+				.option("pipeline",pipeline).load()
+
+				# reindex
+				ESIndex.index_job_to_es_spark(
+					self.spark,
+					job=job,
+					records_df=records_df,
+					field_mapper_config=job.job_details_dict.get('field_mapper_config')
+				)
+
+			# else, fallback on slower, import of serialized records
+			else:
+
+				# assemple location of export
+				mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.export_path, orig_job_id)
+
+				# read raw JSON lines
+				json_lines_rdd = self.spark.sparkContext.textFile(mapped_fields_json_filepath)
+
+				# parse to expose record db_id
+				def parser_udf(row):
+
+					# parse JSON
+					d = json.loads(row)
+
+					# return tuple with exposed original id	
+					return (d['db_id'], row)
+
+				orig_id_rdd = json_lines_rdd.map(lambda row: parser_udf(row))
+
+				# to dataframe for join
+				orig_id_df = orig_id_rdd.toDF()
+
+				# retrieve newly written records for this Job
+				pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
+				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection","record")\
+				.option("partitioner","MongoSamplePartitioner")\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",4)\
+				.option("pipeline",pipeline).load()
+
+				# join on id
+				join_id_df = orig_id_df.join(records_df, orig_id_df['_1'] == records_df['orig_id'])
+
+				# rewrite _1 as new id for Record
+				new_id_df = join_id_df.withColumn('_1', join_id_df['_id']['oid'])
+
+				# select only what's needed
+				new_id_df = new_id_df.select('_1','_2')
+
+				# convert back to RDD
+				new_id_rdd = new_id_df.rdd
+
+				# update db_id in JSON destined for ES
+				def update_db_id_udf(row):
+					
+					# load json
+					d = json.loads(row['_2'])
+
+					# set identifiers
+					d['db_id'] = row['_1']
+					d['temp_id'] = row['_1']
+
+					# convert lists to tuples
+					for k,v in d.items():
+						if type(v) == list:
+							d[k] = tuple(v)
+
+					return (row['_1'], d)
+					
+				new_id_rdd = new_id_rdd.map(lambda row: update_db_id_udf(row))
+
+				# create index in advance
+				index_name = 'j%s' % clone_job_id
+				es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+				if not es_handle_temp.indices.exists(index_name):
+					
+					# put combine es index templates
+					template_body = {
+							'template':'*',
+							'settings':{
+								'number_of_shards':1,
+								'number_of_replicas':0,
+								'refresh_interval':-1
+							},
+							'mappings':{
+								'record':{
+									'date_detection':False,
+									'properties':{
+										'combine_db_id':{
+											'type':'integer'
+										}
+									}
+								}
+							}
+						}
+					es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+					
+					# create index
+					es_handle_temp.indices.create(index_name)
+
+				# index
+				new_id_rdd.saveAsNewAPIHadoopFile(
+					path='-',
+					outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+					keyClass="org.apache.hadoop.io.NullWritable",
+					valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+					conf={
+							"es.resource":"%s/record" % index_name,
+							"es.nodes":"%s:9200" % 'localhost',
+							"es.mapping.exclude":"temp_id",
+							"es.mapping.id":"temp_id",			
+						}
+				)
+
 
 
 
