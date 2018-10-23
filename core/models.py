@@ -1097,8 +1097,7 @@ class Job(models.Model):
 						node_dict['org_id'] = pj.record_group.organization.id
 
 					# if from another Record Group, note in node
-					if pj.record_group != self.record_group:
-						logger.debug('WE GOT A JOB FROM ANOTHER RECORD GROUP')
+					if pj.record_group != self.record_group:						
 						node_dict['external_record_group'] = True
 
 					# append to nodes
