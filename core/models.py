@@ -4517,14 +4517,17 @@ class PublishedRecords(object):
 			logger.debug('calculating published field counts, saving, and returning')
 			
 			# calc
-			published_field_counts = self.esi.count_indexed_fields()			
+			published_field_counts = self.esi.count_indexed_fields()
 
-			# add id and replace (upsert if necessary)
-			published_field_counts['_id'] = 'published_field_counts'
-			doc = mc_handle.combine.misc.replace_one(
-				{'_id':'published_field_counts'},
-				published_field_counts,
-				upsert=True)
+			# if published_field_counts
+			if published_field_counts:			
+
+				# add id and replace (upsert if necessary)
+				published_field_counts['_id'] = 'published_field_counts'
+				doc = mc_handle.combine.misc.replace_one(
+					{'_id':'published_field_counts'},
+					published_field_counts,
+					upsert=True)
 
 			# return
 			return published_field_counts
@@ -5484,6 +5487,13 @@ class HarvestOAIJob(HarvestJob):
 		# mix in overrides
 		for param,value in overrides.items():
 			oai_params[param] = value
+
+		# get include <header> toggle
+		include_oai_record_header = job_params.get('include_oai_record_header', False);
+		if include_oai_record_header == 'true':
+			oai_params['include_oai_record_header'] = True
+		elif include_oai_record_header == False:
+			oai_params['include_oai_record_header'] = False
 
 		# save to job_details
 		job_details['oai_params'] = oai_params
