@@ -1790,9 +1790,10 @@ class CombineStateIOImport(CombineStateIO):
 	def _import_validations(self):
 
 		'''
+		Method to import validations to Mongo
 		'''
 
-		# import records
+		# import validations
 		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
 
 		# loop through jobs
@@ -1804,8 +1805,8 @@ class CombineStateIOImport(CombineStateIO):
 			# load as dataframe
 			validations_df = self.spark.read.json(validations_json_filepath)
 
-			# TEMP: COUNT
-			if validations_df.count() > 0:
+			# check for dataframe rows to proceed
+			if len(validations_df.take(1)) > 0:
 
 				# flatten record_id
 				validations_df = validations_df.withColumn('record_id', validations_df['record_id']['$oid'])
@@ -1823,7 +1824,7 @@ class CombineStateIOImport(CombineStateIO):
 				# join on validations_df.record_id : records_df.orig_id
 				updated_validations_df = validations_df.drop('_id').alias('validations_df').join(records_df.select('_id','orig_id').alias('records_df'), validations_df['record_id'] == records_df['orig_id'])
 
-				# 
+				# update record_id
 				updated_validations_df = updated_validations_df.withColumn('record_id', updated_validations_df['_id'])
 
 				# limit to validation columns
@@ -1845,8 +1846,186 @@ class CombineStateIOImport(CombineStateIO):
 	def _import_mapped_fields(self):
 
 		'''
+		Method to import mapped fields to ElasticSearch
+
+		# index to ES		
+		to_index_rdd.saveAsNewAPIHadoopFile(
+			path='-',
+			outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+			keyClass="org.apache.hadoop.io.NullWritable",
+			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+			conf={
+					"es.resource":"%s/record" % index_name,
+					"es.nodes":"%s:9200" % settings.ES_HOST,
+					"es.mapping.exclude":"temp_id",
+					"es.mapping.id":"temp_id",
+				}
+		)
 		'''
-		pass
+
+		# import mapped fields
+		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Mapped Fields')
+
+		# loop through jobs
+		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+
+			##################################
+			# Dataframe and json.read
+			##################################
+			# # assemple location of export
+			# mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.export_path, orig_job_id)
+
+			# # load as dataframe
+			# mf_df = self.spark.read.json(mapped_fields_json_filepath)
+
+			# # retrieve newly written records for this Job
+			# pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
+			# records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			# .option("uri","mongodb://127.0.0.1")\
+			# .option("database","combine")\
+			# .option("collection","record")\
+			# .option("partitioner","MongoSamplePartitioner")\
+			# .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",4)\
+			# .option("pipeline",pipeline).load()
+
+			# # join on validations_df.record_id : records_df.orig_id
+			# updated_mf_df = mf_df.alias('mf_df').join(records_df.select('_id','orig_id').alias('records_df'), mf_df['db_id'] == records_df['orig_id'])
+
+			# # update record_id
+			# updated_mf_df = updated_mf_df.withColumn('db_id', updated_mf_df['_id']['oid'])
+
+			# # limit to validation columns
+			# updated_mf_df = updated_mf_df.select(mf_df.columns)
+
+			# # create index in advance
+			# index_name = 'j%s' % clone_job_id
+			# es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+			# if not es_handle_temp.indices.exists(index_name):
+				
+			# 	# put combine es index templates
+			# 	template_body = {
+			# 			'template':'*',
+			# 			'settings':{
+			# 				'number_of_shards':1,
+			# 				'number_of_replicas':0,
+			# 				'refresh_interval':-1
+			# 			},
+			# 			'mappings':{
+			# 				'record':{
+			# 					'date_detection':False,
+			# 					'properties':{
+			# 						'combine_db_id':{
+			# 							'type':'integer'
+			# 						}
+			# 					}
+			# 				}
+			# 			}
+			# 		}
+			# 	es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+				
+			# 	# create index
+			# 	es_handle_temp.indices.create(index_name)
+
+			# updated_mf_df.write.format("org.elasticsearch.spark.sql")\
+			# 	.option("es.mapping.exclude","temp_id")\
+			# 	.option("es.mapping.id","temp_id")\
+			# 	.save("%s/record" % index_name)
+
+			##################################
+			# RDDs and raw JSON
+			##################################
+
+			# assemple location of export
+			mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.export_path, orig_job_id)
+
+			# read raw JSON lines
+			json_lines_rdd = spark.sparkContext.textFile(mapped_fields_json_filepath)
+
+			# parse to expose record db_id
+			def parser_udf(row):
+				d = json.loads(row)
+				db_id = d['db_id']
+				return (db_id, row)
+			orig_id_rdd = json_lines_rdd.map(lambda row: parser_udf(row))
+
+			# to dataframe for join
+			orig_id_df = orig_id_rdd.toDF()
+
+			# join on id
+			join_id_df = orig_id_df.join(records_df, orig_id_df['_1'] == records_df['orig_id'])
+
+			# rewrite _1 as new id for Record
+			new_id_df = join_id_df.withColumn('_1', join_id_df['_id']['oid'])
+
+			# select only what's needed
+			new_id_df = new_id_df.select('_1','_2')
+
+			# convert back to RDD
+			new_id_rdd = new_id_df.rdd
+
+			# update db_id in JSON destined for ES
+			def update_db_id_udf(row):
+				
+				# load json
+				d = json.loads(row['_2'])
+
+				# set identifiers
+				d['db_id'] = row['_1']
+				d['temp_id'] = row['_1']
+
+				# convert lists to tuples
+				for k,v in d.items():
+					if type(v) == list:
+						d[k] = tuple(v)
+
+				return (row['_1'], d)
+			new_id_rdd = new_id_rdd.map(lambda row: update_db_id_udf(row))
+
+			# create index in advance
+			index_name = 'j%s' % clone_job_id
+			es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
+			if not es_handle_temp.indices.exists(index_name):
+				
+				# put combine es index templates
+				template_body = {
+						'template':'*',
+						'settings':{
+							'number_of_shards':1,
+							'number_of_replicas':0,
+							'refresh_interval':-1
+						},
+						'mappings':{
+							'record':{
+								'date_detection':False,
+								'properties':{
+									'combine_db_id':{
+										'type':'integer'
+									}
+								}
+							}
+						}
+					}
+				es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+				
+				# create index
+				es_handle_temp.indices.create(index_name)
+
+			# index
+			new_id_rdd.saveAsNewAPIHadoopFile(
+				path='-',
+				outputFormatClass="org.elasticsearch.hadoop.mr.EsOutputFormat",
+				keyClass="org.apache.hadoop.io.NullWritable",
+				valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
+				conf={
+						"es.resource":"%s/record" % index_name,
+						"es.nodes":"%s:9200" % 'localhost',
+						"es.mapping.exclude":"temp_id",
+						"es.mapping.id":"temp_id",			
+					}
+			)
+
+
+		
 
 
 

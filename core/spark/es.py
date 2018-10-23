@@ -280,17 +280,7 @@ class BaseMapper(object):
 class XML2kvpMapper(BaseMapper):
 
 	'''
-	Map XML to ElasticSearch friendly fields with xml2kvp	
-	
-	Args:
-		record_id (str): record id
-		record_string (str): string of record document
-		publish_set_id (str): core.models.RecordGroup.published_set_id, used to build OAI identifier
-
-	Returns:
-		(tuple):
-			0 (str): ['success','fail']
-			1 (dict): details from mapping process, success or failure
+	Map XML to ElasticSearch friendly fields with XML2kvp
 	'''
 
 

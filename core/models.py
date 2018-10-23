@@ -1260,7 +1260,7 @@ class Job(models.Model):
 		return ld
 
 
-	def validation_results(self):
+	def validation_results(self, force_recount=False):
 
 		'''
 		Method to return boolean whether job passes all/any validation tests run		
@@ -1274,9 +1274,6 @@ class Job(models.Model):
 				failure_count (int): Total number of distinct Records with 1+ validation failures
 				validation_scenarios (list): QuerySet of associated JobValidation
 		'''
-
-		# DEBUG
-		stime = time.time()
 
 		# return dict
 		results = {
@@ -1292,12 +1289,10 @@ class Job(models.Model):
 
 		# no validation tests run, return True
 		if self.jobvalidation_set.count() == 0:
-			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
-			return results
+			return results			
 
 		# check if already calculated, and use
-		elif 'validation_results' in self.job_details_dict.keys():
-			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
+		elif 'validation_results' in self.job_details_dict.keys() and not force_recount:
 			return self.job_details_dict['validation_results']
 
 		# validation tests run, loop through
@@ -1313,15 +1308,15 @@ class Job(models.Model):
 				# subtract failures from passed
 				results['passed_count'] -= results['failure_count']
 
-			# add all validation scenarios
-			# results['validation_scenarios'] = self.jobvalidation_set.all()
+			# add validation scenario ids
+			for jv in self.jobvalidation_set.all():
+				results['validation_scenarios'].append(jv.validation_scenario_id)
 
 			# save to job_details
 			logger.debug("saving validation results for %s to job_details" % self)
 			self.update_job_details({'validation_results':results})
 
 			# return
-			# logger.debug('calc validation results for Job %s: %s' % (self, (time.time()-stime)))
 			return results
 
 
@@ -7526,7 +7521,7 @@ class StateIOClient(object):
 		'''
 		Method to collect components needed for export
 			- Connected Jobs from lineage
-				- upstream, downstream?
+				- upstream, downstream
 			- Related scenarios (mostly, to facilitate re-running once re-imported)
 				- OAI endpoint 
 				- transformation
@@ -7534,10 +7529,8 @@ class StateIOClient(object):
 				- RITS <------- waiting
 				- DBDD <------- waiting
 				- field mapper configurations <------- waiting, might need to store ID in job_details?
-			- ElasticSearch index for each Job
-				- will need to rewrite job_id
-			- Records from Mongo
-				- will need to rewrite job_id
+			- ElasticSearch index for each Job				
+			- Records from Mongo				
 			- Validations from Mongo
 
 		TODO:
