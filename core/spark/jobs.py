@@ -1939,17 +1939,31 @@ class CombineStateIOImport(CombineStateIO):
 			mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.export_path, orig_job_id)
 
 			# read raw JSON lines
-			json_lines_rdd = spark.sparkContext.textFile(mapped_fields_json_filepath)
+			json_lines_rdd = self.spark.sparkContext.textFile(mapped_fields_json_filepath)
 
 			# parse to expose record db_id
 			def parser_udf(row):
+
+				# parse JSON
 				d = json.loads(row)
-				db_id = d['db_id']
-				return (db_id, row)
+
+				# return tuple with exposed original id	
+				return (d['db_id'], row)
+
 			orig_id_rdd = json_lines_rdd.map(lambda row: parser_udf(row))
 
 			# to dataframe for join
 			orig_id_df = orig_id_rdd.toDF()
+
+			# retrieve newly written records for this Job
+			pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
+			records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+			.option("uri","mongodb://127.0.0.1")\
+			.option("database","combine")\
+			.option("collection","record")\
+			.option("partitioner","MongoSamplePartitioner")\
+			.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",4)\
+			.option("pipeline",pipeline).load()
 
 			# join on id
 			join_id_df = orig_id_df.join(records_df, orig_id_df['_1'] == records_df['orig_id'])
@@ -1979,6 +1993,7 @@ class CombineStateIOImport(CombineStateIO):
 						d[k] = tuple(v)
 
 				return (row['_1'], d)
+				
 			new_id_rdd = new_id_rdd.map(lambda row: update_db_id_udf(row))
 
 			# create index in advance
