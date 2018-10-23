@@ -38,7 +38,7 @@ except:
 # import Row from pyspark
 from pyspark import StorageLevel
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
+from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType, LongType
 import pyspark.sql.functions as pyspark_sql_functions
 from pyspark.sql.functions import udf, regexp_replace, lit, crc32
 from pyspark.sql.window import Window
@@ -1792,8 +1792,6 @@ class CombineStateIOImport(CombineStateIO):
 		'''
 		'''
 
-		pass
-		
 		# import records
 		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
 
@@ -1832,9 +1830,9 @@ class CombineStateIOImport(CombineStateIO):
 				updated_validations_df = updated_validations_df.select(validations_df.columns).drop('_id')
 
 				# flatten
-				updated_validations_df = updated_validations_df.withColumn('fail_count', updated_validations_df.fail_count['$numberLong'])
-				updated_validations_df = updated_validations_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)))
-				updated_validations_df = updated_validations_df.withColumn('validation_scenario_id', updated_validations_df.validation_scenario_id['$numberLong'])
+				updated_validations_df = updated_validations_df.withColumn('fail_count', updated_validations_df.fail_count['$numberLong'].cast(LongType()))
+				updated_validations_df = updated_validations_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)).cast(LongType()))
+				updated_validations_df = updated_validations_df.withColumn('validation_scenario_id', updated_validations_df.validation_scenario_id['$numberLong'].cast(LongType()))
 
 				# write records to MongoDB			
 				updated_validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
