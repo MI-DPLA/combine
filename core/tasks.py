@@ -981,6 +981,27 @@ def clone_jobs(ct_id):
 		ct.save()
 
 
+@celery_app.task()
+def stateio_export(ct_id):
+
+	'''
+	Background task to export state		
+	'''
+
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.info('using %s' % ct)
+
+
+@celery_app.task()
+def stateio_import(ct_id):
+
+	'''
+	Background task to import state		
+	'''
+
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.info('using %s' % ct)
+
 
 
 
