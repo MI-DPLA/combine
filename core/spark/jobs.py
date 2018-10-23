@@ -1794,28 +1794,54 @@ class CombineStateIOImport(CombineStateIO):
 
 		pass
 		
-		# # import records
-		# self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
+		# import records
+		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
 
-		# # loop through jobs
-		# for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+		# loop through jobs
+		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
 
-		# 	# assemple location of export
-		# 	validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.export_path, orig_job_id)
+			# assemple location of export
+			validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.export_path, orig_job_id)
 
-		# 	# load as dataframe
-		# 	validations_df = self.spark.read.json(validations_json_filepath)
+			# load as dataframe
+			validations_df = self.spark.read.json(validations_json_filepath)
 
-		# 	# flatten fields
-		# 	validations_df = validations_df\
-		# 		.withColumn('fail_count', validations_df)
+			# TEMP: COUNT
+			if validations_df.count() > 0:
 
-		# 	# write records to MongoDB			
-		# 	validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
-		# 	.mode("append")\
-		# 	.option("uri","mongodb://127.0.0.1")\
-		# 	.option("database","combine")\
-		# 	.option("collection", "record").save()
+				# flatten record_id
+				validations_df = validations_df.withColumn('record_id', validations_df['record_id']['$oid'])
+
+				# retrieve newly written records for this Job
+				pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
+				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection","record")\
+				.option("partitioner","MongoSamplePartitioner")\
+				.option("spark.mongodb.input.partitionerOptions.partitionSizeMB",4)\
+				.option("pipeline",pipeline).load()
+
+				# join on validations_df.record_id : records_df.orig_id
+				updated_validations_df = validations_df.drop('_id').alias('validations_df').join(records_df.select('_id','orig_id').alias('records_df'), validations_df['record_id'] == records_df['orig_id'])
+
+				# 
+				updated_validations_df = updated_validations_df.withColumn('record_id', updated_validations_df['_id'])
+
+				# limit to validation columns
+				updated_validations_df = updated_validations_df.select(validations_df.columns).drop('_id')
+
+				# flatten
+				updated_validations_df = updated_validations_df.withColumn('fail_count', updated_validations_df.fail_count['$numberLong'])
+				updated_validations_df = updated_validations_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)))
+				updated_validations_df = updated_validations_df.withColumn('validation_scenario_id', updated_validations_df.validation_scenario_id['$numberLong'])
+
+				# write records to MongoDB			
+				updated_validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+				.mode("append")\
+				.option("uri","mongodb://127.0.0.1")\
+				.option("database","combine")\
+				.option("collection", "record_validation").save()
 
 
 	def _import_mapped_fields(self):

@@ -2160,6 +2160,7 @@ class Record(mongoengine.Document):
 	unique_published = mongoengine.BooleanField(default=True)
 	valid = mongoengine.BooleanField(default=True)
 	dbdm = mongoengine.BooleanField(default=False)
+	orig_id = mongoengine.StringField()
 
 	# meta
 	meta = {
@@ -2175,7 +2176,8 @@ class Record(mongoengine.Document):
 			{'fields': ['valid']},
 			{'fields': ['published']},
 			{'fields': ['publish_set_id']},
-			{'fields': ['dbdm']}
+			{'fields': ['dbdm']},
+			{'fields': ['orig_id']}
 		]
 	}
 
