@@ -7470,17 +7470,41 @@ class StateIOClient(object):
 
 
 	def __init__(self):
-		self.export_dict = {}
+		self.export_dict = {
+			'jobs':set(),
+			'record_groups':set(),
+			'orgs':set(),
+			'job_inputs':set(),
+			'job_validations':set(),
+			'validations':set(),
+			'transformations':set(),
+			'oai_endpoints':set(),
+		}
 
 
-	def export_state(self, model_instance):
+	def export_state(self, jobs=[], record_groups=[], orgs=[]):
 
 		'''
-		Method to export state of model instance: Org, RecordGroup, or Job
+		Method to export state of passed Organization, Record Group, and/or Jobs
+
+		Args:
+			jobs (list): List of Jobs to export, accept instance or id
+			record_groups (list): List of Record Groups to export, accept instance or id
+			orgs (list): List of Organizations to export, accept instance or id
 		'''
 
-		# set model_instance
-		self.model_instance = model_instance
+		# set export_roots with model instances
+		self.export_roots = {
+			'jobs':[ Job.objects.get(pk=int(job)) if type(job) in [int,str] else job for job in jobs ],
+			'record_groups':[ RecordGroup.objects.get(pk=int(rg)) if type(rg) in [int,str] else rg for rg in record_groups ],
+			'orgs':[ Organization.objects.get(pk=int(org)) if type(org) in [int,str] else org for org in orgs ],
+		}
+		# set export_root_ids with model ids
+		self.export_roots_ids = {
+			'jobs':[ job.id for job in self.export_roots['jobs'] ],
+			'record_groups': [ record_group.id for record_group in self.export_roots['record_groups'] ],
+			'orgs': [ org.id for org in self.export_roots['orgs'] ]
+		}		
 
 		# unique hash for export, used for filepath and manifest
 		export_id = uuid.uuid4().hex
@@ -7492,9 +7516,12 @@ class StateIOClient(object):
 		# init export manifest dictionary
 		self.export_manifest = {
 			'export_id':export_id,
-			'root_instance_id':model_instance.id,
-			'root_instance_type':type(model_instance).__name__,
+			'export_root_ids':self.export_roots_ids,
+
 			'jobs':[],
+			'record_groups':[],
+			'organizations':[],
+
 			'pk_hash':{
 				'jobs':{},
 				'record_groups':{},
@@ -7505,56 +7532,52 @@ class StateIOClient(object):
 			}
 		}
 
-		# handle model instance types
-		# org
-		if type(self.model_instance) == Organization:
+		# generate unique set of Jobs
+		self.export_job_set = self._get_unique_job_set()
 
-			logger.debug('preparing to export Organization: %s' % self.model_instance)
+		# based on Jobs identified from export_roots, collect all connected Jobs
+		self._collect_related_jobs()
 
-		# record group
-		elif type(self.model_instance) == RecordGroup:
+		# based on network of Jobs, collection associated components
+		self._collect_related_components()		
 
-			logger.debug('preparing to export RecordGroup: %s' % self.model_instance)
-
-		# job
-		elif type(self.model_instance) in [Job, CombineJob]:
-
-			logger.debug('preparing to export Job: %s' % self.model_instance)
-
-			# collect components
-			components = self._job_collect_related()
-
-			# serialize for export
-			self.package_export()
-
-		else:
-			logger.debug('Unsure how to export %s, type %s' % (self.model_instance, type(self.model_instance)))
+		# # serialize for export
+		self.package_export()
 
 
-	def _org_collect_related(self):
+	def _get_unique_job_set(self):
 
 		'''
-		Method to collect and export an Organization
+		Method to get unique set of Jobs from self.export_roots
+			- export_roots may contain Organizations, Record Groups, and Jobs
 		'''
 
-		pass
+		# extend self.export_roots['record_groups'] with Record Groups from Orgs
+		for org in self.export_roots['orgs']:
+			self.export_roots['record_groups'].extend(org.recordgroup_set.all())
+
+		# extend self.export_roots['jobs'] with Jobs from Record Groups
+		for rg in self.export_roots['record_groups']:
+			self.export_roots['jobs'].extend(rg.job_set.all())
+
+		# ensure all Jobs unique and return
+		self.export_roots['jobs'] = list(set(self.export_roots['jobs']))		
+		return self.export_roots['jobs']
 
 
-	def _record_group_collect_related(self):
+	def _collect_related_jobs(self, include_upstream=True):
 
 		'''
-		Method to collect and export a Record Gruop
-		'''
+		Method to collect all connected Jobs based on Jobs identified
+		in export_roots['jobs'].
 
-		pass
-
-
-	def _job_collect_related(self, include_upstream=True):
-
-		'''
-		Method to collect and export a Job
+		Topographically sorts all Jobs, to determine order.
+		
+		First:
 			- Connected Jobs from lineage
 				- upstream, downstream
+		
+		Second:
 			- Related scenarios (mostly, to facilitate re-running once re-imported)
 				- OAI endpoint 
 				- transformation
@@ -7568,52 +7591,86 @@ class StateIOClient(object):
 
 		TODO:
 			- break pieces into sub-methods
+
+		Args:
+			include_upstream (bool): Boolean to also collect "upstream" Jobs
+				- defaults to True, to safely ensure that Jobs exported/imported have all
+				supporting infrastructure
+
+		Returns:
+			None
+				- sets final list of Jobs to export at self.export_dict['jobs'],
+				topographically sorted and unique
 		'''
 
 		############################ 
 		# JOBS
 		############################ 
 
-		# prepare unique Job set
-		self.export_dict['jobs'] = set()
+		# loop through Jobs identified from roots and queue
+		for job in self.export_roots['jobs']:
 
-		# get downstream
-		downstream_jobs = self.model_instance.get_downstream_jobs()
-		self.export_dict['jobs'].update(downstream_jobs)		
+			# add job
+			self.export_dict['jobs'].add(job)
 
-		if include_upstream:
-			
-			# get upstream for all Jobs
-			upstream_jobs = []
-			for job in self.export_dict['jobs']:
+			# get downstream
+			downstream_jobs = job.get_downstream_jobs()
+			self.export_dict['jobs'].update(downstream_jobs)		
 
-				# get lineage
-				# TODO: replace with new upstream lineage method that's coming
-				lineage = job.get_lineage()
+			if include_upstream:
+				
+				# get upstream for all Jobs currently queued in export_dict
+				upstream_jobs = []
+				for job in self.export_dict['jobs']:
 
-				# loop through nodes and add to set
-				for lineage_job_dict in lineage['nodes']:
-					upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
+					# get lineage
+					# TODO: replace with new upstream lineage method that's coming
+					lineage = job.get_lineage()
 
-			# update set with upstream
-			self.export_dict['jobs'].update(upstream_jobs)
+					# loop through nodes and add to set
+					for lineage_job_dict in lineage['nodes']:
+						upstream_jobs.append(Job.objects.get(pk=int(lineage_job_dict['id'])))
 
-		# re-sort topopgraphically with ALL jobs, and write to manifest
+				# update set with upstream
+				self.export_dict['jobs'].update(upstream_jobs)
+
+
+		# topopgraphically sort all queued export jobs, and write to manifest
 		self.export_dict['jobs'] = Job._topographic_sort_jobs(self.export_dict['jobs'])		
 		self.export_manifest['jobs'] = [ job.id for job in self.export_dict['jobs'] ]
+
+
+	def _collect_related_components(self):
+
+		'''
+		Method to collection related components based on topographically sorted,
+		and unique list of Jobs at self.export_dict['jobs']
+
+		All operate over self.export_dict['jobs'], updating other sections of 
+		self.export_dict
+		'''
+
+		###################################
+		# ORGANIZATIONS and RECORD GROUPS
+		###################################
+
+		# extend self.export_dict['orgs'] from Jobs:
+		for job in self.export_dict['jobs']:
+			self.export_dict['orgs'].add(job.record_group.organization)
+
+		# extend self.export_roots['record_groups'] with Record Groups from Orgs
+		for org in self.export_roots['orgs']:
+			self.export_roots['record_groups'].extend(org.recordgroup_set.all())		
 
 
 		############################ 
 		# JOBS: Job Input
 		############################
 
-		# prepare unique JobInputs
-		self.export_dict['job_inputs'] = set()
-
 		# get all related Job Inputs
 		job_inputs = JobInput.objects.filter(
-			job__in=self.export_manifest['jobs'],
-			input_job__in=self.export_manifest['jobs'])
+			job__in=self.export_dict['jobs'],
+			input_job__in=self.export_dict['jobs'])
 
 		# write to serialize set
 		self.export_dict['job_inputs'].update(job_inputs)
@@ -7623,11 +7680,8 @@ class StateIOClient(object):
 		# JOBS: Job Validation
 		############################
 
-		# prepare unique JobInputs
-		self.export_dict['job_validations'] = set()
-
 		# get all related Job Inputs
-		job_validations = JobValidation.objects.filter(job__in=self.export_manifest['jobs'])
+		job_validations = JobValidation.objects.filter(job__in=self.export_dict['jobs'])
 
 		# write to serialize set
 		self.export_dict['job_validations'].update(job_validations)
@@ -7636,9 +7690,6 @@ class StateIOClient(object):
 		############################ 
 		# TRANSFORMATION SCENARIOS
 		############################
-
-		# prepare trans dict
-		self.export_dict['transformations'] = set()
 
 		# loop through Jobs, looking for Transformation Scenarios
 		for job in self.export_dict['jobs']:
@@ -7651,9 +7702,6 @@ class StateIOClient(object):
 		############################ 
 		# VALIDATION SCENARIOS
 		############################
-
-		# prepare val dict
-		self.export_dict['validations'] = set()
 
 		# loop through Jobs, looking for Validations applied Scenarios
 		for job in self.export_dict['jobs']:
@@ -7669,9 +7717,6 @@ class StateIOClient(object):
 		############################ 
 		# OAI ENDPOINTS
 		############################
-
-		# prepare val dict
-		self.export_dict['oai_endpoints'] = set()
 
 		# loop through Jobs, looking for OAI endpoints that need exporting
 		for job in self.export_dict['jobs']:
@@ -7784,6 +7829,8 @@ class StateIOClient(object):
 			to_serialize = []
 			for k in [
 					'jobs',
+					'record_groups',
+					'orgs',
 					'transformations',
 					'validations',
 					'oai_endpoints',
