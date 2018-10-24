@@ -8104,7 +8104,8 @@ class StateIOClient(object):
 			logger.debug('rehydrating %s' % jv)
 
 			# update validation_scenario_id
-			jv.object.validation_scenario_id = self.export_manifest['pk_hash']
+			vs_orig_id = jv.object.validation_scenario_id
+			jv.object.validation_scenario_id = self.export_manifest['pk_hash']['validation_scenarios'][vs_orig_id]
 
 			# update job_id
 			jv.object.id = None
