@@ -568,7 +568,7 @@ class Job(models.Model):
 
 
 	def __str__(self):
-		return '%s, Job #%s, from Record Group: %s' % (self.name, self.id, self.record_group.name)
+		return '%s, Job #%s' % (self.name, self.id)
 
 
 	def job_type_family(self):
@@ -8023,7 +8023,7 @@ class StateIOClient(object):
 				vs_orig_id = vs.object.id
 				vs.object.id = None
 				vs.save()
-				self.export_manifest['pk_hash']['transformation_scenarios'][vs_orig_id] = vs.object.id
+				self.export_manifest['pk_hash']['validation_scenarios'][vs_orig_id] = vs.object.id
 
 
 		#################################
@@ -8048,7 +8048,7 @@ class StateIOClient(object):
 				oai_orig_id = oai.object.id
 				oai.object.id = None
 				oai.save()
-				self.export_manifest['pk_hash']['transformation_scenarios'][oai_orig_id] = oai.object.id
+				self.export_manifest['pk_hash']['oai_endpoints'][oai_orig_id] = oai.object.id
 
 
 
@@ -8062,9 +8062,11 @@ class StateIOClient(object):
 		# DJANGO OBJECTS: JOBS
 		############################
 		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
-		for job in self._get_django_model_type(Job):
+		for job_id in self.export_manifest['jobs']:
 
-			logger.debug('rehydrating %s' % job)
+			# get deserialized Job
+			job = self._get_django_model_instance(job_id, Job)
+			logger.debug('rehydrating %s' % job.object.name)
 
 			# run rg id through pk_hash
 			rg_orig_id = job.object.record_group_id
@@ -8100,6 +8102,11 @@ class StateIOClient(object):
 		# loop through and create
 		for jv in self._get_django_model_type(JobValidation):
 			logger.debug('rehydrating %s' % jv)
+
+			# update validation_scenario_id
+			jv.object.validation_scenario_id = self.export_manifest['pk_hash']
+
+			# update job_id
 			jv.object.id = None
 			jv.object.job_id = self.export_manifest['pk_hash']['jobs'][jv.object.job_id]
 			jv.save()
