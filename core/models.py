@@ -7470,6 +7470,11 @@ class StateIOClient(object):
 
 
 	def __init__(self):
+
+		# location of export created, or imported
+		self.export_path = None
+
+		# dictionary used to aggregate components for export
 		self.export_dict = {
 			'jobs':set(),
 			'record_groups':set(),
@@ -7492,6 +7497,9 @@ class StateIOClient(object):
 			record_groups (list): List of Record Groups to export, accept instance or id
 			orgs (list): List of Organizations to export, accept instance or id
 		'''
+
+		# DEBUG
+		stime = time.time()
 
 		# set export_roots with model instances
 		self.export_roots = {
@@ -7517,15 +7525,11 @@ class StateIOClient(object):
 		self.export_manifest = {
 			'export_id':export_id,
 			'export_root_ids':self.export_roots_ids,
-
-			'jobs':[],
-			'record_groups':[],
-			'organizations':[],
-
+			'jobs':[],			
 			'pk_hash':{
 				'jobs':{},
 				'record_groups':{},
-				'organizations':{},
+				'orgs':{},
 				'transformation_scenarios':{},
 				'validation_scenarios':{},
 				'oai_endpoints':{}				
@@ -7543,6 +7547,9 @@ class StateIOClient(object):
 
 		# # serialize for export
 		self.package_export()
+
+		# debug
+		logger.debug("total time for state export: %s" % (time.time() - stime))
 
 
 	def _get_unique_job_set(self):
@@ -7654,13 +7661,10 @@ class StateIOClient(object):
 		# ORGANIZATIONS and RECORD GROUPS
 		###################################
 
-		# extend self.export_dict['orgs'] from Jobs:
+		# extend self.export_dict['orgs'] and self.export_dict['record_groups']
 		for job in self.export_dict['jobs']:
 			self.export_dict['orgs'].add(job.record_group.organization)
-
-		# extend self.export_roots['record_groups'] with Record Groups from Orgs
-		for org in self.export_roots['orgs']:
-			self.export_roots['record_groups'].extend(org.recordgroup_set.all())		
+			self.export_dict['record_groups'].add(job.record_group)
 
 
 		############################ 
@@ -7872,6 +7876,9 @@ class StateIOClient(object):
 		############################ 
 		# IMPORT STATE
 		############################
+		# load structural hierarchy
+		self._import_hierarchy()
+
 		# load configuration dependencies
 		self._import_config_dependencies()
 
@@ -7880,6 +7887,89 @@ class StateIOClient(object):
 
 		# load Mongo and ES DB records
 		self._import_db_records()
+
+
+	def load_state(self, export_path):
+
+		'''
+		Method to load state data in preparation for import
+
+		Args:
+			export_path (str): location on disk of unzipped export directory
+
+		Returns:
+			None
+		'''
+
+		# set export path
+		self.export_path = export_path
+
+		# parse export_manifest
+		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
+			self.export_manifest = json.loads(f.read())
+
+		# deserialize django objects
+		self.deser_django_objects = []
+		with open('%s/django_objects.json' % self.export_path, 'r') as f:
+			django_objects_json = f.read()
+		for obj in serializers.deserialize('json', django_objects_json):
+			self.deser_django_objects.append(obj)			
+
+
+	def _import_hierarchy(self):
+
+		'''
+		Import Organizations and Record Groups
+
+		Note: If same name is found, but duplicates exist, will be aligned with first instance
+		sorted by id	
+		'''
+
+		# loop through deserialized Organizations
+		for org in self._get_django_model_type(Organization):
+			logger.debug('rehydrating %s' % org)
+
+			# check Org name
+			org_match = Organization.objects.filter(name=org.object.name).order_by('id')
+
+			# matching Organization found
+			if org_match.count() > 0:
+				logger.debug('found same Organization name, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['orgs'][org.object.id] = org_match.first().id
+
+			# not found, creating
+			else:
+				logger.debug('Organization not found, creating')
+				org_orig_id = org.object.id
+				org.object.id = None
+				org.save()
+				self.export_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
+
+
+		# loop through deserialized Record Groups
+		for rg in self._get_django_model_type(RecordGroup):
+			logger.debug('rehydrating %s' % rg)
+
+			# checking parent org exists, and contains record group with same name
+			rg_match = RecordGroup.objects\
+				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.export_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
+
+			# matching Record Group found
+			if rg_match.count() > 0:
+				logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
+
+			# not found, creating			
+			else:
+				logger.debug('Record Group not found, creating')
+				rg_orig_id = rg.object.id				
+				rg.object.id = None
+				# update org id
+				org_orig_id = rg.object.organization_id
+				rg.object.organization = None
+				rg.object.organization_id = self.export_manifest['pk_hash']['orgs'][org_orig_id]
+				rg.save()
+				self.export_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
 
 
 	def _import_config_dependencies(self):
@@ -7896,7 +7986,7 @@ class StateIOClient(object):
 			logger.debug('rehydrating %s' % ts)
 
 			# check for identical name and payload
-			ts_match = Transformation.objects.filter(name=ts.object.name, payload=ts.object.payload)
+			ts_match = Transformation.objects.filter(name=ts.object.name, payload=ts.object.payload).order_by('id')
 			
 			# matching scenario found
 			if ts_match.count() > 0:
@@ -7920,7 +8010,7 @@ class StateIOClient(object):
 			logger.debug('rehydrating %s' % vs)
 
 			# check for identical name and payload
-			vs_match = ValidationScenario.objects.filter(name=vs.object.name, payload=vs.object.payload)
+			vs_match = ValidationScenario.objects.filter(name=vs.object.name, payload=vs.object.payload).order_by('id')
 			
 			# matching scenario found
 			if vs_match.count() > 0:
@@ -7936,6 +8026,31 @@ class StateIOClient(object):
 				self.export_manifest['pk_hash']['transformation_scenarios'][vs_orig_id] = vs.object.id
 
 
+		#################################
+		# OAI ENDPOINTS
+		#################################
+
+		# loop through and create
+		for oai in self._get_django_model_type(OAIEndpoint):
+			logger.debug('rehydrating %s' % oai)
+
+			# check for identical name and payload
+			oai_match = OAIEndpoint.objects.filter(name=oai.object.name, endpoint=oai.object.endpoint).order_by('id')
+			
+			# matching scenario found
+			if oai_match.count() > 0:
+				logger.debug('found identical OAIEndpoint, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['oai_endpoints'][oai.object.id] = oai_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('OAIEndpoint not found, creating')
+				oai_orig_id = oai.object.id
+				oai.object.id = None
+				oai.save()
+				self.export_manifest['pk_hash']['transformation_scenarios'][oai_orig_id] = oai.object.id
+
+
 
 	def _import_model_instances(self):
 
@@ -7947,19 +8062,21 @@ class StateIOClient(object):
 		# DJANGO OBJECTS: JOBS
 		############################
 		# loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
-		for job_id in self.export_manifest['jobs']:
+		for job in self._get_django_model_type(Job):
 
-			logger.debug('reconstituting original job_id %s' % job_id)
+			logger.debug('rehydrating %s' % job)
 
-			# retrieve deserialized job
-			job = self._get_django_model_instance(job_id, Job)
+			# run rg id through pk_hash
+			rg_orig_id = job.object.record_group_id
+			job.object.record_group_id = self.export_manifest['pk_hash']['record_groups'][rg_orig_id]
 
 			# drop pk, save, and note new id
+			job_orig_id = job.object.id
 			job.object.id = None
 			job.save()
 
 			# update pk_hash
-			self.export_manifest['pk_hash']['jobs'][job_id] = job.object.id
+			self.export_manifest['pk_hash']['jobs'][job_orig_id] = job.object.id
 
 			# Job, update job_details
 			self._update_job_details(job.object)
@@ -7996,17 +8113,7 @@ class StateIOClient(object):
 			- ElasticSearch
 		'''
 
-		#################################
-		# WRITE MONGO RECORDS 
-		#################################
-		'''
-		df = spark.read.json('file:///tmp/stateio/d3f3816963004b63a456bc69d71fc5c3/record_exports/j967_mongo_records.json')
-		'''
-
-
-		#################################
-		# WRITE MONGO VALIDATIONS 
-		#################################
+		pass
 
 
 	def _update_job_details(self, job):
@@ -8081,33 +8188,6 @@ class StateIOClient(object):
 		cjob = CombineJob.get_combine_job(job.id)
 		cjob.job.spark_code = cjob.prepare_job(return_job_code=True)
 		cjob.job.save()
-
-
-	def load_state(self, export_path):
-
-		'''
-		Method to load state data in preparation for import
-
-		Args:
-			export_path (str): location on disk of unzipped export directory
-
-		Returns:
-			None
-		'''
-
-		# set export path
-		self.export_path = export_path
-
-		# parse export_manifest
-		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
-			self.export_manifest = json.loads(f.read())
-
-		# deserialize django objects
-		self.deser_django_objects = []
-		with open('%s/django_objects.json' % self.export_path, 'r') as f:
-			django_objects_json = f.read()
-		for obj in serializers.deserialize('json', django_objects_json):
-			self.deser_django_objects.append(obj)
 
 
 	def _get_django_model_instance(self, instance_id, instance_type, instances=None):
