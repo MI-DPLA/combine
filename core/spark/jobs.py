@@ -1773,7 +1773,10 @@ class CombineStateIOImport(CombineStateIO):
 				.withColumn('orig_id', records_df['_id']['$oid'])
 			
 			# flatten fingerprint column
-			records_df = records_df.withColumn('fingerprint', records_df.fingerprint['$numberLong'])
+			try:
+				records_df = records_df.withColumn('fingerprint', records_df.fingerprint['$numberLong'])
+			except:
+				records_df = records_df.withColumn('fingerprint', records_df.fingerprint)
 
 			# update job_id
 			records_df = records_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)))
