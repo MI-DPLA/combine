@@ -7889,12 +7889,6 @@ class StateIOClient(object):
 		self._import_db_records()
 
 		
-		############################ 
-		# UPDATE export_manifest
-		############################
-		
-
-
 	def load_state(self, export_path):
 
 		'''
