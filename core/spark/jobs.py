@@ -1677,7 +1677,7 @@ class CombineStateIO(object):
 		self.kwargs = kwargs
 
 		# capture common params		
-		self.export_path = kwargs.get('export_path', None)
+		self.import_path = kwargs.get('import_path', None)
 		self.export_manifest = kwargs.get('export_manifest', None)
 
 		# init logging support
@@ -1702,7 +1702,7 @@ class CombineStateIOImport(CombineStateIO):
 
 	Args:
 		kwargs(dict):
-			- export_path (str): string of unzipped export directory on disk
+			- import_path (str): string of unzipped export directory on disk
 			- export_manifest (dict): dictionary of newly created Django model instances and scenarios
 	'''
 
@@ -1731,7 +1731,7 @@ class CombineStateIOImport(CombineStateIO):
 		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
 
 			# assemple location of export
-			records_json_filepath = '%s/record_exports/j%s_mongo_records.json' % (self.export_path, orig_job_id)
+			records_json_filepath = '%s/record_exports/j%s_mongo_records.json' % (self.import_path, orig_job_id)
 
 			# load as dataframe
 			records_df = self.spark.read.json(records_json_filepath)			
@@ -1771,7 +1771,7 @@ class CombineStateIOImport(CombineStateIO):
 		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
 
 			# assemple location of export
-			validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.export_path, orig_job_id)
+			validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.import_path, orig_job_id)
 
 			# load as dataframe
 			validations_df = self.spark.read.json(validations_json_filepath)
@@ -1866,7 +1866,7 @@ class CombineStateIOImport(CombineStateIO):
 			else:
 
 				# assemple location of export
-				mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.export_path, orig_job_id)
+				mapped_fields_json_filepath = '%s/mapped_fields_exports/j%s_mapped_fields.json' % (self.import_path, orig_job_id)
 
 				# read raw JSON lines
 				json_lines_rdd = self.spark.sparkContext.textFile(mapped_fields_json_filepath)

@@ -82,7 +82,7 @@ function styleNetworkNodes(node){
 
 	// override if job is slated for deletion
 	if (node.deleted) {
-		node.color = '#afafaf';
+		node.color = '#efefef';
 
 		// gray out all edges to this node									
 		node_edges = getEdgesOfNode(node.id)									

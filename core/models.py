@@ -7471,6 +7471,9 @@ class StateIOClient(object):
 
 	def __init__(self):
 
+		# ensure working directories exist
+		self._confirm_working_dirs()
+
 		# location of export created, or imported
 		self.export_path = None
 
@@ -7487,7 +7490,29 @@ class StateIOClient(object):
 		}
 
 
-	def export_state(self, jobs=[], record_groups=[], orgs=[]):
+	def _confirm_working_dirs(self):
+		
+		'''
+		Method to ensure working dirs exist, and are writable
+		'''
+
+		# check for exports directory
+		if not os.path.isdir(settings.STATEIO_EXPORT_DIR):
+			logger.debug('creating StateIO working directory: %s' % settings.STATEIO_EXPORT_DIR)
+			os.makedirs(settings.STATEIO_EXPORT_DIR)
+
+		# check for imports directory
+		if not os.path.isdir(settings.STATEIO_IMPORT_DIR):
+			logger.debug('creating StateIO working directory: %s' % settings.STATEIO_IMPORT_DIR)
+			os.makedirs(settings.STATEIO_IMPORT_DIR)
+
+
+	def export_state(self,
+		jobs=[],
+		record_groups=[],
+		orgs=[],
+		compress=True,
+		compression_format='zip'):
 
 		'''
 		Method to export state of passed Organization, Record Group, and/or Jobs
@@ -7496,10 +7521,16 @@ class StateIOClient(object):
 			jobs (list): List of Jobs to export, accept instance or id
 			record_groups (list): List of Record Groups to export, accept instance or id
 			orgs (list): List of Organizations to export, accept instance or id
+			compress (bool): If True, compress to zip file and delete directory
+			compression_format (str): Possible values here: https://docs.python.org/3.5/library/shutil.html#shutil.make_archive
 		'''
 
 		# DEBUG
 		stime = time.time()
+
+		# save compression flag
+		self.compress = compress
+		self.compression_format = compression_format
 
 		# set export_roots with model instances
 		self.export_roots = {
@@ -7518,7 +7549,7 @@ class StateIOClient(object):
 		export_id = uuid.uuid4().hex
 
 		# prepare tmp location for export
-		self.export_path = '/tmp/stateio/%s' % export_id
+		self.export_path = '%s/%s' % (settings.STATEIO_EXPORT_DIR, export_id)
 		os.mkdir(self.export_path)
 
 		# init export manifest dictionary
@@ -7850,6 +7881,30 @@ class StateIOClient(object):
 		with open('%s/export_manifest.json' % self.export_path,'w') as f:
 			f.write(json.dumps(self.export_manifest))
 
+		# if compressing, zip up directory, and remove originals after archive created
+		if self.compress:
+
+			logger.debug("compressiong exported state at %s" % self.export_path)
+
+			# establish output archive file
+			export_filename = '%s/%s' % (settings.STATEIO_EXPORT_DIR, self.export_manifest['export_id'])
+			
+			# use shutil to zip up
+			compress_stime = time.time()
+			new_export_path = shutil.make_archive(
+				export_filename,
+				self.compression_format,
+				settings.STATEIO_EXPORT_DIR,
+				self.export_manifest['export_id']
+			)
+			logger.debug('archive %s created in %ss' % (new_export_path, (time.time() - compress_stime)))
+
+			# remove originals
+			shutil.rmtree(self.export_path)
+
+			# update export path
+			self.export_path = new_export_path
+
 		# return export_path
 		return self.export_path
 
@@ -7867,11 +7922,16 @@ class StateIOClient(object):
 
 		'''
 
+		#debug
+		import_stime = time.time()
+
+		# mint new import id
+		self.import_id = uuid.uuid4().hex
+
 		############################ 
 		# LOAD STATE DATA
 		############################
 		self.load_state(export_path)
-
 
 		############################ 
 		# IMPORT STATE
@@ -7887,6 +7947,51 @@ class StateIOClient(object):
 
 		# load Mongo and ES DB records
 		self._import_db_records()
+
+		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
+
+
+	def _prepare_files(self):
+		
+		'''
+		Method to handle unpacking of exported state, and prepare self.import_path
+		'''
+
+		# create import dir based on self.import_id
+		self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
+
+		# handle archives
+		if os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
+			logger.debug('imported state determined to be archive, decompressing')			
+			shutil.unpack_archive(self.export_path, self.import_path)
+
+		# handle dir
+		elif os.path.isdir(self.export_path):
+			logger.debug('imported state is directory')
+
+		# else, raise Exception
+		else:
+			raise Exception('%s is neither a directory or known archive file' % self.export_path)
+
+		# look for export_manifest.json, indicating base directory
+		import_base_dir = False
+		for root, dirs, files in os.walk(self.import_path):
+			if 'export_manifest.json' in files:
+				import_base_dir = root
+		# if not found, raise Exception
+		if not import_base_dir:
+			raise Exception('could not find export_manfiest.json, aborting')
+		
+		# if import_base_dir != self.import_path, move everything to self.import_path
+		if import_base_dir != self.import_path:
+
+			# mv everything to import dir
+			os.system('mv %s/* %s' % (import_base_dir, self.import_path))
+
+			# remove now empty base_dir
+			shutil.rmtree(import_base_dir)
+
+		logger.debug('confirmed import path at %s' % self.import_path)
 
 		
 	def load_state(self, export_path):
@@ -7904,13 +8009,16 @@ class StateIOClient(object):
 		# set export path
 		self.export_path = export_path
 
+		# unpack if compressed, move to imports
+		self._prepare_files()
+
 		# parse export_manifest
-		with open('%s/export_manifest.json' % self.export_path, 'r') as f:
+		with open('%s/export_manifest.json' % self.import_path, 'r') as f:
 			self.export_manifest = json.loads(f.read())
 
 		# deserialize django objects
 		self.deser_django_objects = []
-		with open('%s/django_objects.json' % self.export_path, 'r') as f:
+		with open('%s/django_objects.json' % self.import_path, 'r') as f:
 			django_objects_json = f.read()
 		for obj in serializers.deserialize('json', django_objects_json):
 			self.deser_django_objects.append(obj)			
@@ -8051,7 +8159,6 @@ class StateIOClient(object):
 				self.export_manifest['pk_hash']['oai_endpoints'][oai_orig_id] = oai.object.id
 
 
-
 	def _import_model_instances(self):
 
 		'''
@@ -8120,8 +8227,18 @@ class StateIOClient(object):
 			- Mongo
 			- ElasticSearch
 		'''
+		
+		# generate spark code
+		self.spark_code = 'from jobs import CombineStateIOImport\nCombineStateIOImport(spark, import_path="%(import_path)s", export_manifest=%(export_manifest)s).spark_function()' % {
+			'import_path':'file://%s' % self.import_path,
+			'export_manifest':self.export_manifest
+		}
 
-		pass
+		# submit to livy and poll
+		submit = LivyClient().submit_job(LivySession.get_active_session().session_id, {'code':self.spark_code})
+		self.spark_results = polling.poll(lambda: LivyClient().job_status(submit.headers['Location']).json()['state'] == 'available', step=5, poll_forever=True)
+
+		return self.spark_results
 
 
 	def _update_job_details(self, job):
@@ -8158,36 +8275,51 @@ class StateIOClient(object):
 
 		# update validation_scenarios
 		if 'validation_scenarios' in job.job_details_dict.keys():
-			validation_scenarios = job.job_details_dict['validation_scenarios']
-			validation_scenarios_updated = [ pk_hash['validation_scenarios'].get(vs_id, vs_id) for vs_id in validation_scenarios ]
-			update_dict['validation_scenarios'] = validation_scenarios_updated
+			try:
+				validation_scenarios = job.job_details_dict['validation_scenarios']
+				validation_scenarios_updated = [ pk_hash['validation_scenarios'].get(vs_id, vs_id) for vs_id in validation_scenarios ]
+				update_dict['validation_scenarios'] = validation_scenarios_updated
+			except:
+				logger.debug('error with updating job_details: validation_scenarios')
 
 		# update input_job_ids		
 		if 'input_job_ids' in job.job_details_dict.keys():
-			input_job_ids = job.job_details_dict['input_job_ids']
-			input_job_ids_updated = [ pk_hash['jobs'].get(job_id, job_id) for job_id in input_job_ids ]
-			update_dict['input_job_ids'] = input_job_ids_updated
+			try:
+				input_job_ids = job.job_details_dict['input_job_ids']
+				input_job_ids_updated = [ pk_hash['jobs'].get(job_id, job_id) for job_id in input_job_ids ]
+				update_dict['input_job_ids'] = input_job_ids_updated
+			except:
+				logger.debug('error with updating job_details: input_job_ids')
 
 		# update input_filters.job_specific
 		if 'input_filters' in job.job_details_dict.keys():
-			input_filters = job.job_details_dict['input_filters']
-			job_specific_updated = { str(pk_hash['jobs'].get(int(k), int(k))):v for k,v in input_filters['job_specific'].items() }
-			input_filters['job_specific'] = job_specific_updated
-			update_dict['input_filters'] = input_filters
+			try:
+				input_filters = job.job_details_dict['input_filters']
+				job_specific_updated = { str(pk_hash['jobs'].get(int(k), int(k))):v for k,v in input_filters['job_specific'].items() }
+				input_filters['job_specific'] = job_specific_updated
+				update_dict['input_filters'] = input_filters
+			except:
+				logger.debug('error with updating job_details: input_filters')
 
 		# if OAIHarvest, update oai_params
 		if job.job_type == 'HarvestOAIJob':
-			logger.debug('HarvestOAIJob encountered, updating job details')
-			oai_params = job.job_details_dict['oai_params']
-			oai_params['id'] = pk_hash['oai_endpoints'].get(oai_params['id'], oai_params['id'])
-			update_dict['oai_params'] = oai_params
+			try:
+				logger.debug('HarvestOAIJob encountered, updating job details')
+				oai_params = job.job_details_dict['oai_params']
+				oai_params['id'] = pk_hash['oai_endpoints'].get(oai_params['id'], oai_params['id'])
+				update_dict['oai_params'] = oai_params
+			except:
+				logger.debug('error with updating job_details: oai_params')
 
 		# if Transform, update transformation
 		if job.job_type == 'TransformJob':
-			logger.debug('TransformJob encountered, updating job details')
-			transformation = job.job_details_dict['transformation']
-			transformation['id'] = pk_hash['transformation_scenarios'].get(transformation['id'], transformation['id'])
-			update_dict['transformation'] = transformation
+			try:
+				logger.debug('TransformJob encountered, updating job details')
+				transformation = job.job_details_dict['transformation']
+				transformation['id'] = pk_hash['transformation_scenarios'].get(transformation['id'], transformation['id'])
+				update_dict['transformation'] = transformation
+			except:
+				logger.debug('error with updating job_details: transformation')
 
 		# update job details
 		job.update_job_details(update_dict)
@@ -8224,7 +8356,6 @@ class StateIOClient(object):
 			if obj.object.id == instance_id and type(obj.object) == instance_type:
 				logger.debug('deserialized object found: %s' % obj.object)		
 				return obj
-
 
 
 	def _get_django_model_type(self, instance_type, instances=None):
