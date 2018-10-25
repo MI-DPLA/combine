@@ -4706,12 +4706,22 @@ class CombineJob(object):
 			job_details['rits'] = int(job_details['rits'])
 
 		# handle DPLA bulk data compare
-		job_details['dbdm'] = {}
+		job_details['dbdm'] = {
+			'dbdd':None,
+			'dbdd_s3_key':None,
+			'matches':None,
+			'misses':None
+		}
 		job_details['dbdm']['dbdd'] = job_params.get('dbdd', None)
 		if job_details['dbdm']['dbdd'] == '':
 			job_details['dbdm']['dbdd'] = None
 		if job_details['dbdm']['dbdd'] != None:
+			# set as int
 			job_details['dbdm']['dbdd'] = int(job_details['dbdm']['dbdd'])
+			# get dbdd instance
+			dbdd = DPLABulkDataDownload.objects.get(pk=job_details['dbdm']['dbdd'])
+			# set s3_key
+			job_details['dbdm']['dbdd_s3_key'] = dbdd.s3_key
 
 		# debug
 		logger.debug(job_details)
@@ -8234,16 +8244,13 @@ class StateIOClient(object):
 				self.import_manifest['pk_hash']['rits'][orig_id] = scenario.object.id
 
 
-		#################################
-		# DBDD
-		#################################
+		###########################################
+		# DBDD		
+		###########################################
+
 		'''
-		s3_key = models.CharField(max_length=255)
-		downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True)
-		filepath = models.CharField(max_length=255, null=True, default=None)
-		es_index = models.CharField(max_length=255, null=True, default=None)
-		uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
-		status = models.CharField(
+		Requires import to ElasticSearch
+			- but because not modifying, can use elasticdump to import
 		'''
 
 		# loop through and create
@@ -8252,7 +8259,8 @@ class StateIOClient(object):
 
 			# check for identical name and payload
 			scenario_match = DPLABulkDataDownload.objects.filter(
-				s3_key=scenario.object.s3_key								
+				s3_key=scenario.object.s3_key,
+				es_index=scenario.object.es_index,
 			).order_by('id')
 			
 			# matching scenario found
@@ -8262,7 +8270,7 @@ class StateIOClient(object):
 			
 			# not found, creating
 			else:
-				logger.debug('RITS not found, creating')
+				logger.debug('DPLA Bulk Data Download not found, creating')
 				orig_id = scenario.object.id
 				scenario.object.id = None
 				scenario.save()
@@ -8481,6 +8489,22 @@ class StateIOClient(object):
 				job_specific_updated = { str(pk_hash['jobs'].get(int(k), int(k))):v for k,v in input_filters['job_specific'].items() }
 				input_filters['job_specific'] = job_specific_updated
 				update_dict['input_filters'] = input_filters
+			except:
+				logger.debug('error with updating job_details: input_filters')
+
+		# update rits
+		if 'rits' in job.job_details_dict.keys():
+			try:
+				orig_rits_id = job.job_details_dict['rits']
+				update_dict['rits'] = {'rits':pk_hash['rits'][orig_rits_id]}
+			except:
+				logger.debug('error with updating job_details: input_filters')
+
+		# update dbdd
+		if 'dbdd' in job.job_details_dict.keys():
+			try:
+				dbdm = job.job_details_dict['dbdm']
+				update_dict['rits'] = {'rits':pk_hash['rits'][orig_rits_id]}
 			except:
 				logger.debug('error with updating job_details: input_filters')
 
