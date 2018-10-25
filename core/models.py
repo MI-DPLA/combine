@@ -7793,6 +7793,56 @@ class StateIOClient(object):
 
 
 		############################ 
+		# RITS
+		############################
+
+		# loop through Jobs, looking for RITS Scenarios
+		for job in self.export_dict['jobs']:
+
+			# check job details for rits used
+			if 'rits' in job.job_details_dict.keys() and job.job_details_dict['rits'] != None:
+				self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
+
+
+		############################ 
+		# DBDD
+		############################
+
+		# loop through Jobs, looking for DBDD used
+		for job in self.export_dict['jobs']:
+
+			# check job details for DBDD used
+			if 'dbdm' in job.job_details_dict.keys() and job.job_details_dict['dbdm']['dbdd'] != None:
+
+				# get dbdd
+				dbdd = DPLABulkDataDownload.objects.get(pk=(job.job_details_dict['dbdm']['dbdd']))
+
+				# add to export_dict
+				self.export_dict['dbdd'].add(dbdd)
+
+				# export DBDD index from ElaticSearch
+				# prepare dbdd export dir
+				dbdd_export_path = '%s/dbdd' % self.export_path
+				if not os.path.isdir(dbdd_export_path):
+					os.mkdir(dbdd_export_path)
+
+				# build command list
+				cmd = [
+					"elasticdump",
+					"--input=http://localhost:9200/%s" % dbdd.es_index,
+					"--output=%(dbdd_export_path)s/dbdd%(dbdd_id)s.json" % {'dbdd_export_path':dbdd_export_path, 'dbdd_id':dbdd.id},
+					"--type=data",					
+					"--ignore-errors",
+					"--noRefresh"
+				]
+
+				logger.debug("elasticdump cmd: %s" % cmd)
+
+				# run cmd
+				os.system(" ".join(cmd))
+
+
+		############################ 
 		# JOB RECORDS (Mongo)
 		############################
 
@@ -7967,7 +8017,7 @@ class StateIOClient(object):
 		return self.export_path
 
 
-	def import_state(self, export_path):
+	def import_state(self, export_path, load_only=False, import_records=True):
 
 		'''
 		Import exported state
@@ -8004,25 +8054,29 @@ class StateIOClient(object):
 		}
 
 		# load state, deserializing and export_manifest
-		self.load_state(export_path)
+		self._load_state(export_path)
 
-		# load configuration dependencies
-		self._import_config_instances()
+		# if not load only, continue
+		if not load_only:
 
-		# if Jobs present
-		if len(self.export_manifest['jobs']) > 0:
+			# load configuration dependencies
+			self._import_config_instances()
 
-			# load structural hierarchy
-			self._import_hierarchy()
+			# if Jobs present
+			if len(self.export_manifest['jobs']) > 0:
 
-			# load model instances
-			self._import_job_related_instances()
+				# load structural hierarchy
+				self._import_hierarchy()
 
-			# load Mongo and ES DB records
-			self._import_db_records()
+				# load model instances
+				self._import_job_related_instances()
 
-		# update import_manifest
-		self._finalize_import_manifest()
+				if import_records:
+					# load Mongo and ES DB records
+					self._import_db_records()
+
+			# update import_manifest
+			self._finalize_import_manifest()
 
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
@@ -8071,7 +8125,7 @@ class StateIOClient(object):
 		logger.debug('confirmed import path at %s' % self.import_path)
 
 		
-	def load_state(self, export_path):
+	def _load_state(self, export_path):
 
 		'''
 		Method to load state data in preparation for import
@@ -8273,8 +8327,32 @@ class StateIOClient(object):
 				logger.debug('DPLA Bulk Data Download not found, creating')
 				orig_id = scenario.object.id
 				scenario.object.id = None
+				# drop filepath
+				scenario.object.filepath = None
 				scenario.save()
 				self.import_manifest['pk_hash']['dbdd'][orig_id] = scenario.object.id
+
+				# re-hydrating es index
+
+				# get dbdd
+				dbdd = DPLABulkDataDownload.objects.get(pk=(scenario.object.id))
+
+				# import DBDD index to ElaticSearch				
+				dbdd_export_path = '%s/dbdd/dbdd%s.json' % (self.import_path, orig_id)
+
+				# build command list
+				cmd = [
+					"elasticdump",
+					"--input=%(dbdd_export_path)s" % {'dbdd_export_path':dbdd_export_path},
+					"--output=http://localhost:9200/%s" % dbdd.es_index,
+					"--ignore-errors",
+					"--noRefresh"
+				]
+
+				logger.debug("elasticdump cmd: %s" % cmd)
+
+				# run cmd
+				os.system(" ".join(cmd))
 
 
 	def _import_hierarchy(self):
@@ -8498,15 +8576,17 @@ class StateIOClient(object):
 				orig_rits_id = job.job_details_dict['rits']
 				update_dict['rits'] = {'rits':pk_hash['rits'][orig_rits_id]}
 			except:
-				logger.debug('error with updating job_details: input_filters')
+				logger.debug('error with updating job_details: rits')
 
-		# update dbdd
-		if 'dbdd' in job.job_details_dict.keys():
+		# update dbdd		
+		if 'dbdm' in job.job_details_dict.keys():			
 			try:
 				dbdm = job.job_details_dict['dbdm']
-				update_dict['rits'] = {'rits':pk_hash['rits'][orig_rits_id]}
+				dbdd_orig_id = dbdm['dbdd']
+				dbdm['dbdd'] = pk_hash['dbdd'][dbdd_orig_id]
+				update_dict['dbdm'] = dbdm
 			except:
-				logger.debug('error with updating job_details: input_filters')
+				logger.debug('error with updating job_details: dbdd')
 
 		# if OAIHarvest, update oai_params
 		if job.job_type == 'HarvestOAIJob':
