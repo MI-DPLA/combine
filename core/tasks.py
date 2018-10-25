@@ -869,6 +869,20 @@ def job_dbdm(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
+		# update job_details		
+		cjob.job.refresh_from_db()
+
+		# get dbdd
+		dbdd = models.DPLABulkDataDownload.objects.get(pk=int(ct.task_params['dbdd_id']))
+		cjob.job.update_job_details({
+			'dbdm':{
+				'dbdd':int(ct.task_params['dbdd_id']),
+				'dbdd_s3_key':dbdd.s3_key,
+				'matches':None,
+				'misses':None
+			}
+		})
+
 		# save export output to Combine Task output
 		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({		

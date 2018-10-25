@@ -8175,15 +8175,98 @@ class StateIOClient(object):
 		# FIELD MAPPER CONFIGS
 		#################################
 
+		# loop through and create
+		for scenario in self._get_django_model_type(FieldMapper):
+			logger.debug('rehydrating %s' % scenario)
+
+			# check for identical name and payload
+			scenario_match = FieldMapper.objects.filter(
+				name=scenario.object.name,
+				payload=scenario.object.payload,
+				config_json=scenario.object.config_json,
+				field_mapper_type=scenario.object.field_mapper_type
+			).order_by('id')
+			
+			# matching scenario found
+			if scenario_match.count() > 0:
+				logger.debug('found identical FieldMapper, skipping creation, adding to hash')
+				self.import_manifest['pk_hash']['field_mapper_configs'][scenario.object.id] = scenario_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('FieldMapper not found, creating')
+				orig_id = scenario.object.id
+				scenario.object.id = None
+				scenario.save()
+				self.import_manifest['pk_hash']['field_mapper_configs'][orig_id] = scenario.object.id
+
 
 		#################################
 		# RITS
 		#################################
 
+		# loop through and create
+		for scenario in self._get_django_model_type(RecordIdentifierTransformationScenario):
+			logger.debug('rehydrating %s' % scenario)
+
+			# check for identical name and payload
+			scenario_match = RecordIdentifierTransformationScenario.objects.filter(
+				name=scenario.object.name,
+				transformation_type=scenario.object.transformation_type,
+				transformation_target=scenario.object.transformation_target,
+				regex_match_payload=scenario.object.regex_match_payload,
+				regex_replace_payload=scenario.object.regex_replace_payload,
+				python_payload=scenario.object.python_payload,
+				xpath_payload=scenario.object.xpath_payload,
+			).order_by('id')
+			
+			# matching scenario found
+			if scenario_match.count() > 0:
+				logger.debug('found identical RITS, skipping creation, adding to hash')
+				self.import_manifest['pk_hash']['rits'][scenario.object.id] = scenario_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('RITS not found, creating')
+				orig_id = scenario.object.id
+				scenario.object.id = None
+				scenario.save()
+				self.import_manifest['pk_hash']['rits'][orig_id] = scenario.object.id
+
 
 		#################################
 		# DBDD
 		#################################
+		'''
+		s3_key = models.CharField(max_length=255)
+		downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True)
+		filepath = models.CharField(max_length=255, null=True, default=None)
+		es_index = models.CharField(max_length=255, null=True, default=None)
+		uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+		status = models.CharField(
+		'''
+
+		# loop through and create
+		for scenario in self._get_django_model_type(DPLABulkDataDownload):
+			logger.debug('rehydrating %s' % scenario)
+
+			# check for identical name and payload
+			scenario_match = DPLABulkDataDownload.objects.filter(
+				s3_key=scenario.object.s3_key								
+			).order_by('id')
+			
+			# matching scenario found
+			if scenario_match.count() > 0:
+				logger.debug('found identical DPLA Bulk Data Download, skipping creation, adding to hash')
+				self.import_manifest['pk_hash']['dbdd'][scenario.object.id] = scenario_match.first().id
+			
+			# not found, creating
+			else:
+				logger.debug('RITS not found, creating')
+				orig_id = scenario.object.id
+				scenario.object.id = None
+				scenario.save()
+				self.import_manifest['pk_hash']['dbdd'][orig_id] = scenario.object.id
 
 
 	def _import_hierarchy(self):

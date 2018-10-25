@@ -787,16 +787,6 @@ class CombineSparkJob(object):
 			.option("database","combine")\
 			.option("collection", "record").save()
 
-			# writing params to job_details
-			self.job.update_job_details({
-					'dbdm':{
-						'dbdd':int(dbdd_id),
-						'dbdd_s3_key':dbdd.s3_key,
-						'matches':None,
-						'misses':None
-					}
-				})
-
 		# else, return with dbdm column all False
 		else:
 			return records_df.withColumn('dbdm', pyspark_sql_functions.lit(False))
@@ -1620,7 +1610,7 @@ class RunDBDM(CombineSparkPatch):
 
 		# get job and set to self
 		self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
-		self.update_jobGroup('Removing DPLA Bulk Data Match', self.job.id)
+		self.update_jobGroup('Running DPLA Bulk Data Match', self.job.id)
 
 		# get full dbdd es
 		dbdd = DPLABulkDataDownload.objects.get(pk=int(self.kwargs['dbdd_id']))
@@ -1647,16 +1637,6 @@ class RunDBDM(CombineSparkPatch):
 		.option("uri","mongodb://127.0.0.1")\
 		.option("database","combine")\
 		.option("collection", "record").save()
-
-		# writing params to job_details		
-		self.job.update_job_details({
-			'dbdm':{
-					'dbdd':int(self.kwargs['dbdd_id']),
-					'dbdd_s3_key':dbdd.s3_key,
-					'matches':None,
-					'misses':None
-				}
-			})
 
 
 
