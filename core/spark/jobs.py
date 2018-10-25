@@ -1667,39 +1667,7 @@ class RunDBDM(CombineSparkPatch):
 class CombineStateIO(object):
 
 	'''
-	Base class for Combine State IO work.		
-
-	Example export_manifest:
-		{'downstream_jobs_ordered': [967, 968, 969, 970],
-		 'pk_hash': {'jobs': {967: 976, 968: 977, 969: 978, 970: 979},
-		  'oai_endpoints': {},
-		  'organizations': {},
-		  'record_groups': {},
-		  'transformation_scenarios': {1: 1},
-		  'validation_scenarios': {1: 1}},
-		 'root_instance_id': 967,
-		 'root_instance_type': 'Job',
-		 'upstream_jobs_ordered': []}
-
-	 Example export_path:
-	 	/tmp/stateio/6158b74daee44116837d37f70e4939bf
-		├── django_objects.json
-		├── export_manifest.json
-		├── mapped_fields_exports
-		│   ├── j967_mapped_fields.json
-		│   ├── j968_mapped_fields.json
-		│   ├── j969_mapped_fields.json
-		│   └── j970_mapped_fields.json
-		├── record_exports
-		│   ├── j967_mongo_records.json
-		│   ├── j968_mongo_records.json
-		│   ├── j969_mongo_records.json
-		│   └── j970_mongo_records.json
-		└── validation_exports
-		    ├── j967_mongo_validations.json
-		    ├── j968_mongo_validations.json
-		    ├── j969_mongo_validations.json
-		    └── j970_mongo_validations.json
+	Base class for Combine State IO work.
 	'''
 
 	def __init__(self, spark, **kwargs):
@@ -1811,6 +1779,11 @@ class CombineStateIOImport(CombineStateIO):
 			# check for dataframe rows to proceed
 			if len(validations_df.take(1)) > 0:
 
+				# read first row to get old validation_scenario_id, and run through pk_hash for new one
+				row = validations_df.take(1)[0]
+				vs_id = int(row.validation_scenario_id['$numberLong'])
+				new_vs_id = self.export_manifest['pk_hash']['validation_scenarios'][vs_id]
+
 				# flatten record_id
 				validations_df = validations_df.withColumn('record_id', validations_df['record_id']['$oid'])
 
@@ -1836,7 +1809,9 @@ class CombineStateIOImport(CombineStateIO):
 				# flatten
 				updated_validations_df = updated_validations_df.withColumn('fail_count', updated_validations_df.fail_count['$numberLong'].cast(LongType()))
 				updated_validations_df = updated_validations_df.withColumn('job_id', pyspark_sql_functions.lit(int(clone_job_id)).cast(LongType()))
-				updated_validations_df = updated_validations_df.withColumn('validation_scenario_id', updated_validations_df.validation_scenario_id['$numberLong'].cast(LongType()))
+
+				# update validation scenario id
+				updated_validations_df = updated_validations_df.withColumn('validation_scenario_id', pyspark_sql_functions.lit(int(new_vs_id)).cast(LongType()))
 
 				# write records to MongoDB			
 				updated_validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
