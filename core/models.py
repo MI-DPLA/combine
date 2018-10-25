@@ -7362,6 +7362,10 @@ class SupervisorRPCClient(object):
 
 
 
+####################################################################
+# Global Message Client         								   #
+####################################################################
+
 class GlobalMessageClient(object):
 
 	'''
@@ -7457,15 +7461,21 @@ class GlobalMessageClient(object):
 
 
 
+####################################################################
+# State Export/Import Client       								   #
+####################################################################
+
 class StateIOClient(object):
 
 	'''
-	Client to facilitate export and import of Organization, Record Group,
-	and Job states in Combine
-
-	Considerations:
-		- some kind of metadata/manifest, JSON, to accompany package
-		- tar.gz outbound
+	Client to facilitate export and import of states in Combine, including:
+		- Organizations, Record Groups, and Jobs
+		- Records, Validations, and Mapped Fields associated with Jobs
+		- configuration Scenarios
+			- Transformation
+			- Validation
+			- RITS
+			- DPLA Bulk Data Downloads (?)	
 	'''
 
 
@@ -7479,14 +7489,22 @@ class StateIOClient(object):
 
 		# dictionary used to aggregate components for export
 		self.export_dict = {
+
+			# job related
 			'jobs':set(),
 			'record_groups':set(),
 			'orgs':set(),
 			'job_inputs':set(),
 			'job_validations':set(),
+			
+			# config scenarios
 			'validations':set(),
 			'transformations':set(),
 			'oai_endpoints':set(),
+			'rits':set(),
+			'field_mapper_configs':set(),
+			'dbdd':set()
+
 		}
 
 
@@ -7511,6 +7529,7 @@ class StateIOClient(object):
 		jobs=[],
 		record_groups=[],
 		orgs=[],
+		config_scenarios=[],
 		compress=True,
 		compression_format='zip'):
 
@@ -7521,6 +7540,8 @@ class StateIOClient(object):
 			jobs (list): List of Jobs to export, accept instance or id
 			record_groups (list): List of Record Groups to export, accept instance or id
 			orgs (list): List of Organizations to export, accept instance or id
+			config_scenarios (list): List of configuration-related model *instances*
+				- sorted based on type(instance) and added to self.export_dict			
 			compress (bool): If True, compress to zip file and delete directory
 			compression_format (str): Possible values here: https://docs.python.org/3.5/library/shutil.html#shutil.make_archive
 		'''
@@ -7543,7 +7564,7 @@ class StateIOClient(object):
 			'jobs':[ job.id for job in self.export_roots['jobs'] ],
 			'record_groups': [ record_group.id for record_group in self.export_roots['record_groups'] ],
 			'orgs': [ org.id for org in self.export_roots['orgs'] ]
-		}		
+		}
 
 		# unique hash for export, used for filepath and manifest
 		export_id = uuid.uuid4().hex
@@ -7563,18 +7584,28 @@ class StateIOClient(object):
 				'orgs':{},
 				'transformation_scenarios':{},
 				'validation_scenarios':{},
-				'oai_endpoints':{}				
+				'oai_endpoints':{},
+				'rits':{},
+				'field_mapper_configs':{},
+				'dbdd':{}
 			}
 		}
 
 		# generate unique set of Jobs
-		self.export_job_set = self._get_unique_job_set()
+		self.export_job_set = self._get_unique_roots_job_set()
 
-		# based on Jobs identified from export_roots, collect all connected Jobs
-		self._collect_related_jobs()
+		# if jobs present from export_roots
+		if len(self.export_job_set) > 0:
 
-		# based on network of Jobs, collection associated components
-		self._collect_related_components()		
+			# based on Jobs identified from export_roots, collect all connected Jobs
+			self._collect_related_jobs()
+
+			# based on network of Jobs, collection associated components
+			self._collect_related_components()
+
+		# handle non-Job related configuration scenarios passed
+		if len(config_scenarios) > 0:
+			self._sort_discrete_config_scenarios(config_scenarios)
 
 		# # serialize for export
 		self.package_export()
@@ -7583,7 +7614,7 @@ class StateIOClient(object):
 		logger.debug("total time for state export: %s" % (time.time() - stime))
 
 
-	def _get_unique_job_set(self):
+	def _get_unique_roots_job_set(self):
 
 		'''
 		Method to get unique set of Jobs from self.export_roots
@@ -7681,8 +7712,8 @@ class StateIOClient(object):
 	def _collect_related_components(self):
 
 		'''
-		Method to collection related components based on topographically sorted,
-		and unique list of Jobs at self.export_dict['jobs']
+		Method to collect related components based on self.export_dict['jobs'],
+		and items from self.
 
 		All operate over self.export_dict['jobs'], updating other sections of 
 		self.export_dict
@@ -7839,6 +7870,43 @@ class StateIOClient(object):
 			os.system(" ".join(cmd))
 
 	
+	def _sort_discrete_config_scenarios(self, config_scenarios):
+
+		'''
+		Method to sort and add configuration scenarios to list of model instances
+		in self.export_dict for eventual serialization
+
+		Sorting to these:
+			'validations':set(),
+			'transformations':set(),
+			'oai_endpoints':set(),
+			'rits':set(),
+			'field_mapper_configs':set(),
+			'dbdd':set()
+
+		'''
+
+		logger.debug('sorting passed discrete configuration scenarios')
+
+		# establish sort hash
+		sorting_hash = {
+			ValidationScenario:'validations',
+			Transformation:'transformations',
+			OAIEndpoint:'oai_endpoints',
+			RecordIdentifierTransformationScenario:'rits',
+			FieldMapper:'field_mapper_configs',
+			DPLABulkDataDownload:'dbdd'
+		}
+
+		# loop through passed model instances
+		for config_scenario in config_scenarios:
+
+			logger.debug('adding to export_dict for serialization: %s' % config_scenario)
+
+			# slot to export dict through hash
+			self.export_dict[sorting_hash[type(config_scenario)]].add(config_scenario)
+
+
 	def package_export(self):
 
 		'''
@@ -7862,16 +7930,7 @@ class StateIOClient(object):
 			
 			# combine all model instances, across model types
 			to_serialize = []
-			for k in [
-					'jobs',
-					'record_groups',
-					'orgs',
-					'transformations',
-					'validations',
-					'oai_endpoints',
-					'job_inputs',
-					'job_validations'
-				]:
+			for k in self.export_dict.keys():
 				to_serialize.extend(self.export_dict[k])
 
 			# write as single JSON file
@@ -7928,25 +7987,23 @@ class StateIOClient(object):
 		# mint new import id
 		self.import_id = uuid.uuid4().hex
 
-		############################ 
-		# LOAD STATE DATA
-		############################
+		# load state, deserializing and export_manifest
 		self.load_state(export_path)
 
-		############################ 
-		# IMPORT STATE
-		############################
-		# load structural hierarchy
-		self._import_hierarchy()
-
 		# load configuration dependencies
-		self._import_config_dependencies()
+		self._import_config_instances()
 
-		# load model instances
-		self._import_model_instances()
+		# if Jobs present
+		if len(self.export_manifest['jobs']) > 0:
 
-		# load Mongo and ES DB records
-		self._import_db_records()
+			# load structural hierarchy
+			self._import_hierarchy()
+
+			# load model instances
+			self._import_job_related_instances()
+
+			# load Mongo and ES DB records
+			self._import_db_records()
 
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
@@ -8021,69 +8078,13 @@ class StateIOClient(object):
 		with open('%s/django_objects.json' % self.import_path, 'r') as f:
 			django_objects_json = f.read()
 		for obj in serializers.deserialize('json', django_objects_json):
-			self.deser_django_objects.append(obj)			
+			self.deser_django_objects.append(obj)	
 
 
-	def _import_hierarchy(self):
-
-		'''
-		Import Organizations and Record Groups
-
-		Note: If same name is found, but duplicates exist, will be aligned with first instance
-		sorted by id	
-		'''
-
-		# loop through deserialized Organizations
-		for org in self._get_django_model_type(Organization):
-			logger.debug('rehydrating %s' % org)
-
-			# check Org name
-			org_match = Organization.objects.filter(name=org.object.name).order_by('id')
-
-			# matching Organization found
-			if org_match.count() > 0:
-				logger.debug('found same Organization name, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['orgs'][org.object.id] = org_match.first().id
-
-			# not found, creating
-			else:
-				logger.debug('Organization not found, creating')
-				org_orig_id = org.object.id
-				org.object.id = None
-				org.save()
-				self.export_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
-
-
-		# loop through deserialized Record Groups
-		for rg in self._get_django_model_type(RecordGroup):
-			logger.debug('rehydrating %s' % rg)
-
-			# checking parent org exists, and contains record group with same name
-			rg_match = RecordGroup.objects\
-				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.export_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
-
-			# matching Record Group found
-			if rg_match.count() > 0:
-				logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
-
-			# not found, creating			
-			else:
-				logger.debug('Record Group not found, creating')
-				rg_orig_id = rg.object.id				
-				rg.object.id = None
-				# update org id
-				org_orig_id = rg.object.organization_id
-				rg.object.organization = None
-				rg.object.organization_id = self.export_manifest['pk_hash']['orgs'][org_orig_id]
-				rg.save()
-				self.export_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
-
-
-	def _import_config_dependencies(self):
+	def _import_config_instances(self):
 
 		'''
-		Method to import supporting configurations and scenarios before other model instances
+		Method to import configurations and scenarios instances before all else
 		'''
 
 		#################################
@@ -8159,7 +8160,78 @@ class StateIOClient(object):
 				self.export_manifest['pk_hash']['oai_endpoints'][oai_orig_id] = oai.object.id
 
 
-	def _import_model_instances(self):
+		#################################
+		# FIELD MAPPER CONFIGS
+		#################################
+
+
+		#################################
+		# RITS
+		#################################
+
+
+		#################################
+		# DBDD
+		#################################
+
+
+	def _import_hierarchy(self):
+
+		'''
+		Import Organizations and Record Groups
+
+		Note: If same name is found, but duplicates exist, will be aligned with first instance
+		sorted by id	
+		'''
+
+		# loop through deserialized Organizations
+		for org in self._get_django_model_type(Organization):
+			logger.debug('rehydrating %s' % org)
+
+			# check Org name
+			org_match = Organization.objects.filter(name=org.object.name).order_by('id')
+
+			# matching Organization found
+			if org_match.count() > 0:
+				logger.debug('found same Organization name, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['orgs'][org.object.id] = org_match.first().id
+
+			# not found, creating
+			else:
+				logger.debug('Organization not found, creating')
+				org_orig_id = org.object.id
+				org.object.id = None
+				org.save()
+				self.export_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
+
+
+		# loop through deserialized Record Groups
+		for rg in self._get_django_model_type(RecordGroup):
+			logger.debug('rehydrating %s' % rg)
+
+			# checking parent org exists, and contains record group with same name
+			rg_match = RecordGroup.objects\
+				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.export_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
+
+			# matching Record Group found
+			if rg_match.count() > 0:
+				logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
+				self.export_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
+
+			# not found, creating			
+			else:
+				logger.debug('Record Group not found, creating')
+				rg_orig_id = rg.object.id				
+				rg.object.id = None
+				# update org id
+				org_orig_id = rg.object.organization_id
+				rg.object.organization = None
+				rg.object.organization_id = self.export_manifest['pk_hash']['orgs'][org_orig_id]
+				rg.save()
+				self.export_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
+
+
+	def _import_job_related_instances(self):
 
 		'''
 		Method to import Organization, Record Group, and Job model instances
