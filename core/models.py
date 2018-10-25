@@ -7482,30 +7482,7 @@ class StateIOClient(object):
 	def __init__(self):
 
 		# ensure working directories exist
-		self._confirm_working_dirs()
-
-		# location of export created, or imported
-		self.export_path = None
-
-		# dictionary used to aggregate components for export
-		self.export_dict = {
-
-			# job related
-			'jobs':set(),
-			'record_groups':set(),
-			'orgs':set(),
-			'job_inputs':set(),
-			'job_validations':set(),
-			
-			# config scenarios
-			'validations':set(),
-			'transformations':set(),
-			'oai_endpoints':set(),
-			'rits':set(),
-			'field_mapper_configs':set(),
-			'dbdd':set()
-
-		}
+		self._confirm_working_dirs()	
 
 
 	def _confirm_working_dirs(self):
@@ -7549,6 +7526,29 @@ class StateIOClient(object):
 		# DEBUG
 		stime = time.time()
 
+		# location of export created, or imported
+		self.export_path = None
+
+		# dictionary used to aggregate components for export
+		self.export_dict = {
+
+			# job related
+			'jobs':set(),
+			'record_groups':set(),
+			'orgs':set(),
+			'job_inputs':set(),
+			'job_validations':set(),
+			
+			# config scenarios
+			'validations':set(),
+			'transformations':set(),
+			'oai_endpoints':set(),
+			'rits':set(),
+			'field_mapper_configs':set(),
+			'dbdd':set()
+
+		}
+
 		# save compression flag
 		self.compress = compress
 		self.compression_format = compression_format
@@ -7577,18 +7577,7 @@ class StateIOClient(object):
 		self.export_manifest = {
 			'export_id':export_id,
 			'export_root_ids':self.export_roots_ids,
-			'jobs':[],			
-			'pk_hash':{
-				'jobs':{},
-				'record_groups':{},
-				'orgs':{},
-				'transformation_scenarios':{},
-				'validation_scenarios':{},
-				'oai_endpoints':{},
-				'rits':{},
-				'field_mapper_configs':{},
-				'dbdd':{}
-			}
+			'jobs':[]
 		}
 
 		# generate unique set of Jobs
@@ -7987,6 +7976,23 @@ class StateIOClient(object):
 		# mint new import id
 		self.import_id = uuid.uuid4().hex
 
+		# init import_manifest
+		self.import_manifest = {
+			'import_id':self.import_id,
+			'export_path':export_path,
+			'pk_hash':{
+				'jobs':{},
+				'record_groups':{},
+				'orgs':{},
+				'transformation_scenarios':{},
+				'validation_scenarios':{},
+				'oai_endpoints':{},
+				'rits':{},
+				'field_mapper_configs':{},
+				'dbdd':{}
+			}
+		}
+
 		# load state, deserializing and export_manifest
 		self.load_state(export_path)
 
@@ -8005,6 +8011,9 @@ class StateIOClient(object):
 			# load Mongo and ES DB records
 			self._import_db_records()
 
+		# update import_manifest
+		self._finalize_import_manifest()
+
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
 
@@ -8016,6 +8025,7 @@ class StateIOClient(object):
 
 		# create import dir based on self.import_id
 		self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
+		self.import_manifest['import_path'] = self.import_path
 
 		# handle archives
 		if os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
@@ -8072,6 +8082,7 @@ class StateIOClient(object):
 		# parse export_manifest
 		with open('%s/export_manifest.json' % self.import_path, 'r') as f:
 			self.export_manifest = json.loads(f.read())
+			self.import_manifest['export_manifest'] = self.export_manifest
 
 		# deserialize django objects
 		self.deser_django_objects = []
@@ -8100,7 +8111,7 @@ class StateIOClient(object):
 			# matching scenario found
 			if ts_match.count() > 0:
 				logger.debug('found identical Transformation, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['transformation_scenarios'][ts.object.id] = ts_match.first().id
+				self.import_manifest['pk_hash']['transformation_scenarios'][ts.object.id] = ts_match.first().id
 			
 			# not found, creating
 			else:
@@ -8108,7 +8119,7 @@ class StateIOClient(object):
 				ts_orig_id = ts.object.id
 				ts.object.id = None
 				ts.save()
-				self.export_manifest['pk_hash']['transformation_scenarios'][ts_orig_id] = ts.object.id
+				self.import_manifest['pk_hash']['transformation_scenarios'][ts_orig_id] = ts.object.id
 
 
 		#################################
@@ -8124,7 +8135,7 @@ class StateIOClient(object):
 			# matching scenario found
 			if vs_match.count() > 0:
 				logger.debug('found identical ValidationScenario, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['validation_scenarios'][vs.object.id] = vs_match.first().id
+				self.import_manifest['pk_hash']['validation_scenarios'][vs.object.id] = vs_match.first().id
 			
 			# not found, creating
 			else:
@@ -8132,7 +8143,7 @@ class StateIOClient(object):
 				vs_orig_id = vs.object.id
 				vs.object.id = None
 				vs.save()
-				self.export_manifest['pk_hash']['validation_scenarios'][vs_orig_id] = vs.object.id
+				self.import_manifest['pk_hash']['validation_scenarios'][vs_orig_id] = vs.object.id
 
 
 		#################################
@@ -8149,7 +8160,7 @@ class StateIOClient(object):
 			# matching scenario found
 			if oai_match.count() > 0:
 				logger.debug('found identical OAIEndpoint, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['oai_endpoints'][oai.object.id] = oai_match.first().id
+				self.import_manifest['pk_hash']['oai_endpoints'][oai.object.id] = oai_match.first().id
 			
 			# not found, creating
 			else:
@@ -8157,7 +8168,7 @@ class StateIOClient(object):
 				oai_orig_id = oai.object.id
 				oai.object.id = None
 				oai.save()
-				self.export_manifest['pk_hash']['oai_endpoints'][oai_orig_id] = oai.object.id
+				self.import_manifest['pk_hash']['oai_endpoints'][oai_orig_id] = oai.object.id
 
 
 		#################################
@@ -8194,7 +8205,7 @@ class StateIOClient(object):
 			# matching Organization found
 			if org_match.count() > 0:
 				logger.debug('found same Organization name, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['orgs'][org.object.id] = org_match.first().id
+				self.import_manifest['pk_hash']['orgs'][org.object.id] = org_match.first().id
 
 			# not found, creating
 			else:
@@ -8202,7 +8213,7 @@ class StateIOClient(object):
 				org_orig_id = org.object.id
 				org.object.id = None
 				org.save()
-				self.export_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
+				self.import_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
 
 
 		# loop through deserialized Record Groups
@@ -8211,12 +8222,12 @@ class StateIOClient(object):
 
 			# checking parent org exists, and contains record group with same name
 			rg_match = RecordGroup.objects\
-				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.export_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
+				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.import_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
 
 			# matching Record Group found
 			if rg_match.count() > 0:
 				logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
-				self.export_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
+				self.import_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
 
 			# not found, creating			
 			else:
@@ -8226,9 +8237,9 @@ class StateIOClient(object):
 				# update org id
 				org_orig_id = rg.object.organization_id
 				rg.object.organization = None
-				rg.object.organization_id = self.export_manifest['pk_hash']['orgs'][org_orig_id]
+				rg.object.organization_id = self.import_manifest['pk_hash']['orgs'][org_orig_id]
 				rg.save()
-				self.export_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
+				self.import_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
 
 
 	def _import_job_related_instances(self):
@@ -8249,7 +8260,7 @@ class StateIOClient(object):
 
 			# run rg id through pk_hash
 			rg_orig_id = job.object.record_group_id
-			job.object.record_group_id = self.export_manifest['pk_hash']['record_groups'][rg_orig_id]
+			job.object.record_group_id = self.import_manifest['pk_hash']['record_groups'][rg_orig_id]
 
 			# drop pk, save, and note new id
 			job_orig_id = job.object.id
@@ -8257,7 +8268,7 @@ class StateIOClient(object):
 			job.save()
 
 			# update pk_hash
-			self.export_manifest['pk_hash']['jobs'][job_orig_id] = job.object.id
+			self.import_manifest['pk_hash']['jobs'][job_orig_id] = job.object.id
 
 			# Job, update job_details
 			self._update_job_details(job.object)
@@ -8270,8 +8281,8 @@ class StateIOClient(object):
 		for ji in self._get_django_model_type(JobInput):
 			logger.debug('rehydrating %s' % ji)
 			ji.object.id = None
-			ji.object.job_id = self.export_manifest['pk_hash']['jobs'][ji.object.job_id]
-			ji.object.input_job_id = self.export_manifest['pk_hash']['jobs'][ji.object.input_job_id]
+			ji.object.job_id = self.import_manifest['pk_hash']['jobs'][ji.object.job_id]
+			ji.object.input_job_id = self.import_manifest['pk_hash']['jobs'][ji.object.input_job_id]
 			ji.save()
 
 
@@ -8284,11 +8295,11 @@ class StateIOClient(object):
 
 			# update validation_scenario_id
 			vs_orig_id = jv.object.validation_scenario_id
-			jv.object.validation_scenario_id = self.export_manifest['pk_hash']['validation_scenarios'][vs_orig_id]
+			jv.object.validation_scenario_id = self.import_manifest['pk_hash']['validation_scenarios'][vs_orig_id]
 
 			# update job_id
 			jv.object.id = None
-			jv.object.job_id = self.export_manifest['pk_hash']['jobs'][jv.object.job_id]
+			jv.object.job_id = self.import_manifest['pk_hash']['jobs'][jv.object.job_id]
 			jv.save()
 
 
@@ -8301,9 +8312,9 @@ class StateIOClient(object):
 		'''
 		
 		# generate spark code
-		self.spark_code = 'from jobs import CombineStateIOImport\nCombineStateIOImport(spark, import_path="%(import_path)s", export_manifest=%(export_manifest)s).spark_function()' % {
+		self.spark_code = 'from jobs import CombineStateIOImport\nCombineStateIOImport(spark, import_path="%(import_path)s", import_manifest=%(import_manifest)s).spark_function()' % {
 			'import_path':'file://%s' % self.import_path,
-			'export_manifest':self.export_manifest
+			'import_manifest':self.import_manifest
 		}
 
 		# submit to livy and poll
@@ -8311,6 +8322,23 @@ class StateIOClient(object):
 		self.spark_results = polling.poll(lambda: LivyClient().job_status(submit.headers['Location']).json()['state'] == 'available', step=5, poll_forever=True)
 
 		return self.spark_results
+
+
+	def _finalize_import_manifest(self):
+
+		'''
+		Method to finalize import manifest
+		'''
+
+		# append export_manifest
+
+
+		# invert pk_hash to clearly show what new instances were created
+		self.import_manifest['created_instances'] = {}
+		pk_hash = self.import_manifest['pk_hash']
+
+		pass
+
 
 
 	def _update_job_details(self, job):
@@ -8340,7 +8368,7 @@ class StateIOClient(object):
 		logger.debug('updating job_details for %s' % job)
 
 		# pk_hash
-		pk_hash = self.export_manifest['pk_hash']
+		pk_hash = self.import_manifest['pk_hash']
 
 		# update dictionary
 		update_dict = {}
@@ -8448,6 +8476,9 @@ class StateIOClient(object):
 
 		# return list
 		return [ obj for obj in instances if type(obj.object) == instance_type ]
+
+
+
 
 
 

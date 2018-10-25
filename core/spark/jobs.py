@@ -1678,7 +1678,7 @@ class CombineStateIO(object):
 
 		# capture common params		
 		self.import_path = kwargs.get('import_path', None)
-		self.export_manifest = kwargs.get('export_manifest', None)
+		self.import_manifest = kwargs.get('import_manifest', None)
 
 		# init logging support
 		spark.sparkContext.setLogLevel('INFO')
@@ -1703,7 +1703,7 @@ class CombineStateIOImport(CombineStateIO):
 	Args:
 		kwargs(dict):
 			- import_path (str): string of unzipped export directory on disk
-			- export_manifest (dict): dictionary of newly created Django model instances and scenarios
+			- import_manifest (dict): dictionary containing import information, including hash of old:new primary keys
 	'''
 
 	def spark_function(self):
@@ -1725,10 +1725,10 @@ class CombineStateIOImport(CombineStateIO):
 		'''
 
 		# import records
-		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Records')
+		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Records')
 
 		# loop through jobs
-		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+		for orig_job_id, clone_job_id in self.import_manifest['pk_hash']['jobs'].items():
 
 			# assemple location of export
 			records_json_filepath = '%s/record_exports/j%s_mongo_records.json' % (self.import_path, orig_job_id)
@@ -1765,10 +1765,10 @@ class CombineStateIOImport(CombineStateIO):
 		'''
 
 		# import validations
-		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
+		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
 
 		# loop through jobs
-		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+		for orig_job_id, clone_job_id in self.import_manifest['pk_hash']['jobs'].items():
 
 			# assemple location of export
 			validations_json_filepath = '%s/validation_exports/j%s_mongo_validations.json' % (self.import_path, orig_job_id)
@@ -1782,7 +1782,7 @@ class CombineStateIOImport(CombineStateIO):
 				# read first row to get old validation_scenario_id, and run through pk_hash for new one
 				row = validations_df.take(1)[0]
 				vs_id = int(row.validation_scenario_id['$numberLong'])
-				new_vs_id = self.export_manifest['pk_hash']['validation_scenarios'][vs_id]
+				new_vs_id = self.import_manifest['pk_hash']['validation_scenarios'][vs_id]
 
 				# flatten record_id
 				validations_df = validations_df.withColumn('record_id', validations_df['record_id']['$oid'])
@@ -1833,10 +1833,10 @@ class CombineStateIOImport(CombineStateIO):
 		'''
 
 		# import mapped fields
-		self.update_jobGroup(self.export_manifest.get('export_id', uuid.uuid4().hex), 'StateIO: Importing Mapped Fields')
+		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Mapped Fields')
 
 		# loop through jobs
-		for orig_job_id, clone_job_id in self.export_manifest['pk_hash']['jobs'].items():
+		for orig_job_id, clone_job_id in self.import_manifest['pk_hash']['jobs'].items():
 
 			# re-index (default)
 			if reindex:
