@@ -3468,6 +3468,82 @@ class CombineBackgroundTask(models.Model):
 
 
 
+class StateIO(mongoengine.Document):
+
+	'''
+	Model to facilitate the recording of State Exports and Imports in Combine
+		- flexible to both, defined by stateio_type
+		- identifiers and manifests may be null 
+	'''
+
+
+	name = mongoengine.StringField()
+	stateio_type = mongoengine.StringField(
+		required=True,
+		choices=[('export','Export'),('import','Import'),('generic','Generic')],
+		default='generic'
+	)
+	
+	# exports
+	export_id = mongoengine.StringField()
+	export_manifest = mongoengine.DictField()
+	export_path = mongoengine.StringField()
+	
+	# imports
+	import_id = mongoengine.StringField()
+	import_manifest = mongoengine.DictField()	
+
+
+	# meta
+	meta = {
+		'index_options': {},        
+        'index_drop_dups': False,
+		'indexes': []
+	}
+
+	# custom save
+	def save(self, *args, **kwargs):		
+
+		if self.name == None:		
+			self.name = 'StateIO %s @ %s' % (self.stateio_type.title(), datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
+		return super(StateIO, self).save(*args, **kwargs)
+
+
+	def __str__(self):
+		return 'StateIO: %s, %s, %s' % (self.id, self.name, self.stateio_type)
+
+
+	# _id shim property
+	@property
+	def _id(self):
+		return self.id
+
+
+	# timestamp property
+	@property
+	def timestamp(self):
+		return self.id.generation_time if self.id else None
+
+
+	# pre_delete method
+	@classmethod
+	def pre_delete(cls, sender, document, **kwargs):
+
+		logger.debug('preparing to delete %s' % document)
+
+		# check for export_path and delete
+		logger.debug('removing export_path: %s' % document.export_path)
+		if os.path.isfile(document.export_path):
+			logger.debug('export is filetype, removing')
+			os.remove(document.export_path)
+		elif os.path.isdir(document.export_path):
+			logger.debug('export is dir, removing')
+			shutil.rmtree(document.export_path)
+		else:
+			logger.debug('Could not remove %s' % document.export_path)
+
+
+
 ####################################################################
 # Signals Handlers												   #
 ####################################################################
@@ -3750,8 +3826,8 @@ def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 			logger.debug('could not parse task output as JSON')
 
 
-
-
+# MongoEngine signals
+mongoengine.signals.pre_delete.connect(StateIO.pre_delete, sender=StateIO)
 
 
 ####################################################################
@@ -7480,64 +7556,6 @@ class GlobalMessageClient(object):
 ####################################################################
 # State Export/Import Client       								   #
 ####################################################################
-
-class StateIO(mongoengine.Document):
-
-	'''
-	Model to facilitate the recording of State Exports and Imports in Combine
-		- flexible to both, defined by stateio_type
-		- identifiers and manifests may be null 
-	'''
-
-
-	name = mongoengine.StringField()
-	stateio_type = mongoengine.StringField(
-		required=True,
-		choices=[('export','Export'),('import','Import'),('generic','Generic')],
-		default='generic'
-	)
-	
-	# exports
-	export_id = mongoengine.StringField()
-	export_manifest = mongoengine.DictField()
-	export_path = mongoengine.StringField()
-	
-	# imports
-	import_id = mongoengine.StringField()
-	import_manifest = mongoengine.DictField()	
-
-
-	# meta
-	meta = {
-		'index_options': {},        
-        'index_drop_dups': False,
-		'indexes': []
-	}
-
-	# custom save
-	def save(self, *args, **kwargs):		
-
-		if self.name == None:		
-			self.name = 'StateIO %s @ %s' % (self.stateio_type.title(), datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
-		return super(StateIO, self).save(*args, **kwargs)
-
-
-	def __str__(self):
-		return 'StateIO: %s, %s' % (self.id, self.stateio_type)
-
-
-	# _id shim property
-	@property
-	def _id(self):
-		return self.id
-
-
-	# timestamp property
-	@property
-	def timestamp(self):
-		return self.id.generation_time if self.id else None
-
-
 
 class StateIOClient(object):
 

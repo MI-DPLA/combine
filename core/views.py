@@ -3776,6 +3776,23 @@ def stateio_state(request, state_id):
 
 
 @login_required
+def stateio_state_delete(request, state_id):
+
+	'''
+	Delete single state view
+	'''
+
+	# retrieve state
+	state = models.StateIO.objects.get(id=state_id)
+
+	# delete and redirect
+	state.delete()
+
+	# return
+	return redirect('stateio')
+
+
+@login_required
 def stateio_export(request):
 
 	'''
