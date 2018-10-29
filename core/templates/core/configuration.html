@@ -14,13 +14,16 @@
 		<div class="col-md-12">
 			<h3>Field Mapper Configurations</h3>
 			<p>The following configurations are used as configurations for mapping XML documents to "flat" fields for indexing and analysis.  Though configurations can be modified on-the-fly for each Job run or re-indexed, this provides an ability to save particularly useful or complex configurations to reuse at a later time.</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>					
-					<th>Configuration JSON</th>
-				</tr>
+			<table id="field_mappers_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>					
+						<th>Configuration JSON</th>
+					</tr>
+				</thead>
+				<tbody>
 				{% for fm in field_mappers %}
 					<tr>
 						<td>{{fm.id}}</td>
@@ -29,7 +32,13 @@
 						<td><a href="{% url 'field_mapper_payload' fm_id=fm.id %}?doc_type=config">View configuration JSON</a></td>
 					</tr>
 				{% endfor %}
+				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#field_mappers_table').DataTable({});			    
+				} );
+			</script>
 			<p><a href="{% url 'test_field_mapper' %}"><button type="button" class="btn btn-success btn-sm">Test Field Mapper <i class="la la-wrench"></i></button></a></p>
 		</div>
 	</div>
@@ -38,17 +47,20 @@
 		<div class="col-md-12">
 			<h3>OAI Endpoints for Harvest</h3>
 			<p>These are pre-configured OAI endpoints used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.  Combine uses <a href="https://github.com/dpla/ingestion3#oai-pmh" target="_blank">DPLA's Ingestion 3 for OAI harvesting</a>, where more information about these settings can be found.</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Endpoint URL</th>
-					<th>Verb</th>
-					<th>Metadata Prefix</th>
-					<th>Scope Type</th>
-					<th>Scope Value</th>
-					<th>Actions</th>
-				</tr>
+			<table id="oai_endpoints_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Endpoint URL</th>
+						<th>Verb</th>
+						<th>Metadata Prefix</th>
+						<th>Scope Type</th>
+						<th>Scope Value</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
 				{% for oai_endpoint in oai_endpoints %}
 					<tr>
 						<td>{{oai_endpoint.id}}</td>
@@ -61,7 +73,13 @@
 						<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 					</tr>
 				{% endfor %}
+				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#oai_endpoints_table').DataTable({});			    
+				} );
+			</script>
 		</div>
 	</div>
 
@@ -69,14 +87,17 @@
 		<div class="col-md-12">
 			<h3>Transformation Scenarios</h3>
 			<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Path on disk</th>
-					<th>Transformation Payload</th>
-				</tr>
+			<table id="transformations_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Transformation Payload</th>
+					</tr>
+				</thead>
+				<tbody>
 				{% for transformation in transformations %}
 					<tr>
 						<td>{{transformation.id}}</td>
@@ -86,7 +107,13 @@
 						<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View {{ transformation.get_transformation_type_display }}</a></td>
 					</tr>
 				{% endfor %}
+				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#transformations_table').DataTable({});			    
+				} );
+			</script>
 			<p><a href="{% url 'test_transformation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Transformation Scenario <i class="la la-wrench"></i></button></a></p>
 		</div>
 	</div>
@@ -95,14 +122,17 @@
 		<div class="col-md-12">
 			<h3>Validation Scenarios</h3>
 			<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple testes (both schematron and python type).</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Path on disk</th>
-					<th>Validation Payload</th>
-				</tr>
+			<table id="validations_table" class="table table-bordered table-hover">
+				<thead>					
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Path on disk</th>
+						<th>Validation Payload</th>
+					</tr>
+				</thead>
+				<tbody>
 				{% for vs in validation_scenarios %}
 					<tr>
 						<td>{{vs.id}}</td>
@@ -112,7 +142,13 @@
 						<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
 					</tr>
 				{% endfor %}
+				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#validations_table').DataTable({});			    
+				} );
+			</script>
 			<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario <i class="la la-wrench"></i></button></a></p>
 		</div>
 	</div>
@@ -121,13 +157,16 @@
 		<div class="col-md-12">
 			<h3>Record Identifier Transformation Scenarios</h3>
 			<p>View and manage scenarios for transforming Record Identifiers in Combine.</p>
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Name</th>
-					<th>Type</th>
-					<th>Target</th>
-				</tr>
+			<table id="rits_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Type</th>
+						<th>Target</th>
+					</tr>
+				</thead>
+				<tbody>
 				{% for rt in rits %}
 					<tr>
 						<td>{{rt.id}}</td>
@@ -136,7 +175,13 @@
 						<td>{{rt.get_transformation_target_display}}</td>
 					</tr>
 				{% endfor %}
+				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#rits_table').DataTable({});			    
+				} );
+			</script>
 			<p><a href="{% url 'test_rits' %}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario <i class="la la-wrench"></i></button></a></p>
 		</div>
 	</div>
@@ -145,7 +190,7 @@
 		<div class="col-md-12">
 			<h3>Combine OAI Server</h3>
 			<p>Combine comes with a built-in OAI server to serve published RecordGroups.  Currently, these settings are configured in <code>localsettings.py</code>.</p>
-			<table class="table table-bordered table-hover">
+			<table id="oai_server_table" class="table table-bordered table-hover">
 				<thead>
 					<tr>
 						<th>Setting</th>
@@ -166,6 +211,11 @@
 					</tr>
 				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#oai_server_table').DataTable({});			    
+				} );
+			</script>
 		</div>
 	</div>
 
@@ -173,7 +223,7 @@
 		<div class="col-md-12">
 			<h3>DPLA Bulk Data Downloads</h3>
 			<p>Manage local, <a href="https://pro.dp.la/developers/bulk-download">bulk data downloads from DPLA</a>.</p>
-			<table class="table table-bordered table-hover">
+			<table id="dbdd_table" class="table table-bordered table-hover">
 				<thead>
 					<tr>
 						<th>ID</th>
@@ -199,8 +249,25 @@
 					{% endfor %}
 				</tbody>
 			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#dbdd_table').DataTable({});			    
+				} );
+			</script>
 			<p><a href="{% url 'dpla_bulk_data_download' %}"><button type="button" class="btn btn-success btn-sm">Download and Index Bulk Data <i class="la la-cloud-download"></i></button></a></p>
 		</div>
-	</div>	
+	</div>
+
+	<div id="dbdd_anchor" class="row">
+		<div class="col-md-12">
+			<h3>Combine State Export/Import</h3>						
+			<p><a href="{% url 'stateio' %}"><button type="button" class="btn btn-success btn-sm">State Export/Import <i class="la la-cloud-download"></i></button></a></p>
+		</div>
+	</div>
+
+
+
+
+
 
 {% endblock %}

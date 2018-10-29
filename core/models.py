@@ -1336,29 +1336,35 @@ class Job(models.Model):
 			if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and self.job_details_dict['dbdm']['dbdd'] != None:
 
 				# get dbdm
-				dbdm = self.job_details_dict.get('dbdm', False)	
+				dbdm = self.job_details_dict.get('dbdm', False)
 
-				# retrieve DBDD
-				dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd'])
-				
-				# get misses and matches, counting if not yet done
-				if dbdm['matches'] == None and dbdm['misses'] == None:
+				try:
 
-					# matches
-					dbdm['matches'] = self.get_records().filter(dbdm=True).count()
+					# retrieve DBDD
+					dbdd = DPLABulkDataDownload.objects.get(pk=dbdm['dbdd'])
+					
+					# get misses and matches, counting if not yet done
+					if dbdm['matches'] == None and dbdm['misses'] == None:
 
-					# misses
-					dbdm['misses'] = self.get_records().filter(dbdm=False).count()
+						# matches
+						dbdm['matches'] = self.get_records().filter(dbdm=True).count()
 
-					# update job details
-					self.update_job_details({'dbdm':dbdm})
+						# misses
+						dbdm['misses'] = self.get_records().filter(dbdm=False).count()
 
-				# return dict
-				return {
-					'dbdd':dbdd,
-					'matches':dbdm['matches'],
-					'misses': dbdm['misses']
-				}
+						# update job details
+						self.update_job_details({'dbdm':dbdm})
+
+					# return dict
+					return {
+						'dbdd':dbdd,
+						'matches':dbdm['matches'],
+						'misses': dbdm['misses']
+					}
+
+				except Exception as e:					
+					logger.debug('Job claims to have dbdd, but encountered error while retrieving: %s' % str(e))
+					return {}
 
 			else:
 				logger.debug('DPLA Bulk comparison not run, or no matches found.')
@@ -7475,6 +7481,64 @@ class GlobalMessageClient(object):
 # State Export/Import Client       								   #
 ####################################################################
 
+class StateIO(mongoengine.Document):
+
+	'''
+	Model to facilitate the recording of State Exports and Imports in Combine
+		- flexible to both, defined by stateio_type
+		- identifiers and manifests may be null 
+	'''
+
+
+	name = mongoengine.StringField()
+	stateio_type = mongoengine.StringField(
+		required=True,
+		choices=[('export','Export'),('import','Import'),('generic','Generic')],
+		default='generic'
+	)
+	
+	# exports
+	export_id = mongoengine.StringField()
+	export_manifest = mongoengine.DictField()
+	export_path = mongoengine.StringField()
+	
+	# imports
+	import_id = mongoengine.StringField()
+	import_manifest = mongoengine.DictField()	
+
+
+	# meta
+	meta = {
+		'index_options': {},        
+        'index_drop_dups': False,
+		'indexes': []
+	}
+
+	# custom save
+	def save(self, *args, **kwargs):		
+
+		if self.name == None:		
+			self.name = 'StateIO %s @ %s' % (self.stateio_type.title(), datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
+		return super(StateIO, self).save(*args, **kwargs)
+
+
+	def __str__(self):
+		return 'StateIO: %s, %s' % (self.id, self.stateio_type)
+
+
+	# _id shim property
+	@property
+	def _id(self):
+		return self.id
+
+
+	# timestamp property
+	@property
+	def timestamp(self):
+		return self.id.generation_time if self.id else None
+
+
+
 class StateIOClient(object):
 
 	'''
@@ -7517,6 +7581,7 @@ class StateIOClient(object):
 		record_groups=[],
 		orgs=[],
 		config_scenarios=[],
+		export_name=None,
 		compress=True,
 		compression_format='zip'):
 
@@ -7606,8 +7671,18 @@ class StateIOClient(object):
 		if len(config_scenarios) > 0:
 			self._sort_discrete_config_scenarios(config_scenarios)
 
-		# # serialize for export
+		# serialize for export
 		self.package_export()
+
+		# create and save StateIO instance
+		exsio = StateIO(
+			name=export_name,
+			stateio_type='export',
+			export_id=self.export_manifest['export_id'],
+			export_path=self.export_path,
+			export_manifest=self.export_manifest
+		)
+		exsio.save()
 
 		# debug
 		logger.debug("total time for state export: %s" % (time.time() - stime))
@@ -7716,6 +7791,10 @@ class StateIOClient(object):
 
 		All operate over self.export_dict['jobs'], updating other sections of 
 		self.export_dict
+
+		TODO:
+			- these would benefit for more error and existence checking
+				- even if dependencies are not found, exports should continue
 		'''
 
 		###################################
@@ -7814,32 +7893,38 @@ class StateIOClient(object):
 			# check job details for DBDD used
 			if 'dbdm' in job.job_details_dict.keys() and job.job_details_dict['dbdm']['dbdd'] != None:
 
-				# get dbdd
-				dbdd = DPLABulkDataDownload.objects.get(pk=(job.job_details_dict['dbdm']['dbdd']))
+				logger.debug('attempting to export dbdd_id %s for %s' % (job.job_details_dict['dbdm']['dbdd'], job))
 
-				# add to export_dict
-				self.export_dict['dbdd'].add(dbdd)
+				try:
+					# get dbdd
+					dbdd = DPLABulkDataDownload.objects.get(pk=(job.job_details_dict['dbdm']['dbdd']))
+				
+					# add to export_dict
+					self.export_dict['dbdd'].add(dbdd)
 
-				# export DBDD index from ElaticSearch
-				# prepare dbdd export dir
-				dbdd_export_path = '%s/dbdd' % self.export_path
-				if not os.path.isdir(dbdd_export_path):
-					os.mkdir(dbdd_export_path)
+					# export DBDD index from ElaticSearch
+					# prepare dbdd export dir
+					dbdd_export_path = '%s/dbdd' % self.export_path
+					if not os.path.isdir(dbdd_export_path):
+						os.mkdir(dbdd_export_path)
 
-				# build command list
-				cmd = [
-					"elasticdump",
-					"--input=http://localhost:9200/%s" % dbdd.es_index,
-					"--output=%(dbdd_export_path)s/dbdd%(dbdd_id)s.json" % {'dbdd_export_path':dbdd_export_path, 'dbdd_id':dbdd.id},
-					"--type=data",					
-					"--ignore-errors",
-					"--noRefresh"
-				]
+					# build command list
+					cmd = [
+						"elasticdump",
+						"--input=http://localhost:9200/%s" % dbdd.es_index,
+						"--output=%(dbdd_export_path)s/dbdd%(dbdd_id)s.json" % {'dbdd_export_path':dbdd_export_path, 'dbdd_id':dbdd.id},
+						"--type=data",					
+						"--ignore-errors",
+						"--noRefresh"
+					]
 
-				logger.debug("elasticdump cmd: %s" % cmd)
+					logger.debug("elasticdump cmd: %s" % cmd)
 
-				# run cmd
-				os.system(" ".join(cmd))
+					# run cmd
+					os.system(" ".join(cmd))
+
+				except Exception as e:
+					logger.debug('could not export DBDD: %s' % str(e))
 
 
 		############################ 
@@ -7985,7 +8070,10 @@ class StateIOClient(object):
 			# write as single JSON file
 			f.write(serializers.serialize('json', to_serialize))
 
-		# write manifest to directory
+		# finalize export_manifest
+		self._finalize_export_manifest()
+
+		# write export_manifest
 		with open('%s/export_manifest.json' % self.export_path,'w') as f:
 			f.write(json.dumps(self.export_manifest))
 
@@ -8017,7 +8105,46 @@ class StateIOClient(object):
 		return self.export_path
 
 
-	def import_state(self, export_path, load_only=False, import_records=True):
+	def _finalize_export_manifest(self):
+
+		'''
+		Method to finalize export_manifest before writing to export
+			- loop through self.export_dict for export types that are human meaningful
+		'''
+
+		# establish section in export_manifest
+		self.export_manifest['exports'] = {
+			'jobs':[],
+			'record_groups':[],
+			'orgs':[],
+			'dbdd':[],			
+			'oai_endpoints':[],
+			'rits':[],
+			'transformations':[],
+			'validations':[]
+		}
+
+		# loop through export Django model instance exports
+		for export_type in self.export_manifest['exports'].keys():
+
+			# loop through exports for type
+			for e in self.export_dict[export_type]:
+
+				logger.debug('writing %s to export_manifest' % e)
+
+				# write
+				self.export_manifest['exports'][export_type].append({
+					'name':e.name,
+					'id':e.id
+				})
+
+
+	def import_state(self,
+			export_path,
+			import_name=None,
+			load_only=False,
+			import_records=True
+		):
 
 		'''
 		Import exported state
@@ -8077,6 +8204,18 @@ class StateIOClient(object):
 
 			# update import_manifest
 			self._finalize_import_manifest()
+
+		# create and save StateIO instance		
+		imsio = StateIO(
+			name=import_name,
+			stateio_type='import',
+			import_id=self.import_manifest['import_id'],
+			export_path=self.export_path,
+			export_manifest=self.export_manifest,
+			# subset of import_manifest
+			import_manifest={ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] }
+		)
+		imsio.save()
 
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
@@ -8496,18 +8635,47 @@ class StateIOClient(object):
 	def _finalize_import_manifest(self):
 
 		'''
-		Method to finalize import manifest
+		Method to finalize import_manifest before writing to export
+			- loop through self.export_dict for export types that are human meaningful
 		'''
 
-		# append export_manifest
+		# model translation
+		model_translation = {
+			'jobs':Job,
+			'record_groups':RecordGroup,
+			'orgs':Organization,
+			'dbdd':DPLABulkDataDownload,			
+			'oai_endpoints':OAIEndpoint,
+			'rits':RecordIdentifierTransformationScenario,
+			'transformations':Transformation,
+			'validations':ValidationScenario
+		}
 
+		# establish section in export_manifest
+		self.import_manifest['imports'] = {
+			'jobs':[],
+			'record_groups':[],
+			'orgs':[],
+			'dbdd':[],			
+			'oai_endpoints':[],
+			'rits':[],
+			'transformations':[],
+			'validations':[]
+		}
 
-		# invert pk_hash to clearly show what new instances were created
-		self.import_manifest['created_instances'] = {}
-		pk_hash = self.import_manifest['pk_hash']
+		# loop through deserialized objects
+		for import_type in self.import_manifest['imports'].keys():
 
-		pass
+			# loop through imports for type
+			for obj in self._get_django_model_type(model_translation[import_type]):
 
+				logger.debug('writing %s to import_manifest' % obj)
+
+				# write name, and UPDATED id of imported object
+				self.import_manifest['imports'][import_type].append({
+					'name':obj.object.name,
+					'id':obj.object.id
+				})
 
 
 	def _update_job_details(self, job):
@@ -8574,7 +8742,7 @@ class StateIOClient(object):
 		if 'rits' in job.job_details_dict.keys():
 			try:
 				orig_rits_id = job.job_details_dict['rits']
-				update_dict['rits'] = {'rits':pk_hash['rits'][orig_rits_id]}
+				update_dict['rits'] = pk_hash['rits'][orig_rits_id]
 			except:
 				logger.debug('error with updating job_details: rits')
 

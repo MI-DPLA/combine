@@ -173,6 +173,11 @@ def breadcrumb_parser(request):
 		bg_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
 		crumbs.append(("<span class='font-weight-bold'>Task - <code>%s</code></span>" % (bg_task.name), reverse('bg_tasks')))
 
+	# background task
+	regex_match = re.match(r'(.+?/stateio.*)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>State Export/Import</span>", reverse('stateio')))
+
 	# return
 	return crumbs
 
@@ -3730,6 +3735,70 @@ def gm_delete(request):
 		})
 
 
+####################################################################
+# State IO      												   #
+####################################################################
+
+@login_required
+def stateio(request):
+
+	'''
+	Root view for StateIO
+	'''
+
+	# retrieve exports and imports
+	stateio_exports = models.StateIO.objects.filter(stateio_type='export')
+	stateio_imports = models.StateIO.objects.filter(stateio_type='import')
+
+	# return
+	return render(request, 'core/stateio.html', {
+		'stateio_exports':stateio_exports,
+		'stateio_imports':stateio_imports,
+		'breadcrumbs':breadcrumb_parser(request)
+	})
+
+
+@login_required
+def stateio_state(request, state_id):
+
+	'''
+	Single state view
+	'''
+
+	# retrieve state
+	state = models.StateIO.objects.get(id=state_id)
+
+	# return
+	return render(request, 'core/stateio_state.html', {
+		'state':state,		
+		'breadcrumbs':breadcrumb_parser(request)
+	})
+
+
+@login_required
+def stateio_export(request):
+
+	'''
+	Export state
+	'''
+
+	# return
+	return render(request, 'core/stateio_export.html', {
+		'breadcrumbs':breadcrumb_parser(request)
+	})
+
+
+@login_required
+def stateio_import(request):
+
+	'''
+	Import state
+	'''
+
+	# return
+	return render(request, 'core/stateio_import.html', {
+		'breadcrumbs':breadcrumb_parser(request)
+	})
 
 
 

@@ -125,11 +125,17 @@ urlpatterns = [
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),
 
-	# Documente Download
+	# Document Download
 	url(r'^document_download$', views.document_download, name='document_download'),
 
 	# Global Messages (GMs)
 	url(r'^gm/delete$', views.gm_delete, name='gm_delete'),
+
+	# StateIO
+	url(r'^stateio$', views.stateio, name='stateio'),
+	url(r'^stateio/state/(?P<state_id>[0-9a-z]+)$', views.stateio_state, name='stateio_state'),
+	url(r'^stateio/export$', views.stateio_export, name='stateio_export'),
+	url(r'^stateio/import$', views.stateio_import, name='stateio_import'),
 
 	# General
 	url(r'^login$', auth_views.login, name='login'),

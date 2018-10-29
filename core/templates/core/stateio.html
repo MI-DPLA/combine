@@ -1,0 +1,83 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>State Export/Import</h2>
+			<p>It is possible to export and import "states" in Combine, including the hierarchy of Organizations and Record Groups, Jobs, Records (including Validations and Mapped Fields), and even reusable configuration scenarios.  Why would I want to to this?  Exporting and Importing state is a great way to:
+				<ul>
+					<li>export resources from Combine in preparation for reinstalling or upgrading, so they can be imported again</li>
+					<li>export interconnected groups of Jobs, or even full Organizations or Record Groups, to import to another installation of Combine</li>
+					<li>share and/or backup configurations (e.g. Validation or Transformation Scenarios, or OAI endpoints configurations)</li>
+				</ul>
+			</p>
+			<p>The tables below show state <strong>Exports</strong> and <strong>Imports</strong> that are running or completed.</p>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Exports</h3>
+			<table id="exports_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Export Path</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for export in stateio_exports %}
+						<tr>
+							<td><code>{{export.id}}</code></td>
+							<td>{{export.name}}</td>
+							<td><code>{{export.export_path}}</code></td>
+							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="#"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#exports_table').DataTable({});
+				} );
+			</script>
+			<p><a href="{% url 'stateio_export' %}"><button type="button" class="btn btn-success btn-sm">Export State <i class="la la-cloud-download"></i></button></a></p>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+			<h3>Imports</h3>
+			<table id="imports_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>ID</th>
+						<th>Name</th>
+						<th>Export Path</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					{% for import in stateio_imports %}
+						<tr>
+							<td><code>{{import.id}}</code></td>
+							<td>{{import.name}}</td>
+							<td><code>{{import.export_path}}</code></td>
+							<td><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="#"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+						</tr>
+					{% endfor %}
+				</tbody>
+			</table>
+			<script>
+				$(document).ready(function() {
+				    $('#imports_table').DataTable({});
+				} );
+			</script>
+			<p><a href="{% url 'stateio_import' %}"><button type="button" class="btn btn-success btn-sm">Import State <i class="la la-cloud-upload"></i></button></a></p>
+		</div>
+	</div>
+
+{% endblock %}
