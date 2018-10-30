@@ -134,6 +134,7 @@ urlpatterns = [
 	# StateIO
 	url(r'^stateio$', views.stateio, name='stateio'),
 	url(r'^stateio/state/(?P<state_id>[0-9a-z]+)$', views.stateio_state, name='stateio_state'),
+	url(r'^stateio/state/(?P<state_id>[0-9a-z]+)/manifest/(?P<manifest_type>.+)$', views.stateio_state_manifest, name='stateio_state_manifest'),
 	url(r'^stateio/state/(?P<state_id>[0-9a-z]+)/delete$', views.stateio_state_delete, name='stateio_state_delete'),
 	url(r'^stateio/export$', views.stateio_export, name='stateio_export'),
 	url(r'^stateio/import$', views.stateio_import, name='stateio_import'),

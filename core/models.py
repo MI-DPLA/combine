@@ -3319,6 +3319,12 @@ class DPLABulkDataDownload(models.Model):
 		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)
 
 
+	# name shim
+	@property
+	def name(self):
+		return self.s3_key
+
+
 
 class CombineBackgroundTask(models.Model):
 

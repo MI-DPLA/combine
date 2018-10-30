@@ -26,6 +26,7 @@
 						<th>State ID</th>
 						<th>Export Name</th>
 						<th>Export Path</th>
+						<th>Manifests</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
@@ -36,6 +37,7 @@
 							<td><code>{{export.export_id}}</code></td>
 							<td>{{export.name}}</td>
 							<td><code>{{export.export_path}}</code></td>
+							<td><a href="{% url 'stateio_state_manifest' state_id=export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
 							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}
@@ -60,6 +62,7 @@
 						<th>State ID</th>
 						<th>Import Name</th>
 						<th>Import Path</th>
+						<th>Manifests</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
@@ -70,6 +73,7 @@
 							<td><code>{{import.export_manifest.export_id}}</code></td>
 							<td>{{import.name}}</td>
 							<td><code>{{import.import_path}}</code></td>
+							<td><a href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a> <a href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='import_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button></a></td>
 							<td><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=import.id %}"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}

@@ -3,30 +3,72 @@
 
 {% block content %}
 
+	<style>
+
+		.tree_select {
+			background-color: rgb(245, 245, 245);
+			max-height:640px;			
+			overflow-y: scroll;
+			padding:10px;
+			border-radius: 5px;
+		}
+
+	</style>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Export State</h2>
-			<p>Use the form below to select Organizations, Record Groups, Jobs, and configuration scenarios to include in the state export.</p>
+			<p>To prepare a state for export, use for the form below to select Organizations, Record Groups, Jobs, and configuration scenarios to include.</p>
 		</div>
 	</div>
 
 	<div class="row">
-		<div class="col-md-12">
-
-			<div id="hierarchy_tree"></div>
+		<div class="col-md-8">
+			<h3>Organizations, Record Groups, Jobs</h3>
+			<p>Select Organizations, Record Groups, and Jobs to be included in the exported state.  Keep in mind, during the export preparation process, all connected Organizations, Record Groups, and Jobs -- both "upstream" and "downstream" -- will be included as well.  You will be given the opportunity in the confirmation screen to preview this.</p>
+			<div id="jobs_hierarchy_tree" class="tree_select"></div>
 
 			<script>
 
 				// init hierarchy
-				hierarchy_obj = JSON.parse(`{{hierarchy_json|safe}}`);
+				job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
 
 				$(document).ready(function(){
 
-					tree = $('#hierarchy_tree').jstree({
+					tree = $('#jobs_hierarchy_tree').jstree({
 
 						'plugins':["wholerow","checkbox"],
 						'core':{
-							'data':hierarchy_obj
+							'data':job_hierarchy_obj
+						}
+
+					});
+
+				});
+
+			</script>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<h3>Configurations and Scenarios</h3>
+			<p>Select what configuration and scenarios to export.  Keep in mind, scenarios associated with selected Jobs will be included automatically, but it's also possible to include configurations and scenarios <strong>only</strong>, or ones that are <strong>not</strong> associated with selected Jobs, but should be included in export.</p>
+			<div id="config_scenarios_tree" class="tree_select"></div>
+
+			<script>
+
+				// init hierarchy
+				config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe}}`);
+
+				$(document).ready(function(){
+
+					tree = $('#config_scenarios_tree').jstree({
+
+						'plugins':["wholerow","checkbox"],
+						'core':{
+							'data':config_scenarios_obj
 						}
 
 					});
