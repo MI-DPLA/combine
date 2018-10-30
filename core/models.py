@@ -3484,14 +3484,13 @@ class StateIO(mongoengine.Document):
 		default='generic'
 	)
 	
-	# exports
+	
 	export_id = mongoengine.StringField()
 	export_manifest = mongoengine.DictField()
 	export_path = mongoengine.StringField()
-	
-	# imports
 	import_id = mongoengine.StringField()
 	import_manifest = mongoengine.DictField()	
+	import_path = mongoengine.StringField()
 
 
 	# meta
@@ -3531,16 +3530,34 @@ class StateIO(mongoengine.Document):
 
 		logger.debug('preparing to delete %s' % document)
 
-		# check for export_path and delete
-		logger.debug('removing export_path: %s' % document.export_path)
-		if os.path.isfile(document.export_path):
-			logger.debug('export is filetype, removing')
-			os.remove(document.export_path)
-		elif os.path.isdir(document.export_path):
-			logger.debug('export is dir, removing')
-			shutil.rmtree(document.export_path)
-		else:
-			logger.debug('Could not remove %s' % document.export_path)
+		# if export
+		if document.stateio_type == 'export':
+
+			# check for export_path and delete
+			logger.debug('removing export_path: %s' % document.export_path)
+			if os.path.isfile(document.export_path):
+				logger.debug('export is filetype, removing')
+				os.remove(document.export_path)
+			elif os.path.isdir(document.export_path):
+				logger.debug('export is dir, removing')
+				shutil.rmtree(document.export_path)
+			else:
+				logger.debug('Could not remove %s' % document.export_path)
+
+		# if import
+		elif document.stateio_type == 'import':
+
+			# check for export_path and delete
+			logger.debug('removing import_path: %s' % document.import_manifest['import_path'])
+			if os.path.isfile(document.export_path):
+				logger.debug('export is filetype, removing')
+				os.remove(document.export_path)
+			elif os.path.isdir(document.export_path):
+				logger.debug('export is dir, removing')
+				shutil.rmtree(document.export_path)
+			else:
+				logger.debug('Could not remove %s' % document.export_path)
+
 
 
 
@@ -8229,9 +8246,9 @@ class StateIOClient(object):
 			stateio_type='import',
 			import_id=self.import_manifest['import_id'],
 			export_path=self.export_path,
-			export_manifest=self.export_manifest,
-			# subset of import_manifest
-			import_manifest={ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] }
+			export_manifest=self.export_manifest,			
+			import_manifest={ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] },
+			import_path=self.import_path
 		)
 		imsio.save()
 

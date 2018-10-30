@@ -1,0 +1,35 @@
+{% extends 'core/base.html' %}
+{% load static %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Export State</h2>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<!-- Build your select: -->
+			<select id="example-getting-started" multiple="multiple">
+			    <option value="cheese">Cheese</option>
+			    <option value="tomatoes">Tomatoes</option>
+			    <option value="mozarella">Mozzarella</option>
+			    <option value="mushrooms">Mushrooms</option>
+			    <option value="pepperoni">Pepperoni</option>
+			    <option value="onions">Onions</option>
+			</select>
+
+			<!-- Initialize the plugin: -->
+			<script type="text/javascript">
+			    $(document).ready(function() {
+			        $('#example-getting-started').multiselect();
+			    });
+			</script>
+
+		</div>
+	</div>
+
+{% endblock %}

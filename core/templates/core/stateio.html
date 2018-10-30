@@ -5,7 +5,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h2>State Export/Import</h2>
-			<p>It is possible to export and import "states" in Combine, including the hierarchy of Organizations and Record Groups, Jobs, Records (including Validations and Mapped Fields), and even reusable configuration scenarios.  Why would I want to to this?  Exporting and Importing state is a great way to:
+			<p>It is possible to export and import "states" in Combine, including the hierarchy of Organizations and Record Groups, Jobs, Records (including Validations and Mapped Fields), and even reusable configuration scenarios.  Exporting and Importing state is a great way to:
 				<ul>
 					<li>export resources from Combine in preparation for reinstalling or upgrading, so they can be imported again</li>
 					<li>export interconnected groups of Jobs, or even full Organizations or Record Groups, to import to another installation of Combine</li>
@@ -23,7 +23,8 @@
 				<thead>
 					<tr>
 						<th>ID</th>
-						<th>Name</th>
+						<th>State ID</th>
+						<th>Export Name</th>
 						<th>Export Path</th>
 						<th>Actions</th>
 					</tr>
@@ -32,6 +33,7 @@
 					{% for export in stateio_exports %}
 						<tr>
 							<td><code>{{export.id}}</code></td>
+							<td><code>{{export.export_id}}</code></td>
 							<td>{{export.name}}</td>
 							<td><code>{{export.export_path}}</code></td>
 							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
@@ -55,8 +57,9 @@
 				<thead>
 					<tr>
 						<th>ID</th>
-						<th>Name</th>
-						<th>Export Path</th>
+						<th>State ID</th>
+						<th>Import Name</th>
+						<th>Import Path</th>
 						<th>Actions</th>
 					</tr>
 				</thead>
@@ -64,8 +67,9 @@
 					{% for import in stateio_imports %}
 						<tr>
 							<td><code>{{import.id}}</code></td>
+							<td><code>{{import.export_manifest.export_id}}</code></td>
 							<td>{{import.name}}</td>
-							<td><code>{{import.export_path}}</code></td>
+							<td><code>{{import.import_path}}</code></td>
 							<td><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=import.id %}"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}

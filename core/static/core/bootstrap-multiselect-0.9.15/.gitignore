@@ -1,0 +1,7 @@
+# Project files.
+*.project
+.idea/
+*.iml
+nbproject/
+node_modules/
+.vscode

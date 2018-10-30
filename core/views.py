@@ -173,10 +173,26 @@ def breadcrumb_parser(request):
 		bg_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
 		crumbs.append(("<span class='font-weight-bold'>Task - <code>%s</code></span>" % (bg_task.name), reverse('bg_tasks')))
 
-	# background task
+	# stateio
 	regex_match = re.match(r'(.+?/stateio.*)', request.path)
 	if regex_match:		
 		crumbs.append(("<span class='font-weight-bold'>State Export/Import</span>", reverse('stateio')))
+
+	# stateio - state details
+	regex_match = re.match(r'(.+?/stateio/state/([0-9a-z].*))', request.path)
+	if regex_match:
+		state = models.StateIO.objects.get(id=regex_match.group(2))
+		crumbs.append(("<span class='font-weight-bold'>State - <code>%s</code></span>" % (state.name), reverse('stateio_state', kwargs={'state_id':regex_match.group(2)})))
+	
+	# stateio - export
+	regex_match = re.match(r'(.+?/stateio/export.*)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>Export</span>", reverse('stateio_export')))
+
+	# stateio - export
+	regex_match = re.match(r'(.+?/stateio/import.*)', request.path)
+	if regex_match:		
+		crumbs.append(("<span class='font-weight-bold'>Import</span>", reverse('stateio_import')))
 
 	# return
 	return crumbs
@@ -3797,7 +3813,19 @@ def stateio_export(request):
 
 	'''
 	Export state
+
+	v1
+		- Present user with multi-select dropdowns of:
+			- orgs
+			- record groups
+			- jobs
+			- scenarios
+		- feed those ids to StateIOClient
+		- redirect to "preview" page, showing JSON (?) of collected components?
 	'''
+
+	# construct object dictionary to populate dropdowns
+	
 
 	# return
 	return render(request, 'core/stateio_export.html', {
