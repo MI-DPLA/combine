@@ -1005,11 +1005,6 @@ def stateio_export(ct_id):
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
 
-	# debug
-	logger.info("#############################################################")
-	logger.info(ct.task_params)
-	logger.info("#############################################################")
-
 	# begin export
 	sio_client = models.StateIOClient()
 	sio_client.export_state(

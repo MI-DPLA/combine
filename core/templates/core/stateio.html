@@ -38,7 +38,7 @@
 							<td>{{export.name}}</td>
 							<td><code>{{export.export_path}}</code></td>
 							<td><a href="{% url 'stateio_state_manifest' state_id=export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
-							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_download' state_id=export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}
 				</tbody>

@@ -3823,6 +3823,28 @@ def stateio_state_delete(request, state_id):
 
 
 @login_required
+def stateio_state_download(request, state_id):
+
+	'''
+	Download export state
+	'''
+
+	# retrieve state
+	state = models.StateIO.objects.get(id=state_id)
+
+	# set filepath as download location on disk
+	filepath = state.export_path
+
+	# set filename		
+	filename = filepath.split('/')[-1]
+
+	# generate response
+	response = FileResponse(open(filepath, 'rb'))	
+	response['Content-Disposition'] = 'attachment; filename="%s"' % filename
+	return response
+	
+
+@login_required
 def stateio_export(request):
 
 	'''
@@ -3853,13 +3875,13 @@ def stateio_export(request):
 		logger.debug('initing export: %s' % export_name)
 
 		# capture and parse jobs_hierarchy_ids
-		jobs_hierarchy_ids = request.POST.getlist('jobs_hierarchy_ids[]')		
+		jobs_hierarchy_ids = request.POST.getlist('jobs_hierarchy_ids[]')
 		jobs = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('job') ]
 		record_groups = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('record_group') ]
 		orgs = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('org') ]
 
 		# capture and parse config_scenarios_ids		
-		config_scenarios_ids = request.POST.getlist('config_scenarios_ids[]')
+		config_scenarios_ids = [ config_id for config_id in request.POST.getlist('config_scenarios_ids[]') if '|' in config_id ]
 
 		# init export as bg task
 		ct = models.StateIOClient.export_state_bg_task(
@@ -3903,7 +3925,7 @@ def _stateio_prepare_job_hierarchy():
 	'''
 	# init dictionary with root node
 	hierarchy_dict = {
-		'id':'jobs_root',
+		'id':'root_jobs',
 		'text':'Organizations, Record Groups, and Jobs',
 		'state':{'opened':True},
 		'children':[]
@@ -3977,7 +3999,7 @@ def _stateio_prepare_config_scenarios():
 	'''
 	# init dictionary with root node
 	config_scenarios_dict = {
-		'id':'config_root',
+		'id':'root_config',
 		'text':'Configurations and Scenarios',
 		'state':{'opened':True},
 		'children':[]

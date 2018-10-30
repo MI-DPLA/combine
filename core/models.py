@@ -7907,8 +7907,11 @@ class StateIOClient(object):
 
 			if job.job_type == 'HarvestOAIJob':
 
-				# read OAI endpoint from params
-				self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
+				try:
+					# read OAI endpoint from params
+					self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
+				except:
+					logger.warning('OAI parameters not found for %s, export may not include required OAI endpoint')
 
 
 		############################ 
@@ -8084,7 +8087,7 @@ class StateIOClient(object):
 			logger.debug('adding to export_dict for serialization: %s' % config_scenario)
 
 			# if prefixed string passed, retrieve model instance
-			if type(config_scenario) == str:
+			if type(config_scenario) == str and '|' in config_scenario:
 				model_type, model_id = config_scenario.split('|')
 				config_scenario = id_prefix_hash[model_type].objects.get(pk=int(model_id))
 
