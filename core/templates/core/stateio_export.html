@@ -3,74 +3,37 @@
 
 {% block content %}
 
-	<!-- Bootstrap Multiselect CSS -->
-	<style>
-
-		#stateio_export_form .btn-group {
-			width:100%;						
-		}
-
-		.multiselect-clear-filter {
-			margin-left:5px;
-			margin-right:10px;
-		}
-
-	</style>
-
-	<!-- defaults for multiselect -->
-	<script>
-
-		multiselect_config = {
-        	'includeSelectAllOption': true,
-			'enableFiltering': true,
-			'maxHeight': 400,
-			'enableClickableOptGroups': true
-        };
-
-	</script>
-
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Export State</h2>
+			<p>Use the form below to select Organizations, Record Groups, Jobs, and configuration scenarios to include in the state export.</p>
 		</div>
 	</div>
 
 	<div class="row">
 		<div class="col-md-12">
 
-			<form id="stateio_export_form" method="POST" action="{% url 'stateio_export' %}">
+			<div id="hierarchy_tree"></div>
 
-				<!-- orgnizations -->
-				<div class="form-group">
-					<label for="verb">Organizations</label>
-					<select id="orgs_sel" multiple="multiple">				
-					    {% for org in comps.orgs %}
-					    	<option value="{{org.id}}">{{org.name}}</option>
-					    {% endfor %}			    
-					</select>
-				</div>
-				<script type="text/javascript">
-				    $(document).ready(function() {
-				        $('#orgs_sel').multiselect(multiselect_config);
-				    });
-				</script>
+			<script>
 
-				<!-- orgnizations -->
-				<div class="form-group">
-					<label for="verb">Record Groups</label>
-					<select id="record_groups_sel" multiple="multiple">				
-					    {% for rg in comps.record_groups %}
-					    	<option value="{{rg.id}}">{{rg.name}}</option>
-					    {% endfor %}			    
-					</select>
-				</div>			
-				<script type="text/javascript">
-				    $(document).ready(function() {
-				        $('#record_groups_sel').multiselect(multiselect_config);
-				    });
-				</script>
+				// init hierarchy
+				hierarchy_obj = JSON.parse(`{{hierarchy_json|safe}}`);
 
-			</form>
+				$(document).ready(function(){
+
+					tree = $('#hierarchy_tree').jstree({
+
+						'plugins':["wholerow","checkbox"],
+						'core':{
+							'data':hierarchy_obj
+						}
+
+					});
+
+				});
+
+			</script>
 
 		</div>
 	</div>
