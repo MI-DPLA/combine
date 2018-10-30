@@ -30,9 +30,20 @@
 	</script>
 
 	<div class="row">
-		<div class="col-md-12">
+		<div class="col-md-8">
 			<h2>Export State</h2>
-			<p>To prepare a state for export, use for the form below to select Organizations, Record Groups, Jobs, and configuration scenarios to include.</p>
+			<p>To prepare a state for export, use for the form below to select Organizations, Record Groups, Jobs, and configuration scenarios to include.  When ready, click "Export State" at the bottom.</p>
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+			<!-- <h3>Optional Export Details</h3> -->
+			<div class="form-group">
+				<label for="export_name">Export Name</label>
+				<input type="text" class="form-control" name="export_name" id="export_name" placeholder="My Export Name">
+				<small id="job_name_help" class="form-text text-muted">Optional</small>
+			</div>
 		</div>
 	</div>
 
@@ -137,5 +148,52 @@
 
 		</div>
 	</div>
+
+	<div class="row">
+		<div class="col-md-12">			
+			<p><button type="button" class="btn btn-success btn-sm" onclick="init_export();">Export State <i class="la la-download"></i></button></p>
+		</div>
+	</div>
+
+	<script>
+
+		function init_export(){
+
+			// get all jobs_hierarchy
+			jobs_hierarchy_ids = jobs_tree.jstree(true).get_selected();
+
+			// get config_scenarios
+			config_scenarios_ids = configs_tree.jstree(true).get_selected();
+
+			// fire ajax POST
+			$.ajax({
+				type: "POST",
+				url: "{% url 'stateio_export' %}",
+				data: {					
+					'jobs_hierarchy_ids':jobs_hierarchy_ids,
+					'config_scenarios_ids':config_scenarios_ids,
+					'export_name':$("#export_name").val(),
+					'csrfmiddlewaretoken': '{{ csrf_token }}'
+				},
+				dataType:'json',
+				success: function(data){				
+					console.log(data);
+					window.location.href = "{% url 'stateio' %}";
+				},
+				error: function(data){				
+					console.log(data.responseJSON.msg);
+				}
+			});
+
+		}
+
+	</script>
+
+
+
+
+
+
+
 
 {% endblock %}

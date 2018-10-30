@@ -1005,6 +1005,22 @@ def stateio_export(ct_id):
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
 
+	# debug
+	logger.info("#############################################################")
+	logger.info(ct.task_params)
+	logger.info("#############################################################")
+
+	# begin export
+	sio_client = models.StateIOClient()
+	sio_client.export_state(
+		jobs=ct.task_params['jobs'],
+		record_groups=ct.task_params['record_groups'],
+		orgs=ct.task_params['orgs'],
+		config_scenarios=ct.task_params['config_scenarios'],
+		export_name=ct.task_params['export_name'],
+		compress=True,
+		compression_format='zip')
+
 
 @celery_app.task()
 def stateio_import(ct_id):

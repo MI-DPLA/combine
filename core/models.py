@@ -3566,7 +3566,6 @@ class StateIO(mongoengine.Document):
 
 
 
-
 ####################################################################
 # Signals Handlers												   #
 ####################################################################
@@ -8059,6 +8058,9 @@ class StateIOClient(object):
 			'field_mapper_configs':set(),
 			'dbdd':set()
 
+		Args:
+			config_scenarios (list): List of model instances, or specially prefixed ids
+
 		'''
 
 		logger.debug('sorting passed discrete configuration scenarios')
@@ -8073,10 +8075,18 @@ class StateIOClient(object):
 			DPLABulkDataDownload:'dbdd'
 		}
 
+		# invert sorting_hash for id prefixes
+		id_prefix_hash = { v:k for k,v in sorting_hash.items() }
+
 		# loop through passed model instances
 		for config_scenario in config_scenarios:
 
 			logger.debug('adding to export_dict for serialization: %s' % config_scenario)
+
+			# if prefixed string passed, retrieve model instance
+			if type(config_scenario) == str:
+				model_type, model_id = config_scenario.split('|')
+				config_scenario = id_prefix_hash[model_type].objects.get(pk=int(model_id))
 
 			# slot to export dict through hash
 			self.export_dict[sorting_hash[type(config_scenario)]].add(config_scenario)
@@ -8181,11 +8191,10 @@ class StateIOClient(object):
 
 
 	def import_state(self,
-			export_path,
-			import_name=None,
-			load_only=False,
-			import_records=True
-		):
+		export_path,
+		import_name=None,
+		load_only=False,
+		import_records=True):
 
 		'''
 		Import exported state
@@ -8874,6 +8883,40 @@ class StateIOClient(object):
 		return [ obj for obj in instances if type(obj.object) == instance_type ]
 
 
+	@staticmethod
+	def export_state_bg_task(
+		export_name=None,
+		jobs=[],
+		record_groups=[],
+		orgs=[],
+		config_scenarios=[]):
+
+		'''
+		Method to init export task bg task					
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Export State',
+			task_type = 'stateio_export',
+			task_params_json = json.dumps({
+				'jobs':jobs,
+				'record_groups':record_groups,
+				'orgs':orgs,
+				'config_scenarios':config_scenarios,
+				'export_name':export_name
+			})
+		)		
+		ct.save()
+		logger.debug(ct)
+		
+		# run celery task
+		bg_task = tasks.stateio_export.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
+
+		return ct
 
 
 

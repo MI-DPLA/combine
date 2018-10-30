@@ -3829,18 +3829,56 @@ def stateio_export(request):
 	Export state
 	'''
 
-	# generate hierarchy_dict
-	job_hierarchy = _stateio_prepare_job_hierarchy()
+	if request.method == 'GET':
 
-	# generate config scenarios
-	config_scenarios = _stateio_prepare_config_scenarios()
+		# generate hierarchy_dict
+		job_hierarchy = _stateio_prepare_job_hierarchy()
 
-	# return
-	return render(request, 'core/stateio_export.html', {
-		'job_hierarchy_json':json.dumps(job_hierarchy),
-		'config_scenarios_json':json.dumps(config_scenarios),
-		'breadcrumbs':breadcrumb_parser(request)
-	})
+		# generate config scenarios
+		config_scenarios = _stateio_prepare_config_scenarios()
+
+		# return
+		return render(request, 'core/stateio_export.html', {
+			'job_hierarchy_json':json.dumps(job_hierarchy),
+			'config_scenarios_json':json.dumps(config_scenarios),
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	if request.method == 'POST':
+
+		# capture optional export name
+		export_name = request.POST.get('export_name', None)
+		if export_name == '':
+			export_name = None			
+		logger.debug('initing export: %s' % export_name)
+
+		# capture and parse jobs_hierarchy_ids
+		jobs_hierarchy_ids = request.POST.getlist('jobs_hierarchy_ids[]')		
+		jobs = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('job') ]
+		record_groups = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('record_group') ]
+		orgs = [ int(obj.split('|')[-1]) for obj in jobs_hierarchy_ids if obj.startswith('org') ]
+
+		# capture and parse config_scenarios_ids		
+		config_scenarios_ids = request.POST.getlist('config_scenarios_ids[]')
+
+		# init export as bg task
+		ct = models.StateIOClient.export_state_bg_task(
+			export_name=export_name,
+			jobs=jobs,
+			record_groups=record_groups,
+			orgs=orgs,
+			config_scenarios=config_scenarios_ids # preserve prefixes through serialization
+		)
+
+		# set gms
+		gmc = models.GlobalMessageClient(request.session)
+		gmc.add_gm({
+			'html':'<p><strong>Exporting State</strong></p>',
+			'class':'success'
+		})
+
+		# return
+		return JsonResponse({'msg':'success'})
 
 
 def _stateio_prepare_job_hierarchy():
@@ -3876,7 +3914,7 @@ def _stateio_prepare_job_hierarchy():
 		
 		# init org dict
 		org_dict = {
-			'id':'org_%s' % org.id,
+			'id':'org|%s' % org.id,
 			'text':org.name,
 			'state':{'opened':False},
 			'children':[]
@@ -3887,7 +3925,7 @@ def _stateio_prepare_job_hierarchy():
 
 			# init rg dict
 			rg_dict = {
-				'id':'rg_%s' % rg.id,
+				'id':'record_group|%s' % rg.id,
 				'text':rg.name,
 				'state':{'opened':False},
 				'children':[]
@@ -3898,7 +3936,7 @@ def _stateio_prepare_job_hierarchy():
 
 				# init job dict
 				job_dict = {
-					'id':'j_%s' % job.id,
+					'id':'job|%s' % job.id,
 					'text':job.name,
 					'state':{'opened':False}				
 				}
@@ -3958,7 +3996,7 @@ def _stateio_prepare_config_scenarios():
 		# loop through instances
 		for obj in model.objects.all():
 			model_dict['children'].append({
-				'id':'%s_%s' % (id_prefix, obj.id),
+				'id':'%s|%s' % (id_prefix, obj.id),
 				'text':obj.name,
 				'state':{'opened':False},
 				'children':[]
@@ -3969,11 +4007,11 @@ def _stateio_prepare_config_scenarios():
 
 	# loop through models and append to config scenarios dict
 	for model_tup in [
-			(config_scenarios_dict, models.ValidationScenario, 'validation_scenarios', 'Validation Scenarios', 'vs'),
-			(config_scenarios_dict, models.Transformation, 'transformations', 'Transformation Scenarios', 'trans'),
-			(config_scenarios_dict, models.OAIEndpoint, 'oai_endpoints', 'OAI Endpoints', 'oai'),
+			(config_scenarios_dict, models.ValidationScenario, 'validation_scenarios', 'Validation Scenarios', 'validations'),
+			(config_scenarios_dict, models.Transformation, 'transformations', 'Transformation Scenarios', 'transformations'),
+			(config_scenarios_dict, models.OAIEndpoint, 'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
 			(config_scenarios_dict, models.RecordIdentifierTransformationScenario, 'rits', 'Record Identifier Transformation Scenarios', 'rits'),
-			(config_scenarios_dict, models.FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations', 'fm_config'),
+			(config_scenarios_dict, models.FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations', 'field_mapper_configs'),
 			(config_scenarios_dict, models.DPLABulkDataDownload, 'dbdds', 'DPLA Bulk Data Downloads', 'dbdd')
 		]:
 
