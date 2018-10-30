@@ -3824,11 +3824,18 @@ def stateio_export(request):
 		- redirect to "preview" page, showing JSON (?) of collected components?
 	'''
 
-	# construct object dictionary to populate dropdowns
-	
+	# construct Combine components, "comps", dictionary to populate dropdowns
+	comps = {}
+
+	# Organizations
+	comps['orgs'] = models.Organization.objects.filter(for_analysis=False)
+
+	# Record Groups
+	comps['record_groups'] = models.RecordGroup.objects.filter(for_analysis=False)
 
 	# return
 	return render(request, 'core/stateio_export.html', {
+		'comps':comps,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
 

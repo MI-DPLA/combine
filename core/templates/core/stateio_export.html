@@ -3,6 +3,32 @@
 
 {% block content %}
 
+	<!-- Bootstrap Multiselect CSS -->
+	<style>
+
+		#stateio_export_form .btn-group {
+			width:100%;						
+		}
+
+		.multiselect-clear-filter {
+			margin-left:5px;
+			margin-right:10px;
+		}
+
+	</style>
+
+	<!-- defaults for multiselect -->
+	<script>
+
+		multiselect_config = {
+        	'includeSelectAllOption': true,
+			'enableFiltering': true,
+			'maxHeight': 400,
+			'enableClickableOptGroups': true
+        };
+
+	</script>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Export State</h2>
@@ -12,22 +38,39 @@
 	<div class="row">
 		<div class="col-md-12">
 
-			<!-- Build your select: -->
-			<select id="example-getting-started" multiple="multiple">
-			    <option value="cheese">Cheese</option>
-			    <option value="tomatoes">Tomatoes</option>
-			    <option value="mozarella">Mozzarella</option>
-			    <option value="mushrooms">Mushrooms</option>
-			    <option value="pepperoni">Pepperoni</option>
-			    <option value="onions">Onions</option>
-			</select>
+			<form id="stateio_export_form" method="POST" action="{% url 'stateio_export' %}">
 
-			<!-- Initialize the plugin: -->
-			<script type="text/javascript">
-			    $(document).ready(function() {
-			        $('#example-getting-started').multiselect();
-			    });
-			</script>
+				<!-- orgnizations -->
+				<div class="form-group">
+					<label for="verb">Organizations</label>
+					<select id="orgs_sel" multiple="multiple">				
+					    {% for org in comps.orgs %}
+					    	<option value="{{org.id}}">{{org.name}}</option>
+					    {% endfor %}			    
+					</select>
+				</div>
+				<script type="text/javascript">
+				    $(document).ready(function() {
+				        $('#orgs_sel').multiselect(multiselect_config);
+				    });
+				</script>
+
+				<!-- orgnizations -->
+				<div class="form-group">
+					<label for="verb">Record Groups</label>
+					<select id="record_groups_sel" multiple="multiple">				
+					    {% for rg in comps.record_groups %}
+					    	<option value="{{rg.id}}">{{rg.name}}</option>
+					    {% endfor %}			    
+					</select>
+				</div>			
+				<script type="text/javascript">
+				    $(document).ready(function() {
+				        $('#record_groups_sel').multiselect(multiselect_config);
+				    });
+				</script>
+
+			</form>
 
 		</div>
 	</div>
