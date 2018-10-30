@@ -41,7 +41,7 @@
 			<h3>Organizations, Record Groups, Jobs</h3>
 			<p>Select Organizations, Record Groups, and Jobs to be included in the exported state.  Keep in mind, during the export preparation process, all connected Organizations, Record Groups, and Jobs -- both "upstream" and "downstream" -- will be included as well.  You will be given the opportunity in the confirmation screen to preview this.</p>
 			<div class="tree_select">
-				<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:50%;" placeholder="search tree below..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
+				<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches</button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches</button></p>
 				<div id="jobs_hierarchy_tree"></div>
 
 				<script>
@@ -70,6 +70,18 @@
 						}, search_config.delay);
 					});
 
+					// select matches
+					function jobs_search_select_matches(){					
+						matches = $("#jobs_hierarchy_tree .jstree-search")
+						matches.each(function(index, match){jobs_tree.jstree(true).select_node(match);});
+					}
+
+					// dselect matches
+					function jobs_search_deselect_matches(){					
+						matches = $("#jobs_hierarchy_tree .jstree-search")
+						matches.each(function(index, match){jobs_tree.jstree(true).deselect_node(match);});
+					}
+
 				</script>
 			</div>
 
@@ -81,7 +93,7 @@
 			<h3>Configurations and Scenarios</h3>
 			<p>Select what configuration and scenarios to export.  Keep in mind, scenarios associated with selected Jobs will be included automatically, but it's also possible to include configurations and scenarios <strong>only</strong>, or ones that are <strong>not</strong> associated with selected Jobs, but should be included in export.</p>
 			<div class="tree_select">
-				<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:50%;" placeholder="search tree below..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
+				<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="configs_search_select_matches();">Select Matches</button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="configs_search_deselect_matches();">De-Select Matches</button></p>
 				<div id="config_scenarios_tree"></div>
 
 				<script>
@@ -107,6 +119,18 @@
 						$('#config_scenarios_tree').jstree(true).search(v);
 						}, search_config.delay);
 					});
+
+					// select matches
+					function configs_search_select_matches(){					
+						matches = $("#config_scenarios_tree .jstree-search")
+						matches.each(function(index, match){configs_tree.jstree(true).select_node(match);});
+					}
+
+					// dselect matches
+					function configs_search_deselect_matches(){					
+						matches = $("#config_scenarios_tree .jstree-search")
+						matches.each(function(index, match){configs_tree.jstree(true).deselect_node(match);});
+					}
 
 				</script>
 			</div>
