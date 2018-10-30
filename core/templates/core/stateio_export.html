@@ -12,8 +12,22 @@
 			padding:10px;
 			border-radius: 5px;
 		}
+		.jstree-default .jstree-search {
+			color:black;
+			background-color: #ffff93;
+		}
 
 	</style>
+
+	<script>
+
+		search_config = {			
+			'show_only_matches':false, // isolate matches
+			'delay':500, // delay for search keyup
+			'fuzzy':false // fuzzy matching
+		}
+
+	</script>
 
 	<div class="row">
 		<div class="col-md-12">
@@ -26,27 +40,38 @@
 		<div class="col-md-8">
 			<h3>Organizations, Record Groups, Jobs</h3>
 			<p>Select Organizations, Record Groups, and Jobs to be included in the exported state.  Keep in mind, during the export preparation process, all connected Organizations, Record Groups, and Jobs -- both "upstream" and "downstream" -- will be included as well.  You will be given the opportunity in the confirmation screen to preview this.</p>
-			<div id="jobs_hierarchy_tree" class="tree_select"></div>
+			<div class="tree_select">
+				<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:50%;" placeholder="search tree below..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
+				<div id="jobs_hierarchy_tree"></div>
 
-			<script>
+				<script>
 
-				// init hierarchy
-				job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
+					// init hierarchy
+					job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
 
-				$(document).ready(function(){
-
-					tree = $('#jobs_hierarchy_tree').jstree({
-
-						'plugins':["wholerow","checkbox"],
-						'core':{
-							'data':job_hierarchy_obj
-						}
-
+					// init tree
+					$(document).ready(function(){
+						jobs_tree = $('#jobs_hierarchy_tree').jstree({
+							'plugins':["wholerow","checkbox","search"],
+							'core':{
+								'data':job_hierarchy_obj
+							},
+							'search':search_config
+						});
 					});
 
-				});
+					// search
+					var to = false;
+						$('#jobs_search').keyup(function () {
+						if(to) { clearTimeout(to); }
+							to = setTimeout(function () {
+							var v = $('#jobs_search').val();
+						$('#jobs_hierarchy_tree').jstree(true).search(v);
+						}, search_config.delay);
+					});
 
-			</script>
+				</script>
+			</div>
 
 		</div>
 	</div>
@@ -55,27 +80,36 @@
 		<div class="col-md-8">
 			<h3>Configurations and Scenarios</h3>
 			<p>Select what configuration and scenarios to export.  Keep in mind, scenarios associated with selected Jobs will be included automatically, but it's also possible to include configurations and scenarios <strong>only</strong>, or ones that are <strong>not</strong> associated with selected Jobs, but should be included in export.</p>
-			<div id="config_scenarios_tree" class="tree_select"></div>
+			<div class="tree_select">
+				<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:50%;" placeholder="search tree below..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
+				<div id="config_scenarios_tree"></div>
 
-			<script>
+				<script>
 
-				// init hierarchy
-				config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe}}`);
-
-				$(document).ready(function(){
-
-					tree = $('#config_scenarios_tree').jstree({
-
-						'plugins':["wholerow","checkbox"],
-						'core':{
-							'data':config_scenarios_obj
-						}
-
+					// init hierarchy
+					config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe}}`);
+					$(document).ready(function(){
+						configs_tree = $('#config_scenarios_tree').jstree({
+							'plugins':["wholerow","checkbox","search"],
+							'core':{
+								'data':config_scenarios_obj
+							},
+							'search':search_config
+						});
 					});
 
-				});
+					// search
+					var to = false;
+						$('#configs_search').keyup(function () {
+						if(to) { clearTimeout(to); }
+							to = setTimeout(function () {
+							var v = $('#configs_search').val();
+						$('#config_scenarios_tree').jstree(true).search(v);
+						}, search_config.delay);
+					});
 
-			</script>
+				</script>
+			</div>
 
 		</div>
 	</div>
