@@ -3004,15 +3004,6 @@ def bg_tasks_delete_all(request):
 	for ct in cts:
 		ct.delete()
 
-	# delete all Django Background Tasks
-	running = Task.objects.all()
-	for task in running:
-		task.delete()
-
-	completed = CompletedTask.objects.all()
-	for task in completed:
-		task.delete()
-
 	return redirect('bg_tasks')
 
 
@@ -3892,10 +3883,13 @@ def stateio_export(request):
 			config_scenarios=config_scenarios_ids # preserve prefixes through serialization
 		)
 
+		# retrieve StateIO instance, use metadata for msg
+		stateio = models.StateIO.objects.get(id=ct.task_params['stateio_id'])
+
 		# set gms
 		gmc = models.GlobalMessageClient(request.session)
 		gmc.add_gm({
-			'html':'<p><strong>Exporting State</strong></p>',
+			'html':'<p><strong>Exporting State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (stateio.name),
 			'class':'success'
 		})
 
@@ -4068,12 +4062,12 @@ def stateio_import(request):
 
 		# handle filesystem location
 		if request.POST.get('filesystem_location', None) not in ['', None]:
-			export_path = request.POST.get('filesystem_location')
+			export_path = request.POST.get('filesystem_location').strip()
 			logger.debug('importing state based on filesystem location: %s' % export_path)
 
 		# handle URL
 		elif request.POST.get('url_location', None) not in ['', None]:
-			export_path = request.POST.get('url_location')
+			export_path = request.POST.get('url_location').strip()
 			logger.debug('importing state based on remote location: %s' % export_path)
 
 		# handle file upload
@@ -4092,17 +4086,19 @@ def stateio_import(request):
 			export_path = new_file
 			logger.debug('saved uploaded state to %s' % export_path)
 
-
 		# init export as bg task
 		ct = models.StateIOClient.import_state_bg_task(
 			import_name=import_name,
 			export_path=export_path
 		)
 
+		# retrieve StateIO instance, use metadata for msg
+		stateio = models.StateIO.objects.get(id=ct.task_params['stateio_id'])
+
 		# set gms
 		gmc = models.GlobalMessageClient(request.session)
 		gmc.add_gm({
-			'html':'<p><strong>Importing State</strong></p>',
+			'html':'<p><strong>Importing State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (stateio.name),
 			'class':'success'
 		})
 

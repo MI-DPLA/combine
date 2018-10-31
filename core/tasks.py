@@ -26,9 +26,6 @@ from .celery import celery_app
 # Combine imports
 from core import models as models
 
-'''
-This file provides background tasks that are performed with Django-Background-Tasks
-'''
 
 # TODO: need some handling for failed Jobs which may not be available, but will not be changing,
 # to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
@@ -1008,6 +1005,7 @@ def stateio_export(ct_id):
 	# begin export
 	sio_client = models.StateIOClient()
 	sio_client.export_state(
+		stateio_id=ct.task_params['stateio_id'],
 		jobs=ct.task_params['jobs'],
 		record_groups=ct.task_params['record_groups'],
 		orgs=ct.task_params['orgs'],
@@ -1030,6 +1028,7 @@ def stateio_import(ct_id):
 	# begin import
 	sio_client = models.StateIOClient()
 	sio_client.import_state(
+		stateio_id=ct.task_params['stateio_id'],
 		import_name=ct.task_params['import_name'],
 		export_path=ct.task_params['export_path'])
 

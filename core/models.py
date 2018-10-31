@@ -3369,7 +3369,8 @@ class CombineBackgroundTask(models.Model):
 		'''
 
 		# get async task from Redis
-		try:		
+		try:
+
 			self.celery_task = AsyncResult(self.celery_task_id)
 			self.celery_status = self.celery_task.status
 
@@ -3405,15 +3406,25 @@ class CombineBackgroundTask(models.Model):
 		except Exception as e:
 			self.celery_task = None
 			self.celery_status = 'STOPPED'
+			self.completed = True
+			self.save()
 			logger.debug(str(e))
 
 
 	def calc_elapsed_as_string(self):
 
 		# determine time elapsed in seconds
-		if self.completed:
+		
+		# completed, with timestamp
+		if self.completed and self.finish_timestamp != None:
 			# use finish timestamp
 			seconds_elapsed = (self.finish_timestamp.replace(tzinfo=None) - self.start_timestamp.replace(tzinfo=None)).seconds
+		
+		# marked as completed, but not timestamp, set to zero
+		elif self.completed:			
+			seconds_elapsed = 0
+
+		# else, calc until now
 		else:
 			seconds_elapsed = (datetime.datetime.now() - self.start_timestamp.replace(tzinfo=None)).seconds
 
@@ -3489,6 +3500,9 @@ class StateIO(mongoengine.Document):
 		choices=[('export','Export'),('import','Import'),('generic','Generic')],
 		default='generic'
 	)
+	status = mongoengine.StringField(		
+		default='initializing'
+	)
 	
 	
 	export_id = mongoengine.StringField()
@@ -3509,7 +3523,7 @@ class StateIO(mongoengine.Document):
 	# custom save
 	def save(self, *args, **kwargs):		
 
-		if self.name == None:		
+		if self.name == None:			
 			self.name = 'StateIO %s @ %s' % (self.stateio_type.title(), datetime.datetime.now().strftime('%b. %d, %Y, %-I:%M:%S %p'))
 		return super(StateIO, self).save(*args, **kwargs)
 
@@ -3536,30 +3550,35 @@ class StateIO(mongoengine.Document):
 
 		logger.debug('preparing to delete %s' % document)
 
-		# if export
-		if document.stateio_type == 'export':
+		try:
 
-			# check for export_path and delete
-			logger.debug('removing export_path: %s' % document.export_path)
-			if os.path.isfile(document.export_path):
-				logger.debug('export is filetype, removing')
-				os.remove(document.export_path)
-			elif os.path.isdir(document.export_path):
-				logger.debug('export is dir, removing')
-				shutil.rmtree(document.export_path)
-			else:
-				logger.debug('Could not remove %s' % document.export_path)
+			# if export
+			if document.stateio_type == 'export':
 
-		# if import
-		elif document.stateio_type == 'import':
+				# check for export_path and delete
+				logger.debug('removing export_path: %s' % document.export_path)
+				if os.path.isfile(document.export_path):
+					logger.debug('export is filetype, removing')
+					os.remove(document.export_path)
+				elif os.path.isdir(document.export_path):
+					logger.debug('export is dir, removing')
+					shutil.rmtree(document.export_path)
+				else:
+					logger.debug('Could not remove %s' % document.export_path)
 
-			# check for export_path and delete
-			logger.debug('removing import_path: %s' % document.import_manifest['import_path'])
-			if os.path.isdir(document.import_path):
-				logger.debug('removing import dir')
-				shutil.rmtree(document.import_path)
-			else:
-				logger.debug('Could not remove %s' % document.import_path)
+			# if import
+			elif document.stateio_type == 'import':
+
+				# check for export_path and delete
+				logger.debug('removing import_path: %s' % document.import_manifest['import_path'])
+				if os.path.isdir(document.import_path):
+					logger.debug('removing import dir')
+					shutil.rmtree(document.import_path)
+				else:
+					logger.debug('Could not remove %s' % document.import_path)
+
+		except:
+			logger.warning('Could not remove import/export directory')
 
 
 
@@ -7620,7 +7639,8 @@ class StateIOClient(object):
 		config_scenarios=[],
 		export_name=None,
 		compress=True,
-		compression_format='zip'):
+		compression_format='zip',
+		stateio_id=None):
 
 		'''
 		Method to export state of passed Organization, Record Group, and/or Jobs
@@ -7633,6 +7653,7 @@ class StateIOClient(object):
 				- sorted based on type(instance) and added to self.export_dict			
 			compress (bool): If True, compress to zip file and delete directory
 			compression_format (str): Possible values here: https://docs.python.org/3.5/library/shutil.html#shutil.make_archive
+			stateio (int): ID of pre-existing, associated StateIO instance
 		'''
 
 		# DEBUG
@@ -7688,10 +7709,31 @@ class StateIOClient(object):
 		# init export manifest dictionary
 		self.export_manifest = {
 			'export_id':export_id,
+			'export_path':self.export_path,
 			'export_name':export_name,
 			'export_root_ids':self.export_roots_ids,
 			'jobs':[]
 		}
+
+		# init/update associated StateIO instance
+		sio_dict = {
+			'stateio_type':'export',
+			'name':self.export_manifest['export_name'],
+			'export_id':self.export_manifest['export_id'],
+			'export_path':self.export_manifest['export_path'],
+			'export_manifest':self.export_manifest,
+			'status':'running'
+		}
+		if stateio_id == None:
+			logger.debug('initializing StateIO object')
+			self.stateio = StateIO(**sio_dict)
+		else:
+			logger.debug('retrieving and updating StateIO object')
+			self.stateio = StateIO.objects.get(id=stateio_id)
+			self.stateio.update(**sio_dict)
+			self.stateio.reload()
+		# save
+		self.stateio.save()
 
 		# generate unique set of Jobs
 		self.export_job_set = self._get_unique_roots_job_set()
@@ -7712,15 +7754,14 @@ class StateIOClient(object):
 		# serialize for export
 		self.package_export()
 
-		# create and save StateIO instance
-		exsio = StateIO(
-			name=export_name,
-			stateio_type='export',
-			export_id=self.export_manifest['export_id'],
-			export_path=self.export_path,
-			export_manifest=self.export_manifest
-		)
-		exsio.save()
+		# update associated StateIO instance
+		self.stateio.update(**{
+			'export_manifest':self.export_manifest,
+			'export_path':self.export_manifest['export_path'],
+			'status':'finished'
+		})
+		self.stateio.reload()
+		self.stateio.save()
 
 		# debug
 		logger.debug("total time for state export: %s" % (time.time() - stime))
@@ -8156,8 +8197,9 @@ class StateIOClient(object):
 			# remove originals
 			shutil.rmtree(self.export_path)
 
-			# update export path
+			# update export path and manifeset
 			self.export_path = new_export_path
+			self.export_manifest['export_path'] = self.export_path
 
 		# return export_path
 		return self.export_path
@@ -8201,7 +8243,8 @@ class StateIOClient(object):
 		export_path,
 		import_name=None,
 		load_only=False,
-		import_records=True):
+		import_records=True,
+		stateio_id=None):
 
 		'''
 		Import exported state
@@ -8211,6 +8254,7 @@ class StateIOClient(object):
 			import_name (str): Human name for import task
 			load_only (bool): If True, will only parse export but will not import anything
 			import_records (bool): If True, will import Mongo and ElasticSearch records
+			stateio_id (int): ID of pre-existing StateIO object
 
 		Returns:
 
@@ -8232,14 +8276,34 @@ class StateIOClient(object):
 				'jobs':{},
 				'record_groups':{},
 				'orgs':{},
-				'transformation_scenarios':{},
-				'validation_scenarios':{},
+				'transformations':{},
+				'validations':{},
 				'oai_endpoints':{},
 				'rits':{},
 				'field_mapper_configs':{},
 				'dbdd':{}
 			}
 		}
+
+		# init/update associated StateIO instance
+		update_dict = {
+			'stateio_type':'import',
+			'name':self.import_manifest['import_name'],			
+			'import_id':self.import_manifest['import_id'],
+			'export_path':self.import_manifest['export_path'],			
+			'import_manifest':{ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] },
+			'status':'running'
+		}
+		if stateio_id == None:
+			logger.debug('initializing StateIO object')
+			self.stateio = StateIO(**update_dict)
+		else:
+			logger.debug('retrieving and updating StateIO object')
+			self.stateio = StateIO.objects.get(id=stateio_id)
+			self.stateio.update(**update_dict)
+			self.stateio.reload()
+		# save
+		self.stateio.save()
 
 		# load state, deserializing and export_manifest
 		self._load_state(export_path)
@@ -8266,17 +8330,16 @@ class StateIOClient(object):
 			# update import_manifest
 			self._finalize_import_manifest()
 
-		# create and save StateIO instance		
-		imsio = StateIO(
-			name=import_name,
-			stateio_type='import',
-			import_id=self.import_manifest['import_id'],
-			export_path=self.export_path,
-			export_manifest=self.export_manifest,			
-			import_manifest={ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] },
-			import_path=self.import_path
-		)
-		imsio.save()
+		# update associated StateIO instance
+		self.stateio.update(**{			
+			'export_path':self.export_path,
+			'export_manifest':self.export_manifest,
+			'import_manifest':{ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] },
+			'import_path':self.import_path,
+			'status':'finished'
+		})
+		self.stateio.reload()
+		self.stateio.save()
 
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
@@ -8310,54 +8373,6 @@ class StateIOClient(object):
 			django_objects_json = f.read()
 		for obj in serializers.deserialize('json', django_objects_json):
 			self.deser_django_objects.append(obj)	
-
-
-	# def _prepare_files(self):
-		
-	# 	'''
-	# 	Method to handle unpacking of exported state, and prepare self.import_path
-	# 	'''
-
-	# 	# create import dir based on self.import_id
-	# 	self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
-	# 	self.import_manifest['import_path'] = self.import_path
-
-	# 	# handle URL
-	# 	# TODO
-
-	# 	# handle archives
-	# 	if os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
-	# 		logger.debug('imported state determined to be archive, decompressing')			
-	# 		shutil.unpack_archive(self.export_path, self.import_path)
-
-	# 	# handle dir
-	# 	elif os.path.isdir(self.export_path):
-	# 		logger.debug('imported state is directory, copying to import directory')
-	# 		os.system('cp -r %s/* %s' % (self.export_path, self.import_path))
-
-	# 	# else, raise Exception
-	# 	else:
-	# 		raise Exception('%s is neither a directory or known archive file type, aborting' % self.export_path)
-
-	# 	# next, look for export_manifest.json, indicating base directory
-	# 	import_base_dir = False
-	# 	for root, dirs, files in os.walk(self.import_path):
-	# 		if 'export_manifest.json' in files:
-	# 			import_base_dir = root
-	# 	# if not found, raise Exception
-	# 	if not import_base_dir:
-	# 		raise Exception('could not find export_manfiest.json, aborting')
-		
-	# 	# if import_base_dir != self.import_path, move everything to self.import_path
-	# 	if import_base_dir != self.import_path:
-
-	# 		# mv everything to import dir
-	# 		os.system('mv %s/* %s' % (import_base_dir, self.import_path))
-
-	# 		# remove now empty base_dir
-	# 		shutil.rmtree(import_base_dir)
-
-	# 	logger.debug('confirmed import path at %s' % self.import_path)
 
 
 	def _prepare_files(self):
@@ -8429,7 +8444,7 @@ class StateIOClient(object):
 			# matching scenario found
 			if ts_match.count() > 0:
 				logger.debug('found identical Transformation, skipping creation, adding to hash')
-				self.import_manifest['pk_hash']['transformation_scenarios'][ts.object.id] = ts_match.first().id
+				self.import_manifest['pk_hash']['transformations'][ts.object.id] = ts_match.first().id
 			
 			# not found, creating
 			else:
@@ -8437,7 +8452,7 @@ class StateIOClient(object):
 				ts_orig_id = ts.object.id
 				ts.object.id = None
 				ts.save()
-				self.import_manifest['pk_hash']['transformation_scenarios'][ts_orig_id] = ts.object.id
+				self.import_manifest['pk_hash']['transformations'][ts_orig_id] = ts.object.id
 
 
 		#################################
@@ -8453,7 +8468,7 @@ class StateIOClient(object):
 			# matching scenario found
 			if vs_match.count() > 0:
 				logger.debug('found identical ValidationScenario, skipping creation, adding to hash')
-				self.import_manifest['pk_hash']['validation_scenarios'][vs.object.id] = vs_match.first().id
+				self.import_manifest['pk_hash']['validations'][vs.object.id] = vs_match.first().id
 			
 			# not found, creating
 			else:
@@ -8461,7 +8476,7 @@ class StateIOClient(object):
 				vs_orig_id = vs.object.id
 				vs.object.id = None
 				vs.save()
-				self.import_manifest['pk_hash']['validation_scenarios'][vs_orig_id] = vs.object.id
+				self.import_manifest['pk_hash']['validations'][vs_orig_id] = vs.object.id
 
 
 		#################################
@@ -8718,7 +8733,7 @@ class StateIOClient(object):
 
 			# update validation_scenario_id
 			vs_orig_id = jv.object.validation_scenario_id
-			jv.object.validation_scenario_id = self.import_manifest['pk_hash']['validation_scenarios'][vs_orig_id]
+			jv.object.validation_scenario_id = self.import_manifest['pk_hash']['validations'][vs_orig_id]
 
 			# update job_id
 			jv.object.id = None
@@ -8779,18 +8794,34 @@ class StateIOClient(object):
 		}
 
 		# loop through deserialized objects
+		import_count = 0
 		for import_type in self.import_manifest['imports'].keys():
+
+			# invert pk_hash for type
+			inv_pk_hash = { v:k for k,v in self.import_manifest['pk_hash'][import_type].items() }
 
 			# loop through imports for type
 			for obj in self._get_django_model_type(model_translation[import_type]):
 
-				logger.debug('writing %s to import_manifest' % obj)
+				# confirm that id has changed, indicating newly created and not mapped from pre-existing
+				if obj.object.id != inv_pk_hash[obj.object.id]:
 
-				# write name, and UPDATED id of imported object
-				self.import_manifest['imports'][import_type].append({
-					'name':obj.object.name,
-					'id':obj.object.id
-				})
+					logger.debug('writing %s to import_manifest' % obj)
+
+					# bump count
+					import_count += 1
+
+					# write name, and UPDATED id of imported object
+					self.import_manifest['imports'][import_type].append({
+						'name':obj.object.name,
+						'id':obj.object.id
+					})
+
+		# calc total number of imports
+		self.import_manifest['imports']['count'] = import_count
+
+		# write pk_hash as json string (int keys are not valid in Mongo)		
+		self.import_manifest['pk_hash_json'] = json.dumps(self.import_manifest['pk_hash'])
 
 
 	def _update_job_details(self, job):
@@ -8829,7 +8860,7 @@ class StateIOClient(object):
 		if 'validation_scenarios' in job.job_details_dict.keys():
 			try:
 				validation_scenarios = job.job_details_dict['validation_scenarios']
-				validation_scenarios_updated = [ pk_hash['validation_scenarios'].get(vs_id, vs_id) for vs_id in validation_scenarios ]
+				validation_scenarios_updated = [ pk_hash['validations'].get(vs_id, vs_id) for vs_id in validation_scenarios ]
 				update_dict['validation_scenarios'] = validation_scenarios_updated
 			except:
 				logger.debug('error with updating job_details: validation_scenarios')
@@ -8886,7 +8917,7 @@ class StateIOClient(object):
 			try:
 				logger.debug('TransformJob encountered, updating job details')
 				transformation = job.job_details_dict['transformation']
-				transformation['id'] = pk_hash['transformation_scenarios'].get(transformation['id'], transformation['id'])
+				transformation['id'] = pk_hash['transformations'].get(transformation['id'], transformation['id'])
 				update_dict['transformation'] = transformation
 			except:
 				logger.debug('error with updating job_details: transformation')
@@ -8960,6 +8991,13 @@ class StateIOClient(object):
 		Method to init export state as bg task
 		'''
 
+		# init StateIO		
+		stateio = StateIO(
+			name=export_name,
+			stateio_type='export',
+			status='initializing')
+		stateio.save()
+
 		# initiate Combine BG Task
 		ct = CombineBackgroundTask(
 			name = 'Export State',
@@ -8969,7 +9007,8 @@ class StateIOClient(object):
 				'record_groups':record_groups,
 				'orgs':orgs,
 				'config_scenarios':config_scenarios,
-				'export_name':export_name
+				'export_name':stateio.name,
+				'stateio_id':str(stateio.id),
 			})
 		)		
 		ct.save()
@@ -8993,13 +9032,21 @@ class StateIOClient(object):
 		Method to init state import as bg task
 		'''
 
+		# init StateIO		
+		stateio = StateIO(
+			name=import_name,
+			stateio_type='import',
+			status='initializing')
+		stateio.save()
+
 		# initiate Combine BG Task
-		ct = CombineBackgroundTask(
-			name = 'Import State',
+		ct = CombineBackgroundTask(			
+			name = 'Import State',			
 			task_type = 'stateio_import',
 			task_params_json = json.dumps({
-				'import_name':import_name,
-				'export_path':export_path
+				'import_name':stateio.name,
+				'export_path':export_path,
+				'stateio_id':str(stateio.id),
 			})
 		)		
 		ct.save()
