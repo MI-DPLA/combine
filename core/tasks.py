@@ -1027,6 +1027,14 @@ def stateio_import(ct_id):
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
 
+	# begin import
+	sio_client = models.StateIOClient()
+	sio_client.import_state(
+		import_name=ct.task_params['import_name'],
+		export_path=ct.task_params['export_path'])
+
+
+
 
 
 

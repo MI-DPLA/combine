@@ -4051,10 +4051,62 @@ def stateio_import(request):
 	Import state
 	'''
 
-	# return
-	return render(request, 'core/stateio_import.html', {
-		'breadcrumbs':breadcrumb_parser(request)
-	})
+	if request.method == 'GET':
+
+		# return
+		return render(request, 'core/stateio_import.html', {
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	elif request.method == 'POST':
+
+		# capture optional export name
+		import_name = request.POST.get('import_name', None)
+		if import_name == '':
+			import_name = None			
+		logger.debug('initing import: %s' % import_name)
+
+		# handle filesystem location
+		if request.POST.get('filesystem_location', None) not in ['', None]:
+			export_path = request.POST.get('filesystem_location')
+			logger.debug('importing state based on filesystem location: %s' % export_path)
+
+		# handle URL
+		elif request.POST.get('url_location', None) not in ['', None]:
+			export_path = request.POST.get('url_location')
+			logger.debug('importing state based on remote location: %s' % export_path)
+
+		# handle file upload
+		elif type(request.FILES.get('export_upload_payload', None)) != None:
+			
+			logger.debug('handling file upload')
+
+			# save file to disk
+			payload = request.FILES.get('export_upload_payload', None)
+			new_file = '/tmp/%s' % (payload.name)
+			with open(new_file, 'wb') as f:
+				f.write(payload.read())
+				payload.close()
+
+			# set export_path
+			export_path = new_file
+			logger.debug('saved uploaded state to %s' % export_path)
+
+
+		# init export as bg task
+		ct = models.StateIOClient.import_state_bg_task(
+			import_name=import_name,
+			export_path=export_path
+		)
+
+		# set gms
+		gmc = models.GlobalMessageClient(request.session)
+		gmc.add_gm({
+			'html':'<p><strong>Importing State</strong></p>',
+			'class':'success'
+		})
+
+		return redirect('stateio')
 
 
 

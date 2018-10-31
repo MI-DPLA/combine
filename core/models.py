@@ -3555,14 +3555,11 @@ class StateIO(mongoengine.Document):
 
 			# check for export_path and delete
 			logger.debug('removing import_path: %s' % document.import_manifest['import_path'])
-			if os.path.isfile(document.export_path):
-				logger.debug('export is filetype, removing')
-				os.remove(document.export_path)
-			elif os.path.isdir(document.export_path):
-				logger.debug('export is dir, removing')
-				shutil.rmtree(document.export_path)
+			if os.path.isdir(document.import_path):
+				logger.debug('removing import dir')
+				shutil.rmtree(document.import_path)
 			else:
-				logger.debug('Could not remove %s' % document.export_path)
+				logger.debug('Could not remove %s' % document.import_path)
 
 
 
@@ -7691,6 +7688,7 @@ class StateIOClient(object):
 		# init export manifest dictionary
 		self.export_manifest = {
 			'export_id':export_id,
+			'export_name':export_name,
 			'export_root_ids':self.export_roots_ids,
 			'jobs':[]
 		}
@@ -7880,7 +7878,10 @@ class StateIOClient(object):
 
 			# check job details for transformation used
 			if 'transformation' in job.job_details_dict.keys():
-				self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
+				try:
+					self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
+				except:
+					logger.warning('Could not export Transformation for job %s: %s' % (job, str(e)))
 
 
 		############################ 
@@ -7895,7 +7896,7 @@ class StateIOClient(object):
 
 			# loop through and add to set
 			for jv in jvs:
-				self.export_dict['validations'].add(jv.validation_scenario)				
+				self.export_dict['validations'].add(jv.validation_scenario)
 
 
 		############################ 
@@ -7911,7 +7912,7 @@ class StateIOClient(object):
 					# read OAI endpoint from params
 					self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
 				except:
-					logger.warning('OAI parameters not found for %s, export may not include required OAI endpoint')
+					logger.warning('Could not export OAIEndpoint for job %s: %s' % (job, str(e)))
 
 
 		############################ 
@@ -7923,7 +7924,10 @@ class StateIOClient(object):
 
 			# check job details for rits used
 			if 'rits' in job.job_details_dict.keys() and job.job_details_dict['rits'] != None:
-				self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
+				try:
+					self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
+				except:
+					logger.warning('Could not export Record Identifier Transformation Scenario for job %s: %s' % (job, str(e)))
 
 
 		############################ 
@@ -7967,7 +7971,7 @@ class StateIOClient(object):
 					os.system(" ".join(cmd))
 
 				except Exception as e:
-					logger.debug('could not export DBDD: %s' % str(e))
+					logger.debug('could not export DBDD for job %s: %s' % (job, str(e)))
 
 
 		############################ 
@@ -8204,6 +8208,9 @@ class StateIOClient(object):
 
 		Args:
 			export_path (str): location on disk of unzipped export directory
+			import_name (str): Human name for import task
+			load_only (bool): If True, will only parse export but will not import anything
+			import_records (bool): If True, will import Mongo and ElasticSearch records
 
 		Returns:
 
@@ -8219,6 +8226,7 @@ class StateIOClient(object):
 		# init import_manifest
 		self.import_manifest = {
 			'import_id':self.import_id,
+			'import_name':import_name,
 			'export_path':export_path,
 			'pk_hash':{
 				'jobs':{},
@@ -8273,50 +8281,6 @@ class StateIOClient(object):
 		logger.debug('state %s imported in %ss' % (self.import_id, (time.time()-import_stime)))
 
 
-	def _prepare_files(self):
-		
-		'''
-		Method to handle unpacking of exported state, and prepare self.import_path
-		'''
-
-		# create import dir based on self.import_id
-		self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
-		self.import_manifest['import_path'] = self.import_path
-
-		# handle archives
-		if os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
-			logger.debug('imported state determined to be archive, decompressing')			
-			shutil.unpack_archive(self.export_path, self.import_path)
-
-		# handle dir
-		elif os.path.isdir(self.export_path):
-			logger.debug('imported state is directory')
-
-		# else, raise Exception
-		else:
-			raise Exception('%s is neither a directory or known archive file' % self.export_path)
-
-		# look for export_manifest.json, indicating base directory
-		import_base_dir = False
-		for root, dirs, files in os.walk(self.import_path):
-			if 'export_manifest.json' in files:
-				import_base_dir = root
-		# if not found, raise Exception
-		if not import_base_dir:
-			raise Exception('could not find export_manfiest.json, aborting')
-		
-		# if import_base_dir != self.import_path, move everything to self.import_path
-		if import_base_dir != self.import_path:
-
-			# mv everything to import dir
-			os.system('mv %s/* %s' % (import_base_dir, self.import_path))
-
-			# remove now empty base_dir
-			shutil.rmtree(import_base_dir)
-
-		logger.debug('confirmed import path at %s' % self.import_path)
-
-		
 	def _load_state(self, export_path):
 
 		'''
@@ -8346,6 +8310,104 @@ class StateIOClient(object):
 			django_objects_json = f.read()
 		for obj in serializers.deserialize('json', django_objects_json):
 			self.deser_django_objects.append(obj)	
+
+
+	# def _prepare_files(self):
+		
+	# 	'''
+	# 	Method to handle unpacking of exported state, and prepare self.import_path
+	# 	'''
+
+	# 	# create import dir based on self.import_id
+	# 	self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
+	# 	self.import_manifest['import_path'] = self.import_path
+
+	# 	# handle URL
+	# 	# TODO
+
+	# 	# handle archives
+	# 	if os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
+	# 		logger.debug('imported state determined to be archive, decompressing')			
+	# 		shutil.unpack_archive(self.export_path, self.import_path)
+
+	# 	# handle dir
+	# 	elif os.path.isdir(self.export_path):
+	# 		logger.debug('imported state is directory, copying to import directory')
+	# 		os.system('cp -r %s/* %s' % (self.export_path, self.import_path))
+
+	# 	# else, raise Exception
+	# 	else:
+	# 		raise Exception('%s is neither a directory or known archive file type, aborting' % self.export_path)
+
+	# 	# next, look for export_manifest.json, indicating base directory
+	# 	import_base_dir = False
+	# 	for root, dirs, files in os.walk(self.import_path):
+	# 		if 'export_manifest.json' in files:
+	# 			import_base_dir = root
+	# 	# if not found, raise Exception
+	# 	if not import_base_dir:
+	# 		raise Exception('could not find export_manfiest.json, aborting')
+		
+	# 	# if import_base_dir != self.import_path, move everything to self.import_path
+	# 	if import_base_dir != self.import_path:
+
+	# 		# mv everything to import dir
+	# 		os.system('mv %s/* %s' % (import_base_dir, self.import_path))
+
+	# 		# remove now empty base_dir
+	# 		shutil.rmtree(import_base_dir)
+
+	# 	logger.debug('confirmed import path at %s' % self.import_path)
+
+
+	def _prepare_files(self):
+		
+		'''
+		Method to handle unpacking of exported state, and prepare self.import_path
+		'''
+
+		# create import dir based on self.import_id
+		self.import_path = '%s/%s' % (settings.STATEIO_IMPORT_DIR, self.import_id)
+		self.import_manifest['import_path'] = self.import_path
+
+		# handle URL
+		if self.export_path.startswith('http'):
+			logger.debug('exported state determined to be URL, downloading and processing')
+			raise Exception('not yet handling remote URL locations for importing states')
+
+		# handle archives
+		elif os.path.isfile(self.export_path) and self.export_path.endswith(('.zip', '.tar', '.tar.gz')):
+			logger.debug('exported state determined to be archive, decompressing')			
+			shutil.unpack_archive(self.export_path, self.import_path)
+
+		# handle dir
+		elif os.path.isdir(self.export_path):
+			logger.debug('exported state is directory, copying to import directory')			
+			os.system('cp -r %s %s' % (self.export_path, self.import_path))
+
+		# else, raise Exception
+		else:
+			raise Exception('cannot handle export_path %s, aborting' % self.export_path)
+
+		# next, look for export_manifest.json, indicating base directory
+		import_base_dir = False
+		for root, dirs, files in os.walk(self.import_path):
+			if 'export_manifest.json' in files:
+				import_base_dir = root
+		# if not found, raise Exception
+		if not import_base_dir:
+			raise Exception('could not find export_manfiest.json, aborting')
+		
+		# if import_base_dir != self.import_path, move everything to self.import_path
+		if import_base_dir != self.import_path:
+
+			# mv everything to import dir
+			os.system('mv %s/* %s' % (import_base_dir, self.import_path))
+
+			# remove now empty base_dir
+			shutil.rmtree(import_base_dir)
+
+		logger.debug('confirmed import path at %s' % self.import_path)
 
 
 	def _import_config_instances(self):
@@ -8895,7 +8957,7 @@ class StateIOClient(object):
 		config_scenarios=[]):
 
 		'''
-		Method to init export task bg task					
+		Method to init export state as bg task
 		'''
 
 		# initiate Combine BG Task
@@ -8920,6 +8982,38 @@ class StateIOClient(object):
 		ct.save()
 
 		return ct
+
+
+	@staticmethod
+	def import_state_bg_task(
+		import_name=None,
+		export_path=None):
+
+		'''
+		Method to init state import as bg task
+		'''
+
+		# initiate Combine BG Task
+		ct = CombineBackgroundTask(
+			name = 'Import State',
+			task_type = 'stateio_import',
+			task_params_json = json.dumps({
+				'import_name':import_name,
+				'export_path':export_path
+			})
+		)		
+		ct.save()
+		logger.debug(ct)
+		
+		# run celery task
+		bg_task = tasks.stateio_import.delay(ct.id)
+		logger.debug('firing bg task: %s' % bg_task)
+		ct.celery_task_id = bg_task.task_id
+		ct.save()
+
+		return ct
+
+
 
 
 
