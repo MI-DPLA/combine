@@ -255,3 +255,11 @@ div.grayed_dt_row, td.grayed_dt_row {
   margin-left: 1rem;
 }
 
+/*StateIO*/
+.export_state {
+  background-color:#fff4e0;
+}
+.import_state {
+  background-color:#dbebf9;
+}
+

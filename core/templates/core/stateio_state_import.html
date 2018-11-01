@@ -1,0 +1,86 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h2>Import State: <code>{{state.name}}</code></h2>
+			<table id="imports_table" class="table table-bordered table-hover">
+				<thead>
+					<tr>
+						<th>Task ID</th>
+						<th>Export ID</th>
+						<th>Export Name</th>
+						<th>Import Name</th>
+						<th>Import Path</th>
+						<th>Status</th>
+						<th>Imported Objects</th>
+						<th>Manifests</th>
+						<th>Actions</th>
+					</tr>
+				</thead>
+				<tbody>
+					<tr>
+						<td class="import_state"><code>{{state.id}}</code></td>
+						<td class="import_state"><code>{{state.export_manifest.export_id}}</code></td>
+						<td class="import_state">{{state.export_manifest.export_name}}</td>
+						<td class="import_state">{{state.name}}</td>
+						<td class="import_state"><code>{{state.import_path}}</code></td>
+						<td class="import_state">{{state.status}}</td>
+						<td class="import_state"><code>{{state.import_manifest.imports.count}}</code></td>
+						<td class="import_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=state.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a> <a target="_blank" href="{% url 'stateio_state_manifest' state_id=state.id manifest_type='import_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button></a></td>
+						<td class="import_state"><a href="{% url 'stateio_state_delete' state_id=state.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+					</tr>
+				</tbody>
+			</table>
+		</div>
+	</div>
+
+	<!-- associated export, if exists -->
+		<div class="row">
+			<div class="col-md-12">
+
+				<h3>Associated Export</h3>
+				{% if associated_export %}
+				<p>The following is the <strong>Export</strong>, which originated from this instance of Combine (as it could have come from elsewhere), that was used for this Import:</p>
+				
+				<table id="exports_table" class="table table-bordered table-hover">
+					<thead>
+						<tr>
+							<th>Task ID</th>
+							<th>Export ID</th>
+							<th>Export Path</th>
+							<th>Status</th>
+							<th>Manifests</th>
+							<th>Actions</th>
+						</tr>
+					</thead>
+					<tbody>					
+						<tr>
+							<td class="export_state"><code>{{associated_export.id}}</code></td>
+							<td class="export_state"><code>{{associated_export.export_id}}</code></td>
+							<td class="export_state"><code>{{associated_export.export_path}}</code></td>
+							<td class="export_state">{{associated_export.status}}</td>
+							<td class="export_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=associated_export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
+							<td class="export_state"><a href="{% url 'stateio_state' state_id=associated_export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_download' state_id=associated_export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=associated_export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+						</tr>					
+					</tbody>
+				</table>
+				{% else %}
+				<p>The <strong>Export</strong> used for this Import was not found in this instance of Combine.</p>
+				{% endif %}
+
+
+			</div>
+		</div>
+
+	<!-- exports -->
+	<div class="row">
+		<div class="col-md-12">
+
+			<h3>Exported Objects</h3>
+
+		</div>
+	</div>
+
+{% endblock %}

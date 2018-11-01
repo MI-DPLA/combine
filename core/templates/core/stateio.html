@@ -33,14 +33,14 @@
 				</thead>
 				<tbody>
 					{% for export in stateio_exports %}
-						<tr>
-							<td><code>{{export.id}}</code></td>
-							<td><code>{{export.export_id}}</code></td>
-							<td>{{export.name}}</td>
-							<td><code>{{export.export_path}}</code></td>
-							<td>{{export.status}}</td>
-							<td><a target="_blank" href="{% url 'stateio_state_manifest' state_id=export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
-							<td><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_download' state_id=export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+						<tr class="export_state">
+							<td class="export_state"><code>{{export.id}}</code></td>
+							<td class="export_state"><code>{{export.export_id}}</code></td>
+							<td class="export_state">{{export.name}}</td>
+							<td class="export_state"><code>{{export.export_path}}</code></td>
+							<td class="export_state">{{export.status}}</td>
+							<td class="export_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
+							<td class="export_state"><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_download' state_id=export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}
 				</tbody>
@@ -74,15 +74,15 @@
 				<tbody>
 					{% for import in stateio_imports %}
 						<tr>
-							<td><code>{{import.id}}</code></td>
-							<td><code>{{import.export_manifest.export_id}}</code></td>
-							<td>{{import.export_manifest.export_name}}</td>
-							<td>{{import.name}}</td>
-							<td><code>{{import.import_path}}</code></td>
-							<td>{{import.status}}</td>
-							<td><code>{{import.import_manifest.imports.count}}</code></td>
-							<td><a target="_blank" href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a> <a target="_blank" href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='import_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button></a></td>
-							<td><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=import.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
+							<td class="import_state"><code>{{import.id}}</code></td>
+							<td class="import_state"><code>{{import.export_manifest.export_id}}</code></td>
+							<td class="import_state">{{import.export_manifest.export_name}}</td>
+							<td class="import_state">{{import.name}}</td>
+							<td class="import_state"><code>{{import.import_path}}</code></td>
+							<td class="import_state">{{import.status}}</td>
+							<td class="import_state"><code>{{import.import_manifest.imports.count}}</code></td>
+							<td class="import_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a> <a target="_blank" href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='import_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button></a></td>
+							<td class="import_state"><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=import.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>
 					{% endfor %}
 				</tbody>

@@ -3775,11 +3775,39 @@ def stateio_state(request, state_id):
 	# retrieve state
 	state = models.StateIO.objects.get(id=state_id)
 
-	# return
-	return render(request, 'core/stateio_state.html', {
-		'state':state,		
-		'breadcrumbs':breadcrumb_parser(request)
-	})
+	# handle export state
+	if state.stateio_type == 'export':
+
+		# retrieve imports, if any, that share this export_id
+		associated_imports = models.StateIO.objects.filter(
+			export_manifest__export_id=state.export_id,
+			stateio_type='import')
+
+		# return
+		return render(request, 'core/stateio_state_export.html', {
+			'state':state,
+			'associated_imports':associated_imports,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+	# handle import state
+	if state.stateio_type == 'import':
+
+		# retrieve imports, if any, that share this export_id
+		associated_export_q = models.StateIO.objects.filter(
+			export_id=state.export_manifest['export_id'],
+			stateio_type='export')
+		if associated_export_q.count() == 1:
+			associated_export = associated_export_q.first()
+		else:
+			associated_export = None
+
+		# return
+		return render(request, 'core/stateio_state_import.html', {
+			'state':state,
+			'associated_export':associated_export,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
 
 
 @login_required
