@@ -3793,7 +3793,7 @@ def stateio_state(request, state_id):
 	# handle import state
 	if state.stateio_type == 'import':
 
-		# retrieve imports, if any, that share this export_id
+		# retrieve export used for import, if exists in same instance of Combine
 		associated_export_q = models.StateIO.objects.filter(
 			export_id=state.export_manifest['export_id'],
 			stateio_type='export')
