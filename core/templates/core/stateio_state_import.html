@@ -113,7 +113,10 @@
 	<div class="row">
 		<div class="col-md-8">
 
-			<div id="io_results_tree"></div>
+			<div class="tree_select">
+				<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
+				<div id="io_results_tree"></div>
+			</div>
 
 			<script>
 
@@ -122,7 +125,8 @@
 
 				// init tree
 				$(document).ready(function(){
-					jobs_tree = $('#io_results_tree').jstree({
+					
+					io_results_tree = $('#io_results_tree').jstree({
 						'plugins':["search"],
 						'core':{
 							'data':io_results_obj,
@@ -132,6 +136,17 @@
 						},
 						'search':search_config
 					});
+
+					// search
+					var to = false;
+						$('#configs_search').keyup(function () {
+						if(to) { clearTimeout(to); }
+							to = setTimeout(function () {
+							var v = $('#configs_search').val();
+						$('#io_results_tree').jstree(true).search(v);
+						}, search_config.delay);
+					});
+						
 				});
 
 			</script>

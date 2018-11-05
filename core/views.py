@@ -3828,6 +3828,8 @@ def _generate_io_results_json(io_results):
 		io_results (dict): Dictionary of IO results, either export or import
 	'''
 
+	# results_flag
+	io_results_flag = False
 
 	# model translation for serializable strings for models
 	model_type_hash = {
@@ -3870,10 +3872,14 @@ def _generate_io_results_json(io_results):
 
 		# append model type dict to 
 		if len(io_results[k]) > 0:
+			io_results_flag = True
 			io_results_json.append(model_type_dict)
 
-	# return
-	return io_results_json
+	# if results found for any type, return and imply True
+	if io_results_flag:
+		return io_results_json
+	else:
+		return False
 
 
 @login_required

@@ -262,4 +262,14 @@ div.grayed_dt_row, td.grayed_dt_row {
 .import_state {
   background-color:#dbebf9;
 }
-
+.tree_select {
+  background-color: rgb(245, 245, 245);
+  max-height:640px;     
+  overflow-y: scroll;
+  padding:10px;
+  border-radius: 5px;
+}
+.jstree-default .jstree-search {
+  color:black;
+  background-color: #ffff93;
+}
