@@ -2,6 +2,16 @@
 
 {% block content %}
 
+	<script>
+
+		search_config = {			
+			'show_only_matches':false, // isolate matches
+			'delay':500, // delay for search keyup
+			'fuzzy':false // fuzzy matching
+		}
+
+	</script>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Export State: <code>{{state.name}}</code></h2>
@@ -36,7 +46,7 @@
 
 			<h3>Associated Imports</h3>
 			{% if associated_imports.count > 0 %}
-				<p>The following are <strong>Imports</strong> in this instance of Combine that originate from this Export:</p>
+				<p>The following are <strong>Imports</strong> associated with this Export:</p>
 
 				<table id="imports_table" class="table table-bordered table-hover">
 					<thead>
@@ -76,6 +86,42 @@
 		<div class="col-md-12">
 
 			<h3>Exported Objects</h3>
+			<p>The following objects were exported:</p>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<h4>Organizations, Record Groups, Jobs</h4>
+			<div id="jobs_hierarchy_tree"></div>
+
+			<script>
+
+				// init hierarchy
+				job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
+
+				// init tree
+				$(document).ready(function(){
+					jobs_tree = $('#jobs_hierarchy_tree').jstree({
+						'plugins':["search"],
+						'core':{
+							'data':job_hierarchy_obj
+						},
+						'search':search_config
+					});
+				});
+
+			</script>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<h4>Configurations and Scenarios</h4>
 
 		</div>
 	</div>

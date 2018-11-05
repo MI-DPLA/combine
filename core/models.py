@@ -7609,10 +7609,23 @@ class StateIOClient(object):
 	'''
 
 
+	# model translation for serializable strings for models
+	model_translation = {
+		'jobs':Job,
+		'record_groups':RecordGroup,
+		'orgs':Organization,
+		'dbdd':DPLABulkDataDownload,			
+		'oai_endpoints':OAIEndpoint,
+		'rits':RecordIdentifierTransformationScenario,
+		'transformations':Transformation,
+		'validations':ValidationScenario
+	}
+
+
 	def __init__(self):
 
 		# ensure working directories exist
-		self._confirm_working_dirs()	
+		self._confirm_working_dirs()
 
 
 	def _confirm_working_dirs(self):
@@ -8769,18 +8782,6 @@ class StateIOClient(object):
 			- loop through self.export_dict for export types that are human meaningful
 		'''
 
-		# model translation
-		model_translation = {
-			'jobs':Job,
-			'record_groups':RecordGroup,
-			'orgs':Organization,
-			'dbdd':DPLABulkDataDownload,			
-			'oai_endpoints':OAIEndpoint,
-			'rits':RecordIdentifierTransformationScenario,
-			'transformations':Transformation,
-			'validations':ValidationScenario
-		}
-
 		# establish section in export_manifest
 		self.import_manifest['imports'] = {
 			'jobs':[],
@@ -8801,7 +8802,7 @@ class StateIOClient(object):
 			inv_pk_hash = { v:k for k,v in self.import_manifest['pk_hash'][import_type].items() }
 
 			# loop through imports for type
-			for obj in self._get_django_model_type(model_translation[import_type]):
+			for obj in self._get_django_model_type(self.model_translation[import_type]):
 
 				# confirm that id has changed, indicating newly created and not mapped from pre-existing
 				if obj.object.id != inv_pk_hash[obj.object.id]:

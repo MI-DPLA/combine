@@ -3783,10 +3783,14 @@ def stateio_state(request, state_id):
 			export_manifest__export_id=state.export_id,
 			stateio_type='import')
 
+		# generate io results json
+		io_results_json = _generate_io_results_json(state.export_manifest, 'exports')
+
 		# return
 		return render(request, 'core/stateio_state_export.html', {
 			'state':state,
 			'associated_imports':associated_imports,
+			'io_results_json':io_results_json,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -3802,12 +3806,53 @@ def stateio_state(request, state_id):
 		else:
 			associated_export = None
 
+		# generate io results json
+
 		# return
 		return render(request, 'core/stateio_state_import.html', {
 			'state':state,
 			'associated_export':associated_export,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
+
+
+def _generate_io_results_json(io_results):
+
+	'''
+	Function to generate jstree ready JSON when provided
+	with an export or import manifest
+
+	Args:
+		io_results (dict): Dictionary of IO results, either export or import
+
+	TODO:
+	Create dictionary with Orgs, Record Groups, Jobs, and all configs that show
+	the name of the export
+		- don't need hierarchy, keep as simple as import_manifest (straight names)
+			- would fail if Jobs removed, but would still be present in export
+
+	e.g.
+	{
+		'orgs : {
+			'id':'orgs',
+			'text':'Organizations',
+			'state':{'opened':False},
+			'children':[
+				{
+					'id':'foo',
+					'text':'Sandbox',
+					'state':{'opened':False},
+					'children':[]
+				}
+			]
+		}
+	}
+	'''
+
+
+	pass
+
+
 
 
 @login_required
