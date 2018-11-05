@@ -3784,13 +3784,13 @@ def stateio_state(request, state_id):
 			stateio_type='import')
 
 		# generate io results json
-		io_results_json = _generate_io_results_json(state.export_manifest, 'exports')
+		io_results_json = _generate_io_results_json(state.export_manifest['exports'])
 
 		# return
 		return render(request, 'core/stateio_state_export.html', {
 			'state':state,
 			'associated_imports':associated_imports,
-			'io_results_json':io_results_json,
+			'io_results_json':json.dumps(io_results_json),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -3807,11 +3807,13 @@ def stateio_state(request, state_id):
 			associated_export = None
 
 		# generate io results json
+		io_results_json = _generate_io_results_json(state.import_manifest['imports'])
 
 		# return
 		return render(request, 'core/stateio_state_import.html', {
 			'state':state,
 			'associated_export':associated_export,
+			'io_results_json':json.dumps(io_results_json),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -3824,35 +3826,54 @@ def _generate_io_results_json(io_results):
 
 	Args:
 		io_results (dict): Dictionary of IO results, either export or import
-
-	TODO:
-	Create dictionary with Orgs, Record Groups, Jobs, and all configs that show
-	the name of the export
-		- don't need hierarchy, keep as simple as import_manifest (straight names)
-			- would fail if Jobs removed, but would still be present in export
-
-	e.g.
-	{
-		'orgs : {
-			'id':'orgs',
-			'text':'Organizations',
-			'state':{'opened':False},
-			'children':[
-				{
-					'id':'foo',
-					'text':'Sandbox',
-					'state':{'opened':False},
-					'children':[]
-				}
-			]
-		}
-	}
 	'''
 
 
-	pass
+	# model translation for serializable strings for models
+	model_type_hash = {
+		'jobs':'Jobs',
+		'record_groups':'Record Groups',
+		'orgs':'Organizations',
+		'dbdd':'DPLA Bulk Data Downloads',			
+		'oai_endpoints':'OAI Endpoints',
+		'rits':'Record Identifier Transformation Scenarios',
+		'transformations':'Transformation Scenarios',
+		'validations':'Validation Scenarios'
+	}
 
+	# init dictionary
+	io_results_json = []
 
+	# loop through model types and build dictionary
+	for k,v in model_type_hash.items():
+
+		# init model level dict
+		model_type_dict = {
+			'id':k,
+			'text':v,
+			'state':{'opened':False},
+			'children':[],
+			'icon':'la la-sitemap'
+		}
+
+		# loop through io results
+		for io_obj in io_results[k]:
+
+			model_type_dict['children'].append(
+				{
+					'id':io_obj['id'],
+					'text':io_obj['name'],
+					'state':{'opened':False},
+					'icon':'la la-file'
+				}
+			)
+
+		# append model type dict to 
+		if len(io_results[k]) > 0:
+			io_results_json.append(model_type_dict)
+
+	# return
+	return io_results_json
 
 
 @login_required

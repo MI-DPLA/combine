@@ -12,6 +12,22 @@
 
 	</script>
 
+	<style>
+
+		.tree_select {
+			background-color: rgb(245, 245, 245);
+			max-height:640px;			
+			overflow-y: scroll;
+			padding:10px;
+			border-radius: 5px;
+		}
+		.jstree-default .jstree-search {
+			color:black;
+			background-color: #ffff93;
+		}
+
+	</style>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Export State: <code>{{state.name}}</code></h2>
@@ -92,36 +108,30 @@
 	</div>
 
 	<div class="row">
-		<div class="col-md-12">
+		<div class="col-md-8">
 
-			<h4>Organizations, Record Groups, Jobs</h4>
-			<div id="jobs_hierarchy_tree"></div>
+			<div id="io_results_tree"></div>
 
 			<script>
 
 				// init hierarchy
-				job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
+				io_results_obj = JSON.parse(`{{io_results_json|safe}}`);
 
 				// init tree
 				$(document).ready(function(){
-					jobs_tree = $('#jobs_hierarchy_tree').jstree({
+					jobs_tree = $('#io_results_tree').jstree({
 						'plugins':["search"],
 						'core':{
-							'data':job_hierarchy_obj
+							'data':io_results_obj,
+							'themes':{
+								'icons':true
+							}
 						},
 						'search':search_config
 					});
 				});
 
 			</script>
-
-		</div>
-	</div>
-
-	<div class="row">
-		<div class="col-md-12">
-
-			<h4>Configurations and Scenarios</h4>
 
 		</div>
 	</div>

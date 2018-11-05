@@ -2,6 +2,32 @@
 
 {% block content %}
 
+	<script>
+
+		search_config = {			
+			'show_only_matches':false, // isolate matches
+			'delay':500, // delay for search keyup
+			'fuzzy':false // fuzzy matching
+		}
+
+	</script>
+
+	<style>
+
+		.tree_select {
+			background-color: rgb(245, 245, 245);
+			max-height:640px;			
+			overflow-y: scroll;
+			padding:10px;
+			border-radius: 5px;
+		}
+		.jstree-default .jstree-search {
+			color:black;
+			background-color: #ffff93;
+		}
+
+	</style>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Import State: <code>{{state.name}}</code></h2>
@@ -74,11 +100,41 @@
 			</div>
 		</div>
 
-	<!-- exports -->
+	<!-- imports -->
 	<div class="row">
 		<div class="col-md-12">
 
-			<h3>Exported Objects</h3>
+			<h3>Imported Objects</h3>
+			<p>The following objects were imported:</p>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-8">
+
+			<div id="io_results_tree"></div>
+
+			<script>
+
+				// init hierarchy
+				io_results_obj = JSON.parse(`{{io_results_json|safe}}`);
+
+				// init tree
+				$(document).ready(function(){
+					jobs_tree = $('#io_results_tree').jstree({
+						'plugins':["search"],
+						'core':{
+							'data':io_results_obj,
+							'themes':{
+								'icons':true
+							}
+						},
+						'search':search_config
+					});
+				});
+
+			</script>
 
 		</div>
 	</div>
