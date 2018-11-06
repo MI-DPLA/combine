@@ -8238,6 +8238,7 @@ class StateIOClient(object):
 		}
 
 		# loop through export Django model instance exports
+		export_count = 0
 		for export_type in self.export_manifest['exports'].keys():
 
 			# loop through exports for type
@@ -8245,11 +8246,17 @@ class StateIOClient(object):
 
 				logger.debug('writing %s to export_manifest' % e)
 
+				# bump counter
+				export_count += 1
+
 				# write
 				self.export_manifest['exports'][export_type].append({
 					'name':e.name,
 					'id':e.id
 				})
+
+		# write count to exports
+		self.export_manifest['exports']['count'] = export_count
 
 
 	def import_state(self,

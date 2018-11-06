@@ -27,6 +27,7 @@
 						<th>Export Name</th>
 						<th>Export Path</th>
 						<th>Status</th>
+						<th>Exported Objects</th>
 						<th>Manifests</th>
 						<th>Actions</th>
 					</tr>
@@ -39,6 +40,7 @@
 							<td class="export_state">{{export.name}}</td>
 							<td class="export_state"><code>{{export.export_path}}</code></td>
 							<td class="export_state">{{export.status}}</td>
+							<td class="export_state"><code>{{export.export_manifest.exports.count}}</code></td>
 							<td class="export_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=export.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
 							<td class="export_state"><a href="{% url 'stateio_state' state_id=export.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_download' state_id=export.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=export.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
 						</tr>

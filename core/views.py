@@ -3790,19 +3790,22 @@ def stateio_state(request, state_id):
 		return render(request, 'core/stateio_state_export.html', {
 			'state':state,
 			'associated_imports':associated_imports,
-			'io_results_json':json.dumps(io_results_json),
+			'io_results_json':json.dumps(io_results_json, sort_keys=True),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
 	# handle import state
 	if state.stateio_type == 'import':
 
-		# retrieve export used for import, if exists in same instance of Combine
-		associated_export_q = models.StateIO.objects.filter(
-			export_id=state.export_manifest['export_id'],
-			stateio_type='export')
-		if associated_export_q.count() == 1:
-			associated_export = associated_export_q.first()
+		if state.status == 'finished':
+			# retrieve export used for import, if exists in same instance of Combine
+			associated_export_q = models.StateIO.objects.filter(
+				export_id=state.export_manifest['export_id'],
+				stateio_type='export')
+			if associated_export_q.count() == 1:
+				associated_export = associated_export_q.first()
+			else:
+				associated_export = None
 		else:
 			associated_export = None
 
@@ -3813,7 +3816,7 @@ def stateio_state(request, state_id):
 		return render(request, 'core/stateio_state_import.html', {
 			'state':state,
 			'associated_export':associated_export,
-			'io_results_json':json.dumps(io_results_json),
+			'io_results_json':json.dumps(io_results_json, sort_keys=True),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
