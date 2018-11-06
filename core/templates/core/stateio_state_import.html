@@ -112,7 +112,7 @@
 
 				<div class="alert alert-danger alert-dismissible fade show" role="alert">
 					The state export contained <code>{{state.export_manifest.exports.count}}</code> object{{ state.export_manifest.exports.count|pluralize:",s" }}, but only <code>{{state.import_manifest.imports.count}}</code> object{{ state.import_manifest.imports.count|pluralize:" was,s were" }} imported, why is that?
-					<br>If an object slated for import is deemed a duplicate, it is skipped during the import process.  Read more about that in the <a href="#">State Export/Import documentation</a>.
+					<br>If an object slated for import is deemed a duplicate, it is skipped during the import process.  Read more about that in the <a href="http://combine.readthedocs.io/en/{{COMBINE_GIT_BRANCH}}/exporting.html#state-import-and-duplication">State Export/Import documentation</a>.
 					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 					<span aria-hidden="true">&times;</span>
 					</button>
