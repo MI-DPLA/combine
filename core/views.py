@@ -3876,7 +3876,7 @@ def _generate_io_results_json(io_results):
 		obj_type_dict = {
 			# 'id':obj_type,
 			'text':obj_type_hash[obj_type]['name'],
-			'state':{'opened':False},
+			'state':{'opened':True},
 			'children':[],
 			'icon':obj_type_hash[obj_type]['icon']
 		}
@@ -3888,7 +3888,7 @@ def _generate_io_results_json(io_results):
 			model_type_dict = {
 				# 'id':model_key,
 				'text':model_name,
-				'state':{'opened':False},
+				'state':{'opened':True},
 				'children':[],
 				'icon':'la la-folder-open'
 			}
@@ -3900,9 +3900,12 @@ def _generate_io_results_json(io_results):
 					{
 						# 'id':io_obj['id'],
 						'text':io_obj['name'],
-						'state':{'opened':False},
+						'state':{'opened':True},
 						'icon':'la la-file',
 						'children':[],
+						'li_attr':{
+							'io_obj':True
+						}
 					}
 				)
 
