@@ -3833,47 +3833,85 @@ def _generate_io_results_json(io_results):
 
 	# model translation for serializable strings for models
 	model_type_hash = {
-		'jobs':'Jobs',
-		'record_groups':'Record Groups',
-		'orgs':'Organizations',
-		'dbdd':'DPLA Bulk Data Downloads',			
-		'oai_endpoints':'OAI Endpoints',
-		'rits':'Record Identifier Transformation Scenarios',
-		'transformations':'Transformation Scenarios',
-		'validations':'Validation Scenarios'
+		'jobs_hierarchy':{
+			'jobs':'Jobs',
+			'record_groups':'Record Groups',
+			'orgs':'Organizations',
+		},
+		'config_scenarios':{
+			'dbdd':'DPLA Bulk Data Downloads',			
+			'oai_endpoints':'OAI Endpoints',
+			'rits':'Record Identifier Transformation Scenarios',
+			'transformations':'Transformation Scenarios',
+			'validations':'Validation Scenarios'
+		}		
 	}
 
 	# init dictionary
 	io_results_json = []
 
-	# loop through model types and build dictionary
-	for k,v in model_type_hash.items():
+	# loop through jobs and configs
+	for obj_type, obj_subsets in model_type_hash.items():
 
-		# init model level dict
-		model_type_dict = {
-			'id':k,
-			'text':v,
-			'state':{'opened':False},
-			'children':[],
-			'icon':'la la-sitemap'
+		logger.debug('building %s' % obj_type)
+
+		# obj_type_flag
+		obj_type_flag = False
+
+		# init obj type level dict		
+		obj_type_hash = {
+			'jobs_hierarchy':{
+				'name':'Organizations, Record Groups, and Jobs',
+				'icon':'la la-sitemap'
+			},
+			'config_scenarios':{
+				'name':'Configuration Scenarios',
+				'icon':'la la-gears'
+			}
 		}
 
-		# loop through io results
-		for io_obj in io_results[k]:
+		obj_type_dict = {
+			# 'id':obj_type,
+			'text':obj_type_hash[obj_type]['name'],
+			'state':{'opened':False},
+			'children':[],
+			'icon':obj_type_hash[obj_type]['icon']
+		}
 
-			model_type_dict['children'].append(
-				{
-					'id':io_obj['id'],
-					'text':io_obj['name'],
-					'state':{'opened':False},
-					'icon':'la la-file'
-				}
-			)
+		# loop through model types and build dictionary
+		for model_key, model_name in obj_subsets.items():
 
-		# append model type dict to 
-		if len(io_results[k]) > 0:
-			io_results_flag = True
-			io_results_json.append(model_type_dict)
+			# init model level dict
+			model_type_dict = {
+				# 'id':model_key,
+				'text':model_name,
+				'state':{'opened':False},
+				'children':[],
+				'icon':'la la-folder-open'
+			}
+
+			# loop through io results
+			for io_obj in io_results[model_key]:
+
+				model_type_dict['children'].append(
+					{
+						# 'id':io_obj['id'],
+						'text':io_obj['name'],
+						'state':{'opened':False},
+						'icon':'la la-file',
+						'children':[],
+					}
+				)
+
+			# append model type dict to 
+			if len(io_results[model_key]) > 0:
+				io_results_flag = True
+				obj_type_flag = True
+				obj_type_dict['children'].append(model_type_dict)
+
+		# append obj type dict if contains children
+		if obj_type_flag:
+			io_results_json.append(obj_type_dict)
 
 	# if results found for any type, return and imply True
 	if io_results_flag:
@@ -4022,7 +4060,8 @@ def _stateio_prepare_job_hierarchy():
 		'id':'root_jobs',
 		'text':'Organizations, Record Groups, and Jobs',
 		'state':{'opened':True},
-		'children':[]
+		'children':[],
+		'icon':'la la-sitemap'
 	}
 
 	# add Organizations --> Record Group --> Jobs
@@ -4033,7 +4072,8 @@ def _stateio_prepare_job_hierarchy():
 			'id':'org|%s' % org.id,
 			'text':org.name,
 			'state':{'opened':False},
-			'children':[]
+			'children':[],
+			'icon':'la la-folder-open'
 		}
 
 		# loop through child Record Groups and add
@@ -4044,7 +4084,8 @@ def _stateio_prepare_job_hierarchy():
 				'id':'record_group|%s' % rg.id,
 				'text':rg.name,
 				'state':{'opened':False},
-				'children':[]
+				'children':[],
+				'icon':'la la-folder-open'
 			}
 
 			# loop through Jobs and add
@@ -4054,7 +4095,8 @@ def _stateio_prepare_job_hierarchy():
 				job_dict = {
 					'id':'job|%s' % job.id,
 					'text':job.name,
-					'state':{'opened':False}				
+					'state':{'opened':False},
+					'icon':'la la-file'
 				}
 
 				# append to rg
@@ -4096,7 +4138,8 @@ def _stateio_prepare_config_scenarios():
 		'id':'root_config',
 		'text':'Configurations and Scenarios',
 		'state':{'opened':True},
-		'children':[]
+		'children':[],
+		'icon':'la la-gears'
 	}
 
 	def _add_config_scenarios(config_scenarios_dict, model, id_str, text_str, id_prefix):
@@ -4106,7 +4149,8 @@ def _stateio_prepare_config_scenarios():
 			'id':id_str,
 			'text':text_str,
 			'state':{'opened':False},
-			'children':[]
+			'children':[],
+			'icon':'la la-folder-open'
 		}
 
 		# loop through instances
@@ -4115,7 +4159,8 @@ def _stateio_prepare_config_scenarios():
 				'id':'%s|%s' % (id_prefix, obj.id),
 				'text':obj.name,
 				'state':{'opened':False},
-				'children':[]
+				'children':[],
+				'icon':'la la-file'
 			})
 
 		# append to config_scenarios_dict
