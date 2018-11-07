@@ -2,20 +2,33 @@
 Command Line
 ************
 
-Though Combine is designed primarily as a GUI interface, the command line provides a powerful and rich interface to the models and methods that make up the Combine data model.  This documentation is meant to expose some of those patterns and conventions.
+Though Combine is designed primarily as a GUI interface, the command line provides a potentially powerful and rich interface to the models and methods that make up the Combine data model.  This documentation is meant to expose some of those patterns and conventions.
 
-There are two primary command line contexts:
+There are few command line contexts:
 
-  - **Django shell**: A shell that loads all Django models, with some additional methods for interacting with Jobs, Records, etc.
-  - **Pyspark shell**: A pyspark shell that is useful for interacting with Jobs and Records via a spark context.  
+  - `Django shell <#django-python-shell>`_
+
+    - *A shell that loads all Django models, with some additional methods for interacting with Jobs, Records, etc.*
+
+  - `Django commands <#combine-django-commands>`_
+
+    - *Combine specific actions that can be executed from bash shell, via Django's manage.py*
+
+  - `Pyspark shell <#pyspark-shell>`_
+
+    - *A pyspark shell that is useful for interacting with Jobs and Records via a spark context.*
 
 These are described in more detail below.
 
-**Note:** For both, the Combine `Miniconda <https://conda.io/miniconda.html>`__ python environement must be used, which can be activated from any filepath location by
+**Note:** For all contexts, the OS ``combine`` user is assumed, using the Combine `Miniconda <https://conda.io/miniconda.html>`__ python environement, which can be activated from any filepath location by
 typing:
 
 .. code-block:: bash
 
+    # become combine user, if not already
+    su combine
+
+    # activate combine python environment
     source activate combine
 
 
@@ -88,6 +101,29 @@ This is not a terribly efficient way to do this, but it demonstrates the data mo
     In [5]: for record in job.get_records():
        ...:     record.document = record.document.replace('foo', 'bar')
        ...:     record.save()
+
+
+
+Combine Django Commands
+=======================
+
+
+Full State Export
+-----------------
+
+One pre-configured ``manage.py`` command is ``exportstate``, which will trigger a full Combine state export (`you can read more about those here <exporting.html#state-export-and-import>`_).  Though this could be done via the command line, it was deemed potentially helpful to expose an OS level command such it could be fired via cron jobs, or other scripting.  It makes for a convenient way to backup the majority of important data in a Combine instance.
+
+Without any arguments, this will export *all* Organizations, Record Groups, Jobs, Records, and Configuration Scenarios (think OAI Endpoints, Transformations, Validations, etc.); effectively anything stored in databases.  This does *not* include conigurations to ``localsettings.py``, or other system configurations, but is instead meant to really export the current state of the application.
+
+.. code-block:: bash
+
+    ./manage.py exportstate
+
+Users may also provide a string of JSON to skip specific model instances.  This is somewhat experimental, and still **only works for Organizations only**, but it can be helpful if a particular Organization need not be exported.  This ``skip_json`` argument is expecting id integers, and looks something like the following if skipping Organization with id == ``4``:
+
+.. code-block:: bash
+
+    ./manage.py exportstate --skip_json '{"orgs":[4]}'
 
 
 Pyspark Shell
