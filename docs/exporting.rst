@@ -42,7 +42,7 @@ For example, take this contrived example Record Group:
 
    Example Record Group for Export
 
-In this example, if we were to select Job `C` for export, with the intention of importing to another instance of Combine that had none of the supporting pieces, what would be needed?  Because exports include all "downstream" Jobs as well, quite a few things would be included.  The following is what would be included in the export:
+In this example, if we were to select Job `C` for export, with the intention of importing to another instance of Combine that had none of the supporting pieces, what would be needed?  Because exports include all "downstream" Jobs as well, quite a few things would be included:
 
 .. figure:: img/sio_job_c_export.png
    :alt: Job C export, with accompanying objects
@@ -182,9 +182,9 @@ Similar to an export, there is an optional name field for the Import task.  But 
 
   - upload an export zip/tar file
   - provide a location on disk to an export directory or archive file
-  - provide a URL where an export archive file may be found (coming)
+  - provide a URL where an export archive file may be found (*coming soon*)
 
-To continue the example, we can use the filepath location `/home/combine/data/combine/stateio/exports/21627afc4d0042baae56f826e19bbcf2.zip` from our previous export, by clicking the "Filesystem" tab in the import form.  Then, click "Import State" to initialize another background process for importing the state.
+To continue the example, we can use the filepath location ``/home/combine/data/combine/stateio/exports/21627afc4d0042baae56f826e19bbcf2.zip`` from our previous export, by clicking the "Filesystem" tab in the import form.  Then, click "Import State" to initialize another background process for importing the state.
 
 Immediately we are redirected, and a new Import row is created indicating it is "running":
 
@@ -194,7 +194,7 @@ Immediately we are redirected, and a new Import row is created indicating it is 
 
    Details for Job C export
 
-At this time, it has no `Export ID` or `Export Name`, or much of anything.  But once the import is complete, this information populates:
+At this time, it has no ``Export ID`` or ``Export Name``, or much of anything.  But once the import is complete, this information populates:
 
 .. figure:: img/sio_import_finished.png
    :alt: Details for Job C export
@@ -212,7 +212,7 @@ Clicking into this Import's details, we see the following:
 
 The first table is details about this **Import**, but the following table shows what **Export** was used.  This linkage is only possible when the Export exists in the same instance of Combine.  Finally, at the bottom, a similar "results" tree to the Export, but this time showing what objects were imported.  
 
-However, this tree has a warning message and looks suspiciously smaller than the amount of exported objects.  `What's going on? <#state-import-and-duplication>`_
+However, the tree showing what objects were imported has a warning message about not all objects being imported, and looks suspiciously smaller than the amount of exported objects.  `What's going on here? <#state-import-and-duplication>`_
 
 State Import and Duplication
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -224,9 +224,9 @@ When importing, the import process attempts to skip the duplication of:
 
 Jobs *are* happily duplicated, as this is often the point of state export / import, and have value even in the duplicate.  But all "supporting" infrastructure like Organizations or Record Groups, or any configuration scenarios like OAI Endpoints, Transformations, or Validations, as long as they function identically, nothing is gained by having a duplicate.
 
-For configuration scenarios, a duplicated is deemed identical when **the name and "payload" of the scenario is identical**.  So, if an export contains a Transformation called `MODS to Dublin Core`, but one already exists by that name, and the XLST payload is identical, a new Transformation scenario will *not* be created, and all references will now point to this pre-existing Transformation Scenario.
+For configuration scenarios, a duplicated is deemed identical when **the name and "payload" of the scenario is identical**.  So, if an export contains a Transformation called ``MODS to Dublin Core``, but one already exists by that name, and the XLST payload is byte-for-byte identical, a new Transformation scenario will *not* be created, and all references will now point to this pre-existing Transformation Scenario.
 
-For Organizations and Record Groups, the decision was a bit more complicated, but feedback suggested it would be most beneficial to have Jobs "slot in" to pre-existing Record Groups if they existed under an identically named Organization, implying some structure and relationships that would be annoying to duplicate.
+For Organizations and Record Groups, the decision was a bit more complicated, but feedback suggested it would be most beneficial to have Jobs "slot in" to pre-existing Record Groups if they existed under an identically named Organization.  For example, if Job `C` was exported under Record Group `foo`, which was under Organization `bar`, but a Record Group with name `foo` already exists under an Organization named `bar`, neither will be created, and Job `C` will import under the pre-existing `foo` Record Group.  This decisions hints at the singularly organizational role of Organizations and Record Groups, with their uncontrolled, human readable name as their primary characteristic.
 
 
 Final Thoughts
