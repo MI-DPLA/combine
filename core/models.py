@@ -1608,13 +1608,24 @@ class Job(models.Model):
 		return True
 
 
-	def get_downstream_jobs(self, topographic_sort=True):
+	def get_downstream_jobs(self,
+		include_self=True,
+		topographic_sort=True,
+		depth=None):
 
 		'''
 		Method to retrieve downstream jobs, ordered by order required for re-running
+
+		Args:
+			include_self (bool): Boolean to include self as first in returned set
+			topographic_sort (bool): Boolean to topographically sort returned set
+			depth (None, int): None or int depth to recurse
 		'''
 
-		def _job_recurse(job_node):			
+		def _job_recurse(job_node, rec_depth):
+
+			# bump recurse levels
+			rec_depth += 1
 
 			# get children
 			downstream_jobs = JobInput.objects.filter(input_job=job_node)
@@ -1628,17 +1639,21 @@ class Job(models.Model):
 					# add to sets
 					job_set.add(downstream_job.job)					
 
-					# recurse
-					if downstream_job.job not in visited:
-						_job_recurse(downstream_job.job)
-						visited.add(downstream_job.job)
+					# recurse					
+					if depth == None or (depth != None and rec_depth < depth):						
+						if downstream_job.job not in visited:							
+							_job_recurse(downstream_job.job, rec_depth)
+							visited.add(downstream_job.job)
 		
 		# set lists and seed		
 		visited = set()
-		job_set = {self}
+		if include_self:
+			job_set = {self}
+		else:
+			job_set = set()
 
 		# recurse
-		_job_recurse(self)		
+		_job_recurse(self, 0)		
 
 		# return topographically sorted
 		if topographic_sort:
@@ -1831,6 +1846,24 @@ class Job(models.Model):
 
 			logger.debug('cannot add Input Job to Job type: %s' % self.job_type_family())
 			return False
+
+
+	def remove_as_input_job(self):
+
+		'''
+		Remove self from other Job's job_details that see it as input_job
+		'''
+
+		logger.debug('removing self from child jobs input_job_ids')		
+
+		# get all JobInputs where self is input job
+		immediate_children = self.get_downstream_jobs(include_self=False, depth=1)
+
+		# loop through children and remove from job_details.input_job_ids
+		for child in immediate_children:
+			input_job_ids = child.job_details_dict['input_job_ids']
+			input_job_ids.remove(self.id)
+			child.update_job_details({'input_job_ids':input_job_ids})
 
 
 
@@ -3581,6 +3614,71 @@ class StateIO(mongoengine.Document):
 			logger.warning('Could not remove import/export directory')
 
 
+	def export_all(self, skip_dict=None):
+
+		'''
+		Method to export all exportable objects in Combine
+
+		Args:
+
+			skip_dict (dict): Dictionary of model instances to skip
+				- currently only supporting Organizations to skip, primarily for debugging purposes
+
+		Todo:
+			- currently only filtering org_ids from skip_dict, but could expand to skip
+			any model type		
+		'''
+
+		# if not yet initialized with id, do that now
+		if not self.id:
+			self.save
+
+		# select all Orgs
+		logger.debug('retrieving all Organizations')
+		org_ids = [ org.id for org in Organization.objects.filter(for_analysis=False) ]
+
+		# capture all config scenarios		
+		conf_model_instances = []
+
+		# hash for conversion
+		config_prefix_hash = {
+			ValidationScenario:'validations',
+			Transformation:'transformations',
+			OAIEndpoint:'oai_endpoints',
+			RecordIdentifierTransformationScenario:'rits',
+			FieldMapper:'field_mapper_configs',
+			DPLABulkDataDownload:'dbdd'
+		}
+
+		# loop through types
+		for conf_model in [			
+				ValidationScenario,
+				Transformation,
+				OAIEndpoint,
+				RecordIdentifierTransformationScenario,
+				FieldMapper,
+				DPLABulkDataDownload
+			]:
+
+			logger.debug('retrieving all config scenarios for: %s' % conf_model.__name__)
+			conf_model_instances.extend([ '%s|%s' % (config_prefix_hash[conf_model], conf_instance.id) for conf_instance in conf_model.objects.all() ])
+		
+
+		# using skip_dict to filter orgs
+		if 'orgs' in skip_dict:
+			logger.debug('found orgs to skip in skip_dict')
+			for org_id in skip_dict['orgs']:
+				org_ids.remove(org_id)
+
+		# fire StateIOClient with id
+		sioc = StateIOClient()
+		sioc.export_state(
+			orgs=org_ids,
+			config_scenarios=conf_model_instances,
+			export_name=self.name,
+			stateio_id=self.id
+		)
+
 
 ####################################################################
 # Signals Handlers												   #
@@ -3715,6 +3813,10 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 		except:
 			logger.debug('could not remove job output directory at: %s' % instance.job_output)
+
+	
+	# remove Job as input for other Jobs
+	instance.remove_as_input_job()
 
 	# remove ES index if exists
 	instance.drop_es_index()
