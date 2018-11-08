@@ -78,7 +78,7 @@ ONE_PER_DOC_OFFSET = 0.05
 
 
 # Service Hub
-SERVICE_HUB_PREFIX = 'mi--'
+SERVICE_HUB_PREFIX = 'foo--'
 
 
 # OAI Server
