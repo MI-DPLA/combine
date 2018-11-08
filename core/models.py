@@ -3812,11 +3812,7 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 			shutil.rmtree(output_dir)
 
 		except:
-			logger.debug('could not remove job output directory at: %s' % instance.job_output)
-
-	
-	# remove Job as input for other Jobs
-	instance.remove_as_input_job()
+			logger.debug('could not remove job output directory at: %s' % instance.job_output)	
 
 	# remove ES index if exists
 	instance.drop_es_index()
@@ -3829,6 +3825,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	# remove Validations from Mongo
 	instance.remove_mapping_failures_from_db()
+
+	# remove Job as input for other Jobs
+	instance.remove_as_input_job()
 
 
 @receiver(models.signals.pre_delete, sender=JobValidation)

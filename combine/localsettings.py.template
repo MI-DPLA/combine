@@ -68,7 +68,7 @@ WRITE_AVRO = False
 
 
 # ElasicSearch server
-ES_HOST = '192.168.45.10'
+ES_HOST = '127.0.0.1'
 INDEX_TO_ES = True
 
 
