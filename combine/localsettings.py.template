@@ -72,10 +72,6 @@ ES_HOST = '127.0.0.1'
 INDEX_TO_ES = True
 
 
-# ElasticSearch indexing
-INCLUDE_ATTRIBUTES_GENERIC_MAPPER = False
-
-
 # ElasticSearch analysis
 CARDINALITY_PRECISION_THRESHOLD = 100
 ONE_PER_DOC_OFFSET = 0.05
