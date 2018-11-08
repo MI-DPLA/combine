@@ -3536,14 +3536,14 @@ class StateIO(mongoengine.Document):
 	status = mongoengine.StringField(		
 		default='initializing'
 	)
-	
-	
 	export_id = mongoengine.StringField()
 	export_manifest = mongoengine.DictField()
 	export_path = mongoengine.StringField()
 	import_id = mongoengine.StringField()
 	import_manifest = mongoengine.DictField()	
 	import_path = mongoengine.StringField()
+	bg_task_id = mongoengine.IntField()
+	finished = mongoengine.BooleanField(default=False)
 
 
 	# meta
@@ -3678,6 +3678,17 @@ class StateIO(mongoengine.Document):
 			export_name=self.name,
 			stateio_id=self.id
 		)
+
+
+	@property
+	def bg_task(self):
+
+		'''
+		Method to return CombineBackgroundTask instance
+		'''
+
+		return CombineBackgroundTask.objects.get(pk=int(self.bg_task_id))
+
 
 
 ####################################################################
@@ -7872,7 +7883,8 @@ class StateIOClient(object):
 		self.stateio.update(**{
 			'export_manifest':self.export_manifest,
 			'export_path':self.export_manifest['export_path'],
-			'status':'finished'
+			'status':'finished',
+			'finished':True
 		})
 		self.stateio.reload()
 		self.stateio.save()
@@ -8457,7 +8469,8 @@ class StateIOClient(object):
 			'export_manifest':self.export_manifest,
 			'import_manifest':{ k:v for k,v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest'] },
 			'import_path':self.import_path,
-			'status':'finished'
+			'status':'finished',
+			'finished':True
 		})
 		self.stateio.reload()
 		self.stateio.save()
@@ -9122,6 +9135,10 @@ class StateIOClient(object):
 		)		
 		ct.save()
 		logger.debug(ct)
+
+		# add ct.id to stateio
+		stateio.bg_task_id = ct.id
+		stateio.save()
 		
 		# run celery task
 		bg_task = tasks.stateio_export.delay(ct.id)
@@ -9160,6 +9177,10 @@ class StateIOClient(object):
 		)		
 		ct.save()
 		logger.debug(ct)
+
+		# add ct.id to stateio
+		stateio.bg_task_id = ct.id
+		stateio.save()
 		
 		# run celery task
 		bg_task = tasks.stateio_import.delay(ct.id)

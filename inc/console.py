@@ -38,3 +38,8 @@ def tail_livy():
 # tail django
 def tail_celery():
 	os.system('tail -f /var/log/celery.stdout')
+
+
+# get StateIO instance
+def get_sio(id):
+	return StateIO.objects.get(id=id)

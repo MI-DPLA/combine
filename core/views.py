@@ -3784,7 +3784,10 @@ def stateio_state(request, state_id):
 			stateio_type='import')
 
 		# generate io results json
-		io_results_json = _generate_io_results_json(state.export_manifest['exports'])
+		if 'exports' in state.export_manifest:
+			io_results_json = _generate_io_results_json(state.export_manifest['exports'])
+		else:
+			io_results_json = False
 
 		# return
 		return render(request, 'core/stateio_state_export.html', {
@@ -3810,7 +3813,10 @@ def stateio_state(request, state_id):
 			associated_export = None
 
 		# generate io results json
-		io_results_json = _generate_io_results_json(state.import_manifest['imports'])
+		if 'imports' in state.import_manifest:
+			io_results_json = _generate_io_results_json(state.import_manifest['imports'])
+		else:
+			io_results_json = False
 
 		# return
 		return render(request, 'core/stateio_state_import.html', {
@@ -3977,6 +3983,28 @@ def stateio_state_download(request, state_id):
 	response = FileResponse(open(filepath, 'rb'))	
 	response['Content-Disposition'] = 'attachment; filename="%s"' % filename
 	return response
+
+
+@login_required
+def stateio_state_stop(request, state_id):
+
+	'''
+	Attempt to stop state when running as bg task
+	'''
+
+	# retrieve state
+	state = models.StateIO.objects.get(id=state_id)
+
+	# issue cancel
+	state.bg_task.cancel()
+
+	# update status
+	state.status = 'stopped'
+	state.finished = True
+	state.save()
+
+	# return
+	return redirect('stateio')
 	
 
 @login_required
@@ -4254,10 +4282,6 @@ def stateio_import(request):
 		})
 
 		return redirect('stateio')
-
-
-
-
 
 
 
