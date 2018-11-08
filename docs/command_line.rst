@@ -111,7 +111,7 @@ Combine Django Commands
 Full State Export
 -----------------
 
-One pre-configured ``manage.py`` command is ``exportstate``, which will trigger a full Combine state export (`you can read more about those here <exporting.html#state-export-and-import>`_).  Though this could be done via the command line, it was deemed potentially helpful to expose an OS level command such it could be fired via cron jobs, or other scripting.  It makes for a convenient way to backup the majority of important data in a Combine instance.
+One pre-configured ``manage.py`` command is ``exportstate``, which will trigger a full Combine state export (`you can read more about those here <exporting.html#state-export-and-import>`_).  Though this could be done via the Django python shell, it was deemed helpful to expose an OS level, bash command such it could be fired via cron jobs, or other scripting.  It makes for a convenient way to backup the majority of important data in a Combine instance.
 
 Without any arguments, this will export *all* Organizations, Record Groups, Jobs, Records, and Configuration Scenarios (think OAI Endpoints, Transformations, Validations, etc.); effectively anything stored in databases.  This does *not* include conigurations to ``localsettings.py``, or other system configurations, but is instead meant to really export the current state of the application.
 
@@ -119,7 +119,7 @@ Without any arguments, this will export *all* Organizations, Record Groups, Jobs
 
     ./manage.py exportstate
 
-Users may also provide a string of JSON to skip specific model instances.  This is somewhat experimental, and still **only works for Organizations only**, but it can be helpful if a particular Organization need not be exported.  This ``skip_json`` argument is expecting id integers, and looks something like the following if skipping Organization with id == ``4``:
+Users may also provide a string of JSON to skip specific model instances.  This is somewhat experimental, and currently **only works for Organizations**, but it can be helpful if a particular Organization need not be exported.  This ``skip_json`` argument is expecting Organization ids as integers; the following is an example if skipping Organization with id == ``4``:
 
 .. code-block:: bash
 
