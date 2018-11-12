@@ -3688,16 +3688,12 @@ class StateIO(mongoengine.Document):
 		'''
 
 		if self.bg_task_id != None:
-
 			# run query
 			ct_task_query = CombineBackgroundTask.objects.filter(id=int(self.bg_task_id))
-
-			if ct_task_instance.count() == 1:
+			if ct_task_query.count() == 1:
 				return ct_task_query.first()
-
 			else:
 				return False
-
 		else:
 			return False
 

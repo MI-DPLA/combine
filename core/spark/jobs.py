@@ -1762,7 +1762,7 @@ class CombineStateIOImport(CombineStateIO):
 				# read first row to get old validation_scenario_id, and run through pk_hash for new one
 				row = validations_df.take(1)[0]
 				vs_id = int(row.validation_scenario_id['$numberLong'])
-				new_vs_id = self.import_manifest['pk_hash']['validation_scenarios'][vs_id]
+				new_vs_id = self.import_manifest['pk_hash']['validations'][vs_id]
 
 				# flatten record_id
 				validations_df = validations_df.withColumn('record_id', validations_df['record_id']['$oid'])
