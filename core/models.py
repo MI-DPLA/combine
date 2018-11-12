@@ -8928,7 +8928,7 @@ class StateIOClient(object):
 			'validations':[]
 		}
 
-		# loop through deserialized objects
+		# loop through deserialized objects		
 		import_count = 0
 		for import_type in self.import_manifest['imports'].keys():
 
@@ -8938,8 +8938,8 @@ class StateIOClient(object):
 			# loop through imports for type
 			for obj in self._get_django_model_type(self.model_translation[import_type]):
 
-				# confirm that id has changed, indicating newly created and not mapped from pre-existing
-				if obj.object.id != inv_pk_hash[obj.object.id]:
+				# confirm that id has changed, indicating newly created and not mapped from pre-existing				
+				if obj.object.id in inv_pk_hash.keys() and obj.object.id != inv_pk_hash[obj.object.id]:
 
 					logger.debug('writing %s to import_manifest' % obj)
 
