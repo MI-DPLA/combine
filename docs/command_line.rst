@@ -111,19 +111,19 @@ Combine Django Commands
 Combine Update
 --------------
 
-It's possible to perform an update of Combine either by pulling changes to the current version (works best with ``dev`` and ``master`` branches), or by passing a specific release to update to (e.g. ``v0.3.2``).
+It's possible to perform an update of Combine either by pulling changes to the current version (works best with ``dev`` and ``master`` branches), or by passing a specific release to update to (e.g. ``v0.3.3``).
 
 To update the current branch/release:
 
 .. code-block:: bash
 
-    sudo update.sh
+    ./manage.py update
 
-To update to another branch / release tag, e.g. ``v0.3.2``:
+To update to another branch / release tag, e.g. ``v0.3.3``:
 
 .. code-block:: bash
 
-    sudo update.sh --release v0.3.2
+    ./manage.py update --release v0.3.3
 
 
 Full State Export
