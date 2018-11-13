@@ -4,6 +4,7 @@ import datetime
 import logging
 import os
 import pdb
+import time
 
 # django
 from django.core.management.base import BaseCommand, CommandError
@@ -17,7 +18,14 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
 
 	'''
-	Manage command to update Combine		
+	Manage command to update Combine.
+
+	Performs the following:
+		- pull from github, updates all branches
+		- if relase passed, checkout release/branch
+		- pip install requirements
+		- collect static django
+		- restart gunicorn, livy session, celery
 	'''
 	
 	help = 'Update Combine'
@@ -66,7 +74,9 @@ class Command(BaseCommand):
 		# restart gunicorn
 		os.system('supervisorctl restart gunicorn')
 
-		# restart livy session		
+		# restart livy and livy session
+		os.system('supervisorctl restart livy')
+		time.sleep(5)
 		# get active livy sessions
 		active_ls = LivySession.get_active_session()
 
@@ -81,6 +91,8 @@ class Command(BaseCommand):
 			new_ls = active_ls.restart_session()
 
 		# restart celery background tasks
+		os.system('supervisorctl restart celery')
+		time.sleep(5)
 		# get supervisor handle
 		sp = SupervisorRPCClient()
 		# fire action	
