@@ -76,7 +76,7 @@ class Command(BaseCommand):
 
 		# restart livy and livy session
 		os.system('supervisorctl restart livy')
-		time.sleep(5)
+		time.sleep(10)
 		# get active livy sessions
 		active_ls = LivySession.get_active_session()
 
@@ -92,7 +92,7 @@ class Command(BaseCommand):
 
 		# restart celery background tasks
 		os.system('supervisorctl restart celery')
-		time.sleep(5)
+		time.sleep(10)
 		# get supervisor handle
 		sp = SupervisorRPCClient()
 		# fire action	
