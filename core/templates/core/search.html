@@ -31,7 +31,7 @@
 
 					// get search string if present
 			    	{% if search_params %}
-				    	search_params = JSON.parse('{{ search_params|safe }}')					    	
+				    	search_params = JSON.parse('{{ search_params|safe|escapejs }}')					    	
 				    	q = search_params.q;
 				    {% else %}
 				    	q = '';

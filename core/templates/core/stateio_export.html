@@ -41,7 +41,7 @@
 				<script>
 
 					// init hierarchy
-					job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe}}`);
+					job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe|escapejs}}`);
 
 					// init tree
 					$(document).ready(function(){
@@ -93,7 +93,7 @@
 				<script>
 
 					// init hierarchy
-					config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe}}`);
+					config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe|escapejs}}`);
 					$(document).ready(function(){
 						configs_tree = $('#config_scenarios_tree').jstree({
 							'plugins':["wholerow","checkbox","search"],
