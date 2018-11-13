@@ -2,6 +2,22 @@
 
 {% block content %}
 
+	<style type="text/css">
+		
+		.draggable_button {
+			margin-top: 2px;
+			margin-bottom: 2px;
+		}
+
+		.draggable_ul {
+			min-height: 30px;
+			border-radius: 4px;
+			padding-top: 10px;
+			padding-bottom: 10px;
+		}
+
+	</style>
+
 	<div class="row">
 		<div class="col-md-12">
 			<h3>New Job: <span class="font-weight-bold">Transform Document</span></h3>
@@ -50,21 +66,64 @@
 				</div>
 
 				<div class="row">
-					<div class="col-md-6">
+					<div class="col-md-12">
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
 							The following are <strong>required</strong> parameters for this Job
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 							</button>
 						</div>
-						<div class="form-group">
+
+						<!-- single transformation selection -->
+						<!-- <div class="form-group">
 							<label for="transformation_id">Select Transformation Scenario to use</label>
 							<select class="form-control" id="transformation_id" name="transformation_id" required>
 								{% for transformation in transformations %}
 									<option value="{{ transformation.id }}">{{ transformation.name }} ({{ transformation.transformation_type }})</option>	
 								{% endfor %}						
 							</select>
+						</div> -->
+
+						<!-- multiple, sortable transformations -->
+						<div class="row">
+							<div class="col-md-12">
+								<p>Use the tables below to select, and order, Transformation Scenarios that will be applied.  First, <strong>drag</strong> Transformations from the table on the left to the table on the right.  Second, <strong>order</strong> the Transformation in the order they should be applied.</p>
+							</div>
 						</div>
+						<div class="row">
+
+							<div class="col-md-6">
+								<h5>Available Transformation Scenarios</h5>
+								<ul class="bg_light_yellow draggable_ul available_transforms">
+									{% for transformation in transformations %}
+										<li data-trans_id={{transformation.id}} ><button class="draggable_button btn-outline-dark btn-sm">{{transformation.name}}</button></li>									
+									{% endfor %}
+								</ul>
+							</div>
+
+							<div class="col-md-6">
+								<h5>Selected Transformation Scenarios</h5>
+								<ul class="bg_light_yellow draggable_ul selected_transforms">									
+								</ul>
+							</div>
+
+						</div>
+						<script>
+
+							// init available transforms
+							var available = sortable('.available_transforms', {								
+								acceptFrom: ".selected_transforms, .available_transforms",								
+								items:'li'
+							});
+
+							// init selected transforms
+							var selected = sortable('.selected_transforms', {								
+								acceptFrom: ".available_transforms, .selected_transforms",								
+								items:'li'
+							});
+
+						</script>
+
 					</div>
 				</div>
 
