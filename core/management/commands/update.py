@@ -66,6 +66,27 @@ class Command(BaseCommand):
 		# restart gunicorn
 		os.system('supervisorctl restart gunicorn')
 
+		# restart livy session		
+		# get active livy sessions
+		active_ls = LivySession.get_active_session()
+
+		# none found
+		if not active_ls:
+			logger.debug('active livy session not found, starting')
+			livy_session = LivySession()
+			livy_session.start_session()
+
+		else:
+			logger.debug('single, active session found, and restart flag passed, restarting')			
+			new_ls = active_ls.restart_session()
+
+		# restart celery background tasks
+		# get supervisor handle
+		sp = SupervisorRPCClient()
+		# fire action	
+		results = sp.restart_process('celery') 
+		logger.debug(results)
+
 		# return
 		self.stdout.write(self.style.SUCCESS('Update complete.'))
 
