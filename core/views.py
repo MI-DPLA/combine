@@ -3996,7 +3996,8 @@ def stateio_state_stop(request, state_id):
 	state = models.StateIO.objects.get(id=state_id)
 
 	# issue cancel
-	state.bg_task.cancel()
+	if state.bg_task:
+		state.bg_task.cancel()
 
 	# update status
 	state.status = 'stopped'

@@ -116,7 +116,7 @@
 				<script>
 
 					// init hierarchy
-					io_results_obj = JSON.parse(`{{io_results_json|safe}}`);
+					io_results_obj = JSON.parse(`{{io_results_json|safe|escapejs}}`);
 
 					// init tree
 					$(document).ready(function(){

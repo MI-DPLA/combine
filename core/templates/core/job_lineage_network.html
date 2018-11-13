@@ -6,7 +6,7 @@
 			<script type="text/javascript">
 
 				// parse job lineage json
-				job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+				job_lineage = JSON.parse('{{ job_lineage_json|safe|escapejs }}');
 
 				// if analyzing published, show only published nodes
 				{% if analysis_type == 'published' %}

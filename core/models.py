@@ -3687,7 +3687,15 @@ class StateIO(mongoengine.Document):
 		Method to return CombineBackgroundTask instance
 		'''
 
-		return CombineBackgroundTask.objects.get(pk=int(self.bg_task_id))
+		if self.bg_task_id != None:
+			# run query
+			ct_task_query = CombineBackgroundTask.objects.filter(id=int(self.bg_task_id))
+			if ct_task_query.count() == 1:
+				return ct_task_query.first()
+			else:
+				return False
+		else:
+			return False
 
 
 
@@ -8771,6 +8779,9 @@ class StateIOClient(object):
 		for org in self._get_django_model_type(Organization):
 			logger.debug('rehydrating %s' % org)
 
+			# get org_orig_id
+			org_orig_id = org.object.id
+
 			# check Org name
 			org_match = Organization.objects.filter(name=org.object.name).order_by('id')
 
@@ -8781,37 +8792,39 @@ class StateIOClient(object):
 
 			# not found, creating
 			else:
-				logger.debug('Organization not found, creating')
-				org_orig_id = org.object.id
+				logger.debug('Organization not found, creating')				
 				org.object.id = None
 				org.save()
 				self.import_manifest['pk_hash']['orgs'][org_orig_id] = org.object.id
 
 
-		# loop through deserialized Record Groups
-		for rg in self._get_django_model_type(RecordGroup):
-			logger.debug('rehydrating %s' % rg)
+			# loop through deserialized Record Groups for this Org
+			for rg in self._get_django_model_type(RecordGroup):
 
-			# checking parent org exists, and contains record group with same name
-			rg_match = RecordGroup.objects\
-				.filter(name=rg.object.name, organization__name=self._get_django_model_instance(self.import_manifest['pk_hash']['orgs'][rg.object.organization_id], Organization).object.name).order_by('id')
+				if rg.object.organization_id == org_orig_id:
 
-			# matching Record Group found
-			if rg_match.count() > 0:
-				logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
-				self.import_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id			
+					logger.debug('rehydrating %s' % rg)
 
-			# not found, creating			
-			else:
-				logger.debug('Record Group not found, creating')
-				rg_orig_id = rg.object.id				
-				rg.object.id = None
-				# update org id
-				org_orig_id = rg.object.organization_id
-				rg.object.organization = None
-				rg.object.organization_id = self.import_manifest['pk_hash']['orgs'][org_orig_id]
-				rg.save()
-				self.import_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
+					# checking parent org exists, and contains record group with same name
+					rg_match = RecordGroup.objects\
+						.filter(name=rg.object.name, organization__name=self._get_django_model_instance(org.object.id, Organization).object.name).order_by('id')
+
+					# matching Record Group found
+					if rg_match.count() > 0:
+						logger.debug('found Organization/Record Group name combination, skipping creation, adding to hash')
+						self.import_manifest['pk_hash']['record_groups'][rg.object.id] = rg_match.first().id
+
+					# not found, creating			
+					else:
+						logger.debug('Record Group not found, creating')
+						rg_orig_id = rg.object.id				
+						rg.object.id = None
+						# update org id
+						org_orig_id = rg.object.organization_id
+						rg.object.organization = None
+						rg.object.organization_id = self.import_manifest['pk_hash']['orgs'][org_orig_id]
+						rg.save()
+						self.import_manifest['pk_hash']['record_groups'][rg_orig_id] = rg.object.id
 
 
 	def _import_job_related_instances(self):
@@ -8915,7 +8928,7 @@ class StateIOClient(object):
 			'validations':[]
 		}
 
-		# loop through deserialized objects
+		# loop through deserialized objects		
 		import_count = 0
 		for import_type in self.import_manifest['imports'].keys():
 
@@ -8925,8 +8938,8 @@ class StateIOClient(object):
 			# loop through imports for type
 			for obj in self._get_django_model_type(self.model_translation[import_type]):
 
-				# confirm that id has changed, indicating newly created and not mapped from pre-existing
-				if obj.object.id != inv_pk_hash[obj.object.id]:
+				# confirm that id has changed, indicating newly created and not mapped from pre-existing				
+				if obj.object.id in inv_pk_hash.keys() and obj.object.id != inv_pk_hash[obj.object.id]:
 
 					logger.debug('writing %s to import_manifest' % obj)
 

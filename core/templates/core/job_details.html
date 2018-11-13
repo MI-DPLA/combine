@@ -49,7 +49,7 @@
 				<script type="text/javascript">
 
 					// parse job lineage json
-					job_lineage = JSON.parse('{{ job_lineage_json|safe }}');
+					job_lineage = JSON.parse('{{ job_lineage_json|safe|escapejs }}');
 
 					// style nodes
 					$(job_lineage.nodes).each(function(){
