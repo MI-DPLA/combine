@@ -55,7 +55,7 @@ class Command(BaseCommand):
 		logger.debug('Updating Combine')
 
 		# git pull		
-		self._run_cmd_as_combine_user("git pull")
+		os.system('git pull')
 
 		# checkout release if provided		
 		if options.get('release', None) != None:
@@ -63,50 +63,65 @@ class Command(BaseCommand):
 			logger.debug('release/branch provided, checking out: %s' % release)
 
 			# git checkout			
-			self._run_cmd_as_combine_user('git checkout %s' % release)
+			os.system('git checkout %s' % release)
 
 		# install requirements as combine user		
-		self._run_cmd_as_combine_user("%s/pip install -r requirements.txt" % (self.PYTHON_PATH))
+		os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
 		# collect django static
-		self._run_cmd_as_combine_user("%s/python manage.py collectstatic --noinput" % (self.PYTHON_PATH))
+		os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
 
 		# restart gunicorn
-		os.system('supervisorctl restart gunicorn')
+		self._restart_gunicorn()
 
 		# restart livy and livy session
-		os.system('supervisorctl restart livy')
-		time.sleep(10)
-		# get active livy sessions
-		active_ls = LivySession.get_active_session()
+		self._restart_livy()
 
-		# none found
+		# restart celery background tasks
+		self._restart_celery()
+
+		# return
+		self.stdout.write(self.style.SUCCESS('Update complete.'))
+
+
+	def _restart_gunicorn(self):
+		
+		# get supervisor handle
+		sp = SupervisorRPCClient()
+		# fire action	
+		results = sp.restart_process('gunicorn') 
+		logger.debug(results)
+
+
+	def _restart_livy(self):
+
+		# get supervisor handle
+		sp = SupervisorRPCClient()
+		# fire action	
+		results = sp.restart_process('livy') 
+		logger.debug(results)
+
+		# sleep
+		time.sleep(10)
+
+		# get active livy sessions - restart or start
+		active_ls = LivySession.get_active_session()		
 		if not active_ls:
 			logger.debug('active livy session not found, starting')
 			livy_session = LivySession()
 			livy_session.start_session()
-
 		else:
 			logger.debug('single, active session found, and restart flag passed, restarting')			
 			new_ls = active_ls.restart_session()
 
-		# restart celery background tasks
-		os.system('supervisorctl restart celery')
-		time.sleep(10)
+
+	def _restart_celery(self):
+
 		# get supervisor handle
 		sp = SupervisorRPCClient()
 		# fire action	
 		results = sp.restart_process('celery') 
 		logger.debug(results)
 
-		# return
-		self.stdout.write(self.style.SUCCESS('Update complete.'))
 
 
-	def _run_cmd_as_combine_user(self, cmd_str):
-
-		'''
-		Helper function to run command as Combine user		
-		'''
-
-		os.system('su -c "%s" combine' % cmd_str)
