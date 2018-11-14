@@ -37,22 +37,47 @@ class Command(BaseCommand):
 	
 	def add_arguments(self, parser):
 
-		# add optional organization ids to skip
+		# release
 		parser.add_argument(
 			'--release',
 			dest='release',
 			help='GitHub branch/release to update to',
-			type=str			
+			type=str,
+			default=None
+		)
+
+		# update method
+		parser.add_argument(
+			'--update_snippet',
+			dest='update_snippet',
+			help='Update code snippet to run',
+			type=str,
+			default=None
 		)
 
 	
 	def handle(self, *args, **options):
 
 		'''
-		Perform series of OS commands as sudo user
+		Handler for updates to Combine
 		'''
 
 		logger.debug('Updating Combine')
+
+		# run update snippet if passed
+		if options.get('update_snippet'):
+			self.run_update_snippet(args, options)
+
+		# else, run update
+		else:
+			self.update(args, options)
+
+
+	def update(self, args, options):
+
+		'''
+		Method to handle branch/tagged release update
+		'''
 
 		# git pull		
 		os.system('git pull')
@@ -124,6 +149,25 @@ class Command(BaseCommand):
 		logger.debug(results)
 
 
+	def run_update_snippet(self, args, options):
+
+		'''
+		Method to run update snippet if passed
+		'''
+
+		# init VersionUpdateHelper instance
+		vuh = VersionUpdateHelper()
+
+		# get snippet
+		snippet = getattr(vuh, options.get('update_snippet'), None)
+		if snippet != None:
+			logger.debug('Firing update snippet: %s' % options.get('update_snippet'))
+			snippet()
+		else:
+			logger.debug('Update snippet "%s" could not be found' % options.get('update_snippet', None))
+
+
+
 class VersionUpdateHelper(object):
 
 	'''
@@ -152,9 +196,12 @@ class VersionUpdateHelper(object):
 			if not job.job_details_dict.get('combine_version', False):
 
 				logger.debug('stamping combine_version %s to Job: %s' % (settings.COMBINE_VERSION, job))
-				
 
-	def v0_4__transform_job_details(self):
+				# update job_details
+				job.update_job_details({'combine_version':settings.COMBINE_VERSION})
+
+
+	def v0_4__update_transform_job_details(self):
 
 		'''
 		Method to update job_details for Transform Jobs if from_v < v0.4 or None 
