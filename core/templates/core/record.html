@@ -413,7 +413,13 @@
 									<p>No additional information at this time for Harvest jobs.</p>
 								{% endif %}
 
-								<!-- TransformJob -->			
+								<!-- TransformJob -->
+								<!--
+								Update this section
+									- pluralize with Django methods
+									- add "order" column
+									- loop through and add, as before
+								-->
 								{% if record.job.job_type_family == 'TransformJob' %}
 
 									{% if job_details.transformation.id %}										
