@@ -124,4 +124,93 @@ class Command(BaseCommand):
 		logger.debug(results)
 
 
+class VersionUpdateHelper(object):
+
+	'''
+	Class to manage actions specific to version-to-version updates
+	'''
+
+	def __init__(self, from_v=None, to_v=None):
+
+		self.from_v = from_v
+		self.to_v = to_v
+
+
+	def v0_4__set_job_combine_version(self):
+
+		'''
+		Method to set combine_version in job_details for all < v0.4 Jobs
+		'''
+
+		# get Transform Jobs
+		jobs = Job.objects.all()
+
+		# loop through jobs
+		for job in jobs:
+
+			# check for combine_version key
+			if not job.job_details_dict.get('combine_version', False):
+
+				logger.debug('stamping combine_version %s to Job: %s' % (settings.COMBINE_VERSION, job))
+				
+
+	def v0_4__transform_job_details(self):
+
+		'''
+		Method to update job_details for Transform Jobs if from_v < v0.4 or None 
+		'''
+
+		# get Transform Jobs
+		trans_jobs = Job.objects.filter(job_type='TransformJob')
+
+		# loop through and check for single Transformation Scenario
+		for job in trans_jobs:
+
+			# check for 'transformation' key in job_details
+			if job.job_details_dict.get('transformation', False):
+
+				# get transform details
+				trans_details = job.job_details_dict.get('transformation')
+
+				# check for 'id' key at this level, indicating < v0.4
+				if 'id' in trans_details.keys():
+					
+					logger.debug('updating job_details for Job: %s' % job)
+
+					# create dictionary
+					trans_dict = {
+						'scenarios':[
+							{
+								'id':trans_details['id'],
+								'name':trans_details['name'],
+								'type':trans_details['type'],
+								'type_human':trans_details['type'],
+								'index':0
+							}
+						],
+						'scenarios_json':'[{"index":0,"trans_id":%s}]' % trans_details['id']
+					}
+
+					# update job_details
+					job.update_job_details({'transformation':trans_dict})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
