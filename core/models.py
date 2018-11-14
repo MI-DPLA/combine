@@ -6022,15 +6022,6 @@ class TransformJob(CombineJob):
 
 		# retrieve transformation, add details to job details
 		
-		# SINGLE TRANS		
-		# transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
-		# job_details['transformation'] = {
-		# 		'name':transformation.name,
-		# 		'type':transformation.transformation_type,
-		# 		'id':transformation.id
-		# 	}
-		
-		# MULT TRANS
 		# reconstitute json and init job_details
 		sel_trans = json.loads(job_params['sel_trans_json'])
 		job_details['transformation'] = {
@@ -8074,10 +8065,22 @@ class StateIOClient(object):
 
 			# check job details for transformation used
 			if 'transformation' in job.job_details_dict.keys():
-				try:
-					self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
-				except:
-					logger.warning('Could not export Transformation for job %s: %s' % (job, str(e)))
+
+				# handle job_details < v0.3.4
+				if 'id' in job.job_details_dict['transformation'].keys():
+					logger.debug('pre v0.3.4 Job detected, exporting single associated Transformation Scenario')
+					try:
+						self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
+					except Exception as e:
+						logger.warning('Could not export Transformation for job %s: %s' % (job, str(e)))
+
+				# else, handle job_details >= v0.3.4
+				else:
+					try:
+						for trans in job.job_details_dict['transformation']['scenarios']:
+							self.export_dict['transformations'].add(Transformation.objects.get(pk=int(trans['id'])))
+					except Exception as e:
+						logger.warning('Could not export Transformations for job %s: %s' % (job, str(e)))						
 
 
 		############################ 
@@ -8107,7 +8110,7 @@ class StateIOClient(object):
 				try:
 					# read OAI endpoint from params
 					self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
-				except:
+				except Exception as e:
 					logger.warning('Could not export OAIEndpoint for job %s: %s' % (job, str(e)))
 
 
@@ -8122,7 +8125,7 @@ class StateIOClient(object):
 			if 'rits' in job.job_details_dict.keys() and job.job_details_dict['rits'] != None:
 				try:
 					self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
-				except:
+				except Exception as e:
 					logger.warning('Could not export Record Identifier Transformation Scenario for job %s: %s' % (job, str(e)))
 
 
