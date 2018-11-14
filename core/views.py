@@ -3595,7 +3595,7 @@ class JobRecordDiffs(BaseDatatableView):
 		def render_column(self, row, column):
 
 			# record link
-			record_link = reverse(record, kwargs={
+			record_link = "%s#job_type_specific_tab" % reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id

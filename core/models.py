@@ -6044,7 +6044,9 @@ class TransformJob(CombineJob):
 			job_details['transformation']['scenarios'].append({
 				'name':transformation.name,
 				'type':transformation.transformation_type,
-				'id':transformation.id	
+				'type_human':transformation.get_transformation_type_display(),
+				'id':transformation.id,
+				'index':trans['index']
 			})
  
 		return job_details

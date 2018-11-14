@@ -604,39 +604,68 @@
 
 								<!-- TransformJob -->
 								{% if cjob.job.job_type_family == 'TransformJob' %}
-									<p>See below for a table of all records that were altered in some way during this Transform Job.  Click into a Record and then click the tab <strong>"Transform Details"</strong> to view detailed changes for that Record.</p>
+							
+									<div class="row">											
+										<div class="col-md-12">
+											<h4>Transformation Scenarios Used</h4>
+											<table class="table table-bordered table-hover">
+												<tr>
+													<th>Order Run</th>
+													<th>Transformation ID</th>													
+													<th>Name</th>
+													<th>Type</th>
+													<th>Transformation Payload</th>																
+												</tr>
+												{% for transformation in job_details.transformation.scenarios %}
+													<tr>
+														<td><code>{{transformation.index}}</code></td>
+														<td><code>{{transformation.id}}</code></td>
+														<td>{{transformation.name}}</td>
+														<td>{{transformation.type_human}}</td>
+														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>	
+													</tr>
+												{% endfor %}
+											</table>
+										</div>													
+									</div>
+					
+									<div class="row">											
+										<div class="col-md-12">
+											<h4>Transformed Records</h4>
+											<p>See below for a table of all records that were altered in some way during this Transform Job.  Clicking a Record will navigate directly to the Record's changes during Transformation.</p>
 
-									<!-- Record Diff table -->
-									<table id='job_record_diffs' class="table table-bordered table-hover dt_table">
-										<thead>
-											<th>DB ID</th>
-											<th>Record ID</th>
-										</thead>
-										<tbody></tbody>
-									</table>
+											<!-- Record Diff table -->
+											<table id='job_record_diffs' class="table table-bordered table-hover dt_table">
+												<thead>
+													<th>DB ID</th>
+													<th>Record ID</th>
+												</thead>
+												<tbody></tbody>
+											</table>
 
-									<script>
-										// Matches Datatable
-										$(document).ready(function() {
-										    matches_table = $('#job_record_diffs').dataTable({
-										        "processing": true,
-										        "serverSide": true,
-										        "ajax": "{% url 'job_record_diffs' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
-										        "searchDelay": 1000,
-										        "pageLength": 10,
-										        "order": [[ 1, "desc" ]],
-										        "columns": [
-										            {
-										            	title: "DB ID"
-									            	},
-										            {
-										            	title: "Record ID"
-										            }
-										        ],
-										    });
-										});
-									</script>
-
+											<script>
+												// Matches Datatable
+												$(document).ready(function() {
+												    matches_table = $('#job_record_diffs').dataTable({
+												        "processing": true,
+												        "serverSide": true,
+												        "ajax": "{% url 'job_record_diffs' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+												        "searchDelay": 1000,
+												        "pageLength": 10,
+												        "order": [[ 1, "desc" ]],
+												        "columns": [
+												            {
+												            	title: "DB ID"
+											            	},
+												            {
+												            	title: "Record ID"
+												            }
+												        ],
+												    });
+												});
+											</script>
+										</div>
+									</div>
 
 								{% endif %}
 
