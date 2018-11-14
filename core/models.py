@@ -6021,12 +6021,31 @@ class TransformJob(CombineJob):
 		job_details['input_job_ids'] = [int(job_id) for job_id in job_params.getlist('input_job_id') ]
 
 		# retrieve transformation, add details to job details
-		transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
+		
+		# SINGLE TRANS		
+		# transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
+		# job_details['transformation'] = {
+		# 		'name':transformation.name,
+		# 		'type':transformation.transformation_type,
+		# 		'id':transformation.id
+		# 	}
+		
+		# MULT TRANS
+		# reconstitute json and init job_details
+		sel_trans = json.loads(job_params['sel_trans_json'])
 		job_details['transformation'] = {
+			'transforms_json':job_params['sel_trans_json'],
+			'scenarios':[]
+		}
+
+		# loop through and add with name and type
+		for trans in sel_trans:
+			transformation = Transformation.objects.get(pk=int(trans['trans_id']))
+			job_details['transformation']['scenarios'].append({
 				'name':transformation.name,
 				'type':transformation.transformation_type,
-				'id':transformation.id
-			}
+				'id':transformation.id	
+			})
  
 		return job_details
 
