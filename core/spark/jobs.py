@@ -1115,32 +1115,83 @@ class TransformSpark(CombineSparkJob):
 		# fork as input_records		
 		input_records = records		
 
-		# get transformation
-		transformation = Transformation.objects.get(pk=int(self.job_details['transformation']['id']))
+		# SINGLE TRANS
+		# # get transformation
+		# transformation = Transformation.objects.get(pk=int(self.job_details['transformation']['id']))
 
-		# if xslt type transformation
-		if transformation.transformation_type == 'xslt':
-			records_trans = self.transform_xslt(transformation, records)
+		# # if xslt type transformation
+		# if transformation.transformation_type == 'xslt':
+		# 	records_trans = self.transform_xslt(transformation, records)
 
-		# if python type transformation
-		if transformation.transformation_type == 'python':
-			records_trans = self.transform_python(transformation, records)
+		# # if python type transformation
+		# if transformation.transformation_type == 'python':
+		# 	records_trans = self.transform_python(transformation, records)
 
-		# if OpenRefine type transformation
-		if transformation.transformation_type == 'openrefine':
+		# # if OpenRefine type transformation
+		# if transformation.transformation_type == 'openrefine':
 
-			# get XML2kvp settings from input Job
-			input_job_details = input_job.job_details_dict
-			input_job_fm_config = input_job_details['field_mapper_config']
+		# 	# get XML2kvp settings from input Job
+		# 	input_job_details = input_job.job_details_dict
+		# 	input_job_fm_config = input_job_details['field_mapper_config']
 
-			# pass config json
-			records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
+		# 	# pass config json
+		# 	records_trans = self.transform_openrefineactions(transformation, records, input_job_fm_config)
 
-		# convert back to DataFrame
-		records_trans = records_trans.toDF()
+		# # convert back to DataFrame
+		# records_trans = records_trans.toDF()
+
+		# # fingerprint Record document
+		# records_trans = self.fingerprint_records(records_trans)
+
+		# # write `transformed` column based on new fingerprint
+		# records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.combine_id == records_trans.combine_id, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(records_trans.fingerprint != input_records.fingerprint, pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
+
+		# # index records to DB and index to ElasticSearch
+		# self.save_records(			
+		# 	records_df=records_trans
+		# )
+
+		# # close job
+		# self.close_job()
+
+		# MULT TRANS
+
+		# get transformation json 
+		sel_trans = json.loads(self.job_details['transformation']['scenarios_json'])
+
+		# loop through oredered transformations
+		for trans in sel_trans:
+
+			# load transformation
+			transformation = Transformation.objects.get(pk=int(trans['trans_id']))
+			self.logger.info('Applying transformation #%s: %s' % (trans['index'], transformation.name))
+
+			# if xslt type transformation
+			if transformation.transformation_type == 'xslt':
+				records = self.transform_xslt(transformation, records)
+
+			# if python type transformation
+			if transformation.transformation_type == 'python':
+				records = self.transform_python(transformation, records)
+
+			# if OpenRefine type transformation
+			if transformation.transformation_type == 'openrefine':
+
+				# get XML2kvp settings from input Job
+				input_job_details = input_job.job_details_dict
+				input_job_fm_config = input_job_details['field_mapper_config']
+
+				# pass config json
+				records = self.transform_openrefineactions(transformation, records, input_job_fm_config)
+
+			# convert back to DataFrame
+			records = records.toDF()
 
 		# fingerprint Record document
-		records_trans = self.fingerprint_records(records_trans)
+		records = self.fingerprint_records(records)
+
+		# assign to records_trans
+		records_trans = records
 
 		# write `transformed` column based on new fingerprint
 		records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.combine_id == records_trans.combine_id, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']], pyspark_sql_functions.when(records_trans.fingerprint != input_records.fingerprint, pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))

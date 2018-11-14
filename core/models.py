@@ -6034,7 +6034,7 @@ class TransformJob(CombineJob):
 		# reconstitute json and init job_details
 		sel_trans = json.loads(job_params['sel_trans_json'])
 		job_details['transformation'] = {
-			'transforms_json':job_params['sel_trans_json'],
+			'scenarios_json':job_params['sel_trans_json'],
 			'scenarios':[]
 		}
 

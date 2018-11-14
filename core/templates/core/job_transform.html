@@ -86,14 +86,14 @@
 						</div>
 
 						<!-- single transformation selection -->
-						<div class="form-group">
+<!-- 						<div class="form-group">
 							<label for="transformation_id">Select Transformation Scenario to use</label>
 							<select class="form-control" id="transformation_id" name="transformation_id" required>
 								{% for transformation in transformations %}
 									<option value="{{ transformation.id }}">{{ transformation.name }} ({{ transformation.transformation_type }})</option>	
 								{% endfor %}						
 							</select>
-						</div>
+						</div> -->
 
 						<!-- multiple, sortable transformations -->
 						<input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
@@ -190,9 +190,7 @@
 
 								// set hidden input with serialized JSON
 								sel_trans_json = JSON.stringify(sel_trans_obj)
-								$("#sel_trans_json").val(sel_trans_json);
-
-								alert('continue with form submit?');
+								$("#sel_trans_json").val(sel_trans_json);								
 
 							});
 
