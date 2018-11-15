@@ -4,8 +4,7 @@
 	
 	<div class="row">
 		<div class="col-md-8">
-			<h2>Test Transformation Scenario</h2>			
-			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
+			<h2>Test Transformation Scenario <a href="http://combine.readthedocs.io/en/dev/configuration.html#transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></h2>
 		</div>
 	</div>
 
@@ -25,53 +24,187 @@
 		</div>
 	</div>
 
-	<!-- input paylaod -->
+	<!-- Testing Navigation -->
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Transformation Payload</h3>
-			<p>Paste/edit your XSLT or python script in the textbox below, or select from a pre-existing Transformation Scenario to test:</p>
-			
-			<!-- pre-existing Validation Scenario -->
-			<div class="row">
-				<div class="col-md-4">
-					<div class="form-group">
-						<label for="trans_exists">Select a pre-existing Validation Scenario</label>
-						<select id="trans_exists" class="form-control">
-							<option value=''></option>
-							{% for trans in transformation_scenarios %}
-								<option value="{{trans.id}}|{{trans.transformation_type}}">{{trans.name}}</option>
-							{% endfor %}
-						</select>
-					</div>
-				</div>
-			</div>
+			<ul class="nav nav-tabs">				
+				<li class="nav-item">
+					<a class="nav-link active" data-toggle="tab" href="#test_single_trans_tab">Test/Edit Single Transformation</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#test_mult_trans_tab">Test Multiple, Ordered Transformations</a>
+				</li>				
+			</ul>
+		</div>
+	</div>
 
-			<!-- Validation Scenario payload -->
+	
+	<!-- Tabbed Content -->
+	<div class="tab-content">
+
+		<!-- test/edit single -->
+		<div id="test_single_trans_tab" class="tab-pane full_width_tab active">
+			
 			<div class="row">
 				<div class="col-md-12">
-					<div class="form-group">				
-						<textarea id="trans_payload" class="form-control" rows="15"></textarea>
+					<h3>Test/Edit Single Transformation</h3>
+					<p>Paste/edit the Transformation content in the textbox below, or select from a pre-existing Transformation Scenario to test:</p>
+					
+					<!-- pre-existing Validation Scenario -->
+					<div class="row">
+						<div class="col-md-4">
+							<div class="form-group">
+								<label for="trans_exists">Select a pre-existing Validation Scenario</label>
+								<select id="trans_exists" class="form-control">
+									<option value=''></option>
+									{% for trans in transformation_scenarios %}
+										<option value="{{trans.id}}|{{trans.transformation_type}}">{{trans.name}}</option>
+									{% endfor %}
+								</select>
+							</div>
+						</div>
 					</div>
-				</div>
-			</div>
 
-			<!-- Validation Scenario type -->
-			<div class="row">
-				<div class="col-md-4">
-					<div class="form-group">
-						<label for="trans_type">Select Transformation Scenario type</label>
-						<select id="trans_type" class="form-control">
-							<option value=''></option>
-							<option value="xslt">XSLT</option>
-							<option value="python">Python code</option>
-							<option value="openrefine">OpenRefine Actions</option>
-						</select>
+					<!-- Validation Scenario payload -->
+					<div class="row">
+						<div class="col-md-12">
+							<div class="form-group">				
+								<textarea id="trans_payload" class="form-control" rows="15"></textarea>
+							</div>
+						</div>
 					</div>
+
+					<!-- Validation Scenario type -->
+					<div class="row">
+						<div class="col-md-4">
+							<div class="form-group">
+								<label for="trans_type">Select Transformation Scenario type</label>
+								<select id="trans_type" class="form-control">
+									<option value=''></option>
+									<option value="xslt">XSLT</option>
+									<option value="python">Python code</option>
+									<option value="openrefine">OpenRefine Actions</option>
+								</select>
+							</div>
+						</div>
+					</div>
+					
+					<button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
 				</div>
 			</div>
-			
-			<button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
 		</div>
+
+		<!-- test/edit single -->
+		<div id="test_mult_trans_tab" class="tab-pane full_width_tab">
+			
+			<div class="row">
+				<div class="col-md-12">
+					<h3>Test Multiple, Ordered Transformations</h3>
+
+					<!-- multiple, sortable transformations -->
+					<input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
+					<div class="row">
+						<div class="col-md-12">
+							<h4>Select Transformation Scenarios</h4>
+							<p>Use the tables below to select, and order, Transformation Scenarios that will be applied.</p>
+							<ol>
+								<li>First, <strong>drag</strong> desired Transformations from the table on the left to the table on the right.</li>
+								<li>Second, confirm the <strong>order</strong> of the selected Transformations in which they should be chained together and applied.</li>
+							</ol>
+
+						</div>
+					</div>
+					<div class="row">
+
+						<div class="col-md-6">
+							<h6>Available Transformations</h6>
+							<ul class="draggable_ul available_transforms">
+								{% for transformation in transformation_scenarios %}
+									<li data-trans_id={{transformation.id}} ><button class="draggable_button btn-outline-primary btn-sm">{{transformation.name}}</button></li>									
+								{% endfor %}
+							</ul>
+						</div>
+
+						<div class="col-md-6">
+							<h6>Selected Transformations</h6>
+							<ul class="draggable_ul selected_transforms">
+							</ul>
+						</div>
+
+					</div>
+					<script>
+
+						// init available transforms
+						var available = sortable('.available_transforms', {								
+							acceptFrom: ".selected_transforms, .available_transforms",								
+							items:'li',
+							forcePlaceholderSize: true,
+							placeholderClass: 'ph-class', 								
+						});
+
+						// init selected transforms
+						var selected = sortable('.selected_transforms', {								
+							acceptFrom: ".available_transforms, .selected_transforms",								
+							items:'li',
+							forcePlaceholderSize: true,
+							placeholderClass: 'ph-class', 
+						});
+
+						
+						function ser_sel_trans(){
+
+							/*
+							Function to serialize and capture ordered transformation ids									
+
+							Args:
+								None
+
+							Returns:
+								(JSON): prepares JSON of selected transformations with index and trans_id
+
+							*/
+
+							sel_trans_obj = [];
+
+							// serialize 
+							sel_trans = sortable('.selected_transforms', 'serialize')[0];
+
+							// loop
+							for (var i = 0; i < sel_trans.items.length; i++) {
+								trans = sel_trans.items[i];
+								sel_trans_obj.push({
+									'index':trans.index,
+									'trans_id':parseInt(trans.node.attributes['data-trans_id'].value)
+								})									
+							}
+
+							// debug
+							console.log(sel_trans_obj);
+
+							// return
+							return sel_trans_obj;
+
+						}
+
+						// serialize selections before form submit, write to hidden
+						$('#job_init_form').submit(function() {
+
+							console.log('serializing selected transformations');
+
+							// serialize
+							sel_trans_obj = ser_sel_trans();
+
+							// set hidden input with serialized JSON
+							sel_trans_json = JSON.stringify(sel_trans_obj)
+							$("#sel_trans_json").val(sel_trans_json);								
+
+						});
+
+					</script>
+				</div>
+			</div>
+		</div>
+
 	</div>
 
 	<!-- validation results -->

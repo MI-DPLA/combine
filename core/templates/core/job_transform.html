@@ -2,33 +2,6 @@
 
 {% block content %}
 
-	<style type="text/css">
-		
-		.draggable_button {
-			margin-top: 2px;
-			margin-bottom: 2px;
-		}
-
-		.draggable_ul {
-			min-height: 75px;
-			border-radius: 4px;
-			padding: 15px;
-			list-style-type: none;
-			cursor: move;
-			background-color:#f5f5f5;
-		}
-
-		.draggable_ul button {
-			cursor: move;
-		}
-
-		.ph-class {
-			border: 1px solid #343a40;
-			background-color: white;
-		}
-
-	</style>
-
 	<div class="row">
 		<div class="col-md-12">
 			<h3>New Job: <span class="font-weight-bold">Transform Document</span></h3>
@@ -78,22 +51,13 @@
 
 				<div class="row">
 					<div class="col-md-12">
+						
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
 							The following are <strong>required</strong> parameters for this Job
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 							</button>
 						</div>
-
-						<!-- single transformation selection -->
-<!-- 						<div class="form-group">
-							<label for="transformation_id">Select Transformation Scenario to use</label>
-							<select class="form-control" id="transformation_id" name="transformation_id" required>
-								{% for transformation in transformations %}
-									<option value="{{ transformation.id }}">{{ transformation.name }} ({{ transformation.transformation_type }})</option>	
-								{% endfor %}						
-							</select>
-						</div> -->
 
 						<!-- multiple, sortable transformations -->
 						<input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
