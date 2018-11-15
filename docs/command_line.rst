@@ -10,7 +10,7 @@ There are few command line contexts:
 
     - *A shell that loads all Django models, with some additional methods for interacting with Jobs, Records, etc.*
 
-  - `Django commands <#combine-django-commands>`_
+  - `Django management commands <#combine-django-management-commands>`_
 
     - *Combine specific actions that can be executed from bash shell, via Django's manage.py*
 
@@ -104,8 +104,8 @@ This is not a terribly efficient way to do this, but it demonstrates the data mo
 
 
 
-Combine Django Commands
-=======================
+Combine Django Management Commands
+==================================
 
 
 Combine Update
@@ -124,6 +124,20 @@ To update to another branch / release tag, e.g. ``v0.3.3``:
 .. code-block:: bash
 
     ./manage.py update --release v0.3.3
+
+The ``update`` management command also contains some "update code snippets" that are included with various releases to perform updates on models and pre-existing data where possible.  An example is the update from ``v0.3.x`` to ``v0.4`` that modified the ``job_details`` for all Transform Jobs.  Included in the ``update`` is a code snippet called ``v0_4__update_transform_job_details()`` that assists with this.  While running the update script as outlined above, this code snippet will fire and update Transform Jobs that do not meet the new data model.  
+
+These possible updates can be invoked *without* pulling changes or restarting any services by including the following flag:
+
+.. code-block:: bash
+
+    ./manage.py update --run_update_snippets_only
+
+Or, if even more granular control is needed, and the name of the snippets are known -- e.g. ``v0_4__update_transform_job_details`` -- they can be run independently of others:
+
+.. code-block:: bash
+
+    ./manage.py update --run_update_snippet v0_4__update_transform_job_details
 
 
 Full State Export

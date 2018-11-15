@@ -51,8 +51,8 @@ class Command(BaseCommand):
 
 		# update method
 		parser.add_argument(
-			'--update_snippet',
-			dest='update_snippet',
+			'--run_update_snippet',
+			dest='run_update_snippet',
 			help='Update code snippet to run',
 			type=str,
 			default=None
@@ -75,7 +75,7 @@ class Command(BaseCommand):
 		logger.debug('Updating Combine')
 
 		# run update snippet if passed
-		if options.get('update_snippet'):
+		if options.get('run_update_snippet'):
 			self.run_update_snippet(args, options)
 
 		# else, run update
@@ -176,12 +176,11 @@ class Command(BaseCommand):
 		vuh = VersionUpdateHelper()
 
 		# get snippet
-		snippet = getattr(vuh, options.get('update_snippet'), None)
-		if snippet != None:
-			logger.debug('Firing update snippet: %s' % options.get('update_snippet'))
+		snippet = getattr(vuh, options.get('run_update_snippet'), None)
+		if snippet != None:			
 			snippet()
 		else:
-			logger.debug('Update snippet "%s" could not be found' % options.get('update_snippet', None))
+			logger.debug('Update snippet "%s" could not be found' % options.get('run_update_snippet', None))
 
 
 
@@ -245,7 +244,7 @@ class VersionUpdateHelper(object):
 		Method to set combine_version as current Combine version in job_details
 		'''
 
-		logger.debug('v0_4__set_job_current_combine_version: setting Job combine_version to %s' % (settings.COMBINE_VERSION))
+		logger.debug('v0_4__set_job_current_combine_version: checking and setting Job combine_version to %s' % (settings.COMBINE_VERSION))
 
 		# get Transform Jobs
 		jobs = Job.objects.all()
@@ -253,10 +252,13 @@ class VersionUpdateHelper(object):
 		# loop through jobs
 		for job in jobs:
 
-			logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
+			# compare and stamp
+			if version.parse(job.job_details_dict['combine_version']) < version.parse(settings.COMBINE_VERSION):
 
-			# update job_details
-			job.update_job_details({'combine_version':settings.COMBINE_VERSION})
+				logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
+
+				# update job_details
+				job.update_job_details({'combine_version':settings.COMBINE_VERSION})
 
 
 	def v0_4__update_transform_job_details(self):
