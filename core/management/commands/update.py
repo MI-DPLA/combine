@@ -196,8 +196,9 @@ class VersionUpdateHelper(object):
 
 		# registered, ordered list of snippets
 		self.registered_snippets = [
-			self.v0_4__set_job_combine_version,
-			self.v0_4__update_transform_job_details
+			self.v0_4__set_job_baseline_combine_version,
+			self.v0_4__update_transform_job_details,
+			self.v0_4__set_job_current_combine_version,
 		]
 
 
@@ -215,13 +216,13 @@ class VersionUpdateHelper(object):
 				logger.debug(str(e))
 
 
-	def v0_4__set_job_combine_version(self):
+	def v0_4__set_job_baseline_combine_version(self):
 
 		'''
 		Method to set combine_version as v0.1 in job_details for all lacking version
 		'''
 
-		logger.debug('v0_4__set_job_combine_version: setting Job combine_version to v0.1 if not set')
+		logger.debug('v0_4__set_job_baseline_combine_version: setting Job combine_version to v0.1 if not set')
 
 		# get Transform Jobs
 		jobs = Job.objects.all()
@@ -236,6 +237,26 @@ class VersionUpdateHelper(object):
 
 				# update job_details
 				job.update_job_details({'combine_version':'v0.1'})
+
+
+	def v0_4__set_job_current_combine_version(self):
+
+		'''
+		Method to set combine_version as current Combine version in job_details
+		'''
+
+		logger.debug('v0_4__set_job_current_combine_version: setting Job combine_version to %s' % (settings.COMBINE_VERSION))
+
+		# get Transform Jobs
+		jobs = Job.objects.all()
+
+		# loop through jobs
+		for job in jobs:
+
+			logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
+
+			# update job_details
+			job.update_job_details({'combine_version':settings.COMBINE_VERSION})
 
 
 	def v0_4__update_transform_job_details(self):
@@ -255,7 +276,7 @@ class VersionUpdateHelper(object):
 			# check version
 			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):	
 
-				logger.debug('Transform Job "%s" is Combine version %s, updating' % (job, job.job_details_dict['combine_version']))			
+				logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (job, job.job_details_dict['combine_version']))			
 
 				# check for 'transformation' key in job_details
 				if job.job_details_dict.get('transformation', False):
@@ -266,7 +287,7 @@ class VersionUpdateHelper(object):
 					# check for 'id' key at this level, indicating < v0.4
 					if 'id' in trans_details.keys():
 						
-						logger.debug('updating job_details for Job: %s' % job)
+						logger.debug('Transform Job "%s" requires job details updating, performing' % job)
 
 						# create dictionary
 						trans_dict = {
