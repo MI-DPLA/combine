@@ -8068,17 +8068,6 @@ class StateIOClient(object):
 			# check job details for transformation used
 			if 'transformation' in job.job_details_dict.keys():
 
-				# # handle job_details < v0.4
-				# if 'id' in job.job_details_dict['transformation'].keys():
-				# 	logger.debug('pre v0.3.4 Job detected, exporting single associated Transformation Scenario')
-				# 	try:
-				# 		self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
-				# 	except Exception as e:
-				# 		logger.warning('Could not export Transformation for job %s: %s' % (job, str(e)))
-
-				# # else, handle job_details >= v0.4
-				# else:
-
 				try:
 					for trans in job.job_details_dict['transformation']['scenarios']:
 						self.export_dict['transformations'].add(Transformation.objects.get(pk=int(trans['id'])))
