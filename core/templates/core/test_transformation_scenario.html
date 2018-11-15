@@ -92,6 +92,140 @@
 					<button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
 				</div>
 			</div>
+
+			<script>				
+
+				// capture pre-existing validation scenarios and paste
+				$(document).ready(function(){
+					$("#trans_exists").change(function(){
+
+						if (this.value != ''){
+
+							// get trans info
+							var trans_info = this.value.split('|');
+
+							// update validation dropdown type
+							$("#trans_type").val(trans_info[1]);
+
+							// get payload
+							$.ajax({
+								type: "GET",
+								url: "/combine/configuration/transformation/TRANS_ID/payload".replace('TRANS_ID', trans_info[0]),
+								dataType:'text',
+								success: function(data){
+									$("#trans_payload").val(data);
+								}			
+							});	
+						}
+
+						else {
+							
+							// clear validation dropdown type
+							$("#trans_type").val(this.value);
+
+							// clear payload box
+							$("#trans_payload").val('');
+						}
+
+					})
+				});
+
+				$(document).ready(function(){
+					$("#test_trans").click(function(){				
+
+						// change this to dynamically grab from selected rows in records table
+						var db_id = sel_row_id;
+						if (typeof db_id == 'undefined') {
+							alert('Click a row from the table at the top to run a Transformation Test against...');
+							return false;
+						}
+
+						// get trans_payload
+						var trans_payload = $("#trans_payload").val();
+
+						// get trans_type
+						var trans_type = $("#trans_type").val();
+
+						// issue ajax request and get transformation results
+						$.ajax({
+							type: "POST",
+							url: "{% url 'test_transformation_scenario' %}",
+							data: {
+								'db_id':db_id,
+								'trans_payload':trans_payload,
+								'trans_type':trans_type,
+								'trans_name':'temp_trans',
+								'response_type':'transformed_doc',
+								'trans_test_type':'single',
+								'csrfmiddlewaretoken': '{{ csrf_token }}'
+							},
+							dataType:'text',
+							success: function(data){
+
+								// add raw data to div
+								$("#trans_results").html(escapeHtmlEntities(data));
+
+								// init hljs						
+								$("#trans_results").each(function(i, block) {
+									hljs.highlightBlock(block);
+								});
+							}			
+						});
+
+						// issue ajax request and get combined diff
+						$.ajax({
+							type: "POST",
+							url: "{% url 'test_transformation_scenario' %}",
+							data: {
+								'db_id':db_id,
+								'trans_payload':trans_payload,
+								'trans_type':trans_type,
+								'trans_name':'temp_trans',
+								'response_type':'combined_html',
+								'trans_test_type':'single',
+								'csrfmiddlewaretoken': '{{ csrf_token }}'
+							},
+							dataType:'text',
+							success: function(data){
+								// add raw data to div
+								$("#combined_diff_results").html(data);
+							}			
+						});
+
+						// issue ajax request and get side_by_side diff
+						$.ajax({
+							type: "POST",
+							url: "{% url 'test_transformation_scenario' %}",
+							data: {
+								'db_id':db_id,
+								'trans_payload':trans_payload,
+								'trans_type':trans_type,
+								'trans_name':'temp_trans',
+								'response_type':'side_by_side_html',
+								'trans_test_type':'single',
+								'csrfmiddlewaretoken': '{{ csrf_token }}'
+							},
+							dataType:'text',
+							success: function(data){
+								// add raw data to div
+								$("#side_by_side_diff_results").html(data);
+							}			
+						});
+
+						// https://stackoverflow.com/a/10825766/1196358
+						function escapeHtmlEntities (str) {
+						  // No jQuery, so use string replace.
+						  return str
+						    .replace(/&/g, '&amp;')
+						    .replace(/>/g, '&gt;')
+						    .replace(/</g, '&lt;')
+						    .replace(/"/g, '&quot;');
+						}
+
+					})
+				});
+				
+			</script>
 		</div>
 
 		<!-- test/edit single -->
@@ -101,8 +235,7 @@
 				<div class="col-md-12">
 					<h3>Test Multiple, Ordered Transformations</h3>
 
-					<!-- multiple, sortable transformations -->
-					<input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
+					<!-- multiple, sortable transformations -->					
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Select Transformation Scenarios</h4>
@@ -183,28 +316,98 @@
 									'index':trans.index,
 									'trans_id':parseInt(trans.node.attributes['data-trans_id'].value)
 								})									
-							}
-
-							// debug
-							console.log(sel_trans_obj);
+							}							
 
 							// return
 							return sel_trans_obj;
 
 						}
 
-						// serialize selections before form submit, write to hidden
-						$('#job_init_form').submit(function() {
+						$(document).ready(function(){
+							$("#test_mult_trans").click(function(){				
 
-							console.log('serializing selected transformations');
+								// change this to dynamically grab from selected rows in records table
+								var db_id = sel_row_id;
+								if (typeof db_id == 'undefined') {
+									alert('Click a row from the table at the top to run a Transformation Test against...');
+									return false;
+								}
 
-							// serialize
-							sel_trans_obj = ser_sel_trans();
+								// serialize transformation selections
+								sel_trans_obj = ser_sel_trans();								
+								sel_trans_json = JSON.stringify(sel_trans_obj)								
 
-							// set hidden input with serialized JSON
-							sel_trans_json = JSON.stringify(sel_trans_obj)
-							$("#sel_trans_json").val(sel_trans_json);								
+								// issue ajax request and get transformation results
+								$.ajax({
+									type: "POST",
+									url: "{% url 'test_transformation_scenario' %}",
+									data: {
+										'db_id':db_id,
+										'sel_trans_json':sel_trans_json,
+										'response_type':'transformed_doc',
+										'trans_test_type':'multiple',
+										'csrfmiddlewaretoken': '{{ csrf_token }}'
+									},
+									dataType:'text',
+									success: function(data){
 
+										// add raw data to div
+										$("#trans_results").html(escapeHtmlEntities(data));
+
+										// init hljs						
+										$("#trans_results").each(function(i, block) {
+											hljs.highlightBlock(block);
+										});
+									}			
+								});
+
+								// issue ajax request and get combined diff
+								$.ajax({
+									type: "POST",
+									url: "{% url 'test_transformation_scenario' %}",
+									data: {
+										'db_id':db_id,
+										'sel_trans_json':sel_trans_json,
+										'response_type':'combined_html',
+										'trans_test_type':'multiple',
+										'csrfmiddlewaretoken': '{{ csrf_token }}'
+									},
+									dataType:'text',
+									success: function(data){
+										// add raw data to div
+										$("#combined_diff_results").html(data);
+									}			
+								});
+
+								// issue ajax request and get side_by_side diff
+								$.ajax({
+									type: "POST",
+									url: "{% url 'test_transformation_scenario' %}",
+									data: {
+										'db_id':db_id,
+										'sel_trans_json':sel_trans_json,
+										'response_type':'side_by_side_html',
+										'trans_test_type':'multiple',
+										'csrfmiddlewaretoken': '{{ csrf_token }}'
+									},
+									dataType:'text',
+									success: function(data){
+										// add raw data to div
+										$("#side_by_side_diff_results").html(data);
+									}			
+								});
+
+								// https://stackoverflow.com/a/10825766/1196358
+								function escapeHtmlEntities (str) {
+								  // No jQuery, so use string replace.
+								  return str
+								    .replace(/&/g, '&amp;')
+								    .replace(/>/g, '&gt;')
+								    .replace(/</g, '&lt;')
+								    .replace(/"/g, '&quot;');
+								}
+
+							})
 						});
 
 					</script>
@@ -278,135 +481,6 @@
 			} );
 		});
 
-		// capture pre-existing validation scenarios and paste
-		$(document).ready(function(){
-			$("#trans_exists").change(function(){
-
-				if (this.value != ''){
-
-					// get trans info
-					var trans_info = this.value.split('|');
-
-					// update validation dropdown type
-					$("#trans_type").val(trans_info[1]);
-
-					// get payload
-					$.ajax({
-						type: "GET",
-						url: "/combine/configuration/transformation/TRANS_ID/payload".replace('TRANS_ID', trans_info[0]),
-						dataType:'text',
-						success: function(data){
-							$("#trans_payload").val(data);
-						}			
-					});	
-				}
-
-				else {
-					
-					// clear validation dropdown type
-					$("#trans_type").val(this.value);
-
-					// clear payload box
-					$("#trans_payload").val('');
-				}
-
-			})
-		});
-
-		$(document).ready(function(){
-			$("#test_trans").click(function(){				
-
-				// change this to dynamically grab from selected rows in records table
-				var db_id = sel_row_id;
-				if (typeof db_id == 'undefined') {
-					alert('Click a row from the table at the top to run a Transformation Test against...');
-				}
-
-				// get trans_payload
-				var trans_payload = $("#trans_payload").val();
-
-				// get trans_type
-				var trans_type = $("#trans_type").val();
-
-				// issue ajax request and get transformation results
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_transformation_scenario' %}",
-					data: {
-						'db_id':db_id,
-						'trans_payload':trans_payload,
-						'trans_type':trans_type,
-						'trans_name':'temp_trans',
-						'response_type':'transformed_doc',
-						'trans_test_type':'single',
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'text',
-					success: function(data){
-
-						// add raw data to div
-						$("#trans_results").html(escapeHtmlEntities(data));
-
-						// init hljs						
-						$("#trans_results").each(function(i, block) {
-							hljs.highlightBlock(block);
-						});
-					}			
-				});
-
-				// issue ajax request and get combined diff
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_transformation_scenario' %}",
-					data: {
-						'db_id':db_id,
-						'trans_payload':trans_payload,
-						'trans_type':trans_type,
-						'trans_name':'temp_trans',
-						'response_type':'combined_html',
-						'trans_test_type':'single',
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'text',
-					success: function(data){
-						// add raw data to div
-						$("#combined_diff_results").html(data);
-					}			
-				});
-
-				// issue ajax request and get side_by_side diff
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_transformation_scenario' %}",
-					data: {
-						'db_id':db_id,
-						'trans_payload':trans_payload,
-						'trans_type':trans_type,
-						'trans_name':'temp_trans',
-						'response_type':'side_by_side_html',
-						'trans_test_type':'single',
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'text',
-					success: function(data){
-						// add raw data to div
-						$("#side_by_side_diff_results").html(data);
-					}			
-				});
-
-				// https://stackoverflow.com/a/10825766/1196358
-				function escapeHtmlEntities (str) {
-				  // No jQuery, so use string replace.
-				  return str
-				    .replace(/&/g, '&amp;')
-				    .replace(/>/g, '&gt;')
-				    .replace(/</g, '&lt;')
-				    .replace(/"/g, '&quot;');
-				}
-
-			})
-		});
-
 		// run post records DT table draw specific to transformation testing
 		function run_view_specific_dt_draw(dt){
 
@@ -423,7 +497,7 @@
 			{% endif %}
 			
 		}
-		
+
 	</script>
 
 {% endblock %}
