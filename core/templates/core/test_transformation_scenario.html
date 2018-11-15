@@ -132,6 +132,13 @@
 						</div>
 
 					</div>
+
+					<div class="row">
+						<div class="col-md-12">
+							<p><button class="btn btn-success btn-sm" id="test_mult_trans">Test Transformations</button></p>
+						</div>
+					</div>
+
 					<script>
 
 						// init available transforms
@@ -331,6 +338,7 @@
 						'trans_type':trans_type,
 						'trans_name':'temp_trans',
 						'response_type':'transformed_doc',
+						'trans_test_type':'single',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
@@ -356,6 +364,7 @@
 						'trans_type':trans_type,
 						'trans_name':'temp_trans',
 						'response_type':'combined_html',
+						'trans_test_type':'single',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',
@@ -375,6 +384,7 @@
 						'trans_type':trans_type,
 						'trans_name':'temp_trans',
 						'response_type':'side_by_side_html',
+						'trans_test_type':'single',
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'text',

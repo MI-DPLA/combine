@@ -2229,20 +2229,42 @@ def test_transformation_scenario(request):
 		record = models.Record.objects.get(id=request.POST.get('db_id'))
 
 		try:
-			
-			# init new transformation scenario
-			trans = models.Transformation(
-				name='temp_trans_%s' % str(uuid.uuid4()),
-				payload=request.POST.get('trans_payload'),
-				transformation_type=request.POST.get('trans_type')
-			)
-			trans.save()
 
-			# validate with record
-			trans_results = trans.transform_record(record)			
+			if request.POST.get('trans_test_type') == 'multiple':
+				
+				########################################################################################################
+				# MULTIPLE
+				########################################################################################################
 
-			# delete temporary trans
-			trans.delete()
+				'''
+				  - loop through passed sel_trans_json
+					  - init Transformation
+					  - transform same record instance, never saving, but modifying
+				'''
+				
+				########################################################################################################
+				pass
+
+			elif request.POST.get('trans_test_type') == 'single':
+				
+				########################################################################################################
+				# SINGLE
+				########################################################################################################
+				# init new transformation scenario
+				trans = models.Transformation(
+					name='temp_trans_%s' % str(uuid.uuid4()),
+					payload=request.POST.get('trans_payload'),
+					transformation_type=request.POST.get('trans_type')
+				)
+				trans.save()
+
+
+				# validate with record
+				trans_results = trans.transform_record(record)			
+
+				# delete temporary trans
+				trans.delete()
+				########################################################################################################
 
 			# if raw transformation results
 			if response_type == 'transformed_doc':
