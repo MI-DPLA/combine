@@ -16,6 +16,8 @@ from core.models import *
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
+
 class Command(BaseCommand):
 
 	'''
@@ -56,6 +58,13 @@ class Command(BaseCommand):
 			default=None
 		)
 
+		# update method
+		parser.add_argument(
+			'--run_update_snippets_only',
+			action='store_true',
+			help='Run update snippets only during update'			
+		)
+
 	
 	def handle(self, *args, **options):
 
@@ -80,31 +89,34 @@ class Command(BaseCommand):
 		Method to handle branch/tagged release update
 		'''
 
-		# git pull		
-		os.system('git pull')
+		# if not running update snippets only
+		if not options.get('run_update_snippets_only', False):
 
-		# checkout release if provided		
-		if options.get('release', None) != None:
-			release = options['release']
-			logger.debug('release/branch provided, checking out: %s' % release)
+			# git pull
+			os.system('git pull')
 
-			# git checkout			
-			os.system('git checkout %s' % release)
+			# checkout release if provided		
+			if options.get('release', None) != None:
+				release = options['release']
+				logger.debug('release/branch provided, checking out: %s' % release)
 
-		# install requirements as combine user		
-		os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
+				# git checkout			
+				os.system('git checkout %s' % release)
 
-		# collect django static
-		os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
+			# install requirements as combine user		
+			os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
-		# restart gunicorn
-		self._restart_gunicorn()
+			# collect django static
+			os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
 
-		# restart livy and livy session
-		self._restart_livy()
+			# restart gunicorn
+			self._restart_gunicorn()
 
-		# restart celery background tasks
-		self._restart_celery()
+			# restart livy and livy session
+			self._restart_livy()
+
+			# restart celery background tasks
+			self._restart_celery()
 
 		# run update code snippets
 		vuh = VersionUpdateHelper()
@@ -180,17 +192,13 @@ class VersionUpdateHelper(object):
 	'''
 
 
-	def __init__(self, from_v=None, to_v=None):
+	def __init__(self):
 
-		self.from_v = from_v
-		self.to_v = to_v
-
-
-	# registered, ordered list of snippets
-	registered_snippets = [
-		self.v0_4__set_job_combine_version,
-		self.v0_4__update_transform_job_details
-	]
+		# registered, ordered list of snippets
+		self.registered_snippets = [
+			self.v0_4__set_job_combine_version,
+			self.v0_4__update_transform_job_details
+		]
 
 
 	def run_update_snippets(self):
@@ -233,7 +241,7 @@ class VersionUpdateHelper(object):
 	def v0_4__update_transform_job_details(self):
 
 		'''
-		Method to update job_details for Transform Jobs if from_v < v0.4 or None 
+		Method to update job_details for Transform Jobs if from_v < v0.4 or None
 		'''
 
 		logger.debug('v0_4__update_transform_job_details: updating job details for pre v0.4 Transform Jobs')
@@ -245,9 +253,9 @@ class VersionUpdateHelper(object):
 		for job in trans_jobs:
 
 			# check version
-			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):
+			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):	
 
-				logger.debug('found ')
+				logger.debug('Transform Job "%s" is Combine version %s, updating' % (job, job.job_details_dict['combine_version']))			
 
 				# check for 'transformation' key in job_details
 				if job.job_details_dict.get('transformation', False):
