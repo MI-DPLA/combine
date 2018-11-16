@@ -6021,12 +6021,24 @@ class TransformJob(CombineJob):
 		job_details['input_job_ids'] = [int(job_id) for job_id in job_params.getlist('input_job_id') ]
 
 		# retrieve transformation, add details to job details
-		transformation = Transformation.objects.get(pk=int(job_params['transformation_id']))
+		
+		# reconstitute json and init job_details
+		sel_trans = json.loads(job_params['sel_trans_json'])
 		job_details['transformation'] = {
+			'scenarios_json':job_params['sel_trans_json'],
+			'scenarios':[]
+		}
+
+		# loop through and add with name and type
+		for trans in sel_trans:
+			transformation = Transformation.objects.get(pk=int(trans['trans_id']))
+			job_details['transformation']['scenarios'].append({
 				'name':transformation.name,
 				'type':transformation.transformation_type,
-				'id':transformation.id
-			}
+				'type_human':transformation.get_transformation_type_display(),
+				'id':transformation.id,
+				'index':trans['index']
+			})
  
 		return job_details
 
@@ -7840,7 +7852,9 @@ class StateIOClient(object):
 		os.mkdir(self.export_path)
 
 		# init export manifest dictionary
+
 		self.export_manifest = {
+			'combine_version':getattr(settings,'COMBINE_VERSION', None),
 			'export_id':export_id,
 			'export_path':self.export_path,
 			'export_name':export_name,
@@ -8053,10 +8067,12 @@ class StateIOClient(object):
 
 			# check job details for transformation used
 			if 'transformation' in job.job_details_dict.keys():
+
 				try:
-					self.export_dict['transformations'].add(Transformation.objects.get(pk=(job.job_details_dict['transformation']['id'])))
-				except:
-					logger.warning('Could not export Transformation for job %s: %s' % (job, str(e)))
+					for trans in job.job_details_dict['transformation']['scenarios']:
+						self.export_dict['transformations'].add(Transformation.objects.get(pk=int(trans['id'])))
+				except Exception as e:
+					logger.warning('Could not export Transformations for job %s: %s' % (job, str(e)))
 
 
 		############################ 
@@ -8086,7 +8102,7 @@ class StateIOClient(object):
 				try:
 					# read OAI endpoint from params
 					self.export_dict['oai_endpoints'].add(OAIEndpoint.objects.get(pk=job.job_details_dict['oai_params']['id']))
-				except:
+				except Exception as e:
 					logger.warning('Could not export OAIEndpoint for job %s: %s' % (job, str(e)))
 
 
@@ -8101,7 +8117,7 @@ class StateIOClient(object):
 			if 'rits' in job.job_details_dict.keys() and job.job_details_dict['rits'] != None:
 				try:
 					self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
-				except:
+				except Exception as e:
 					logger.warning('Could not export Record Identifier Transformation Scenario for job %s: %s' % (job, str(e)))
 
 
@@ -8410,6 +8426,7 @@ class StateIOClient(object):
 
 		# init import_manifest
 		self.import_manifest = {
+			'combine_version':getattr(settings,'COMBINE_VERSION', None),
 			'import_id':self.import_id,
 			'import_name':import_name,
 			'export_path':export_path,

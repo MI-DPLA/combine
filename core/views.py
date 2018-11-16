@@ -2227,22 +2227,47 @@ def test_transformation_scenario(request):
 
 		# get record
 		record = models.Record.objects.get(id=request.POST.get('db_id'))
+		record_iter = models.Record.objects.get(id=request.POST.get('db_id'))		
 
 		try:
-			
-			# init new transformation scenario
-			trans = models.Transformation(
-				name='temp_trans_%s' % str(uuid.uuid4()),
-				payload=request.POST.get('trans_payload'),
-				transformation_type=request.POST.get('trans_type')
-			)
-			trans.save()
 
-			# validate with record
-			trans_results = trans.transform_record(record)			
+			# testing multiple, chained transformations
+			if request.POST.get('trans_test_type') == 'multiple':
+				
+				# get and rehydrate sel_trans_json
+				sel_trans = json.loads(request.POST.get('sel_trans_json'))				
 
-			# delete temporary trans
-			trans.delete()
+				# loop through transformations
+				for trans in sel_trans:
+
+					# init Transformation instance
+					trans = models.Transformation.objects.get(pk=int(trans['trans_id']))
+
+					# transform with record
+					trans_results = trans.transform_record(record_iter)
+
+					# set to record.document for next iteration
+					record_iter.document = trans_results
+
+				# finally, fall in line with trans_results as record_iter document string
+				trans_results = record_iter.document
+
+			# testing single transformation
+			elif request.POST.get('trans_test_type') == 'single':
+				
+				# init new transformation scenario
+				trans = models.Transformation(
+					name='temp_trans_%s' % str(uuid.uuid4()),
+					payload=request.POST.get('trans_payload'),
+					transformation_type=request.POST.get('trans_type')
+				)
+				trans.save()
+
+				# transform with record
+				trans_results = trans.transform_record(record)
+
+				# delete temporary trans
+				trans.delete()
 
 			# if raw transformation results
 			if response_type == 'transformed_doc':
@@ -2275,10 +2300,12 @@ def test_transformation_scenario(request):
 				return HttpResponse(diff_html, content_type="text/xml")
 			
 		except Exception as e:
-
 			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
-			trans.delete()
-
+			try:
+				if request.POST.get('trans_test_type') == 'single':
+					trans.delete()
+			except:
+				logger.debug('could not delete temporary transformation')
 			return HttpResponse(str(e), content_type="text/plain")
 
 
@@ -3595,7 +3622,7 @@ class JobRecordDiffs(BaseDatatableView):
 		def render_column(self, row, column):
 
 			# record link
-			record_link = reverse(record, kwargs={
+			record_link = "%s#job_type_specific_tab" % reverse(record, kwargs={
 						'org_id':row.job.record_group.organization.id,
 						'record_group_id':row.job.record_group.id,
 						'job_id':row.job.id, 'record_id':row.id

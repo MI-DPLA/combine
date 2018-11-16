@@ -413,35 +413,32 @@
 									<p>No additional information at this time for Harvest jobs.</p>
 								{% endif %}
 
-								<!-- TransformJob -->			
+								<!-- TransformJob -->								
 								{% if record.job.job_type_family == 'TransformJob' %}
 
-									{% if job_details.transformation.id %}										
-										<div class="row">											
-											<div class="col-md-12">
-												<h4>Transformation Scenario Used</h4>
-												<table class="table table-bordered table-hover">
+									<div class="row">											
+										<div class="col-md-12">
+											<h4>Transformation Scenarios Used</h4>
+											<table class="table table-bordered table-hover">
+												<tr>
+													<th>Order Applied</th>
+													<th>Transformation ID</th>													
+													<th>Name</th>
+													<th>Type</th>
+													<th>Transformation Payload</th>																
+												</tr>
+												{% for transformation in record.job.job_details_dict.transformation.scenarios %}
 													<tr>
-														<th>ID</th>
-														<th>Name</th>
-														<th>Type</th>
-														<th>Transformation Payload</th>
-														<th>Input Document</th>
+														<td><code>{{transformation.index}}</code></td>
+														<td><code>{{transformation.id}}</code></td>
+														<td>{{transformation.name}}</td>
+														<td>{{transformation.type_human}}</td>
+														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>	
 													</tr>
-													<tr>
-														<td>{{job_details.transformation.id}}</td>
-														<td>{{job_details.transformation.name}}</td>
-														<td>{{job_details.transformation.get_transformation_type_display}}</td>
-														<td><a href="{% url 'transformation_scenario_payload' trans_id=job_details.transformation.id %}">View</a></td>
-														<td><a href="{% url 'record_document' org_id=job_details.input_record.job.record_group.organization.id record_group_id=job_details.input_record.job.record_group.id job_id=job_details.input_record.job.id record_id=job_details.input_record.id %}">View (Record #{{ job_details.input_record.id }})</a></td>
-													</tr>
-												</table>
-											</div>
-											<div class="col-md-12">
-												<p><a href="{% url 'test_transformation_scenario' %}?q={{ job_details.input_record.id }}&transformation_scenario={{ job_details.transformation.id }}|{{job_details.transformation.transformation_type}}"><button type="button" class="btn btn-success btn-sm">Re-run Transformation on Input Record</button></a></p>
-											</div>
-										</div>
-									{% endif %}
+												{% endfor %}
+											</table>
+										</div>													
+									</div>
 
 									<div class="row">
 										<div class="col-md-12">
