@@ -4,6 +4,17 @@ Command Line
 
 Though Combine is designed primarily as a GUI interface, the command line provides a potentially powerful and rich interface to the models and methods that make up the Combine data model.  This documentation is meant to expose some of those patterns and conventions.
 
+**Note:** For all contexts, the OS ``combine`` user is assumed, using the Combine `Miniconda <https://conda.io/miniconda.html>`__ python environement, which can be activated from any filepath location by
+typing:
+
+.. code-block:: bash
+
+    # become combine user, if not already
+    su combine
+
+    # activate combine python environment
+    source activate combine
+
 There are few command line contexts:
 
   - `Django shell <#django-python-shell>`_
@@ -19,17 +30,6 @@ There are few command line contexts:
     - *A pyspark shell that is useful for interacting with Jobs and Records via a spark context.*
 
 These are described in more detail below.
-
-**Note:** For all contexts, the OS ``combine`` user is assumed, using the Combine `Miniconda <https://conda.io/miniconda.html>`__ python environement, which can be activated from any filepath location by
-typing:
-
-.. code-block:: bash
-
-    # become combine user, if not already
-    su combine
-
-    # activate combine python environment
-    source activate combine
 
 
 Django Python Shell
