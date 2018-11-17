@@ -39,7 +39,7 @@
 
 			{# if cjob is present, limit to Job records only #}
 			{% if cjob %}
-				"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id success_filter=0 %}",
+				"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
 			{# else, return all records #}
 			{% else %}
 				"ajax": "{% url 'all_records_dt_json' %}",
