@@ -3132,7 +3132,11 @@ class DTRecordsJson(BaseDatatableView):
 				job = models.Job.objects.get(pk=self.kwargs['job_id'])
 
 				# return filtered queryset
-				return job.get_records(success=None)
+				if 'success_filter' in self.kwargs.keys():
+					success_filter = bool(int(self.kwargs['success_filter']))
+				else:
+					success_filter = None
+				return job.get_records(success=success_filter)
 
 			# else, return all records
 			else:

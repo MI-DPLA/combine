@@ -829,7 +829,7 @@ class Job(models.Model):
 			records = Record.objects(job_id=self.id)
 
 		else:
-			records = Record.objects(job_id=self.id, success=True)			
+			records = Record.objects(job_id=self.id, success=success)			
 
 		# return
 		return records
