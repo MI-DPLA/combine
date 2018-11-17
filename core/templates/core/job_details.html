@@ -5,7 +5,7 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_notes_update').fadeToggle(); return false;"><i class="la la-pencil"></i></a></h3>			
+			<h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_notes_update').fadeToggle(); return false;"><i class="la la-pencil"></i></a></h3>
 		</div>
 		<div id="job_name_notes_update" class="col-md-12" style="display:none;">
 
@@ -123,7 +123,7 @@
 					{% if record_count_details.errors > 0 %}
 						<td style="background-color: #ff9898;">{{ record_count_details.errors }} <a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button style="margin-left:10px;" class="btn btn-danger btn-sm">View Errors</button></a></td>
 					{% else %}
-						<td style="background-color: #cbffcb;">None</td>
+						<td style="background-color: #cbffcb;">{{ record_count_details.errors }}</td>
 					{% endif %}
 					<td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
 				</tr>
