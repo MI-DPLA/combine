@@ -9,6 +9,7 @@ import pdb
 from pprint import pprint, pformat
 import re
 import time
+import uuid
 import xmltodict
 
 
@@ -30,17 +31,41 @@ class XML2kvp(object):
 	test_xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:internet="http://internet.com">
 	<foo>
-		<bar>42</bar>
-		<baz>109</baz>
+		<bar>88888888888</bar>	
 	</foo>
 	<foo>
 		<bar>42</bar>
 		<baz>109</baz>
+	</foo>
+	<foo>
+		<bar sibid="abc123">42</bar>
+		<baz sibid="abc123">109</baz>
 	</foo>
 	<foo>
 		<bar>9393943</bar>
 		<baz>3489234893</baz>
 	</foo>
+	<alligator>
+		<tail>
+			<quality>medium</quality>
+		</tail>		
+	</alligator>
+	<alligator>
+		<tail>
+			<quality>long</quality>
+		</tail>
+		<legs>
+			<quality>short</quality>
+		</legs>
+	</alligator>
+	<alligator>
+		<tail>
+			<quality>very long</quality>
+		</tail>
+		<legs>
+			<quality>very short</quality>
+		</legs>
+	</alligator>
 	<tronic type='tonguetwister'>Sally sells seashells by the seashore.</tronic>
 	<tronic type='tonguetwister'>Red leather, yellow leather.</tronic>
 	<tronic>You may disregard</tronic>
@@ -133,6 +158,10 @@ class XML2kvp(object):
 				"description": "Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``]",
 				"type": "boolean"
 			},
+			"include_sibling_id": {
+				"description": "Boolean to append matching identifiers, as part of key name, to sibling nodes, e.g. ``foo_bar`` and `foo_baz`` might become ``foo(abc123)_bar(def456)`` and ``foo(abc123)_baz(def456)``",
+				"type": "boolean"
+			},
 			"include_meta": {
 				"description": "Boolean to include ``xml2kvp_meta`` field with output that contains all these configurations [Default: ``false``]",
 				"type": "boolean"
@@ -180,6 +209,10 @@ class XML2kvp(object):
 			"skip_root": {
 				"description": "Boolean to determine if the XML root element will be included in output field names [Default: ``false``]",
 				"type": "boolean"
+			},
+			"repeating_element_suffix_count": {
+				"description": "Boolean to suffix field name with incrementing integer (after first instance, which does not receieve a suffix), e.g. XML ``<foo><bar>42</bar><bar>109</bar></foo>`` would map to ``foo_bar``:``42``, ``foo_bar_#1``:``109``  [Default: ``false``, Overrides: ``skip_repeating_values``]",
+				"type": "boolean"
 			}
 		}
 	}	
@@ -207,6 +240,7 @@ class XML2kvp(object):
 		self.include_attributes=[]
 		self.include_all_attributes=False
 		self.include_meta=False
+		self.include_sibling_id=False
 		self.include_xml_prop=False		
 		self.node_delim='_'
 		self.ns_prefix_delim='|'
@@ -219,6 +253,7 @@ class XML2kvp(object):
 		self.skip_attribute_ns_declarations=True
 		self.skip_repeating_values=True
 		self.skip_root=False
+		self.repeating_element_suffix_count=False
 
 		# list of properties that are allowed to be overwritten with None
 		arg_none_allowed = []
@@ -254,6 +289,7 @@ class XML2kvp(object):
 			'exclude_elements',
 			'include_attributes',
 			'include_all_attributes',
+			'include_sibling_id',
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
@@ -263,15 +299,22 @@ class XML2kvp(object):
 			'split_values_on_all_fields',
 			'split_values_on_fields',
 			'skip_attribute_ns_declarations',
-			'skip_repeating_values'
+			'skip_repeating_values',
+			'skip_root',
+			'repeating_element_suffix_count'
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
 
 
-	def _xml_dict_parser(self, in_k, in_v, hops=[]):
+	def _xml_dict_parser(self, in_k, in_v, hops=[], sibling_hash=None):
 
-		if type(in_v) == OrderedDict:		
+		# handle Dictionary
+		if type(in_v) == OrderedDict:
+
+			# init hash self
+			if self.include_sibling_id:
+				sibling_hash =  uuid.uuid4().hex[:6]
 
 			hop_len = len(hops)
 			for k, v in in_v.items():
@@ -290,35 +333,37 @@ class XML2kvp(object):
 							self._process_kvp(temp_hops, v)
 
 						if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
-							hops = self._format_and_append_hop(hops, 'attribute', k, v)
+							hops = self._format_and_append_hop(hops, 'attribute', k, v, sibling_hash=sibling_hash)
 
 					else:
-						hops = self._format_and_append_hop(hops, 'element', k, None)
+						hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
 						# recurse
-						self._xml_dict_parser(k, v, hops=hops)
+						self._xml_dict_parser(k, v, hops=hops, sibling_hash=sibling_hash)
 
 						# reset hops
 						hops = hops[:hop_len]
 
+		# handle list
 		elif type(in_v) == list:
 
 			hop_len = len(hops)
 			for d in in_v:
 
 				# recurse
-				self._xml_dict_parser(None, d, hops=hops)
+				self._xml_dict_parser(None, d, hops=hops, sibling_hash=sibling_hash)
 				
 				# drop hops back one
 				hops = hops[:hop_len]
 
+		# handle str or int, a value
 		elif type(in_v) in [str,int]:
 
 			if in_k != '#text':
 				self._process_kvp(hops, in_v)
 
 
-	def _format_and_append_hop(self, hops, hop_type, k, v):
+	def _format_and_append_hop(self, hops, hop_type, k, v, sibling_hash=None):
 
 		# handle elements
 		if hop_type == 'element':
@@ -340,6 +385,10 @@ class XML2kvp(object):
 					hop = k.split(':')[1]
 				else:
 					hop = k
+
+			# if include_sibling_id, append
+			if self.include_sibling_id:
+				hop = '%s(%s)' % (hop, sibling_hash)
 
 		# handle elements
 		if hop_type == 'attribute':
@@ -467,13 +516,25 @@ class XML2kvp(object):
 				self.kvp_dict[k] = value
 
 			# pre-existing, but not yet list, convert
-			elif k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
+			elif not self.repeating_element_suffix_count and k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:				
 
 				if self.skip_repeating_values and value == self.kvp_dict[k]:
 					pass				
 				else:
 					tval = self.kvp_dict[k]
 					self.kvp_dict[k] = [tval, value]
+			
+			# suffix key with incrementing int
+			elif self.repeating_element_suffix_count and k in self.kvp_dict.keys():
+
+				# check for other numbers
+				suffix_count = 1
+				while True:
+					if '%s%s#%s' % (k, self.node_delim, suffix_count) in self.kvp_dict.keys():
+						suffix_count += 1
+					else:
+						break
+				self.kvp_dict['%s%s#%s' % (k, self.node_delim, suffix_count)] = value
 
 			# already list, append
 			else:
@@ -605,10 +666,16 @@ class XML2kvp(object):
 		if not handler:
 			handler = XML2kvp(**kwargs)
 
-		# for each column, reconstitue columnName --> XPath				
+		# for each column, reconstitue columnName --> XPath		
 		k_parts = k.split(handler.node_delim)
+
+		# if skip root		
 		if handler.skip_root:
 			k_parts = k_parts[1:]
+
+		# if include_sibling_id, strip 6 char id from end		
+		if handler.include_sibling_id:
+			k_parts = [ part[:-8] if not part.startswith('@') else part for part in k_parts ]
 
 		# set initial on_attrib flag
 		on_attrib = False
@@ -620,7 +687,7 @@ class XML2kvp(object):
 			xpath = '/' # begin with single slash, will get appended to
 
 		# determine if mixing of namespaced and non-namespaced elements
-		ns_used = False
+		ns_used = False		
 		for part in k_parts:
 			if handler.ns_prefix_delim in part:
 				ns_used = True
@@ -641,8 +708,7 @@ class XML2kvp(object):
 					xpath += '/'
 			
 				# handle parts without namespace, mingled among namespaced elements
-				if ns_used and handler.ns_prefix_delim not in part:
-					# logger.debug('namespaces are used, but %s is not namespaced, handling for lxml xpath' % part)
+				if ns_used and handler.ns_prefix_delim not in part:					
 					part = '*[local-name() = "%s"]' % part
 				else:
 					# replace delimiter with colon for prefix
@@ -733,15 +799,20 @@ class XML2kvp(object):
 		# generate xpaths values
 		self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
 
-		for k,v in self.k_xpath_dict.items():			
-			matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
-			values = self.kvp_dict[k]
-			if type(values) == str:
-				values_len = 1
-			elif type(values) in [tuple,list]:
-				values_len = len(values)    
-			if len(matched_elements) != values_len:				
-				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k, v, values_len, len(matched_elements)))
+		# check instances and report
+		for k,v in self.k_xpath_dict.items():
+			try:					
+				matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
+				values = self.kvp_dict[k]
+				if type(values) == str:
+					values_len = 1
+				elif type(values) in [tuple,list]:
+					values_len = len(values)    
+				if len(matched_elements) != values_len:				
+					logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k, v, values_len, len(matched_elements)))
+			except etree.XPathEvalError:
+				logger.debug('problem with xpath statement: %s' % v)
+				logger.debug('could not calculate %s --> %s' % (k, v))
 
 
 	@staticmethod
