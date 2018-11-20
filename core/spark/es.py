@@ -321,7 +321,7 @@ class XML2kvpMapper(BaseMapper):
 			if 'add_literals' not in self.field_mapper_config.keys():
 				self.field_mapper_config['add_literals'] = {}
 
-
+			# add literals
 			self.field_mapper_config['add_literals'].update({
 
 				# add temporary id field

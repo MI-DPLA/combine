@@ -619,6 +619,12 @@ class XML2kvp(object):
 		else:
 			xpath = '/' # begin with single slash, will get appended to
 
+		# determine if mixing of namespaced and non-namespaced elements
+		ns_used = False
+		for part in k_parts:
+			if handler.ns_prefix_delim in part:
+				ns_used = True
+
 		# loop through pieces and build xpath
 		for part in k_parts:
 
@@ -634,8 +640,13 @@ class XML2kvp(object):
 				else:
 					xpath += '/'
 			
-				# replace delimiter with colon for prefix
-				part = part.replace(handler.ns_prefix_delim,':')
+				# handle parts without namespace, mingled among namespaced elements
+				if ns_used and handler.ns_prefix_delim not in part:
+					# logger.debug('namespaces are used, but %s is not namespaced, handling for lxml xpath' % part)
+					part = '*[local-name() = "%s"]' % part
+				else:
+					# replace delimiter with colon for prefix
+					part = part.replace(handler.ns_prefix_delim,':')
 
 				# append to xpath string
 				xpath += '%s' % part
@@ -722,15 +733,15 @@ class XML2kvp(object):
 		# generate xpaths values
 		self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
 
-		for k,v in self.k_xpath_dict.items():
+		for k,v in self.k_xpath_dict.items():			
 			matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
 			values = self.kvp_dict[k]
 			if type(values) == str:
 				values_len = 1
-			elif type(values) == list:
+			elif type(values) in [tuple,list]:
 				values_len = len(values)    
-			if len(matched_elements) != values_len:
-				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k,v,len(matched_elements),values_len))
+			if len(matched_elements) != values_len:				
+				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k, v, values_len, len(matched_elements)))
 
 
 	@staticmethod

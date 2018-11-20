@@ -2336,7 +2336,7 @@ class Record(mongoengine.Document):
 		return record_stages
 
 
-	def get_es_doc(self):
+	def get_es_doc(self, drop_combine_fields=False):
 
 		'''
 		Return indexed ElasticSearch document as dictionary.
@@ -2353,12 +2353,16 @@ class Record(mongoengine.Document):
 		s = Search(using=es_handle, index='j%s' % self.job_id)
 		s = s.query('match', _id=str(self.id))
 
+		# drop combine fields if flagged
+		if drop_combine_fields:
+			s = s.source(exclude=['combine_id','db_id','fingerprint','publish_set_id','record_id'])
+
 		# execute search and capture as dictionary
 		try:
 			sr = s.execute()
 			sr_dict = sr.to_dict()
 		except NotFoundError:
-			logger.debug('ES query 404')
+			logger.debug('mapped fields for record not found in ElasticSearch')
 			return {}
 
 		# return
@@ -2366,6 +2370,26 @@ class Record(mongoengine.Document):
 			return sr_dict['hits']['hits'][0]['_source']
 		except:
 			return {}
+
+
+	@property
+	def mapped_fields(self):
+
+		'''
+		Return mapped fields as property
+		'''
+
+		return self.get_es_doc()
+
+
+	@property
+	def document_mapped_fields(self):
+
+		'''
+		Method to return mapped fields, dropping internal Combine fields
+		'''
+
+		return self.get_es_doc(drop_combine_fields=True)
 
 
 	def get_dpla_mapped_fields(self):
