@@ -95,6 +95,10 @@ class XML2kvp(object):
 		<goose>202</goose>
 		<it>run!</it>
 	</ordering>
+	<pattern type="striped">
+		<application>streets</application>
+		<dizzying>true</dizzying>
+	</pattern>
 </root>
 	'''
 
@@ -692,8 +696,8 @@ class XML2kvp(object):
 			if handler.ns_prefix_delim in part:
 				ns_used = True
 
-		# loop through pieces and build xpath
-		for part in k_parts:
+		# loop through pieces and build xpath		
+		for i, part in enumerate(k_parts):
 
 			# if not attribute, assume node hop
 			if not part.startswith('@'):
@@ -714,8 +718,12 @@ class XML2kvp(object):
 					# replace delimiter with colon for prefix
 					part = part.replace(handler.ns_prefix_delim,':')
 
-				# append to xpath string
-				xpath += '%s' % part
+				# if part not followed by attribute, append no attribute qualifier
+				if ((i+1) < len(k_parts) and not k_parts[(i+1)].startswith('@')) or ((i+1) == len(k_parts) and not part.startswith('@')):
+					part += '[not(@*)]'
+
+				# append to xpath			
+				xpath += part
 
 			# if attribute, assume part of previous element and build
 			else:
