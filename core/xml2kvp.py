@@ -38,8 +38,8 @@ class XML2kvp(object):
 		<baz>109</baz>
 	</foo>
 	<foo>
-		<bar sibid="abc123">42</bar>
-		<baz sibid="abc123">109</baz>
+		<bar>42</bar>
+		<baz>109</baz>
 	</foo>
 	<foo>
 		<bar>9393943</bar>
@@ -70,9 +70,12 @@ class XML2kvp(object):
 	<tronic type='tonguetwister'>Red leather, yellow leather.</tronic>
 	<tronic>You may disregard</tronic>
 	<goober scrog='true' tonk='false'>
-		<depths>
+		<people>
 			<plunder>Willy Wonka</plunder>
-		</depths>
+		</people>
+		<cities>
+			<plunder>City of Atlantis</plunder>
+		</cities>
 	</goober>
 	<nested_attribs type='first'>
 		<another type='second'>paydirt</another>
@@ -95,7 +98,7 @@ class XML2kvp(object):
 		<goose>202</goose>
 		<it>run!</it>
 	</ordering>
-	<pattern type="striped">
+	<pattern pattern_type="striped">
 		<application>streets</application>
 		<dizzying>true</dizzying>
 	</pattern>
@@ -316,36 +319,43 @@ class XML2kvp(object):
 		# handle Dictionary
 		if type(in_v) == OrderedDict:
 
-			# init hash self
-			if self.include_sibling_id:
-				sibling_hash =  uuid.uuid4().hex[:6]
+			# init hash self			
+			sibling_hash =  uuid.uuid4().hex[:6]
 
+			# handle all attributes for node first
+			for k, v in in_v.items():
+				if k.startswith('@'):
+					
+					# handle capture_attribute_values
+					if len(self.capture_attribute_values) > 0 and k.lstrip('@') in self.capture_attribute_values:							
+						temp_hops = hops.copy()
+						temp_hops.append("%s@" % k)
+						self._process_kvp(temp_hops, v)
+
+					# format and append if including
+					if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
+						hops = self._format_and_append_hop(hops, 'attribute', k, v, sibling_hash=sibling_hash)					
+
+			# set hop length that will be returned to
 			hop_len = len(hops)
+
+			# loop through remaining element and/or text nodes
 			for k, v in in_v.items():
 
 				# add key to hops
 				if k == '#text':
 					self._process_kvp(hops, v)
 
-				else:				
-					if k.startswith('@'):
+				else:
 
-						# handle capture_attribute_values
-						if len(self.capture_attribute_values) > 0 and k.lstrip('@') in self.capture_attribute_values:							
-							temp_hops = hops.copy()
-							temp_hops.append("%s@" % k)
-							self._process_kvp(temp_hops, v)
-
-						if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
-							hops = self._format_and_append_hop(hops, 'attribute', k, v, sibling_hash=sibling_hash)
-
-					else:
+					# recurse with non attribute nodes (element or text)
+					if not k.startswith('@'):
 						hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
 						# recurse
 						self._xml_dict_parser(k, v, hops=hops, sibling_hash=sibling_hash)
 
-						# reset hops
+						# reset hops						
 						hops = hops[:hop_len]
 
 		# handle list
