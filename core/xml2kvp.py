@@ -837,7 +837,7 @@ class XML2kvp(object):
 	def test_xml_to_kvp_speed(iterations, kwargs):
 
 		stime=time.time()
-		for x in range(0,iterations):
+		for x in range(0, iterations):
 			XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
 		print("avg for %s iterations: %s" % (iterations, (time.time()-stime) / float(iterations)))
 
