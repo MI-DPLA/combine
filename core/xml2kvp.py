@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from copy import deepcopy
 import dashtable
+import hashlib
 import json
 from lxml import etree
 import logging
@@ -263,7 +264,7 @@ class XML2kvp(object):
 		self.skip_attribute_ns_declarations=True
 		self.skip_repeating_values=True
 		self.skip_root=False
-		self.repeating_element_suffix_count=False
+		self.repeating_element_suffix_count=False		
 
 		# list of properties that are allowed to be overwritten with None
 		arg_none_allowed = []
@@ -311,19 +312,19 @@ class XML2kvp(object):
 			'skip_attribute_ns_declarations',
 			'skip_repeating_values',
 			'skip_root',
-			'repeating_element_suffix_count'
+			'repeating_element_suffix_count',			
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
 
 
-	def _xml_dict_parser(self, in_k, in_v, hops=[], sibling_hash=None):
+	def _xml_dict_parser(self, in_k, in_v, hops=[]):
 
 		# handle Dictionary
 		if type(in_v) == OrderedDict:
-
+			
 			# init hash self			
-			sibling_hash =  uuid.uuid4().hex[:6]
+			sibling_hash =  uuid.uuid4().hex[:6]			
 
 			# handle all attributes for node first
 			for k, v in in_v.items():
@@ -337,7 +338,7 @@ class XML2kvp(object):
 
 					# format and append if including
 					if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
-						hops = self._format_and_append_hop(hops, 'attribute', k, v, sibling_hash=sibling_hash)					
+						hops = self._format_and_append_hop(hops, 'attribute', k, v)
 
 			# set hop length that will be returned to
 			hop_len = len(hops)
@@ -356,7 +357,7 @@ class XML2kvp(object):
 						hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
 						# recurse
-						self._xml_dict_parser(k, v, hops=hops, sibling_hash=sibling_hash)
+						self._xml_dict_parser(k, v, hops=hops)
 
 						# reset hops						
 						hops = hops[:hop_len]
@@ -368,7 +369,7 @@ class XML2kvp(object):
 			for d in in_v:
 
 				# recurse
-				self._xml_dict_parser(None, d, hops=hops, sibling_hash=sibling_hash)
+				self._xml_dict_parser(None, d, hops=hops)
 				
 				# drop hops back one
 				hops = hops[:hop_len]
