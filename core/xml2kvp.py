@@ -1189,13 +1189,13 @@ class XMLRecord(object):
 		return metrics
 
 
-	def serialize(self):
+	def serialize(self, pretty_print=True):
 
 		'''
 		Method to serialize self.root_node to XML
 		'''
 
-		return etree.tostring(self.root_node).decode('utf-8')
+		return etree.tostring(self.root_node, pretty_print=pretty_print).decode('utf-8')
 
 
 
