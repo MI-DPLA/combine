@@ -1,6 +1,7 @@
 # xml2kvp
 
 from collections import OrderedDict
+from copy import deepcopy
 import dashtable
 import json
 from lxml import etree
@@ -691,6 +692,7 @@ class XML2kvp(object):
 			hops = []
 			for i, node in enumerate(nodes):
 
+				# write hops
 				if not node.startswith('@'):
 
 					# handle namespaces
@@ -704,7 +706,7 @@ class XML2kvp(object):
 					
 					# handle non-namespaced
 					else:						
-						node_ele = etree.Element(node, nsmap=handler.nsmap)
+						node_ele = etree.Element(node, nsmap=handler.nsmap)					
 
 					# check for attributes
 					attribs = {}
@@ -712,7 +714,7 @@ class XML2kvp(object):
 						while True:
 							for attrib in nodes[i+1:]:
 								if attrib.startswith('@'):									
-									attrib_name, attrib_value = attrib.split('=') # will this be problem if equal signs are allowed in value?
+									attrib_name, attrib_value = attrib.split('=') # <!-------------- will this be problem if equal signs are allowed in value?
 									attribs[attrib_name.lstrip('@')] = attrib_value
 								else:
 									break
@@ -724,8 +726,36 @@ class XML2kvp(object):
 					# append to hops
 					hops.append(node_ele)
 
-			# append list of nodes to xml_record
-			xml_record.node_lists.append(hops)
+			# write values and number of nodes
+			# handle single value
+			if type(v) == str:
+
+				# write value 
+				hops[-1].text = v
+
+				# append single list of nodes to xml_record
+				xml_record.node_lists.append(hops)
+
+			# handle multiple values # <------------ might need to work with splitting values here
+			elif type(v) in [list,tuple]:
+
+				# loop through values
+				for value in v:
+
+					# copy hops
+					hops_copy = deepcopy(hops)
+
+					# write value 
+					hops_copy[-1].text = value
+
+					# append single list of nodes to xml_record
+					xml_record.node_lists.append(hops_copy)
+
+		# tether parent and child nodes
+		xml_record.tether_node_lists()
+
+		# merge all root nodes
+		xml_record.merge_root_nodes()
 
 		# return
 		return xml_record
@@ -987,8 +1017,51 @@ class XMLRecord(object):
 		Returns:
 			writes parent node to self.nodes
 		'''
-
+		
 		for node_list in self.node_lists:
+			
+			# loop through nodes
+			parent_node = None
+			for i,node in enumerate(node_list):
+
+				# append to parent
+				if i > 0:
+					parent_node.append(node)
+
+				# set as new parent and continue
+				parent_node = node
+
+			# add root node from each list to self.nodes
+			self.nodes.append(node_list[0])
+
+
+	def merge_root_nodes(self):
+
+		'''
+		Method to merge all nodes from self.nodes
+		'''
+
+		# set root with arbitrary first node
+		self.root_node = self.nodes[0]
+
+		# loop through others, add children to root node
+		for node in self.nodes[1:]:
+
+			# get children
+			children = node.getchildren()
+
+			# loop through and add to root node
+			for child in children:
+				self.root_node.append(child)
+
+
+	def serialize(self):
+
+		'''
+		Method to serialize self.root_node to XML
+		'''
+
+		return etree.tostring(self.root_node).decode('utf-8')
 
 
 
