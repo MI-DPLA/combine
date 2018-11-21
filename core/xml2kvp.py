@@ -250,6 +250,7 @@ class XML2kvp(object):
 		self.include_sibling_id=False
 		self.include_xml_prop=False		
 		self.node_delim='_'
+		self.nsmap = {}
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
 		self.remove_copied_value=False
@@ -298,6 +299,7 @@ class XML2kvp(object):
 			'include_all_attributes',
 			'include_sibling_id',
 			'node_delim',
+			'nsmap',
 			'ns_prefix_delim',
 			'remove_copied_key',
 			'remove_copied_value',
@@ -665,8 +667,68 @@ class XML2kvp(object):
 
 
 	@staticmethod
-	def kvp_to_xml():
-		pass
+	def kvp_to_xml(kvp, handler=None, return_handler=False, **kwargs):
+		
+		'''
+		Method to generate XML from KVP
+
+		Args:
+			kvp (dict): Dictionary of key value pairs
+			handler (XML2kvp): Instance of XML2kvp client
+			return_handler (boolean): Return XML if False, handler if True
+		'''
+
+		# init XMLRecord
+		xml_record = XMLRecord()
+
+		# loop through items
+		for k,v in kvp.items():
+
+			# split on delim
+			nodes = k.split(handler.node_delim)			
+
+			# loop through nodes and create XML element nodes
+			hops = []
+			for i, node in enumerate(nodes):
+
+				if not node.startswith('@'):
+
+					# handle namespaces
+					if handler.ns_prefix_delim in node:
+
+						# get prefix and tag name
+						prefix, tag_name = node.split(handler.ns_prefix_delim)					
+
+						# write
+						node_ele = etree.Element('{%s}%s' % (handler.nsmap[prefix], tag_name), nsmap=handler.nsmap)
+					
+					# handle non-namespaced
+					else:						
+						node_ele = etree.Element(node, nsmap=handler.nsmap)
+
+					# check for attributes
+					attribs = {}
+					if i+1 < len(nodes) and nodes[i+1].startswith('@'):
+						while True:
+							for attrib in nodes[i+1:]:
+								if attrib.startswith('@'):									
+									attrib_name, attrib_value = attrib.split('=') # will this be problem if equal signs are allowed in value?
+									attribs[attrib_name.lstrip('@')] = attrib_value
+								else:
+									break
+							break
+					
+					# write to element
+					node_ele.attrib.update(attribs)
+
+					# append to hops
+					hops.append(node_ele)
+
+			# append list of nodes to xml_record
+			xml_record.node_lists.append(hops)
+
+		# return
+		return xml_record
 
 
 	@staticmethod
@@ -901,6 +963,33 @@ class XML2kvp(object):
 		'''
 
 		return desc
+
+
+
+class XMLRecord(object):
+
+	'''
+	Class to scaffold and create XML records from XML2kvp kvp
+	'''
+
+	def __init__(self):
+
+		self.root_node = None
+		self.node_lists = []
+		self.nodes = []
+
+
+	def tether_node_lists(self):
+
+		'''
+		Method to tether nodes from node_lists as parent/child
+
+		Returns:
+			writes parent node to self.nodes
+		'''
+
+		for node_list in self.node_lists:
+
 
 
 
