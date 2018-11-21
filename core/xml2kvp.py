@@ -17,6 +17,8 @@ import xmltodict
 # init logger
 logger = logging.getLogger(__name__)
 
+sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
+
 
 class XML2kvp(object):
 
@@ -695,21 +697,44 @@ class XML2kvp(object):
 				# write hops
 				if not node.startswith('@'):
 
-					# handle namespaces
+					# init attributes
+					attribs = {}
+
+					# handle namespaces for tag name
 					if handler.ns_prefix_delim in node:
 
 						# get prefix and tag name
 						prefix, tag_name = node.split(handler.ns_prefix_delim)					
 
 						# write
-						node_ele = etree.Element('{%s}%s' % (handler.nsmap[prefix], tag_name), nsmap=handler.nsmap)
+						tag_name = '{%s}%s' % (handler.nsmap[prefix], tag_name)
 					
-					# handle non-namespaced
+					# else, handle non-namespaced
 					else:						
-						node_ele = etree.Element(node, nsmap=handler.nsmap)					
+						tag_name = node
 
-					# check for attributes
-					attribs = {}
+					# handle sibling hashes
+					if handler.include_sibling_id:
+						
+						# run tag_name through sibling_hash_regex
+						matches = re.match(sibling_hash_regex, tag_name)
+						if matches != None:
+							groups = matches.groups()
+
+							# if tag_name and sibling hash, append to attribs
+							if groups[0] and groups[1]:
+								tag_name = groups[0]
+								sibling_hash = groups[1]
+								attribs['sibling_hash_id'] = sibling_hash
+							
+							# else, assume sibling hash not present and retrieve tag name
+							elif groups[2]:
+								tag_name = groups[2]
+
+					# init element
+					node_ele = etree.Element(tag_name, nsmap=handler.nsmap)
+
+					# check for attributes					
 					if i+1 < len(nodes) and nodes[i+1].startswith('@'):
 						while True:
 							for attrib in nodes[i+1:]:
