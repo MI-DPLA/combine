@@ -253,7 +253,6 @@ class XML2kvp(object):
 		self.include_sibling_id=False
 		self.include_xml_prop=False		
 		self.node_delim='_'
-		self.nsmap = {}
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
 		self.remove_copied_value=False
@@ -302,7 +301,6 @@ class XML2kvp(object):
 			'include_all_attributes',
 			'include_sibling_id',
 			'node_delim',
-			'nsmap',
 			'ns_prefix_delim',
 			'remove_copied_key',
 			'remove_copied_value',
@@ -594,22 +592,33 @@ class XML2kvp(object):
 
 	def _parse_xml_input(self, xml_input):
 
+		'''
+		Note: self may be handler instance passsed
+		'''
+
 		# if string, save
 		if type(xml_input) == str:
 			if self.include_xml_prop:
-				self.xml = etree.fromstring(xml_input)
+				try:
+					self.xml = etree.fromstring(xml_input)
+				except:
+					self.xml = etree.fromstring(xml_input.encode('utf-8'))
 				self._parse_nsmap()
-			return xml_input
+			return (xml_input)
 
 		# if etree object, to string and save
 		if type(xml_input) in [etree._Element, etree._ElementTree]:
 			if self.include_xml_prop:
 				self.xml = xml_input
 				self._parse_nsmap()
-			return etree.tostring(xml_input).decode('utf-8')
+			return (etree.tostring(xml_input).decode('utf-8'))
 
 
 	def _parse_nsmap(self):
+
+		'''
+		Note: self may be handler instance passsed
+		'''
 
 		# get namespace map, popping None values
 		_nsmap = self.xml.nsmap.copy()
@@ -715,7 +724,7 @@ class XML2kvp(object):
 
 					# handle sibling hashes
 					if handler.include_sibling_id:
-						
+
 						# run tag_name through sibling_hash_regex
 						matches = re.match(sibling_hash_regex, tag_name)
 						if matches != None:
