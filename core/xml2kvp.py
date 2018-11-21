@@ -768,7 +768,7 @@ class XML2kvp(object):
 			if type(v) == str:
 
 				# write value 
-				hops[-1].text = v
+				hops[-1].text = str(v)
 
 				# append single list of nodes to xml_record
 				xml_record.node_lists.append(hops)
@@ -783,7 +783,7 @@ class XML2kvp(object):
 					hops_copy = deepcopy(hops)
 
 					# write value 
-					hops_copy[-1].text = value
+					hops_copy[-1].text = str(value)
 
 					# append single list of nodes to xml_record
 					xml_record.node_lists.append(hops_copy)
