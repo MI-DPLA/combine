@@ -1051,6 +1051,7 @@ class XMLRecord(object):
 		self.root_node = None
 		self.node_lists = []
 		self.nodes = []
+		self.merge_metrics = {}
 
 
 	def tether_node_lists(self):
@@ -1124,15 +1125,14 @@ class XMLRecord(object):
 				if 'sibling_hash_id' in node.attrib and node.attrib.get('sibling_hash_id') not in finished_sibling_hashes:
 
 					# get hash
-					sibling_hash = node.attrib.get('sibling_hash_id')
-					logger.debug('merging siblings for hash: %s' % sibling_hash)
+					sibling_hash = node.attrib.get('sibling_hash_id')					
 
 					# group siblings
-					self._siblings_xpath_merge(sibling_hash)
+					self.merge_metrics[sibling_hash] = self._siblings_xpath_merge(sibling_hash)
 
 
 
-	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True):
+	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
 
 		'''
 		Internal method to handle the actual movement of sibling nodes
@@ -1149,6 +1149,10 @@ class XMLRecord(object):
 
 		# xpath query to find all siblings in tree
 		siblings = self.root_node.xpath('//*[@sibling_hash_id="%s"]' % sibling_hash, namespaces=self.root_node.nsmap)
+
+		# metrics
+		removed = 0
+		moved = 0
 
 		# if results
 		if len(siblings) > 0:
@@ -1169,8 +1173,20 @@ class XMLRecord(object):
 				if remove_empty_nodes:
 					if len(parent.getchildren()) == 0:
 						parent.getparent().remove(parent)
+						removed += 1
 
-			
+				# bump counter
+				moved += 1
+
+			# remove sibling_hash_id
+			if remove_sibling_hash_attrib:
+				for sibling in siblings:
+					sibling.attrib.pop('sibling_hash_id')
+
+		# return metrics
+		metrics = {'sibling_hash':sibling_hash, 'removed':removed, 'moved':moved}
+		return metrics
+
 
 	def serialize(self):
 
