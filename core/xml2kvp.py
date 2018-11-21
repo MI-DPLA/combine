@@ -690,6 +690,9 @@ class XML2kvp(object):
 			return_handler (boolean): Return XML if False, handler if True
 		'''
 
+		# DEBUG
+		stime = time.time()
+
 		# init XMLRecord
 		xml_record = XMLRecord()
 
@@ -790,6 +793,13 @@ class XML2kvp(object):
 
 		# merge all root nodes
 		xml_record.merge_root_nodes()
+
+		# if sibling hashes included, attempt to merge
+		if handler.include_sibling_id:
+			xml_record.merge_siblings()
+
+		# DEBUG
+		logger.debug('kvp_to_xml elapsed: %s' % (time.time()-stime))
 
 		# return
 		return xml_record
@@ -1088,6 +1098,79 @@ class XMLRecord(object):
 			for child in children:
 				self.root_node.append(child)
 
+
+	def merge_siblings(self):
+
+		'''
+		Method to merge all siblings if sibling_hash provided
+		'''
+
+		# init list of finished hashes
+		finished_sibling_hashes = []
+
+		# loop through root children
+		for node_path in self.root_node.getchildren():
+
+			# get all descendents (should be simple hierarchy)
+			nodes = list(node_path.iterdescendants())
+
+			# reverse, to deal with most granular first
+			nodes.reverse()
+
+			# loop through nodes
+			for node in nodes:
+
+				# check if sibling hash present as attribute, and not already completed
+				if 'sibling_hash_id' in node.attrib and node.attrib.get('sibling_hash_id') not in finished_sibling_hashes:
+
+					# get hash
+					sibling_hash = node.attrib.get('sibling_hash_id')
+					logger.debug('merging siblings for hash: %s' % sibling_hash)
+
+					# group siblings
+					self._siblings_xpath_merge(sibling_hash)
+
+
+
+	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True):
+
+		'''
+		Internal method to handle the actual movement of sibling nodes
+			- performs XPath query
+			- moves siblings to parent of 0th result
+
+		Args:
+			sibling_hash (str): Sibling has to perform Xpath query with
+			remove_empty_nodes (bool): If True, remove nodes that no longer contain children
+
+		Returns:
+
+		'''
+
+		# xpath query to find all siblings in tree
+		siblings = self.root_node.xpath('//*[@sibling_hash_id="%s"]' % sibling_hash, namespaces=self.root_node.nsmap)
+
+		# if results
+		if len(siblings) > 0:
+
+			# establish arbitrary target parent node as 0th parent
+			target_parent = siblings[0].getparent()
+
+			# loop through remainders and move there
+			for sibling in siblings[1:]:
+
+				# get parent
+				parent = sibling.getparent()
+
+				# move to target parent
+				target_parent.append(sibling)
+
+				# if flagged, remove parent if now empty
+				if remove_empty_nodes:
+					if len(parent.getchildren()) == 0:
+						parent.getparent().remove(parent)
+
+			
 
 	def serialize(self):
 
