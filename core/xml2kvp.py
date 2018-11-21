@@ -1100,7 +1100,7 @@ class XMLRecord(object):
 				self.root_node.append(child)
 
 
-	def merge_siblings(self):
+	def merge_siblings(self, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
 
 		'''
 		Method to merge all siblings if sibling_hash provided
@@ -1128,11 +1128,17 @@ class XMLRecord(object):
 					sibling_hash = node.attrib.get('sibling_hash_id')					
 
 					# group siblings
-					self.merge_metrics[sibling_hash] = self._siblings_xpath_merge(sibling_hash)
+					self.merge_metrics[sibling_hash] = self._siblings_xpath_merge(sibling_hash,
+						remove_empty_nodes=remove_empty_nodes)
+
+		# remove sibling_hash_id
+		if remove_sibling_hash_attrib:
+			all_siblings = self.root_node.xpath('//*[@sibling_hash_id]', namespaces=self.root_node.nsmap)
+			for sibling in all_siblings:
+				sibling.attrib.pop('sibling_hash_id')
 
 
-
-	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
+	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True):
 
 		'''
 		Internal method to handle the actual movement of sibling nodes
@@ -1176,12 +1182,7 @@ class XMLRecord(object):
 						removed += 1
 
 				# bump counter
-				moved += 1
-
-			# remove sibling_hash_id
-			if remove_sibling_hash_attrib:
-				for sibling in siblings:
-					sibling.attrib.pop('sibling_hash_id')
+				moved += 1			
 
 		# return metrics
 		metrics = {'sibling_hash':sibling_hash, 'removed':removed, 'moved':moved}
