@@ -18,6 +18,8 @@ import xmltodict
 # init logger
 logger = logging.getLogger(__name__)
 
+
+# sibling hash regex
 sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
 
 
@@ -278,6 +280,9 @@ class XML2kvp(object):
 		self.kvp_dict = {}
 		self.k_xpath_dict = {}
 
+		# sibling hash counter
+		self.sibling_hash_counter = {}
+
 
 	@property
 	def schema_json(self):
@@ -322,9 +327,15 @@ class XML2kvp(object):
 
 		# handle Dictionary
 		if type(in_v) == OrderedDict:
-			
-			# init hash self			
-			sibling_hash =  uuid.uuid4().hex[:6]			
+	
+			# set sibling hash			
+			if in_k not in self.sibling_hash_counter.keys():
+				self.sibling_hash_counter[in_k] = 1
+			else:
+				self.sibling_hash_counter[in_k] += 1
+
+			# set sibling hash
+			sibling_hash = '%s%s' % (hashlib.md5(str(in_k).encode('utf-8')).hexdigest()[:4], str(self.sibling_hash_counter[in_k]).zfill(2))
 
 			# handle all attributes for node first
 			for k, v in in_v.items():
@@ -353,7 +364,8 @@ class XML2kvp(object):
 				else:
 
 					# recurse with non attribute nodes (element or text)
-					if not k.startswith('@'):
+					if not k.startswith('@'):						
+
 						hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
 						# recurse
