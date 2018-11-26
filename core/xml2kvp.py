@@ -1068,7 +1068,8 @@ class XML2kvp(object):
 		if handler.include_sibling_id:
 			k = re.sub(r'\(.+?\)','',k)
 
-		# rewrite attributes?
+		# rewrite namespace
+			k = re.sub(r'\%s' % handler.ns_prefix_delim,':',k)
 
 		# return
 		return k
