@@ -329,13 +329,15 @@ class XML2kvp(object):
 		if type(in_v) == OrderedDict:
 	
 			# set sibling hash			
-			if in_k not in self.sibling_hash_counter.keys():
-				self.sibling_hash_counter[in_k] = 1
+			if in_k != None:
+				hash_val = in_k
 			else:
-				self.sibling_hash_counter[in_k] += 1
-
-			# set sibling hash
-			sibling_hash = '%s%s' % (hashlib.md5(str(in_k).encode('utf-8')).hexdigest()[:4], str(self.sibling_hash_counter[in_k]).zfill(2))
+				hash_val = hash(frozenset(in_v.keys()))
+			if hash_val not in self.sibling_hash_counter.keys():
+				self.sibling_hash_counter[hash_val] = 1
+			else:
+				self.sibling_hash_counter[hash_val] += 1
+			sibling_hash = '%s%s' % (hashlib.md5(str(hash_val).encode('utf-8')).hexdigest()[:4], str(self.sibling_hash_counter[hash_val]).zfill(2))			
 
 			# handle all attributes for node first
 			for k, v in in_v.items():
@@ -418,7 +420,9 @@ class XML2kvp(object):
 
 			# if include_sibling_id, append
 			if self.include_sibling_id:
-				hop = '%s(%s)' % (hop, sibling_hash)
+				# if not first entry, but repeating				
+				if int(sibling_hash[-2:]) >= 1:
+					hop = '%s(%s)' % (hop, sibling_hash)
 
 		# handle elements
 		if hop_type == 'attribute':
@@ -752,7 +756,7 @@ class XML2kvp(object):
 								sibling_hash = groups[1]
 								attribs['sibling_hash_id'] = sibling_hash
 							
-							# else, assume sibling hash not present and retrieve tag name
+							# else, assume sibling hash not present, get tag name							
 							elif groups[2]:
 								tag_name = groups[2]
 
@@ -950,9 +954,7 @@ class XML2kvp(object):
 			return handler.k_xpath_dict
 
 
-	def test_kvp_to_xpath_roundtrip(self):
-
-		# http://goodmami.org/2015/11/04/python-xpath-and-default-namespaces.html
+	def test_kvp_to_xpath_roundtrip(self):		
 
 		# check for self.xml and self.nsmap
 		if not hasattr(self, 'xml'):
