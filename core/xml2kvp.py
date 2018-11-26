@@ -1057,6 +1057,23 @@ class XML2kvp(object):
 		return desc
 
 
+	@staticmethod
+	def k_to_human(k, handler=None, return_handler=False, **kwargs):
+
+		'''
+		Method to humanize k's with sibling hashes and attributes
+		'''
+
+		# remove sibling hash
+		if handler.include_sibling_id:
+			k = re.sub(r'\(.+?\)','',k)
+
+		# rewrite attributes?
+
+		# return
+		return k
+
+
 
 class XMLRecord(object):
 
