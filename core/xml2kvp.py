@@ -911,6 +911,9 @@ class XML2kvp(object):
 			# close attrib brackets
 			xpath += ']'
 
+		# finally, avoid matching descandants
+		xpath += '[not(*)]'
+
 		# save to handler
 		handler.k_xpath_dict[k] = xpath
 
