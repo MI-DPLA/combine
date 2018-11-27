@@ -682,11 +682,20 @@ class XML2kvp(object):
 					handler.kvp_dict[k] = tuple(v)
 
 		# include metadata about delimeters
-		if handler.include_meta:
-			handler.kvp_dict['xml2kvp_meta'] = json.dumps({
+		if handler.include_meta:			
+
+			# set delimiters
+			meta_dict = {
 					'node_delim':handler.node_delim,
 					'ns_prefix_delim':handler.ns_prefix_delim
-				})
+				}
+
+			# if nsmap exists, include
+			if handler.nsmap:
+				meta_dict['nsmap'] = handler.nsmap
+
+			# set as json
+			handler.kvp_dict['xml2kvp_meta'] = json.dumps(meta_dict)
 
 		# return
 		if return_handler:
