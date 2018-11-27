@@ -705,7 +705,7 @@ class XML2kvp(object):
 
 
 	@staticmethod
-	def kvp_to_xml(kvp, handler=None, return_handler=False, **kwargs):
+	def kvp_to_xml(kvp, handler=None, return_handler=False, serialize_xml=False, **kwargs):
 		
 		'''
 		Method to generate XML from KVP
@@ -718,6 +718,10 @@ class XML2kvp(object):
 
 		# DEBUG
 		stime = time.time()
+
+		# init handler, overwriting defaults if not None
+		if not handler:
+			handler = XML2kvp(**kwargs)
 
 		# init XMLRecord
 		xml_record = XMLRecord()
@@ -822,13 +826,13 @@ class XML2kvp(object):
 
 		# if sibling hashes included, attempt to merge
 		if handler.include_sibling_id:
-			xml_record.merge_siblings()
-
-		# DEBUG
-		logger.debug('kvp_to_xml elapsed: %s' % (time.time()-stime))
+			xml_record.merge_siblings()		
 
 		# return
-		return xml_record
+		if serialize_xml:
+			return xml_record.serialize()
+		else:
+			return xml_record
 
 
 	@staticmethod
@@ -1241,19 +1245,5 @@ class XMLRecord(object):
 		'''
 
 		return etree.tostring(self.root_node, pretty_print=pretty_print).decode('utf-8')
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 

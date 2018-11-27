@@ -1078,6 +1078,112 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 
 
+class HarvestTabularDataSpark(CombineSparkJob):
+
+	'''
+	Spark code for harvesting tabular data (e.g. spreadsheets)
+	'''
+
+	def spark_function(self):
+
+		'''
+		Harvest tabular data provided by user, convert to XML records.
+			- handles Delimited data (e.g. csv, tsv) or JSON lines
+
+		Args:
+			spark (pyspark.sql.session.SparkSession): provided by pyspark context
+			kwargs:
+				job_id (int): Job ID
+				static_payload (str): path of static payload on disk
+				# TODO: add other kwargs here from static job
+				index_mapper (str): class name from core.spark.es, extending BaseMapper
+				validation_scenarios (list): list of Validadtion Scenario IDs
+
+		Returns:
+			None:
+			- opens and parses static files from payload
+			- indexes records into DB
+			- map / flatten records and indexes to ES
+		'''
+
+		# init job
+		self.init_job()
+		self.update_jobGroup('Running Harvest Tabular Data Job')
+
+		################################################################################################################################################		
+		# load CSV
+		dc_df = spark.read.format('com.databricks.spark.csv').options(header=True, inferschema=True).load('file://%s' % self.job_details['payload_filepath'])
+
+		# repartition
+		dc_df = dc_df.repartition(settings.SPARK_REPARTITION)
+
+		# partition udf
+		def kvp_to_xml_pt_udf(pt):
+
+			for row in pt:
+
+				# get as dict
+				row_dict = row.asDict()
+
+				# pop combine fields if exist, ascribe to new dictionary
+				fields = ['combine_id', 'db_id', 'fingerprint', 'publish_set_id', 'record_id', 'xml2kvp_meta']
+				combine_vals_dict = { field:row_dict.pop(field, None) for field in fields }
+				
+				try:
+
+					# convert kvp to XML with XML2kvp
+					xml_record_str = XML2kvp.kvp_to_xml(row_dict, serialize_xml=True, **{		
+						'node_delim':fm_config['node_delim'],
+						'ns_prefix_delim':fm_config['ns_prefix_delim'],
+						'include_sibling_id':True,
+						'nsmap':fm_config['nsmap']
+					})
+
+					# return success Row
+					yield Row(
+						record_id = combine_vals_dict.get('record_id'),
+						document = xml_record_str,
+						error = '',
+						job_id = int(job_id),
+						oai_set = '',
+						success = True
+					)
+
+				# handle all other exceptions
+				except Exception as e:			
+
+					# return error Row
+					yield Row(
+						record_id = 'abc123',
+						document = '',
+						error = str(e),
+						job_id = int(job_id),
+						oai_set = '',
+						success = False
+					)
+
+		# map partitions
+		job_id = self.job.id
+		job_details = self.job_details
+		fm_config = json.loads(self.job_details['fm_config_json'])
+		records = dc_df.rdd.mapPartitions(kvp_to_xml_pt_udf)
+		################################################################################################################################################
+
+		# fingerprint records and set transformed
+		records = self.fingerprint_records(records)
+		records = records.withColumn('transformed', pyspark_sql_functions.lit(True))
+
+		# index records to DB and index to ElasticSearch
+		self.save_records(			
+			records_df=records,
+			assign_combine_id=True
+		)		
+
+		# close job
+		self.close_job()
+
+
+
 class TransformSpark(CombineSparkJob):
 
 	'''
