@@ -1112,7 +1112,7 @@ class HarvestTabularDataSpark(CombineSparkJob):
 
 		################################################################################################################################################		
 		# load CSV
-		dc_df = spark.read.format('com.databricks.spark.csv').options(header=True, inferschema=True).load('file://%s' % self.job_details['payload_filepath'])
+		dc_df = self.spark.read.format('com.databricks.spark.csv').options(header=True, inferschema=True).load('file://%s' % self.job_details['payload_filepath'])
 
 		# repartition
 		dc_df = dc_df.repartition(settings.SPARK_REPARTITION)
@@ -1165,9 +1165,12 @@ class HarvestTabularDataSpark(CombineSparkJob):
 		# map partitions
 		job_id = self.job.id
 		job_details = self.job_details
-		fm_config = json.loads(self.job_details['fm_config_json'])
+		fm_config = json.loads(self.job_details['fm_harvest_config_json'])
 		records = dc_df.rdd.mapPartitions(kvp_to_xml_pt_udf)
 		################################################################################################################################################
+
+		# convert back to DF
+		records = records.toDF()
 
 		# fingerprint records and set transformed
 		records = self.fingerprint_records(records)

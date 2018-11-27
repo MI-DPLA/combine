@@ -4905,9 +4905,11 @@ class CombineJob(object):
 		'''		
 
 		# prepare job_details
-		job_details = {
-			'user_id':user.id
-		}
+		job_details = {}
+
+		# user
+		if user != None:
+			job_details['user_id'] = user.id
 
 		# convert python dictionary or Django request object to Django MultiValueDict
 		job_params = MultiValueDict(job_params)		
@@ -4950,11 +4952,15 @@ class CombineJob(object):
 		if job_details['job_note'] == '':
 			job_details['job_note'] = None		
 
-		# get field mapper configurations
+		# get field mapper configurations		
 		job_details['field_mapper'] = job_params.get('field_mapper', None)
 		if job_details['field_mapper'] != None and job_details['field_mapper'] != 'default':
-			job_details['field_mapper'] = int(job_details['field_mapper'])		
-		job_details['field_mapper_config'] = json.loads(job_params.get('fm_config_json'))
+			job_details['field_mapper'] = int(job_details['field_mapper'])
+		fm_config_json = job_params.get('fm_config_json', None)
+		if fm_config_json != None:
+			job_details['field_mapper_config'] = json.loads()
+		else:
+			job_details['field_mapper_config'] = XML2kvp().config_json
 
 		# finish input filters
 		job_details['input_filters'] = CombineJob._parse_input_filters(job_params)
@@ -5945,6 +5951,109 @@ class HarvestStaticXMLJob(HarvestJob):
 		# prepare job code
 		job_code = {
 			'code':'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, job_id="%(job_id)s").spark_function()' %
+			{
+				'job_id':self.job.id				
+			}
+		}
+
+		# return job code if requested
+		if return_job_code:
+			return job_code
+
+		# submit job
+		self.submit_job_to_livy(job_code)
+
+
+	def get_job_errors(self):
+
+		'''
+		Currently not implemented for HarvestStaticXMLJob
+		'''
+
+		return None
+
+
+
+class HarvestTabularDataJob(HarvestJob):
+
+	'''
+	Harvest records from tabular data
+	Extends core.models.HarvestJob
+	'''
+
+	def __init__(self,
+		user=None,
+		job_id=None,
+		record_group=None,
+		job_details=None):
+
+		'''
+		Args:
+			user (django.auth.User): user account
+			job_id (int): Job ID
+			record_group (core.models.RecordGroup): RecordGroup instance that Job falls under
+			job_details (dict): dictionary for all Job parameters
+
+		Returns:
+			None
+				- fires parent HarvestJob init
+		'''
+
+		# perform HarvestJob initialization
+		super().__init__(
+			user=user,
+			job_id=job_id,
+			record_group=record_group,
+			job_details=job_details)
+
+
+		# if job_id not provided, assume new Job
+		if not job_id:
+
+			# write job details
+			self.job.update_job_details(job_details)
+			
+			# write validation links
+			self.write_validation_job_links(job_details)
+
+
+	@staticmethod
+	def parse_job_type_params(job_details, job_params, kwargs):
+
+		'''
+		Method to parse job type specific parameters
+
+		Args:
+			job_details (dict): in-process job_details dictionary
+			job_params (dict): original parameters passed to Job
+			kwargs (dict): optional, named args for Jobs
+		'''
+
+		# get filepath
+		job_details['payload_filepath'] = job_params.get('payload_filepath')
+
+		# get fm_config_json
+		job_details['fm_harvest_config_json'] = job_params.get('fm_harvest_config_json')
+
+		return job_details
+
+
+	def prepare_job(self, return_job_code=False):
+
+		'''
+		Prepare limited python code that is serialized and sent to Livy, triggering spark jobs from core.spark.jobs
+
+		Args:
+			None
+
+		Returns:
+			None
+				- submits job to Livy
+		'''		
+
+		# prepare job code
+		job_code = {
+			'code':'from jobs import HarvestTabularDataSpark\nHarvestTabularDataSpark(spark, job_id="%(job_id)s").spark_function()' %
 			{
 				'job_id':self.job.id				
 			}

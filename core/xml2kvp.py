@@ -803,7 +803,7 @@ class XML2kvp(object):
 				# append single list of nodes to xml_record
 				xml_record.node_lists.append(hops)
 
-			# handle multiple values # <------------ might need to work with splitting values here
+			# handle multiple values
 			elif type(v) in [list,tuple]:
 
 				# loop through values
