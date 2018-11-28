@@ -1359,7 +1359,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
 		cjob = models.CombineJob.init_combine_job(
 			user = request.user,
 			record_group = record_group,
-			job_type_class = models.HarvestStaticXMLJob,
+			job_type_class = models.HarvestTabularDataJob,
 			job_params = request.POST,
 			files = request.FILES,
 			hash_payload_filename = hash_payload_filename

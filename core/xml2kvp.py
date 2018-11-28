@@ -1,5 +1,6 @@
 # xml2kvp
 
+import ast
 from collections import OrderedDict
 from copy import deepcopy
 import dashtable
@@ -255,6 +256,7 @@ class XML2kvp(object):
 		self.include_meta=False
 		self.include_sibling_id=False
 		self.include_xml_prop=False		
+		self.multivalue_delim='|'
 		self.node_delim='_'
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
@@ -655,7 +657,7 @@ class XML2kvp(object):
 			handler = XML2kvp(**kwargs)
 
 		# clean kvp_dict
-		handler.kvp_dict = {}
+		handler.kvp_dict = OrderedDict()
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
@@ -781,7 +783,7 @@ class XML2kvp(object):
 						while True:
 							for attrib in nodes[i+1:]:
 								if attrib.startswith('@'):									
-									attrib_name, attrib_value = attrib.split('=') # <!-------------- will this be problem if equal signs are allowed in value?
+									attrib_name, attrib_value = attrib.split('=')
 									attribs[attrib_name.lstrip('@')] = attrib_value
 								else:
 									break
@@ -794,6 +796,25 @@ class XML2kvp(object):
 					hops.append(node_ele)
 
 			# write values and number of nodes
+
+			##############################################################################################################################
+			# # convert with ast.literal_eval to circumvent, lists/tuples record as strings in pyspark
+			# # https://github.com/WSULib/combine/issues/361#issuecomment-442510950			
+			if type(v) == str:
+
+				# evaluate to expose lists or tuples
+				try:
+					v_eval = ast.literal_eval(v)
+					if type(v_eval) in [list,tuple]:
+						v = v_eval
+				except:
+					pass
+
+				# split based on handler.multivalue_delim				
+				if handler.multivalue_delim != None and type(v) == str and handler.multivalue_delim in v:
+					v = [ val.strip() for val in v.split(handler.multivalue_delim) ]
+			##############################################################################################################################
+
 			# handle single value
 			if type(v) == str:
 

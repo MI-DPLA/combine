@@ -6030,8 +6030,35 @@ class HarvestTabularDataJob(HarvestJob):
 			kwargs (dict): optional, named args for Jobs
 		'''
 
-		# get filepath
-		job_details['payload_filepath'] = job_params.get('payload_filepath')
+		# use location on disk		
+		if job_params.get('static_filepath') != '':			
+			job_details['payload_filepath'] = job_params.get('static_filepath')
+
+		# use upload		
+		else:
+			# get static file payload
+			payload_file = kwargs['files']['static_payload']
+
+			# grab content type
+			job_details['content_type'] = payload_file.content_type
+
+			# create payload dir
+			job_details['payload_dir'] = '%s/static_uploads/%s' % (settings.BINARY_STORAGE.split('file://')[-1], str(uuid.uuid4()))
+			os.makedirs(job_details['payload_dir'])
+
+			# establish payload filename
+			if kwargs['hash_payload_filename']:
+				job_details['payload_filename'] = hashlib.md5(payload_file.name.encode('utf-8')).hexdigest()
+			else:
+				job_details['payload_filename'] = payload_file.name
+
+			# filepath
+			job_details['payload_filepath'] = os.path.join(job_details['payload_dir'], job_details['payload_filename'])
+			
+			# write temporary Django file to disk
+			with open(job_details['payload_filepath'], 'wb') as f:
+				f.write(payload_file.read())
+				payload_file.close()
 
 		# get fm_config_json
 		job_details['fm_harvest_config_json'] = job_params.get('fm_harvest_config_json')

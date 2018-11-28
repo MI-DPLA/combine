@@ -147,11 +147,13 @@
 			else if (update_type == 'update'){
 				// get current id of FieldMapper selected
 				fm_id = $("#field_mapper").val();
+				fm_name = $("#harvest_field_mapper").html();
 			}
 
 			else if (update_type == 'delete'){
 				// get current id of FieldMapper selected
 				fm_id = $("#field_mapper").val();
+				fm_name = $("#harvest_field_mapper").html();
 				// switch back to default
 				$("#field_mapper").val('default');
 				$("#field_mapper").change();
