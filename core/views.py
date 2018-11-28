@@ -1317,6 +1317,66 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 
 @login_required
+def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_filename=False):
+
+	'''
+	Create a new static XML Harvest Job
+	'''
+
+	# retrieve record group
+	record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+	
+	# get validation scenarios
+	validation_scenarios = models.ValidationScenario.objects.all()
+
+	# get field mappers
+	field_mappers = models.FieldMapper.objects.all()
+
+	# get record identifier transformation scenarios
+	rits = models.RecordIdentifierTransformationScenario.objects.all()
+
+	# get all bulk downloads
+	bulk_downloads = models.DPLABulkDataDownload.objects.all()
+	
+	# if GET, prepare form
+	if request.method == 'GET':
+		
+		# render page
+		return render(request, 'core/job_harvest_tabular_data.html', {
+				'record_group':record_group,
+				'validation_scenarios':validation_scenarios,
+				'rits':rits,
+				'field_mappers':field_mappers,
+				'xml2kvp_handle':models.XML2kvp(),
+				'bulk_downloads':bulk_downloads,
+				'breadcrumbs':breadcrumb_parser(request)
+			})
+
+
+	# if POST, submit job
+	if request.method == 'POST':
+
+		cjob = models.CombineJob.init_combine_job(
+			user = request.user,
+			record_group = record_group,
+			job_type_class = models.HarvestStaticXMLJob,
+			job_params = request.POST,
+			files = request.FILES,
+			hash_payload_filename = hash_payload_filename
+		)
+
+		# start job and update status
+		job_status = cjob.start_job()
+
+		# if job_status is absent, report job status as failed
+		if job_status == False:
+			cjob.job.status = 'failed'
+			cjob.job.save()
+
+		return redirect('record_group', org_id=org_id, record_group_id=record_group.id)
+
+
+@login_required
 def job_transform(request, org_id, record_group_id):
 
 	'''

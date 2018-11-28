@@ -48,6 +48,9 @@
 							<p>
 								<a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest Static XML <i class="la la-file-code-o"></i></button></a>
 							</p>
+							<p>
+								<a href="{% url 'job_harvest_tabular_data' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest Tabular Data <i class="la la-table"></i></button></a>
+							</p>
 						</td>
 					</tr>
 					<tr>
