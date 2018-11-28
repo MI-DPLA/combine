@@ -34,7 +34,7 @@
 
 						<!-- payload -->
 						<h5>Provide Static Content</h5>
-						<p>For static harvests, optionally upload content, or provide a folder location on the filesystem where content can be found.</p>
+						<p>For static harvests, upload content, or provide a location on the filesystem where a file can be found.</p>
 						
 						<ul class="nav nav-tabs">
 							<li class="nav-item">
@@ -49,7 +49,7 @@
 
 							<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 								<div class="alert alert-warning alert-dismissible fade show" role="alert">
-									Upload a single file with multiple XML records, or an archive of files in either .tar or .zip format
+									Accepts CSV files with extension <code>.csv</code>, or JSON-Lines files with an extension of <code>.json</code>
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 									<span aria-hidden="true">&times;</span>
 									</button>
@@ -68,7 +68,7 @@
 
 							<div id="filesystem_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 								<div class="alert alert-warning alert-dismissible fade show" role="alert">
-									<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
+									Absolute path of file on disk.  Accepts CSV files with extension <code>.csv</code>, or JSON-Lines files with an extension of <code>.json</code>
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 									<span aria-hidden="true">&times;</span>
 									</button>
@@ -83,66 +83,202 @@
 
 				<div class="row">
 
-					<!-- start and end tags -->
-					<div class="col-md-6">
-						<h5>Find and Parse XML Records</h5>
-						<p>To locate and parse XML records from the provided file(s), additional information is needed: the root XML element for each record, and if needed, additional XML namespace declarations.</p>
+					<!-- ######################################################################################################################### -->
 
-						<table class="table table-bordered table-hover">							
-							<tbody>
-								<tr>
-									<th>Root XML element</th>
-									<td>Because static XML harvests may be looping through many files, directories, archives, or single XML files, a <span class="font-weight-bold">root XML element</span> is needed to locate XML documents that should be parsed and used.  Unlike XPath, only the element name is needed.  For example, a <code>mods:mods</code> would be sufficient for MODS records with a namespace, or <code>oai_dc</code> for OAI Dublin Core records.</td>
-								</tr>
-								<tr>
-									<th>Re-write XML root element declarations</th>
-									<td>Because Combine does not use XPath to parse the records, it is possible that records will be retrieved without required namespaces (often only declared at the root element).  Here, you may optionally rewrite the declaration for each Record.  For example, if providing the XML root <code>mods:mods</code> results in root XML nodes that look like <code>&lt;mods:mods&gt;</code>, the declaration </code> <code>xmlns:mods="http://www.loc.gov/mods/v3"</code> could be passed and will be added to each record resulting in <code>&lt;mods:mods xmlns:mods="http://www.loc.gov/mods/v3"&gt;</code>, which is valid XML.</td>
-								</tr>
-							</tbody>
-						</table>
-
-						<div class="form-group">
-							<label for="document_element_root">Root XML Element:</label>
-							<input type="text" class="form-control" id="document_element_root" name="document_element_root" placeholder="e.g. mods:mods, oai_dc, etc.">
-						</div>
-
-						<div class="form-group">
-							<label for="additional_namespace_decs">Re-write Root XML Declaration (if needed):</label>
-							<input type="text" class="form-control" id="additional_namespace_decs" name="additional_namespace_decs" placeholder='e.g. xmlns:mods="http://www.loc.gov/mods/v3"'>
-						</div>
-
-					</div>
-
-
-					<!-- xpath for identifiers -->
-					<div class="col-md-6">
-						<h5>Locate Identifier in Document</h5>
-						<p>Finally, an optional XPath expression can be provided to locate a unique, meaningful identifier for each document.</p>
-						<p><span class="font-weight-bold">Note:</span> While not required, this is encouraged.  In the absence of an XPath expression to locate an identifier, an MD5 hash of the document's contents will be created, which might help with potential duplicate records.  However, if the document changes harvest-to-harvest, this identifier will not remain constant.  Furthermore, this MD5 hash identifier will propogate through Combine and eventually be used for publishing, which is important to consider.</p>
-						<table class="table table-bordered table-hover">
-							<thead>
-								<tr>
-									<th>Description</th>
-									<th>Example</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>Use Dublin Core <code>&lt;dc:identifier&gt;</code> element.</td>
-									<td><code>//dc:identifier</code></td>
-								</tr>
-								<tr>
-									<td>Locate <code>&lt;mods:url&gt;</code> element with <code>access</code> attribute.</td>
-									<td><code>//mods:mods/mods:location/mods:url[@access]</code></td>
-								</tr>						
-							</tbody>
-						</table>
+					<div class="col-md-12">
 						
-						<div class="form-group">
-							<label for="xpath_record_id">XPath for Record Identifier:</label>
-							<input type="text" class="form-control" id="xpath_record_id" name="xpath_record_id" placeholder="e.g. //dc:identifier">
+						<div class="gray_box">
+
+							<h5>Ingest Parameters</h5>
+
+							<p>The same configuration language used to map fields from XML, is the same used to create XML from fields!  Select a pre-existing field mapper configuration, or edit the one below, to be used for this tabular harvest.</p>
+							
+							<div class="form-group">
+								<label for="harvest_field_mapper">Configuration Name</label>
+								<select class="form-control" id="harvest_field_mapper" name="harvest_field_mapper">
+									{% if orig_fm_config_json %}
+										<option value="job_fm_config_json">Configuration used for Job: {{cjob.job.name}}</option>
+									{% endif %}
+									<option value="default">Default</option>
+									{% for fm in field_mappers %}
+										<option value='{{ fm.id }}'>{{ fm.name }}</option>
+									{% endfor %}
+								</select>
+							</div>
+
+							<!-- hidden textarea for JSON to submit with form -->
+							<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_harvest_config_json" id="fm_harvest_config_json"></textarea>
+
+							<!-- visible JSON editor -->
+							<div id="harvest_config_editor" style="height:450px;"></div>
+							
+							<script>
+						        // create the editor
+						        var container = document.getElementById("harvest_config_editor");
+						        var options = {
+						        	mode: 'code',
+			    					modes: ['code', 'text', 'tree'],
+			    					onChange: function(){
+			    						// update hidden textarea from editor contents
+			    						$("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+			    					},
+			    					sortObjectKeys: true,
+			    					name: 'harvest_field_mapping_configuration',
+			    					schema: {{xml2kvp_handle.schema|safe}},
+			    					navigationBar:false
+						        };
+						        var harvest_editor = new JSONEditor(container, options);
+
+						        // set json to editor
+						        harvest_editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
+
+						        // update textarea
+						        $("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+						    </script>
+
+						    <div class="row" style="margin-top:15px;">
+								<div class="col-md-12">
+									<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_harvest_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options" onclick="save_current_fm_harvest_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_harvest_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_harvest_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+									<div id="fm_harvest_config_alerts"></div>
+									<div id="fm_harvest_config_help" style="display:none;">
+										<!-- loop through configurations from schema, creating table of their description -->
+										<table id="jobs_table" class="table table-bordered table-hover">
+											<thead>
+												<tr>
+													<th style="width: 20%">Parameter</th>
+													<th>Type</th>
+													<th>Description></th>
+												</tr>
+											</thead>
+											<tbody>
+												{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+													<tr>
+														<td><code>{{param}}</code></td>
+														<td><code>{{details.type}}</code></td>
+														<td>{{details.description}}</td>
+													</tr>
+												{% endfor %}
+											</tbody>
+										</table>
+									</div>
+								</div>
+							</div>
+
 						</div>
 					</div>
+
+					<script>
+
+						// store default config json
+						default_fm_harvest_config = {{ xml2kvp_handle.config_json|safe }};
+
+						// load saved field mapper configs
+						$(document).ready(function(){
+							$("#harvest_field_mapper").change(function(){
+
+								if (this.value != 'default'){
+
+									// get payload
+									$.ajax({
+										type: "GET",
+										url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+										dataType:'json',
+										success: function(data){
+											// update harvest_editor
+											harvest_editor.set(data);
+											// update textarea
+							        		$("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+							        		// show update button
+							        		$(".pre_harvest_fm_config_options").show();
+										}
+									});
+								}
+
+								else {
+									// update harvest_editor
+									harvest_editor.set(default_fm_harvest_config);
+									// update textarea
+							        $("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+							        // hide update options
+					        		$(".pre_harvest_fm_config_options").hide();
+								}
+
+							})
+						});
+
+						// save current config
+						function save_current_fm_harvest_config_json(update_type, fm_id=null, fm_name=null){
+
+							console.log('using the right one!');
+							
+							// grab config
+							fm_harvest_config_json = $("#fm_harvest_config_json").val();
+							console.log(fm_harvest_config_json);
+
+							if (update_type == 'new'){
+								// get name of new FieldMapper from user
+								var fm_name = prompt("Save these Field Mapper configurations as:");
+							}
+
+							else if (update_type == 'update'){
+								// get current id of FieldMapper selected
+								fm_id = $("#harvest_field_mapper").val();
+							}
+
+							else if (update_type == 'delete'){
+								// get current id of FieldMapper selected
+								fm_id = $("#harvest_field_mapper").val();
+								// switch back to default
+								$("#harvest_field_mapper").val('default');
+								$("#harvest_field_mapper").change();
+							}
+
+							// fire ajax to create/save
+							if (fm_name != null && fm_name != '') {
+								$.ajax({
+									type: "POST",
+									url: "/combine/configuration/field_mapper/update",
+									data: {
+										'update_type':update_type,
+										'fm_id':fm_id,
+										'fm_config_json':fm_harvest_config_json,
+										'fm_name':fm_name,
+										'csrfmiddlewaretoken': '{{ csrf_token }}'
+									},
+									dataType:'json',
+									success: function(data){
+										
+										// notify user
+										alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+											${data.msg}
+											<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+											</button>
+										</div>`
+										$("#fm_harvest_config_alerts").append(alert);
+									},
+									error: function(data){
+										
+										// notify user
+										alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+											${data.responseJSON.msg}
+											<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+											<span aria-hidden="true">&times;</span>
+											</button>
+										</div>`
+										$("#fm_harvest_config_alerts").append(alert);
+									}
+								});
+							}
+							else {
+								alert('A name for this configuration is rquired!');								
+							}
+						}
+
+					</script>
+
+					<!-- ######################################################################################################################### -->
+
 
 				</div>				
 				
