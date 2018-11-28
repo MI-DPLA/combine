@@ -243,6 +243,7 @@ class LivySession(models.Model):
 
 		# parse response and set instance values
 		response = livy_response.json()
+		logger.debug(response)
 		headers = livy_response.headers
 
 		self.name = 'Livy Session, sessionId %s' % (response['id'])
@@ -4958,9 +4959,9 @@ class CombineJob(object):
 			job_details['field_mapper'] = int(job_details['field_mapper'])
 		fm_config_json = job_params.get('fm_config_json', None)
 		if fm_config_json != None:
-			job_details['field_mapper_config'] = json.loads()
+			job_details['field_mapper_config'] = json.loads(fm_config_json)
 		else:
-			job_details['field_mapper_config'] = XML2kvp().config_json
+			job_details['field_mapper_config'] = json.loads(XML2kvp().config_json)
 
 		# finish input filters
 		job_details['input_filters'] = CombineJob._parse_input_filters(job_params)

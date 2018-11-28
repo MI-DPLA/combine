@@ -29,11 +29,13 @@ try:
 	from utils import PythonUDFRecord, refresh_django_db_connection, df_union_all	
 	from record_validation import ValidationScenarioSpark
 	from console import get_job_as_df, get_job_es
+	from xml2kvp import XML2kvp
 except:
 	from core.spark.es import ESIndex
 	from core.spark.utils import PythonUDFRecord, refresh_django_db_connection, df_union_all
 	from core.spark.record_validation import ValidationScenarioSpark
 	from core.spark.console import get_job_as_df, get_job_es
+	from core.xml2kvp import XML2kvp
 
 # import Row from pyspark
 from pyspark import StorageLevel
@@ -55,9 +57,6 @@ from django.db import connection, transaction
 
 # import select models from Core
 from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
-
-# import xml2kvp
-from core.xml2kvp import XML2kvp
 
 # import mongo dependencies
 from core.mongo import *
@@ -1110,9 +1109,17 @@ class HarvestTabularDataSpark(CombineSparkJob):
 		self.init_job()
 		self.update_jobGroup('Running Harvest Tabular Data Job')
 
-		################################################################################################################################################		
 		# load CSV
-		dc_df = self.spark.read.format('com.databricks.spark.csv').options(header=True, inferschema=True).load('file://%s' % self.job_details['payload_filepath'])
+		if self.job_details['payload_filepath'].endswith('.csv'):
+			dc_df = self.spark.read.format('com.databricks.spark.csv')\
+				.options(header=True, inferschema=True)\
+				.option('quote', '"')\
+				.option('escape', '"')\
+				.load('file://%s' % self.job_details['payload_filepath'])
+
+		# load JSON
+		elif self.job_details['payload_filepath'].endswith('.json'):
+			dc_df = self.spark.read.json('file://%s' % self.job_details['payload_filepath'])
 
 		# repartition
 		dc_df = dc_df.repartition(settings.SPARK_REPARTITION)
@@ -1167,7 +1174,6 @@ class HarvestTabularDataSpark(CombineSparkJob):
 		job_details = self.job_details
 		fm_config = json.loads(self.job_details['fm_harvest_config_json'])
 		records = dc_df.rdd.mapPartitions(kvp_to_xml_pt_udf)
-		################################################################################################################################################
 
 		# convert back to DF
 		records = records.toDF()

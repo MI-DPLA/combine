@@ -27,7 +27,7 @@ function styleNetworkNodes(node){
 	node.borderWidth = 2;
 
 	// Harvests
-	if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob'){
+	if (node.job_type == 'HarvestOAIJob' || node.job_type == 'HarvestStaticXMLJob' || node.job_type == 'HarvestTabularDataJob'){
 		node.color = '#deffde';
 	}
 

@@ -39,6 +39,7 @@ LIVY_DEFAULT_SESSION_CONFIG = {
     	'file://%s/core/spark/record_validation.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/utils.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     	'file://%s/core/spark/console.py' % COMBINE_INSTALL_PATH.rstrip('/'),
+    	'file://%s/core/xml2kvp.py' % COMBINE_INSTALL_PATH.rstrip('/'),
     ],
 
     # Spark conf overrides
