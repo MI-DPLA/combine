@@ -261,7 +261,7 @@
 									</div>
 								</div>
 
-								<!-- fm_harvest_config_json -->
+								<!-- fm_export_config_json -->
 								<div class="row">
 
 									<div class="col-md-12">
@@ -286,7 +286,7 @@
 											</div>
 
 											<!-- hidden textarea for JSON to submit with form -->
-											<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_harvest_config_json" id="fm_harvest_config_json"></textarea>
+											<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_export_config_json" id="fm_export_config_json"></textarea>
 
 											<!-- visible JSON editor -->
 											<div id="harvest_config_editor" style="height:450px;"></div>
@@ -299,7 +299,7 @@
 							    					modes: ['code', 'text', 'tree'],
 							    					onChange: function(){
 							    						// update hidden textarea from editor contents
-							    						$("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+							    						$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
 							    					},
 							    					sortObjectKeys: true,
 							    					name: 'harvest_field_mapping_configuration',
@@ -312,12 +312,12 @@
 										        harvest_editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
 
 										        // update textarea
-										        $("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+										        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
 										    </script>
 
 										    <div class="row" style="margin-top:15px;">
 												<div class="col-md-12">
-													<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_harvest_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options" onclick="save_current_fm_harvest_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_harvest_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_harvest_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+													<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_export_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options" onclick="save_current_fm_export_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_export_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_harvest_config_help').toggle(); return false;">What do these configurations mean?</button></p>
 													<div id="fm_harvest_config_alerts"></div>
 													<div id="fm_harvest_config_help" style="display:none;">
 														<!-- loop through configurations from schema, creating table of their description -->
@@ -366,7 +366,7 @@
 															// update harvest_editor
 															harvest_editor.set(data);
 															// update textarea
-											        		$("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+											        		$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
 											        		// show update button
 											        		$(".pre_harvest_fm_config_options").show();
 														}
@@ -377,7 +377,7 @@
 													// update harvest_editor
 													harvest_editor.set(default_fm_harvest_config);
 													// update textarea
-											        $("#fm_harvest_config_json").val(JSON.stringify(harvest_editor.get()));
+											        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
 											        // hide update options
 									        		$(".pre_harvest_fm_config_options").hide();
 												}
@@ -386,11 +386,11 @@
 										});
 
 										// save current config
-										function save_current_fm_harvest_config_json(update_type, fm_id=null, fm_name=null){
+										function save_current_fm_export_config_json(update_type, fm_id=null, fm_name=null){
 
 											// grab config
-											fm_harvest_config_json = $("#fm_harvest_config_json").val();
-											console.log(fm_harvest_config_json);
+											fm_export_config_json = $("#fm_export_config_json").val();
+											console.log(fm_export_config_json);
 
 											if (update_type == 'new'){
 												// get name of new FieldMapper from user
@@ -420,7 +420,7 @@
 													data: {
 														'update_type':update_type,
 														'fm_id':fm_id,
-														'fm_config_json':fm_harvest_config_json,
+														'fm_config_json':fm_export_config_json,
 														'fm_name':fm_name,
 														'csrfmiddlewaretoken': '{{ csrf_token }}'
 													},

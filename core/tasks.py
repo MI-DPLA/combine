@@ -390,7 +390,8 @@ def export_mapped_fields(ct_id):
 	ct.task_output_json = json.dumps({
 		'export_output':export_output,
 		'name':export_output.split('/')[-1],
-		'export_dir':"/".join(export_output.split('/')[:-1])
+		'export_dir':"/".join(export_output.split('/')[:-1]),
+		'fm_export_config_json':ct.task_params['fm_export_config_json']
 	})
 	ct.save()
 
@@ -524,14 +525,14 @@ def export_tabular_data(ct_id):
 		logger.info('creating compressed zip archive')
 		content_type = 'application/zip'
 
-		# establish output archive file
-		export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+		# # establish output archive file
+		# export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
 
-		with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
-			zip.write(export_output, export_output.split('/')[-1])
+		# with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+		# 	zip.write(export_output, export_output.split('/')[-1])
 
-		# set export output to archive file
-		export_output = export_output_archive
+		# # set export output to archive file
+		# export_output = export_output_archive
 
 	# tar.gz
 	elif ct.task_params['archive_type'] == 'targz':
@@ -539,14 +540,14 @@ def export_tabular_data(ct_id):
 		logger.info('creating compressed tar archive')
 		content_type = 'application/gzip'
 
-		# establish output archive file
-		export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+		# # establish output archive file
+		# export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
 
-		with tarfile.open(export_output_archive, 'w:gz') as tar:
-			tar.add(export_output, arcname=export_output.split('/')[-1])
+		# with tarfile.open(export_output_archive, 'w:gz') as tar:
+		# 	tar.add(export_output, arcname=export_output.split('/')[-1])
 
-		# set export output to archive file
-		export_output = export_output_archive
+		# # set export output to archive file
+		# export_output = export_output_archive
 
 	# save export output to Combine Task output
 	ct.refresh_from_db()

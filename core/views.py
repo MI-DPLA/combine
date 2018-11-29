@@ -2977,6 +2977,9 @@ def export_tabular_data(request, export_source, job_id=None):
 	# get archive type
 	archive_type = request.POST.get('archive_type')
 
+	# get fm config json
+	fm_export_config_json = request.POST.get('fm_export_config_json')
+
 	# export for single job
 	if export_source == 'job':
 
@@ -2994,6 +2997,7 @@ def export_tabular_data(request, export_source, job_id=None):
 				'mapped_fields_export_type':mapped_fields_export_type,
 				'kibana_style':kibana_style,
 				'archive_type':archive_type,
+				'fm_export_config_json':fm_export_config_json
 			})
 		)
 		ct.save()
