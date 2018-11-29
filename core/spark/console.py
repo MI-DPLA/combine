@@ -200,8 +200,16 @@ def _convert_xml_to_kvp(batch_rdd, fm_config):
 		Converts XML to kvpjson, for testing okay?
 		'''
 
+		# get handler, that includes defaults
+		xml2kvp_defaults = XML2kvp(**fm_config)
+
 		# convert XML to kvp
-		xml2kvp_handler = XML2kvp.xml_to_kvp(row.document, return_handler=True, **fm_config)
+		xml2kvp_handler = XML2kvp.xml_to_kvp(row.document, return_handler=True, handler=xml2kvp_defaults)
+
+		# loop through and convert lists/tuples to multivalue_delim
+		for k,v in xml2kvp_handler.kvp_dict.items():
+			if type(v) in [list,tuple]:
+				xml2kvp_handler.kvp_dict[k] = xml2kvp_handler.multivalue_delim.join(v)
 
 		# mixin other row attributes to kvp_dict
 		xml2kvp_handler.kvp_dict.update({
@@ -224,7 +232,14 @@ def _write_tabular_json(kvp_batch_rdd, base_path, folder_name):
 
 def _write_tabular_csv(kvp_batch_rdd, base_path, folder_name):
 
-	pass
+	# read rdd to DataFrame
+	kvp_batch_df = spark.read.json(kvp_batch_rdd)
+
+	# convert any straggling lists/tuples
+	kvp_batch_df = kvp_batch_df.select(*[format_column(c).alias(c) for c in kvp_batch_df.columns])
+
+	# write to CSV
+	# WRITE TO CSV HERE
 
 
 
