@@ -796,10 +796,8 @@ class XML2kvp(object):
 					hops.append(node_ele)
 
 			# write values and number of nodes
-
-			##############################################################################################################################
-			# # convert with ast.literal_eval to circumvent, lists/tuples record as strings in pyspark
-			# # https://github.com/WSULib/combine/issues/361#issuecomment-442510950			
+			# # convert with ast.literal_eval to circumvent lists/tuples record as strings in pyspark
+			# # https://github.com/WSULib/combine/issues/361#issuecomment-442510950
 			if type(v) == str:
 
 				# evaluate to expose lists or tuples
@@ -813,7 +811,6 @@ class XML2kvp(object):
 				# split based on handler.multivalue_delim				
 				if handler.multivalue_delim != None and type(v) == str and handler.multivalue_delim in v:
 					v = [ val.strip() for val in v.split(handler.multivalue_delim) ]
-			##############################################################################################################################
 
 			# handle single value
 			if type(v) == str:

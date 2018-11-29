@@ -335,18 +335,18 @@ def export_mapped_fields(ct_id):
 				"-q '*'",
 				"-i '%s'" % es_list,
 				"-D 'record'",
-				"-o '%s'" % export_output
+				"-o '%s'" % export_output				
 			]
 
 		# handle kibana style
 		if ct.task_params['kibana_style']:
 			cmd.append('-k')
+			cmd.append("-kd '|'")
 
 		# if fields provided, limit
 		if ct.task_params['mapped_field_include']:
 			logger.info('specific fields selected, adding to es2csv command:')
 			cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
-
 
 	# execute compiled command
 	logger.info(cmd)
