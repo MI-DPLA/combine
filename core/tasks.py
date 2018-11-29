@@ -403,8 +403,11 @@ def export_tabular_data(ct_id):
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
+	# parse fm config
+	fm_export_config_json = json.loads(ct.task_params['tabular_data_export_type'])
+
 	# JSON export
-	if ct.task_params['mapped_fields_export_type'] == 'json':
+	if ct.task_params['tabular_data_export_type'] == 'json':
 
 		# handle single Job
 		if 'job_id' in ct.task_params.keys():
@@ -459,7 +462,7 @@ def export_tabular_data(ct_id):
 
 
 	# CSV export
-	if ct.task_params['mapped_fields_export_type'] == 'csv':
+	if ct.task_params['tabular_data_export_type'] == 'csv':
 
 		# handle single Job
 		if 'job_id' in ct.task_params.keys():
@@ -510,8 +513,9 @@ def export_tabular_data(ct_id):
 
 		# handle kibana style
 		if ct.task_params['kibana_style']:
-			cmd.append('-k')
-			cmd.append("-kd '|'")
+			pass
+			# cmd.append('-k')
+			# cmd.append("-kd '|'")
 
 	#####################################
 	# MUCH OF THIS LIKELY MOVING TO SPARK?

@@ -212,20 +212,20 @@
 								<!-- json or csv -->
 								<div style="width:50%;">
 									<div class="form-group">
-										<label for="mapped_fields_export_type">Select export format:</label>
-										<select class="form-control" id="mapped_fields_export_type" name="mapped_fields_export_type" required>
+										<label for="tabular_data_export_type">Select export format:</label>
+										<select class="form-control" id="tabular_data_export_type" name="tabular_data_export_type" required>
 											<option value="csv">CSV (tabular, comma seperated)</option>
 											<option value="json">JSON (line-delimited)</option>
 										</select>
-										<small id="mapped_fields_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values, but, may be easier to edit outside of Combine before re-ingesting.  JSON "roundtrips" easier, but can be more difficult to edit.</small>
+										<small id="tabular_data_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values, but, may be easier to edit outside of Combine before re-ingesting.  JSON "roundtrips" easier, but can be more difficult to edit.</small>
 									</div>
 								</div>
 
-								<div id="kibana_checkbox" style="display:none;">
+								<div id="kibana_checkbox_tabular">
 									<div class="form-group">
 										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/>
-											<label class="form-check-label" for="kibana_style">
+											<input class="form-check-input" type="checkbox" value="true" id="kibana_style_tabular" name="kibana_style"/>
+											<label class="form-check-label" for="kibana_style_tabular">
 												Export CSV "Kibana style"? <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 											</label>
 										</div>
@@ -240,12 +240,12 @@
 								</div>
 								<script>
 									// listener for CSV select
-									$('#mapped_fields_export_type').on('change', function() {
+									$('#tabular_data_export_type').on('change', function() {
 										if (this.value == 'csv') {
-											$('#kibana_checkbox').show();
+											$('#kibana_checkbox_tabular').show();
 										}
 										else {
-											$('#kibana_checkbox').hide();
+											$('#kibana_checkbox_tabular').hide();
 										}
 									})
 								</script>

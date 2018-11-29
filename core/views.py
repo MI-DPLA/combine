@@ -2967,7 +2967,7 @@ def export_mapped_fields(request, export_source, job_id=None):
 def export_tabular_data(request, export_source, job_id=None):
 
 	# get mapped fields export type
-	mapped_fields_export_type = request.POST.get('mapped_fields_export_type')
+	tabular_data_export_type = request.POST.get('tabular_data_export_type')
 
 	# check for Kibana check
 	kibana_style = request.POST.get('kibana_style', False)
@@ -2994,7 +2994,7 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'job_id':cjob.job.id,
-				'mapped_fields_export_type':mapped_fields_export_type,
+				'tabular_data_export_type':tabular_data_export_type,
 				'kibana_style':kibana_style,
 				'archive_type':archive_type,
 				'fm_export_config_json':fm_export_config_json
