@@ -6,11 +6,11 @@
 		<div class="col-md-12">
 
 			<p>Records may be exported in a variety of ways, <a href="https://combine.readthedocs.io/en/master/workflow.html#export">see documentation for more information</a>:
-				<ul>
+				<!-- <ul>
 					<li><strong>Documents (XML)</strong>: XML documents for each Record, as harvested and/or transformed.</li>
 					<li><strong>Mapped Fields (JSON)</strong>: Mapped fields as line-delimited JSON rows.  <em>Recommended for mapped field export</em>.</li>
-					<li><strong>Mapped Fields (CSV)</strong>: Mapped fields as a tabular, .csv file.</li>									
-				</ul>
+					<li><strong>Mapped Fields (CSV)</strong>: Mapped fields as a tabular, .csv file.</li>
+				</ul> -->
 			</p>
 
 			<div class="alert alert-info alert-dismissible fade show" role="alert">
@@ -19,13 +19,16 @@
 				<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
-			
+
 			<ul id="export_tabs" class="nav nav-tabs">
 				<li class="nav-item">
 					<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
-				</li>								
+				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#export_tabular_data">Export Tabular Data</a>
 				</li>
 			</ul>
 
@@ -68,7 +71,7 @@
 
 				<div id="export_mapped_fields" class="tab-pane full_width_tab">
 					<div class="row">
-						<div class="col-md-12">											
+						<div class="col-md-12">
 
 							<!-- form for Job mapped fields export -->
 
@@ -107,7 +110,7 @@
 
 											<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.</p>
 										</div>
-									</div>												
+									</div>
 								</div>
 								<script>
 									// listener for CSV select
@@ -133,7 +136,7 @@
 								</div>
 
 								<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
-								
+
 								<!-- select mapped fields -->
 								{% include 'core/select_mapped_fields.html' %}
 
@@ -160,11 +163,11 @@
 									    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
 									    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
 									    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
-									    
+
 									    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
 									    DataTable.
 									    */
-									    $("#form_submit_button").click(function(){									    	
+									    $("#form_submit_button").click(function(){
 
 									    	// remove any pre-existing temp, hidden inputs
 									    	$("#hidden_field_inputs input").each(function(){
@@ -189,6 +192,41 @@
 
 							</form>
 
+						</div>
+					</div>
+				</div>
+
+				<div id="export_tabular_data" class="tab-pane full_width_tab">
+					<div class="row">
+						<div class="col-md-6">
+							<!-- form for Job mapped fields export -->
+
+							{% if cjob %}
+								<form method="POST" action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
+							{% else %}
+								<form method="POST" action="{% url 'export_documents' export_source='published' %}">
+							{% endif %}
+
+								{% csrf_token %}
+
+								<div class="form-group">
+									<label for="records_per_file">XML Records per file</label>
+									<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
+									<small id="records_per_file_help" class="form-text text-muted">Optional</small>
+								</div>
+
+								<div class="form-group">
+									<label for="archive_type">Select archive file type</label>
+									<select class="form-control" id="archive_type" name="archive_type" required>
+										<option value="zip">Compressed Zip file</option>
+										<option value="targz">Compressed Tar file</option>
+										<option value="tar">Uncompressed Tar file</option>
+									</select>
+								</div>
+
+								<button type="submit" class="btn btn-success btn-sm">Export Documents <i class="la la-download"></i></button>
+
+							</form>
 						</div>
 					</div>
 				</div>
