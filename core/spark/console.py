@@ -12,7 +12,7 @@ import sys
 if not hasattr(django, 'apps'):
 	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 	sys.path.append('/opt/combine')
-	django.setup()	
+	django.setup()
 
 # import django settings
 from django.conf import settings
@@ -20,6 +20,11 @@ from django.db import connection
 
 from core.models import Job, PublishedRecords
 from core.es import es_handle
+
+
+############################################################################
+# Background Tasks
+############################################################################
 
 
 def export_records_as_xml(spark, base_path, job_dict, records_per_file):
@@ -30,9 +35,9 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 	Args:
 		base_path (str): base location for folder structure
 		job_dict (dict): dictionary of directory name --> list of Job ids
-			- e.g. single job: {'j29':[29]}			
+			- e.g. single job: {'j29':[29]}
 			- e.g. published records: {'foo':[2,42], 'bar':[3]}
-				- in this case, a union will be performed for all Jobs within a single key			
+				- in this case, a union will be performed for all Jobs within a single key
 		records_per_file (int): number of XML records per file
 	'''
 
@@ -98,14 +103,14 @@ def generate_validation_report(spark, output_path, task_params):
 		# get mapped fields
 		mapped_fields = task_params['mapped_field_include']
 
-		# get mapped fields as df	
+		# get mapped fields as df
 		if 'db_id' not in mapped_fields:
 			mapped_fields.append('db_id')
 		es_df = get_job_es(spark, job_id=job_id).select(mapped_fields)
 
-		# join 	
+		# join
 		mdf = mdf.alias('mdf').join(es_df.alias('es_df'), mdf['oid'] == es_df['db_id'])
-	
+
 	# cleanup columns
 	mdf = mdf.select([c for c in mdf.columns if c != 'db_id']).withColumnRenamed('oid','db_id')
 
@@ -116,6 +121,67 @@ def generate_validation_report(spark, output_path, task_params):
 		mdf.write.format('com.databricks.spark.csv').option("delimiter", "\t").save('file://%s' % output_path)
 	if task_params['report_format'] == 'json':
 		mdf.write.format('json').save('file://%s' % output_path)
+
+
+def export_records_as_tabular_data(
+	spark,
+	base_path,
+	job_dict,
+	records_per_file,
+	fm_export_config_json,
+	tabular_data_export_type):
+
+	'''
+	Function to export multiple Jobs, with folder hierarchy for each Job
+
+	Args:
+		base_path (str): base location for folder structure
+		job_dict (dict): dictionary of directory name --> list of Job ids
+			- e.g. single job: {'j29':[29]}
+			- e.g. published records: {'foo':[2,42], 'bar':[3]}
+				- in this case, a union will be performed for all Jobs within a single key
+		records_per_file (int): number of XML records per file
+		fm_export_config_json (str): JSON of configurations to be used
+		tabular_data_export_type (str): 'json' or 'csv'
+	'''
+
+	# reconstitute fm_export_config_json
+	fm_export_config_json = json.loads(fm_export_config_json)
+
+	# clean base path
+	base_path = "file:///%s" % base_path.lstrip('file://').rstrip('/')
+
+	# loop through potential output folders
+	for folder_name, job_ids in job_dict.items():
+
+		# handle single job_id
+		if len(job_ids) == 1:
+
+			# get Job records as df
+			rdd_to_write = get_job_as_df(spark, job_ids[0]).select('document').rdd
+
+		# handle multiple jobs
+		else:
+
+			rdds = [ get_job_as_df(spark, job_id).select('document').rdd for job_id in job_ids ]
+			rdd_to_write = spark.sparkContext.union(rdds)
+
+
+		# handle json
+		if tabular_data_export_type == 'json':
+			_write_tabular_json()
+
+		# handle csv
+		if tabular_data_export_type == 'csv':
+			_write_tabular_csv()
+
+
+def _write_tabular_json():
+	pass
+
+
+def _write_tabular_csv():
+	pass
 
 
 
@@ -165,7 +231,7 @@ def get_job_es(spark,
 		es_query (str): JSON string of ES query
 		field_include (str): comma seperated list of fields to include in response
 		field_exclude (str): comma seperated list of fields to exclude in response
-		as_rdd (boolean): boolean to return as RDD, or False to convert to DF 
+		as_rdd (boolean): boolean to return as RDD, or False to convert to DF
 	'''
 
 	# handle indices
@@ -206,7 +272,7 @@ def get_job_es(spark,
 
 	# read json
 	es_df = spark.read.json(es_rdd.map(lambda row: row[1]))
-	
+
 	# return
 	return es_df
 
@@ -228,7 +294,7 @@ def copy_sql_to_mongo(spark, job_id):
 	# get sql job
 	sdf = get_sql_job_as_df(spark, job_id, remove_id=True)
 
-	# repartition	
+	# repartition
 	sdf = sdf.rdd.repartition(200).toDF(schema=sdf.schema)
 
 	# insert

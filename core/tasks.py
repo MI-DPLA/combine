@@ -404,7 +404,10 @@ def export_tabular_data(ct_id):
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
 	# parse fm config
-	fm_export_config_json = json.loads(ct.task_params['tabular_data_export_type'])
+	fm_export_config_json = json.loads(ct.task_params['fm_export_config_json'])
+
+	# generate spark code
+	output_path = '/tmp/%s' % str(uuid.uuid4())
 
 	# JSON export
 	if ct.task_params['tabular_data_export_type'] == 'json':
@@ -415,152 +418,183 @@ def export_tabular_data(ct_id):
 			# get CombineJob
 			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/job_%s_tabular_data.json' % (output_path, cjob.job.id)
+			# set archive filename of loose XML files
+			archive_filename_root = 'j_%s_tabular_data' % cjob.job.id
 
-			#####################################
-			# MUCH OF THIS LIKELY MOVING TO SPARK
-			#####################################
-			# # build command list
-			# cmd = [
-			# 	"elasticdump",
-			# 	"--input=http://localhost:9200/j%s" % cjob.job.id,
-			# 	"--output=%s" % export_output,
-			# 	"--type=data",
-			# 	"--sourceOnly",
-			# 	"--ignore-errors",
-			# 	"--noRefresh"
-			# ]
+			# build job_dictionary
+			job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
+			logger.info(job_dict)
 
-		# handle published records
-		if 'published' in ct.task_params.keys():
+			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, %(fm_export_config_json)s, %(tabular_data_export_type)s)" % {
+				'output_path':output_path,
+				'job_dict':job_dict,
+				'records_per_file':ct.task_params['records_per_file'],
+				'fm_export_config_json':ct.task_params['fm_export_config_json'],
+				'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
+			}
+			logger.info(spark_code)
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/published_tabular_data.json' % (output_path)
+		# # handle published records
+		# if 'published' in ct.task_params.keys():
 
-			#####################################
-			# MUCH OF THIS LIKELY MOVING TO SPARK
-			#####################################
-			# # get list of jobs ES indices to export
-			# pr = models.PublishedRecords()
-			# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+		# 	# set output filename
+		# 	output_path = '/tmp/%s' % uuid.uuid4().hex
+		# 	os.mkdir(output_path)
+		# 	export_output = '%s/published_tabular_data.json' % (output_path)
 
-			# # build command list
-			# cmd = [
-			# 	"elasticdump",
-			# 	"--input=http://localhost:9200/%s" % es_list,
-			# 	"--output=%s" % export_output,
-			# 	"--type=data",
-			# 	"--sourceOnly",
-			# 	"--ignore-errors",
-			# 	"--noRefresh"
-			# ]
+		# 	#####################################
+		# 	# MUCH OF THIS LIKELY MOVING TO SPARK
+		# 	#####################################
+		# 	# # get list of jobs ES indices to export
+		# 	# pr = models.PublishedRecords()
+		# 	# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+
+		# 	# # build command list
+		# 	# cmd = [
+		# 	# 	"elasticdump",
+		# 	# 	"--input=http://localhost:9200/%s" % es_list,
+		# 	# 	"--output=%s" % export_output,
+		# 	# 	"--type=data",
+		# 	# 	"--sourceOnly",
+		# 	# 	"--ignore-errors",
+		# 	# 	"--noRefresh"
+		# 	# ]
 
 
-	# CSV export
-	if ct.task_params['tabular_data_export_type'] == 'csv':
+	# # CSV export
+	# if ct.task_params['tabular_data_export_type'] == 'csv':
 
-		# handle single Job
-		if 'job_id' in ct.task_params.keys():
+	# 	# handle single Job
+	# 	if 'job_id' in ct.task_params.keys():
 
-			# get CombineJob
-			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+	# 		# get CombineJob
+	# 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/job_%s_tabular_data.csv' % (output_path, cjob.job.id)
+	# 		# set output filename
+	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
+	# 		os.mkdir(output_path)
+	# 		export_output = '%s/job_%s_tabular_data.csv' % (output_path, cjob.job.id)
 
-			#####################################
-			# MUCH OF THIS LIKELY MOVING TO SPARK
-			#####################################
-			# # build command list
-			# cmd = [
-			# 	"es2csv",
-			# 	"-q '*'",
-			# 	"-i 'j%s'" % cjob.job.id,
-			# 	"-D 'record'",
-			# 	"-o '%s'" % export_output
-			# ]
+	# 		#####################################
+	# 		# MUCH OF THIS LIKELY MOVING TO SPARK
+	# 		#####################################
+	# 		# # build command list
+	# 		# cmd = [
+	# 		# 	"es2csv",
+	# 		# 	"-q '*'",
+	# 		# 	"-i 'j%s'" % cjob.job.id,
+	# 		# 	"-D 'record'",
+	# 		# 	"-o '%s'" % export_output
+	# 		# ]
 
-		# handle published records
-		if 'published' in ct.task_params.keys():
+	# 	# handle published records
+	# 	if 'published' in ct.task_params.keys():
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/published_tabular_data.csv' % (output_path)
+	# 		# set output filename
+	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
+	# 		os.mkdir(output_path)
+	# 		export_output = '%s/published_tabular_data.csv' % (output_path)
 
-			#####################################
-			# MUCH OF THIS LIKELY MOVING TO SPARK
-			#####################################
-			# # get list of jobs ES indices to export
-			# pr = models.PublishedRecords()
-			# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+	# 		#####################################
+	# 		# MUCH OF THIS LIKELY MOVING TO SPARK
+	# 		#####################################
+	# 		# # get list of jobs ES indices to export
+	# 		# pr = models.PublishedRecords()
+	# 		# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
-			# # build command list
-			# cmd = [
-			# 	"es2csv",
-			# 	"-q '*'",
-			# 	"-i '%s'" % es_list,
-			# 	"-D 'record'",
-			# 	"-o '%s'" % export_output
-			# ]
+	# 		# # build command list
+	# 		# cmd = [
+	# 		# 	"es2csv",
+	# 		# 	"-q '*'",
+	# 		# 	"-i '%s'" % es_list,
+	# 		# 	"-D 'record'",
+	# 		# 	"-o '%s'" % export_output
+	# 		# ]
 
-		# handle kibana style
-		if ct.task_params['kibana_style']:
-			pass
-			# cmd.append('-k')
-			# cmd.append("-kd '|'")
+	# 	# handle kibana style
+	# 	if ct.task_params['kibana_style']:
+	# 		pass
+	# 		# cmd.append('-k')
+	# 		# cmd.append("-kd '|'")
 
-	#####################################
-	# MUCH OF THIS LIKELY MOVING TO SPARK?
-	#####################################
-	# handle compression
-	if ct.task_params['archive_type'] == 'none':
-		logger.info('uncompressed csv file requested, continuing')
+	# submit to livy
+	try:
 
-	elif ct.task_params['archive_type'] == 'zip':
+		logger.info('submitting code to Spark')
+		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
-		logger.info('creating compressed zip archive')
-		content_type = 'application/zip'
+		# poll until complete
+		logger.info('polling for Spark job to complete...')
+		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+		logger.info(results)
 
-		# # establish output archive file
-		# export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+		# save list of directories to remove
+		pre_archive_dirs = glob.glob('%s/**' % output_path)
 
-		# with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
-		# 	zip.write(export_output, export_output.split('/')[-1])
+		# zip
+		if ct.task_params['archive_type'] == 'zip':
 
-		# # set export output to archive file
-		# export_output = export_output_archive
+			logger.info('creating compressed zip archive')
+			content_type = 'application/zip'
 
-	# tar.gz
-	elif ct.task_params['archive_type'] == 'targz':
+			# establish output archive file
+			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
 
-		logger.info('creating compressed tar archive')
-		content_type = 'application/gzip'
+			with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
+					zip.write(f, '/'.join(f.split('/')[-2:]))
 
-		# # establish output archive file
-		# export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+		# tar
+		elif ct.task_params['archive_type'] == 'tar':
 
-		# with tarfile.open(export_output_archive, 'w:gz') as tar:
-		# 	tar.add(export_output, arcname=export_output.split('/')[-1])
+			logger.info('creating uncompressed tar archive')
+			content_type = 'application/tar'
 
-		# # set export output to archive file
-		# export_output = export_output_archive
+			# establish output archive file
+			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
 
-	# save export output to Combine Task output
-	ct.refresh_from_db()
-	ct.task_output_json = json.dumps({
-		'export_output':export_output,
-		'name':export_output.split('/')[-1],
-		'export_dir':"/".join(export_output.split('/')[:-1])
-	})
-	ct.save()
+			with tarfile.open(export_output_archive, 'w') as tar:
+				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
+					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
+		# tar.gz
+		elif ct.task_params['archive_type'] == 'targz':
+
+			logger.info('creating compressed tar archive')
+			content_type = 'application/gzip'
+
+			# establish output archive file
+			export_output_archive = '%s/%s.tar.gz' % (output_path, archive_filename_root)
+
+			with tarfile.open(export_output_archive, 'w:gz') as tar:
+				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
+					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
+		# cleanup directory
+		for d in pre_archive_dirs:
+			logger.info('removing dir: %s' % d)
+			shutil.rmtree(d)
+
+		# save export output to Combine Task output
+		ct.refresh_from_db()
+		ct.task_output_json = json.dumps({
+			'export_output':export_output_archive,
+			'name':export_output_archive.split('/')[-1],
+			'content_type':content_type,
+			'export_dir':"/".join(export_output_archive.split('/')[:-1])
+		})
+		ct.save()
+		logger.info(ct.task_output_json)
+
+	except Exception as e:
+
+		logger.info(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({
+			'error':str(e)
+		})
+		ct.save()
 ############################################################################################################################################
 
 

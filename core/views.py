@@ -2966,13 +2966,13 @@ def export_mapped_fields(request, export_source, job_id=None):
 
 def export_tabular_data(request, export_source, job_id=None):
 
+	# get records per file
+	records_per_file = request.POST.get('records_per_file', False)
+	if records_per_file in ['',False]:
+		records_per_file = 500
+
 	# get mapped fields export type
 	tabular_data_export_type = request.POST.get('tabular_data_export_type')
-
-	# check for Kibana check
-	kibana_style = request.POST.get('kibana_style', False)
-	if kibana_style:
-		kibana_style = True
 
 	# get archive type
 	archive_type = request.POST.get('archive_type')
@@ -2994,8 +2994,8 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'job_id':cjob.job.id,
+				'records_per_file':records_per_file,
 				'tabular_data_export_type':tabular_data_export_type,
-				'kibana_style':kibana_style,
 				'archive_type':archive_type,
 				'fm_export_config_json':fm_export_config_json
 			})

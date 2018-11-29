@@ -98,7 +98,7 @@
 								<div id="kibana_checkbox" style="display:none;">
 									<div class="form-group">
 										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/>
+											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/ checked>
 											<label class="form-check-label" for="kibana_style">
 												Export CSV "Kibana style"? <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 											</label>
@@ -221,44 +221,19 @@
 									</div>
 								</div>
 
-								<div id="kibana_checkbox_tabular">
-									<div class="form-group">
-										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="kibana_style_tabular" name="kibana_style"/>
-											<label class="form-check-label" for="kibana_style_tabular">
-												Export CSV "Kibana style"? <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
-											</label>
-										</div>
-										<div id="kibana_style_info" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
-											<p>"Kibana style" is referring to the <a href="https://www.elastic.co/products/kibana">Kibana application</a> for visualize and analyzing ElasticSearch indexes, and addresses fields that have <strong>multiple values</strong>.</p>
-
-											<p>For example, consider an ElasticSearch field called <code>mods_subject_topic</code>, with multiple values of <code>history</code>, <code>boating</code>, and <code>typing</code>.  If Kibana style is <strong>not</strong> checked/used -- which is the default behavior -- this would result in three distinct columns in the generated .csv file with a number affixed to the field name: <code>mods_subject_topic.0</code> with the value <code>historyM</code>, <code>mods_subject_topic.1</code> with the value <code>boating</code>, and <code>mods_subject_topic.2</code> with the value <code>typing</code>.  This can handy for analysis, as distinct values for this field are in distinct columns.</p>
-
-											<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.</p>
-										</div>
-									</div>
+								<div class="form-group">
+									<label for="records_per_file">XML Records per file</label>
+									<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
+									<small id="records_per_file_help" class="form-text text-muted">Optional</small>
 								</div>
-								<script>
-									// listener for CSV select
-									$('#tabular_data_export_type').on('change', function() {
-										if (this.value == 'csv') {
-											$('#kibana_checkbox_tabular').show();
-										}
-										else {
-											$('#kibana_checkbox_tabular').hide();
-										}
-									})
-								</script>
 
-								<div style="width:50%;">
-									<div class="form-group">
-										<label for="archive_type">Select archive file type</label>
-										<select class="form-control" id="archive_type" name="archive_type" required>
-											<option value="none">Uncompressed</option>
-											<option value="zip">Compressed Zip file</option>
-											<option value="targz">Compressed Tar file</option>
-										</select>
-									</div>
+								<div class="form-group">
+									<label for="archive_type">Select archive file type</label>
+									<select class="form-control" id="archive_type" name="archive_type" required>
+										<option value="zip">Compressed Zip file</option>
+										<option value="targz">Compressed Tar file</option>
+										<option value="tar">Uncompressed Tar file</option>
+									</select>
 								</div>
 
 								<!-- fm_export_config_json -->
