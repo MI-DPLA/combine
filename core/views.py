@@ -2723,8 +2723,13 @@ def published(request):
 	else:
 		field_counts = {}
 
+	# get field mappers
+	field_mappers = models.FieldMapper.objects.all()
+
 	return render(request, 'core/published.html', {
 			'published':published,
+			'field_mappers':field_mappers,
+			'xml2kvp_handle':models.XML2kvp(),
 			'field_counts':field_counts,
 			'es_index_str':published.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
@@ -3035,9 +3040,10 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'published':True,
-				'mapped_fields_export_type':mapped_fields_export_type,
-				'kibana_style':kibana_style,
+				'records_per_file':records_per_file,
+				'tabular_data_export_type':tabular_data_export_type,
 				'archive_type':archive_type,
+				'fm_export_config_json':fm_export_config_json
 			})
 		)
 		ct.save()

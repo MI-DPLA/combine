@@ -425,7 +425,7 @@ def export_tabular_data(ct_id):
 			job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
 			logger.info(job_dict)
 
-			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, %(fm_export_config_json)s, %(tabular_data_export_type)s)" % {
+			spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
 				'output_path':output_path,
 				'job_dict':job_dict,
 				'records_per_file':ct.task_params['records_per_file'],
@@ -435,30 +435,34 @@ def export_tabular_data(ct_id):
 			logger.info(spark_code)
 
 		# # handle published records
-		# if 'published' in ct.task_params.keys():
+		if 'published' in ct.task_params.keys():
 
-		# 	# set output filename
-		# 	output_path = '/tmp/%s' % uuid.uuid4().hex
-		# 	os.mkdir(output_path)
-		# 	export_output = '%s/published_tabular_data.json' % (output_path)
+			# set archive filename of loose XML files
+			archive_filename_root = 'published_tabular_data'
 
-		# 	#####################################
-		# 	# MUCH OF THIS LIKELY MOVING TO SPARK
-		# 	#####################################
-		# 	# # get list of jobs ES indices to export
-		# 	# pr = models.PublishedRecords()
-		# 	# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+			# get anonymous CombineJob
+			cjob = models.CombineJob()
 
-		# 	# # build command list
-		# 	# cmd = [
-		# 	# 	"elasticdump",
-		# 	# 	"--input=http://localhost:9200/%s" % es_list,
-		# 	# 	"--output=%s" % export_output,
-		# 	# 	"--type=data",
-		# 	# 	"--sourceOnly",
-		# 	# 	"--ignore-errors",
-		# 	# 	"--noRefresh"
-		# 	# ]
+			# get published records to determine sets
+			pr = models.PublishedRecords()
+
+			# build job_dictionary
+			job_dict = {}
+			# handle published jobs with publish set ids
+			for publish_id, jobs in pr.sets.items():
+				job_dict[publish_id] = [ job.id for job in jobs ]
+			# handle "loose" Jobs
+			job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
+			logger.info(job_dict)
+
+			spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
+				'output_path':output_path,
+				'job_dict':job_dict,
+				'records_per_file':ct.task_params['records_per_file'],
+				'fm_export_config_json':ct.task_params['fm_export_config_json'],
+				'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
+			}
+			logger.info(spark_code)
 
 
 	# # CSV export
@@ -528,6 +532,11 @@ def export_tabular_data(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
+		# rewrite with extensions
+		export_parts = glob.glob('%s/**/part*' % output_path)
+		for part in export_parts:
+			os.rename(part, '%s.%s' % (part, ct.task_params['tabular_data_export_type']))
+
 		# save list of directories to remove
 		pre_archive_dirs = glob.glob('%s/**' % output_path)
 
@@ -567,7 +576,7 @@ def export_tabular_data(ct_id):
 			export_output_archive = '%s/%s.tar.gz' % (output_path, archive_filename_root)
 
 			with tarfile.open(export_output_archive, 'w:gz') as tar:
-				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
+				for f in glob.glob('%s/**/*.%ss' % (output_path, ct.task_params['tabular_data_export_type'])):
 					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
 		# cleanup directory

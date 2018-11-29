@@ -21,6 +21,9 @@ from django.db import connection
 from core.models import Job, PublishedRecords
 from core.es import es_handle
 
+# import XML2kvp from uploaded instance
+from xml2kvp import XML2kvp
+
 
 ############################################################################
 # Background Tasks
@@ -146,7 +149,7 @@ def export_records_as_tabular_data(
 	'''
 
 	# reconstitute fm_export_config_json
-	fm_export_config_json = json.loads(fm_export_config_json)
+	fm_config = json.loads(fm_export_config_json)
 
 	# clean base path
 	base_path = "file:///%s" % base_path.lstrip('file://').rstrip('/')
@@ -158,29 +161,69 @@ def export_records_as_tabular_data(
 		if len(job_ids) == 1:
 
 			# get Job records as df
-			rdd_to_write = get_job_as_df(spark, job_ids[0]).select('document').rdd
+			batch_rdd = get_job_as_df(spark, job_ids[0]).select(['document','combine_id','record_id']).rdd
 
 		# handle multiple jobs
 		else:
 
-			rdds = [ get_job_as_df(spark, job_id).select('document').rdd for job_id in job_ids ]
-			rdd_to_write = spark.sparkContext.union(rdds)
+			rdds = [ get_job_as_df(spark, job_id).select(['document','combine_id','record_id']).rdd for job_id in job_ids ]
+			batch_rdd = spark.sparkContext.union(rdds)
 
+		# convert rdd
+		kvp_batch_rdd = _convert_xml_to_kvp(batch_rdd, fm_config)
 
 		# handle json
 		if tabular_data_export_type == 'json':
-			_write_tabular_json()
+			_write_tabular_json(kvp_batch_rdd, base_path, folder_name)
 
 		# handle csv
 		if tabular_data_export_type == 'csv':
-			_write_tabular_csv()
+			_write_tabular_csv(kvp_batch_rdd, base_path, folder_name)
 
 
-def _write_tabular_json():
-	pass
+def _convert_xml_to_kvp(batch_rdd, fm_config):
+
+	'''
+	Sub-Function to convert RDD of XML to KVP
+
+	Args:
+		batch_rdd (RDD): RDD containing batch of Records rows
+		fm_config (dict): Dictionary of XML2kvp configurations to use for kvp_to_xml()
+
+	Returns
+		kvp_batch_rdd (RDD): RDD of JSONlines
+	'''
+
+	def kvp_writer_udf(row, fm_config):
+
+		'''
+		Converts XML to kvpjson, for testing okay?
+		'''
+
+		# convert XML to kvp
+		xml2kvp_handler = XML2kvp.xml_to_kvp(row.document, return_handler=True, **fm_config)
+
+		# mixin other row attributes to kvp_dict
+		xml2kvp_handler.kvp_dict.update({
+			'record_id':row.record_id,
+			'combine_id':row.combine_id
+		})
+
+		# return JSON line
+		return json.dumps(xml2kvp_handler.kvp_dict)
+
+	# run UDF
+	return batch_rdd.map(lambda row: kvp_writer_udf(row, fm_config))
 
 
-def _write_tabular_csv():
+def _write_tabular_json(kvp_batch_rdd, base_path, folder_name):
+
+	# write JSON lines
+	kvp_batch_rdd.saveAsTextFile('%s/%s' % (base_path, folder_name))
+
+
+def _write_tabular_csv(kvp_batch_rdd, base_path, folder_name):
+
 	pass
 
 
