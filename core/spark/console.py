@@ -239,7 +239,7 @@ def _write_tabular_csv(kvp_batch_rdd, base_path, folder_name):
 	kvp_batch_df = kvp_batch_df.select(*[format_column(c).alias(c) for c in kvp_batch_df.columns])
 
 	# write to CSV
-	# WRITE TO CSV HERE
+	kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name))
 
 
 
