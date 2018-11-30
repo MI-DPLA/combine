@@ -465,7 +465,8 @@ def export_tabular_data(ct_id):
 		# rewrite with extensions
 		export_parts = glob.glob('%s/**/part*' % output_path)
 		for part in export_parts:
-			os.rename(part, '%s.%s' % (part, ct.task_params['tabular_data_export_type']))
+			if not part.endswith(ct.task_params['tabular_data_export_type']):
+				os.rename(part, '%s.%s' % (part, ct.task_params['tabular_data_export_type']))
 
 		# save list of directories to remove
 		pre_archive_dirs = glob.glob('%s/**' % output_path)
