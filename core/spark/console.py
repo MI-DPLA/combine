@@ -253,7 +253,7 @@ def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 	kvp_batch_df = kvp_batch_df.select(*[_format_column(c,xml2kvp_defaults.multivalue_delim).alias(c) for c in kvp_batch_df.columns])
 
 	# write to CSV
-	kvp_batch_df.write.format('com.databricks.spark.csv').options(header=True).save('%s/%s' % (base_path, folder_name))
+	kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name), header=True)
 
 
 

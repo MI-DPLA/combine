@@ -14,7 +14,7 @@ import os
 
 
 # Combine Version
-COMBINE_VERSION = 'v0.4'
+COMBINE_VERSION = 'v0.5'
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
@@ -51,7 +51,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
-    'django.contrib.sessions.middleware.SessionMiddleware',    
+    'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -145,7 +145,7 @@ STATIC_ROOT = '/opt/combine/static'
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
-    'formatters': {        
+    'formatters': {
         'simple': {
             'format': '[%(levelname)s] %(asctime)s %(name)s.%(funcName)s (%(lineno)d): %(message)s'
         },
@@ -190,7 +190,7 @@ LOGGING = {
 
 
 # shell_plus additional imports
-SHELL_PLUS_POST_IMPORTS = {    
+SHELL_PLUS_POST_IMPORTS = {
     ('inc.console', '*')
 }
 
