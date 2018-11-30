@@ -390,8 +390,7 @@ def export_mapped_fields(ct_id):
 	ct.task_output_json = json.dumps({
 		'export_output':export_output,
 		'name':export_output.split('/')[-1],
-		'export_dir':"/".join(export_output.split('/')[:-1]),
-		'fm_export_config_json':ct.task_params['fm_export_config_json']
+		'export_dir':"/".join(export_output.split('/')[:-1])
 	})
 	ct.save()
 
