@@ -2999,7 +2999,7 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'job_id':cjob.job.id,
-				'records_per_file':records_per_file,
+				'records_per_file':int(records_per_file),
 				'tabular_data_export_type':tabular_data_export_type,
 				'archive_type':archive_type,
 				'fm_export_config_json':fm_export_config_json
@@ -3040,7 +3040,7 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'published':True,
-				'records_per_file':records_per_file,
+				'records_per_file':int(records_per_file),
 				'tabular_data_export_type':tabular_data_export_type,
 				'archive_type':archive_type,
 				'fm_export_config_json':fm_export_config_json

@@ -5,8 +5,11 @@ import json
 from lxml import etree
 import math
 import os
-from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 import sys
+
+# pyspark imports
+from pyspark.sql.functions import regexp_replace
+from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
@@ -18,6 +21,7 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 from django.db import connection
 
+# import from core
 from core.models import Job, PublishedRecords
 from core.es import es_handle
 
@@ -172,13 +176,16 @@ def export_records_as_tabular_data(
 		# convert rdd
 		kvp_batch_rdd = _convert_xml_to_kvp(batch_rdd, fm_config)
 
+		# repartition to records per file
+		kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count()/int(records_per_file)))
+
 		# handle json
 		if tabular_data_export_type == 'json':
-			_write_tabular_json(kvp_batch_rdd, base_path, folder_name)
+			_write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config)
 
 		# handle csv
 		if tabular_data_export_type == 'csv':
-			_write_tabular_csv(kvp_batch_rdd, base_path, folder_name)
+			_write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config)
 
 
 def _convert_xml_to_kvp(batch_rdd, fm_config):
@@ -224,22 +231,29 @@ def _convert_xml_to_kvp(batch_rdd, fm_config):
 	return batch_rdd.map(lambda row: kvp_writer_udf(row, fm_config))
 
 
-def _write_tabular_json(kvp_batch_rdd, base_path, folder_name):
+def _format_column(column, multivalue_delim):
+	return regexp_replace(regexp_replace(column, '(^\[)|(\]$)|(")', ''), ",", "%s" % multivalue_delim)
+
+
+def _write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 
 	# write JSON lines
 	kvp_batch_rdd.saveAsTextFile('%s/%s' % (base_path, folder_name))
 
 
-def _write_tabular_csv(kvp_batch_rdd, base_path, folder_name):
+def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 
 	# read rdd to DataFrame
 	kvp_batch_df = spark.read.json(kvp_batch_rdd)
 
+	# load XML2kvp instance
+	xml2kvp_defaults = XML2kvp(**fm_config)
+
 	# convert any straggling lists/tuples
-	kvp_batch_df = kvp_batch_df.select(*[format_column(c).alias(c) for c in kvp_batch_df.columns])
+	kvp_batch_df = kvp_batch_df.select(*[_format_column(c,xml2kvp_defaults.multivalue_delim).alias(c) for c in kvp_batch_df.columns])
 
 	# write to CSV
-	kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name))
+	kvp_batch_df.write.format('com.databricks.spark.csv').options(header=True).save('%s/%s' % (base_path, folder_name))
 
 
 

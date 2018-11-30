@@ -396,7 +396,6 @@ def export_mapped_fields(ct_id):
 	ct.save()
 
 
-############################################################################################################################################
 @celery_app.task()
 def export_tabular_data(ct_id):
 
@@ -409,119 +408,51 @@ def export_tabular_data(ct_id):
 	# generate spark code
 	output_path = '/tmp/%s' % str(uuid.uuid4())
 
-	# JSON export
-	if ct.task_params['tabular_data_export_type'] == 'json':
+	# handle single Job
+	if 'job_id' in ct.task_params.keys():
 
-		# handle single Job
-		if 'job_id' in ct.task_params.keys():
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-			# get CombineJob
-			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+		# set archive filename of loose XML files
+		archive_filename_root = 'j_%s_tabular_data' % cjob.job.id
 
-			# set archive filename of loose XML files
-			archive_filename_root = 'j_%s_tabular_data' % cjob.job.id
+		# build job_dictionary
+		job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
+		logger.info(job_dict)
 
-			# build job_dictionary
-			job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
-			logger.info(job_dict)
+	# handle published records
+	if 'published' in ct.task_params.keys():
 
-			spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
-				'output_path':output_path,
-				'job_dict':job_dict,
-				'records_per_file':ct.task_params['records_per_file'],
-				'fm_export_config_json':ct.task_params['fm_export_config_json'],
-				'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
-			}
-			logger.info(spark_code)
+		# set archive filename of loose XML files
+		archive_filename_root = 'published_tabular_data'
 
-		# # handle published records
-		if 'published' in ct.task_params.keys():
+		# get anonymous CombineJob
+		cjob = models.CombineJob()
 
-			# set archive filename of loose XML files
-			archive_filename_root = 'published_tabular_data'
+		# get published records to determine sets
+		pr = models.PublishedRecords()
 
-			# get anonymous CombineJob
-			cjob = models.CombineJob()
+		# build job_dictionary
+		job_dict = {}
+		# handle published jobs with publish set ids
+		for publish_id, jobs in pr.sets.items():
+			job_dict[publish_id] = [ job.id for job in jobs ]
+		# handle "loose" Jobs
+		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
+		logger.info(job_dict)
 
-			# get published records to determine sets
-			pr = models.PublishedRecords()
+	# prepare spark code
+	spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
+		'output_path':output_path,
+		'job_dict':job_dict,
+		'records_per_file':ct.task_params['records_per_file'],
+		'fm_export_config_json':ct.task_params['fm_export_config_json'],
+		'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
+	}
+	logger.info(spark_code)
 
-			# build job_dictionary
-			job_dict = {}
-			# handle published jobs with publish set ids
-			for publish_id, jobs in pr.sets.items():
-				job_dict[publish_id] = [ job.id for job in jobs ]
-			# handle "loose" Jobs
-			job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
-			logger.info(job_dict)
-
-			spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
-				'output_path':output_path,
-				'job_dict':job_dict,
-				'records_per_file':ct.task_params['records_per_file'],
-				'fm_export_config_json':ct.task_params['fm_export_config_json'],
-				'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
-			}
-			logger.info(spark_code)
-
-
-	# # CSV export
-	# if ct.task_params['tabular_data_export_type'] == 'csv':
-
-	# 	# handle single Job
-	# 	if 'job_id' in ct.task_params.keys():
-
-	# 		# get CombineJob
-	# 		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
-
-	# 		# set output filename
-	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
-	# 		os.mkdir(output_path)
-	# 		export_output = '%s/job_%s_tabular_data.csv' % (output_path, cjob.job.id)
-
-	# 		#####################################
-	# 		# MUCH OF THIS LIKELY MOVING TO SPARK
-	# 		#####################################
-	# 		# # build command list
-	# 		# cmd = [
-	# 		# 	"es2csv",
-	# 		# 	"-q '*'",
-	# 		# 	"-i 'j%s'" % cjob.job.id,
-	# 		# 	"-D 'record'",
-	# 		# 	"-o '%s'" % export_output
-	# 		# ]
-
-	# 	# handle published records
-	# 	if 'published' in ct.task_params.keys():
-
-	# 		# set output filename
-	# 		output_path = '/tmp/%s' % uuid.uuid4().hex
-	# 		os.mkdir(output_path)
-	# 		export_output = '%s/published_tabular_data.csv' % (output_path)
-
-	# 		#####################################
-	# 		# MUCH OF THIS LIKELY MOVING TO SPARK
-	# 		#####################################
-	# 		# # get list of jobs ES indices to export
-	# 		# pr = models.PublishedRecords()
-	# 		# es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
-
-	# 		# # build command list
-	# 		# cmd = [
-	# 		# 	"es2csv",
-	# 		# 	"-q '*'",
-	# 		# 	"-i '%s'" % es_list,
-	# 		# 	"-D 'record'",
-	# 		# 	"-o '%s'" % export_output
-	# 		# ]
-
-	# 	# handle kibana style
-	# 	if ct.task_params['kibana_style']:
-	# 		pass
-	# 		# cmd.append('-k')
-	# 		# cmd.append("-kd '|'")
-
-	# submit to livy
+	# submit spark code to livy
 	try:
 
 		logger.info('submitting code to Spark')
@@ -604,7 +535,6 @@ def export_tabular_data(ct_id):
 			'error':str(e)
 		})
 		ct.save()
-############################################################################################################################################
 
 
 @celery_app.task()
