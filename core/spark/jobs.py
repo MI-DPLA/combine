@@ -1113,8 +1113,6 @@ class HarvestTabularDataSpark(CombineSparkJob):
 		if self.job_details['payload_filepath'].endswith('.csv'):
 			dc_df = self.spark.read.format('com.databricks.spark.csv')\
 				.options(header=True, inferschema=True, multiLine=True)\
-				.option('quote', '"')\
-				.option('escape', '"')\
 				.load('file://%s' % self.job_details['payload_filepath'])
 
 		# load JSON
