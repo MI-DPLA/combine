@@ -232,6 +232,11 @@ def _convert_xml_to_kvp(batch_rdd, fm_config):
 
 
 def _format_column(column, multivalue_delim):
+
+	'''
+
+	'''
+
 	return regexp_replace(regexp_replace(column, '(^\[)|(\]$)|(")', ''), ",", "%s" % multivalue_delim)
 
 
