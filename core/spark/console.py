@@ -231,11 +231,6 @@ def _convert_xml_to_kvp(batch_rdd, fm_config):
 	return batch_rdd.map(lambda row: kvp_writer_udf(row, fm_config))
 
 
-# def _format_column(column, multivalue_delim):
-
-# 	return regexp_replace(regexp_replace(column, '(^\[)|(\]$)|(")', ''), ",", "%s" % multivalue_delim)
-
-
 def _write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 
 	# write JSON lines
@@ -249,9 +244,6 @@ def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 
 	# load XML2kvp instance
 	xml2kvp_defaults = XML2kvp(**fm_config)
-
-	# convert any straggling lists/tuples
-	# kvp_batch_df = kvp_batch_df.select(*[_format_column(c,xml2kvp_defaults.multivalue_delim).alias(c) for c in kvp_batch_df.columns])
 
 	# write to CSV
 	kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name), header=True)
