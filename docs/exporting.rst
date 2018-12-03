@@ -8,7 +8,7 @@ There are different ways and level of granularites for exporting and importing d
 
     - *export and import of Organizations, Record Groups, Jobs, and all Configuration Scenarios*
 
-  - `Record Export <#exporting-records>`_  
+  - `Record Export <#exporting-records>`_
 
     - *export of Record documents or mapped fields*
 
@@ -52,7 +52,7 @@ In this example, if we were to select Job `C` for export, with the intention of 
 
 From this list of exported objects, we can see Job `C` down near the bottom under "Jobs".  From the image above, it's clear that Job `C` is taking input Records from Job `A`, so it's unsurprising that Job is included as well.  We also see the Organization "sandbox", and the Record Group "stateio" are included as well.  When exporting state, the organizing hierarchies are included as well.
 
-Why then, are we seeing the Record Group "stateio2"?  This is because Job `A2` falls under that Record Group, and is a "downstream" Job for Job `A`, and so it gets swept up in the export.  The exports are, by design, greedy in what they assume will be needed to support the export of a Job.  
+Why then, are we seeing the Record Group "stateio2"?  This is because Job `A2` falls under that Record Group, and is a "downstream" Job for Job `A`, and so it gets swept up in the export.  The exports are, by design, greedy in what they assume will be needed to support the export of a Job.
 
 Of note, we also see some Configuration Scenarios that were used by the Jobs `A`, `B`, `C`, `D`, `E`, and `A2`.  During import, if they exist already, they will be skipped, but they are needed in the event they do not yet exist.
 
@@ -144,7 +144,7 @@ For example, a search for "static" brings up a couple of Job matches, and clicki
 
    Export: Searching for Jobs
 
-**Note:** While there is a dedicated "Configurations and Scenarios" tree to select items from, it is worth remembering that any configurations *used* by selected Jobs will automatically be included in the Export.  Think about a fictional Job `foo` that has two Validation Scenarios applied, `bar` and `baz`.  If `foo` were to be imported into another instance of Combine, it would require those Validation Scenarios to exist such that they could be rerun and referenced.  
+**Note:** While there is a dedicated "Configurations and Scenarios" tree to select items from, it is worth remembering that any configurations *used* by selected Jobs will automatically be included in the Export.  Think about a fictional Job `foo` that has two Validation Scenarios applied, `bar` and `baz`.  If `foo` were to be imported into another instance of Combine, it would require those Validation Scenarios to exist such that they could be rerun and referenced.
 
 When all desired export objects have been selected from both "Organizations, Record Groups, Jobs" and "Configurations and Scenarios", click "Export State" at the bottom.  This will redirect back to the State Export/Import overview table, with the export running as a background tasks, and the following has been created:
 
@@ -152,7 +152,7 @@ When all desired export objects have been selected from both "Organizations, Rec
    :alt: Export for Job C
    :target: _images/sio_export_row.png
 
-   Export for Job C 
+   Export for Job C
 
 Once finished, we can click into details about the Export from the "Details" button for the export row.  This looks like the following:
 
@@ -162,7 +162,7 @@ Once finished, we can click into details about the Export from the "Details" but
 
    Details for Job C export
 
-Of note, we see details about the Export itself in the first table, a second table where any imports that reference this table would show up, and another hierarchical tree showing all "objects" that were exported.  This can be helpful for getting a sense of what Configuration Scenarios might have been included, or connected Jobs that may not have been immediately obvious during export.  
+Of note, we see details about the Export itself in the first table, a second table where any imports that reference this table would show up, and another hierarchical tree showing all "objects" that were exported.  This can be helpful for getting a sense of what Configuration Scenarios might have been included, or connected Jobs that may not have been immediately obvious during export.
 
 At this point, a user may download the export, or in our case, note the filepath location on disk that we'll use for importing.
 
@@ -210,7 +210,7 @@ Clicking into this Import's details, we see the following:
 
    Details for Job C import
 
-The first table is details about this **Import**, but the following table shows what **Export** was used.  This linkage is only possible when the Export exists in the same instance of Combine.  Finally, at the bottom, a similar "results" tree to the Export, but this time showing what objects were imported.  
+The first table is details about this **Import**, but the following table shows what **Export** was used.  This linkage is only possible when the Export exists in the same instance of Combine.  Finally, at the bottom, a similar "results" tree to the Export, but this time showing what objects were imported.
 
 However, the tree showing what objects were imported has a warning message about not all objects being imported, and looks suspiciously smaller than the amount of exported objects.  `What's going on here? <#state-import-and-duplication>`_
 
@@ -219,7 +219,7 @@ State Import and Duplication
 
 When importing, the import process attempts to skip the duplication of:
 
-  - Organizations and Record Groups  
+  - Organizations and Record Groups
   - Configuration Scenarios
 
 Jobs *are* happily duplicated, as this is often the point of state export / import, and have value even in the duplicate.  But all "supporting" infrastructure like Organizations or Record Groups, or any configuration scenarios like OAI Endpoints, Transformations, or Validations, as long as they function identically, nothing is gained by having a duplicate.
@@ -246,7 +246,21 @@ That's effectively 1.5million documents to export.  If this exists in a "pipelin
 Exporting Records
 =================
 
-Records can be exported in two ways: a series of XML files aggregating the XML document for each Record, or the Mapped Fields for each Record as structured data.  Records from a Job, or all Published Records, may be exported.  Both are found under the "Export" tab in their respective screens.
+Records can be exported in three ways:
+
+  * `XML Documents <#export-xml-documents>`_
+
+    * *a series of XML files aggregating the XML document for each Record*
+
+  * `Mapped Fields <#export-mapped-fields>`_
+
+    * *Mapped fields for each Record as structured data (CSV or JSON)*
+
+  * `Tabular Data <#export-tabular-data>`_
+
+    * *Export that is suitable for editing "outside" of Combine and re-harvesting (CSV or JSON)*
+
+For any of these methods, records from a single Job, or all Published Records, may be exported.
 
 
 Export XML Documents
@@ -260,7 +274,28 @@ Exporting documents will export the XML document for all Records in a Job or pub
 
    Export Documents tab
 
-You may enter how many records per file, and what kind of compression to use (if any) on the output archive file.
+You may enter how many records per file, and what kind of compression to use (if any) on the output archive file.  For example, 1000 records where a user selects 250 per file, for Job ``#42``, would result in the following structure:
+
+.. code-block:: text
+
+    - archive.zip|tar
+        - j42/ # folder for Job
+            - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
+            - part00001.xml
+            - part00002.xml
+            - part00003.xml
+
+The following screenshot shows the actual result of a Job with 1,070 Records, exporting 50 per file, with a zip file and the resulting, unzipped structure:
+
+.. figure:: img/job_export_structure.png
+   :alt: Example structure of an exported Job as XML Documents
+   :target: _images/job_export_structure.png
+
+   Example structure of an exported Job as XML Documents
+
+Why export like this?  Very large XML files can be problematic to work with, particularly for XML parsers that attempt to load the entire document into memory (which is most of them).  Combine is naturally pre-disposed to think in terms of the parts and partitions with the Spark back-end, which makes for convenient writing of all Records from Job in smaller chunks.  The size of the "chunk" can be set by specifying the ``XML Records per file`` input in the export form.  Finally, .zip or .tar files for the resulting export are both supported.
+
+When a Job is exported as Documents, this will send users to the `Background Tasks <background_tasks.html>`_ screen where the task can be monitored and viewed.
 
 
 Export Mapped Fields
@@ -295,9 +330,9 @@ CSV
 
 Alternatively, mapped fields can be exported as comma-seperated, tabular data in .csv format.  As mentioned, this does not as deftly handle characters that may disrupt column delimiters
 
-.. figure:: img/export_mapped_json.png
+.. figure:: img/export_mapped_csv.png
    :alt: Export Mapped Fields as JSON documents
-   :target: _images/export_mapped_json.png
+   :target: _images/export_mapped_csv.png
 
    Export Mapped Fields as JSON documents
 
@@ -314,3 +349,22 @@ But if the checkbox, ``Export CSV "Kibana style"?`` is checked, all multi-valued
 
     mods_subject_topic
     history,michigan,snow
+
+
+Export Tabular Data
+-------------------
+
+Exporting Tabular Data has some similarity with exporting `mapped fields <#export-mapped-fields>`_, but for a different purpose.  Exporting Tabular Data will export either CSV or JSON suitable for re-harvesting back into Combine as a `Tabular Data Harvest <harvesting.html#tabular-data-spreadsheet-harvesting>`_.  To this end, Tabular Data harvesting is a bit more forgiving for field names, and total number of fields.  More tecnically, the export is not coming from ElasticSearch where mapped fields live for a Job, but instead, directly from the XML documents.
+
+Some options looks similar to mapped fields exporting, but also include a section for "Export Parameters":
+
+.. figure:: img/export_tabular.png
+   :alt: Export Mapped Fields as JSON documents
+   :target: _images/export_tabular.png
+
+   Export Mapped Fields as JSON documents
+
+These export parameters -- either configured at the time of export, or loaded from a pre-existing configuration -- are used to modify delimiters and other options for the CSV or JSON export.  You can `read more about harvesting tabular data here <harvesting.html#tabular-data-spreadsheet-harvesting>`_, but suffice it to say now that it can be helpful to **save** the configurations used when exporting such that they can be used later for re-harvesting.  In short, they provide a shared set of configurations for round-tripping data.
+
+
+

@@ -15,7 +15,7 @@
 
 		<!-- job datatable -->
 		{% include 'core/jobs_dt_table.html' %}
-		
+
 	{% else %}
 		<div class="row">
 			<div class="col-md-12">
@@ -33,9 +33,9 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			
-			<h4>Run New Job</h4>
-			
+
+			<h4>New Job</h4>
+
 			<table class="table table-bordered table-hover">
 				<tbody>
 					<tr>
@@ -47,6 +47,9 @@
 							</p>
 							<p>
 								<a href="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest Static XML <i class="la la-file-code-o"></i></button></a>
+							</p>
+							<p>
+								<a href="{% url 'job_harvest_tabular_data' org_id=record_group.organization.id record_group_id=record_group.id %}"><button type="button" class="btn btn-primary btn-sm">Harvest Tabular Data <i class="la la-table"></i></button></a>
 							</p>
 						</td>
 					</tr>
@@ -71,7 +74,7 @@
 
 				</tbody>
 			</table>
-			
+
 		</div>
 	</div>
 

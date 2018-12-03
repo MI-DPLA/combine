@@ -1,7 +1,10 @@
 # xml2kvp
 
+import ast
 from collections import OrderedDict
+from copy import deepcopy
 import dashtable
+import hashlib
 import json
 from lxml import etree
 import logging
@@ -9,6 +12,7 @@ import pdb
 from pprint import pprint, pformat
 import re
 import time
+import uuid
 import xmltodict
 
 
@@ -16,19 +20,26 @@ import xmltodict
 logger = logging.getLogger(__name__)
 
 
+# sibling hash regex
+sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
+
+
 class XML2kvp(object):
 
 	'''
 	Class to handle the parsing of XML into Key/Value Pairs
 
-		- utilizes xmltodict (https://github.com/martinblech/xmltodict)			
-		- static methods are designed to be called without user instantiating 
+		- utilizes xmltodict (https://github.com/martinblech/xmltodict)
+		- static methods are designed to be called without user instantiating
 		instance of XML2kvp
 	'''
 
 	# test xml
 	test_xml = '''<?xml version="1.0" encoding="UTF-8"?>
 <root xmlns:internet="http://internet.com">
+	<foo>
+		<bar>88888888888</bar>
+	</foo>
 	<foo>
 		<bar>42</bar>
 		<baz>109</baz>
@@ -41,13 +52,37 @@ class XML2kvp(object):
 		<bar>9393943</bar>
 		<baz>3489234893</baz>
 	</foo>
+	<alligator>
+		<tail>
+			<quality>medium</quality>
+		</tail>
+	</alligator>
+	<alligator>
+		<tail>
+			<quality>long</quality>
+		</tail>
+		<legs>
+			<quality>short</quality>
+		</legs>
+	</alligator>
+	<alligator>
+		<tail>
+			<quality>very long</quality>
+		</tail>
+		<legs>
+			<quality>very short</quality>
+		</legs>
+	</alligator>
 	<tronic type='tonguetwister'>Sally sells seashells by the seashore.</tronic>
 	<tronic type='tonguetwister'>Red leather, yellow leather.</tronic>
 	<tronic>You may disregard</tronic>
 	<goober scrog='true' tonk='false'>
-		<depths>
+		<people>
 			<plunder>Willy Wonka</plunder>
-		</depths>
+		</people>
+		<cities>
+			<plunder>City of Atlantis</plunder>
+		</cities>
 	</goober>
 	<nested_attribs type='first'>
 		<another type='second'>paydirt</another>
@@ -70,6 +105,10 @@ class XML2kvp(object):
 		<goose>202</goose>
 		<it>run!</it>
 	</ordering>
+	<pattern pattern_type="striped">
+		<application>streets</application>
+		<dizzying>true</dizzying>
+	</pattern>
 </root>
 	'''
 
@@ -81,12 +120,12 @@ class XML2kvp(object):
 
 	# schema for validation
 	schema = {
-		"$id": "xml2kvp_config_schema",		
+		"$id": "xml2kvp_config_schema",
 		"title": "XML2kvp configuration options schema",
 		"type": "object",
 		"properties": {
 			"add_literals": {
-				"description":"Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]",				
+				"description":"Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]",
 				"type": "object"
 			},
 			"capture_attribute_values": {
@@ -131,6 +170,10 @@ class XML2kvp(object):
 			},
 			"include_all_attributes": {
 				"description": "Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``]",
+				"type": "boolean"
+			},
+			"include_sibling_id": {
+				"description": "Boolean to append matching identifiers, as part of key name, to sibling nodes, e.g. ``foo_bar`` and `foo_baz`` might become ``foo(abc123)_bar(def456)`` and ``foo(abc123)_baz(def456)``",
 				"type": "boolean"
 			},
 			"include_meta": {
@@ -180,9 +223,13 @@ class XML2kvp(object):
 			"skip_root": {
 				"description": "Boolean to determine if the XML root element will be included in output field names [Default: ``false``]",
 				"type": "boolean"
+			},
+			"repeating_element_suffix_count": {
+				"description": "Boolean to suffix field name with incrementing integer (after first instance, which does not receieve a suffix), e.g. XML ``<foo><bar>42</bar><bar>109</bar></foo>`` would map to ``foo_bar``:``42``, ``foo_bar_#1``:``109``  [Default: ``false``, Overrides: ``skip_repeating_values``]",
+				"type": "boolean"
 			}
 		}
-	}	
+	}
 
 
 	def __init__(self, **kwargs):
@@ -207,7 +254,9 @@ class XML2kvp(object):
 		self.include_attributes=[]
 		self.include_all_attributes=False
 		self.include_meta=False
-		self.include_xml_prop=False		
+		self.include_sibling_id=False
+		self.include_xml_prop=False
+		self.multivalue_delim='|'
 		self.node_delim='_'
 		self.ns_prefix_delim='|'
 		self.remove_copied_key=True
@@ -219,6 +268,7 @@ class XML2kvp(object):
 		self.skip_attribute_ns_declarations=True
 		self.skip_repeating_values=True
 		self.skip_root=False
+		self.repeating_element_suffix_count=False
 
 		# list of properties that are allowed to be overwritten with None
 		arg_none_allowed = []
@@ -231,6 +281,9 @@ class XML2kvp(object):
 		# set non-overwritable class attributes
 		self.kvp_dict = {}
 		self.k_xpath_dict = {}
+
+		# sibling hash counter
+		self.sibling_hash_counter = {}
 
 
 	@property
@@ -254,6 +307,8 @@ class XML2kvp(object):
 			'exclude_elements',
 			'include_attributes',
 			'include_all_attributes',
+			'include_sibling_id',
+			'multivalue_delim',
 			'node_delim',
 			'ns_prefix_delim',
 			'remove_copied_key',
@@ -263,7 +318,9 @@ class XML2kvp(object):
 			'split_values_on_all_fields',
 			'split_values_on_fields',
 			'skip_attribute_ns_declarations',
-			'skip_repeating_values'
+			'skip_repeating_values',
+			'skip_root',
+			'repeating_element_suffix_count',
 		] }
 
 		return json.dumps(config_dict, indent=2, sort_keys=True)
@@ -271,29 +328,50 @@ class XML2kvp(object):
 
 	def _xml_dict_parser(self, in_k, in_v, hops=[]):
 
-		if type(in_v) == OrderedDict:		
+		# handle Dictionary
+		if type(in_v) == OrderedDict:
 
+			# set sibling hash
+			if in_k != None:
+				hash_val = in_k
+			else:
+				hash_val = hash(frozenset(in_v.keys()))
+			if hash_val not in self.sibling_hash_counter.keys():
+				self.sibling_hash_counter[hash_val] = 1
+			else:
+				self.sibling_hash_counter[hash_val] += 1
+			sibling_hash = '%s%s' % (hashlib.md5(str(hash_val).encode('utf-8')).hexdigest()[:4], str(self.sibling_hash_counter[hash_val]).zfill(2))
+
+			# handle all attributes for node first
+			for k, v in in_v.items():
+				if k.startswith('@'):
+
+					# handle capture_attribute_values
+					if len(self.capture_attribute_values) > 0 and k.lstrip('@') in self.capture_attribute_values:
+						temp_hops = hops.copy()
+						temp_hops.append("%s@" % k)
+						self._process_kvp(temp_hops, v)
+
+					# format and append if including
+					if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
+						hops = self._format_and_append_hop(hops, 'attribute', k, v)
+
+			# set hop length that will be returned to
 			hop_len = len(hops)
+
+			# loop through remaining element and/or text nodes
 			for k, v in in_v.items():
 
 				# add key to hops
 				if k == '#text':
 					self._process_kvp(hops, v)
 
-				else:				
-					if k.startswith('@'):
+				else:
 
-						# handle capture_attribute_values
-						if len(self.capture_attribute_values) > 0 and k.lstrip('@') in self.capture_attribute_values:							
-							temp_hops = hops.copy()
-							temp_hops.append("%s@" % k)
-							self._process_kvp(temp_hops, v)
+					# recurse with non attribute nodes (element or text)
+					if not k.startswith('@'):
 
-						if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
-							hops = self._format_and_append_hop(hops, 'attribute', k, v)
-
-					else:
-						hops = self._format_and_append_hop(hops, 'element', k, None)
+						hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
 						# recurse
 						self._xml_dict_parser(k, v, hops=hops)
@@ -301,6 +379,7 @@ class XML2kvp(object):
 						# reset hops
 						hops = hops[:hop_len]
 
+		# handle list
 		elif type(in_v) == list:
 
 			hop_len = len(hops)
@@ -308,30 +387,31 @@ class XML2kvp(object):
 
 				# recurse
 				self._xml_dict_parser(None, d, hops=hops)
-				
+
 				# drop hops back one
 				hops = hops[:hop_len]
 
+		# handle str or int, a value
 		elif type(in_v) in [str,int]:
 
 			if in_k != '#text':
 				self._process_kvp(hops, in_v)
 
 
-	def _format_and_append_hop(self, hops, hop_type, k, v):
+	def _format_and_append_hop(self, hops, hop_type, k, v, sibling_hash=None):
 
 		# handle elements
 		if hop_type == 'element':
 
 			# if erroring on collision
-			if self.error_on_delims_collision:			
+			if self.error_on_delims_collision:
 				self._check_delims_collision(k)
 
 			# if skipping elements
 			if len(self.exclude_elements) > 0:
 				if k in self.exclude_elements:
 					return hops
-			
+
 			# apply namespace delimiter
 			if not self.remove_ns_prefix:
 				hop = k.replace(':', self.ns_prefix_delim)
@@ -340,6 +420,12 @@ class XML2kvp(object):
 					hop = k.split(':')[1]
 				else:
 					hop = k
+
+			# if include_sibling_id, append
+			if self.include_sibling_id:
+				# if not first entry, but repeating
+				if int(sibling_hash[-2:]) >= 1:
+					hop = '%s(%s)' % (hop, sibling_hash)
 
 		# handle elements
 		if hop_type == 'attribute':
@@ -355,10 +441,10 @@ class XML2kvp(object):
 					return hops
 
 			# if erroring on collision
-			if self.error_on_delims_collision:			
+			if self.error_on_delims_collision:
 				self._check_delims_collision(k)
 				self._check_delims_collision(v)
-			
+
 			# apply namespace delimiter
 			k = k.replace(':', self.ns_prefix_delim)
 
@@ -373,9 +459,9 @@ class XML2kvp(object):
 	def _check_delims_collision(self, value):
 
 		if any(delim in value for delim in [self.node_delim, self.ns_prefix_delim]):
-			raise self.DelimiterCollision('collision for key value: "%s", collides with a configured delimiter: %s' % 
+			raise self.DelimiterCollision('collision for key value: "%s", collides with a configured delimiter: %s' %
 				(value, {'node_delim':self.node_delim, 'ns_prefix_delim':self.ns_prefix_delim}))
-		
+
 
 	def _process_kvp(self, hops, value):
 
@@ -415,15 +501,15 @@ class XML2kvp(object):
 			slen = len(k_list)
 
 			# loop through copy_to_regex
-			for rk, rv in self.copy_to_regex.items():				
+			for rk, rv in self.copy_to_regex.items():
 
-				# if False, check for match and remove				
+				# if False, check for match and remove
 				if rv == False:
 					if re.match(rk, k):
 						k_list.append(False)
 
 				# attempt sub
-				else:					
+				else:
 					try:
 						sub = re.sub(rk, rv, k)
 						if sub != k:
@@ -467,13 +553,25 @@ class XML2kvp(object):
 				self.kvp_dict[k] = value
 
 			# pre-existing, but not yet list, convert
-			elif k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
+			elif not self.repeating_element_suffix_count and k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
 
 				if self.skip_repeating_values and value == self.kvp_dict[k]:
-					pass				
+					pass
 				else:
 					tval = self.kvp_dict[k]
 					self.kvp_dict[k] = [tval, value]
+
+			# suffix key with incrementing int
+			elif self.repeating_element_suffix_count and k in self.kvp_dict.keys():
+
+				# check for other numbers
+				suffix_count = 1
+				while True:
+					if '%s%s#%s' % (k, self.node_delim, suffix_count) in self.kvp_dict.keys():
+						suffix_count += 1
+					else:
+						break
+				self.kvp_dict['%s%s#%s' % (k, self.node_delim, suffix_count)] = value
 
 			# already list, append
 			else:
@@ -496,7 +594,7 @@ class XML2kvp(object):
 		# concat values on select fields
 		if not self.concat_values_on_all_fields and len(self.concat_values_on_fields) > 0:
 			for k,v in self.concat_values_on_fields.items():
-				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == list:					
+				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == list:
 					self.kvp_dict[k] = v.join(self.kvp_dict[k])
 
 		# split values on all fields
@@ -508,28 +606,39 @@ class XML2kvp(object):
 		# split values on select fields
 		if not self.split_values_on_all_fields and len(self.split_values_on_fields) > 0:
 			for k,v in self.split_values_on_fields.items():
-				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == str:					
+				if k in self.kvp_dict.keys() and type(self.kvp_dict[k]) == str:
 					self.kvp_dict[k] = self.kvp_dict[k].split(v)
 
 
 	def _parse_xml_input(self, xml_input):
 
+		'''
+		Note: self may be handler instance passsed
+		'''
+
 		# if string, save
 		if type(xml_input) == str:
 			if self.include_xml_prop:
-				self.xml = etree.fromstring(xml_input)
+				try:
+					self.xml = etree.fromstring(xml_input)
+				except:
+					self.xml = etree.fromstring(xml_input.encode('utf-8'))
 				self._parse_nsmap()
-			return xml_input
+			return (xml_input)
 
 		# if etree object, to string and save
 		if type(xml_input) in [etree._Element, etree._ElementTree]:
 			if self.include_xml_prop:
 				self.xml = xml_input
 				self._parse_nsmap()
-			return etree.tostring(xml_input).decode('utf-8')
+			return (etree.tostring(xml_input).decode('utf-8'))
 
 
 	def _parse_nsmap(self):
+
+		'''
+		Note: self may be handler instance passsed
+		'''
 
 		# get namespace map, popping None values
 		_nsmap = self.xml.nsmap.copy()
@@ -544,12 +653,21 @@ class XML2kvp(object):
 	@staticmethod
 	def xml_to_kvp(xml_input, handler=None, return_handler=False, **kwargs):
 
+		'''
+		Static method to create key/value pairs (kvp) from XML string input
+
+		Args:
+
+		Returns:
+
+		'''
+
 		# init handler, overwriting defaults if not None
 		if not handler:
 			handler = XML2kvp(**kwargs)
 
 		# clean kvp_dict
-		handler.kvp_dict = {}
+		handler.kvp_dict = OrderedDict()
 
 		# parse xml input
 		handler.xml_string = handler._parse_xml_input(xml_input)
@@ -557,7 +675,7 @@ class XML2kvp(object):
 		# parse as dictionary
 		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=True)
 
-		# walk xmltodict parsed dictionary and reutnr
+		# walk xmltodict parsed dictionary
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
@@ -577,10 +695,19 @@ class XML2kvp(object):
 
 		# include metadata about delimeters
 		if handler.include_meta:
-			handler.kvp_dict['xml2kvp_meta'] = json.dumps({
+
+			# set delimiters
+			meta_dict = {
 					'node_delim':handler.node_delim,
 					'ns_prefix_delim':handler.ns_prefix_delim
-				})
+				}
+
+			# if nsmap exists, include
+			if handler.nsmap:
+				meta_dict['nsmap'] = handler.nsmap
+
+			# set as json
+			handler.kvp_dict['xml2kvp_meta'] = json.dumps(meta_dict)
 
 		# return
 		if return_handler:
@@ -590,8 +717,150 @@ class XML2kvp(object):
 
 
 	@staticmethod
-	def kvp_to_xml():
-		pass
+	def kvp_to_xml(kvp, handler=None, return_handler=False, serialize_xml=False, **kwargs):
+
+		'''
+		Method to generate XML from KVP
+
+		Args:
+			kvp (dict): Dictionary of key value pairs
+			handler (XML2kvp): Instance of XML2kvp client
+			return_handler (boolean): Return XML if False, handler if True
+		'''
+
+		# DEBUG
+		stime = time.time()
+
+		# init handler, overwriting defaults if not None
+		if not handler:
+			handler = XML2kvp(**kwargs)
+
+		# init XMLRecord
+		xml_record = XMLRecord()
+
+		# loop through items
+		for k,v in kvp.items():
+
+			# split on delim
+			nodes = k.split(handler.node_delim)
+
+			# loop through nodes and create XML element nodes
+			hops = []
+			for i, node in enumerate(nodes):
+
+				# write hops
+				if not node.startswith('@'):
+
+					# init attributes
+					attribs = {}
+
+					# handle namespaces for tag name
+					if handler.ns_prefix_delim in node:
+
+						# get prefix and tag name
+						prefix, tag_name = node.split(handler.ns_prefix_delim)
+
+						# write
+						tag_name = '{%s}%s' % (handler.nsmap[prefix], tag_name)
+
+					# else, handle non-namespaced
+					else:
+						tag_name = node
+
+					# handle sibling hashes
+					if handler.include_sibling_id:
+
+						# run tag_name through sibling_hash_regex
+						matches = re.match(sibling_hash_regex, tag_name)
+						if matches != None:
+							groups = matches.groups()
+
+							# if tag_name and sibling hash, append to attribs
+							if groups[0] and groups[1]:
+								tag_name = groups[0]
+								sibling_hash = groups[1]
+								attribs['sibling_hash_id'] = sibling_hash
+
+							# else, assume sibling hash not present, get tag name
+							elif groups[2]:
+								tag_name = groups[2]
+
+					# init element
+					node_ele = etree.Element(tag_name, nsmap=handler.nsmap)
+
+					# check for attributes
+					if i+1 < len(nodes) and nodes[i+1].startswith('@'):
+						while True:
+							for attrib in nodes[i+1:]:
+								if attrib.startswith('@'):
+									attrib_name, attrib_value = attrib.split('=')
+									attribs[attrib_name.lstrip('@')] = attrib_value
+								else:
+									break
+							break
+
+					# write to element
+					node_ele.attrib.update(attribs)
+
+					# append to hops
+					hops.append(node_ele)
+
+			# write values and number of nodes
+			# # convert with ast.literal_eval to circumvent lists/tuples record as strings in pyspark
+			# # https://github.com/WSULib/combine/issues/361#issuecomment-442510950
+			if type(v) == str:
+
+				# evaluate to expose lists or tuples
+				try:
+					v_eval = ast.literal_eval(v)
+					if type(v_eval) in [list,tuple]:
+						v = v_eval
+				except:
+					pass
+
+				# split based on handler.multivalue_delim
+				if handler.multivalue_delim != None and type(v) == str and handler.multivalue_delim in v:
+					v = [ val.strip() for val in v.split(handler.multivalue_delim) ]
+
+			# handle single value
+			if type(v) == str:
+
+				# write value
+				hops[-1].text = str(v)
+
+				# append single list of nodes to xml_record
+				xml_record.node_lists.append(hops)
+
+			# handle multiple values
+			elif type(v) in [list,tuple]:
+
+				# loop through values
+				for value in v:
+
+					# copy hops
+					hops_copy = deepcopy(hops)
+
+					# write value
+					hops_copy[-1].text = str(value)
+
+					# append single list of nodes to xml_record
+					xml_record.node_lists.append(hops_copy)
+
+		# tether parent and child nodes
+		xml_record.tether_node_lists()
+
+		# merge all root nodes
+		xml_record.merge_root_nodes()
+
+		# if sibling hashes included, attempt to merge
+		if handler.include_sibling_id:
+			xml_record.merge_siblings()
+
+		# return
+		if serialize_xml:
+			return xml_record.serialize()
+		else:
+			return xml_record
 
 
 	@staticmethod
@@ -605,10 +874,16 @@ class XML2kvp(object):
 		if not handler:
 			handler = XML2kvp(**kwargs)
 
-		# for each column, reconstitue columnName --> XPath				
+		# for each column, reconstitue columnName --> XPath
 		k_parts = k.split(handler.node_delim)
+
+		# if skip root
 		if handler.skip_root:
 			k_parts = k_parts[1:]
+
+		# if include_sibling_id, strip 6 char id from end
+		if handler.include_sibling_id:
+			k_parts = [ part[:-8] if not part.startswith('@') else part for part in k_parts ]
 
 		# set initial on_attrib flag
 		on_attrib = False
@@ -619,8 +894,14 @@ class XML2kvp(object):
 		else:
 			xpath = '/' # begin with single slash, will get appended to
 
-		# loop through pieces and build xpath
+		# determine if mixing of namespaced and non-namespaced elements
+		ns_used = False
 		for part in k_parts:
+			if handler.ns_prefix_delim in part:
+				ns_used = True
+
+		# loop through pieces and build xpath
+		for i, part in enumerate(k_parts):
 
 			# if not attribute, assume node hop
 			if not part.startswith('@'):
@@ -633,12 +914,20 @@ class XML2kvp(object):
 				# close previous element
 				else:
 					xpath += '/'
-			
-				# replace delimiter with colon for prefix
-				part = part.replace(handler.ns_prefix_delim,':')
 
-				# append to xpath string
-				xpath += '%s' % part
+				# handle parts without namespace, mingled among namespaced elements
+				if ns_used and handler.ns_prefix_delim not in part:
+					part = '*[local-name() = "%s"]' % part
+				else:
+					# replace delimiter with colon for prefix
+					part = part.replace(handler.ns_prefix_delim,':')
+
+				# if part not followed by attribute, append no attribute qualifier
+				if ((i+1) < len(k_parts) and not k_parts[(i+1)].startswith('@')) or ((i+1) == len(k_parts) and not part.startswith('@')):
+					part += '[not(@*)]'
+
+				# append to xpath
+				xpath += part
 
 			# if attribute, assume part of previous element and build
 			else:
@@ -663,6 +952,9 @@ class XML2kvp(object):
 			# close attrib brackets
 			xpath += ']'
 
+		# finally, avoid matching descandants
+		xpath += '[not(*)]'
+
 		# save to handler
 		handler.k_xpath_dict[k] = xpath
 
@@ -684,7 +976,7 @@ class XML2kvp(object):
 
 		# init handler
 		if not handler:
-			handler = XML2kvp(			
+			handler = XML2kvp(
 				node_delim=node_delim,
 				ns_prefix_delim=ns_prefix_delim,
 				skip_root=skip_root)
@@ -708,8 +1000,6 @@ class XML2kvp(object):
 
 	def test_kvp_to_xpath_roundtrip(self):
 
-		# http://goodmami.org/2015/11/04/python-xpath-and-default-namespaces.html
-
 		# check for self.xml and self.nsmap
 		if not hasattr(self, 'xml'):
 			try:
@@ -722,26 +1012,31 @@ class XML2kvp(object):
 		# generate xpaths values
 		self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
 
+		# check instances and report
 		for k,v in self.k_xpath_dict.items():
-			matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
-			values = self.kvp_dict[k]
-			if type(values) == str:
-				values_len = 1
-			elif type(values) == list:
-				values_len = len(values)    
-			if len(matched_elements) != values_len:
-				logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k,v,len(matched_elements),values_len))
+			try:
+				matched_elements = self.xml.xpath(v, namespaces=self.nsmap)
+				values = self.kvp_dict[k]
+				if type(values) == str:
+					values_len = 1
+				elif type(values) in [tuple,list]:
+					values_len = len(values)
+				if len(matched_elements) != values_len:
+					logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (k, v, values_len, len(matched_elements)))
+			except etree.XPathEvalError:
+				logger.debug('problem with xpath statement: %s' % v)
+				logger.debug('could not calculate %s --> %s' % (k, v))
 
 
 	@staticmethod
 	def test_xml_to_kvp_speed(iterations, kwargs):
 
 		stime=time.time()
-		for x in range(0,iterations):
+		for x in range(0, iterations):
 			XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
 		print("avg for %s iterations: %s" % (iterations, (time.time()-stime) / float(iterations)))
 
-	
+
 	def schema_as_table(self, table_format='rst'):
 
 		'''
@@ -803,16 +1098,180 @@ class XML2kvp(object):
 		return desc
 
 
+	@staticmethod
+	def k_to_human(k, handler=None, return_handler=False, **kwargs):
+
+		'''
+		Method to humanize k's with sibling hashes and attributes
+		'''
+
+		# remove sibling hash
+		if handler.include_sibling_id:
+			k = re.sub(r'\(.+?\)','',k)
+
+		# rewrite namespace
+			k = re.sub(r'\%s' % handler.ns_prefix_delim,':',k)
+
+		# return
+		return k
 
 
 
+class XMLRecord(object):
+
+	'''
+	Class to scaffold and create XML records from XML2kvp kvp
+	'''
+
+	def __init__(self):
+
+		self.root_node = None
+		self.node_lists = []
+		self.nodes = []
+		self.merge_metrics = {}
 
 
+	def tether_node_lists(self):
+
+		'''
+		Method to tether nodes from node_lists as parent/child
+
+		Returns:
+			writes parent node to self.nodes
+		'''
+
+		for node_list in self.node_lists:
+
+			# loop through nodes
+			parent_node = None
+			for i,node in enumerate(node_list):
+
+				# append to parent
+				if i > 0:
+					parent_node.append(node)
+
+				# set as new parent and continue
+				parent_node = node
+
+			# add root node from each list to self.nodes
+			self.nodes.append(node_list[0])
 
 
+	def merge_root_nodes(self):
+
+		'''
+		Method to merge all nodes from self.nodes
+		'''
+
+		# set root with arbitrary first node
+		self.root_node = self.nodes[0]
+
+		# loop through others, add children to root node
+		for node in self.nodes[1:]:
+
+			# get children
+			children = node.getchildren()
+
+			# loop through and add to root node
+			for child in children:
+				self.root_node.append(child)
 
 
+	def merge_siblings(self, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
+
+		'''
+		Method to merge all siblings if sibling_hash provided
+		'''
+
+		# init list of finished hashes
+		finished_sibling_hashes = []
+
+		# loop through root children
+		for node_path in self.root_node.getchildren():
+
+			# get all descendents (should be simple hierarchy)
+			nodes = list(node_path.iterdescendants())
+
+			# reverse, to deal with most granular first
+			nodes.reverse()
+
+			# loop through nodes
+			for node in nodes:
+
+				# check if sibling hash present as attribute, and not already completed
+				if 'sibling_hash_id' in node.attrib and node.attrib.get('sibling_hash_id') not in finished_sibling_hashes:
+
+					# get hash
+					sibling_hash = node.attrib.get('sibling_hash_id')
+
+					# group siblings
+					self.merge_metrics[sibling_hash] = self._siblings_xpath_merge(sibling_hash,
+						remove_empty_nodes=remove_empty_nodes)
+
+		# remove sibling_hash_id
+		if remove_sibling_hash_attrib:
+			all_siblings = self.root_node.xpath('//*[@sibling_hash_id]', namespaces=self.root_node.nsmap)
+			for sibling in all_siblings:
+				sibling.attrib.pop('sibling_hash_id')
 
 
+	def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True):
+
+		'''
+		Internal method to handle the actual movement of sibling nodes
+			- performs XPath query
+			- moves siblings to parent of 0th result
+
+		Args:
+			sibling_hash (str): Sibling has to perform Xpath query with
+			remove_empty_nodes (bool): If True, remove nodes that no longer contain children
+
+		Returns:
+
+		'''
+
+		# xpath query to find all siblings in tree
+		siblings = self.root_node.xpath('//*[@sibling_hash_id="%s"]' % sibling_hash, namespaces=self.root_node.nsmap)
+
+		# metrics
+		removed = 0
+		moved = 0
+
+		# if results
+		if len(siblings) > 0:
+
+			# establish arbitrary target parent node as 0th parent
+			target_parent = siblings[0].getparent()
+
+			# loop through remainders and move there
+			for sibling in siblings[1:]:
+
+				# get parent
+				parent = sibling.getparent()
+
+				# move to target parent
+				target_parent.append(sibling)
+
+				# if flagged, remove parent if now empty
+				if remove_empty_nodes:
+					if len(parent.getchildren()) == 0:
+						parent.getparent().remove(parent)
+						removed += 1
+
+				# bump counter
+				moved += 1
+
+		# return metrics
+		metrics = {'sibling_hash':sibling_hash, 'removed':removed, 'moved':moved}
+		return metrics
+
+
+	def serialize(self, pretty_print=True):
+
+		'''
+		Method to serialize self.root_node to XML
+		'''
+
+		return etree.tostring(self.root_node, pretty_print=pretty_print).decode('utf-8')
 
 
