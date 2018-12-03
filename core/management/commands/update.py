@@ -5,7 +5,7 @@ import logging
 import os
 from packaging import version
 import pdb
-from shutil
+import shutil
 import time
 
 # django
