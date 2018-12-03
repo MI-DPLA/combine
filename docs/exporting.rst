@@ -246,7 +246,21 @@ That's effectively 1.5million documents to export.  If this exists in a "pipelin
 Exporting Records
 =================
 
-Records can be exported in two ways: a series of XML files aggregating the XML document for each Record, or the Mapped Fields for each Record as structured data.  Records from a Job, or all Published Records, may be exported.  Both are found under the "Export" tab in their respective screens.
+Records can be exported in three ways:
+
+  * `XML Documents <#export-xml-documents>`_
+
+    * *a series of XML files aggregating the XML document for each Record*
+
+  * `Mapped Fields <#export-mapped-fields>`_
+
+    * *Mapped fields for each Record as structured data (CSV or JSON)*
+
+  * `Tabular Data <#export-tabular-data>`_
+
+    * *Export that is suitable for editing "outside" of Combine and re-harvesting (CSV or JSON)*
+
+For any of these methods, records from a single Job, or all Published Records, may be exported.
 
 
 Export XML Documents
@@ -316,9 +330,9 @@ CSV
 
 Alternatively, mapped fields can be exported as comma-seperated, tabular data in .csv format.  As mentioned, this does not as deftly handle characters that may disrupt column delimiters
 
-.. figure:: img/export_mapped_json.png
+.. figure:: img/export_mapped_csv.png
    :alt: Export Mapped Fields as JSON documents
-   :target: _images/export_mapped_json.png
+   :target: _images/export_mapped_csv.png
 
    Export Mapped Fields as JSON documents
 
@@ -335,3 +349,22 @@ But if the checkbox, ``Export CSV "Kibana style"?`` is checked, all multi-valued
 
     mods_subject_topic
     history,michigan,snow
+
+
+Export Tabular Data
+-------------------
+
+Exporting Tabular Data has some similarity with exporting `mapped fields <#export-mapped-fields>`_, but for a different purpose.  Exporting Tabular Data will export either CSV or JSON suitable for re-harvesting back into Combine as a `Tabular Data Harvest <harvesting.html#tabular-data-spreadsheet-harvesting>`_.  To this end, Tabular Data harvesting is a bit more forgiving for field names, and total number of fields.  More tecnically, the export is not coming from ElasticSearch where mapped fields live for a Job, but instead, directly from the XML documents.
+
+Some options looks similar to mapped fields exporting, but also include a section for "Export Parameters":
+
+.. figure:: img/export_tabular.png
+   :alt: Export Mapped Fields as JSON documents
+   :target: _images/export_tabular.png
+
+   Export Mapped Fields as JSON documents
+
+These export parameters -- either configured at the time of export, or loaded from a pre-existing configuration -- are used to modify delimiters and other options for the CSV or JSON export.  You can `read more about harvesting tabular data here <harvesting.html#tabular-data-spreadsheet-harvesting>`_, but suffice it to say now that it can be helpful to **save** the configurations used when exporting such that they can be used later for re-harvesting.  In short, they provide a shared set of configurations for round-tripping data.
+
+
+
