@@ -1136,13 +1136,8 @@ class HarvestTabularDataSpark(CombineSparkJob):
 
 				try:
 
-					# convert kvp to XML with XML2kvp
-					xml_record_str = XML2kvp.kvp_to_xml(row_dict, serialize_xml=True, **{
-						'node_delim':fm_config['node_delim'],
-						'ns_prefix_delim':fm_config['ns_prefix_delim'],
-						'include_sibling_id':True,
-						'nsmap':fm_config['nsmap']
-					})
+					# convert dictionary to XML with XML2kvp
+					xml_record_str = XML2kvp.kvp_to_xml(row_dict, serialize_xml=True, **xml2kvp_config.__dict__)
 
 					# return success Row
 					yield Row(
@@ -1159,7 +1154,7 @@ class HarvestTabularDataSpark(CombineSparkJob):
 
 					# return error Row
 					yield Row(
-						record_id = 'abc123',
+						record_id = combine_vals_dict.get('record_id'),
 						document = '',
 						error = str(e),
 						job_id = int(job_id),
@@ -1167,10 +1162,13 @@ class HarvestTabularDataSpark(CombineSparkJob):
 						success = False
 					)
 
+		# mixin passed configurations with defaults
+		fm_config = json.loads(self.job_details['fm_harvest_config_json'])
+		xml2kvp_config = XML2kvp(**fm_config)
+
 		# map partitions
 		job_id = self.job.id
 		job_details = self.job_details
-		fm_config = json.loads(self.job_details['fm_harvest_config_json'])
 		records = dc_df.rdd.mapPartitions(kvp_to_xml_pt_udf)
 
 		# convert back to DF

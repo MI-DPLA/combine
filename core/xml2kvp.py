@@ -653,6 +653,15 @@ class XML2kvp(object):
 	@staticmethod
 	def xml_to_kvp(xml_input, handler=None, return_handler=False, **kwargs):
 
+		'''
+		Static method to create key/value pairs (kvp) from XML string input
+
+		Args:
+
+		Returns:
+
+		'''
+
 		# init handler, overwriting defaults if not None
 		if not handler:
 			handler = XML2kvp(**kwargs)
@@ -666,7 +675,7 @@ class XML2kvp(object):
 		# parse as dictionary
 		handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=True)
 
-		# walk xmltodict parsed dictionary and reutnr
+		# walk xmltodict parsed dictionary
 		handler._xml_dict_parser(None, handler.xml_dict, hops=[])
 
 		# handle literal mixins
