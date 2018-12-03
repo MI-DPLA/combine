@@ -228,6 +228,14 @@ Of particular note, the namespaces at the bottom, and delimiters used.  These ca
 Select all optional parameters, as per usual for a Job, and click "Run Tabular Harvest Job" at the bottom.
 
 
+Record Identifiers
+------------------
+
+What should I do about Record Identifiers?  Is it like static harvests where I can pull that from the XML?
+
+Nope!  For Tabular Data Harvests, you may provide a column called ``record_id`` that will be used as the Record identifier for harvest.
+
+
 Technical Details
 -----------------
 
