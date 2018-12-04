@@ -4,6 +4,7 @@ backports.shutil-get-terminal-size==1.0.0
 blinker==1.4
 boto3
 bs4==0.0.1
+redis==2.10.6
 celery[redis]
 certifi==2017.7.27.1
 chardet==3.0.4
