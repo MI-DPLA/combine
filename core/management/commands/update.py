@@ -5,6 +5,7 @@ import logging
 import os
 from packaging import version
 import pdb
+import shutil
 import time
 
 # django
@@ -30,14 +31,14 @@ class Command(BaseCommand):
 		- collect static django
 		- restart gunicorn, livy session, celery
 	'''
-	
+
 	help = 'Update Combine'
 
 
 	# python path
 	PYTHON_PATH = '/usr/local/anaconda/envs/combine/bin'
 
-	
+
 	def add_arguments(self, parser):
 
 		# release
@@ -62,10 +63,10 @@ class Command(BaseCommand):
 		parser.add_argument(
 			'--run_update_snippets_only',
 			action='store_true',
-			help='Run update snippets only during update'			
+			help='Run update snippets only during update'
 		)
 
-	
+
 	def handle(self, *args, **options):
 
 		'''
@@ -95,15 +96,15 @@ class Command(BaseCommand):
 			# git pull
 			os.system('git pull')
 
-			# checkout release if provided		
+			# checkout release if provided
 			if options.get('release', None) != None:
 				release = options['release']
 				logger.debug('release/branch provided, checking out: %s' % release)
 
-				# git checkout			
+				# git checkout
 				os.system('git checkout %s' % release)
 
-			# install requirements as combine user		
+			# install requirements as combine user
 			os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
 			# collect django static
@@ -127,11 +128,11 @@ class Command(BaseCommand):
 
 
 	def _restart_gunicorn(self):
-		
+
 		# get supervisor handle
 		sp = SupervisorRPCClient()
-		# fire action	
-		results = sp.restart_process('gunicorn') 
+		# fire action
+		results = sp.restart_process('gunicorn')
 		logger.debug(results)
 
 
@@ -139,21 +140,21 @@ class Command(BaseCommand):
 
 		# get supervisor handle
 		sp = SupervisorRPCClient()
-		# fire action	
-		results = sp.restart_process('livy') 
+		# fire action
+		results = sp.restart_process('livy')
 		logger.debug(results)
 
 		# sleep
 		time.sleep(10)
 
 		# get active livy sessions - restart or start
-		active_ls = LivySession.get_active_session()		
+		active_ls = LivySession.get_active_session()
 		if not active_ls:
 			logger.debug('active livy session not found, starting')
 			livy_session = LivySession()
 			livy_session.start_session()
 		else:
-			logger.debug('single, active session found, and restart flag passed, restarting')			
+			logger.debug('single, active session found, and restart flag passed, restarting')
 			new_ls = active_ls.restart_session()
 
 
@@ -161,8 +162,8 @@ class Command(BaseCommand):
 
 		# get supervisor handle
 		sp = SupervisorRPCClient()
-		# fire action	
-		results = sp.restart_process('celery') 
+		# fire action
+		results = sp.restart_process('celery')
 		logger.debug(results)
 
 
@@ -177,7 +178,7 @@ class Command(BaseCommand):
 
 		# get snippet
 		snippet = getattr(vuh, options.get('run_update_snippet'), None)
-		if snippet != None:			
+		if snippet != None:
 			snippet()
 		else:
 			logger.debug('Update snippet "%s" could not be found' % options.get('run_update_snippet', None))
@@ -276,9 +277,9 @@ class VersionUpdateHelper(object):
 		for job in trans_jobs:
 
 			# check version
-			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):	
+			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):
 
-				logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (job, job.job_details_dict['combine_version']))			
+				logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (job, job.job_details_dict['combine_version']))
 
 				# check for 'transformation' key in job_details
 				if job.job_details_dict.get('transformation', False):
@@ -288,7 +289,7 @@ class VersionUpdateHelper(object):
 
 					# check for 'id' key at this level, indicating < v0.4
 					if 'id' in trans_details.keys():
-						
+
 						logger.debug('Transform Job "%s" requires job details updating, performing' % job)
 
 						# create dictionary
@@ -307,13 +308,6 @@ class VersionUpdateHelper(object):
 
 						# update job_details
 						job.update_job_details({'transformation':trans_dict})
-
-
-
-
-
-
-
 
 
 
