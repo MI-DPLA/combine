@@ -6,26 +6,29 @@
 		<div class="col-md-12">
 
 			<p>Records may be exported in a variety of ways, <a href="https://combine.readthedocs.io/en/master/workflow.html#export">see documentation for more information</a>:
-				<ul>
+				<!-- <ul>
 					<li><strong>Documents (XML)</strong>: XML documents for each Record, as harvested and/or transformed.</li>
 					<li><strong>Mapped Fields (JSON)</strong>: Mapped fields as line-delimited JSON rows.  <em>Recommended for mapped field export</em>.</li>
-					<li><strong>Mapped Fields (CSV)</strong>: Mapped fields as a tabular, .csv file.</li>									
-				</ul>
+					<li><strong>Mapped Fields (CSV)</strong>: Mapped fields as a tabular, .csv file.</li>
+				</ul> -->
 			</p>
 
 			<div class="alert alert-info alert-dismissible fade show" role="alert">
-				Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped Fields as JSON</strong>, or <strong>Mapped Fields as CSV</strong>
+				Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped Fields</strong>, or <strong>Tabular Data</strong>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
-			
+
 			<ul id="export_tabs" class="nav nav-tabs">
 				<li class="nav-item">
 					<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
-				</li>								
+				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
+				</li>
+				<li class="nav-item">
+					<a class="nav-link" data-toggle="tab" href="#export_tabular_data">Export Tabular Data</a>
 				</li>
 			</ul>
 
@@ -68,7 +71,7 @@
 
 				<div id="export_mapped_fields" class="tab-pane full_width_tab">
 					<div class="row">
-						<div class="col-md-12">											
+						<div class="col-md-12">
 
 							<!-- form for Job mapped fields export -->
 
@@ -95,7 +98,7 @@
 								<div id="kibana_checkbox" style="display:none;">
 									<div class="form-group">
 										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/>
+											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/ checked>
 											<label class="form-check-label" for="kibana_style">
 												Export CSV "Kibana style"? <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
 											</label>
@@ -107,7 +110,7 @@
 
 											<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.</p>
 										</div>
-									</div>												
+									</div>
 								</div>
 								<script>
 									// listener for CSV select
@@ -133,7 +136,7 @@
 								</div>
 
 								<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
-								
+
 								<!-- select mapped fields -->
 								{% include 'core/select_mapped_fields.html' %}
 
@@ -160,11 +163,11 @@
 									    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
 									    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
 									    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
-									    
+
 									    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
 									    DataTable.
 									    */
-									    $("#form_submit_button").click(function(){									    	
+									    $("#form_submit_button").click(function(){
 
 									    	// remove any pre-existing temp, hidden inputs
 									    	$("#hidden_field_inputs input").each(function(){
@@ -189,6 +192,250 @@
 
 							</form>
 
+						</div>
+					</div>
+				</div>
+
+				<div id="export_tabular_data" class="tab-pane full_width_tab">
+					<div class="row">
+						<div class="col-md-12">
+							<!-- form for Job mapped fields export -->
+
+							{% if cjob %}
+							<form method="POST" action="{% url 'export_tabular_data' export_source='job' job_id=cjob.job.id %}">
+							{% else %}
+							<form method="POST" action="{% url 'export_tabular_data' export_source='published' %}">
+							{% endif %}
+
+								{% csrf_token %}
+
+								<!-- json or csv -->
+								<div style="width:50%;">
+									<div class="form-group">
+										<label for="tabular_data_export_type">Select export format:</label>
+										<select class="form-control" id="tabular_data_export_type" name="tabular_data_export_type" required>
+											<option value="csv">CSV (tabular, comma seperated)</option>
+											<option value="json">JSON (line-delimited)</option>
+										</select>
+										<small id="tabular_data_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values, but, may be easier to edit outside of Combine before re-ingesting.  JSON "roundtrips" easier, but can be more difficult to edit.</small>
+									</div>
+								</div>
+
+								<div class="form-group">
+									<label for="records_per_file">XML Records per file</label>
+									<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
+									<small id="records_per_file_help" class="form-text text-muted">Optional</small>
+								</div>
+
+								<div class="form-group">
+									<label for="archive_type">Select archive file type</label>
+									<select class="form-control" id="archive_type" name="archive_type" required>
+										<option value="zip">Compressed Zip file</option>
+										<option value="targz">Compressed Tar file</option>
+										<option value="tar">Uncompressed Tar file</option>
+									</select>
+								</div>
+
+								<!-- fm_export_config_json -->
+								<div class="row">
+
+									<div class="col-md-12">
+
+										<div class="gray_box">
+
+											<h5>Tabular Data Export Parameters</h5>
+
+											<p>Select a pre-existing field mapper configuration, or edit the one below, to be used for exporting tabular data.</p>
+
+											<div class="form-group">
+												<label for="harvest_field_mapper">Configuration Name</label>
+												<select class="form-control" id="harvest_field_mapper" name="harvest_field_mapper">
+													{% if orig_fm_config_json %}
+														<option value="job_fm_config_json">Configuration used for Job: {{cjob.job.name}}</option>
+													{% endif %}
+													<option value="default">Default</option>
+													{% for fm in field_mappers %}
+														<option value='{{ fm.id }}'>{{ fm.name }}</option>
+													{% endfor %}
+												</select>
+											</div>
+
+											<!-- hidden textarea for JSON to submit with form -->
+											<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_export_config_json" id="fm_export_config_json"></textarea>
+
+											<!-- visible JSON editor -->
+											<div id="harvest_config_editor" style="height:450px;"></div>
+
+											<script>
+										        // create the editor
+										        var container = document.getElementById("harvest_config_editor");
+										        var options = {
+										        	mode: 'code',
+							    					modes: ['code', 'text', 'tree'],
+							    					onChange: function(){
+							    						// update hidden textarea from editor contents
+							    						$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+							    					},
+							    					sortObjectKeys: true,
+							    					name: 'harvest_field_mapping_configuration',
+							    					schema: {{xml2kvp_handle.schema|safe}},
+							    					navigationBar:false
+										        };
+										        var harvest_editor = new JSONEditor(container, options);
+
+										        // set json to editor
+										        harvest_editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
+
+										        // update textarea
+										        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+										    </script>
+
+										    <div class="row" style="margin-top:15px;">
+												<div class="col-md-12">
+													<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_export_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options" onclick="save_current_fm_export_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_export_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_harvest_config_help').toggle(); return false;">What do these configurations mean?</button></p>
+													<div id="fm_harvest_config_alerts"></div>
+													<div id="fm_harvest_config_help" style="display:none;">
+														<!-- loop through configurations from schema, creating table of their description -->
+														<table id="jobs_table" class="table table-bordered table-hover">
+															<thead>
+																<tr>
+																	<th style="width: 20%">Parameter</th>
+																	<th>Type</th>
+																	<th>Description></th>
+																</tr>
+															</thead>
+															<tbody>
+																{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+																	<tr>
+																		<td><code>{{param}}</code></td>
+																		<td><code>{{details.type}}</code></td>
+																		<td>{{details.description}}</td>
+																	</tr>
+																{% endfor %}
+															</tbody>
+														</table>
+													</div>
+												</div>
+											</div>
+
+										</div>
+									</div>
+
+									<script>
+
+										// store default config json
+										default_fm_harvest_config = {{ xml2kvp_handle.config_json|safe }};
+
+										// load saved field mapper configs
+										$(document).ready(function(){
+											$("#harvest_field_mapper").change(function(){
+
+												if (this.value != 'default'){
+
+													// get payload
+													$.ajax({
+														type: "GET",
+														url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+														dataType:'json',
+														success: function(data){
+															// update harvest_editor
+															harvest_editor.set(data);
+															// update textarea
+											        		$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+											        		// show update button
+											        		$(".pre_harvest_fm_config_options").show();
+														}
+													});
+												}
+
+												else {
+													// update harvest_editor
+													harvest_editor.set(default_fm_harvest_config);
+													// update textarea
+											        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+											        // hide update options
+									        		$(".pre_harvest_fm_config_options").hide();
+												}
+
+											})
+										});
+
+										// save current config
+										function save_current_fm_export_config_json(update_type, fm_id=null, fm_name=null){
+
+											// grab config
+											fm_export_config_json = $("#fm_export_config_json").val();
+											console.log(fm_export_config_json);
+
+											if (update_type == 'new'){
+												// get name of new FieldMapper from user
+												var fm_name = prompt("Save these Field Mapper configurations as:");
+											}
+
+											else if (update_type == 'update'){
+												// get current id of FieldMapper selected
+												fm_id = $("#harvest_field_mapper").val();
+												fm_name = $("#harvest_field_mapper").html();
+											}
+
+											else if (update_type == 'delete'){
+												// get current id of FieldMapper selected
+												fm_id = $("#harvest_field_mapper").val();
+												fm_name = $("#harvest_field_mapper").html();
+												// switch back to default
+												$("#harvest_field_mapper").val('default');
+												$("#harvest_field_mapper").change();
+											}
+
+											// fire ajax to create/save
+											if (fm_name != null && fm_name != '') {
+												$.ajax({
+													type: "POST",
+													url: "/combine/configuration/field_mapper/update",
+													data: {
+														'update_type':update_type,
+														'fm_id':fm_id,
+														'fm_config_json':fm_export_config_json,
+														'fm_name':fm_name,
+														'csrfmiddlewaretoken': '{{ csrf_token }}'
+													},
+													dataType:'json',
+													success: function(data){
+
+														// notify user
+														alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+															${data.msg}
+															<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+															<span aria-hidden="true">&times;</span>
+															</button>
+														</div>`
+														$("#fm_harvest_config_alerts").append(alert);
+													},
+													error: function(data){
+
+														// notify user
+														alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+															${data.responseJSON.msg}
+															<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+															<span aria-hidden="true">&times;</span>
+															</button>
+														</div>`
+														$("#fm_harvest_config_alerts").append(alert);
+													}
+												});
+											}
+											else {
+												alert('A name for this configuration is rquired!');
+											}
+										}
+
+									</script>
+
+								</div>
+
+								<button type="submit" class="btn btn-success btn-sm">Export Tabular Data <i class="la la-download"></i></button>
+
+							</form>
 						</div>
 					</div>
 				</div>

@@ -7,8 +7,8 @@ This section will describe different parts of workflows for running, viewing det
 Sub-sections include:
 
   - `Record Versioning <#record-versioning>`__
-  - `Running Jobs <#running-jobs>`__  
-  - `Viewing Job Details <#viewing-job-details>`__  
+  - `Running Jobs <#running-jobs>`__
+  - `Viewing Job Details <#viewing-job-details>`__
   - `Viewing Record Details <#viewing-record-details>`__
   - `Managing Jobs <#managing-jobs>`__
 
@@ -64,8 +64,8 @@ These options are split across various tabs, and include:
 
   - `Record Input Filters <#record-input-filters>`_
   - `Field Mapping Configuration <#field-mapping-configuration>`_
-  - `Validation Tests <#validation-tests>`_  
-  - `Transform Identifier <#transform-identifier>`_  
+  - `Validation Tests <#validation-tests>`_
+  - `Transform Identifier <#transform-identifier>`_
   - `DPLA Bulk Data Compare <#dpla-bulk-data-compare>`_
 
 For the most part, a user is required to pre-configure these in the `Configurations section <configuration.html>`_, and then select which optional parameters to apply during runtime for Jobs.
@@ -172,7 +172,7 @@ This ability hints at the potential for taking the time to map fields in interes
 Field Mapping Configuration
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-Combine maps a Record's original document -- likely XML -- to key/value pairs suitable for ElasticSearch with a library called ``XML2kvp``.  When running a new Job, users can provide parameters to the ``XML2kvp`` parser in the form of JSON.  
+Combine maps a Record's original document -- likely XML -- to key/value pairs suitable for ElasticSearch with a library called ``XML2kvp``.  When running a new Job, users can provide parameters to the ``XML2kvp`` parser in the form of JSON.
 
 Here's an example of the default configurations:
 
@@ -202,7 +202,7 @@ Here's an example of the default configurations:
       "split_values_on_fields": {}
     }
 
-Clicking the button "What do these configurations mean?" will provide information about each parameter, pulled form the ``XML2kvp`` JSON schema.  
+Clicking the button "What do these configurations mean?" will provide information about each parameter, pulled form the ``XML2kvp`` JSON schema.
 
 The default is a safe bet to run Jobs, but configurations can be **saved**, **retrieved**, **updated**, and **deleted** from this screen as well.
 
@@ -314,7 +314,7 @@ This tab provides a table of all indexed fields for this job, the nature of whic
    :alt: Indexed field analysis for a Job, across all Records
    :target: _images/job_field_analysis.png
 
-   Indexed field analysis for a Job, across all 
+   Indexed field analysis for a Job, across all
 
 
 Re-Run
@@ -322,7 +322,7 @@ Re-Run
 
 Jobs can be re-run "in place" such that all current parameters, applied scenarios, and linkages to other jobs are maintained.  All "downstream" Jobs -- Jobs that inherit Records from this Job -- are also automatically re-run.
 
-One way to think about re-running Jobs would be to think of a group of Jobs that that inherit Records from one another as a "pipeline".  
+One way to think about re-running Jobs would be to think of a group of Jobs that that inherit Records from one another as a "pipeline".
 
 Jobs may also be re-run, as well as in bulk with other Jobs, from a Record Group page.
 
@@ -451,40 +451,6 @@ Export
 Records from Jobs may be exported in a variety of ways, `read more about exporting here <exporting.html>`_.
 
 
-**Record Documents**
-
-Exporting a Job as Documents takes the stored XML documents for each Record, distributes them across a user-defined number of files, exports as XML documents, and compiles them in an archive for easy downloading.  
-
-.. figure:: img/job_export_documents.png
-   :alt: Exporting Mapped Fields for a Job
-   :target: _images/job_export_documents.png
-
-   Exporting Mapped Fields for a Job
-
-For example, 1000 records where a user selects 250 per file, for Job ``#42``, would result in the following structure:
-
-.. code-block:: text
-
-    - archive.zip|tar
-        - j42/ # folder for Job
-            - part00000.xml # each XML file contains 250 records grouped under a root XML element <documents>
-            - part00001.xml
-            - part00002.xml
-            - part00003.xml
-
-The following screenshot shows the actual result of a Job with 1,070 Records, exporting 50 per file, with a zip file and the resulting, unzipped structure:
-
-.. figure:: img/job_export_structure.png
-   :alt: Example structure of an exported Job as XML Documents
-   :target: _images/job_export_structure.png
-
-   Example structure of an exported Job as XML Documents
-
-Why export like this?  Very large XML files can be problematic to work with, particularly for XML parsers that attempt to load the entire document into memory (which is most of them).  Combine is naturally pre-disposed to think in terms of the parts and partitions with the Spark back-end, which makes for convenient writing of all Records from Job in smaller chunks.  The size of the "chunk" can be set by specifying the ``XML Records per file`` input in the export form.  Finally, .zip or .tar files for the resulting export are both supported.
-
-When a Job is exported as Documents, this will send users to the `Background Tasks <background_tasks.html>`_ screen where the task can be monitored and viewed.
-
-
 Viewing Record Details
 ======================
 
@@ -535,9 +501,9 @@ This tab provides a table of all indexed fields in ElasticSearch for this Record
 
    Indexed fields for a Record
 
-Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attempts to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in ``localsettings.py``) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field. 
+Notice in this table the columns ``DPLA Mapped Field`` and ``Map DPLA Field``.  Both of these columns pertain to a functionality in Combine that attempts to "link" a Record with the same record in the live DPLA site.  It performs this action by querying the DPLA API (DPLA API credentials must be set in ``localsettings.py``) based on mapped indexed fields.  Though this area has potential for expansion, currently the most reliable and effective DPLA field to try and map is the ``isShownAt`` field.
 
-The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.  
+The ``isShownAt`` field is the URL that all DPLA items require to send visitors back to the originating organization or institution's page for that item.  As such, it is also unique to each Record, and provides a handy way to "link" Records in Combine to items in DPLA.  The difficult part is often figuring out which indexed field in Combine contains the URL.
 
 **Note:** When this is applied to a single Record, that mapping is then applied to the Job as a whole.  Viewing another Record from this Job will reflect the same mappings.  These mappings can also be applied at the Job or Record level.
 
@@ -670,7 +636,7 @@ The table shows all Jobs, with optional filters and a search box in the upper-ri
 
   - ``Job ID`` - Numerical Job ID in Combine
   - ``Timestamp`` - When the Job was started
-  - ``Name`` - Clickable name for Job that leads to Job details, optionally given one by user, or a default is generated.  This is editable anytime.  
+  - ``Name`` - Clickable name for Job that leads to Job details, optionally given one by user, or a default is generated.  This is editable anytime.
   - ``Organization`` - Clickable link to the Organization this Job falls under
   - ``Record Group`` - Clickable link to the Record Group this Job falls under (as this table is reused throughout Combine, it can sometimes contain Jobs from other Record Groups)
   - ``Job Type`` - Harvest, Transform, Merge, or Analysis
@@ -687,7 +653,7 @@ The table shows all Jobs, with optional filters and a search box in the upper-ri
   - ``Elapsed`` - How long the Job has been running, or took
   - ``Input`` - All input Jobs used for this Job
   - ``Notes`` - Optional notes field that can be filled out by User here, or in Job Details
-  - ``Total Record Count`` - Total number of successfully processed Records  
+  - ``Total Record Count`` - Total number of successfully processed Records
   - ``Actions`` - Buttons for Job details, or monitoring status of Job in Spark (see `Spark and Livy documentation <spark_and_livy.html>`_ for more information)
 
 This graph and table represents Jobs already run, or running.  This is also where Jobs can be moved, stopped, deleted, rerun, even cloned.  This is performed by using the bank of buttons under "Job Management":

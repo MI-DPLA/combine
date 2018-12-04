@@ -39,15 +39,18 @@
 				<div class="col-md-12">
 
 					<!-- handle different task types below -->
-					
-					{% if ct.task_type == 'validation_report' %}						
+
+					{% if ct.task_type == 'validation_report' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report <i class="la la-download"></i></button></a>
-					
+
 					{% elif ct.task_type == 'export_mapped_fields' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i class="la la-download"></i></button></a>
 
 					{% elif ct.task_type == 'export_documents' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i class="la la-download"></i></button></a>
+
+					{% elif ct.task_type == 'export_tabular_data' %}
+					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Tabular Data as Archive <i class="la la-download"></i></button></a>
 
 					{% elif ct.task_type == 'job_reindex' %}
 					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields <i class="la la-info-circle"></i></button></a>

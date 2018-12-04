@@ -147,52 +147,58 @@
 			else if (update_type == 'update'){
 				// get current id of FieldMapper selected
 				fm_id = $("#field_mapper").val();
+				fm_name = $("#harvest_field_mapper").html();
 			}
 
 			else if (update_type == 'delete'){
 				// get current id of FieldMapper selected
 				fm_id = $("#field_mapper").val();
+				fm_name = $("#harvest_field_mapper").html();
 				// switch back to default
 				$("#field_mapper").val('default');
 				$("#field_mapper").change();
 			}
 
 			// fire ajax to create/save
-			$.ajax({
-				type: "POST",
-				url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
-				data: {
-					'update_type':update_type,
-					'fm_id':fm_id,
-					'fm_config_json':fm_config_json,
-					'fm_name':fm_name,
-					'csrfmiddlewaretoken': '{{ csrf_token }}'
-				},
-				dataType:'json',
-				success: function(data){
-					
-					// notify user
-					alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
-						${data.msg}
-						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-						<span aria-hidden="true">&times;</span>
-						</button>
-					</div>`
-					$("#fm_config_alerts").append(alert);
-				},
-				error: function(data){
-					
-					// notify user
-					alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
-						${data.responseJSON.msg}
-						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-						<span aria-hidden="true">&times;</span>
-						</button>
-					</div>`
-					$("#fm_config_alerts").append(alert);
-				}
-			});
-			
+			if (fm_name != null && fm_name != '') {
+				$.ajax({
+					type: "POST",
+					url: "/combine/configuration/field_mapper/update",
+					data: {
+						'update_type':update_type,
+						'fm_id':fm_id,
+						'fm_config_json':fm_config_json,
+						'fm_name':fm_name,
+						'csrfmiddlewaretoken': '{{ csrf_token }}'
+					},
+					dataType:'json',
+					success: function(data){
+						
+						// notify user
+						alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+							${data.msg}
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>`
+						$("#fm_config_alerts").append(alert);
+					},
+					error: function(data){
+						
+						// notify user
+						alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+							${data.responseJSON.msg}
+							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+							<span aria-hidden="true">&times;</span>
+							</button>
+						</div>`
+						$("#fm_config_alerts").append(alert);
+					}
+				});
+			}
+			else {
+				alert('A name for this configuration is rquired!');								
+			}
 		}
 
 	</script>

@@ -26,7 +26,7 @@ except:
 if not hasattr(django, 'apps'):
 	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 	sys.path.append('/opt/combine')
-	django.setup()	
+	django.setup()
 
 # import django settings
 from django.conf import settings
@@ -53,7 +53,7 @@ class ESIndex(object):
 		Args:
 			spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job for records
-			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame 
+			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
 			field_mapper_config (dict): XML2kvp field mapper configurations
 
 		Returns:
@@ -81,7 +81,7 @@ class ESIndex(object):
 					record_string=row.document,
 					db_id=row._id.oid,
 					combine_id=row.combine_id,
-					record_id=row.record_id,				
+					record_id=row.record_id,
 					publish_set_id=job.publish_set_id,
 					fingerprint=row.fingerprint
 				)
@@ -115,7 +115,7 @@ class ESIndex(object):
 			.option("uri","mongodb://127.0.0.1")\
 			.option("database","combine")\
 			.option("collection", "index_mapping_failure").save()
-		
+
 		# retrieve successes to index
 		logger.info('###ES 4 -- filtering successes')
 		to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
@@ -124,7 +124,7 @@ class ESIndex(object):
 		index_name = 'j%s' % job.id
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
 		if not es_handle_temp.indices.exists(index_name):
-			
+
 			# put combine es index templates
 			template_body = {
 					'template':'*',
@@ -145,7 +145,7 @@ class ESIndex(object):
 					}
 				}
 			es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
-			
+
 			# create index
 			es_handle_temp.indices.create(index_name)
 
@@ -159,7 +159,7 @@ class ESIndex(object):
 			conf={
 					"es.resource":"%s/record" % index_name,
 					"es.nodes":"%s:9200" % settings.ES_HOST,
-					"es.mapping.exclude":"temp_id",
+					"es.mapping.exclude":"temp_id,__class__",
 					"es.mapping.id":"temp_id",
 				}
 		)
@@ -175,7 +175,7 @@ class ESIndex(object):
 	def copy_es_index(
 		source_index=None,
 		target_index=None,
-		create_target_index=True,		
+		create_target_index=True,
 		refresh=True,
 		wait_for_completion=True,
 		add_copied_from=None):
@@ -186,7 +186,7 @@ class ESIndex(object):
 		Args:
 			create_target_index (boolean): If True, check for target and create
 			source_index (str): Source ES index to copy from
-			target_index (str): Target ES index to copy to			
+			target_index (str): Target ES index to copy to
 
 		Returns:
 			(dict): results of reindex via elasticsearch client reindex request
@@ -228,7 +228,7 @@ class ESIndex(object):
 			},
 			'dest': {
 				'index':target_index
-			}			
+			}
 		}
 
 		# if add_copied_from, include in reindexed document
@@ -237,7 +237,7 @@ class ESIndex(object):
 				'inline': 'ctx._source.source_job_id = %s' % add_copied_from,
 				'lang': 'painless'
 			}
-		
+
 		# reindex using elasticsearch client
 		reindex = es_handle_temp.reindex(body=dupe_dict, wait_for_completion=wait_for_completion, refresh=refresh)
 		return reindex
@@ -255,13 +255,13 @@ class BaseMapper(object):
 		- map_record()
 	'''
 
-	# pre-compiled regex	
-	blank_check_regex = re.compile(r"[^ \t\n]") # checker for blank spaces	
+	# pre-compiled regex
+	blank_check_regex = re.compile(r"[^ \t\n]") # checker for blank spaces
 	namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)') # element tag name
 
 
 	def get_namespaces(self):
-		
+
 		'''
 		Method to parse namespaces from XML document and save to self.nsmap
 		'''
@@ -284,7 +284,7 @@ class XML2kvpMapper(BaseMapper):
 	'''
 
 
-	def __init__(self, field_mapper_config=None):		
+	def __init__(self, field_mapper_config=None):
 
 		self.field_mapper_config = field_mapper_config
 
@@ -305,7 +305,7 @@ class XML2kvpMapper(BaseMapper):
 			record_string (str): string of record document
 			db_id (str): mongo db id
 			combine_id (str): combine_id id
-			record_id (str): record id			
+			record_id (str): record id
 			publish_set_id (str): core.models.RecordGroup.published_set_id, used to build publish identifier
 			fingerprint (str): fingerprint
 
@@ -315,13 +315,13 @@ class XML2kvpMapper(BaseMapper):
 				1 (dict): details from mapping process, success or failure
 		'''
 
-		try:			
+		try:
 
 			# prepare literals
 			if 'add_literals' not in self.field_mapper_config.keys():
 				self.field_mapper_config['add_literals'] = {}
 
-
+			# add literals
 			self.field_mapper_config['add_literals'].update({
 
 				# add temporary id field
@@ -353,7 +353,7 @@ class XML2kvpMapper(BaseMapper):
 				)
 
 		except Exception as e:
-			
+
 			return (
 				'fail',
 				{

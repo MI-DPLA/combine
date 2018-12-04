@@ -2,23 +2,97 @@
 
 {% block content %}
 
-	<h3>Job Errors: {{ cjob.job.name }}</h3>
+	<div class="row">
+		<div class="col-md-12">
 
-	<ul>
-		<li><strong>Total Errors:</strong> {{ job_errors.error.count }}</li>
-	</ul>
+			<h3>Errors in Processing: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
 
-	<table border="1" cellpadding="5">
-		<tr>
-			<th>id</th>
-			<th>error</th>
-		</tr>
-		{% for error in job_errors %}
-			<tr>
-				<td><a href="{% url 'record' org_id=error.job.record_group.organization.id record_group_id=error.job.record_group.id job_id=error.job.id record_id=error.id %}">{{ error.record_id }}</a></td>
-				<td>{{ error.error }}</td>
-			</tr>
-		{% endfor %}
-	</table>
+			<p>The table below contains all Records that reported an error during the Job processing.</p>
+
+		</div>
+	</div>
+
+	<div class="row">
+		<div class="col-md-12">
+
+			<table id='datatables_records' class="dt_table">
+				<thead>
+					<th>DB ID</th>		
+					<th>Record ID</th>
+					<th>Job</th>
+					<th>Originating OAI set</th>
+					<th>Unique</th>		
+					<th>Document</th>
+					<th>Error</th>
+					<th>Validation Results</th>
+				</thead>
+				<tbody>
+				</tbody>
+			</table>
+
+			<script>
+
+				/*
+				If template variable `cjob` is present, return records for that job.
+				Else, return all records.
+				*/
+				$(document).ready(function() {
+
+					// check for record limiter				
+			    	{% if q %}
+				    	q = '{{ q }}';
+				    {% else %}
+				    	q = '';
+			    	{% endif %}
+
+					records_datatable = $('#datatables_records').dataTable({
+						"processing": true,
+						"serverSide": true,
+						"search": {
+						    "search": q				    
+						},
+						"order": [],
+
+						{# if cjob is present, limit to Job records only #}
+						{% if cjob %}
+							"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id success_filter=0 %}",
+						{# else, return all records #}
+						{% else %}
+							"ajax": "{% url 'all_records_dt_json' %}",
+						{% endif %}
+
+						"searchDelay": 1500,
+						"pageLength": 10,
+						"createdRow": function( row, data, dataIndex){
+			                if( data[4] ==  false){
+			                    $(row).css('background-color','rgb(255, 241, 241)');
+			                }
+			            },
+			            "columnDefs": [
+				            {
+								"targets": 7,
+								"orderable": true
+							},
+							{% if cjob %}
+							{
+								"targets": 2,
+								"visible": false
+							},
+							{% endif %}
+						],
+						"initComplete": function(settings, json){
+
+							// check if view specific function defined
+							if (typeof run_view_specific_dt_draw === "function"){
+								run_view_specific_dt_draw(this);	
+							}				
+						}
+					});
+				});
+
+			</script>
+
+		</div>
+	</div>
 
 {% endblock %}
