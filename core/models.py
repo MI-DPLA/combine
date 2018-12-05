@@ -2486,7 +2486,7 @@ class Record(mongoengine.Document):
 							matches.extend(field_matches)
 
 						if len(matches) == 1:
-							self.dpla_api_doc = matches[0]['doc']
+							self.dpla_api_doc = matches[0]['hit']
 
 						else:
 							self.dpla_api_doc = None

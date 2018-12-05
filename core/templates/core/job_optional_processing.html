@@ -1,20 +1,20 @@
 {% block content %}
 
 	<div class="row">
-		<div class="col-md-8">			
+		<div class="col-md-8">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				The following tabs provide additional, <strong>optional</strong> parameters for this Job.  When ready to begin job, <strong>click button at the bottom!</strong>
+				The following tabs provide additional, <strong>optional</strong> parameters for this Job</strong>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
 		</div>
-	</div>	
-	
+	</div>
+
 	<div class="row">
 		<div class="col-md-12">
 
-			<ul class="nav nav-tabs">				
+			<ul class="nav nav-tabs">
 				{% if input_jobs %}
 					<li class="nav-item">
 						<a class="nav-link active" data-toggle="tab" href="#record_input_filter">Record Input Filter</a>
@@ -25,16 +25,16 @@
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#validation_tests_tab">Validation Tests</a>
-				</li>				
+				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#identifier_transform_tab">Transform Identifier</a>
-				</li>				
+				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#bulk_download_check">DPLA Bulk Data Compare</a>
 				</li>
 			</ul>
 
-			<div class="tab-content">			
+			<div class="tab-content">
 
 				{% if input_jobs %}
 					<div id="record_input_filter" class="tab-pane container active" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
@@ -53,12 +53,12 @@
 					{% include 'core/bulk_download_compare_select.html' %}
 				</div>
 
-				<div id="field_mapping_config" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+				<div id="field_mapping_config" class="tab-pane container {% if not input_jobs %}active{% endif %}" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Field Mapper Selection #}
 					{% include 'core/field_mapper_select.html' %}
 				</div>
 
-				<div id="identifier_transform_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">						
+				<div id="identifier_transform_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
 					{# Record Identifier Transformation #}
 					{% include 'core/record_identifier_transform.html' %}
 				</div>

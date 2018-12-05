@@ -23,7 +23,7 @@
 					<tr>
 						<th>Record ID</th>
 						<td><code>{{ record.record_id }}</code></td>
-					</tr>					
+					</tr>
 					<tr>
 						<th>Valid?</th>
 						<td><span class="{% if record.valid %}text-success{% else %}text-danger{% endif %}">{{ record.valid }}</span></td>
@@ -37,7 +37,7 @@
 		<div class="col-md-12">
 
 			<!-- Navigation -->
-			<ul class="nav nav-tabs">				
+			<ul class="nav nav-tabs">
 				<li class="nav-item">
 					<a class="nav-link active" data-toggle="tab" href="#document_tab">Record Document</a>
 				</li>
@@ -49,7 +49,7 @@
 				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
-				</li>				
+				</li>
 				<li class="nav-item">
 					<a class="nav-link" data-toggle="tab" href="#dpla_link_tab">DPLA API Query</a>
 				</li>
@@ -57,7 +57,7 @@
 					<a class="nav-link" data-toggle="tab" href="#job_type_specific_tab">{% if record.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif record.job.job_type_family == 'TransformJob' %}Transform Details{% elif record.job.job_type_family == 'MergeJob' %}Merge / Duplicate Details{% elif record.job.job_type_family == 'PublishJob' %}Publish Details{% elif record.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#run_scenarios_with_record">Run/Test Scenarios for this Record</a>
+					<a class="nav-link" data-toggle="tab" href="#test_scenarios_with_record">Test Scenarios for this Record</a>
 				</li>
 			</ul>
 
@@ -72,7 +72,7 @@
 								<p>This tab previews and provides information about the document stored for this Record.  Below is the raw, stored document for this Record, or see the buttons for more options.
 
 								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Raw Document <i class="la la-external-link"></i></button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
-								
+
 								{% if record.document != '' %}
 									<div>
 										{% if pretty_format_msg %}
@@ -95,7 +95,7 @@
 							<script>
 								// highlight raw document after loaded
 								$(document).ready(function(){
-									$("#record_document_raw").each(function(i, block) {										
+									$("#record_document_raw").each(function(i, block) {
 										hljs.highlightBlock(block);
 									});
 								});
@@ -160,7 +160,7 @@
 						<!-- Record Validations -->
 						{% if record.job.jobvalidation_set.count > 0 %}
 						<div class="col-md-12">
-							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>							
+							<h4>Validation Result: {% if record.get_validation_errors.count > 0 %}<span class="text-danger">Failed</span>{% else %}<span class="text-success">Passed</span>{% endif %}</h4>
 							{% if record.get_validation_errors.count > 0 %}
 								<p>This Record failed the following Validation Scenarios</p>
 								<table class="table table-bordered table-hover">
@@ -175,7 +175,7 @@
 											<tr>
 												<td>{{ rv.validation_scenario.name }}</td>
 												<td>{{ rv.validation_scenario.get_validation_type_display }}</td>
-												<td><code>{{ failure }}</code></td>												
+												<td><code>{{ failure }}</code></td>
 												<td><a target="_blank" href="{% url 'test_validation_scenario' %}?q={{record.id}}&validation_scenario={{rv.validation_scenario.id}}|{{rv.validation_scenario.validation_type}}"><button type="button" class="btn btn-info btn-sm">Run Validation</button></a></td>
 											</tr>
 										{% endfor %}
@@ -214,7 +214,7 @@
 							<p>
 								<ul class="list-inline">
 									<li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-outline-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
-									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document <i class="la la-external-link"></i></button></a></li>									
+									<li style="display:inline;"><a href="{% url 'record_indexed_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View ElasticSearch Document <i class="la la-external-link"></i></button></a></li>
 								</ul>
 							</p>
 
@@ -235,7 +235,7 @@
 					    							$("#jsoneditor").css('height','');
 					    						}
 					    						else {
-					    							$("#jsoneditor").css('height','450px');	
+					    							$("#jsoneditor").css('height','450px');
 					    						}
 					    					},
 					    					navigationBar:false
@@ -251,7 +251,7 @@
 							<table id="record_fields" class="table table-bordered table-hover">
 								<thead>
 									<tr>
-										<th>Field Name</th>										
+										<th>Field Name</th>
 										<th>Field Value</th>
 									</tr>
 								</thead>
@@ -291,7 +291,7 @@
 
 						<!-- if DPLA API document hit -->
 						{% if dpla_api_doc %}
-						
+
 							<div class="row">
 
 								<div class="col-md-12">
@@ -307,11 +307,11 @@
 												<td>{{value}}</td>
 											</tr>
 										{% endfor %}
-										</table>										
+										</table>
 									</div>
 								</div>
 
-							</div>						
+							</div>
 
 							<div class="row">
 								<div class="col-md-12">
@@ -332,7 +332,7 @@
 														$("#jsonresults").css('height','');
 													}
 													else {
-														$("#jsonresults").css('height','450px');	
+														$("#jsonresults").css('height','450px');
 													}
 												},
 
@@ -341,7 +341,7 @@
 									        var editor_results = new JSONEditor(container, options);
 
 									        // set json to editor_results
-									        editor_results.set({{ dpla_api_json|safe }});		        
+									        editor_results.set({{ dpla_api_json|safe }});
 									    </script>
 									</div>
 								</div>
@@ -369,7 +369,7 @@
 												<th>DPLA Field</th>
 												<th>Search Term</th>
 												<th>DPLA Original Record ID</th>
-												<th>DPLA Item ID</th>												
+												<th>DPLA Item ID</th>
 											</tr>
 										</thead>
 										<tbody>
@@ -383,12 +383,12 @@
 													</tr>
 												{% endfor %}
 											{% endfor %}
-										</tbody>												
+										</tbody>
 									</table>
 								</div>
 
 							</div>
-						
+
 						{% else %}
 
 						{% endif %}
@@ -398,7 +398,7 @@
 						<p>DPLA API key not set, set in <code>localsettings.py</code> to query DPLA API for Record matching.</p>
 					{% endif %}
 
-					
+
 
 				</div>
 
@@ -413,19 +413,19 @@
 									<p>No additional information at this time for Harvest jobs.</p>
 								{% endif %}
 
-								<!-- TransformJob -->								
+								<!-- TransformJob -->
 								{% if record.job.job_type_family == 'TransformJob' %}
 
-									<div class="row">											
+									<div class="row">
 										<div class="col-md-12">
 											<h4>Transformation Scenarios Used</h4>
 											<table class="table table-bordered table-hover">
 												<tr>
 													<th>Order Applied</th>
-													<th>Transformation ID</th>													
+													<th>Transformation ID</th>
 													<th>Name</th>
 													<th>Type</th>
-													<th>Transformation Payload</th>																
+													<th>Transformation Payload</th>
 												</tr>
 												{% for transformation in record.job.job_details_dict.transformation.scenarios %}
 													<tr>
@@ -433,17 +433,17 @@
 														<td><code>{{transformation.id}}</code></td>
 														<td>{{transformation.name}}</td>
 														<td>{{transformation.type_human}}</td>
-														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>	
+														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>
 													</tr>
 												{% endfor %}
 											</table>
-										</div>													
+										</div>
 									</div>
 
 									<div class="row">
 										<div class="col-md-12">
 
-											<h4>Changes to Record during Transformation</h4>											
+											<h4>Changes to Record during Transformation</h4>
 											{% if record_diff_dict %}
 
 												<p>Using the tabs below, select different views of changes for the Record after Transformation:</p>
@@ -451,7 +451,7 @@
 												<div class="row">
 													<div class="col-md-12">
 
-														<ul class="nav nav-tabs">				
+														<ul class="nav nav-tabs">
 															<li class="nav-item">
 																<a class="nav-link active" data-toggle="tab" href="#combined_diff">Combined Diff</a>
 															</li>
@@ -485,7 +485,7 @@
 															<div class="col-md-12">
 
 																<p><a href="{% url 'record_side_by_side_diff_html' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id %}" target="_blank"><button type="button" class="btn btn-success btn-sm">View Comparison in New Tab</button></a></p>
-																
+
 																<div id="side_by_side_html">
 																	<p>loading...</p>
 																</div>
@@ -521,12 +521,12 @@
 					</div>
 				</div>
 
-				<div id="run_scenarios_with_record" class="tab-pane full_width_tab">
+				<div id="test_scenarios_with_record" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-12">
 
 							<p>Combine transforms, validates, and otherwise modifies Records by applying various "Scenarios" against them.  These can be seen in more detail on the the Configuration page.  Each of these Scenarios allows for testing against Records, where a Record is searched for and used.  However, you can also navigate to the testing areas for these Scenarios with this particular Record pre-selected using the buttons below:</p>
-							
+
 							<p>
 								<ul class="list-inline">
 									<li style="margin-top:5px;"><a href="{% url 'test_field_mapper' %}?q={{ record.id }}"><button type="button" class="btn btn-success btn-sm">Test Field Mapping for this Record <i class="la la-wrench"></i></button></a></li>
@@ -550,7 +550,7 @@
 
 		// function to load side_by_side diff
 		sbs_loaded = false;
-		
+
 		function retrieve_side_by_side_diff(){
 			if (!sbs_loaded) {
 				$.ajax({
@@ -564,7 +564,7 @@
 						// set flag
 						sbs_loaded = true;
 					}
-				});	
+				});
 			}
 			else {
 				console.log('side_by_side comparison already loaded!');

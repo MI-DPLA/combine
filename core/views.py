@@ -1990,17 +1990,6 @@ def record(request, org_id, record_group_id, job_id, record_id):
 	logger.debug('Job type is %s, retrieving details' % record.job.job_type)
 	try:
 		job_details = record.job.job_details_dict
-
-		# TransformJob
-		if record.job.job_type == 'TransformJob':
-
-			# get transformation
-			transformation = models.Transformation.objects.get(pk=job_details['transformation']['id'])
-			job_details['transformation'] = transformation
-
-			# get isolated input record
-			job_details['input_record'] = record.get_record_stages(input_record_only=True)[0]
-
 	except:
 		logger.debug('could not load job details')
 		job_details = {}
@@ -2018,7 +2007,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 	# retrieve field mapper config json used
 	try:
-		job_fm_config_json = job_details['fm_config_json']
+		job_fm_config_json = json.dumps(job_details['field_mapper_config'])
 	except:
 		job_fm_config_json = json.dumps({'error':'job field mapping configuration json could not be found'})
 

@@ -1,7 +1,7 @@
 /* Combine CSS */
 
 /* High level, global */
-body {	
+body {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size:90%;
 	padding-top: 4.5rem;
@@ -18,7 +18,7 @@ body {
 }
 .code_style {
 	font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-	color: #e83e8c;	
+	color: #e83e8c;
 	word-break: break-word;
 }
 .container {
@@ -113,8 +113,8 @@ div.grayed_dt_row, td.grayed_dt_row {
 }
 #job_family_diagram {
 	width: 100%;
-	height: 300px;				
-	border: none; 
+	height: 300px;
+	border: none;
 }
 
 /* deleted jobs */
@@ -264,7 +264,7 @@ div.grayed_dt_row, td.grayed_dt_row {
 }
 .tree_select {
   background-color: rgb(245, 245, 245);
-  max-height:640px;     
+  max-height:640px;
   overflow-y: scroll;
   padding:10px;
   border-radius: 5px;
@@ -297,3 +297,12 @@ div.grayed_dt_row, td.grayed_dt_row {
   border: 1px solid #343a40;
   background-color: white;
 }
+
+
+/* Tab Highlighting */
+.nav-tabs .nav-item.show .nav-link, .nav-tabs .nav-link.active {
+    color: #495057;
+    background-color: #fffdb6;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
