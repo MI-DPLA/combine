@@ -14,7 +14,7 @@ import os
 
 
 # Combine Version
-COMBINE_VERSION = 'v0.5'
+COMBINE_VERSION = 'v0.5.1'
 
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
