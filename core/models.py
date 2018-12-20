@@ -2134,8 +2134,16 @@ class Transformation(models.Model):
 			# parse payload
 			xsl = etree.fromstring(self.payload.encode('utf-8'))
 
+			# handle empty, global namespace
+			_nsmap = xsl.nsmap.copy()
+			try:
+				global_ns = _nsmap.pop(None)
+				_nsmap['global_ns'] = ns0
+			except:
+				pass
+
 			# xpath query for xsl:include
-			includes = xsl.xpath('//xsl:include', namespaces=xsl.nsmap)
+			includes = xsl.xpath('//xsl:include', namespaces=_nsmap)
 
 			# loop through includes and check for HTTP hrefs
 			for i in includes:
