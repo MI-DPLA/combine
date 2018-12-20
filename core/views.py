@@ -2354,7 +2354,7 @@ def test_transformation_scenario(request):
 				return HttpResponse(diff_html, content_type="text/xml")
 
 		except Exception as e:
-			logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+			logger.debug('test transformation scenario was unsucessful, deleting temporary')
 			try:
 				if request.POST.get('trans_test_type') == 'single':
 					trans.delete()
