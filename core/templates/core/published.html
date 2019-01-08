@@ -28,7 +28,7 @@
 <div class="row">
 	<div class="col-md-8">
 		<h4>Published Sets</h4>
-		
+
 		<p>Showing all published Record Groups, where one Job from each Record Group may be published with an optional <code>Publish Set ID</code>.  This <code>Publish Set ID</code> is used during publishing for the outgoing OAI set.  In some cases this may be <span class="text-danger">"None"</span>, resulting in Records that are not aggregated under an OAI set, but will be returned via <code>ListRecords</code>.</p>
 
 		<table class="table table-bordered table-hover">
@@ -84,7 +84,7 @@
 	<div class="col-md-12">
 
 		<!-- Navigation -->
-		<ul id="tabs" class="nav nav-tabs">								
+		<ul id="tabs" class="nav nav-tabs">
 			<li class="nav-item">
 				<a class="nav-link active" data-toggle="tab" href="#records_tab">Records</a>
 			</li>
@@ -95,7 +95,7 @@
 				<a class="nav-link" data-toggle="tab" href="#oai_server">Outgoing OAI-PMH Server</a>
 			</li>
 			<li class="nav-item">
-				<a class="nav-link" data-toggle="tab" href="#export_flat_files">Export</a>
+				<a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
 			</li>
 		</ul>
 
@@ -114,7 +114,7 @@
 						<table id="published_records" class="table table-hover">
 							<thead>
 								<th>DB ID</th>
-								<th>Record ID</th>								
+								<th>Record ID</th>
 								<th>Job</th>
 								<th>Publish Set ID</th>
 								<!-- <th>Harvested OAI set</th> -->
@@ -146,7 +146,7 @@
 				<div class="row">
 					<div class="col-md-12">
 
-						<h4>Mapped Fields Analysis</h4>						
+						<h4>Mapped Fields Analysis</h4>
 
 						<!-- Indexed Fields Analysis DT Table -->
 						{% include 'core/indexed_fields_dt_table.html' %}
@@ -177,11 +177,11 @@
 			</div>
 
 			<!-- Export -->
-			<div id="export_flat_files" class="tab-pane full_width_tab">
-				
+			<div id="export_tab" class="tab-pane full_width_tab">
+
 				<!-- export content -->
 				{% include 'core/export.html' %}
-				
+
 			</div>
 
 		</div>

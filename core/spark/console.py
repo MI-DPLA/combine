@@ -66,11 +66,18 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 			rdds = [ get_job_as_df(spark, job_id).select('document').rdd for job_id in job_ids ]
 			rdd_to_write = spark.sparkContext.union(rdds)
 
-		# write rdd to disk
-		rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(records_per_file)))\
-		.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))\
-		.saveAsTextFile('%s/%s' % (base_path, folder_name))
+		# repartition
+		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(records_per_file)))
 
+		# wrap each document in XML declaration
+		rdd_to_write = rdd_to_write.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))
+
+		########################################
+		# ADD LOGIC TO WRITE TO FILESYSTEM OR S3
+		########################################
+
+		# write rdd to disk
+		rdd_to_write.saveAsTextFile('%s/%s' % (base_path, folder_name))
 
 
 def generate_validation_report(spark, output_path, task_params):
@@ -179,6 +186,10 @@ def export_records_as_tabular_data(
 		# repartition to records per file
 		kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count()/int(records_per_file)))
 
+		########################################
+		# ADD LOGIC TO WRITE TO FILESYSTEM OR S3
+		########################################
+
 		# handle json
 		if tabular_data_export_type == 'json':
 			_write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config)
@@ -249,6 +260,33 @@ def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
 	kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name), header=True)
 
 
+def _write_rdd_to_s3(
+	spark,
+	rdd,
+	bucket,
+	key,
+	access_key=settings.AWS_ACCESS_KEY_ID,
+	secret_key=settings.AWS_SECRET_ACCESS_KEY):
+
+	'''
+	Function to write RDD to S3
+
+	Args:
+		rdd (RDD): RDD to write to S3
+		bucket (str): bucket string to write to
+		key (str): key/path to write to in S3 bucket
+		access_key (str): default to settings, override with access key
+		secret_key (str): default to settings, override with secret key
+	'''
+
+	# dynamically set s3 credentials
+	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", access_key)
+	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", secret_key)
+
+	# write rdd to S3
+	rdd.saveAsTextFile('s3a://%s/%s' % (bucket, key.lstrip('/')))
+
+
 
 ############################################################################
 # Convenience Functions
@@ -286,7 +324,7 @@ def get_job_es(spark,
 	as_rdd=False):
 
 	'''
-	Convenience method to retrieve documents from ElasticSearch
+	Convenience method to retrieve mapped fields from ElasticSearch
 
 	Args:
 

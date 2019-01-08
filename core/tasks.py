@@ -549,62 +549,63 @@ def export_documents(ct_id):
 	'''
 
 	# get CombineTask (ct)
+
+	# get CombineBackgroundTask
+	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
+	logger.info('using %s' % ct)
+
+	# generate spark code
+	output_path = '/tmp/%s' % str(uuid.uuid4())
+
+	# handle single Job
+	if 'job_id' in ct.task_params.keys():
+
+		# get CombineJob
+		cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+
+		# set archive filename of loose XML files
+		archive_filename_root = 'j_%s_documents' % cjob.job.id
+
+		# build job_dictionary
+		job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
+		logger.info(job_dict)
+
+		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
+			'output_path':output_path,
+			'job_dict':job_dict,
+			'records_per_file':ct.task_params['records_per_file']
+		}
+		logger.info(spark_code)
+
+	# handle published records
+	if 'published' in ct.task_params.keys():
+
+		# set archive filename of loose XML files
+		archive_filename_root = 'published_documents'
+
+		# get anonymous CombineJob
+		cjob = models.CombineJob()
+
+		# get published records to determine sets
+		pr = models.PublishedRecords()
+
+		# build job_dictionary
+		job_dict = {}
+		# handle published jobs with publish set ids
+		for publish_id, jobs in pr.sets.items():
+			job_dict[publish_id] = [ job.id for job in jobs ]
+		# handle "loose" Jobs
+		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
+		logger.info(job_dict)
+
+		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
+			'output_path':output_path,
+			'job_dict':job_dict,
+			'records_per_file':ct.task_params['records_per_file']
+		}
+		logger.info(spark_code)
+
 	try:
-
-		# get CombineBackgroundTask
-		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-		logger.info('using %s' % ct)
-
-		# generate spark code
-		output_path = '/tmp/%s' % str(uuid.uuid4())
-
-		# handle single Job
-		if 'job_id' in ct.task_params.keys():
-
-			# get CombineJob
-			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
-
-			# set archive filename of loose XML files
-			archive_filename_root = 'j_%s_documents' % cjob.job.id
-
-			# build job_dictionary
-			job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
-			logger.info(job_dict)
-
-			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
-				'output_path':output_path,
-				'job_dict':job_dict,
-				'records_per_file':ct.task_params['records_per_file']
-			}
-			logger.info(spark_code)
-
-		# handle published records
-		if 'published' in ct.task_params.keys():
-
-			# set archive filename of loose XML files
-			archive_filename_root = 'published_documents'
-
-			# get anonymous CombineJob
-			cjob = models.CombineJob()
-
-			# get published records to determine sets
-			pr = models.PublishedRecords()
-
-			# build job_dictionary
-			job_dict = {}
-			# handle published jobs with publish set ids
-			for publish_id, jobs in pr.sets.items():
-				job_dict[publish_id] = [ job.id for job in jobs ]
-			# handle "loose" Jobs
-			job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
-			logger.info(job_dict)
-
-			spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
-				'output_path':output_path,
-				'job_dict':job_dict,
-				'records_per_file':ct.task_params['records_per_file']
-			}
-			logger.info(spark_code)
 
 		# submit to livy
 		logger.info('submitting code to Spark')

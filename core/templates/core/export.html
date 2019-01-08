@@ -6,7 +6,7 @@
 		<div class="col-md-12">
 
 			<div class="alert alert-info alert-dismissible fade show" role="alert">
-				Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped Fields</strong>, or <strong>Tabular Data</strong>.  <a target="_blank" href="https://combine.readthedocs.io/en/master/exporting.html#exporting-records">Or click here for documentation</a>.
+				Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped Fields</strong>, or <strong>Tabular Data</strong>.  <a target="_blank" href="https://combine.readthedocs.io/en/master/exporting.html#exporting-records">Click here for documentation</a>.
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
@@ -29,8 +29,8 @@
 				<div id="export_documents" class="tab-pane full_width_tab active">
 					<div class="row">
 						<div class="col-md-6">
-							<!-- form for Job mapped fields export -->
 
+							<!-- form for Job mapped fields export -->
 							{% if cjob %}
 								<form method="POST" action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
@@ -54,6 +54,53 @@
 									</select>
 								</div>
 
+								<div id="s3_export_documents">
+									<div class="form-group">
+										<div class="form-check">
+											<input class="form-check-input" type="checkbox" value="true" id="s3_export" name="s3_export"/ onclick="$('#s3_export_options').fadeToggle();">
+											<label class="form-check-label" for="s3_export">
+												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3?
+											</label>
+										</div>
+										<div id="s3_export_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+
+											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
+
+												<ul>
+													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
+													<li>Exports <strong>will overwrite</strong> content for a key if the provided key already exists in the bucket</li>
+												</ul>
+
+											</p>
+
+											<div class="form-group">
+												<label for="s3_bucket">S3 Bucket</label>
+												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
+												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
+											</div>
+
+											<div class="form-group">
+												<label for="s3_key">S3 Key</label>
+												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
+												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
+											</div>
+
+											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p>
+
+											<script>
+
+												function test_s3_bucket_write(){
+
+													alert("Not yet implemented.");
+
+												}
+
+											</script> -->
+
+										</div>
+									</div>
+								</div>
+
 								<button type="submit" class="btn btn-success btn-sm">Export Documents <i class="la la-download"></i></button>
 
 							</form>
@@ -66,7 +113,6 @@
 						<div class="col-md-12">
 
 							<!-- form for Job mapped fields export -->
-
 							{% if cjob %}
 								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
@@ -191,8 +237,8 @@
 				<div id="export_tabular_data" class="tab-pane full_width_tab">
 					<div class="row">
 						<div class="col-md-12">
-							<!-- form for Job mapped fields export -->
 
+							<!-- form for Job mapped fields export -->
 							{% if cjob %}
 							<form method="POST" action="{% url 'export_tabular_data' export_source='job' job_id=cjob.job.id %}">
 							{% else %}

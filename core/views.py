@@ -2806,6 +2806,9 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
+
 		# run celery task
 		bg_task = tasks.export_documents.delay(ct.id)
 		logger.debug('firing bg task: %s' % bg_task)
@@ -2828,7 +2831,7 @@ def export_documents(request, export_source, job_id=None):
 	# export for published
 	if export_source == 'published':
 
-		logger.debug('exporting documents from Job')
+		logger.debug('exporting documents for published records')
 
 		# get instance of Published model
 		published = models.PublishedRecords()
@@ -2845,6 +2848,9 @@ def export_documents(request, export_source, job_id=None):
 		)
 		ct.save()
 
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
+
 		# run celery task
 		bg_task = tasks.export_documents.delay(ct.id)
 		logger.debug('firing bg task: %s' % bg_task)
@@ -2860,6 +2866,42 @@ def export_documents(request, export_source, job_id=None):
 		})
 
 		return redirect('published')
+
+
+def _handle_export_output(request, export_source, ct):
+
+	'''
+	Function to handle export outputs
+		- currently only augmenting with S3 export
+
+	Args:
+		request: request object
+		export_source: ['job','published']
+		ct (CombineBackgroundTask): instance of ct to augment
+
+	Returns:
+		ct (CombineBackgroundTask)
+	'''
+
+	# handle s3 export
+	s3_export = request.POST.get('s3_export',False)
+	if s3_export:
+		s3_export = True
+
+	# if s3_export
+	if s3_export:
+		task_params = json.loads(ct.task_params_json)
+		task_params.update({
+			's3_export':True,
+			's3_bucket':request.POST.get('s3_bucket', None),
+			's3_key':request.POST.get('s3_key', None)
+		})
+		ct.task_params_json = json.dumps(task_params)
+
+	# save and return
+	pdb.set_trace()
+	ct.save()
+	return ct
 
 
 def export_mapped_fields(request, export_source, job_id=None):
