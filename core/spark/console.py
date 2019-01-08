@@ -52,8 +52,12 @@ def export_records_as_xml(spark, ct_id):
 	# write RDD to S3
 	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
 
+		# dynamically set credentials
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
+
 		# determine column subset
-		col_subset = ['document','record_id','publish_set_id']
+		col_subset = ['*']
 
 		# loop through keys and export
 		rdds = []
@@ -75,14 +79,7 @@ def export_records_as_xml(spark, ct_id):
 		rdd_to_write = spark.sparkContext.union(rdds)
 
 		# repartition
-		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(ct.task_params['records_per_file'])))
-
-		# wrap each document in XML declaration
-		rdd_to_write = rdd_to_write.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))
-
-		# dynamically set credentials
-		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
-		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
+		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count() / settings.TARGET_RECORDS_PER_PARTITION))
 
 		# write to bucket
 		rdd_to_write.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
