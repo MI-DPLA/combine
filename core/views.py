@@ -2896,11 +2896,10 @@ def _handle_export_output(request, export_source, ct):
 			's3_export':True,
 			's3_bucket':request.POST.get('s3_bucket', None),
 			's3_key':request.POST.get('s3_key', None),
-			's3_export_type':request.POST.get('s3_export_type', 'rdd')
+			's3_export_type':request.POST.get('s3_export_type', None)
 		})
 
 	# save and return
-	pdb.set_trace()
 	ct.save()
 	return ct
 

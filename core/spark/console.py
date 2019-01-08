@@ -8,7 +8,7 @@ import os
 import sys
 
 # pyspark imports
-from pyspark.sql.functions import regexp_replace
+from pyspark.sql.functions import udf, regexp_replace, lit
 from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
@@ -47,22 +47,32 @@ def export_records_as_xml(spark, ct_id):
 	ct = CombineBackgroundTask.objects.get(pk=int(ct_id))
 
 	# clean base path
-	base_path = "file:///%s" % ct.task_params['base_path'].lstrip('file://').rstrip('/')
+	output_path = "file:///%s" % ct.task_params['output_path'].lstrip('file://').rstrip('/')
 
-	# loop through keys and export
-	for folder_name, job_ids in ct.task_params['job_dict'].items():
+	# write RDD to S3
+	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
 
-		# handle single job_id
-		if len(job_ids) == 1:
+		# determine column subset
+		col_subset = ['document','record_id','publish_set_id']
 
-			# get Job records as df
-			rdd_to_write = get_job_as_df(spark, job_ids[0]).select('document').rdd
+		# loop through keys and export
+		rdds = []
+		for folder_name, job_ids in ct.task_params['job_dict'].items():
 
-		# handle multiple jobs
-		else:
+			# handle single job_id
+			if len(job_ids) == 1:
 
-			rdds = [ get_job_as_df(spark, job_id).select('document').rdd for job_id in job_ids ]
-			rdd_to_write = spark.sparkContext.union(rdds)
+				# get Job records as df
+				rdds.extend([get_job_as_df(spark, job_ids[0]).select(col_subset).rdd])
+
+			# handle multiple jobs
+			else:
+
+				# extend
+				rdds.extend([ get_job_as_df(spark, job_id).select(col_subset).rdd for job_id in job_ids ])
+
+		# get union of all RDDs to write
+		rdd_to_write = spark.sparkContext.union(rdds)
 
 		# repartition
 		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(ct.task_params['records_per_file'])))
@@ -70,12 +80,38 @@ def export_records_as_xml(spark, ct_id):
 		# wrap each document in XML declaration
 		rdd_to_write = rdd_to_write.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))
 
-		########################################
-		# ADD LOGIC TO WRITE TO FILESYSTEM OR S3
-		########################################
+		# dynamically set credentials
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
 
-		# write rdd to disk
-		rdd_to_write.saveAsTextFile('%s/%s' % (base_path, folder_name))
+		# write to bucket
+		rdd_to_write.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+
+	# write to disk
+	else:
+
+		# determine column subset
+		col_subset = ['document']
+
+		# loop through keys and export
+		for folder_name, job_ids in ct.task_params['job_dict'].items():
+
+			# handle single job_id
+			if len(job_ids) == 1:
+
+				# get Job records as df
+				rdd_to_write = get_job_as_df(spark, job_ids[0]).select(col_subset).rdd
+
+			# handle multiple jobs
+			else:
+
+				rdds = [ get_job_as_df(spark, job_id).select(col_subset).rdd for job_id in job_ids ]
+				rdd_to_write = spark.sparkContext.union(rdds)
+
+			# repartition, wrap in XML dec, and write
+			rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(ct.task_params['records_per_file'])))\
+			.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))\
+			.saveAsTextFile('%s/%s' % (output_path, folder_name))
 
 
 def generate_validation_report(spark, output_path, task_params):

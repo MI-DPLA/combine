@@ -68,7 +68,7 @@
 
 												<ul>
 													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
-													<li>Exports <strong>will overwrite</strong> content for a key if the provided key already exists in the bucket</li>
+													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
 												</ul>
 
 											</p>
@@ -88,22 +88,20 @@
 											<div class="form-group">
 												<label for="s3_export_type">Export as:</label>
 												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
-													<option value="zip">Spark RDD</option> <!-- Resilient Distributed Datasets -->
-													<option value="targz">Archive file</option>
+													<option value="rdd">Spark Resilient Distributed Dataset (RDD)</option>
+													<option value="archive">Archive file</option>
 												</select>
 											</div>
 
-											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p>
+											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
 
 											<script>
 
 												function test_s3_bucket_write(){
-
 													alert("Not yet implemented.");
-
 												}
 
-											</script> -->
+											</script>
 
 										</div>
 									</div>

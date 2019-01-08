@@ -3514,7 +3514,7 @@ class CombineBackgroundTask(models.Model):
 			return {}
 
 
-	def update_task_params(self, update_d):
+	def update_task_params(self, update_d, save=True):
 
 		'''
 		Method to update tasks params
@@ -3526,10 +3526,14 @@ class CombineBackgroundTask(models.Model):
 			None
 		'''
 
+		# update json
 		task_params = self.task_params
 		task_params.update(update_d)
 		self.task_params_json = json.dumps(task_params)
-		self.save()
+
+		# save
+		if save:
+			self.save()
 
 
 	@property
