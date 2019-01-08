@@ -22,7 +22,7 @@ from django.conf import settings
 from django.db import connection
 
 # import from core
-from core.models import Job, PublishedRecords
+from core.models import Job, PublishedRecords, CombineBackgroundTask
 from core.es import es_handle
 
 # import XML2kvp from uploaded instance
@@ -34,25 +34,23 @@ from xml2kvp import XML2kvp
 ############################################################################
 
 
-def export_records_as_xml(spark, base_path, job_dict, records_per_file):
+def export_records_as_xml(spark, ct_id):
 
 	'''
 	Function to export multiple Jobs, with folder hierarchy for each Job
 
 	Args:
-		base_path (str): base location for folder structure
-		job_dict (dict): dictionary of directory name --> list of Job ids
-			- e.g. single job: {'j29':[29]}
-			- e.g. published records: {'foo':[2,42], 'bar':[3]}
-				- in this case, a union will be performed for all Jobs within a single key
-		records_per_file (int): number of XML records per file
+		ct_id (int): CombineBackgroundTask id
 	'''
 
+	# hydrate CombineBackgroundTask
+	ct = CombineBackgroundTask.objects.get(pk=int(ct_id))
+
 	# clean base path
-	base_path = "file:///%s" % base_path.lstrip('file://').rstrip('/')
+	base_path = "file:///%s" % ct.task_params['base_path'].lstrip('file://').rstrip('/')
 
 	# loop through keys and export
-	for folder_name, job_ids in job_dict.items():
+	for folder_name, job_ids in ct.task_params['job_dict'].items():
 
 		# handle single job_id
 		if len(job_ids) == 1:
@@ -67,7 +65,7 @@ def export_records_as_xml(spark, base_path, job_dict, records_per_file):
 			rdd_to_write = spark.sparkContext.union(rdds)
 
 		# repartition
-		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(records_per_file)))
+		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count()/int(ct.task_params['records_per_file'])))
 
 		# wrap each document in XML declaration
 		rdd_to_write = rdd_to_write.map(lambda row: row.document.replace('<?xml version=\"1.0\" encoding=\"UTF-8\"?>',''))

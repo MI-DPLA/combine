@@ -115,6 +115,9 @@ def create_validation_report(ct_id):
 
 	try:
 
+		# check for livy session
+		_check_livy_session()
+
 		# set output path
 		output_path = '/tmp/%s' % uuid.uuid4().hex
 
@@ -454,6 +457,9 @@ def export_tabular_data(ct_id):
 	# submit spark code to livy
 	try:
 
+		# check for livy session
+		_check_livy_session()
+
 		logger.info('submitting code to Spark')
 		submit = models.LivyClient().submit_job(cjob.livy_session.session_id, {'code':spark_code})
 
@@ -548,8 +554,6 @@ def export_documents(ct_id):
 	- tar/zip together
 	'''
 
-	# get CombineTask (ct)
-
 	# get CombineBackgroundTask
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
@@ -570,11 +574,15 @@ def export_documents(ct_id):
 		job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
 		logger.info(job_dict)
 
-		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
-			'output_path':output_path,
-			'job_dict':job_dict,
-			'records_per_file':ct.task_params['records_per_file']
-		}
+		# update task params
+		ct.refresh_from_db()
+		ct.update_task_params({
+			'base_path':output_path,
+			'job_dict':job_dict
+		})
+
+		# prepare spark code
+		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, %d)" % (int(ct_id))
 		logger.info(spark_code)
 
 	# handle published records
@@ -598,14 +606,21 @@ def export_documents(ct_id):
 		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
 		logger.info(job_dict)
 
-		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d)" % {
-			'output_path':output_path,
-			'job_dict':job_dict,
-			'records_per_file':ct.task_params['records_per_file']
-		}
+		# update task params
+		ct.refresh_from_db()
+		ct.update_task_params({
+			'base_path':output_path,
+			'job_dict':job_dict
+		})
+
+		# prepare spark code
+		spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, %d)" % (int(ct_id))
 		logger.info(spark_code)
 
 	try:
+
+		# check for livy session
+		_check_livy_session()
 
 		# submit to livy
 		logger.info('submitting code to Spark')
@@ -710,6 +725,10 @@ def job_reindex(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -772,6 +791,10 @@ def job_new_validations(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -850,6 +873,10 @@ def job_remove_validation(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -1176,6 +1203,20 @@ def stateio_import(ct_id):
 		export_path=ct.task_params['export_path'])
 
 
+
+def _check_livy_session():
+
+	'''
+	Function to check for Livy session if spark is needed,
+	and if not, raise Exception
+	'''
+
+	# check for presence of session
+	ls = models.LivySession.get_active_session()
+
+	# raise exception if False
+	if not ls:
+		raise Exception('Spark required for this task, but no Livy session found.')
 
 
 

@@ -2890,13 +2890,14 @@ def _handle_export_output(request, export_source, ct):
 
 	# if s3_export
 	if s3_export:
-		task_params = json.loads(ct.task_params_json)
-		task_params.update({
+
+		# udpate task params
+		ct.update_task_params({
 			's3_export':True,
 			's3_bucket':request.POST.get('s3_bucket', None),
-			's3_key':request.POST.get('s3_key', None)
+			's3_key':request.POST.get('s3_key', None),
+			's3_export_type':request.POST.get('s3_export_type', 'rdd')
 		})
-		ct.task_params_json = json.dumps(task_params)
 
 	# save and return
 	pdb.set_trace()

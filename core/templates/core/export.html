@@ -85,6 +85,14 @@
 												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
 											</div>
 
+											<div class="form-group">
+												<label for="s3_export_type">Export as:</label>
+												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
+													<option value="zip">Spark RDD</option> <!-- Resilient Distributed Datasets -->
+													<option value="targz">Archive file</option>
+												</select>
+											</div>
+
 											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p>
 
 											<script>
