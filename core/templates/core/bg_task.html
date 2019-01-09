@@ -44,10 +44,18 @@
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report <i class="la la-download"></i></button></a>
 
 					{% elif ct.task_type == 'export_mapped_fields' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i class="la la-download"></i></button></a>
+						{% if 's3_export' in ct.task_params %}
+							<a href="https://s3.amazonaws.com/{{ct.task_params.s3_bucket}}/{{ct.task_params.s3_key}}"><button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i class="la la-download"></i></button></a>
+						{% else %}
+							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i class="la la-download"></i></button></a>
+						{% endif %}
 
 					{% elif ct.task_type == 'export_documents' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i class="la la-download"></i></button></a>
+						{% if 's3_export' in ct.task_params %}
+							<a href="https://s3.amazonaws.com/{{ct.task_params.s3_bucket}}/{{ct.task_params.s3_key}}"><button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i class="la la-download"></i></button></a>
+						{% else %}
+							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i class="la la-download"></i></button></a>
+						{% endif %}
 
 					{% elif ct.task_type == 'export_tabular_data' %}
 					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Tabular Data as Archive <i class="la la-download"></i></button></a>

@@ -242,162 +242,199 @@ def export_mapped_fields(ct_id):
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
-	# JSON export
-	if ct.task_params['mapped_fields_export_type'] == 'json':
+	try:
 
-		# handle single Job
-		if 'job_id' in ct.task_params.keys():
+		# JSON export
+		if ct.task_params['mapped_fields_export_type'] == 'json':
 
-			# get CombineJob
-			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+			# handle single Job
+			if 'job_id' in ct.task_params.keys():
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/job_%s_mapped_fields.json' % (output_path, cjob.job.id)
+				# get CombineJob
+				cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-			# build command list
-			cmd = [
-				"elasticdump",
-				"--input=http://localhost:9200/j%s" % cjob.job.id,
-				"--output=%s" % export_output,
-				"--type=data",
-				"--sourceOnly",
-				"--ignore-errors",
-				"--noRefresh"
-			]
+				# set output filename
+				output_path = '/tmp/%s' % uuid.uuid4().hex
+				os.mkdir(output_path)
+				export_output = '%s/job_%s_mapped_fields.json' % (output_path, cjob.job.id)
 
-		# handle published records
-		if 'published' in ct.task_params.keys():
+				# build command list
+				cmd = [
+					"elasticdump",
+					"--input=http://localhost:9200/j%s" % cjob.job.id,
+					"--output=%s" % export_output,
+					"--type=data",
+					"--sourceOnly",
+					"--ignore-errors",
+					"--noRefresh"
+				]
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/published_mapped_fields.json' % (output_path)
+			# handle published records
+			if 'published' in ct.task_params.keys():
 
-			# get list of jobs ES indices to export
-			pr = models.PublishedRecords()
-			es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+				# set output filename
+				output_path = '/tmp/%s' % uuid.uuid4().hex
+				os.mkdir(output_path)
+				export_output = '%s/published_mapped_fields.json' % (output_path)
 
-			# build command list
-			cmd = [
-				"elasticdump",
-				"--input=http://localhost:9200/%s" % es_list,
-				"--output=%s" % export_output,
-				"--type=data",
-				"--sourceOnly",
-				"--ignore-errors",
-				"--noRefresh"
-			]
+				# get list of jobs ES indices to export
+				pr = models.PublishedRecords()
+				es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
-		# if fields provided, limit
-		if ct.task_params['mapped_field_include']:
-			logger.info('specific fields selected, adding to elasticdump command:')
-			searchBody = {
-				"_source":ct.task_params['mapped_field_include']
-			}
-			cmd.append("--searchBody='%s'" % json.dumps(searchBody))
+				# build command list
+				cmd = [
+					"elasticdump",
+					"--input=http://localhost:9200/%s" % es_list,
+					"--output=%s" % export_output,
+					"--type=data",
+					"--sourceOnly",
+					"--ignore-errors",
+					"--noRefresh"
+				]
+
+			# if fields provided, limit
+			if ct.task_params['mapped_field_include']:
+				logger.info('specific fields selected, adding to elasticdump command:')
+				searchBody = {
+					"_source":ct.task_params['mapped_field_include']
+				}
+				cmd.append("--searchBody='%s'" % json.dumps(searchBody))
 
 
-	# CSV export
-	if ct.task_params['mapped_fields_export_type'] == 'csv':
+		# CSV export
+		if ct.task_params['mapped_fields_export_type'] == 'csv':
 
-		# handle single Job
-		if 'job_id' in ct.task_params.keys():
+			# handle single Job
+			if 'job_id' in ct.task_params.keys():
 
-			# get CombineJob
-			cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
+				# get CombineJob
+				cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
+				# set output filename
+				output_path = '/tmp/%s' % uuid.uuid4().hex
+				os.mkdir(output_path)
+				export_output = '%s/job_%s_mapped_fields.csv' % (output_path, cjob.job.id)
 
-			# build command list
-			cmd = [
-				"es2csv",
-				"-q '*'",
-				"-i 'j%s'" % cjob.job.id,
-				"-D 'record'",
-				"-o '%s'" % export_output
-			]
+				# build command list
+				cmd = [
+					"es2csv",
+					"-q '*'",
+					"-i 'j%s'" % cjob.job.id,
+					"-D 'record'",
+					"-o '%s'" % export_output
+				]
 
-		# handle published records
-		if 'published' in ct.task_params.keys():
+			# handle published records
+			if 'published' in ct.task_params.keys():
 
-			# set output filename
-			output_path = '/tmp/%s' % uuid.uuid4().hex
-			os.mkdir(output_path)
-			export_output = '%s/published_mapped_fields.csv' % (output_path)
+				# set output filename
+				output_path = '/tmp/%s' % uuid.uuid4().hex
+				os.mkdir(output_path)
+				export_output = '%s/published_mapped_fields.csv' % (output_path)
 
-			# get list of jobs ES indices to export
-			pr = models.PublishedRecords()
-			es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
+				# get list of jobs ES indices to export
+				pr = models.PublishedRecords()
+				es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
-			# build command list
-			cmd = [
-				"es2csv",
-				"-q '*'",
-				"-i '%s'" % es_list,
-				"-D 'record'",
-				"-o '%s'" % export_output
-			]
+				# build command list
+				cmd = [
+					"es2csv",
+					"-q '*'",
+					"-i '%s'" % es_list,
+					"-D 'record'",
+					"-o '%s'" % export_output
+				]
 
-		# handle kibana style
-		if ct.task_params['kibana_style']:
-			cmd.append('-k')
-			cmd.append("-kd '|'")
+			# handle kibana style
+			if ct.task_params['kibana_style']:
+				cmd.append('-k')
+				cmd.append("-kd '|'")
 
-		# if fields provided, limit
-		if ct.task_params['mapped_field_include']:
-			logger.info('specific fields selected, adding to es2csv command:')
-			cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
+			# if fields provided, limit
+			if ct.task_params['mapped_field_include']:
+				logger.info('specific fields selected, adding to es2csv command:')
+				cmd.append('-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
 
-	# execute compiled command
-	logger.info(cmd)
-	os.system(" ".join(cmd))
+		# execute compiled command
+		logger.info(cmd)
+		os.system(" ".join(cmd))
 
-	# handle compression
-	if ct.task_params['archive_type'] == 'none':
-		logger.info('uncompressed csv file requested, continuing')
+		# handle compression
+		if ct.task_params['archive_type'] == 'none':
+			logger.info('uncompressed csv file requested, continuing')
 
-	elif ct.task_params['archive_type'] == 'zip':
+		elif ct.task_params['archive_type'] == 'zip':
 
-		logger.info('creating compressed zip archive')
-		content_type = 'application/zip'
+			logger.info('creating compressed zip archive')
+			content_type = 'application/zip'
 
-		# establish output archive file
-		export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
+			# establish output archive file
+			export_output_archive = '%s/%s.zip' % (output_path, export_output.split('/')[-1])
 
-		with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
-			zip.write(export_output, export_output.split('/')[-1])
+			with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+				zip.write(export_output, export_output.split('/')[-1])
 
-		# set export output to archive file
-		export_output = export_output_archive
+			# set export output to archive file
+			export_output = export_output_archive
 
-	# tar.gz
-	elif ct.task_params['archive_type'] == 'targz':
+		# tar.gz
+		elif ct.task_params['archive_type'] == 'targz':
 
-		logger.info('creating compressed tar archive')
-		content_type = 'application/gzip'
+			logger.info('creating compressed tar archive')
+			content_type = 'application/gzip'
 
-		# establish output archive file
-		export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
+			# establish output archive file
+			export_output_archive = '%s/%s.tar.gz' % (output_path, export_output.split('/')[-1])
 
-		with tarfile.open(export_output_archive, 'w:gz') as tar:
-			tar.add(export_output, arcname=export_output.split('/')[-1])
+			with tarfile.open(export_output_archive, 'w:gz') as tar:
+				tar.add(export_output, arcname=export_output.split('/')[-1])
 
-		# set export output to archive file
-		export_output = export_output_archive
+			# set export output to archive file
+			export_output = export_output_archive
 
-	# save export output to Combine Task output
-	ct.refresh_from_db()
-	ct.task_output_json = json.dumps({
-		'export_output':export_output,
-		'name':export_output.split('/')[-1],
-		'export_dir':"/".join(export_output.split('/')[:-1])
-	})
-	ct.save()
+		# handle s3 bucket
+		if ct.task_params.get('s3_export', False):
+
+			logger.debug('writing archive file to S3')
+
+			# upload to s3
+			s3 = boto3.resource('s3')
+			s3.Object(ct.task_params['s3_bucket'], ct.task_params['s3_key'])\
+			.put(Body=open(export_output,'rb'))
+
+			# delete all traces from local output
+			shutil.rmtree(output_path)
+
+			# save export output to Combine Task output
+			ct.refresh_from_db()
+			ct.task_output_json = json.dumps({
+				's3_export_type':ct.task_params['s3_export_type'],
+				'export_output':'s3://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key'].lstrip('/')),
+			})
+			ct.save()
+			logger.info(ct.task_output_json)
+
+		# handle local filesystem
+		else:
+
+			# save export output to Combine Task output
+			ct.refresh_from_db()
+			ct.task_output_json = json.dumps({
+				'export_output':export_output,
+				'name':export_output.split('/')[-1],
+				'export_dir':"/".join(export_output.split('/')[:-1])
+			})
+			ct.save()
+
+	except Exception as e:
+
+		logger.info(str(e))
+
+		# attempt to capture error and return for task
+		ct.task_output_json = json.dumps({
+			'error':str(e)
+		})
+		ct.save()
 
 
 @celery_app.task()
@@ -623,9 +660,7 @@ def export_documents(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
-		##################################################
-		# S3 BUCKET
-		##################################################
+		# handle s3 bucket
 		if ct.task_params.get('s3_export', False):
 
 			if ct.task_params.get('s3_export_type') == 'archive':
@@ -656,9 +691,7 @@ def export_documents(ct_id):
 			ct.save()
 			logger.info(ct.task_output_json)
 
-		##################################################
-		# ARCHIVE FILE
-		##################################################
+		# handle local filesystem
 		else:
 
 			# create single archive file

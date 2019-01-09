@@ -54,15 +54,15 @@
 									</select>
 								</div>
 
-								<div id="s3_export_documents">
+								<div id="s3_export_documents_form">
 									<div class="form-group">
 										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="s3_export" name="s3_export"/ onclick="$('#s3_export_options').fadeToggle();">
-											<label class="form-check-label" for="s3_export">
-												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3?
+											<input class="form-check-input" type="checkbox" value="true" id="s3_export_documents" name="s3_export"/ onclick="$('#s3_export_documents_options').fadeToggle();">
+											<label class="form-check-label" for="s3_export_documents">
+												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
 											</label>
 										</div>
-										<div id="s3_export_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+										<div id="s3_export_documents_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
 
 											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
 
@@ -88,7 +88,7 @@
 											<div class="form-group">
 												<label for="s3_export_type">Export as:</label>
 												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
-													<option value="rdd">Spark Resilient Distributed Dataset (RDD)</option>
+													<option value="rdd">Spark RDD (Resilient Distributed Dataset)</option>
 													<option value="archive">Archive file</option>
 												</select>
 											</div>
@@ -183,6 +183,58 @@
 
 								<!-- select mapped fields -->
 								{% include 'core/select_mapped_fields.html' %}
+
+								<div id="s3_export_mapped_fields_form" style="width:50%;">
+									<div class="form-group">
+										<div class="form-check">
+											<input class="form-check-input" type="checkbox" value="true" id="s3_export_mapped_fields" name="s3_export"/ onclick="$('#s3_export_mapped_fields_options').fadeToggle();">
+											<label class="form-check-label" for="s3_export_mapped_fields">
+												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
+											</label>
+										</div>
+										<div id="s3_export_mapped_fields_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+
+											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
+
+												<ul>
+													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
+													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
+												</ul>
+
+											</p>
+
+											<div class="form-group">
+												<label for="s3_bucket">S3 Bucket</label>
+												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
+												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
+											</div>
+
+											<div class="form-group">
+												<label for="s3_key">S3 Key</label>
+												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
+												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
+											</div>
+
+											<div class="form-group">
+												<label for="s3_export_type">Export as:</label>
+												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
+													<option value="archive">Archive file</option>
+												</select>
+											</div>
+
+											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
+
+											<script>
+
+												function test_s3_bucket_write(){
+													alert("Not yet implemented.");
+												}
+
+											</script>
+
+										</div>
+									</div>
+								</div>
 
 								<button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped Fields <i class="la la-download"></i></button>
 
@@ -475,6 +527,59 @@
 
 									</script>
 
+								</div>
+
+								<div id="s3_export_tabular_data_form">
+									<div class="form-group">
+										<div class="form-check">
+											<input class="form-check-input" type="checkbox" value="true" id="s3_export_tabular_data" name="s3_export"/ onclick="$('#s3_export_tabular_data_options').fadeToggle();">
+											<label class="form-check-label" for="s3_export_tabular_data">
+												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
+											</label>
+										</div>
+										<div id="s3_export_tabular_data_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+
+											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
+
+												<ul>
+													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
+													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
+												</ul>
+
+											</p>
+
+											<div class="form-group">
+												<label for="s3_bucket">S3 Bucket</label>
+												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
+												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
+											</div>
+
+											<div class="form-group">
+												<label for="s3_key">S3 Key</label>
+												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
+												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
+											</div>
+
+											<div class="form-group">
+												<label for="s3_export_type">Export as:</label>
+												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
+													<option value="rdd">Spark RDD (Resilient Distributed Dataset)</option>
+													<option value="archive">Archive file</option>
+												</select>
+											</div>
+
+											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
+
+											<script>
+
+												function test_s3_bucket_write(){
+													alert("Not yet implemented.");
+												}
+
+											</script>
+
+										</div>
+									</div>
 								</div>
 
 								<button type="submit" class="btn btn-success btn-sm">Export Tabular Data <i class="la la-download"></i></button>

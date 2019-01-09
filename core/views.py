@@ -2868,42 +2868,6 @@ def export_documents(request, export_source, job_id=None):
 		return redirect('published')
 
 
-def _handle_export_output(request, export_source, ct):
-
-	'''
-	Function to handle export outputs
-		- currently only augmenting with S3 export
-
-	Args:
-		request: request object
-		export_source: ['job','published']
-		ct (CombineBackgroundTask): instance of ct to augment
-
-	Returns:
-		ct (CombineBackgroundTask)
-	'''
-
-	# handle s3 export
-	s3_export = request.POST.get('s3_export',False)
-	if s3_export:
-		s3_export = True
-
-	# if s3_export
-	if s3_export:
-
-		# udpate task params
-		ct.update_task_params({
-			's3_export':True,
-			's3_bucket':request.POST.get('s3_bucket', None),
-			's3_key':request.POST.get('s3_key', None),
-			's3_export_type':request.POST.get('s3_export_type', None)
-		})
-
-	# save and return
-	ct.save()
-	return ct
-
-
 def export_mapped_fields(request, export_source, job_id=None):
 
 	# get mapped fields export type
@@ -2941,6 +2905,9 @@ def export_mapped_fields(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
+
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
 
 		# run celery task
 		bg_task = tasks.export_mapped_fields.delay(ct.id)
@@ -2982,6 +2949,9 @@ def export_mapped_fields(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
+
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
 
 		# run celery task
 		bg_task = tasks.export_mapped_fields.delay(ct.id)
@@ -3094,6 +3064,42 @@ def export_tabular_data(request, export_source, job_id=None):
 		})
 
 		return redirect('published')
+
+
+def _handle_export_output(request, export_source, ct):
+
+	'''
+	Function to handle export outputs
+		- currently only augmenting with S3 export
+
+	Args:
+		request: request object
+		export_source: ['job','published']
+		ct (CombineBackgroundTask): instance of ct to augment
+
+	Returns:
+		ct (CombineBackgroundTask)
+	'''
+
+	# handle s3 export
+	s3_export = request.POST.get('s3_export',False)
+	if s3_export:
+		s3_export = True
+
+	# if s3_export
+	if s3_export:
+
+		# udpate task params
+		ct.update_task_params({
+			's3_export':True,
+			's3_bucket':request.POST.get('s3_bucket', None),
+			's3_key':request.POST.get('s3_key', None),
+			's3_export_type':request.POST.get('s3_export_type', None)
+		})
+
+	# save and return
+	ct.save()
+	return ct
 
 
 ####################################################################
