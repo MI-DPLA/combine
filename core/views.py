@@ -3008,6 +3008,9 @@ def export_tabular_data(request, export_source, job_id=None):
 		)
 		ct.save()
 
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
+
 		# run celery task
 		bg_task = tasks.export_tabular_data.delay(ct.id)
 		logger.debug('firing bg task: %s' % bg_task)
@@ -3048,6 +3051,9 @@ def export_tabular_data(request, export_source, job_id=None):
 			})
 		)
 		ct.save()
+
+		# handle export output configurations
+		ct = _handle_export_output(request,export_source,ct)
 
 		# run celery task
 		bg_task = tasks.export_tabular_data.delay(ct.id)

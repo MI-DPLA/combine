@@ -443,9 +443,6 @@ def export_tabular_data(ct_id):
 	# get CombineTask (ct)
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
-	# parse fm config
-	fm_export_config_json = json.loads(ct.task_params['fm_export_config_json'])
-
 	# generate spark code
 	output_path = '/tmp/%s' % str(uuid.uuid4())
 
@@ -483,14 +480,16 @@ def export_tabular_data(ct_id):
 		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
 		logger.info(job_dict)
 
-	# prepare spark code
-	spark_code = "from console import *\nexport_records_as_tabular_data(spark, '%(output_path)s', %(job_dict)s, %(records_per_file)d, '%(fm_export_config_json)s', '%(tabular_data_export_type)s')" % {
+	# update task params
+	ct.refresh_from_db()
+	ct.update_task_params({
 		'output_path':output_path,
-		'job_dict':job_dict,
-		'records_per_file':ct.task_params['records_per_file'],
-		'fm_export_config_json':ct.task_params['fm_export_config_json'],
-		'tabular_data_export_type':ct.task_params['tabular_data_export_type'],
-	}
+		'archive_filename_root':archive_filename_root,
+		'job_dict':job_dict
+	})
+
+	# prepare spark code
+	spark_code = "from console import *\nexport_records_as_tabular_data(spark, %d)" % (int(ct_id))
 	logger.info(spark_code)
 
 	# submit spark code to livy
@@ -507,69 +506,50 @@ def export_tabular_data(ct_id):
 		results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
 		logger.info(results)
 
-		# rewrite with extensions
-		export_parts = glob.glob('%s/**/part*' % output_path)
-		for part in export_parts:
-			if not part.endswith(ct.task_params['tabular_data_export_type']):
-				os.rename(part, '%s.%s' % (part, ct.task_params['tabular_data_export_type']))
+		# handle s3 bucket
+		if ct.task_params.get('s3_export', False):
 
-		# save list of directories to remove
-		pre_archive_dirs = glob.glob('%s/**' % output_path)
+			if ct.task_params.get('s3_export_type') == 'archive':
 
-		# zip
-		if ct.task_params['archive_type'] == 'zip':
+				# create single archive file
+				ct = _create_export_tabular_data_archive(ct)
 
-			logger.info('creating compressed zip archive')
-			content_type = 'application/zip'
+				# upload to s3
+				s3 = boto3.resource('s3')
+				s3.Object(ct.task_params['s3_bucket'], ct.task_params['s3_key'])\
+				.put(Body=open(ct.task_params['export_output_archive'],'rb'))
 
-			# establish output archive file
-			export_output_archive = '%s/%s.zip' % (output_path, archive_filename_root)
+				# delete all traces from local output
+				shutil.rmtree(ct.task_params['output_path'])
 
-			with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
-				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
-					zip.write(f, '/'.join(f.split('/')[-2:]))
+			elif ct.task_params.get('s3_export_type') == 'rdd':
+				logger.debug('s3 export type was rdd, nothing to cleanup or do')
 
-		# tar
-		elif ct.task_params['archive_type'] == 'tar':
+			# save export output to Combine Task output
+			ct.refresh_from_db()
+			ct.task_output_json = json.dumps({
+				's3_export_type':ct.task_params['s3_export_type'],
+				'export_output':'s3://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key'].lstrip('/')),
+			})
+			ct.save()
+			logger.info(ct.task_output_json)
 
-			logger.info('creating uncompressed tar archive')
-			content_type = 'application/tar'
+		# handle local filesystem
+		else:
 
-			# establish output archive file
-			export_output_archive = '%s/%s.tar' % (output_path, archive_filename_root)
+			# create single archive file
+			ct = _create_export_tabular_data_archive(ct)
 
-			with tarfile.open(export_output_archive, 'w') as tar:
-				for f in glob.glob('%s/**/*.%s' % (output_path, ct.task_params['tabular_data_export_type'])):
-					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
-
-		# tar.gz
-		elif ct.task_params['archive_type'] == 'targz':
-
-			logger.info('creating compressed tar archive')
-			content_type = 'application/gzip'
-
-			# establish output archive file
-			export_output_archive = '%s/%s.tar.gz' % (output_path, archive_filename_root)
-
-			with tarfile.open(export_output_archive, 'w:gz') as tar:
-				for f in glob.glob('%s/**/*.%ss' % (output_path, ct.task_params['tabular_data_export_type'])):
-					tar.add(f, arcname='/'.join(f.split('/')[-2:]))
-
-		# cleanup directory
-		for d in pre_archive_dirs:
-			logger.info('removing dir: %s' % d)
-			shutil.rmtree(d)
-
-		# save export output to Combine Task output
-		ct.refresh_from_db()
-		ct.task_output_json = json.dumps({
-			'export_output':export_output_archive,
-			'name':export_output_archive.split('/')[-1],
-			'content_type':content_type,
-			'export_dir':"/".join(export_output_archive.split('/')[:-1])
-		})
-		ct.save()
-		logger.info(ct.task_output_json)
+			# save export output to Combine Task output
+			ct.refresh_from_db()
+			ct.task_output_json = json.dumps({
+				'export_output':ct.task_params['export_output_archive'],
+				'name':ct.task_params['export_output_archive'].split('/')[-1],
+				'content_type':ct.task_params['content_type'],
+				'export_dir':"/".join(ct.task_params['export_output_archive'].split('/')[:-1])
+			})
+			ct.save()
+			logger.info(ct.task_output_json)
 
 	except Exception as e:
 
@@ -580,6 +560,72 @@ def export_tabular_data(ct_id):
 			'error':str(e)
 		})
 		ct.save()
+
+
+def _create_export_tabular_data_archive(ct):
+
+	# rewrite with extensions
+	export_parts = glob.glob('%s/**/part*' % ct.task_params['output_path'])
+	for part in export_parts:
+		if not part.endswith(ct.task_params['tabular_data_export_type']):
+			os.rename(part, '%s.%s' % (part, ct.task_params['tabular_data_export_type']))
+
+	# save list of directories to remove
+	pre_archive_dirs = glob.glob('%s/**' % ct.task_params['output_path'])
+
+	# zip
+	if ct.task_params['archive_type'] == 'zip':
+
+		logger.info('creating compressed zip archive')
+		content_type = 'application/zip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.zip' % (ct.task_params['output_path'], ct.task_params['archive_filename_root'])
+
+		with zipfile.ZipFile(export_output_archive,'w', zipfile.ZIP_DEFLATED) as zip:
+			for f in glob.glob('%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+				zip.write(f, '/'.join(f.split('/')[-2:]))
+
+	# tar
+	elif ct.task_params['archive_type'] == 'tar':
+
+		logger.info('creating uncompressed tar archive')
+		content_type = 'application/tar'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.tar' % (ct.task_params['output_path'], ct.task_params['archive_filename_root'])
+
+		with tarfile.open(export_output_archive, 'w') as tar:
+			for f in glob.glob('%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+				tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
+	# tar.gz
+	elif ct.task_params['archive_type'] == 'targz':
+
+		logger.info('creating compressed tar archive')
+		content_type = 'application/gzip'
+
+		# establish output archive file
+		export_output_archive = '%s/%s.tar.gz' % (ct.task_params['output_path'], ct.task_params['archive_filename_root'])
+
+		with tarfile.open(export_output_archive, 'w:gz') as tar:
+			for f in glob.glob('%s/**/*.%ss' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+				tar.add(f, arcname='/'.join(f.split('/')[-2:]))
+
+	# cleanup directory
+	for d in pre_archive_dirs:
+		logger.info('removing dir: %s' % d)
+		shutil.rmtree(d)
+
+	# update task params
+	ct.refresh_from_db()
+	ct.update_task_params({
+		'export_output_archive':export_output_archive,
+		'content_type':content_type
+	})
+
+	# return
+	return ct
 
 
 @celery_app.task()

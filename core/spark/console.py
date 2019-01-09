@@ -65,14 +65,10 @@ def export_records_as_xml(spark, ct_id):
 
 			# handle single job_id
 			if len(job_ids) == 1:
-
-				# get Job records as df
 				rdds.extend([get_job_as_df(spark, job_ids[0]).select(col_subset).rdd])
 
 			# handle multiple jobs
 			else:
-
-				# extend
 				rdds.extend([ get_job_as_df(spark, job_id).select(col_subset).rdd for job_id in job_ids ])
 
 		# get union of all RDDs to write
@@ -168,19 +164,25 @@ def generate_validation_report(spark, output_path, task_params):
 		mdf.write.format('json').save('file://%s' % output_path)
 
 
-def export_records_as_tabular_data(
-	spark,
-	base_path,
-	job_dict,
-	records_per_file,
-	fm_export_config_json,
-	tabular_data_export_type):
+# def export_records_as_tabular_data(
+# 	spark,
+# 	base_path,
+# 	job_dict,
+# 	records_per_file,
+# 	fm_export_config_json,
+# 	tabular_data_export_type):
+
+def export_records_as_tabular_data(spark, ct_id):
+
 
 	'''
 	Function to export multiple Jobs, with folder hierarchy for each Job
 
 	Args:
-		base_path (str): base location for folder structure
+		ct_id (int): CombineBackgroundTask id
+
+	Expecting from CombineBackgroundTask:
+		output_path (str): base location for folder structure
 		job_dict (dict): dictionary of directory name --> list of Job ids
 			- e.g. single job: {'j29':[29]}
 			- e.g. published records: {'foo':[2,42], 'bar':[3]}
@@ -190,44 +192,85 @@ def export_records_as_tabular_data(
 		tabular_data_export_type (str): 'json' or 'csv'
 	'''
 
+	# hydrate CombineBackgroundTask
+	ct = CombineBackgroundTask.objects.get(pk=int(ct_id))
+
 	# reconstitute fm_export_config_json
-	fm_config = json.loads(fm_export_config_json)
+	fm_config = json.loads(ct.task_params['fm_export_config_json'])
 
 	# clean base path
-	base_path = "file:///%s" % base_path.lstrip('file://').rstrip('/')
+	output_path = "file:///%s" % ct.task_params['output_path'].lstrip('file://').rstrip('/')
 
-	# loop through potential output folders
-	for folder_name, job_ids in job_dict.items():
+	# write RDD to S3
+	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
 
-		# handle single job_id
-		if len(job_ids) == 1:
+		# dynamically set credentials
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
+		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
 
-			# get Job records as df
-			batch_rdd = get_job_as_df(spark, job_ids[0]).select(['document','combine_id','record_id']).rdd
+		# determine column subset
+		col_subset = ['*']
 
-		# handle multiple jobs
-		else:
+		# loop through keys and export
+		rdds = []
+		for folder_name, job_ids in ct.task_params['job_dict'].items():
 
-			rdds = [ get_job_as_df(spark, job_id).select(['document','combine_id','record_id']).rdd for job_id in job_ids ]
-			batch_rdd = spark.sparkContext.union(rdds)
+			# handle single job_id
+			if len(job_ids) == 1:
+				rdds.extend([get_job_as_df(spark, job_ids[0]).select(['document','combine_id','record_id']).rdd])
+
+			# handle multiple jobs
+			else:
+				rdds.extend([ get_job_as_df(spark, job_id).select(['document','combine_id','record_id']).rdd for job_id in job_ids ])
+
+		# union all
+		batch_rdd = spark.sparkContext.union(rdds)
 
 		# convert rdd
 		kvp_batch_rdd = _convert_xml_to_kvp(batch_rdd, fm_config)
 
 		# repartition to records per file
-		kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count()/int(records_per_file)))
+		kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count() / settings.TARGET_RECORDS_PER_PARTITION))
 
-		########################################
-		# ADD LOGIC TO WRITE TO FILESYSTEM OR S3
-		########################################
+		# write to bucket
+		kvp_batch_rdd.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
 
-		# handle json
-		if tabular_data_export_type == 'json':
-			_write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config)
 
-		# handle csv
-		if tabular_data_export_type == 'csv':
-			_write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config)
+	# write to disk
+	else:
+
+		# loop through potential output folders
+		for folder_name, job_ids in ct.task_params['job_dict'].items():
+
+			# handle single job_id
+			if len(job_ids) == 1:
+
+				# get Job records as df
+				batch_rdd = get_job_as_df(spark, job_ids[0]).select(['document','combine_id','record_id']).rdd
+
+			# handle multiple jobs
+			else:
+
+				rdds = [ get_job_as_df(spark, job_id).select(['document','combine_id','record_id']).rdd for job_id in job_ids ]
+				batch_rdd = spark.sparkContext.union(rdds)
+
+			# convert rdd
+			kvp_batch_rdd = _convert_xml_to_kvp(batch_rdd, fm_config)
+
+			# repartition to records per file
+			kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count()/int(ct.task_params['records_per_file'])))
+
+			########################################
+			# ADD LOGIC TO WRITE TO FILESYSTEM OR S3
+			########################################
+
+			# handle json
+			if ct.task_params['tabular_data_export_type'] == 'json':
+				_write_tabular_json(spark, kvp_batch_rdd, output_path, folder_name, fm_config)
+
+			# handle csv
+			if ct.task_params['tabular_data_export_type'] == 'csv':
+				_write_tabular_csv(spark, kvp_batch_rdd, output_path, folder_name, fm_config)
 
 
 def _convert_xml_to_kvp(batch_rdd, fm_config):
