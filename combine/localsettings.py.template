@@ -18,6 +18,7 @@ SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100
 SPARK_MAX_WORKERS = 1
 JDBC_NUMPARTITIONS = 200
 SPARK_REPARTITION = 200
+TARGET_RECORDS_PER_PARTITION = 5000
 MONGO_READ_PARTITION_SIZE_MB = 4
 
 
@@ -48,8 +49,8 @@ LIVY_DEFAULT_SESSION_CONFIG = {
 	},
 
     # Spark application overrides
-		# commented out, will default to 2gb for driver and executor, and grab all available cpu/cores	
-		# uncommented, provides some limited configurations for tuning Spark application created by Livy 
+		# commented out, will default to 2gb for driver and executor, and grab all available cpu/cores
+		# uncommented, provides some limited configurations for tuning Spark application created by Livy
 
 	# e.g. small(ish) server, 4gb RAM, 2 cpu/cores
 	# 'driverMemory':'512m',
@@ -124,7 +125,7 @@ DPLA_S3_BUCKET = 'dpla-provider-export'
 This dictionary provides the name of the Organization and Record Group that Analysis Jobs will be created under.
 Because Analysis jobs are extremely similar to other workflow jobs, but do not lend themselves towards the established
 Organization --> Record Group --> Job hierarchy, this ensures they are treated similarily to other jobs, but skip the
-need for users to manually create these somewhat unique Organization and Record Group.  
+need for users to manually create these somewhat unique Organization and Record Group.
 	- it is recommended to make these names quite unique, to avoid clashing with user created Orgs and Record Groups
 	- the Organization and Record Group names defined in ANALYSIS_JOBS_HIERARCHY will NOT show up in any Org or Record
 	Group views or other workflows
