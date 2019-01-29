@@ -522,8 +522,8 @@ def export_tabular_data(ct_id):
 				# delete all traces from local output
 				shutil.rmtree(ct.task_params['output_path'])
 
-			elif ct.task_params.get('s3_export_type') == 'rdd':
-				logger.debug('s3 export type was rdd, nothing to cleanup or do')
+			elif ct.task_params.get('s3_export_type') == 'spark_df':
+				logger.debug('s3 export type was spark_df, nothing to cleanup or do')
 
 			# save export output to Combine Task output
 			ct.refresh_from_db()
@@ -724,9 +724,8 @@ def export_documents(ct_id):
 				# delete all traces from local output
 				shutil.rmtree(ct.task_params['output_path'])
 
-			elif ct.task_params.get('s3_export_type') == 'rdd':
-
-				logger.debug('s3 export type was rdd, nothing to cleanup or do')
+			elif ct.task_params.get('s3_export_type') == 'spark_df':
+				logger.debug('s3 export type was spark_df, nothing to cleanup or do')
 
 			# save export output to Combine Task output
 			ct.refresh_from_db()

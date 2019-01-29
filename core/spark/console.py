@@ -49,8 +49,39 @@ def export_records_as_xml(spark, ct_id):
 	# clean base path
 	output_path = "file:///%s" % ct.task_params['output_path'].lstrip('file://').rstrip('/')
 
-	# write RDD to S3
-	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
+	# # write RDD to S3
+	# if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
+
+	# 	# dynamically set credentials
+	# 	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
+	# 	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
+
+	# 	# determine column subset
+	# 	col_subset = ['*']
+
+	# 	# loop through keys and export
+	# 	rdds = []
+	# 	for folder_name, job_ids in ct.task_params['job_dict'].items():
+
+	# 		# handle single job_id
+	# 		if len(job_ids) == 1:
+	# 			rdds.extend([get_job_as_df(spark, job_ids[0]).select(col_subset).rdd])
+
+	# 		# handle multiple jobs
+	# 		else:
+	# 			rdds.extend([ get_job_as_df(spark, job_id).select(col_subset).rdd for job_id in job_ids ])
+
+	# 	# get union of all RDDs to write
+	# 	rdd_to_write = spark.sparkContext.union(rdds)
+
+	# 	# repartition
+	# 	rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count() / settings.TARGET_RECORDS_PER_PARTITION))
+
+	# 	# write to bucket
+	# 	rdd_to_write.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+
+	# write DataFrame to S3
+	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'spark_df':
 
 		# dynamically set credentials
 		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
@@ -77,8 +108,8 @@ def export_records_as_xml(spark, ct_id):
 		# repartition
 		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count() / settings.TARGET_RECORDS_PER_PARTITION))
 
-		# write to bucket
-		rdd_to_write.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+		# convert to DataFrame and write to s3 as parquet
+		rdd_to_write.toDF().write.mode('overwrite').parquet('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
 
 	# write to disk
 	else:
@@ -201,8 +232,42 @@ def export_records_as_tabular_data(spark, ct_id):
 	# clean base path
 	output_path = "file:///%s" % ct.task_params['output_path'].lstrip('file://').rstrip('/')
 
-	# write RDD to S3
-	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
+	# # write RDD to S3
+	# if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'rdd':
+
+	# 	# dynamically set credentials
+	# 	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
+	# 	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
+
+	# 	# determine column subset
+	# 	col_subset = ['*']
+
+	# 	# loop through keys and export
+	# 	rdds = []
+	# 	for folder_name, job_ids in ct.task_params['job_dict'].items():
+
+	# 		# handle single job_id
+	# 		if len(job_ids) == 1:
+	# 			rdds.extend([get_job_as_df(spark, job_ids[0]).select(['document','combine_id','record_id']).rdd])
+
+	# 		# handle multiple jobs
+	# 		else:
+	# 			rdds.extend([ get_job_as_df(spark, job_id).select(['document','combine_id','record_id']).rdd for job_id in job_ids ])
+
+	# 	# union all
+	# 	batch_rdd = spark.sparkContext.union(rdds)
+
+	# 	# convert rdd
+	# 	kvp_batch_rdd = _convert_xml_to_kvp(batch_rdd, fm_config)
+
+	# 	# repartition to records per file
+	# 	kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count() / settings.TARGET_RECORDS_PER_PARTITION))
+
+	# 	# write to bucket
+	# 	kvp_batch_rdd.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+
+	# write DataFrame to S3
+	if ct.task_params.get('s3_export', False) and ct.task_params.get('s3_export_type', None) == 'spark_df':
 
 		# dynamically set credentials
 		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
@@ -233,7 +298,7 @@ def export_records_as_tabular_data(spark, ct_id):
 		kvp_batch_rdd = kvp_batch_rdd.repartition(math.ceil(kvp_batch_rdd.count() / settings.TARGET_RECORDS_PER_PARTITION))
 
 		# write to bucket
-		kvp_batch_rdd.saveAsTextFile('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+		kvp_batch_rdd.toDF().write.mode('overwrite').parquet('s3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
 
 
 	# write to disk
