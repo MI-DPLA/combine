@@ -426,6 +426,9 @@ For any S3 export, a bucket name ``S3 Bucket`` and key ``S3 Key`` are required.
 When exporting documents to S3, two options are available:
 
   - ``Spark DataFrame``: This is a multi-columned DataFrame that mirrors the database entry for each Record in MongoDB
+
+    - *exports as Parquet file, leveraging compression and performance of this format for Spark reading*
+
   - ``Archive file``: The same archive file that would have been downloadble from Combine for this export type, is uploaded to S3
 
 If exporting as Spark DataFrame, a couple particularly important columns are:
@@ -488,6 +491,9 @@ For any S3 export, a bucket name ``S3 Bucket`` and key ``S3 Key`` are required.
 When exporting documents to S3, two options are available:
 
   - ``Spark DataFrame``: This Spark DataFrame will include *all* field names that were generated during Tabular Data exporting, which can be extremely numerous
+
+    - *exports as JSONLines, due to unpredictable nature of column names, while not as efficient as parquet, nonetheless works*
+
   - ``Archive file``: The same archive file that would have been downloadble from Combine for this export type, is uploaded to S3
 
 
