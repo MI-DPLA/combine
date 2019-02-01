@@ -12,6 +12,10 @@ There are different ways and level of granularites for exporting and importing d
 
     - *export of Record documents or mapped fields*
 
+  - `Export to S3 <#exporting-to-s3>`_
+
+    - *export to S3 Buckets*
+
 
 State Export and Import
 =======================
@@ -366,5 +370,124 @@ Some options looks similar to mapped fields exporting, but also include a sectio
 
 These export parameters -- either configured at the time of export, or loaded from a pre-existing configuration -- are used to modify delimiters and other options for the CSV or JSON export.  You can `read more about harvesting tabular data here <harvesting.html#tabular-data-spreadsheet-harvesting>`_, but suffice it to say now that it can be helpful to **save** the configurations used when exporting such that they can be used later for re-harvesting.  In short, they provide a shared set of configurations for round-tripping data.
 
+
+Exporting to S3
+===============
+
+It is also possible to export assets directly to `Amazon AWS S3 buckets <https://aws.amazon.com/s3/>`_ from some locations in Combine.  At the time of this writing, it is possible to export to S3 for all types of `Record exports <#exporting-records>`_, but each type of export varies slightly in how it exports to S3.
+
+**Note:** All examples below are of exporting Published Records to S3, but the same workflows apply to a single Job as well.
+
+Motivation
+----------
+
+The motivation to support exporting to S3 from Combine has the following helpful breakdown:
+
+  1. To provide an online, universally accessible version of exports that were formerly restricted to downloading from Combine only.
+  2. To more readily support utilizing data from exports in `Apache Spark <https://spark.apache.org/>`_ contexts.
+
+The second reason, providing online, accessible data dumps that are readily read by other instances of Spark, is perhaps the most compelling.  By exporting, or "publishing", to S3 as `parquet files <https://parquet.apache.org/>`_ or `JSONLines <http://jsonlines.org/>`_, it is possible for others to load data exported from Combine without sacrificing some dimensionality of the data as it exists in the database.
+
+One use case might be exporting Records published in Combine to S3, thereby "publishing" them for another entity to read via Spark and act on, where formerly that entity would have had to harvest via OAI-PMH from Combine, relying on network uptime and connections.  If the Records are stored in a database already, with ancillary metadata like Record identifiers, why not share that directly if possible!  S3 buckets provide a convenient way to do this.
+
+
+Authenticating
+--------------
+
+Authentication to read/write from S3 is configured in ``localsettings.py`` under the following two variables:
+
+  - ``AWS_ACCESS_KEY_ID``
+  - ``AWS_SECRET_ACCESS_KEY``
+
+After these are added for the first time, restarting the `Livy/Spark session <spark_and_livy.html>`_ and `backround tasks worker <background_tasks.html>`_ is required.
+
+
+Exporting Record documents to S3
+--------------------------------
+
+From the "Export Documents" tab of a Job or Published Records export screen, it is possible to export to S3 by clicking the "Export to Amazon S3 Bucket?" checkbox:
+
+.. figure:: img/s3_checkbox.png
+   :alt: Checkbox for exporting to S3
+   :target: _images/s3_checkbox.png
+
+   Checkbox for exporting to S3
+
+This opens a form to enter S3 export information:
+
+.. figure:: img/export_docs_s3.png
+   :alt: Form for exporting Documents to S3 bucket
+   :target: _images/export_docs_s3.png
+
+   Form for exporting Documents to S3 bucket
+
+For any S3 export, a bucket name ``S3 Bucket`` and key ``S3 Key`` are required.
+
+When exporting documents to S3, two options are available:
+
+  - ``Spark DataFrame``: This is a multi-columned DataFrame that mirrors the database entry for each Record in MongoDB
+  - ``Archive file``: The same archive file that would have been downloadble from Combine for this export type, is uploaded to S3
+
+If exporting as Spark DataFrame, a couple particularly important columns are:
+
+  - ``document``: the XML string of the Record document
+  - ``record_id``: The Record identifier that would have been used during OAI publishing, but is accessible in this DataFrame
+
+    - **Note:** This identifier will no longer contain the OAI server identifier or Publish Set identifier that would have accompanied it in the OAI output.
+
+
+Exporting Mapped Fields to S3
+-----------------------------
+
+From the "Export Mapped Fields" tab of a Job or Published Records export screen, it is possible to export to S3 by clicking the "Export to Amazon S3 Bucket?" checkbox:
+
+.. figure:: img/s3_checkbox.png
+   :alt: Checkbox for exporting to S3
+   :target: _images/s3_checkbox.png
+
+   Checkbox for exporting to S3
+
+This opens a form to enter S3 export information:
+
+.. figure:: img/export_mapped_fields_s3.png
+   :alt: Form for exporting Mapped Fields to S3 bucket
+   :target: _images/export_mapped_fields_s3.png
+
+   Form for exporting Mapped Fields to S3 bucket
+
+When exporting documents to S3, two options are available:
+
+  - ``Spark DataFrame``: This is a multi-columned DataFrame that mirrors the database entry for each Record in MongoDB
+  - ``Archive file``: The same archive file that would have been downloadble from Combine for this export type, is uploaded to S3
+
+Unlike exporting Documents or Tabular Data, Mapped Fields may *only* be exported to S3 as an archive file.
+
+
+Exporting Tabuular Data to S3
+-----------------------------
+
+
+From the "Export Tabular Data" tab of a Job or Published Records export screen, it is possible to export to S3 by clicking the "Export to Amazon S3 Bucket?" checkbox:
+
+.. figure:: img/s3_checkbox.png
+   :alt: Checkbox for exporting to S3
+   :target: _images/s3_checkbox.png
+
+   Checkbox for exporting to S3
+
+This opens a form to enter S3 export information:
+
+.. figure:: img/export_tabular_data_s3.png
+   :alt: Form for exporting Documents to S3 bucket
+   :target: _images/export_tabular_data_s3.png
+
+   Form for exporting Tabular Data to S3 bucket
+
+For any S3 export, a bucket name ``S3 Bucket`` and key ``S3 Key`` are required.
+
+When exporting documents to S3, two options are available:
+
+  - ``Spark DataFrame``: This Spark DataFrame will include *all* field names that were generated during Tabular Data exporting, which can be extremely numerous
+  - ``Archive file``: The same archive file that would have been downloadble from Combine for this export type, is uploaded to S3
 
 
