@@ -266,7 +266,8 @@ def system(request):
 
 	# get status of background jobs
 	sp = models.SupervisorRPCClient()
-	bgtasks_proc = sp.check_process('celery')
+	# bgtasks_proc = sp.check_process('celery')
+	bgtasks_proc = None
 
 	# return
 	return render(request, 'core/system.html', {
