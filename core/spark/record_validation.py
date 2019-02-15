@@ -132,7 +132,7 @@ class ValidationScenarioSpark(object):
 			# write failures
 			failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
-			.option("uri","mongodb://127.0.0.1")\
+			.option("uri","mongodb://10.5.0.3")\
 			.option("database","combine")\
 			.option("collection", "record_validation").save()
 
@@ -485,7 +485,7 @@ class ValidationScenarioSpark(object):
 		# read current failures from Mongo
 		failures_pipeline = json.dumps({'$match': {'job_id': self.job.id}})
 		failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection","record_validation")\
 		.option("pipeline",failures_pipeline).load()
@@ -505,7 +505,7 @@ class ValidationScenarioSpark(object):
 		# update validity of Records
 		set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection", "record").save()
 
@@ -519,7 +519,7 @@ class ValidationScenarioSpark(object):
 		# get failures
 		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id}]}})
 		all_failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection","record_validation")\
 		.option("partitioner","MongoSamplePartitioner")\
@@ -545,7 +545,7 @@ class ValidationScenarioSpark(object):
 		# update in DB by overwriting
 		to_update.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection", "record").save()
 

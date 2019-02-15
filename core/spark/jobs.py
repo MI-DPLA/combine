@@ -227,7 +227,7 @@ class CombineSparkJob(object):
 					}
 				])
 				records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
@@ -266,7 +266,7 @@ class CombineSparkJob(object):
 					}
 				])
 				job_spec_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
@@ -306,7 +306,7 @@ class CombineSparkJob(object):
 				}
 			])
 			records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-			.option("uri","mongodb://127.0.0.1")\
+			.option("uri","mongodb://10.5.0.3")\
 			.option("database","combine")\
 			.option("collection","record")\
 			.option("partitioner","MongoSamplePartitioner")\
@@ -378,7 +378,7 @@ class CombineSparkJob(object):
 		self.update_jobGroup('Saving Records to DB')
 		records_df_combine_cols.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection", "record").save()
 
@@ -388,7 +388,7 @@ class CombineSparkJob(object):
 			# read rows from Mongo with minted ID for future stages
 			pipeline = json.dumps({'$match': {'job_id': self.job.id, 'success': True}})
 			db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-			.option("uri","mongodb://127.0.0.1")\
+			.option("uri","mongodb://10.5.0.3")\
 			.option("database","combine")\
 			.option("collection","record")\
 			.option("partitioner","MongoSamplePartitioner")\
@@ -782,7 +782,7 @@ class CombineSparkJob(object):
 			# write to DB
 			update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
-			.option("uri","mongodb://127.0.0.1")\
+			.option("uri","mongodb://10.5.0.3")\
 			.option("database","combine")\
 			.option("collection", "record").save()
 
@@ -1620,7 +1620,7 @@ class ReindexSparkPatch(CombineSparkPatch):
 		# get records as DF
 		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
 		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection","record")\
 		.option("partitioner","MongoSamplePartitioner")\
@@ -1656,7 +1656,7 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 		pipeline = json.dumps({'$match': {'job_id': self.job.id}})
 		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection","record")\
 		.option("partitioner","MongoSamplePartitioner")\
@@ -1695,7 +1695,7 @@ class RemoveValidationsSpark(CombineSparkPatch):
 		# create pipeline to select INVALID records, that may become valid
 		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id},{'valid':False}]}})
 		db_records = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection","record")\
 		.option("partitioner","MongoSamplePartitioner")\
@@ -1755,7 +1755,7 @@ class RunDBDM(CombineSparkPatch):
 		# write to DB
 		update_dbdm_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 		.mode("append")\
-		.option("uri","mongodb://127.0.0.1")\
+		.option("uri","mongodb://10.5.0.3")\
 		.option("database","combine")\
 		.option("collection", "record").save()
 
@@ -1854,7 +1854,7 @@ class CombineStateIOImport(CombineStateIO):
 			records_df.select([col for col in records_df.columns if col != '_id'])\
 			.write.format("com.mongodb.spark.sql.DefaultSource")\
 			.mode("append")\
-			.option("uri","mongodb://127.0.0.1")\
+			.option("uri","mongodb://10.5.0.3")\
 			.option("database","combine")\
 			.option("collection", "record").save()
 
@@ -1891,7 +1891,7 @@ class CombineStateIOImport(CombineStateIO):
 				# retrieve newly written records for this Job
 				pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
 				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
@@ -1917,7 +1917,7 @@ class CombineStateIOImport(CombineStateIO):
 				# write records to MongoDB
 				updated_validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
 				.mode("append")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection", "record_validation").save()
 
@@ -1948,7 +1948,7 @@ class CombineStateIOImport(CombineStateIO):
 				# get records as DF
 				pipeline = json.dumps({'$match': {'job_id': job.id}})
 				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
@@ -1989,7 +1989,7 @@ class CombineStateIOImport(CombineStateIO):
 				# retrieve newly written records for this Job
 				pipeline = json.dumps({'$match': {'job_id': clone_job_id, 'success': True}})
 				records_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-				.option("uri","mongodb://127.0.0.1")\
+				.option("uri","mongodb://10.5.0.3")\
 				.option("database","combine")\
 				.option("collection","record")\
 				.option("partitioner","MongoSamplePartitioner")\
