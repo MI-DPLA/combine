@@ -31,7 +31,7 @@ APP_HOST = '10.5.0.10'
 
 
 # Spark Cluster Information
-SPARK_HOST = 'localhost'
+SPARK_HOST = '10.5.0.8'
 SPARK_PORT = 8080
 SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100 from here until open port is found
 
@@ -40,8 +40,8 @@ SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100
 SPARK_MAX_WORKERS = 1
 JDBC_NUMPARTITIONS = 200
 SPARK_REPARTITION = 200
-MONGO_READ_PARTITION_SIZE_MB = 4
 TARGET_RECORDS_PER_PARTITION = 5000
+MONGO_READ_PARTITION_SIZE_MB = 4
 
 
 # Apache Livy settings
@@ -49,7 +49,7 @@ TARGET_RECORDS_PER_PARTITION = 5000
 Combine uses Livy to issue spark statements.
 Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
 '''
-LIVY_HOST = '127.0.0.1'
+LIVY_HOST = '10.5.0.11'
 LIVY_PORT = 8998
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
@@ -92,7 +92,7 @@ WRITE_AVRO = False
 
 
 # ElasicSearch server
-ES_HOST = '127.0.0.1'
+ES_HOST = '10.5.0.2'
 INDEX_TO_ES = True
 
 
@@ -126,7 +126,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://%s:3306/combine' % APP_HOST,
+	'jdbc_url':'jdbc:mysql://%s:3306/combine' % '10.5.0.4',
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
@@ -159,8 +159,8 @@ ANALYSIS_JOBS_HIERARCHY = {
 }
 
 # Celery Configurations
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
+CELERY_BROKER_URL = 'redis://10.5.0.5:6379/0'
+CELERY_RESULT_BACKEND = 'redis://10.5.0.5:6379/0'
 
 
 # StateIO Configurations
@@ -174,7 +174,7 @@ STATEIO_IMPORT_DIR = '/home/combine/data/combine/stateio/imports'
 
 
 # Mongo server
-MONGO_HOST = '127.0.0.1'
+MONGO_HOST = '10.5.0.3'
 
 
 # Docker override for DATABASE settings
