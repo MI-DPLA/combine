@@ -1,8 +1,25 @@
 from django.conf import settings
 
 
+'''
+Docker "combinenet" internal network assigns:
+	- host machine:		10.5.0.1
+	- elasticsearch:	10.5.0.2
+	- mongo:			10.5.0.3
+	- mysql:			10.5.0.4
+	- redis:			10.5.0.5
+	- hadoop-namenode:	10.5.0.6
+	- hadoop-datanode:	10.5.0.7
+	- spark-master:		10.5.0.8	<----- not currently used
+	- spark-worker:		10.5.0.9	<----- not currently used
+	- combine-django:	10.5.0.10
+	- livy:				10.5.0.11
+	- combine-celery:	10.5.0.12
+'''
+
+
 # Deployment type
-COMBINE_DEPLOYMENT = 'server'
+COMBINE_DEPLOYMENT = 'docker'
 
 
 # Combine Install Location
@@ -10,7 +27,7 @@ COMBINE_INSTALL_PATH = '/opt/combine'
 
 
 # Combine Front-End
-APP_HOST = '192.168.45.10'
+APP_HOST = '10.5.0.10'
 
 
 # Spark Cluster Information
@@ -37,7 +54,7 @@ LIVY_PORT = 8998
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
     'jars':[
-    	'file:///usr/share/java/mysql.jar'
+    	'file:///combinelib/mysql.jar'
     ],
     'files':[
     	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
