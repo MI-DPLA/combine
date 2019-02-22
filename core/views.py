@@ -268,14 +268,32 @@ def system(request):
 		livy_sessions = livy_session
 
 	# get status of background jobs
-	sp = models.SupervisorRPCClient()
-	# bgtasks_proc = sp.check_process('celery')
-	bgtasks_proc = None
+	if not hasattr(settings,'COMBINE_DEPLOYMENT') or settings.COMBINE_DEPLOYMENT != 'docker':
+		try:
+			sp = models.SupervisorRPCClient()
+			bgtasks_proc = sp.check_process('celery')
+		except:
+			logger.debug('supervisor might be down?')
+			bgtasks_proc = None
+	else:
+		bgtasks_proc = None
+
+	# get celery worker status
+	active_tasks = celery_app.control.inspect().active()
+
+	if active_tasks == None:
+		celery_status = 'stopped'
+	else:
+		if len(next(iter(active_tasks.values()))) == 0:
+			celery_status = 'idle'
+		elif len(next(iter(active_tasks.values()))) > 0:
+			celery_status = 'busy'
 
 	# return
 	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
 		'livy_sessions':livy_sessions,
+		'celery_status':celery_status,
 		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})

@@ -66,9 +66,9 @@
 				</tr>
 				<tr>
 					<td>Combine Background Tasks</td>					
-					<td class="bg_light_red">{{bgtasks_proc.statename}}</td>
-					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}<a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}"><button type="button" class="btn btn-info btn-sm">View Logs Snippet</button></a>{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Logs not currently available in Docker</button>{% endif %}</td>
-					<td>{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING'%}<a href="{% url 'bgtasks_proc_action' proc_action='stop' %}"><button type="button" class="btn btn-danger btn-sm">Stop <i class="la la-close"></i></button></a> <a href="{% url 'bgtasks_proc_action' proc_action='restart' %}"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}"><button type="button" class="btn btn-success btn-sm">Start <i class="la la-power-off"></i></button></a>{% endif %}</td>
+					<td class="{% if celery_status == 'idle' %}bg_light_green{% else %}bg_light_red{% endif %}">{{celery_status}}</td>
+					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}<a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}"><button type="button" class="btn btn-info btn-sm">View Logs Snippet</button></a>{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Logs not available in Docker</button>{% endif %}</td>
+					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING'%}<a href="{% url 'bgtasks_proc_action' proc_action='stop' %}"><button type="button" class="btn btn-danger btn-sm">Stop <i class="la la-close"></i></button></a> <a href="{% url 'bgtasks_proc_action' proc_action='restart' %}"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}"><button type="button" class="btn btn-success btn-sm">Start <i class="la la-power-off"></i></button></a>{% endif %}{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Start/Stop not available in Docker</button>{% endif %}</td>
 				</tr>
 			</table>			
 

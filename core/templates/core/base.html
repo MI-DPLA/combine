@@ -80,10 +80,7 @@
 	          </li>
 	          <li class="nav-item">
 	            <a class="nav-link" href="http://combine.readthedocs.io/en/{{COMBINE_GIT_BRANCH}}" target="_blank">Documentation</a>
-	          </li>	          
-	          <!-- <li class="nav-item">
-	            <a class="nav-link" href="{% url 'system' %}">System: <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Spark</span> / <span class="{% if BGTASKS_BUSY == True %}text-warning{% elif BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
-	          </li> -->
+	          </li>
 	          <li class="nav-item">
 	            <a class="nav-link" href="{% url 'system' %}">System: <span id="livy_status" class="text-secondary">Spark</span> / <span id="celery_status" class="text-secondary">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
 	          </li>
