@@ -178,14 +178,13 @@ MONGO_HOST = '10.5.0.3'
 
 
 # Docker override for DATABASE settings
-if COMBINE_DEPLOYMENT == 'docker':
-	DATABASES = {
-	    'default': {
-	        'ENGINE': 'django.db.backends.mysql',
-	        'NAME': 'combine',
-	        'USER': 'combine',
-	        'PASSWORD': 'combine',
-	        'HOST': '10.5.0.4',
-	        'PORT': '3306',
-	    }
-	}
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'combine',
+        'USER': 'combine',
+        'PASSWORD': 'combine',
+        'HOST': '10.5.0.4',
+        'PORT': '3306',
+    }
+}

@@ -59,17 +59,15 @@
 			
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Name</th>
-					<th>PID and uptime</th>
+					<th>Name</th>					
 					<th>Status</th>
 					<th>Logs</th>
 					<th>Actions</th>
 				</tr>
 				<tr>
-					<td>Combine Background Tasks</td>
-					<td>{{bgtasks_proc.description}}</td>
-					<td class="{% if bgtasks_proc.statename == 'RUNNING' %}bg_light_green{% elif bgtasks_proc.statename == 'STARTING' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{bgtasks_proc.statename}}</td>
-					<td><a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}">View Logs Snippet</a></td>
+					<td>Combine Background Tasks</td>					
+					<td class="bg_light_red">{{bgtasks_proc.statename}}</td>
+					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}<a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}"><button type="button" class="btn btn-info btn-sm">View Logs Snippet</button></a>{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Logs not currently available in Docker</button>{% endif %}</td>
 					<td>{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING'%}<a href="{% url 'bgtasks_proc_action' proc_action='stop' %}"><button type="button" class="btn btn-danger btn-sm">Stop <i class="la la-close"></i></button></a> <a href="{% url 'bgtasks_proc_action' proc_action='restart' %}"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}"><button type="button" class="btn btn-success btn-sm">Start <i class="la la-power-off"></i></button></a>{% endif %}</td>
 				</tr>
 			</table>			

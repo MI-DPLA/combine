@@ -1,7 +1,11 @@
-import subprocess
 
+# general
+from core.celery import celery_app
 from django.conf import settings
 from django.db.models.query import QuerySet
+import subprocess
+
+# combine
 from core.models import LivySession, SupervisorRPCClient, CombineBackgroundTask
 
 
@@ -15,7 +19,8 @@ def combine_settings(request):
 		'APP_HOST': settings.APP_HOST,
 		'DPLA_API_KEY': settings.DPLA_API_KEY,
 		'OAI_RESPONSE_SIZE':settings.OAI_RESPONSE_SIZE,
-		'COMBINE_OAI_IDENTIFIER':settings.COMBINE_OAI_IDENTIFIER
+		'COMBINE_OAI_IDENTIFIER':settings.COMBINE_OAI_IDENTIFIER,
+		'COMBINE_DEPLOYMENT':settings.COMBINE_DEPLOYMENT
 	}
 
 
@@ -50,33 +55,46 @@ def bgtasks_proc(request):
 		- improvements would be to determine if task running, but would require DB query
 	'''
 
-	# try:
+	#####################################################################################################################
+	# # SUPERVISOR BASED
+	# # get supervisor and status
+	# sp = SupervisorRPCClient()
 
-	# get supervisor and status
-	sp = SupervisorRPCClient()
-	# proc = sp.check_process('celery')
-	proc = None
+	# # proc = sp.check_process('celery')
+	# proc = None
 
-	# check for uncompleted CombineBackgroundTask instances
-	for ct in CombineBackgroundTask.objects.filter(completed=False):
-		ct.update()
+	# # check for uncompleted CombineBackgroundTask instances
+	# for ct in CombineBackgroundTask.objects.filter(completed=False):
+	# 	ct.update()
 
-	if CombineBackgroundTask.objects.filter(completed=False).count() > 0:
+	# if CombineBackgroundTask.objects.filter(completed=False).count() > 0:
 
-	 	# set status
-		bg_tasks_busy = True
+	#  	# set status
+	# 	bg_tasks_busy = True
 
-	else:
-		bg_tasks_busy = False
+	# else:
 
-	# return
-	return {
-		'BGTASKS_PROC':proc,
-		'BGTASKS_BUSY':bg_tasks_busy
-	}
+	# 	bg_tasks_busy = False
 
-	# except:
-	# 	pass
+	# # return
+	# return {
+	# 	'BGTASKS_PROC':proc,
+	# 	'BGTASKS_BUSY':bg_tasks_busy
+	# }
+	#####################################################################################################################
+
+	#####################################################################################################################
+	# CELERY INSPECT
+	# https://stackoverflow.com/a/8522470/1196358
+
+	# celery_stats = celery_app.control.inspect().stats()
+	
+	# return {
+	# 	'BGTASKS_PROC':celery_stats
+	# }
+	#####################################################################################################################
+
+	return {}
 
 
 def combine_git_info(request):
