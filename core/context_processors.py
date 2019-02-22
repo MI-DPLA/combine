@@ -25,16 +25,8 @@ def combine_settings(request):
 	]	
 	combine_settings_dict = { k:getattr(settings,k,None) for k in combine_settings_keys }
 	
+	# return
 	return combine_settings_dict	
-
-	# return {
-	# 	'APP_HOST': settings.APP_HOST,
-	# 	'DPLA_API_KEY': settings.DPLA_API_KEY,
-	# 	'OAI_RESPONSE_SIZE':settings.OAI_RESPONSE_SIZE,
-	# 	'COMBINE_OAI_IDENTIFIER':settings.COMBINE_OAI_IDENTIFIER,
-	# 	'COMBINE_DEPLOYMENT':settings.COMBINE_DEPLOYMENT
-	# }
-
 
 def livy_session(request):
 
