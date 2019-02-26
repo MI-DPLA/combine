@@ -381,16 +381,16 @@ def system_bg_status(request):
 		- celery worker
 	'''
 
-	# get livy status	
+	# get livy status
 	lv = models.LivySession.get_active_session()
 	if lv:
 		if type(lv) == models.LivySession:
 			# refresh single session
 			lv.refresh_from_livy()
 			# set status
-			livy_status = lv.status		
+			livy_status = lv.status
 	else:
-		livy_status = 'stopped'	
+		livy_status = 'stopped'
 
 	# get celery worker status
 	active_tasks = celery_app.control.inspect().active()
