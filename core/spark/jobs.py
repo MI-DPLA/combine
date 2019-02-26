@@ -547,6 +547,7 @@ class CombineSparkJob(object):
 			valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 			conf={
 				"es.resource":"%s/record" % es_indexes,
+				"es.nodes":"%s:9200" % settings.ES_HOST,
 				"es.query":input_es_query_valve,
 				"es.read.field.exclude":"*"})
 		es_df = es_rdd.map(lambda row: (row[0], )).toDF()
@@ -2064,7 +2065,7 @@ class CombineStateIOImport(CombineStateIO):
 					valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
 					conf={
 							"es.resource":"%s/record" % index_name,
-							"es.nodes":"%s:9200" % 'localhost',
+							"es.nodes":"%s:9200" % settings.ES_HOST,
 							"es.mapping.exclude":"temp_id",
 							"es.mapping.id":"temp_id",
 						}

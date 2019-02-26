@@ -9,20 +9,19 @@
 
 	<div class="col-md-12">
 		<table class="table table-bordered table-hover">
-			<tbody>				
+			<tbody>
 				<tr>
-					<th style="width:10%;">Move</th>
-					<td>Moves selected Jobs to another Record Group within this Organization</td>
+					<td><strong>Move</strong> selected Job(s) to another Record Group within this Organization</td>
 					<td style="width:20%; text-align:left;">
-						<div class="form-group">							
+						<div class="form-group">
 							<select class="form-control" id="record_group_id_select" name="record_group_id_select" required>
 								<option value=''>Select Record Group...</option>
 								{% for target_record_group in record_group.organization.recordgroup_set.all %}
 									<option value="{{ target_record_group.id }}">{{ target_record_group.name }}</option>
-								{% endfor %} 						
+								{% endfor %}
 							</select>
-						</div>        	
-				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">Move Selected Jobs <i class="la la-arrow-right"></i></button>
+						</div>
+				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Move This Job {% else %}Move Selected Jobs{% endif %} <i class="la la-arrow-right"></i></button>
 			    		<br><br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_move_toggle">
@@ -31,10 +30,9 @@
 					</td>
 				</tr>
 				<tr>
-					<th style="width:10%;">Stop Jobs</th>
-					<td>Stop Job(s)</td>
+					<td><strong>Stop</strong></td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="stop_jobs(); return false;">Stop Selected Jobs <i class="la la-stop"></i></button>
+						<button type="button" class="btn btn-danger btn-sm" onclick="stop_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Stop This Job {% else %}Stop Selected Jobs{% endif %} <i class="la la-stop"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_stop_toggle">
@@ -44,10 +42,9 @@
 					</td>
 				</tr>
 				<tr>
-					<th style="width:10%;">Delete Jobs</th>
-					<td>Delete Job(s)</td>
+					<td><strong>Delete</strong></td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">Delete Selected Jobs <i class="la la-close"></i></button>
+						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Delete This Job {% else %}Delete Selected Jobs{% endif %} <i class="la la-close"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_delete_toggle">
@@ -57,10 +54,9 @@
 					</td>
 				</tr>
 				<tr>
-					<th style="width:10%;">Re-Run</th>
-					<td>Re-run Job</td>
+					<td><strong>Re-Run</strong></td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">Re-Run Selected Jobs <i class="la la-refresh"></i></button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Re-Run This Job {% else %}Re-Run Selected Jobs{% endif %} <i class="la la-refresh"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
@@ -69,10 +65,9 @@
 					</td>
 				</tr>
 				<tr>
-					<th style="width:10%;">Clone</th>
-					<td>Clone Job</td>
+					<td><strong>Clone</strong></td>
 					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">Clone Selected Jobs <i class="la la-clone"></i></button>
+						<button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Clone This Job {% else %}Clone Selected Jobs{% endif %} <i class="la la-clone"></i></button>
 						<br><br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
@@ -120,13 +115,13 @@
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
-					success: function(data){					
+					success: function(data){
 						// redirect to target record group
 						window.location.href = '/combine/record_group/' + record_group_id;
 					}
-				});     
+				});
 			}
-		} 
+		}
 
         // handle bulk job deletion
 		function stop_jobs(){
@@ -202,7 +197,7 @@
 					}
 				});
 			}
-		}		
+		}
 
 		// handle rerunning jobs
 		function rerun_jobs(){
@@ -238,7 +233,7 @@
 						if (data.results == true) {
 							location.reload();
 						}
-						{% endif %}					
+						{% endif %}
 					}
 				});
 			}
@@ -282,7 +277,7 @@
 						if (data.results == true) {
 							location.reload();
 						}
-						{% endif %}					
+						{% endif %}
 					}
 				});
 			}
