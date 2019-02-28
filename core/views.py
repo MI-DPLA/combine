@@ -49,6 +49,9 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 # import mongo dependencies
 from core.mongo import *
 
+# import celery app
+from core.celery import celery_app
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -233,7 +236,7 @@ def index(request):
 
 
 ####################################################################
-# User Livy Sessions 											   #
+# User Livy Sessions and Celery 								   #
 ####################################################################
 
 @login_required
@@ -265,13 +268,32 @@ def system(request):
 		livy_sessions = livy_session
 
 	# get status of background jobs
-	sp = models.SupervisorRPCClient()
-	bgtasks_proc = sp.check_process('celery')
+	if not hasattr(settings,'COMBINE_DEPLOYMENT') or settings.COMBINE_DEPLOYMENT != 'docker':
+		try:
+			sp = models.SupervisorRPCClient()
+			bgtasks_proc = sp.check_process('celery')
+		except:
+			logger.debug('supervisor might be down?')
+			bgtasks_proc = None
+	else:
+		bgtasks_proc = None
+
+	# get celery worker status
+	active_tasks = celery_app.control.inspect().active()
+
+	if active_tasks == None:
+		celery_status = 'stopped'
+	else:
+		if len(next(iter(active_tasks.values()))) == 0:
+			celery_status = 'idle'
+		elif len(next(iter(active_tasks.values()))) > 0:
+			celery_status = 'busy'
 
 	# return
 	return render(request, 'core/system.html', {
 		'livy_session':livy_session,
 		'livy_sessions':livy_sessions,
+		'celery_status':celery_status,
 		'bgtasks_proc':bgtasks_proc,
 		'breadcrumbs':breadcrumb_parser(request)
 	})
@@ -349,6 +371,43 @@ def bgtasks_proc_stderr_log(request):
 
 	# redirect
 	return HttpResponse(log_tail, content_type='text/plain')
+
+
+def system_bg_status(request):
+
+	'''
+	View to return status on:
+		- Livy session
+		- celery worker
+	'''
+
+	# get livy status
+	lv = models.LivySession.get_active_session()
+	if lv:
+		if type(lv) == models.LivySession:
+			# refresh single session
+			lv.refresh_from_livy()
+			# set status
+			livy_status = lv.status
+	else:
+		livy_status = 'stopped'
+
+	# get celery worker status
+	active_tasks = celery_app.control.inspect().active()
+
+	if active_tasks == None:
+		celery_status = 'stopped'
+	else:
+		if len(next(iter(active_tasks.values()))) == 0:
+			celery_status = 'idle'
+		elif len(next(iter(active_tasks.values()))) > 0:
+			celery_status = 'busy'
+
+	# return json
+	return JsonResponse({
+		'celery_status':celery_status,
+		'livy_status':livy_status
+	})
 
 
 

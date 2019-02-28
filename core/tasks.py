@@ -15,6 +15,7 @@ import zipfile
 
 # django imports
 from django.db import connection, transaction
+from django.conf import settings
 
 # Get an instance of a logger
 import logging
@@ -236,7 +237,6 @@ def create_validation_report(ct_id):
 		ct.save()
 
 
-@celery_app.task()
 def export_mapped_fields(ct_id):
 
 	# get CombineTask (ct)
@@ -261,7 +261,7 @@ def export_mapped_fields(ct_id):
 				# build command list
 				cmd = [
 					"elasticdump",
-					"--input=http://localhost:9200/j%s" % cjob.job.id,
+					"--input=http://%s:9200/j%s" % (settings.ES_HOST, cjob.job.id),
 					"--output=%s" % export_output,
 					"--type=data",
 					"--sourceOnly",
@@ -284,7 +284,7 @@ def export_mapped_fields(ct_id):
 				# build command list
 				cmd = [
 					"elasticdump",
-					"--input=http://localhost:9200/%s" % es_list,
+					"--input=http://%s:9200/%s" % (settings.ES_HOST, es_list),
 					"--output=%s" % export_output,
 					"--type=data",
 					"--sourceOnly",
@@ -318,6 +318,7 @@ def export_mapped_fields(ct_id):
 				# build command list
 				cmd = [
 					"es2csv",
+					"-u http://%s:9200" % settings.ES_HOST,
 					"-q '*'",
 					"-i 'j%s'" % cjob.job.id,
 					"-D 'record'",
@@ -339,6 +340,7 @@ def export_mapped_fields(ct_id):
 				# build command list
 				cmd = [
 					"es2csv",
+					"-u http://%s:9200" % settings.ES_HOST,
 					"-q '*'",
 					"-i '%s'" % es_list,
 					"-D 'record'",

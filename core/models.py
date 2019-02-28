@@ -252,7 +252,7 @@ class LivySession(models.Model):
 		self.status = response['state']
 		self.session_timestamp = headers['Date']
 		self.active = True
-		self.sparkUiUrl = '%s:%s' % (settings.APP_HOST, spark_ui_port)
+		self.sparkUiUrl = '%s:%s' % (settings.SPARK_HOST, spark_ui_port)
 
 		# update db
 		self.save()

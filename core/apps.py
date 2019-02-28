@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 # NOTE: manual configuration of core app not currently used, but leaving if needed
 class CoreConfig(AppConfig):
-	
+
 	name = 'core'
 
 	def ready(self):
@@ -37,6 +37,23 @@ class CoreConfig(AppConfig):
 		# write s3 credentials
 		self.set_s3_credentials()
 
+		# create home working directory
+		self.create_home_working_directory()
+
+
+	def create_home_working_directory(self):
+
+		'''
+		Method to create directory /home/combine/data/combine if does not exist
+		'''
+
+		# parse home working directory
+		hwd = settings.BINARY_STORAGE.split('file://')[-1]
+
+		# create if not exists
+		if not os.path.exists(hwd):
+			os.makedirs(hwd)
+
 
 	def set_s3_credentials(self):
 
@@ -58,6 +75,6 @@ aws_access_key_id = %s
 aws_secret_access_key = %s
 ''' % (settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY))
 
-		
+
 
 

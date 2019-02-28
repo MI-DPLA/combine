@@ -13,6 +13,7 @@ urlpatterns = [
 	# User Livy sessions
 	url(r'^system/livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
 	url(r'^system/livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
+	url(r'^system/bg_status$', views.system_bg_status, name='system_bg_status'),
 
 	# Organizations
 	url(r'^organization/all$', views.organizations, name='organizations'),
@@ -127,7 +128,7 @@ urlpatterns = [
 	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)$', views.bg_task, name='bg_task'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
-	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),
+	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),	
 
 	# Document Download
 	url(r'^document_download$', views.document_download, name='document_download'),

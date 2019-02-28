@@ -3,21 +3,22 @@
 <!doctype html>
 <html lang="en">
 	<head>
+
 		<!-- Required meta tags -->
     	<meta charset="utf-8">
-    	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">    	
+    	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 
     	<!-- Bootstrap CSS -->
     	<link rel="stylesheet" type="text/css" href="{% static 'core/bootstrap-4.0.0/css/bootstrap.min.css' %}">
 
 		<!-- jQuery -->
 		<script type="text/javascript" charset="utf8" src="{% static 'core/jQuery-3.2.1/jquery-3.2.1.min.js' %}"></script>
-		
+
 		<!-- DataTables -->
 		<link rel="stylesheet" type="text/css" href="{% static 'core/datatables.min.css' %}">
 		<script type="text/javascript" charset="utf8" src="{% static 'core/datatables.min.js' %}"></script>
 		<script type="text/javascript" charset="utf8" src="{% static 'core/fnFindCellRowIndexes.js' %}"></script>
-		
+
 		<!-- Bootstrap JS -->
 		<script src="{% static 'core/bootstrap-4.0.0/js/bootstrap.min.js' %}"></script>
 
@@ -34,15 +35,15 @@
 		<link href="{% static 'core/jsoneditor-5.18.0/dist/jsoneditor.min.css' %}" rel="stylesheet" type="text/css"></link>
 		<script src="{% static 'core/jsoneditor-5.18.0/dist/jsoneditor.min.js' %}"></script>
 
-    	<!-- Line Awesome icon font -->    	
+    	<!-- Line Awesome icon font -->
     	<link rel="stylesheet" href="{% static 'core/line-awesome/css/line-awesome.min.css' %}">
 
     	<!-- jstree -->
     	<link href="{% static 'core/jstree/themes/default/style.min.css' %}" rel="stylesheet" type="text/css"></link>
 		<script src="{% static 'core/jstree/jstree.min.js' %}"></script>
 
-		<!--HTML5Sortable-->		
-		<script src="{% static 'core/html5sortable-0.9.8/html5sortable.min.js' %}"></script>		
+		<!--HTML5Sortable-->
+		<script src="{% static 'core/html5sortable-0.9.8/html5sortable.min.js' %}"></script>
 
     	<!-- Combine CSS -->
     	<link rel="stylesheet" type="text/css" href="{% static 'core/combine.css' %}">
@@ -79,9 +80,9 @@
 	          </li>
 	          <li class="nav-item">
 	            <a class="nav-link" href="http://combine.readthedocs.io/en/{{COMBINE_GIT_BRANCH}}" target="_blank">Documentation</a>
-	          </li>	          
+	          </li>
 	          <li class="nav-item">
-	            <a class="nav-link" href="{% url 'system' %}">System: <span class="{% if LIVY_SESSION.status == 'idle' %}text-success{% elif LIVY_SESSION.status == 'starting' or LIVY_SESSION.status == 'busy' %}text-warning{% else %}text-danger{% endif %}">Spark</span> / <span class="{% if BGTASKS_BUSY == True %}text-warning{% elif BGTASKS_PROC.statename == 'RUNNING' %}text-success{% elif BGTASKS_PROC.statename == 'STARTING' %}text-warning{% else %}text-danger{% endif %}">Tasks</span> / <img style="filter: invert(100%);" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
+	            <a class="nav-link" href="{% url 'system' %}">System: <span id="livy_status" class="text-secondary">Spark</span> / <span id="celery_status" class="text-secondary">Tasks</span> / <img style="filter: invert(100%); margin-top:-2.5px;" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span class="text-warning">{{COMBINE_GIT_BRANCH}}</span></code></a>
 	          </li>
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
@@ -114,7 +115,7 @@
 				</div>
 				<script>
 
-					function del_gm(gm_id) {						
+					function del_gm(gm_id) {
 
 						// ajax call
 						$.ajax({
@@ -124,13 +125,13 @@
 								'gm_id':gm_id,
 								'csrfmiddlewaretoken': '{{ csrf_token }}'
 							},
-							dataType:'json'							
+							dataType:'json'
 						});
 					}
 
 				</script>
-			</div> 
-	    	
+			</div>
+
 	    	<!-- breadcrumbs -->
 	    	<div id="breadcrumbs" class="row">
 	    		<div class="col-md-12">
@@ -161,16 +162,59 @@
 		$(document).ready(function(){
 			// Javascript to enable link to tab
 			var url = document.location.toString();
-			if (url.match('#')) {				
+			if (url.match('#')) {
 			    $('.nav-tabs a[href="#' + url.split('#')[1] + '"]').tab('show');
-			} 
+			}
 		})
 
 		// helper function to extend tables when loaded in tabs
-		function update_table_widths() {			
+		function update_table_widths() {
 			$(".dt_table").css('width', '100%').dataTable().fnAdjustColumnSizing();
 		}
 
+		// system status ajax call
+		$.ajax({
+			type: "GET",
+			url: "{% url 'system_bg_status' %}",
+			dataType:'json',
+			success: function(data){
+
+				// console.log(data);
+
+				// color hash
+				color_hash = {
+					'stopped':'text-danger',
+					'gone':'text-danger',
+					'starting':'text-warning',
+					'busy':'text-warning',
+					'idle':'text-success'
+				}
+
+				// handle livy
+				$("#livy_status").addClass(color_hash[data.livy_status]);
+
+				// handle celery
+				$("#celery_status").addClass(color_hash[data.celery_status]);
+
+			},
+			error: function(data){
+				console.log(data.responseJSON.msg);
+			}
+		});
+
+
 	</script>
-	
+
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
