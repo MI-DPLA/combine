@@ -13,7 +13,7 @@ configparser==3.5.0
 cookies==2.2.1
 dashtable==1.4.5
 decorator==4.1.2
-Django==1.11.4
+Django==1.11.20
 django-datatables-view==1.14.0
 django-extensions==1.9.0
 django-filter==1.1.0
@@ -52,7 +52,7 @@ pyparsing==2.2.0
 pytest==3.2.1
 python-dateutil==2.6.1
 pytz==2017.2
-requests==2.18.4
+requests==2.20.0
 requests-kerberos==0.11.0
 responses==0.8.1
 scandir==1.5
@@ -66,6 +66,6 @@ SQLAlchemy==1.1.13
 sxsdiff==0.3.0
 toposort
 traitlets==4.3.2
-urllib3==1.22
+urllib3==1.23
 wcwidth==0.1.7
 xmltodict==0.11.0
