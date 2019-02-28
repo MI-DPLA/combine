@@ -90,41 +90,48 @@ class Command(BaseCommand):
 		Method to handle branch/tagged release update
 		'''
 
-		# if not running update snippets only
-		if not options.get('run_update_snippets_only', False):
+		# do not run at all if Combine is Docker deployed
+		if getattr(settings,'COMBINE_DEPLOYMENT','server') != 'docker':
 
-			# git pull
-			os.system('git pull')
+			# if not running update snippets only
+			if not options.get('run_update_snippets_only', False):
 
-			# checkout release if provided
-			if options.get('release', None) != None:
-				release = options['release']
-				logger.debug('release/branch provided, checking out: %s' % release)
+				# git pull
+				os.system('git pull')
 
-				# git checkout
-				os.system('git checkout %s' % release)
+				# checkout release if provided
+				if options.get('release', None) != None:
+					release = options['release']
+					logger.debug('release/branch provided, checking out: %s' % release)
 
-			# install requirements as combine user
-			os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
+					# git checkout
+					os.system('git checkout %s' % release)
 
-			# collect django static
-			os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
+				# install requirements as combine user
+				os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
-			# restart gunicorn
-			self._restart_gunicorn()
+				# collect django static
+				os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
 
-			# restart livy and livy session
-			self._restart_livy()
+				# restart gunicorn
+				self._restart_gunicorn()
 
-			# restart celery background tasks
-			self._restart_celery()
+				# restart livy and livy session
+				self._restart_livy()
 
-		# run update code snippets
-		vuh = VersionUpdateHelper()
-		vuh.run_update_snippets()
+				# restart celery background tasks
+				self._restart_celery()
 
-		# return
-		self.stdout.write(self.style.SUCCESS('Update complete.'))
+			# run update code snippets
+			vuh = VersionUpdateHelper()
+			vuh.run_update_snippets()
+
+			# return
+			self.stdout.write(self.style.SUCCESS('Update complete.'))
+
+		# docker return
+		else:
+			self.stdout.write(self.style.ERROR('Update script does not currently support Docker deployment.'))
 
 
 	def _restart_gunicorn(self):
