@@ -34,9 +34,6 @@ class CoreConfig(AppConfig):
 
 		logger.debug('Core application ready method preperations firing')
 
-		# write s3 credentials
-		self.set_s3_credentials()
-
 		# create home working directory
 		self.create_home_working_directory()
 
