@@ -7464,7 +7464,6 @@ class DPLABulkDataClient(object):
 			aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 
 
-
 	def download_bulk_data(self, object_key, filepath):
 
 		'''
