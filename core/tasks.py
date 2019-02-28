@@ -237,6 +237,7 @@ def create_validation_report(ct_id):
 		ct.save()
 
 
+@celery_app.task()
 def export_mapped_fields(ct_id):
 
 	# get CombineTask (ct)
@@ -400,7 +401,9 @@ def export_mapped_fields(ct_id):
 			logger.debug('writing archive file to S3')
 
 			# upload to s3
-			s3 = boto3.resource('s3')
+			s3 = boto3.resource('s3',
+				aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+				aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 			s3.Object(ct.task_params['s3_bucket'], ct.task_params['s3_key'])\
 			.put(Body=open(export_output,'rb'))
 
@@ -517,7 +520,9 @@ def export_tabular_data(ct_id):
 				ct = _create_export_tabular_data_archive(ct)
 
 				# upload to s3
-				s3 = boto3.resource('s3')
+				s3 = boto3.resource('s3',
+					aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+					aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 				s3.Object(ct.task_params['s3_bucket'], ct.task_params['s3_key'])\
 				.put(Body=open(ct.task_params['export_output_archive'],'rb'))
 
@@ -719,7 +724,9 @@ def export_documents(ct_id):
 				ct = _create_export_documents_archive(ct)
 
 				# upload to s3
-				s3 = boto3.resource('s3')
+				s3 = boto3.resource('s3',
+					aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+					aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 				s3.Object(ct.task_params['s3_bucket'], ct.task_params['s3_key'])\
 				.put(Body=open(ct.task_params['export_output_archive'],'rb'))
 

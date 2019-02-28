@@ -7451,13 +7451,17 @@ class DPLABulkDataClient(object):
 		self.es_handle = es_handle
 
 		# S3
-		self.s3 = boto3.resource('s3')
+		self.s3 = boto3.resource('s3',
+			aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+			aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 
 		# DPLA bucket
 		self.dpla_bucket = self.s3.Bucket(settings.DPLA_S3_BUCKET)
 
 		# boto3 client
-		self.boto_client = boto3.client('s3')
+		self.boto_client = boto3.client('s3',
+			aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+			aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 
 
 
@@ -7472,7 +7476,9 @@ class DPLABulkDataClient(object):
 			os.mkdir(self.bulk_dir)
 
 		# download
-		s3 = boto3.resource('s3')
+		s3 = boto3.resource('s3',
+			aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+			aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
 		download_results = self.dpla_bucket.download_file(object_key, filepath)
 
 		# return

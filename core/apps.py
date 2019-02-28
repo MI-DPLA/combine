@@ -53,28 +53,3 @@ class CoreConfig(AppConfig):
 		# create if not exists
 		if not os.path.exists(hwd):
 			os.makedirs(hwd)
-
-
-	def set_s3_credentials(self):
-
-		'''
-		Method to set AWS credentials for S3 bucket access
-		at ~/.aws/credentials
-		'''
-
-		# aws credentials dir
-		aws_creds_dir = '/home/combine/.aws'
-
-		# check if directory exists
-		if not os.path.exists(aws_creds_dir):
-			os.makedirs(aws_creds_dir)
-
-		with open('%s/credentials' % aws_creds_dir, 'w') as f:
-			f.write('''[default]
-aws_access_key_id = %s
-aws_secret_access_key = %s
-''' % (settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_ACCESS_KEY))
-
-
-
-

@@ -22,11 +22,12 @@ def combine_settings(request):
 		'OAI_RESPONSE_SIZE',
 		'COMBINE_OAI_IDENTIFIER',
 		'COMBINE_DEPLOYMENT'
-	]	
+	]
 	combine_settings_dict = { k:getattr(settings,k,None) for k in combine_settings_keys }
-	
+
 	# return
-	return combine_settings_dict	
+	return combine_settings_dict
+
 
 def livy_session(request):
 
