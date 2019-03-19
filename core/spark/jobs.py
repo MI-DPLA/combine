@@ -837,13 +837,18 @@ class HarvestOAISpark(CombineSparkJob):
 		self.init_job()
 		self.update_jobGroup('Running Harvest OAI Job')
 
-		# harvest OAI records via Ingestion3
+		# prepare to harvest OAI records via Ingestion3
 		df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
 		.option("endpoint", self.job_details['oai_params']['endpoint'])\
 		.option("verb", self.job_details['oai_params']['verb'])\
-		.option("metadataPrefix", self.job_details['oai_params']['metadataPrefix'])\
-		.option(self.job_details['oai_params']['scope_type'], self.job_details['oai_params']['scope_value'])\
-		.load()
+		.option("metadataPrefix", self.job_details['oai_params']['metadataPrefix'])
+
+		# remove scope entirely if harvesting all records, not sets
+		if self.job_details['oai_params']['scope_type'] != 'harvestAllRecords':
+			df = df.option(self.job_details['oai_params']['scope_type'], self.job_details['oai_params']['scope_value'])\
+
+		# harvest
+		df = df.load()
 
 		# select records with content
 		records = df.select("record.*").where("record is not null")

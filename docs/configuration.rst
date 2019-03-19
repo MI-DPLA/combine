@@ -38,7 +38,7 @@ I've mapped DC or MODS to Solr or ElasticSearch, why not do something similar?
 
 Each mapping is unique: to support different access, preservation, or analysis purposes.  A finely tuned mapping for one metadata format or institution, might be unusable for another, even for the same metadata format.  Combine strives to be metadata format agnostic for harvesting, transformation, and analysis, and furthermore, performing these actions before a mapping has even been created or considered.  To this end, a "generic" but customizable mapper was needed to take XML records and convert them into fields that can be used for developing an understanding about a group of Records.
 
-While applications like Solr and ElasticSearch more recently support hierarchical documents, and would likely support a straight XML to JSON converted document (with `xmltodict <https://github.com/martinblech/xmltodict>`_, or `Object Management Group (OMG)'s XML to JSON conversion standard <https://www.omg.org/cgi-bin/doc?ad/13-09-04>`_), the attributes in XML give it a dimensionality beyond simple hierarchy, and can be critical to understanding the nature and values of a particular XML element.  These direct mappings would function, but would not provide the same scannable, analysis of a group of XML records.  
+While applications like Solr and ElasticSearch more recently support hierarchical documents, and would likely support a straight XML to JSON converted document (with `xmltodict <https://github.com/martinblech/xmltodict>`_, or `Object Management Group (OMG)'s XML to JSON conversion standard <https://www.omg.org/cgi-bin/doc?ad/13-09-04>`_), the attributes in XML give it a dimensionality beyond simple hierarchy, and can be critical to understanding the nature and values of a particular XML element.  These direct mappings would function, but would not provide the same scannable, analysis of a group of XML records.
 
 XML2kvp provides a way to blindly map most any XML document, providing a broad overview of fields and structures, with the ability to further narrow and configure.  A possible update/improvement would be the ability for users to upload mappers of their making (e.g. XSLT) that would result in a flat mapping, but that is currently not implemented.
 
@@ -119,7 +119,7 @@ Some things to notice...
 
   - the XML root element ``<root>`` is present for all fields as ``root``
   - the XML hierarchy ``<root><foo><bar>`` repeats twice in the XML, but is collapsed into a single field ``root_foo_bar``
-    
+
     - moreover, because ``skip_repeating_values`` is set to ``true``, the value ``42`` shows up only once, if set to ``false`` we would see the value ``('42', '42', '9393943')``
 
   - a distinct absence of all attributes from the original XML, this is because ``include_all_attributes`` is set to ``false`` by default.
@@ -234,10 +234,10 @@ Within Combine, the configurations passed to XML2kvp are referred to as "Field M
 Saving and Reusing
 ------------------
 
-Field Mapper sonfigurations may be saved, named, and re-used.  This can be done anytime field mapper configurations are being set, e.g. when running a new Job, or re-indexing a previously run Job. 
+Field Mapper sonfigurations may be saved, named, and re-used.  This can be done anytime field mapper configurations are being set, e.g. when running a new Job, or re-indexing a previously run Job.
 
 
-Testing 
+Testing
 -------
 
 Field Mapping can also be tested against a single record, accessible from a Record's page under the "Run/Test Scenarios for this Record" tab.  The following is a screenshot of this testing page:
@@ -258,7 +258,7 @@ Configuring OAI endpoints is the first step for harvesting from OAI endpoints.
 
 To configure a new OAI endpoint, navigate to the Django admin screen, under the section "Core" select ``Oai endpoints``.
 
-This model is unique among other Combine models in that these values are sent almost untouched to the DPLA Ingestion 3 OAI harvesting codebase.  More `information on these fields can be found here <https://digitalpubliclibraryofamerica.atlassian.net/wiki/spaces/TECH/pages/87658172/Spark+OAI+Harvester>`_.
+This model is unique among other Combine models in that these values are sent relatively untouched to the DPLA Ingestion 3 OAI harvesting codebase.  More `information on these fields can be found here <https://digitalpubliclibraryofamerica.atlassian.net/wiki/spaces/TECH/pages/87658172/Spark+OAI+Harvester>`_.
 
 The following fields are all required:
 
@@ -278,6 +278,10 @@ The following fields are all required:
     - If ``harvestAllSets``, provide just the single string ``true``.
 
  Once the OAI endpoint has been added in the Django admin, from the configurations page you are presented with a table showing all configured OAI endpoints.  The last column includes a link to issue a command to view all OAI sets from that endpoint.
+
+ **Question:** What should I do if my OAI endpoint has no sets?
+
+In the event that your OAI endpoint does not have sets, or there are records you would like to harvest that may not belong to a set, there is an option on the OAI Harvesting screen, under the dropdown "Harvest Type" to "Harvest all records".  This effectively *unsets* the ``Scope Type`` and ``Scope Value``, triggering the DPLA Ingestion 3 OAI harvester to harvest all records.  Because this style of harvesting cannot parallelize across sets, it may be considerably slower, but is an option.
 
 
 Transformation Scenario
@@ -444,7 +448,7 @@ A full example of a python code snippet transformation might look like the follo
 
       # if <mods:accessCondition> not present at all, create
       elif len(ac_ele_query) == 0:
-        
+
         # build element
         rights = etree.Element('{http://www.loc.gov/mods/v3}accessCondition')
         rights.attrib['type'] = 'use and reproduction'
@@ -477,7 +481,7 @@ Validation Scenarios are by which Records in Combine are validated against.  Val
 
    Adding Validation Scenario in Django admin
 
-When running a Job, **multiple** Validation Scenarios may be applied to the Job, each of which will run for every Record.  Validation Scenarios may include multiple tests or "rules" with a single scenario.  So, for example, ``Validation A`` may contain ``Test 1`` and ``Test 2``.  If run for a Job, and ``Record Foo`` fails ``Test 2`` for the ``Validation A``, the results will show the failure for that Validation Scenario as a whole.  
+When running a Job, **multiple** Validation Scenarios may be applied to the Job, each of which will run for every Record.  Validation Scenarios may include multiple tests or "rules" with a single scenario.  So, for example, ``Validation A`` may contain ``Test 1`` and ``Test 2``.  If run for a Job, and ``Record Foo`` fails ``Test 2`` for the ``Validation A``, the results will show the failure for that Validation Scenario as a whole.
 
 When thinking about creating Validation Scenarios, there is flexibility in how many tests to put in a single Validation Scenario, versus splitting up those tests between distinct Validation Scenarios, recalling that **multiple** Validation Scenarios may be run for a single Job.  It is worth pointing out, multiple Validation Scenarios for a Job will likely degrade performance *more* than a multiple tests within a single Scenario, though this has not been testing thoroughly, just speculation based on how Records are passed to Validation Scenarios in Spark in Combine.
 
@@ -530,7 +534,7 @@ Below is an example of a small Schematron validation that looks for some require
           <assert test="count(mods:accessCondition[@type='use and reproduction'])=1">There must be a rights statement</assert>
         </rule>
       </pattern>
-       
+
       <!-- Additional Requirements within Required Elements -->
       <pattern>
         <title>Subelements and Attributes used in TitleInfo</title>
@@ -541,14 +545,14 @@ Below is an example of a small Schematron validation that looks for some require
           <assert test="normalize-space(.)">The title elements must contain text</assert>
         </rule>
       </pattern>
-      
+
       <pattern>
         <title>Additional URL requirements</title>
         <rule context="mods:mods/mods:location/mods:url">
           <assert test="normalize-space(.)">The URL field must contain text</assert>
-        </rule> 
+        </rule>
       </pattern>
-      
+
     </schema>
 
 
@@ -604,7 +608,7 @@ ElasticSearch DSL query
 
 ElasticSearch DSL query type Validations Scenarios are a bit different.  Instead of validating the document for a Record, ElasticSearch DSL validations validate by performing ElasticSearch queries against mapped fields for a Job, and marking Records as valid or invalid based on whether they are matches for those queries.
 
-These queries may be written such that Records matches are **valid**, or they may be written where matches are **invalid**.  
+These queries may be written such that Records matches are **valid**, or they may be written where matches are **invalid**.
 
 An example structure of an ElasticSearch DSL query might look like the following:
 
@@ -652,7 +656,7 @@ Another configurable "Scenario" in Combine is a Record Identifier Transformation
 
 Record Identifiers are created during Harvest Jobs, when a Record is first created.  This Record Identifier may come from the OAI server in which the Record was harvested from, it might be derived from an identifier in the Record's XML in the case of a static harvest, or it may be minted as a UUID4 on creation.  Where the Record ID is picked up from OAI or the Record's XML itself, it might not need transformation before publishing, and can "go out" just as it "came in."  However, there are instances where transforming the Record's ID can be quite helpful.
 
-Take the following scenario.  A digital object's metadata is harvested from ``Repository A`` with the ID ``foo``, as part of OAI set ``bar``, by ``Metadata Aggregator A``.  Inside ``Metadata Aggregator A``, which has its own OAI server prefix of ``baz`` considers the full identifier of this record: ``baz:bar:foo``.  Next, ``Metadata Aggregator B`` harvests this record from ``Metadata Aggregator A``, under the OAI set ``scrog``.  ``Metadata Aggregator B`` has its own OAI server prefix of ``tronic``.  Finally, when a terminal harvester like DPLA harvests this record from ``Metadata Aggregator B`` under the set ``goober``, it might have a motley identifier, constructed through all these OAI "hops" of something like: ``tronic:scrog:goober:baz:bar:foo``.  
+Take the following scenario.  A digital object's metadata is harvested from ``Repository A`` with the ID ``foo``, as part of OAI set ``bar``, by ``Metadata Aggregator A``.  Inside ``Metadata Aggregator A``, which has its own OAI server prefix of ``baz`` considers the full identifier of this record: ``baz:bar:foo``.  Next, ``Metadata Aggregator B`` harvests this record from ``Metadata Aggregator A``, under the OAI set ``scrog``.  ``Metadata Aggregator B`` has its own OAI server prefix of ``tronic``.  Finally, when a terminal harvester like DPLA harvests this record from ``Metadata Aggregator B`` under the set ``goober``, it might have a motley identifier, constructed through all these OAI "hops" of something like: ``tronic:scrog:goober:baz:bar:foo``.
 
 If one of these hops were replaced by an instance of Combine, one of the OAI "hops" would be removed, and the dynamically crafted identifier for that same record would change.  Combine allows the ability to transform the identifier -- emulating previous OAI "hops", completely re-writing, or any other transformation -- through a Record Identifier Transformation Scenario (RITS).
 
@@ -700,7 +704,7 @@ The screenshot belows shows an example of a regex match / replace used to replac
 
    Example of RITS with Regular Expression
 
-A contrived example, this shows a regex expression applied to the input Record identifier of ``oai:digital.library.wayne.edu:wayne:Livingto1876b22354748```.  
+A contrived example, this shows a regex expression applied to the input Record identifier of ``oai:digital.library.wayne.edu:wayne:Livingto1876b22354748```.
 
 
 Python Code Snippet
@@ -718,15 +722,15 @@ For a python code snippet RITS, a function named ``transform_identifier`` is req
 
     # function named `transform_identifier`, with single passed argument of PythonUDFRecord instance
     def transform_identifier(record):
-      
+
       '''
       In this example, a string replacement is performed on the record identifier,
       but this could be much more complex, using a combination of the Record's parsed
-      XML and/or the Record Identifier.  This example is meant ot show the structure of a 
+      XML and/or the Record Identifier.  This example is meant ot show the structure of a
       python based RITS only.
       '''
 
-      # function must return string of new Record Identifier  
+      # function must return string of new Record Identifier
         return record.record_id.replace('digital.library.wayne.edu','goober.tronic.org')
 
 And a screenshot of this RITS in action:

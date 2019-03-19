@@ -6,7 +6,7 @@
 		<div class="col-md-12">
 			<h3>New Job: <span class="font-weight-bold">OAI Harvest</span></h3>
 
-			<p>Harvest records via OAI-PMH from a remote endpoint.</p>	
+			<p>Harvest records via OAI-PMH from a remote endpoint.</p>
 		</div>
 	</div>
 
@@ -21,7 +21,7 @@
 					<div class="col-md-12">
 
 						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}						
+						{% include 'core/job_optional_details.html' %}
 
 						<!-- OAI endpoint -->
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
@@ -36,19 +36,19 @@
 								<option value="">Select an oai endpoint...</option>
 								{% for oai_endpoint in oai_endpoints %}
 									<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
-								{% endfor %}						
+								{% endfor %}
 							</select>
 						</div>
 
-						<!-- optional OAI endpoint defaults overrides -->				
-						<div id="oai_endpoint_defaults" style="background-color:rgb(245,245,245); padding:10px; border-radius:10px; margin-bottom:20px; display:none;">							
+						<!-- optional OAI endpoint defaults overrides -->
+						<div id="oai_endpoint_defaults" style="background-color:rgb(245,245,245); padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
 							<div class="alert alert-warning alert-dismissible fade show" role="alert">
 								The following are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job
 								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 								<span aria-hidden="true">&times;</span>
 								</button>
 							</div>
-							
+
 							<div class="form-group">
 								<label for="endpoint">OAI URL endpoint</label>
 								<input type="text" class="form-control" id="endpoint" name="endpoint" placeholder="http://example.org/oai" disabled>
@@ -60,7 +60,7 @@
 								<select class="form-control" id="verb" name="verb">
 									<option value="">Select OAI verb...</option>
 									<option value="ListRecords">ListRecords</option>
-									<option value="ListSets">ListSets</option>						
+									<option value="ListSets">ListSets</option>
 								</select>
 							</div>
 
@@ -70,17 +70,18 @@
 							</div>
 
 							<div class="form-group">
-								<label for="scope_type">Harvest type</label>								
-								<select class="form-control" id="scope_type" name="scope_type">									
+								<label for="scope_type">Harvest type</label>
+								<select class="form-control" id="scope_type" name="scope_type">
 									<option value="harvestAllSets">Harvest all sets</option>
 									<option value="setList">List of sets to harvest (comma separated)</option>
 									<option value="blackList">Harvest all sets, but with list of sets to exclude (comma separated)</option>
+									<option value="harvestAllRecords">Harvest all records (slowest, but will harvest records NOT in sets)</option>
 								</select>
 							</div>
 
 							<div id="scope_value_block" class="form-group">
 								<label id="scope_value_label" for="scope_value">Scope value</label>
-								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">						
+								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">
 							</div>
 
 							<!-- include header toggle -->
@@ -95,7 +96,7 @@
 
 					</div>
 
-				</div>				
+				</div>
 
 				<!-- Optional Job Processing -->
 				{% include 'core/job_optional_processing.html' %}
@@ -109,33 +110,39 @@
 			// save all oai endpoints as parsed javascript values for previewing
 			oes = {}
 			{% for oai_endpoint in oai_endpoints %}
-				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};				
+				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
 			{% endfor %}
 
 			// listen for scope type change
 			$(function() {
-			    $("#scope_type").change(function() {			    	
+			    $("#scope_type").change(function() {
 
 			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'harvestAllSets') {			    		
+			    	if ($("#scope_type").val() == 'harvestAllSets') {
 			    		// hide scope value block
-			    		$("#scope_value_block").fadeOut();
+			    		$("#scope_value_block").hide();
 			    	}
 
 			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'setList') {		
-			    		// set scope value lable
-			    		$("#scope_value_label").html('OAI sets to <span class="text-success">include</span>');	    		
+			    	if ($("#scope_type").val() == 'setList') {
+			    		// set scope value label
+			    		$("#scope_value_label").html('OAI sets to <span class="text-success">include</span>');
 			    		// show scope value block
-			    		$("#scope_value_block").fadeIn();
+			    		$("#scope_value_block").show();
 			    	}
 
 			    	// harvest all sets
 			    	if ($("#scope_type").val() == 'blackList') {
-			    		// set scope value lable
+			    		// set scope value label
 			    		$("#scope_value_label").html('OAI sets to <span class="text-danger">exclude</span>');
 			    		// show scope value block
-			    		$("#scope_value_block").fadeIn();
+			    		$("#scope_value_block").show();
+			    	}
+
+			    	// harvest all sets
+			    	if ($("#scope_type").val() == 'harvestAllRecords') {
+			    		// hide scope value block
+			    		$("#scope_value_block").hide();
 			    	}
 
 		    	});
@@ -145,7 +152,7 @@
 			$(function() {
 			    $("#oai_endpoint_id").change(function() {
 
-			    	// get id 
+			    	// get id
 			        oe_id = $('option:selected', this).val()
 
 			        // set endpoint URL

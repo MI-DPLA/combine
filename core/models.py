@@ -1911,8 +1911,8 @@ class OAIEndpoint(models.Model):
 	endpoint = models.CharField(max_length=255)
 	verb = models.CharField(max_length=128, null=True, default='ListRecords')
 	metadataPrefix = models.CharField(max_length=128)
-	scope_type = models.CharField(max_length=128) # expecting one of setList, whiteList, blackList
-	scope_value = models.CharField(max_length=1024)
+	scope_type = models.CharField(max_length=128, null=True, default='harvestAllSets') # expecting one of setList, whiteList, blackList
+	scope_value = models.CharField(max_length=1024, null=True, default='true')
 
 
 	def __str__(self):
@@ -5807,6 +5807,10 @@ class HarvestOAIJob(HarvestJob):
 		# mix in overrides
 		for param,value in overrides.items():
 			oai_params[param] = value
+
+		# ensure true value for harvestAllSets
+		if oai_params['scope_type'] in ['harvestAllSets','harvestAllRecords']:
+			oai_params['scope_value'] = 'true'
 
 		# get include <header> toggle
 		include_oai_record_header = job_params.get('include_oai_record_header', False);
