@@ -119,7 +119,7 @@ def generate_validation_report(spark, output_path, task_params):
 	# get job validations, limiting by selected validation scenarios
 	pipeline = json.dumps({'$match': {'job_id': job_id, 'validation_scenario_id':{'$in':validation_scenarios}}})
 	rvdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-	.option("uri","mongodb://10.5.0.3")\
+	.option("uri","mongodb://%s" % settings.MONGO_HOST)\
 	.option("database","combine")\
 	.option("collection","record_validation")\
 	.option("partitioner","MongoSamplePartitioner")\
@@ -374,7 +374,7 @@ def get_job_as_df(spark, job_id, remove_id=False):
 
 	pipeline = json.dumps({'$match': {'job_id': job_id}})
 	mdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
-	.option("uri","mongodb://10.5.0.3")\
+	.option("uri","mongodb://%s" % settings.MONGO_HOST)\
 	.option("database","combine")\
 	.option("collection","record")\
 	.option("partitioner","MongoSamplePartitioner")\
@@ -478,7 +478,7 @@ def copy_sql_to_mongo(spark, job_id):
 	# insert
 	sdf.write.format("com.mongodb.spark.sql.DefaultSource")\
 	.mode("append")\
-	.option("uri","mongodb://10.5.0.3")\
+	.option("uri","mongodb://%s" % settings.MONGO_HOST)\
 	.option("database","combine")\
 	.option("collection", "record").save()
 
@@ -498,7 +498,7 @@ def copy_sql_to_mongo_adv(spark, job_id, lowerBound, upperBound, numPartitions):
 
 	db_records.write.format("com.mongodb.spark.sql.DefaultSource")\
 	.mode("append")\
-	.option("uri","mongodb://10.5.0.3")\
+	.option("uri","mongodb://%s" % settings.MONGO_HOST)\
 	.option("database","combine")\
 	.option("collection", "record").save()
 
