@@ -13,7 +13,7 @@
 			<form id="job_init_form" method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
 				{% csrf_token %}
-	
+
 				<div class="row">
 					<div class="col-md-12">
 						<!-- optional job details -->
@@ -51,7 +51,7 @@
 
 				<div class="row">
 					<div class="col-md-12">
-						
+
 						<div class="alert alert-danger alert-dismissible fade show" role="alert">
 							The following are <strong>required</strong> parameters for this Job
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
@@ -78,7 +78,7 @@
 								<h6>Available Transformations</h6>
 								<ul class="draggable_ul available_transforms">
 									{% for transformation in transformations %}
-										<li data-trans_id={{transformation.id}} ><button class="draggable_button btn-outline-primary btn-sm">{{transformation.name}}</button></li>									
+										<li data-trans_id={{transformation.id}} ><span class="draggable_span">{{transformation.name}}</span></li>
 									{% endfor %}
 								</ul>
 							</div>
@@ -93,26 +93,26 @@
 						<script>
 
 							// init available transforms
-							var available = sortable('.available_transforms', {								
-								acceptFrom: ".selected_transforms, .available_transforms",								
+							var available = sortable('.available_transforms', {
+								acceptFrom: ".selected_transforms, .available_transforms",
 								items:'li',
 								forcePlaceholderSize: true,
-								placeholderClass: 'ph-class', 								
+								placeholderClass: 'ph-class',
 							});
 
 							// init selected transforms
-							var selected = sortable('.selected_transforms', {								
-								acceptFrom: ".available_transforms, .selected_transforms",								
+							var selected = sortable('.selected_transforms', {
+								acceptFrom: ".available_transforms, .selected_transforms",
 								items:'li',
 								forcePlaceholderSize: true,
-								placeholderClass: 'ph-class', 
+								placeholderClass: 'ph-class',
 							});
 
-							
+
 							function ser_sel_trans(){
 
 								/*
-								Function to serialize and capture ordered transformation ids									
+								Function to serialize and capture ordered transformation ids
 
 								Args:
 									None
@@ -124,7 +124,7 @@
 
 								sel_trans_obj = [];
 
-								// serialize 
+								// serialize
 								sel_trans = sortable('.selected_transforms', 'serialize')[0];
 
 								// loop
@@ -133,7 +133,7 @@
 									sel_trans_obj.push({
 										'index':trans.index,
 										'trans_id':parseInt(trans.node.attributes['data-trans_id'].value)
-									})									
+									})
 								}
 
 								// debug
@@ -154,7 +154,7 @@
 
 								// set hidden input with serialized JSON
 								sel_trans_json = JSON.stringify(sel_trans_obj)
-								$("#sel_trans_json").val(sel_trans_json);								
+								$("#sel_trans_json").val(sel_trans_json);
 
 							});
 
@@ -165,14 +165,14 @@
 
 				<!-- Optional Job Processing -->
 				{% include 'core/job_optional_processing.html' %}
-				
+
 				<button type="submit" class="btn btn-success btn-sm">Run Transform Job <i class="la la-play"></i></button>
 
 			</form>
 
 			<!-- Modals -->
 			{% include 'core/job_spec_input_filters.html' %}
-			
+
 		</div>
 	</div>
 
