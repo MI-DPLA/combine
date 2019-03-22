@@ -238,6 +238,9 @@ class CombineSparkJob(object):
 				if filter_input_records:
 					records = self.record_input_filters(records)
 
+				# add CombineRecordSchema columns if absent
+				records = self.add_missing_columns(records)
+
 				# append to list of dataframes
 				job_spec_dfs.append(records)
 
@@ -276,6 +279,9 @@ class CombineSparkJob(object):
 				# optionally filter
 				if filter_input_records:
 					job_spec_records = self.record_input_filters(job_spec_records, input_filters=job_spec_group['input_filters'])
+
+				# add CombineRecordSchema columns if absent
+				job_spec_records = self.add_missing_columns(job_spec_records)
 
 				# append dataframe
 				job_spec_dfs.append(job_spec_records)
@@ -317,10 +323,31 @@ class CombineSparkJob(object):
 			if filter_input_records:
 				records = self.record_input_filters(records)
 
+			# add CombineRecordSchema columns if absent
+			records = self.add_missing_columns(records)
+
 		# count breakdown of input jobs/records, save to Job
 		self.count_input_records(records)
 
 		# return
+		return records
+
+
+	def add_missing_columns(self, records):
+
+		'''
+		Method to ensure records dataframe has all required columns from CombineRecordSchema
+
+		Args:
+			records (DataFrame): dataframe of records
+		'''
+
+		# loop through required columns from CombineRecordSchema
+		self.logger.info("check for missing columns from CombineRecordSchema")
+		for field_name in CombineRecordSchema().field_names:
+			if field_name not in records.columns:
+				self.logger.info("adding column: %s" % field_name)
+				records = records.withColumn(field_name, pyspark_sql_functions.lit(''))
 		return records
 
 
@@ -892,8 +919,8 @@ class HarvestOAISpark(CombineSparkJob):
 		job_id_udf = udf(lambda id: job_id, IntegerType())
 		records = records.withColumn('job_id', job_id_udf(records.id))
 
-		# add oai_set
-		records = records.withColumn('oai_set', records.setIds[0])
+		# add oai_set, accomodating multiple sets
+		records = records.withColumn('oai_set', records.setIds)
 
 		# add blank error column
 		error = udf(lambda id: '', StringType())
