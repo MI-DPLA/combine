@@ -21,7 +21,8 @@ def combine_settings(request):
 		'DPLA_API_KEY',
 		'OAI_RESPONSE_SIZE',
 		'COMBINE_OAI_IDENTIFIER',
-		'COMBINE_DEPLOYMENT'
+		'COMBINE_DEPLOYMENT',
+		'COMBINE_VERSION'
 	]
 	combine_settings_dict = { k:getattr(settings,k,None) for k in combine_settings_keys }
 
