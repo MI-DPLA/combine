@@ -2755,14 +2755,14 @@ def dpla_bulk_data_download(request):
 ####################################################################
 
 @login_required
-def published(request):
+def published(request, subset=None):
 
 	'''
 	Published records
 	'''
 
 	# get instance of Published model
-	published = models.PublishedRecords()
+	published = models.PublishedRecords(subset=subset)
 
 	# get field counts
 	if published.records.count() > 0:
@@ -2782,7 +2782,6 @@ def published(request):
 			'es_index_str':published.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
-
 
 
 ####################################################################
@@ -3528,7 +3527,7 @@ class DTPublishedJson(BaseDatatableView):
 			# return queryset used as base for futher sorting/filtering
 
 			# get PublishedRecords instance
-			pr = models.PublishedRecords()
+			pr = models.PublishedRecords(subset=self.kwargs.get('subset', None))
 
 			# return queryset
 			return pr.records

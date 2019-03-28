@@ -89,7 +89,9 @@ urlpatterns = [
 
 	# Publish
 	url(r'^published$', views.published, name='published'),
+	url(r'^published/subset/(?P<subset>.+)$', views.published, name='published_subset'),
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
+	url(r'^published/published_dt_json/subset/(?P<subset>.+)$', views.DTPublishedJson.as_view(), name='published_dt_json'),
 
 	# Export
 	url(r'^export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
@@ -128,7 +130,7 @@ urlpatterns = [
 	url(r'^background_tasks/delete_all$', views.bg_tasks_delete_all, name='bg_tasks_delete_all'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)$', views.bg_task, name='bg_task'),
 	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/delete$', views.bg_task_delete, name='bg_task_delete'),
-	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),	
+	url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),
 
 	# Document Download
 	url(r'^document_download$', views.document_download, name='document_download'),

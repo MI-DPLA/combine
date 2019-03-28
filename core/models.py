@@ -4736,12 +4736,37 @@ class PublishedRecords(object):
 	Model to manage the aggregation and retrieval of published records.
 	'''
 
-	def __init__(self):
+	def __init__(self, subset=None):
+
+		'''
+		Args:
+			published_subset (str): published subset slug
+		'''
 
 		self.record_group = 0
 
 		# get published jobs
 		self.published_jobs = Job.objects.filter(published=True)
+
+		####################################################################################################################
+		self.subset = subset
+		# if subset, filter jobs
+		if self.subset != None:
+
+			# retrieve published subset document in Mongo
+			ps_doc = mc_handle.combine.misc.find_one({'type':'published_subset','name':self.subset})
+
+			if ps_doc == None:
+				raise Exception('published subset could not be found for name: %s' % self.subset)
+
+			# filter jobs
+			self.published_jobs = self.published_jobs.filter(publish_set_id__in=ps_doc.get('publish_set_ids',[]))
+
+		# set Mongo document count id
+		self.mongo_count_id = 'published_field_counts'
+		if self.subset != None:
+			self.mongo_count_id = '%s_%s' % (self.mongo_count_id, self.subset)
+		####################################################################################################################
 
 		# get set IDs from record group of published jobs
 		sets = {}
@@ -4768,7 +4793,7 @@ class PublishedRecords(object):
 		Property to return QuerySet of all published records
 		'''
 
-		return Record.objects.filter(published=True)
+		return Record.objects.filter(job_id__in=[job.id for job in self.published_jobs])
 
 
 	def get_record(self, record_id):
@@ -4808,7 +4833,7 @@ class PublishedRecords(object):
 		'''
 
 		# check for stored field counts
-		published_field_counts = mc_handle.combine.misc.find_one('published_field_counts')
+		published_field_counts = mc_handle.combine.misc.find_one(self.mongo_count_id)
 
 		# if present, return and use
 		if published_field_counts and not force_recount:
@@ -4827,9 +4852,9 @@ class PublishedRecords(object):
 			if published_field_counts:
 
 				# add id and replace (upsert if necessary)
-				published_field_counts['_id'] = 'published_field_counts'
+				published_field_counts['_id'] = self.mongo_count_id
 				doc = mc_handle.combine.misc.replace_one(
-					{'_id':'published_field_counts'},
+					{'_id':self.mongo_count_id},
 					published_field_counts,
 					upsert=True)
 
@@ -4959,7 +4984,6 @@ class CombineJob(object):
 
 		# return
 		return cjob
-
 
 
 	@staticmethod

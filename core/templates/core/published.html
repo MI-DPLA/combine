@@ -130,7 +130,7 @@
 							    var oTable = $('#published_records').dataTable({
 							        "processing": true,
 							        "serverSide": true,
-							        "ajax": "{% url 'published_dt_json' %}",
+							        "ajax": "{% url 'published_dt_json' %}{% if published.subset %}/subset/{{published.subset}}{% endif %}",
 							        "searchDelay": 1000,
 							        "pageLength": 10
 							    });

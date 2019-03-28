@@ -71,7 +71,7 @@ When Jobs are exported, the following happens:
   - all associated Django models, including Organizations, Record Groups, Jobs, and Configuration Scenarios, are serialized to JSON and written to disk
   - all Records stored in Mongo are written to disk
   - all Mapped Fields for those Records, stored in ElasticSearch, are written to disk
-  - an export_manifest.json file is created
+  - an ``export_manifest.json`` file is created
   - all these files are compressed into a single archive
 
 A typical export might look like the following:
