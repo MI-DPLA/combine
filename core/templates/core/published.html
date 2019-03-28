@@ -5,9 +5,22 @@
 
 <div class="row">
 	<div class="col-md-12">
-		<h3>Published Records</h3>
+		<h3>Published Records{% if published.subset %}: <strong>{{published.subset}}</strong>{% endif %}</h3>
 	</div>
 </div>
+
+{% if published.subset %}
+	<div class="row">
+		<div class="col-md-12">
+			<div class="alert alert-warning alert-dismissible fade show" role="alert">
+				You are viewing a <strong>subset</strong> of all published records.  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+		</div>
+	</div>
+{% endif %}
 
 {% if published.records.count == 0 %}
 

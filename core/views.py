@@ -2784,6 +2784,42 @@ def published(request, subset=None):
 		})
 
 
+@login_required
+def published_subsets(request):
+
+	'''
+	View to manage published subsets
+		- locate: mc_handle.combine.misc.find({'type':'published_subset'})
+	'''
+
+	if request.method == 'GET':
+
+		return render(request, 'core/published_subsets.html', {
+				})
+
+
+@login_required
+def published_subset_create(request):
+
+	'''
+	Create subset of published records
+		- output should be a Mongo document in combine.misc
+		called "published_subset_[SUBSET]"
+
+	Subset Form/Doc
+		- slug/id for subset: lowercase, no spaces, sanitize
+		- human name
+		- description
+		- publish sets to include
+			- also include "loose" records?
+	'''
+
+	if request.method == 'GET':
+
+		return render(request, 'core/published_subset_create.html', {
+				})
+
+
 ####################################################################
 # OAI Server 													   #
 ####################################################################

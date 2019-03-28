@@ -4748,7 +4748,6 @@ class PublishedRecords(object):
 		# get published jobs
 		self.published_jobs = Job.objects.filter(published=True)
 
-		####################################################################################################################
 		self.subset = subset
 		# if subset, filter jobs
 		if self.subset != None:
@@ -4766,7 +4765,6 @@ class PublishedRecords(object):
 		self.mongo_count_id = 'published_field_counts'
 		if self.subset != None:
 			self.mongo_count_id = '%s_%s' % (self.mongo_count_id, self.subset)
-		####################################################################################################################
 
 		# get set IDs from record group of published jobs
 		sets = {}
