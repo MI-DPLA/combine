@@ -105,6 +105,7 @@ urlpatterns = [
 
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),
+	url(r'^oai/subset/(?P<subset>.+)$', views.oai, name='oai_subset'),
 
 	# Global Search
 	url(r'^search$', views.search, name='search'),

@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # attempt to load metadataPrefix map from localSettings, otherwise provide default
 if hasattr(settings, 'METADATA_PREFIXES'):
 	metadataPrefix_hash = settings.METADATA_PREFIXES
-else:	
+else:
 	metadataPrefix_hash = {
 		'mods':{
 				'schema':'http://www.loc.gov/standards/mods/v3/mods.xsd',
@@ -49,7 +49,10 @@ class OAIProvider(object):
 	easier to keep the HTTP request args to work with as a dictionary, and maintain the original OAI-PMH vocab.
 	'''
 
-	def __init__(self, args):
+	def __init__(self, args, subset=None):
+
+		# set subset
+		self.subset = subset
 
 		# read args, route verb to verb handler
 		self.verb_routes = {
@@ -68,14 +71,14 @@ class OAIProvider(object):
 
 		# published dataframe slice parameters
 		self.start = 0
-		self.chunk_size = settings.OAI_RESPONSE_SIZE		
+		self.chunk_size = settings.OAI_RESPONSE_SIZE
 		if 'set' in self.args.keys() and self.args['set'] != '':
 			self.publish_set_id = self.args['set']
 		else:
 			self.publish_set_id = None
 
 		# get instance of Published model
-		self.published = models.PublishedRecords()
+		self.published = models.PublishedRecords(subset=self.subset)
 
 		# begin scaffolding
 		self.scaffold()
@@ -95,7 +98,7 @@ class OAIProvider(object):
 				- sets multiple attributes for response building
 		'''
 
-		# build root node, nsmap, and attributes		
+		# build root node, nsmap, and attributes
 		NSMAP = {
 			None:'http://www.openarchives.org/OAI/2.0/'
 		}
@@ -109,7 +112,7 @@ class OAIProvider(object):
 		self.responseDate_node = etree.Element('responseDate')
 		self.responseDate_node.text = self.request_timestamp.strftime('%Y-%m-%dT%H:%M:%SZ')
 		self.root_node.append(self.responseDate_node)
-		
+
 		# set request node
 		self.request_node = etree.Element('request')
 
@@ -131,7 +134,7 @@ class OAIProvider(object):
 		self.request_node.text = 'http://%s%s' % (settings.APP_HOST, reverse('oai'))
 		self.root_node.append(self.request_node)
 
-		# set verb node		
+		# set verb node
 		self.verb_node = etree.Element(self.args['verb'])
 		self.root_node.append(self.verb_node)
 
@@ -157,26 +160,26 @@ class OAIProvider(object):
 
 		# if set present, filter by this set
 		if self.publish_set_id:
-			logger.debug('applying publish_set_id filter: %s' % self.publish_set_id)			
+			logger.debug('applying publish_set_id filter: %s' % self.publish_set_id)
 			records = records.filter(publish_set_id = self.publish_set_id)
 
 		# loop through rows, limited by current OAI transaction start / chunk
-		
+
 		# count records before slice
 		records_count = records.count()
-		
+
 		# get slice for iteration
-		records = records[self.start:(self.start+self.chunk_size)]				
+		records = records[self.start:(self.start+self.chunk_size)]
 		for record in records:
 
 			record = OAIRecord(
 					args=self.args,
 					record_id=record.record_id,
 					publish_set_id=record.publish_set_id,
-					document=record.document,					
+					document=record.document,
 					timestamp=self.request_timestamp_string
 				)
-			
+
 			# include full metadata in record
 			if include_metadata:
 				 record.include_metadata()
@@ -188,11 +191,11 @@ class OAIProvider(object):
 		for oai_record_node in self.record_nodes:
 			self.verb_node.append(oai_record_node)
 
-		# finally, set resumption token		
+		# finally, set resumption token
 		self.set_resumption_token(records, completeListSize=records_count)
 
-		# report		
-		record_nodes_num = len(self.record_nodes)		
+		# report
+		record_nodes_num = len(self.record_nodes)
 		logger.debug("%s record(s) returned in %s" % (record_nodes_num, (float(time.time()) - float(stime))))
 
 
@@ -260,7 +263,7 @@ class OAIProvider(object):
 
 			# retrieve token params and alter args and search_params
 			ot_query = models.OAITransaction.objects.filter(token=self.args['resumptionToken'])
-			if ot_query.count() == 1:				 
+			if ot_query.count() == 1:
 				ot = ot_query.first()
 
 				# set args and start and chunk_size
@@ -338,7 +341,7 @@ class OAIProvider(object):
 			None
 				sets single record node to self.record_nodes
 		'''
-		
+
 		stime = time.time()
 		logger.debug("retrieving record: %s" % (self.args['identifier']))
 
@@ -348,7 +351,7 @@ class OAIProvider(object):
 		# if single record found
 		if single_record:
 
-			# open as OAIRecord 
+			# open as OAIRecord
 			record = OAIRecord(
 					args=self.args,
 					record_id=single_record.record_id,
@@ -391,10 +394,13 @@ class OAIProvider(object):
 
 		# init OAIRecord
 		logger.debug('generating identify node')
-		
+
 		# write Identify node
 		description_node = etree.Element('description')
-		description_node.text = 'Combine, integrated OAI-PMH'
+		desc_text = 'Combine, integrated OAI-PMH.'
+		if self.subset != None:
+			desc_text += ' Note: You are receiving a published subset of this Combine instance named: %s.' % self.subset
+		description_node.text = desc_text
 		self.verb_node.append(description_node)
 
 
@@ -445,7 +451,7 @@ class OAIProvider(object):
 				logging.debug("identifier provided for ListMetadataFormats, confirming that identifier exists...")
 				single_record = self.published.get_record(self.args['identifier'])
 
-				if single_record != False:					
+				if single_record != False:
 
 					mf_node = etree.Element('metadataFormat')
 
@@ -463,15 +469,15 @@ class OAIProvider(object):
 
 					# append to verb_node and return
 					self.verb_node.append(mf_node)
-					
+
 				else:
 					raise Exception('record could not be located')
 			except:
 				return self.raise_error('idDoesNotExist','The identifier %s is not found.' % self.args['identifier'])
-			
+
 		# no identifier, return all available metadataPrefixes
 		else:
-			
+
 			mf_node = etree.Element('metadataFormat')
 
 			# write metadataPrefix node
@@ -522,7 +528,7 @@ class OAIProvider(object):
 			None
 				sets multiple set nodes
 		'''
-		
+
 		# generate response
 		for publish_set_id in self.published.sets:
 			set_node = etree.Element('set')
@@ -586,8 +592,8 @@ class OAIRecord(object):
 
 		# header node
 		header_node = etree.Element('header')
-		
-		# identifier 
+
+		# identifier
 		identifier_node = etree.Element('identifier')
 		identifier_node.text = self._construct_oai_identifier()
 		header_node.append(identifier_node)

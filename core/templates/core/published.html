@@ -217,13 +217,23 @@
 
 						<p>Combine comes with a built-in <a href="https://www.openarchives.org/pmh/">OAI-PMH</a> server that serves Published Records via the OAI protocol and HTTP requests.</p>
 
-						<ul>
-							<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
-							<li><a href="{% url 'oai' %}?verb=ListMetadataFormats" target="_blank">List Metadata Formats</a></li>
-							<li><a href="{% url 'oai' %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
-							<li><a href="{% url 'oai' %}?verb=ListRecords" target="_blank">List Records</a></li>
-							<li><a href="{% url 'oai' %}?verb=ListSets" target="_blank">List Sets</a></li>
-						</ul>
+						{% if published.subset %}
+							<ul>
+								<li><a href="{% url 'oai_subset' subset=published.subset %}?verb=Identify" target="_blank">Identify</a></li>
+								<li><a href="{% url 'oai_subset' subset=published.subset %}?verb=ListMetadataFormats" target="_blank">List Metadata Formats</a></li>
+								<li><a href="{% url 'oai_subset' subset=published.subset %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
+								<li><a href="{% url 'oai_subset' subset=published.subset %}?verb=ListRecords" target="_blank">List Records</a></li>
+								<li><a href="{% url 'oai_subset' subset=published.subset %}?verb=ListSets" target="_blank">List Sets</a></li>
+							</ul>
+						{% else %}
+							<ul>
+								<li><a href="{% url 'oai' %}?verb=Identify" target="_blank">Identify</a></li>
+								<li><a href="{% url 'oai' %}?verb=ListMetadataFormats" target="_blank">List Metadata Formats</a></li>
+								<li><a href="{% url 'oai' %}?verb=ListIdentifiers" target="_blank">List Identifiers</a></li>
+								<li><a href="{% url 'oai' %}?verb=ListRecords" target="_blank">List Records</a></li>
+								<li><a href="{% url 'oai' %}?verb=ListSets" target="_blank">List Sets</a></li>
+							</ul>
+						{% endif %}
 
 					</div>
 				</div>

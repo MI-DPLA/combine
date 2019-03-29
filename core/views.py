@@ -2890,7 +2890,7 @@ def published_subset_delete(request, subset):
 # OAI Server 													   #
 ####################################################################
 
-def oai(request):
+def oai(request, subset=None):
 
 	'''
 	Parse GET parameters, send to OAIProvider instance from oai.py
@@ -2898,7 +2898,7 @@ def oai(request):
 	'''
 
 	# get OAIProvider instance
-	op = OAIProvider(request.GET)
+	op = OAIProvider(request.GET, subset=subset)
 
 	# return XML
 	return HttpResponse(op.generate_response(), content_type='text/xml')
