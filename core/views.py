@@ -2816,6 +2816,40 @@ def published_subset_create(request):
 		})
 
 
+	elif request.method == 'POST':
+
+		logger.debug('creating new published subset')
+		logger.debug(request.POST)
+
+		# sanitize name
+		name = request.POST.get('name')
+		name = ''.join(c for c in name if c.isalnum())
+		name = name.lower()
+
+		# create new published subset
+		doc = mc_handle.combine.misc.insert_one(
+			{
+				'name':name,
+				'description':request.POST.get('description',None),
+				'type':'published_subset'
+			})
+
+		return redirect('published_subset',
+			subset=name)
+
+
+@login_required
+def published_subset_delete(request, subset):
+
+	'''
+	Delete published subset
+	'''
+
+	d = mc_handle.combine.misc.delete_one({'type':'published_subset','name':subset})
+	logger.debug(d.raw_result)
+	return redirect('published')
+
+
 ####################################################################
 # OAI Server 													   #
 ####################################################################

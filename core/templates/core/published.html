@@ -10,16 +10,29 @@
 </div>
 
 {% if published.subset %}
+	{% if published.ps_doc != None %}
 	<div class="row">
 		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				You are viewing a <strong>subset</strong> of all published records.  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
+				You are viewing a <strong>subset</strong> of all published records for the following published sets: [<code>{{ published.ps_doc.publish_set_ids|join:", " }}</code>].  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
 			</div>
 		</div>
 	</div>
+	{% else %}
+	<div class="row">
+		<div class="col-md-12">
+			<div class="alert alert-danger alert-dismissible fade show" role="alert">
+				Published Subset: <strong>{{published.subset}}</strong> could not be found, showing <strong>all</strong> published Records
+				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+				<span aria-hidden="true">&times;</span>
+				</button>
+			</div>
+		</div>
+	</div>
+	{% endif %}
 {% endif %}
 
 {% if published.records.count == 0 %}
@@ -202,6 +215,8 @@
 	</div>
 </div>
 
+{% endif %}
+
 <div class="row">
 	<div id="published_subsets" class="col-md-12">
 		<h2>Published Subsets</h2>
@@ -210,7 +225,8 @@
 
 			<table class="table table-bordered table-hover">
 				<tr>
-					<th>Subset Name</th>
+					<th>Name</th>
+					<th>Description</th>
 					<th>Associated Publish Set IDs</th>
 					<th>Actions</th>
 				</tr>
@@ -218,35 +234,34 @@
 				{% for subset in subsets %}
 				<tr>
 					<td>{{subset.name}}</td>
+					<td>{{subset.description}}</td>
 					<td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
-					<td><button type="button" class="btn btn-outline-info btn-sm">View Published Subset</button></a>
+					<td><a href=""><button type="button" class="btn btn-outline-info btn-sm">View</button></a> <a href="{% url 'published_subset_delete' subset=subset.name %}" onclick="return confirm('Are you sure you want to delete this Published Subset?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>
 				</tr>
 				{% endfor %}
 
 			</table>
 
-			<p>
-				<a href="{% url 'published_subset_create' %}"><button type="submit" class="btn btn-success btn-sm">Create Published Subset <i class="la la-plus"></i></button></a>
-			</p>
-
 		{% else %}
 
-		<div class="row">
-			<div class="col-md-12">
-				<div class="alert alert-warning alert-dismissible fade show" role="alert">
-					No Published Subsets have been created yet, <a href="{% url 'published_subset_create' %}">click here to create one</a>.
-					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-					<span aria-hidden="true">&times;</span>
-					</button>
+			<div class="row">
+				<div class="col-md-12">
+					<div class="alert alert-warning alert-dismissible fade show" role="alert">
+						No Published Subsets have been created yet, click below to create one.
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
 				</div>
 			</div>
-		</div>
 
 		{% endif %}
 
+		<p>
+			<a href="{% url 'published_subset_create' %}"><button type="submit" class="btn btn-success btn-sm">Create Published Subset <i class="la la-plus"></i></button></a>
+		</p>
+
 	</div>
 </div>
-
-{% endif %}
 
 {% endblock %}

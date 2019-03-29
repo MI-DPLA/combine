@@ -92,6 +92,7 @@ urlpatterns = [
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
 	url(r'^published/published_dt_json/subset/(?P<subset>.+)$', views.DTPublishedJson.as_view(), name='published_dt_json'),
 	url(r'^published/subsets/create$', views.published_subset_create, name='published_subset_create'),
+	url(r'^published/subsets/delete/(?P<subset>.+)$', views.published_subset_delete, name='published_subset_delete'),
 	url(r'^published/subset/(?P<subset>.+)$', views.published, name='published_subset'),
 
 	# Export

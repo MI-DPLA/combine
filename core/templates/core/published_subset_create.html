@@ -18,21 +18,14 @@
 
 			<div class="form-group">
 				<label for="name">Name</label>
+				<p>The name is used as a human readable tag, unique identifier, and URL slug (e.g. <code>/oai/my_slug</code>).  As such, it is recommended to create one that is <strong>lowercase</strong> and <strong>without spaces or special characters</strong>.  If present, they will be removed automatically.</p>
 				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. DPLA Bound, My Project"/>
-				<small id="name_help" class="form-text text-muted">Human readable name</small>
 			</div>
 
 			<div class="form-group">
-				<label for="name">Slug Identifier</label>
-				<p>This will be used as both a unique identifier, and where applicable in URLs (e.g. <code>/oai/my_slug</code>).</p>
-				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. dpla, my_project"/>
-				<small id="name_help" class="form-text text-muted">Lowercase, no spaces or special characters recommended.</small>
-			</div>
-
-			<div class="form-group">
-				<label for="name">Description</label>
-				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. This subset includes published sets bound for DPLA only"/>
-				<small id="name_help" class="form-text text-muted">Optional</small>
+				<label for="description">Description</label>
+				<input type="text" class="form-control" id="description" name="description" placeholder="e.g. This subset includes published sets bound for DPLA only"/>
+				<small id="description_help" class="form-text text-muted">Optional</small>
 			</div>
 
 			<p>And here shall be all available sets...</p>

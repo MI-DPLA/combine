@@ -4753,13 +4753,14 @@ class PublishedRecords(object):
 		if self.subset != None:
 
 			# retrieve published subset document in Mongo
-			ps_doc = mc_handle.combine.misc.find_one({'type':'published_subset','name':self.subset})
+			self.ps_doc = mc_handle.combine.misc.find_one({'type':'published_subset','name':self.subset})
 
-			if ps_doc == None:
-				raise Exception('published subset could not be found for name: %s' % self.subset)
+			if self.ps_doc == None:
+				logger.warning('published subset could not be found for name: %s' % self.subset)
 
-			# filter jobs
-			self.published_jobs = self.published_jobs.filter(publish_set_id__in=ps_doc.get('publish_set_ids',[]))
+			else:
+				# filter jobs
+				self.published_jobs = self.published_jobs.filter(publish_set_id__in=self.ps_doc.get('publish_set_ids',[]))
 
 		# set Mongo document count id
 		self.mongo_count_id = 'published_field_counts'
