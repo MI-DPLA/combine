@@ -96,13 +96,15 @@ urlpatterns = [
 	url(r'^published/subset/(?P<subset>.+)$', views.published, name='published_subset'),
 
 	# Export
-	url(r'^export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
-	url(r'^export/mapped_fields/(?P<export_source>.+)$', views.export_mapped_fields, name='export_mapped_fields'),
+	url(r'^export/mapped_fields/(?P<export_source>[a-zA-Z]+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
+	url(r'^export/mapped_fields/(?P<export_source>[a-zA-Z]+)$', views.export_mapped_fields, name='export_mapped_fields'),
+	url(r'^export/mapped_fields/(?P<export_source>[a-zA-Z]+)/subset/(?P<subset>.+)$', views.export_mapped_fields, name='export_mapped_fields'),
 	url(r'^export/documents/(?P<export_source>[a-zA-Z]+)/(?P<job_id>[0-9]+)$', views.export_documents, name='export_documents'),
 	url(r'^export/documents/(?P<export_source>[a-zA-Z]+)$', views.export_documents, name='export_documents'),
 	url(r'^export/documents/(?P<export_source>[a-zA-Z]+)/subset/(?P<subset>.+)$', views.export_documents, name='export_documents'),
-	url(r'^export/tabular_data/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_tabular_data, name='export_tabular_data'),
-	url(r'^export/tabular_data/(?P<export_source>.+)$', views.export_tabular_data, name='export_tabular_data'),
+	url(r'^export/tabular_data/(?P<export_source>[a-zA-Z]+)/(?P<job_id>[0-9]+)$', views.export_tabular_data, name='export_tabular_data'),
+	url(r'^export/tabular_data/(?P<export_source>[a-zA-Z]+)$', views.export_tabular_data, name='export_tabular_data'),
+	url(r'^export/tabular_data/(?P<export_source>[a-zA-Z]+)/subset/(?P<subset>.+)$', views.export_tabular_data, name='export_tabular_data'),
 
 	# OAI
 	url(r'^oai$', views.oai, name='oai'),

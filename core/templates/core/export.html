@@ -126,7 +126,11 @@
 							{% if cjob %}
 								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
-								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' %}">
+								{% if published.subset %}
+									<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' subset=published.subset %}">
+								{% else %}
+									<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' %}">
+								{% endif %}
 							{% endif %}
 
 								{% csrf_token %}
@@ -304,7 +308,11 @@
 							{% if cjob %}
 							<form method="POST" action="{% url 'export_tabular_data' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
-							<form method="POST" action="{% url 'export_tabular_data' export_source='published' %}">
+								{% if published.subset %}
+									<form method="POST" action="{% url 'export_tabular_data' export_source='published' subset=published.subset %}">
+								{% else %}
+									<form method="POST" action="{% url 'export_tabular_data' export_source='published' %}">
+								{% endif %}
 							{% endif %}
 
 								{% csrf_token %}

@@ -279,7 +279,7 @@ def export_mapped_fields(ct_id):
 				export_output = '%s/published_mapped_fields.json' % (output_path)
 
 				# get list of jobs ES indices to export
-				pr = models.PublishedRecords()
+				pr = models.PublishedRecords(subset=ct.task_params['subset'])
 				es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
 				# build command list
@@ -335,7 +335,7 @@ def export_mapped_fields(ct_id):
 				export_output = '%s/published_mapped_fields.csv' % (output_path)
 
 				# get list of jobs ES indices to export
-				pr = models.PublishedRecords()
+				pr = models.PublishedRecords(subset=ct.task_params['subset'])
 				es_list = ','.join(['j%s' % job.id for job in pr.published_jobs])
 
 				# build command list
@@ -474,16 +474,17 @@ def export_tabular_data(ct_id):
 		cjob = models.CombineJob()
 
 		# get published records to determine sets
-		pr = models.PublishedRecords()
+		pr = models.PublishedRecords(subset=ct.task_params['subset'])
 
-		# build job_dictionary
+		# init job dictionary
 		job_dict = {}
+
 		# handle published jobs with publish set ids
 		for publish_id, jobs in pr.sets.items():
 			job_dict[publish_id] = [ job.id for job in jobs ]
+
 		# handle "loose" Jobs
-		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
-		logger.info(job_dict)
+		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id='')]
 
 	# update task params
 	ct.refresh_from_db()

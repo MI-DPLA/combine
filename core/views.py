@@ -2941,12 +2941,6 @@ def export_documents(request,
 	job_id=None,
 	subset=None):
 
-	# DEBUG
-	logger.debug("#################################################################")
-	logger.debug(export_source)
-	logger.debug(subset)
-	logger.debug("#################################################################")
-
 	# get records per file
 	records_per_file = request.POST.get('records_per_file', False)
 	if records_per_file in ['',False]:
@@ -3002,9 +2996,6 @@ def export_documents(request,
 
 		logger.debug('exporting documents for published records')
 
-		# # get instance of Published model
-		# published = models.PublishedRecords(subset=subset)
-
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = 'Export Documents for Published Records',
@@ -3038,7 +3029,10 @@ def export_documents(request,
 		return redirect('published')
 
 
-def export_mapped_fields(request, export_source, job_id=None):
+def export_mapped_fields(request,
+	export_source=None,
+	job_id=None,
+	subset=None):
 
 	# get mapped fields export type
 	mapped_fields_export_type = request.POST.get('mapped_fields_export_type')
@@ -3103,15 +3097,13 @@ def export_mapped_fields(request, export_source, job_id=None):
 
 		logger.debug('exporting mapped fields from published records')
 
-		# get instance of Published model
-		published = models.PublishedRecords()
-
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
 			name = 'Export Mapped Fields for Published Records',
 			task_type = 'export_mapped_fields',
 			task_params_json = json.dumps({
 				'published':True,
+				'subset':subset,
 				'mapped_fields_export_type':mapped_fields_export_type,
 				'kibana_style':kibana_style,
 				'archive_type':archive_type,
@@ -3140,7 +3132,10 @@ def export_mapped_fields(request, export_source, job_id=None):
 		return redirect('published')
 
 
-def export_tabular_data(request, export_source, job_id=None):
+def export_tabular_data(request,
+	export_source=None,
+	job_id=None,
+	subset=None):
 
 	# get records per file
 	records_per_file = request.POST.get('records_per_file', False)
@@ -3214,6 +3209,7 @@ def export_tabular_data(request, export_source, job_id=None):
 			task_type = 'export_tabular_data',
 			task_params_json = json.dumps({
 				'published':True,
+				'subset':subset,
 				'records_per_file':int(records_per_file),
 				'tabular_data_export_type':tabular_data_export_type,
 				'archive_type':archive_type,
