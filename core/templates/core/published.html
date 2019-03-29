@@ -14,7 +14,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				You are viewing a <strong>subset</strong> of all published records for the following published sets: [<code>{{ published.ps_doc.publish_set_ids|join:", " }}</code>].  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
+				You are viewing a <strong>subset</strong> of all published records for the following published sets: <code>[{{ published.ps_doc.publish_set_ids|join:", " }}]</code>.  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
@@ -255,15 +255,19 @@
 					<th>Name</th>
 					<th>Description</th>
 					<th>Associated Publish Set IDs</th>
+					<th>Includes Records not part of a set?</th>
+					<th>Record Count</th>
 					<th>Actions</th>
 				</tr>
 
 				{% for subset in subsets %}
 				<tr>
-					<td>{{subset.name}}</td>
+					<td><code>{{subset.name}}</code> {% if published.subset == subset.name %}(currently viewing){% endif %}</td>
 					<td>{{subset.description}}</td>
 					<td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
-					<td><a href=""><button type="button" class="btn btn-outline-info btn-sm">View</button></a> <a href="{% url 'published_subset_delete' subset=subset.name %}" onclick="return confirm('Are you sure you want to delete this Published Subset?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>
+					<td>{{ subset.include_non_set_records}}</td>
+					<td>{{ subset.counts.total_docs }}</td>
+					<td><a href="{% url 'published_subset' subset=subset.name %}"><button type="button" class="btn btn-outline-info btn-sm">View</button></a> <a href="{% url 'published_subset_delete' subset=subset.name %}" onclick="return confirm('Are you sure you want to delete this Published Subset?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a>
 				</tr>
 				{% endfor %}
 

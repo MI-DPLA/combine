@@ -39,24 +39,15 @@
 				{% endfor %}
 			</div>
 
+			<div class="form-group">
+				<span class="switch switch-sm">
+					<input type="checkbox" class="switch-sm" id="include_non_set_records_toggle" name="include_non_set_records">
+					<label style="font-weight:normal;" for="include_non_set_records_toggle">Include published Records that are not part of any set?</label>
+				</span>
+			</div>
+
 			<button type="submit" class="btn btn-success btn-sm">Create Publish Subset <i class="la la-plus"></i></button>
 		</form>
-
-		<script>
-			$("#subset_form").validate({
-			  rules: {
-				'sets[]': {
-				  required: true,
-				  minlength: 1
-				}
-			  },
-			  messages: {
-				'sets[]': {
-				  required: "Please select at least one set to include"
-				}
-			  }
-			});
-		</script>
 
 	</div>
 </div>

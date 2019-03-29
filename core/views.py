@@ -126,7 +126,12 @@ def breadcrumb_parser(request):
 	if pub_m:
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
 
-	# published
+	# published subset create
+	pub_m = re.match(r'(.+?/published/subsets/create)', request.path)
+	if pub_m:
+		crumbs.append(("<span class='font-weight-bold'>Published Subset Create</span>", reverse('published_subset_create')))
+
+	# published subset
 	pub_m = re.match(r'(.+?/published/subset/(.+))', request.path)
 	if pub_m:
 		crumbs.append(("<span class='font-weight-bold'>Published Subset: <code>%s</code></span>" % pub_m.group(2), reverse('published_subset', kwargs={'subset':pub_m.group(2)})))
@@ -2782,6 +2787,15 @@ def published(request, subset=None):
 	# get published subsets
 	subsets = list(mc_handle.combine.misc.find({'type':'published_subset'}))
 
+	# dictionary of published subsets (useful for counts)
+	for _ in subsets:
+		counts = mc_handle.combine.misc.find_one({'_id':'published_field_counts_%s' % _['name']})
+
+		# if counts not yet calculated, do now
+		if counts == None:
+			counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
+		_['counts'] = counts
+
 	return render(request, 'core/published.html', {
 			'published':published,
 			'field_mappers':field_mappers,
@@ -2833,13 +2847,20 @@ def published_subset_create(request):
 		# confirm sets are present
 		sets = request.POST.getlist('sets')
 
+		# handle non set records
+		if request.POST.get('include_non_set_records',False):
+			include_non_set_records = True
+		else:
+			include_non_set_records = False
+
 		# create new published subset
 		doc = mc_handle.combine.misc.insert_one(
 			{
 				'name':name,
 				'description':request.POST.get('description',None),
 				'type':'published_subset',
-				'publish_set_ids':sets
+				'publish_set_ids':sets,
+				'include_non_set_records':include_non_set_records
 			})
 
 		return redirect('published_subset',
