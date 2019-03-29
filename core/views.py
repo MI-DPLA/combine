@@ -122,9 +122,14 @@ def breadcrumb_parser(request):
 		crumbs.append(("<span class='font-weight-bold'>Field Analysis - <code>%s</code></span>" % field_name, '%s?%s' % (regex_match.group(1), request.META['QUERY_STRING'])))
 
 	# published
-	pub_m = re.match(r'(.+?/published)', request.path)
+	pub_m = re.match(r'(.+?/published.*)', request.path)
 	if pub_m:
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+
+	# published
+	pub_m = re.match(r'(.+?/published/subsets)', request.path)
+	if pub_m:
+		crumbs.append(("<span class='font-weight-bold'>Subsets</span>", reverse('published_subsets')))
 
 	# organization
 	pub_m = re.match(r'(.+?/organization/.*)', request.path)
@@ -2795,7 +2800,8 @@ def published_subsets(request):
 	if request.method == 'GET':
 
 		return render(request, 'core/published_subsets.html', {
-				})
+			'breadcrumbs':breadcrumb_parser(request)
+		})
 
 
 @login_required
@@ -2817,7 +2823,8 @@ def published_subset_create(request):
 	if request.method == 'GET':
 
 		return render(request, 'core/published_subset_create.html', {
-				})
+			'breadcrumbs':breadcrumb_parser(request)
+		})
 
 
 ####################################################################
