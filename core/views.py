@@ -126,10 +126,10 @@ def breadcrumb_parser(request):
 	if pub_m:
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
 
-	# # published
-	# pub_m = re.match(r'(.+?/published/subsets)', request.path)
-	# if pub_m:
-	# 	crumbs.append(("<span class='font-weight-bold'>Subsets</span>", reverse('published_subsets')))
+	# published
+	pub_m = re.match(r'(.+?/published/subset/(.+))', request.path)
+	if pub_m:
+		crumbs.append(("<span class='font-weight-bold'>Published Subset: <code>%s</code></span>" % pub_m.group(2), reverse('published_subset', kwargs={'subset':pub_m.group(2)})))
 
 	# organization
 	pub_m = re.match(r'(.+?/organization/.*)', request.path)
@@ -2811,7 +2811,11 @@ def published_subset_create(request):
 
 	if request.method == 'GET':
 
+		# get all published sets
+		published = models.PublishedRecords()
+
 		return render(request, 'core/published_subset_create.html', {
+			'published':published,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2826,12 +2830,16 @@ def published_subset_create(request):
 		name = ''.join(c for c in name if c.isalnum())
 		name = name.lower()
 
+		# confirm sets are present
+		sets = request.POST.getlist('sets')
+
 		# create new published subset
 		doc = mc_handle.combine.misc.insert_one(
 			{
 				'name':name,
 				'description':request.POST.get('description',None),
-				'type':'published_subset'
+				'type':'published_subset',
+				'publish_set_ids':sets
 			})
 
 		return redirect('published_subset',
@@ -2846,6 +2854,8 @@ def published_subset_delete(request, subset):
 	'''
 
 	d = mc_handle.combine.misc.delete_one({'type':'published_subset','name':subset})
+	logger.debug(d.raw_result)
+	d = mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % subset})
 	logger.debug(d.raw_result)
 	return redirect('published')
 

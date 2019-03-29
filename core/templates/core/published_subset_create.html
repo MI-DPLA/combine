@@ -12,14 +12,14 @@
 <div class="row">
 	<div class="col-md-6">
 
-		<form method="POST" action="{% url 'published_subset_create' %}">
+		<form id="subset_form" method="POST" action="{% url 'published_subset_create' %}">
 
 			{% csrf_token %}
 
 			<div class="form-group">
 				<label for="name">Name</label>
 				<p>The name is used as a human readable tag, unique identifier, and URL slug (e.g. <code>/oai/my_slug</code>).  As such, it is recommended to create one that is <strong>lowercase</strong> and <strong>without spaces or special characters</strong>.  If present, they will be removed automatically.</p>
-				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. DPLA Bound, My Project"/>
+				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. DPLA Bound, My Project"/ required>
 			</div>
 
 			<div class="form-group">
@@ -28,10 +28,35 @@
 				<small id="description_help" class="form-text text-muted">Optional</small>
 			</div>
 
-			<p>And here shall be all available sets...</p>
+			<div class="form-group">
+				<label>Select all Published sets to be included in this Published Subset:</label>
+				{% for set,jobs in published.sets.items %}
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" value="{{set}}" name="sets" /> {{set}}
+						</label>
+					</div>
+				{% endfor %}
+			</div>
 
 			<button type="submit" class="btn btn-success btn-sm">Create Publish Subset <i class="la la-plus"></i></button>
 		</form>
+
+		<script>
+			$("#subset_form").validate({
+			  rules: {
+				'sets[]': {
+				  required: true,
+				  minlength: 1
+				}
+			  },
+			  messages: {
+				'sets[]': {
+				  required: "Please select at least one set to include"
+				}
+			  }
+			});
+		</script>
 
 	</div>
 </div>
