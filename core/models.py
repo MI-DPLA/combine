@@ -4740,7 +4740,7 @@ class PublishedRecords(object):
 
 		'''
 		Args:
-			published_subset (str): published subset slug
+			subset (str): published subset slug
 		'''
 
 		self.record_group = 0
@@ -4748,8 +4748,8 @@ class PublishedRecords(object):
 		# get published jobs
 		self.published_jobs = Job.objects.filter(published=True)
 
+		# set subset and filter if need be
 		self.subset = subset
-		# if subset, filter jobs
 		if self.subset != None:
 
 			# retrieve published subset document in Mongo

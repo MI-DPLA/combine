@@ -126,10 +126,10 @@ def breadcrumb_parser(request):
 	if pub_m:
 		crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
 
-	# published
-	pub_m = re.match(r'(.+?/published/subsets)', request.path)
-	if pub_m:
-		crumbs.append(("<span class='font-weight-bold'>Subsets</span>", reverse('published_subsets')))
+	# # published
+	# pub_m = re.match(r'(.+?/published/subsets)', request.path)
+	# if pub_m:
+	# 	crumbs.append(("<span class='font-weight-bold'>Subsets</span>", reverse('published_subsets')))
 
 	# organization
 	pub_m = re.match(r'(.+?/organization/.*)', request.path)
@@ -2779,27 +2779,16 @@ def published(request, subset=None):
 	# get field mappers
 	field_mappers = models.FieldMapper.objects.all()
 
+	# get published subsets
+	subsets = list(mc_handle.combine.misc.find({'type':'published_subset'}))
+
 	return render(request, 'core/published.html', {
 			'published':published,
 			'field_mappers':field_mappers,
 			'xml2kvp_handle':models.XML2kvp(),
 			'field_counts':field_counts,
 			'es_index_str':published.esi.es_index_str,
-			'breadcrumbs':breadcrumb_parser(request)
-		})
-
-
-@login_required
-def published_subsets(request):
-
-	'''
-	View to manage published subsets
-		- locate: mc_handle.combine.misc.find({'type':'published_subset'})
-	'''
-
-	if request.method == 'GET':
-
-		return render(request, 'core/published_subsets.html', {
+			'subsets':subsets,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 

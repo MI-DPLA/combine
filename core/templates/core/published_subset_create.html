@@ -1,0 +1,46 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+{% load core_template_filters %}
+
+<div class="row">
+	<div class="col-md-12">
+		<h3>Create Published Subset</h3>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-6">
+
+		<form method="POST" action="{% url 'published_subset_create' %}">
+
+			{% csrf_token %}
+
+			<div class="form-group">
+				<label for="name">Name</label>
+				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. DPLA Bound, My Project"/>
+				<small id="name_help" class="form-text text-muted">Human readable name</small>
+			</div>
+
+			<div class="form-group">
+				<label for="name">Slug Identifier</label>
+				<p>This will be used as both a unique identifier, and where applicable in URLs (e.g. <code>/oai/my_slug</code>).</p>
+				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. dpla, my_project"/>
+				<small id="name_help" class="form-text text-muted">Lowercase, no spaces or special characters recommended.</small>
+			</div>
+
+			<div class="form-group">
+				<label for="name">Description</label>
+				<input type="text" class="form-control" id="name" name="name" placeholder="e.g. This subset includes published sets bound for DPLA only"/>
+				<small id="name_help" class="form-text text-muted">Optional</small>
+			</div>
+
+			<p>And here shall be all available sets...</p>
+
+			<button type="submit" class="btn btn-success btn-sm">Create Publish Subset <i class="la la-plus"></i></button>
+		</form>
+
+	</div>
+</div>
+
+{% endblock %}

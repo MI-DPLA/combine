@@ -23,7 +23,7 @@
 			<div id="job_notes_section" class="col-md-6" style="margin-top:20px;">
 				<form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 					{% csrf_token %}
-					
+
 					<div class="form-group">
 						<label for="job_notes">Create/Update Job notes</label>
 						<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
@@ -187,7 +187,7 @@
 
 					<!-- hidden input for pre-selected jobs -->
 					<input style="display:none;" class="job_id_sel" type="checkbox" value="{{ cjob.job.id }}" name="job_id" checked>
-					
+
 					<!-- job management blocks -->
 					{% include 'core/job_management.html' %}
 
@@ -205,7 +205,7 @@
 						<div class="col-md-12">
 							<p>This Job is currently <strong>published</strong>:</p>
 							<table class="table table-bordered table-hover">
-								<thead>									
+								<thead>
 									<tr>
 										<th>Publish Set ID</th>
 										<th>Record Count</th>
@@ -222,14 +222,14 @@
 											{% endif %}
 										</td>
 										<td>{{ cjob.job.record_count }}</td>
-										<td><a onclick="return confirm('Are you sure you want to unpublish this Job?');" href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish <i class="la la-close"></i></button></a></td>										
+										<td><a onclick="return confirm('Are you sure you want to unpublish this Job?');" href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish <i class="la la-close"></i></button></a></td>
 									</tr>
 								</tbody>
 							</table>
 						</div>
 					</div>
 
-					{% else %}								
+					{% else %}
 					<div class="row">
 						<div class="col-md-6">
 							<p>This job is currently <strong>unpublished</strong>.  Publish using the form below:</p>
@@ -238,6 +238,7 @@
 								<div class="form-group">
 									<label for="publish_set_id">Publish Set Id</label>
 									<input type="text" class="form-control" id="publish_set_id" name="publish_set_id" placeholder="e.g. fedora_records"/>
+									<small id="publish_set_id_help" class="form-text text-muted">Publish Set ID may be left blank to not include in a Publish set.</small>
 								</div>
 								<button type="submit" class="btn btn-success btn-sm">Publish Job <i class="la la-bullhorn"></i></button>
 							</form>
@@ -249,7 +250,7 @@
 
 				<div id="io_tab" class="tab-pane full_width_tab">
 					<div class="row">
-		
+
 						<!-- Job Inputs -->
 						{% if cjob.job.job_type_family != 'HarvestJob' %}
 						<div class="col-md-12">
@@ -274,7 +275,7 @@
 										<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
 										<td>{{ input_job.input_job.job_type }}</td>
 
-									<!-- if job specific filters, show -->								
+									<!-- if job specific filters, show -->
 									{% if input_job.input_job.id|slugify in cjob.job.job_details_dict.input_filters.job_specific.keys %}
 										{% with input_job.input_job.id|slugify as job_id_str %}
 											{% with cjob.job.job_details_dict.input_filters.job_specific|get_dict_value:job_id_str as job_spec_filters %}
@@ -295,7 +296,7 @@
 										<td>{% if cjob.job.job_details_dict.input_filters.input_es_query_valve %}<code>{{ cjob.job.job_details_dict.input_filters.input_es_query_valve|safe }}</code>{% else %}None{% endif %}</td>
 										<td>{{ cjob.job.job_details_dict.input_filters.input_numerical_valve }}</td>
 										<td>{{ input_job.passed_records }}</td>
-									
+
 									{% endif %}
 									</tr>
 
@@ -390,7 +391,7 @@
 								<thead>
 									<tr>
 										<th>Total Records for Job</th>
-										<th>Successfully Mapped</th>										
+										<th>Successfully Mapped</th>
 										<th>Actions</th>
 									</tr>
 								</thead>
@@ -415,7 +416,7 @@
 					<div id="job_fm_config_json_container" class="row" style="display:none;">
 						<div class="col-md-12">
 							<p>The following Field Mapper configurations were used for this Job:</p>
-							
+
 							<div id="jsoneditor" style="height:450px;"></div>
 							<script>
 						        // create the editor
@@ -448,7 +449,7 @@
 				</div>
 
 				<div id="dpla_bulk_data_tab" class="tab-pane full_width_tab">
-					
+
 					{% if dpla_bulk_data_matches %}
 
 						<div class="row">
@@ -543,7 +544,7 @@
 							        ],
 							    });
 							});
-						
+
 						</script>
 
 					{% else %}
@@ -573,9 +574,9 @@
 
 								<!-- HarvestJob -->
 								{% if cjob.job.job_type_family == 'HarvestJob' %}
-									
+
 									{% if job_details.oai_params %}
-										<h4>OAI Endpoint for Harvest</h3>										
+										<h4>OAI Endpoint for Harvest</h3>
 										<table class="table table-bordered table-hover">
 											<thead>
 												<tr>
@@ -600,7 +601,7 @@
 													<td><code>{{job_details.oai_params.scope_value}}</code></td>
 													<td><a href="{{job_details.oai_params.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
 												</tr>
-											</tbody>											
+											</tbody>
 										</table>
 									{% endif %}
 
@@ -608,17 +609,17 @@
 
 								<!-- TransformJob -->
 								{% if cjob.job.job_type_family == 'TransformJob' %}
-							
-									<div class="row">											
+
+									<div class="row">
 										<div class="col-md-12">
 											<h4>Transformation Scenarios Used</h4>
 											<table class="table table-bordered table-hover">
 												<tr>
 													<th>Order Applied</th>
-													<th>Transformation ID</th>													
+													<th>Transformation ID</th>
 													<th>Name</th>
 													<th>Type</th>
-													<th>Transformation Payload</th>																
+													<th>Transformation Payload</th>
 												</tr>
 												{% for transformation in job_details.transformation.scenarios %}
 													<tr>
@@ -626,14 +627,14 @@
 														<td><code>{{transformation.id}}</code></td>
 														<td>{{transformation.name}}</td>
 														<td>{{transformation.type_human}}</td>
-														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>	
+														<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>
 													</tr>
 												{% endfor %}
 											</table>
-										</div>													
+										</div>
 									</div>
-					
-									<div class="row">											
+
+									<div class="row">
 										<div class="col-md-12">
 											<h4>Transformed Records</h4>
 											<p>See below for a table of all records that were altered in some way during this Transform Job.  Clicking a Record will navigate directly to the Record's changes during Transformation.</p>
@@ -690,19 +691,19 @@
 
 							</div>
 						</div>
-					</div>				
+					</div>
 
 				</div>
 
 				<div id="export_tab" class="tab-pane full_width_tab">
-					
+
 					<!-- export content -->
 					{% include 'core/export.html' %}
 
 				</div>
 
 				<div id="job_params_tab" class="tab-pane full_width_tab">
-					
+
 					<div class="row">
 						<div class="col-md-12">
 							<h4>Job Parameters</h4>
@@ -755,19 +756,19 @@
 							function update_job_params(){
 
 								// get job_details as JSON
-								job_details_json = JSON.stringify(job_details_editor.get());								
+								job_details_json = JSON.stringify(job_details_editor.get());
 
 								// fire ajax to update job_details
 								$.ajax({
 									type: "POST",
 									url: "{% url 'job_parameters' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
 									data: {
-										'job_details_json':job_details_json,										
+										'job_details_json':job_details_json,
 										'csrfmiddlewaretoken': '{{ csrf_token }}'
 									},
 									dataType:'json',
 									success: function(data){
-										
+
 										// notify user
 										alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
 											${data.msg}
@@ -778,7 +779,7 @@
 										$("#job_params_alerts").append(alert);
 									},
 									error: function(data){
-										
+
 										// notify user
 										alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
 											${data.responseJSON.msg}

@@ -89,11 +89,10 @@ urlpatterns = [
 
 	# Publish
 	url(r'^published$', views.published, name='published'),
-	url(r'^published/subset/(?P<subset>.+)$', views.published, name='published_subset'),
 	url(r'^published/published_dt_json$', views.DTPublishedJson.as_view(), name='published_dt_json'),
 	url(r'^published/published_dt_json/subset/(?P<subset>.+)$', views.DTPublishedJson.as_view(), name='published_dt_json'),
-	url(r'^published/subsets$', views.published_subsets, name='published_subsets'),
-	url(r'^published/subset/create$', views.published_subset_create, name='published_subset_create'),
+	url(r'^published/subsets/create$', views.published_subset_create, name='published_subset_create'),
+	url(r'^published/subset/(?P<subset>.+)$', views.published, name='published_subset'),
 
 	# Export
 	url(r'^export/mapped_fields/(?P<export_source>.+)/(?P<job_id>[0-9]+)$', views.export_mapped_fields, name='export_mapped_fields'),
