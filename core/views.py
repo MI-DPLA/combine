@@ -2936,7 +2936,16 @@ def search(request):
 # Export                   										   #
 ####################################################################
 
-def export_documents(request, export_source, job_id=None):
+def export_documents(request,
+	export_source=None,
+	job_id=None,
+	subset=None):
+
+	# DEBUG
+	logger.debug("#################################################################")
+	logger.debug(export_source)
+	logger.debug(subset)
+	logger.debug("#################################################################")
 
 	# get records per file
 	records_per_file = request.POST.get('records_per_file', False)
@@ -2993,8 +3002,8 @@ def export_documents(request, export_source, job_id=None):
 
 		logger.debug('exporting documents for published records')
 
-		# get instance of Published model
-		published = models.PublishedRecords()
+		# # get instance of Published model
+		# published = models.PublishedRecords(subset=subset)
 
 		# initiate Combine BG Task
 		ct = models.CombineBackgroundTask(
@@ -3002,6 +3011,7 @@ def export_documents(request, export_source, job_id=None):
 			task_type = 'export_documents',
 			task_params_json = json.dumps({
 				'published':True,
+				'subset':subset,
 				'records_per_file':int(records_per_file),
 				'archive_type':archive_type
 			})

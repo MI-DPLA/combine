@@ -34,7 +34,11 @@
 							{% if cjob %}
 								<form method="POST" action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
 							{% else %}
-								<form method="POST" action="{% url 'export_documents' export_source='published' %}">
+								{% if published.subset %}
+									<form method="POST" action="{% url 'export_documents' export_source='published' subset=published.subset %}">
+								{% else %}
+									<form method="POST" action="{% url 'export_documents' export_source='published' %}">
+								{% endif %}
 							{% endif %}
 
 								{% csrf_token %}

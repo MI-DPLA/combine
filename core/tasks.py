@@ -676,15 +676,19 @@ def export_documents(ct_id):
 		cjob = models.CombineJob()
 
 		# get published records to determine sets
-		pr = models.PublishedRecords()
+		pr = models.PublishedRecords(subset=ct.task_params['subset'])
 
-		# build job_dictionary
+		# init job dictionary
 		job_dict = {}
+
 		# handle published jobs with publish set ids
 		for publish_id, jobs in pr.sets.items():
 			job_dict[publish_id] = [ job.id for job in jobs ]
+
 		# handle "loose" Jobs
-		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id=None)]
+		job_dict['no_publish_set_id'] = [job.id for job in pr.published_jobs.filter(publish_set_id='')]
+
+		# debug
 		logger.info(job_dict)
 
 	# update task params
