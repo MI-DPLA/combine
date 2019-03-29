@@ -4763,12 +4763,13 @@ class PublishedRecords(object):
 				# build list of publish_set_ids to limit to
 				publish_set_ids = self.ps_doc.get('publish_set_ids',[])
 
-				# if including non-set records, add empty string '' as publish_set_id
-				if self.ps_doc.get('include_non_set_records',False):
-					publish_set_ids.append('')
-
-				# filter jobs
+				# filter jobs to sets
 				self.published_jobs = self.published_jobs.filter(publish_set_id__in=publish_set_ids)
+
+				# if including non-set records, merge a Job queryset with all published Jobs, sans publish_set_id
+				if self.ps_doc.get('include_non_set_records',False):
+					non_set_published_jobs = Job.objects.filter(published=True, publish_set_id='')
+					self.published_jobs = self.published_jobs | non_set_published_jobs
 
 		# set Mongo document count id
 		self.mongo_count_id = 'published_field_counts'

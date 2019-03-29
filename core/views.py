@@ -2774,6 +2774,10 @@ def published(request, subset=None):
 	# get instance of Published model
 	published = models.PublishedRecords(subset=subset)
 
+	# remove empty set, confusing on front-end and not used
+	# if '' in published.ps_doc['publish_set_ids']:
+	# 	published.ps_doc['publish_set_ids'].remove('')
+
 	# get field counts
 	if published.records.count() > 0:
 		# get count of fields for all published job indices
@@ -2839,7 +2843,6 @@ def published_subset_create(request):
 	elif request.method == 'POST':
 
 		logger.debug('creating new published subset')
-		logger.debug(request.POST)
 
 		# sanitize name
 		name = request.POST.get('name')

@@ -14,7 +14,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				You are viewing a <strong>subset</strong> of all published records for the following published sets: <code>[{{ published.ps_doc.publish_set_ids|join:", " }}]</code>.  <a href="{% url 'published' %}">Click here to see <strong>all</strong> published records.</a>
+				You are viewing a <strong>subset</strong> of all published records for the following published sets: <code>[{{ published.ps_doc.publish_set_ids|join:", " }}]</code>.  <a href="{% url 'published' %}"><button type="button" class="btn btn-outline-info btn-sm">View All Published Records</button></a>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
@@ -261,7 +261,7 @@
 				</tr>
 
 				{% for subset in subsets %}
-				<tr>
+				<tr {% if published.subset == subset.name %}style="background-color:#fedeff;"{% endif %}>
 					<td><code>{{subset.name}}</code> {% if published.subset == subset.name %}(currently viewing){% endif %}</td>
 					<td>{{subset.description}}</td>
 					<td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
