@@ -4759,8 +4759,16 @@ class PublishedRecords(object):
 				logger.warning('published subset could not be found for name: %s' % self.subset)
 
 			else:
+
+				# build list of publish_set_ids to limit to
+				publish_set_ids = self.ps_doc.get('publish_set_ids',[])
+
+				# if including non-set records, add empty string '' as publish_set_id
+				if self.ps_doc.get('include_non_set_records',False):
+					publish_set_ids.append('')
+
 				# filter jobs
-				self.published_jobs = self.published_jobs.filter(publish_set_id__in=self.ps_doc.get('publish_set_ids',[]))
+				self.published_jobs = self.published_jobs.filter(publish_set_id__in=publish_set_ids)
 
 		# set Mongo document count id
 		self.mongo_count_id = 'published_field_counts'

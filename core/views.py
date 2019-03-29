@@ -2787,8 +2787,10 @@ def published(request, subset=None):
 	# get published subsets
 	subsets = list(mc_handle.combine.misc.find({'type':'published_subset'}))
 
-	# dictionary of published subsets (useful for counts)
+	# loop through subsets and enrich
 	for _ in subsets:
+
+		# add counts
 		counts = mc_handle.combine.misc.find_one({'_id':'published_field_counts_%s' % _['name']})
 
 		# if counts not yet calculated, do now
