@@ -3326,8 +3326,14 @@ def job_analysis(request):
 
 		# limit if analysis_type set
 		analysis_type = request.GET.get('type', None)
+		subset = request.GET.get('subset', None)
 		if analysis_type == 'published':
-			input_jobs = input_jobs.filter(published=True)
+
+			# load PublishedRecords
+			pr = models.PublishedRecords(subset=subset)
+
+			# define input_jobs
+			input_jobs = pr.published_jobs
 
 		# get validation scenarios
 		validation_scenarios = models.ValidationScenario.objects.all()
@@ -3348,6 +3354,7 @@ def job_analysis(request):
 		return render(request, 'core/job_analysis.html', {
 				'job_select_type':'multiple',
 				'input_jobs':input_jobs,
+				'subset':subset,
 				'validation_scenarios':validation_scenarios,
 				'rits':rits,
 				'field_mappers':field_mappers,

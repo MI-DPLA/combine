@@ -128,7 +128,7 @@
 	<div class="col-md-4">
 		<h4>Analysis</h4>
 		<p>Run Analysis over all Published Records.  This may be useful for double checking uniqueness, record validity, or checking existence in previous DPLA bulk data sets.</p>
-		<a href="{% url 'job_analysis' %}?type=published"><button type="submit" class="btn btn-success btn-sm">Run Analysis for Published Records <i class="la la-plus"></i></button></a>
+		<a href="{% url 'job_analysis' %}?type=published{% if published.subset %}&subset={{published.subset}}{% endif %}"><button type="submit" class="btn btn-success btn-sm">Run Analysis for Published Records <i class="la la-plus"></i></button></a>
 	</div>
 
 </div>
