@@ -1867,6 +1867,30 @@ class Job(models.Model):
 			child.update_job_details({'input_job_ids':input_job_ids})
 
 
+	def remove_from_published_precounts(self):
+
+		'''
+		Method to remove Job from Published -- global and subsets -- precounts of mapped fields
+			- remove global published pre-counts
+			- if job's publish_set_id part of Published Subset, remove that pre-count as well
+		'''
+
+		# remove global published pre-count
+		if self.published:
+			d = mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})
+			logger.debug(d.raw_result)
+
+		# check if Job's publish_set_id in Published Subsets
+		if self.publish_set_id != '':
+
+			# check subsets and delete pre-counts if present
+			subsets = PublishedRecords.get_subsets(includes_publish_set_id=self.publish_set_id)
+			if len(subsets) > 0:
+				for subset in subsets:
+					d = mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % subset['name']})
+					logger.debug(d.raw_result)
+
+
 
 class JobTrack(models.Model):
 
@@ -3903,6 +3927,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 	# remove Job as input for other Jobs
 	instance.remove_as_input_job()
 
+	# if Job published, remove pre-counts where necessary
+	instance.remove_from_published_precounts()
+
 
 @receiver(models.signals.pre_delete, sender=JobValidation)
 def delete_job_validation_pre_delete(sender, instance, **kwargs):
@@ -4885,6 +4912,21 @@ class PublishedRecords(object):
 
 		publish_set_ids = Job.objects.exclude(publish_set_id=None).values('publish_set_id').distinct()
 		return publish_set_ids
+
+
+	@staticmethod
+	def get_subsets(includes_publish_set_id=None):
+
+		'''
+		Static method to return published subsets
+		'''
+
+		if includes_publish_set_id:
+			logger.debug('filtering Published Subsets to those that include publish_set_id: %s' % includes_publish_set_id)
+			return list(mc_handle.combine.misc.find({'type':'published_subset','publish_set_ids':includes_publish_set_id}))
+
+		else:
+			return list(mc_handle.combine.misc.find({'type':'published_subset'}))
 
 
 
@@ -8381,7 +8423,7 @@ class StateIOClient(object):
 					# build command list
 					cmd = [
 						"elasticdump",
-						"--input=http://localhost:9200/%s" % dbdd.es_index,
+						"--input=http://%s:9200/%s" % (settings.ES_HOST, dbdd.es_index),
 						"--output=%(dbdd_export_path)s/dbdd%(dbdd_id)s.json" % {'dbdd_export_path':dbdd_export_path, 'dbdd_id':dbdd.id},
 						"--type=data",
 						"--ignore-errors",
@@ -8409,9 +8451,10 @@ class StateIOClient(object):
 		for job in self.export_dict['jobs']:
 
 			# prepare command
-			cmd = 'mongoexport --db combine --collection record --out %(record_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
+			cmd = 'mongoexport --host %(mongo_host)s:27017 --db combine --collection record --out %(record_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
 				'job_id':job.id,
-				'record_exports_path':record_exports_path
+				'record_exports_path':record_exports_path,
+				'mongo_host':settings.MONGO_HOST
 			}
 
 			logger.debug("mongoexport cmd: %s" % cmd)
@@ -8432,9 +8475,10 @@ class StateIOClient(object):
 		for job in self.export_dict['jobs']:
 
 			# prepare command
-			cmd = 'mongoexport --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_validations.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
+			cmd = 'mongoexport --host %(mongo_host)s:27017 --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_validations.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
 				'job_id':job.id,
-				'validation_exports_path':validation_exports_path
+				'validation_exports_path':validation_exports_path,
+				'mongo_host':settings.MONGO_HOST
 			}
 
 			logger.debug("mongoexport cmd: %s" % cmd)
@@ -8460,7 +8504,7 @@ class StateIOClient(object):
 			# build command list
 			cmd = [
 				"elasticdump",
-				"--input=http://localhost:9200/j%s" % job.id,
+				"--input=http://%s:9200/j%s" % (settings.ES_HOST, job.id),
 				"--output=%(es_export_path)s/j%(job_id)s_mapped_fields.json" % {'es_export_path':es_export_path, 'job_id':job.id},
 				"--type=data",
 				"--sourceOnly",
@@ -9106,6 +9150,9 @@ class StateIOClient(object):
 
 			# Job, update job_details
 			self._update_job_details(job.object)
+
+			# update any Published pre-counts this Job may affect
+			job.object.remove_from_published_precounts()
 
 
 		#############################

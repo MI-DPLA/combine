@@ -2789,7 +2789,7 @@ def published(request, subset=None):
 	field_mappers = models.FieldMapper.objects.all()
 
 	# get published subsets
-	subsets = list(mc_handle.combine.misc.find({'type':'published_subset'}))
+	subsets = models.PublishedRecords.get_subsets()
 
 	# loop through subsets and enrich
 	for _ in subsets:
