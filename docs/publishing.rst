@@ -11,12 +11,19 @@ As a tool for aggregating metadata, Combine must also have the ability to serve 
 
 When a Job is published, a user may a Publish Set Identifier (``publish_set_id``) that is used to aggregate and group published Records.  For example, in the built-in OAI-PMH server, that Publish Set Identifier becomes the OAI set ID, or for exported flat XML files, the ``publish_set_id`` is used to create a folder hierarchy.  Multiple Jobs can publish under the same Publish Set ID, allowing for grouping of materials when publishing.
 
+Users may also select to publish a Job *without* a Publish Set Identifier, in which case the Records are still published, but will not aggregate under a particular publish set.  In the outgoing OAI-PMH server, for example, the Records would not be a part of an OAI set (which is consistent and allowed in the standard).
+
 On the back-end, publishing a Job adds a flag to Job that indicates it is published, with an optional ``publish_set_id``.  Unpublishing removes these flags, but maintains the Job and its Records.
 
 Currently, the the following methods are avaialable for publishing Records from Combine:
 
   - `OAI-PMH Server <#oai-pmh-server>`__
   - `Export of Flat Files <#export-flat-files>`__
+
+Additionally, Combine supports the creation of "Published Subsets".  Published Subsets, true to their namesake, are user defined subsets of all published Records.  You can read more about what those are, and creating them, here:
+
+  - `Published Subsets <#published-subsets>`__
+
 
 
 Publishing a Job
@@ -129,6 +136,89 @@ Publish Set IDs will be used to organzize the exported XML files in the resultin
    :target: _images/published_export_structure.png
 
    Publish IDs as folder structured in exported Published Records
+
+
+Published Subsets
+=================
+
+Published Subsets are user defined subsets of all currently published Records and Jobs in Combine.  They are created by selecting what Publish Set Identifiers to include in the subset (optionally including all Jobs without a Publish Set Identifier).  As Combine strives to be a single point of interaction for metadata harvesting, transformation, and publishing, it is expected that users may desire to expose only certain subsets of published records to downstream, non-Combine users.  Published Subsets allow for this.
+
+For example, imagine a single instance of Combine that is used to harvest, transform, QA, and publish metadata in support of a DPLA service hub.  It may be convenient to *also* use this instance of Combine in support of a digital collection state portal.  While there may be overlap in what Records and Jobs are published to both DPLA and the state portal, there may be some metadata records that should only propagate to one, but not the other.
+
+By default, the built-in OAI-PMH server, and flat file exports, expose *all* published Records in Combine.  For many use cases, this might be perfectly acceptable.  Or, it may be such that careful use of Publish Set Identifiers -- which translate directly to OAI sets -- may be sufficient for managing that downstream consumers only harvest apporpriate records.
+
+If, however, this is not the case, and more granular control is need, Published Subsets may be a good option for selecting subsets of published Records, which are then exposed through their own unique OAI-PMH endpoint, or flat file exports.  In this scenario, the records bound for DPLA might be available through ``/oai/subset/dpla``, while the records bound for the state portal could be available for harvest from ``/oai/subset/state_portal``.
+
+
+Viewing Published Subsets
+-------------------------
+
+Published Subset can be found at the bottom of the Published screen:
+
+.. figure:: img/pub_subset_view.png
+   :alt: Viewing all Published Subsets (none selected)
+   :target: _images/pub_subset_view.png
+
+   Viewing all Published Subsets (none selected)
+
+Clicking the **View** button, will redirect to the familiar Published screen, with this particular Published Subset selected.   This is indicated by a notification at the top:
+
+.. figure:: img/pub_subset_msg.png
+   :alt: Notification of viewing Published Subset
+   :target: _images/pub_subset_msg.png
+
+   Notification of viewing Published Subset
+
+and in the Published Subset table at the bottom:
+
+.. figure:: img/pub_subset_view_selected.png
+   :alt: Published Subsets table, while viewing one
+   :target: _images/pub_subset_view_selected.png
+
+   Published Subsets table, while viewing one
+
+When viewing a paricular subset, the tabs "Records" and "Mapped Fields" show *only* Records that belong to that particular subset.  Clicking the "Outgoing OAI-PMH Server" tab will show the familiar OAI-PMH links, but now navigating to an OAI endpoint that contains only these records (e.g. ``/oai/subset/dpla`` as opposed to the default ``/oai``).
+
+**Note:** The Published Set ``state_portal`` shares the Published Set Identifier ``set2`` with ``dpla``, demonstrating that overlap between Published Subsets is allowed.  And notes ``True`` that Records not belonging to a Publish Set are included as well.
+
+
+Creating a Published Subset
+---------------------------
+
+To create a Published Subset, click "Create Published Subset" at the bottom, where you will be presented with a screen similar to this:
+
+.. figure:: img/pub_subset_create.png
+   :alt: Creating a Published Subset
+   :target: _images/pub_subset_create.png
+
+   Creating a Published Subset
+
+- **Name**
+
+  - A unique identifier for this Published Subset, that will also be used in URL patterns (e.g. the created OAI endpoint).  This should be **lowercase** and **without special characters or spaces**.
+
+- **Description**
+
+  - Human readable description of this Published Subset.
+
+- **Select Published Sets**
+
+  - This is where published sets are selected to include in this Published Subset.  All or none may be included.
+
+- **Include Records without Publish Set Identifier**
+
+  - This toggle will include Jobs/Records that have not been given a Publish Set Identifier in this Published Subset.
+
+
+
+
+
+
+
+
+
+
+
 
 
 
