@@ -27,9 +27,9 @@
 					<div class="col-md-12">
 
 						{% if analysis_type == 'published' %}
-							{% if subset %}
+							{% if published.subset %}
 								<div class="alert alert-success alert-dismissible fade show" role="alert">
-									Automatically filtering and selecting <strong>Published Subset: <code>{{subset}}</code></strong> for analysis, continue with other analysis options below...
+									Automatically filtering and selecting <strong>Published Subset: <code>{{published.subset}}</code></strong> for analysis, continue with other analysis options below...
 									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 									<span aria-hidden="true">&times;</span>
 									</button>
