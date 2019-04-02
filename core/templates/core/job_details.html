@@ -231,15 +231,52 @@
 
 					{% else %}
 					<div class="row">
-						<div class="col-md-6">
+						<div class="col-md-8">
 							<p>This job is currently <strong>unpublished</strong>.  Publish using the form below:</p>
-							<form method="GET" action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+							<form method="POST" action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+
 								{% csrf_token %}
+
 								<div class="form-group">
 									<label for="publish_set_id">Publish Set Id</label>
 									<input type="text" class="form-control" id="publish_set_id" name="publish_set_id" placeholder="e.g. fedora_records"/>
 									<small id="publish_set_id_help" class="form-text text-muted">Publish Set ID may be left blank to not include in a Publish set.</small>
 								</div>
+
+								<p><strong>Include this Publish Set in a pre-existing <a target="_blank" href="https://combine.readthedocs.io/en/dev/publishing.html#published-subsets">Published Subset</a>?</strong></p>
+								{% if published_subsets|length > 0 %}
+
+									<table class="table table-bordered table-hover">
+										<tr>
+											<th>Include?</th>
+											<th>Name</th>
+											<th>Description</th>
+											<th>Associated Publish Set IDs</th>
+											<th>Includes Records not part of a set?</th>
+											<th>Record Count</th>
+											<th>Actions</th>
+										</tr>
+
+										{% for subset in published_subsets %}
+										<tr {% if published.subset == subset.name %}style="background-color:#fedeff;"{% endif %}>
+											<td><input type="checkbox" value="{{subset.name}}" name="published_subsets" /></td>
+											<td><code>{{subset.name}}</code> {% if published.subset == subset.name %}(currently viewing){% endif %}</td>
+											<td>{{subset.description}}</td>
+											<td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
+											<td>{{ subset.include_non_set_records}}</td>
+											<td>{{ subset.counts.total_docs }}</td>
+											<td><a href="{% url 'published_subset' subset=subset.name %}"><button type="button" class="btn btn-outline-info btn-sm">View</button></a></td>
+										</tr>
+										{% endfor %}
+
+									</table>
+
+								{% else %}
+
+									<p>No Published Subsets have been created, <a href="">create one now</a>.</p>
+
+								{% endif %}
+
 								<button type="submit" class="btn btn-success btn-sm">Publish Job <i class="la la-bullhorn"></i></button>
 							</form>
 						</div>

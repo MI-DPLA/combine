@@ -47,6 +47,8 @@ If a Job is unpublished, a user is presented with a field to assign a Publish Se
 
    Screenshot to publish a Job
 
+Also present, is the option of including this Publish Set ID in a pre-existing Published Subset.  `You can read more about those here <#published-subsets>`_.
+
 If a Job is already published, a user is presented with information about the publish status, and the ability to *unpublish*:
 
 .. figure:: img/published_job.png

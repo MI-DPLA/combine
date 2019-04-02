@@ -1,0 +1,58 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+{% load core_template_filters %}
+
+<div class="row">
+	<div class="col-md-12">
+		<h3>Edit Published Subset: <code>{{published_subset.subset}}</code></h3>
+	</div>
+</div>
+
+<div class="row">
+	<div class="col-md-6">
+
+		<form id="subset_form" method="POST" action="{% url 'published_subset_edit' subset=published_subset.subset %}">
+
+			{% csrf_token %}
+
+			<div class="form-group">
+				<label for="name">Name</label>
+				<input type="text" class="form-control" id="name" name="name" value="{{published_subset.ps_doc.name}}" disabled />
+				<small id="name_help" class="form-text text-muted">The name/slug of a Published Subset cannot be changed after creation.</small>
+			</div>
+
+			<div class="form-group">
+				<label for="description">Description</label>
+				<input type="text" class="form-control" id="description" name="description" placeholder="e.g. This subset includes published sets bound for DPLA only" value="{{published_subset.ps_doc.description}}" />
+				<small id="description_help" class="form-text text-muted">Optional</small>
+			</div>
+
+			<div class="form-group">
+				<label>Select all Published sets to be included in this Published Subset:</label>
+				{% for set,jobs in published.sets.items %}
+					<div class="checkbox">
+						<label>
+							<input type="checkbox" value="{{set}}" name="sets" {% if set in published_subset.ps_doc.publish_set_ids %}checked{% endif %}/> {{set}}
+						</label>
+					</div>
+				{% endfor %}
+			</div>
+
+			<div class="form-group">
+				<span class="switch switch-sm">
+					<input type="checkbox" class="switch-sm" id="include_non_set_records_toggle" name="include_non_set_records" {% if published_subset.ps_doc.include_non_set_records %}checked{% endif %}>
+					<label style="font-weight:normal;" for="include_non_set_records_toggle">Include published Records that are not part of any set?</label>
+				</span>
+			</div>
+
+			<!-- include ObjectId -->
+			<input type="hidden" class="form-control" name="ps_id" value="{{published_subset.ps_doc.id}}" />
+
+			<button type="submit" class="btn btn-success btn-sm">Update Publish Subset <i class="la la-refresh"></i></button>
+		</form>
+
+	</div>
+</div>
+
+{% endblock %}

@@ -978,6 +978,20 @@ def job_details(request, org_id, record_group_id, job_id):
 	# get published records, primarily for published sets
 	pr = models.PublishedRecords()
 
+	# get published subsets with PublishedRecords static method
+	published_subsets = models.PublishedRecords.get_subsets()
+
+	# loop through subsets and enrich
+	for _ in published_subsets:
+
+		# add counts
+		counts = mc_handle.combine.misc.find_one({'_id':'published_field_counts_%s' % _['name']})
+
+		# if counts not yet calculated, do now
+		if counts == None:
+			counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
+		_['counts'] = counts
+
 	# get field mappers
 	field_mappers = models.FieldMapper.objects.all()
 
@@ -994,6 +1008,7 @@ def job_details(request, org_id, record_group_id, job_id):
 			'q':q,
 			'job_details':job_details,
 			'pr':pr,
+			'published_subsets':published_subsets,
 			'es_index_str':cjob.esi.es_index_str,
 			'breadcrumbs':breadcrumb_parser(request)
 		})
@@ -1062,14 +1077,21 @@ def job_update_name(request, org_id, record_group_id, job_id):
 @login_required
 def job_publish(request, org_id, record_group_id, job_id):
 
+	logger.debug(request.POST)
+
 	# get preferred metadata index mapper
-	publish_set_id = request.GET.get('publish_set_id', None)
+	publish_set_id = request.POST.get('publish_set_id', None)
+
+	# get published subsets to include in
+	published_subsets = request.POST.getlist('published_subsets', [])
 
 	# get CombineJob
 	cjob = models.CombineJob.get_combine_job(job_id)
 
 	# init publish
-	bg_task = cjob.publish_bg_task(publish_set_id=publish_set_id)
+	bg_task = cjob.publish_bg_task(
+		publish_set_id=publish_set_id,
+		in_published_subsets=published_subsets)
 
 	# set gms
 	gmc = models.GlobalMessageClient(request.session)
@@ -2866,6 +2888,54 @@ def published_subset_create(request):
 
 		return redirect('published_subset',
 			subset=name)
+
+
+@login_required
+def published_subset_edit(request, subset):
+
+	'''
+	Edit Published Subset
+	'''
+
+	if request.method == 'GET':
+
+		# get subset published records
+		published = models.PublishedRecords()
+		published_subset = models.PublishedRecords(subset=subset)
+		published_subset.ps_doc['id'] = str(published_subset.ps_doc['_id'])
+
+		return render(request, 'core/published_subset_edit.html', {
+			'published':published,
+			'published_subset':published_subset,
+			'breadcrumbs':breadcrumb_parser(request)
+		})
+
+
+	elif request.method == 'POST':
+
+		logger.debug('updating published subset')
+
+		# confirm sets are present
+		sets = request.POST.getlist('sets')
+
+		# handle non set records
+		if request.POST.get('include_non_set_records', False):
+			include_non_set_records = True
+		else:
+			include_non_set_records = False
+
+		# update published subset
+		published = models.PublishedRecords(subset=subset)
+		published.update_subset({
+				'description':request.POST.get('description', None),
+				'type':'published_subset',
+				'publish_set_ids':sets,
+				'include_non_set_records':include_non_set_records
+			})
+		published.remove_subset_precounts()
+
+		return redirect('published_subset',
+			subset=subset)
 
 
 @login_required

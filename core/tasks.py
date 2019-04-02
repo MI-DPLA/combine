@@ -1092,6 +1092,13 @@ def job_publish(ct_id):
 		# publish job
 		publish_results = cjob.job.publish(publish_set_id=ct.task_params['publish_set_id'])
 
+		# add publish_set_id to published subsets if present
+		for published_subset in ct.task_params['in_published_subsets']:
+			logger.debug('adding publish_set_id to Published Subset: %s' % published_subset)
+
+			pr = models.PublishedRecords(subset=published_subset)
+			pr.add_publish_set_id_to_subset(publish_set_id=ct.task_params['publish_set_id'])
+
 		# remove from published subsets
 		cjob.job.remove_from_published_precounts()
 

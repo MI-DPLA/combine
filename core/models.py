@@ -4929,6 +4929,56 @@ class PublishedRecords(object):
 			return list(mc_handle.combine.misc.find({'type':'published_subset'}))
 
 
+	def update_subset(self, update_dict):
+
+		'''
+		Method to update currently associated subset (self.subset and self.ps_doc) with new parameters
+		'''
+
+		# udpate mongo doc
+		r = mc_handle.combine.misc.update_one(
+			{'_id':self.ps_doc['_id']},
+			{'$set':update_dict}, upsert=True)
+		logger.debug(r.raw_result)
+
+
+	def add_publish_set_id_to_subset(self, publish_set_id):
+
+		'''
+		Method to add publish_set_id to Published Subset
+		'''
+
+		publish_set_ids = self.ps_doc['publish_set_ids']
+		if publish_set_id != '' and publish_set_id not in publish_set_ids:
+			update_dict = {
+				'publish_set_ids':publish_set_ids + [publish_set_id]
+			}
+
+		elif publish_set_id == '':
+			logger.debug('adding ALL non-set Records to Published Subset')
+			update_dict = {
+				'include_non_set_records':True
+			}
+
+		# udpate mongo doc
+		r = mc_handle.combine.misc.update_one(
+			{'_id':self.ps_doc['_id']},
+			{'$set':update_dict}, upsert=True)
+		logger.debug(r.raw_result)
+
+		# remove pre-counts
+		self.remove_subset_precounts()
+
+
+	def remove_subset_precounts(self):
+
+		'''
+		Method to remove pre-counts for Published Subset
+		'''
+
+		mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % self.subset})
+
+
 
 class CombineJob(object):
 
@@ -5511,7 +5561,7 @@ class CombineJob(object):
 		return ct
 
 
-	def publish_bg_task(self, publish_set_id=None):
+	def publish_bg_task(self, publish_set_id=None, in_published_subsets=[]):
 
 		'''
 		Method to remove validations from Job based on Validation Job id
@@ -5523,7 +5573,8 @@ class CombineJob(object):
 			task_type = 'job_publish',
 			task_params_json = json.dumps({
 				'job_id':self.job.id,
-				'publish_set_id':publish_set_id
+				'publish_set_id':publish_set_id,
+				'in_published_subsets':in_published_subsets
 			})
 		)
 		ct.save()
