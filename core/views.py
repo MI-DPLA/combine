@@ -1100,6 +1100,9 @@ def job_publish(request, org_id, record_group_id, job_id):
 		'class':'success'
 	})
 
+	# forced delay
+	time.sleep(3)
+
 	return redirect('record_group',
 		org_id=cjob.job.record_group.organization.id,
 		record_group_id=cjob.job.record_group.id)
@@ -1120,6 +1123,9 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 		'html':'<p><strong>Unpublishing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' %  (cjob.job.name, reverse('published')),
 		'class':'success'
 	})
+
+	# forced delay
+	time.sleep(3)
 
 	return redirect('record_group',
 		org_id=cjob.job.record_group.organization.id,
