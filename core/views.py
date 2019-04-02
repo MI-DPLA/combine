@@ -2774,10 +2774,6 @@ def published(request, subset=None):
 	# get instance of Published model
 	published = models.PublishedRecords(subset=subset)
 
-	# remove empty set, confusing on front-end and not used
-	# if '' in published.ps_doc['publish_set_ids']:
-	# 	published.ps_doc['publish_set_ids'].remove('')
-
 	# get field counts
 	if published.records.count() > 0:
 		# get count of fields for all published job indices
@@ -2788,7 +2784,7 @@ def published(request, subset=None):
 	# get field mappers
 	field_mappers = models.FieldMapper.objects.all()
 
-	# get published subsets
+	# get published subsets with PublishedRecords static method
 	subsets = models.PublishedRecords.get_subsets()
 
 	# loop through subsets and enrich

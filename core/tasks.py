@@ -1092,6 +1092,9 @@ def job_publish(ct_id):
 		# publish job
 		publish_results = cjob.job.publish(publish_set_id=ct.task_params['publish_set_id'])
 
+		# remove from published subsets
+		cjob.job.remove_from_published_precounts()
+
 		# save export output to Combine Task output
 		ct.refresh_from_db()
 		ct.task_output_json = json.dumps({
@@ -1124,6 +1127,9 @@ def job_unpublish(ct_id):
 
 		# publish job
 		unpublish_results = cjob.job.unpublish()
+
+		# remove from published subsets
+		cjob.job.remove_from_published_precounts()
 
 		# save export output to Combine Task output
 		ct.refresh_from_db()

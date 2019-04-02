@@ -47,12 +47,12 @@
 	{% endif %}
 {% endif %}
 
-{% if published.records.count == 0 %}
+{% if published.published_jobs.count == 0 %}
 
 	<div class="row">
 		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				No Record Groups have been published yet!  <a href="http://combine.readthedocs.io/en/master/publishing.html">Read more about Publishing Records here...</a>
+				No Jobs have been published yet!  <a href="http://combine.readthedocs.io/en/master/publishing.html">Read more about Publishing Records here...</a>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>
@@ -65,7 +65,7 @@
 		<div class="row">
 			<div class="col-md-12">
 				<div class="alert alert-danger alert-dismissible fade show" role="alert">
-					You are viewing a Published Subset, is it possible the published sets you have selected no longer exist?
+					You are viewing a Published Subset: is it possible no Jobs are currently published with these Publish Set Identifiers?
 					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 					<span aria-hidden="true">&times;</span>
 					</button>

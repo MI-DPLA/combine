@@ -4616,7 +4616,7 @@ class ESIndex(object):
 				field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
 		'''
 
-		if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+		if self.es_index != [] and es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
 			# DEBUG
 			stime = time.time()
@@ -8097,7 +8097,7 @@ class StateIOClient(object):
 			'oai_endpoints':set(),
 			'rits':set(),
 			'field_mapper_configs':set(),
-			'dbdd':set()
+			'dbdd':set(),
 
 		}
 
@@ -8570,18 +8570,6 @@ class StateIOClient(object):
 
 		'''
 		Method to serialize model instances, and combine with serializations already on disk
-
-			- for each model instance, serialize to JSON
-			- write as JSON lines (?) to file, save to disk
-			- likely, thinking through now, a directory that was started at export_state()
-				- this can be where Records and ES go as well, all tar.gz'ed at the end
-
-			- OR, consider sql dumping?
-				- will have organized list of model instances, across multiple tables
-					- command line:
-					mysqldump -ucombine -p combine core_job --skip-create-options --skip-add-drop-table --no-create-info --where="id IN (4,5)" > /tmp/sqldump.sql
-					- SQL statement, which could be issued from python
-
 		'''
 
 		# serialize Django model instances
@@ -8647,7 +8635,7 @@ class StateIOClient(object):
 			'oai_endpoints':[],
 			'rits':[],
 			'transformations':[],
-			'validations':[]
+			'validations':[],
 		}
 
 		# loop through export Django model instance exports
@@ -8668,8 +8656,41 @@ class StateIOClient(object):
 					'id':e.id
 				})
 
+		# write Published Subests to export manifest
+		self._collect_published_subsets()
+
 		# write count to exports
 		self.export_manifest['exports']['count'] = export_count
+
+
+	def _collect_published_subsets(self):
+
+		'''
+		Method to include associated Published Subsets with export
+		'''
+
+		self.export_manifest['published_subsets'] = []
+
+		# add all subsets if include non-set Records AND > 1 Jobs do not have publish_set_id
+		non_publish_set_jobs = [ job for job in self.export_dict['jobs'] if job.publish_set_id == '' ]
+		non_publish_set_subsets = [ subset for subset in PublishedRecords.get_subsets() if subset['include_non_set_records'] ]
+		if len(non_publish_set_jobs) > 0 and len(non_publish_set_subsets) > 0:
+			self.export_manifest['published_subsets'].extend(non_publish_set_subsets)
+
+		# loop through Jobs and add Published Subsets if publish_set_id is included in any
+		for job in self.export_dict['jobs']:
+
+			# if Job published and has publish_set_ids, update export_dict set
+			if job.published and job.publish_set_id != '':
+				self.export_manifest['published_subsets'].extend(PublishedRecords.get_subsets(includes_publish_set_id=job.publish_set_id))
+
+		# finally, dedupe published_subsets and remove IDs
+		sanitized_subsets = []
+		for subset in self.export_manifest['published_subsets']:
+			subset.pop('_id')
+			if subset not in sanitized_subsets:
+				sanitized_subsets.append(subset)
+		self.export_manifest['published_subsets'] = sanitized_subsets
 
 
 	def import_state(self,
@@ -8760,6 +8781,9 @@ class StateIOClient(object):
 				if import_records:
 					# load Mongo and ES DB records
 					self._import_db_records()
+
+				# import published subsets
+				self._import_published_subsets()
 
 			# update import_manifest
 			self._finalize_import_manifest()
@@ -9203,6 +9227,52 @@ class StateIOClient(object):
 		self.spark_results = polling.poll(lambda: LivyClient().job_status(submit.headers['Location']).json()['state'] == 'available', step=5, poll_forever=True)
 
 		return self.spark_results
+
+
+	def _import_published_subsets(self):
+
+		'''
+		Method to import Published Subsets from export_manifest
+		'''
+
+		for subset in self.export_manifest['published_subsets']:
+
+			logger.debug('CHECKING ON SUBSET: %s' % subset)
+
+			# check to see if subset exists
+			subset_q = mc_handle.combine.misc.find_one({'type':'published_subset','name':subset['name']})
+			logger.debug(subset_q)
+
+			# does not exist, create
+			if subset_q == None:
+				logger.debug('Published Subset %s not found, creating' % subset['name'])
+
+				# insert subset to Mongo
+				mc_handle.combine.misc.insert_one(subset)
+
+				# remove pre-count
+				mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % subset['name']})
+
+			# if found, check if identical
+			elif type(subset_q) == dict:
+
+				# pop id
+				subset_q.pop('_id')
+
+				# check if identical
+				if subset == subset_q:
+					logger.debug('found identical Published Subset %s, skipping import' % subset['name'])
+
+				# if different, rename and import
+				else:
+					logger.debug('found subset with same name, but different properties, creating new')
+					subset['name'] = '%s_stateio_import_created' % subset['name']
+
+					# insert subset to Mongo
+					mc_handle.combine.misc.insert_one(subset)
+
+					# remove pre-count
+					mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % subset['name']})
 
 
 	def _finalize_import_manifest(self):
