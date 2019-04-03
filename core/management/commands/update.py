@@ -110,6 +110,10 @@ class Command(BaseCommand):
 				# install requirements as combine user
 				os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
+				# ensure redis version
+				os.system('%s/pip uninstall redis' % (self.PYTHON_PATH))
+				os.system('%s/pip install redis==2.10.6' % (self.PYTHON_PATH))
+
 				# collect django static
 				os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
 
