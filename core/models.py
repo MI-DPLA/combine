@@ -7991,10 +7991,14 @@ class GlobalMessageClient(object):
 		return self
 
 
-	def add_gm(self, gm_dict):
+	def add_gm(self, gm_dict, forced_delay=3):
 
 		'''
 		Method to add message
+
+		Args:
+			gm_dict (dict): Dictionary of message contents
+			forced_delay (int): Forced delay as convenient squeeze point to stave race condititions
 		'''
 
 		# check for 'gms' key in session, create if not present
@@ -8010,6 +8014,10 @@ class GlobalMessageClient(object):
 
 		# save
 		self.session.save()
+
+		# enforce forced delay
+		if forced_delay:
+			time.sleep(forced_delay)
 
 
 	def delete_gm(self, gm_id):
