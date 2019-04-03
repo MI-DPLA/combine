@@ -7991,7 +7991,7 @@ class GlobalMessageClient(object):
 		return self
 
 
-	def add_gm(self, gm_dict, forced_delay=3):
+	def add_gm(self, gm_dict, forced_delay=2):
 
 		'''
 		Method to add message
