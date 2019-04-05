@@ -29,6 +29,9 @@ from core.es import es_handle
 from xml2kvp import XML2kvp
 
 
+
+
+
 ############################################################################
 # Background Tasks
 ############################################################################
@@ -47,6 +50,11 @@ def export_records_as_xml(spark, ct_id):
 		ct_id (int): CombineBackgroundTask id
 	'''
 
+	# init logging support
+	spark.sparkContext.setLogLevel('INFO')
+	log4jLogger = spark.sparkContext._jvm.org.apache.log4j
+	logger = log4jLogger.LogManager.getLogger(__name__)
+
 	# hydrate CombineBackgroundTask
 	ct = CombineBackgroundTask.objects.get(pk=int(ct_id))
 
@@ -60,23 +68,42 @@ def export_records_as_xml(spark, ct_id):
 		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", settings.AWS_ACCESS_KEY_ID)
 		spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.secret.key", settings.AWS_SECRET_ACCESS_KEY)
 
-		# determine column subset
-		col_subset = ['*']
+		# init dfs and col_set across all published sets
+		dfs = []
+		col_set = set()
 
-		# loop through keys and export
-		rdds = []
+		# loop through published sets (includes non-set Records)
 		for folder_name, job_ids in ct.task_params['job_dict'].items():
 
-			# handle single job_id
-			if len(job_ids) == 1:
-				rdds.extend([get_job_as_df(spark, job_ids[0]).select(col_subset).rdd])
+			# get dfs and columns
+			for job_id in job_ids:
 
-			# handle multiple jobs
-			else:
-				rdds.extend([ get_job_as_df(spark, job_id).select(col_subset).rdd for job_id in job_ids ])
+				print("Adding job #%s" % job_id)
+
+				# get df
+				df = get_job_as_df(spark, job_id)
+
+				# add to total set of columns
+				col_set.update(df.columns)
+
+				# append to dfs
+				dfs.append(df)
+
+		# convert col_set to list
+		col_set = list(col_set)
+		logger.info("column final set: %s" % col_set)
+
+		# add empty columns to dfs where needed
+		n_dfs = []
+		for df in dfs:
+			n_df = df
+			for col in col_set:
+				if col not in df.columns:
+					n_df = n_df.withColumn(col, lit('').cast(StringType()))
+			n_dfs.append(n_df)
 
 		# get union of all RDDs to write
-		rdd_to_write = spark.sparkContext.union(rdds)
+		rdd_to_write = spark.sparkContext.union([ df.select(col_set).rdd for df in n_dfs ])
 
 		# repartition
 		rdd_to_write = rdd_to_write.repartition(math.ceil(rdd_to_write.count() / settings.TARGET_RECORDS_PER_PARTITION))
