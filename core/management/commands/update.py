@@ -6,6 +6,7 @@ import os
 from packaging import version
 import pdb
 import shutil
+import sys
 import time
 
 # django
@@ -36,7 +37,7 @@ class Command(BaseCommand):
 
 
 	# python path
-	PYTHON_PATH = '/usr/local/anaconda/envs/combine/bin'
+	PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
 
 
 	def add_arguments(self, parser):
@@ -109,10 +110,6 @@ class Command(BaseCommand):
 
 				# install requirements as combine user
 				os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
-
-				# ensure redis version
-				os.system('%s/pip uninstall redis -y' % (self.PYTHON_PATH))
-				os.system('%s/pip install redis==2.10.6' % (self.PYTHON_PATH))
 
 				# collect django static
 				os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
@@ -202,6 +199,9 @@ class VersionUpdateHelper(object):
 	Class to manage actions specific to version-to-version updates
 	'''
 
+	# python path
+	PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
+
 
 	def __init__(self):
 
@@ -210,6 +210,7 @@ class VersionUpdateHelper(object):
 			self.v0_4__set_job_baseline_combine_version,
 			self.v0_4__update_transform_job_details,
 			self.v0_4__set_job_current_combine_version,
+			self.v0_7_1__fix_redis_version_mismatches
 		]
 
 
@@ -321,10 +322,26 @@ class VersionUpdateHelper(object):
 						job.update_job_details({'transformation':trans_dict})
 
 
+	def v0_7_1__fix_redis_version_mismatches(self):
 
+		'''
+		Method to fix any redis version mismatches
+		'''
 
+		if version.parse(settings.COMBINE_VERSION) == version.parse('v0.7'):
 
+			logger.debug('v0_7_1__fix_redis_version_mismatches: fixing redis versioning')
 
+			# ensure redis version
+			os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))
+			os.system('%s/pip install redis==2.10.6 celery==4.3.0' % (self.PYTHON_PATH))
+
+			# restart celery background tasks
+			# get supervisor handle
+			sp = SupervisorRPCClient()
+			# fire action
+			results = sp.restart_process('celery')
+			logger.debug(results)
 
 
 
