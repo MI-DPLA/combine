@@ -334,7 +334,7 @@ class VersionUpdateHelper(object):
 
 			# ensure redis version
 			os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))
-			os.system('%s/pip install redis==2.10.6 celery==4.3.0' % (self.PYTHON_PATH))
+			os.system('%s/pip install redis==3.2.1 celery==4.3.0' % (self.PYTHON_PATH))
 
 			# restart celery background tasks
 			# get supervisor handle
