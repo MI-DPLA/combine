@@ -7284,7 +7284,10 @@ class DTElasticGenericSearch(View):
 				for job_id in self.request.GET.getlist('jobs[]')
 				if job_id.startswith('job')
 			]
-		self.es_index = filter_jobs
+		if len(filter_jobs) > 0:
+			self.es_index = filter_jobs
+		else:
+			self.es_index = 'j*'
 
 
 	def search(self):
