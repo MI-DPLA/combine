@@ -5,21 +5,22 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Search Records</h2>
-			<p>This page allows <strong>full-text</strong> searching of all Records, across all Jobs, currently held in Combine.</p>
+			<p>This page allows <strong>full-text</strong> searching of all Records, across all Jobs, currently held in Combine.  To avoid refreshing the page, modify searches by using the search box at the <strong>upper-right</strong> of the results table.</p>
 		</div>
 	</div>
 
 	<div class="row">
 		<div class="col-md-12">
-			<h4>Filters <button class="btn btn-outline-info btn-sm" onclick="$('#filters_container').slideToggle();">show</button></h4>
+			<p><button class="btn btn-info btn-sm" onclick="$('#filters_container').fadeToggle(); $(this).html($(this).html() == 'Show Options' ? 'Hide Options' : 'Show Options');">Show Options</button></p>
 
 			<div style="display:none;" id="filters_container">
 
 				<!-- Org, RecordGroup, Job filters -->
 				<div class="row">
-					<div class="col-md-6">
-						<h5>Organizations, Record Groups, Jobs</h5>
+					<div class="col-md-12">
+
 						<div class="tree_select">
+							<h5>Organizations, Record Groups, Jobs</h5>
 							<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i></button></p>
 							<div id="jobs_hierarchy_tree"></div>
 
@@ -73,7 +74,41 @@
 					</div>
 				</div>
 
-				<button class="btn btn-success btn-sm" onclick="table.ajax.reload();">Apply Filters</button>
+				<!-- include fields -->
+				<div class="row">
+
+					<div class="col-md-4">
+
+						<div class="tree_select">
+							<h5>Search type</h5>
+
+							<div class="form-check">
+								<input class="form-check-input" type="radio" name="search_type" id="search_type_1" value="any_token" checked>
+								<label class="form-check-label" for="search_type_1">
+								any token
+								</label>
+							</div>
+
+							<div class="form-check">
+								<input class="form-check-input" type="radio" name="search_type" id="search_type_2" value="exact_phrase">
+								<label class="form-check-label" for="search_type_2">
+								exact phrase <span style="font-weight: normal;">(case sensitive)</span>
+								</label>
+							</div>
+
+							<div class="form-check">
+								<input class="form-check-input" type="radio" name="search_type" id="search_type_3" value="wildcard">
+								<label class="form-check-label" for="search_type_3">
+								wildcard <span style="font-weight: normal;">(slow, but allows <code>*</code>)</span>
+								</label>
+							</div>
+						</div>
+
+					</div>
+
+				</div>
+
+				<button class="btn btn-success btn-sm" onclick="table.ajax.reload();">Apply Options</button>
 
 			</div>
 		</div>
@@ -152,14 +187,15 @@
 				            	"render": function ( data, type, row ) {
 				                    return row[2];
 				                }
-				            }
+				            },
 				        ]
 				    }).on('preXhr.dt', function ( e, settings, data ) {
 
-				    	console.log('pre ajax work...');
-
 				    	// collect jobs filters
 				    	data.jobs = jobs_tree.jstree(true).get_selected();
+
+				    	// collect search type
+				    	data.search_type = $('input[name=search_type]:checked').val();
 
 				    });
 				};
