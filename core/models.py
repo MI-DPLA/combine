@@ -7261,6 +7261,9 @@ class DTElasticGenericSearch(View):
 		self.request = request
 		self.DTinput = self.request.GET
 
+		# filter indices if need be
+		self.filter_es_indices()
+
 		# time respond build
 		stime = time.time()
 
@@ -7272,6 +7275,13 @@ class DTElasticGenericSearch(View):
 
 		# for all search types, build and return response
 		return JsonResponse(self.DToutput)
+
+
+	def filter_es_indices(self):
+
+		filter_jobs = ['j%s' % int(job_id.split('|')[-1]) for job_id in self.request.GET.getlist('jobs[]') if job_id.startswith('job')]
+		logger.debug(filter_jobs)
+		self.es_index = filter_jobs
 
 
 	def search(self):

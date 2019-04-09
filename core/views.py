@@ -2989,9 +2989,13 @@ def search(request):
 	else:
 		search_params = None
 
+	# generate hierarchy_dict
+	job_hierarchy = _stateio_prepare_job_hierarchy()
+
 	return render(request, 'core/search.html', {
 			'search_string':q,
 			'search_params':search_params,
+			'job_hierarchy_json':json.dumps(job_hierarchy),
 			'breadcrumbs':breadcrumb_parser(request),
 			'page_title':' | Search'
 		})
