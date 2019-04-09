@@ -7279,8 +7279,11 @@ class DTElasticGenericSearch(View):
 
 	def filter_es_indices(self):
 
-		filter_jobs = ['j%s' % int(job_id.split('|')[-1]) for job_id in self.request.GET.getlist('jobs[]') if job_id.startswith('job')]
-		logger.debug(filter_jobs)
+		filter_jobs = [
+				'j%s' % int(job_id.split('|')[-1])
+				for job_id in self.request.GET.getlist('jobs[]')
+				if job_id.startswith('job')
+			]
 		self.es_index = filter_jobs
 
 
