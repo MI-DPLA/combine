@@ -135,6 +135,21 @@ class ESIndex(object):
 					},
 					'mappings':{
 						'record':{
+							"dynamic_templates": [
+								{
+									"strings": {
+										"match_mapping_type": "string",
+										"mapping": {
+											"type": "text",
+											"fields": {
+												"keyword": {
+													"type":  "keyword"
+												}
+											}
+										}
+									}
+								}
+							],
 							'date_detection':False,
 							'properties':{
 								'combine_db_id':{
