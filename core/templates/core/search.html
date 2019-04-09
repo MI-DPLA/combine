@@ -1,29 +1,19 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
+
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Search Records</h2>
-			<p>This table allows searching of all Records, across all Jobs, currently held in Combine.</p>
+			<p>This page allows <strong>full-text</strong> searching of all Records, across all Jobs, currently held in Combine.</p>
 		</div>
 	</div>
 
 	<div class="row">
 		<div class="col-md-12">
-			<h4>Records</h4>			
-			
-			<table id='search_results' class="table table-bordered table-hover">
-				<thead>
-					<th>DB ID</th>
-					<th>Combine ID</th>
-					<th>Record ID</th>
-					<th>Organization</th>
-					<th>Record Group</th>
-					<th>Job</th>
-				</thead>
-				<tbody></tbody>
-			</table>
+			<h4>Records</h4>
+
+			<table id='search_results' class="table table-bordered table-hover"></table>
 
 			<script>
 
@@ -31,63 +21,69 @@
 
 					// get search string if present
 			    	{% if search_params %}
-				    	search_params = JSON.parse('{{ search_params|safe|escapejs }}')					    	
+				    	search_params = JSON.parse('{{ search_params|safe|escapejs }}')
 				    	q = search_params.q;
 				    {% else %}
 				    	q = '';
 			    	{% endif %}
 
+			    	// build additional data to send dto DTElasticGeneric endpoint
+			    	var data = {}
+
 					// DataTable
 				    table = $('#search_results').DataTable({
 				        "processing": true,
 				        "serverSide": true,
-				        "ajax": "{% url 'records_es_generic_dt_json' %}",
+				        "ajax": {
+				        	"url":"{% url 'records_es_generic_dt_json' %}",
+				        	"data":data,
+			        	},
 				        "searchDelay": 1000,
 				        "pageLength": 10,
-				        "pagingType": "full_numbers",				        
+				        "pagingType": "full_numbers",
 				        "ordering":false,
 				        "search": {
 						    "search": q,
 						    "smart": false
 						},
 				        "columns": [
-				            { 
+				            {
 				            	title: "DB ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='"+row[3]+"'>" + row[4] + "</a>";
+				                    return "<a href='"+row[3]+"'>" + row[4] + "</a>";
 				                }
 			            	},
-				            { 
+				            {
 				            	title: "Combine ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='"+row[3]+"'>" + row[5] + "</a>";
+				                    return "<a href='"+row[3]+"'>" + row[5] + "</a>";
 				                }
 			            	},
-				            { 
+				            {
 				            	title: "Record ID",
 				            	"render": function ( data, type, row ) {
-				                    return "<a target='_blank' href='"+row[3]+"'>" + row[6] + "</a>";
+				                    return "<a href='"+row[3]+"'>" + row[6] + "</a>";
 				                }
 				            },
-				            { 
+				            {
 				            	title: "Organization",
 				            	"render": function ( data, type, row ) {
 				                    return row[0];
 				                }
 				            },
-				            { 
+				            {
 				            	title: "Record Group",
 				            	"render": function ( data, type, row ) {
 				                    return row[1];
 				                }
 				            },
-				            { 
+				            {
 				            	title: "Job",
 				            	"render": function ( data, type, row ) {
 				                    return row[2];
 				                }
 				            }
-				        ]			        
+				        ]
 				    });
 				});
 

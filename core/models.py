@@ -7187,8 +7187,7 @@ class DTElasticGenericSearch(View):
 		search_term = self.request.GET.get('search[value]')
 
 		if search_term != '':
-			logger.debug('searching ES for: %s' % search_term)
-			self.query = self.query.query('match', _all="'%s'" % search_term.replace("'","\'"))
+			self.query = self.query.query(Q("multi_match", query=search_term.replace("'","\'"), fields=['*.keyword']))
 
 
 	def sort(self):
@@ -7207,7 +7206,7 @@ class DTElasticGenericSearch(View):
 		'''
 
 		# if using deep paging, will need to implement some sorting to search_after
-		self.query = self.query.sort('record_id.keyword','db_id')
+		self.query = self.query.sort('record_id.keyword','db_id.keyword')
 
 
 	def paginate(self):
@@ -7290,10 +7289,10 @@ class DTElasticGenericSearch(View):
 		# apply filtering to ES query
 		self.filter()
 
-		# apply sorting to ES query
+		# # apply sorting to ES query
 		self.sort()
 
-		# self.sort()
+		# # self.sort()
 		self.paginate()
 
 		# get document count, post-filtering
@@ -7306,8 +7305,9 @@ class DTElasticGenericSearch(View):
 		for hit in self.query_results.hits:
 
 			try:
+
 				# get combine record
-				record = Record.objects.get(pk=int(hit.db_id))
+				record = Record.objects.get(id=hit.db_id)
 
 				# loop through rows, add to list while handling data types
 				row_data = []
@@ -7327,6 +7327,7 @@ class DTElasticGenericSearch(View):
 
 				# add list to object
 				self.DToutput['data'].append(row_data)
+
 			except Exception as e:
 				logger.debug("error retrieving DB record based on id %s, from index %s: %s" % (hit.db_id, hit.meta.index, str(e)))
 
