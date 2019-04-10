@@ -5,7 +5,7 @@
 	<div class="row">
 		<div class="col-md-12">
 			<h2>Search Records</h2>
-			<p>This page allows <strong>full-text</strong> searching of all Records, across all Jobs, currently held in Combine.  To avoid refreshing the page, modify searches by using the search box at the <strong>upper-right</strong> of the results table.</p>
+			<p style="margin-bottom:0px;">This page allows <strong>full-text</strong> searching of all Records, across all Jobs, currently held in Combine.  To avoid refreshing the page, modify searches by using the search box at the <strong>upper-right</strong> of the results table.</p>
 		</div>
 	</div>
 
@@ -101,21 +101,21 @@
 							<div class="form-check">
 								<input class="form-check-input" type="radio" name="search_type" id="search_type_1" value="any_token" checked>
 								<label class="form-check-label" for="search_type_1">
-								any token <span style="font-weight: normal;">(matches any single in field)</span>
+								any token <span style="font-weight: normal;">(matches single token within any field)</span>
 								</label>
 							</div>
 
 							<div class="form-check">
 								<input class="form-check-input" type="radio" name="search_type" id="search_type_2" value="exact_phrase">
 								<label class="form-check-label" for="search_type_2">
-								exact phrase <span style="font-weight: normal;">(case sensitive, full field string)</span>
+								exact phrase <span style="font-weight: normal;">(case sensitive, full-field matching)</span>
 								</label>
 							</div>
 
 							<div class="form-check">
 								<input class="form-check-input" type="radio" name="search_type" id="search_type_3" value="wildcard">
 								<label class="form-check-label" for="search_type_3">
-								wildcard<span style="font-weight: normal;"> (<code>*</code> matching against case sensitive field string)</span>
+								wildcard<span style="font-weight: normal;"> (<code>*</code>, case sensitive full-field matching)</span>
 								</label>
 							</div>
 						</div>
