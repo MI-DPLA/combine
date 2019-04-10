@@ -7194,6 +7194,7 @@ class DTElasticGenericSearch(View):
 
 			# exact phrase (full case-sensitive string)
 			if search_type == 'exact_phrase':
+
 				self.query = self.query.query(Q("multi_match",
 					query=search_term.replace("'","\'"),
 					fields=['*.keyword']))
@@ -7208,6 +7209,7 @@ class DTElasticGenericSearch(View):
 
 			# any token (matches single tokens)
 			elif search_type in ['any_token', None]:
+
 				self.query = self.query.query("match",
 					_all=search_term.replace("'","\'"))
 

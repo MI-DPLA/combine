@@ -11,7 +11,19 @@
 
 	<div class="row">
 		<div class="col-md-12">
-			<p><button class="btn btn-info btn-sm" onclick="$('#filters_container').fadeToggle(); $(this).html($(this).html() == 'Show Options' ? 'Hide Options' : 'Show Options');">Show Options</button></p>
+
+			<div id="provided_url_options_msg" style="display:none;" class="row">
+				<div class="col-md-12">
+					<div class="alert alert-warning alert-dismissible fade show" role="alert">
+						Search parameters were detected in URL, showing applied options...
+						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
+						<span aria-hidden="true">&times;</span>
+						</button>
+					</div>
+				</div>
+			</div>
+
+			<p><button id="show_options_btn" class="btn btn-info btn-sm" onclick="$('#filters_container').fadeToggle(); $(this).html($(this).html() == 'Show Options' ? 'Hide Options' : 'Show Options');">Show Options</button></p>
 
 			<div style="display:none;" id="filters_container">
 
@@ -37,7 +49,11 @@
 
 								// init tree
 								$(document).ready(function(){
-									jobs_tree = $('#jobs_hierarchy_tree').jstree({
+									jobs_tree = $('#jobs_hierarchy_tree')
+									.bind('loaded.jstree', function(e, data) {
+									    first_init();
+									})
+									.jstree({
 										'plugins':["wholerow","checkbox","search"],
 										'core':{
 											'data':job_hierarchy_obj
@@ -108,7 +124,7 @@
 
 				</div>
 
-				<button class="btn btn-success btn-sm" onclick="table.ajax.reload();">Apply Options</button>
+				<button class="btn btn-success btn-sm" onclick="update_table();">Apply Options</button>
 
 			</div>
 		</div>
@@ -125,6 +141,8 @@
 				// global data var
 				data = {};
 
+
+				// main search function
 				function ajax_search() {
 
 					// get search string if present
@@ -134,6 +152,9 @@
 				    {% else %}
 				    	q = '';
 			    	{% endif %}
+
+			    	// update dt data from search options
+			    	update_dt_data(data);
 
 					// DataTable
 				    table = $('#search_results').DataTable({
@@ -191,19 +212,96 @@
 				        ]
 				    }).on('preXhr.dt', function ( e, settings, data ) {
 
-				    	// collect jobs filters
-				    	data.jobs = jobs_tree.jstree(true).get_selected();
-
-				    	// collect search type
-				    	data.search_type = $('input[name=search_type]:checked').val();
+				    	// update dt data from search options
+			    		update_dt_data(data);
 
 				    });
 				};
 
-				// fire search on page load
-				$(document).ready(function(){
+
+				// function to collect GET parameters and apply to search options
+				function apply_get_parameters(){
+
+					show_msg = false;
+
+					// handle search type
+					let search_type = jQuery.query.get('search_type');
+					if (search_type != '') {
+						show_msg = true;
+						$('input[name=search_type][value=' + search_type + ']').prop('checked',true)
+					}
+
+					// handle parsing of jobs
+					jobs = jQuery.query.get('jobs');
+					if (jobs != ''){
+						show_msg = true;
+						js_tree = $("#jobs_hierarchy_tree").jstree();
+						jobs.map( function(job){
+							js_tree.select_node(job);
+						})
+					}
+
+					// show message if either present
+					if (show_msg == true) {
+						$("#provided_url_options_msg").show();
+						$("#show_options_btn").click();
+					}
+
+				}
+
+
+				// function to update dt table with search options
+				function update_dt_data(data){
+
+					// collect jobs filters
+			    	data.jobs = jobs_tree.jstree(true).get_selected();
+
+			    	// collect search type
+			    	data.search_type = $('input[name=search_type]:checked').val();
+
+				}
+
+
+				// function to update GET parameters when search options applied (page is not reloaded)
+				function udpate_get_parameters(){
+
+					query_string_obj = null;
+
+					// handle search type
+					search_type = $('input[name=search_type]:checked').val();
+					query_string_obj = jQuery.query.set('search_type', search_type);
+
+					// handle jobs
+					let jobs = jobs_tree.jstree(true).get_selected();
+					query_string_obj = query_string_obj.set('jobs', jobs);
+
+					// update URL
+					var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + query_string_obj.toString();
+    				window.history.pushState({path:newurl},'',newurl);
+
+				}
+
+
+				// function to update table when search options applied
+				function update_table(){
+
+					// update get params
+					udpate_get_parameters();
+
+					// reload table
+					table.ajax.reload();
+
+
+				}
+
+				// first table draw
+				function first_init(){
+					// apply search options from GET parameters
+					apply_get_parameters();
+
+					// fire initial search
 					ajax_search();
-				})
+				}
 
 			</script>
 
