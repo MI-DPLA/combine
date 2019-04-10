@@ -7192,18 +7192,24 @@ class DTElasticGenericSearch(View):
 			# get search type
 			search_type = self.request.GET.get('search_type', None)
 
-			# exact phrase
+			# exact phrase (full case-sensitive string)
 			if search_type == 'exact_phrase':
-				self.query = self.query.query(Q("multi_match", query=search_term.replace("'","\'"), fields=['*.keyword']))
+				self.query = self.query.query(Q("multi_match",
+					query=search_term.replace("'","\'"),
+					fields=['*.keyword']))
 
-			# wildcard
-			# - lower cases to search analyzed
+			# wildcard (wildcard searching against full keyword)
 			elif search_type == 'wildcard':
-				self.query = self.query.query("wildcard", _all=search_term.replace("'","\'").lower())
 
-			# any token
+				self.query = self.query.query('query_string',
+					query=search_term.replace("'","\'"),
+					fields=["*.keyword"],
+					analyze_wildcard=True)
+
+			# any token (matches single tokens)
 			elif search_type in ['any_token', None]:
-				self.query = self.query.query("match", _all=search_term.replace("'","\'"))
+				self.query = self.query.query("match",
+					_all=search_term.replace("'","\'"))
 
 
 	def sort(self):
