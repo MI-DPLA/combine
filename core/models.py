@@ -1895,37 +1895,18 @@ class Job(models.Model):
 
 		'''
 		Method to remove temporary files when Job is deleted
-
-		TODO: refactor to Job type classes as methods
 		'''
 
-		# handle Harvest type jobs
-		if self.job_type_family() == 'HarvestJob':
+		# get combine job
+		cjob = CombineJob.get_combine_job(self.id)
 
-			# handle static XML harvests
-			if self.job_type == 'HarvestStaticXMLJob':
+		# if remove_temporary_files() method present, use
+		if hasattr(cjob, 'remove_temporary_files'):
+			cjob.remove_temporary_files()
 
-				logger.debug('static XML harvest job detected, checking status of temporary files')
-
-				# check for existence of payload dir
-				payload_dir = self.job_details_dict.get('payload_dir', False)
-				if payload_dir and os.path.exists(payload_dir):
-
-					# retrieve all Jobs that share payload_dir
-					payload_deps = [_job for _job in Job.objects.all()
-						if _job.job_details_dict.get('payload_dir',False) == payload_dir
-						and _job != self]
-
-					# if only this job, remove
-					if len(payload_deps) == 0:
-
-						logger.debug('removing payload_dir: %s' % payload_dir)
-						shutil.rmtree(payload_dir)
-
-					else:
-
-						logger.debug('NOT removing payload_dir, shared by other Jobs: %s' % payload_deps)
-
+		# else, skip
+		else:
+			logger.debug('Job type %s, does not have remove_temporary_files() method, skipping' % cjob.job.job_type)
 
 
 
@@ -6171,6 +6152,34 @@ class HarvestStaticXMLJob(HarvestJob):
 		'''
 
 		return None
+
+
+	def remove_temporary_files(self):
+
+		'''
+		Method to remove temporary files associated with Job
+		'''
+
+		logger.debug('investigating removal of temporary files')
+
+		# check for existence of payload dir
+		payload_dir = self.job.job_details_dict.get('payload_dir', False)
+		if payload_dir and os.path.exists(payload_dir):
+
+			# retrieve all Jobs that share payload_dir
+			payload_deps = [_job for _job in Job.objects.all()
+				if _job.job_details_dict.get('payload_dir',False) == payload_dir
+				and _job != self.job]
+
+			# if only this job, remove
+			if len(payload_deps) == 0:
+
+				logger.debug('removing payload_dir: %s' % payload_dir)
+				shutil.rmtree(payload_dir)
+
+			else:
+
+				logger.debug('NOT removing payload_dir, shared by other Jobs: %s' % payload_deps)
 
 
 
