@@ -71,7 +71,7 @@
 								<h4>Record Document</h4>
 								<p>This tab previews and provides information about the document stored for this Record.  Below is the raw, stored document for this Record, or see the buttons for more options.
 
-								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm"><strong>View</strong> Raw Document <i class="la la-external-link"></i></button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Matching</strong> Documents</button></a></p>
+								<p><a href="{% url 'record_document' org_id=record.job.record_group.organization.id record_group_id=record.job.record_group.id job_id=record.job.id record_id=record.id%}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View <strong>Raw</strong> Document <i class="la la-external-link"></i></button></a> <a href="{% url 'search' %}?q={{ record.fingerprint }}"><button type="button" class="btn btn-outline-info btn-sm">Search for <strong>Identical</strong> Documents</button></a></p>
 
 								{% if record.document != '' %}
 									<div>

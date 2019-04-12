@@ -1891,6 +1891,43 @@ class Job(models.Model):
 					logger.debug(d.raw_result)
 
 
+	def remove_temporary_files(self):
+
+		'''
+		Method to remove temporary files when Job is deleted
+
+		TODO: refactor to Job type classes as methods
+		'''
+
+		# handle Harvest type jobs
+		if self.job_type_family() == 'HarvestJob':
+
+			# handle static XML harvests
+			if self.job_type == 'HarvestStaticXMLJob':
+
+				logger.debug('static XML harvest job detected, checking status of temporary files')
+
+				# check for existence of payload dir
+				payload_dir = self.job_details_dict.get('payload_dir', False)
+				if payload_dir and os.path.exists(payload_dir):
+
+					# retrieve all Jobs that share payload_dir
+					payload_deps = [_job for _job in Job.objects.all()
+						if _job.job_details_dict.get('payload_dir',False) == payload_dir
+						and _job != self]
+
+					# if only this job, remove
+					if len(payload_deps) == 0:
+
+						logger.debug('removing payload_dir: %s' % payload_dir)
+						shutil.rmtree(payload_dir)
+
+					else:
+
+						logger.debug('NOT removing payload_dir, shared by other Jobs: %s' % payload_deps)
+
+
+
 
 class JobTrack(models.Model):
 
@@ -3929,6 +3966,9 @@ def delete_job_pre_delete(sender, instance, **kwargs):
 
 	# if Job published, remove pre-counts where necessary
 	instance.remove_from_published_precounts()
+
+	# remove any temporary files
+	instance.remove_temporary_files()
 
 
 @receiver(models.signals.pre_delete, sender=JobValidation)
