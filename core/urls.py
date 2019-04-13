@@ -155,6 +155,10 @@ urlpatterns = [
 	url(r'^stateio/export$', views.stateio_export, name='stateio_export'),
 	url(r'^stateio/import$', views.stateio_import, name='stateio_import'),
 
+	# OpenRefine Reconciliation Service (orrs)
+	# https://github.com/OpenRefine/OpenRefine/wiki/Reconciliation-Service-API
+	url(r'^orrs$', views.orrs, name='orrs'),
+
 	# General
 	url(r'^login$', auth_views.login, name='login'),
 	url(r'^logout$', auth_views.logout, name='logout'),

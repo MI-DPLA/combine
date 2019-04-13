@@ -9720,6 +9720,43 @@ class StateIOClient(object):
 
 
 
+####################################################################
+# OpenRefine Reconciliation Service 							   #
+####################################################################
+
+class OpenRefineReconService(object):
+
+	'''
+	Class to handle OpenRefine Reconciliation as a Service
+	'''
+
+	name = 'Combine OpenRefine Reconciliation Service'
+	identifierSpace = 'http://localhost:8000/combine/value'
+	schemaSpace = 'http://localhost:8000/combine/type'
+	view = {
+		'url':'http://localhost:8000/combine/search?search_type=exact_phrase&q='
+	}
+
+
+	@property
+	def service_dict(self):
+
+		return {
+			'name':self.name,
+			'identifierSpace':self.identifierSpace,
+			'schemaSpace':self.schemaSpace,
+			'view':self.view
+		}
+
+
+	def query(self, request):
+
+		'''
+		Handle query from OpenRefine
+		'''
+
+		return {'msg':'nothing yet, but soon...'}
+
 
 
 

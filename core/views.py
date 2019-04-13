@@ -32,6 +32,7 @@ from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.views import View
+from django.views.decorators.csrf import csrf_exempt
 
 # import models
 from core import models, forms
@@ -2651,11 +2652,11 @@ def field_mapper_update(request):
 
 		# validate fm_config before creating
 		try:
-		    fm.validate_config_json()
-		    fm.save()
-		    return JsonResponse({'results':True,'msg':'New Field Mapper configurations were <strong>saved</strong> as: <strong>%s</strong>' % request.POST.get('fm_name')}, status=201)
+			fm.validate_config_json()
+			fm.save()
+			return JsonResponse({'results':True,'msg':'New Field Mapper configurations were <strong>saved</strong> as: <strong>%s</strong>' % request.POST.get('fm_name')}, status=201)
 		except jsonschema.ValidationError as e:
-		    return JsonResponse({'results':False,'msg':'Could not <strong>create</strong> <strong>%s</strong>, the following error was had: %s' % (fm.name, str(e))}, status=409)
+			return JsonResponse({'results':False,'msg':'Could not <strong>create</strong> <strong>%s</strong>, the following error was had: %s' % (fm.name, str(e))}, status=409)
 
 	# handle update
 	if update_type == 'update':
@@ -2669,11 +2670,11 @@ def field_mapper_update(request):
 
 		# validate fm_config before updating
 		try:
-		    fm.validate_config_json()
-		    fm.save()
-		    return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % fm.name}, status=200)
+			fm.validate_config_json()
+			fm.save()
+			return JsonResponse({'results':True,'msg':'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % fm.name}, status=200)
 		except jsonschema.ValidationError as e:
-		    return JsonResponse({'results':False,'msg':'Could not <strong>update</strong> <strong>%s</strong>, the following error was had: %s' % (fm.name, str(e))}, status=409)
+			return JsonResponse({'results':False,'msg':'Could not <strong>update</strong> <strong>%s</strong>, the following error was had: %s' % (fm.name, str(e))}, status=409)
 
 	# handle delete
 	if update_type == 'delete':
@@ -4566,9 +4567,9 @@ def _stateio_prepare_job_hierarchy():
 	  text        : "string" // node text
 	  icon        : "string" // string for custom
 	  state       : {
-	    opened    : boolean  // is the node open
-	    disabled  : boolean  // is the node disabled
-	    selected  : boolean  // is the node selected
+		opened    : boolean  // is the node open
+		disabled  : boolean  // is the node disabled
+		selected  : boolean  // is the node selected
 	  },
 	  children    : []  // array of strings or objects
 	  li_attr     : {}  // attributes for the generated LI node
@@ -4644,9 +4645,9 @@ def _stateio_prepare_config_scenarios():
 	  text        : "string" // node text
 	  icon        : "string" // string for custom
 	  state       : {
-	    opened    : boolean  // is the node open
-	    disabled  : boolean  // is the node disabled
-	    selected  : boolean  // is the node selected
+		opened    : boolean  // is the node open
+		disabled  : boolean  // is the node disabled
+		selected  : boolean  // is the node selected
 	  },
 	  children    : []  // array of strings or objects
 	  li_attr     : {}  // attributes for the generated LI node
@@ -4768,6 +4769,89 @@ def stateio_import(request):
 		})
 
 		return redirect('stateio')
+
+
+
+####################################################################
+# OpenRefine Reconciliation Service								   #
+####################################################################
+
+def json_response(func):
+	"""
+	A decorator thats takes a view response and turns it
+	into json. If a callback is added through GET or POST
+	the response is JSONP.
+	"""
+	def decorator(request, *args, **kwargs):
+		objects = func(request, *args, **kwargs)
+		data = json.dumps(objects)
+		logger.debug("!!!! RETURNING VIA JSONP !!!!")
+		if request.method == 'GET':
+			data = '%s(%s);' % (request.GET.get('callback'), data)
+		if request.method == 'POST':
+			data = '%s(%s);' % (request.POST.get('callback'), data)
+		return HttpResponse(data, "text/javascript")
+	return decorator
+
+
+# def orrs(request):
+
+# 	# debug
+# 	logger.debug(request.GET)
+# 	logger.debug(set(list(request.GET.keys())))
+
+# 	# init ORRS
+# 	orrs = models.OpenRefineReconService()
+
+# 	# empty, return service
+# 	if len(request.GET) == 0 or set(list(request.GET.keys())) == set(['callback','_']):
+
+# 		# return JSON response
+# 		response = JsonResponse(orrs.service_dict)
+
+# 	# else, handle query
+# 	else:
+
+# 		# query
+# 		response = orrs.query(request.GET)
+
+# 		# return JSON response
+# 		response = JsonResponse(response)
+
+# 	# add headers
+# 	response['Access-Control-Allow-Origin'] = '*'
+# 	response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
+# 	response['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
+
+# 	# return
+# 	return response
+
+
+@csrf_exempt
+@json_response
+def orrs(request):
+
+	# debug
+	logger.debug(request.GET)
+	logger.debug(set(list(request.GET.keys())))
+
+	# init ORRS
+	orrs = models.OpenRefineReconService()
+
+	# empty, return service
+	if 'callback' in request.GET:
+
+		# return JSON response
+		return orrs.service_dict
+
+	# else, handle query
+	else:
+
+		# query
+		response = orrs.query(request.GET)
+
+		# return JSON response
+		return response
 
 
 
