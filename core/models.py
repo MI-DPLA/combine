@@ -9,6 +9,7 @@ import datetime
 import dateutil
 import difflib
 import django
+from fuzzywuzzy import fuzz
 import gc
 import gzip
 import hashlib
@@ -9781,29 +9782,82 @@ class OpenRefineReconService(object):
 			# DEBUG
 			logger.debug('working on %s, field to match on %s' % (q_id, q_type))
 
-			# build dictionary
-			result_dict[q_id] = {
-				'result':[{
-					'type':[
-						{
-							'id':'string',
-							'name':'String'
-						}
-					],
-					'id':q_body.get('query'),
-					'match':True,
-					'score':100,
-					'all_labels':{
-						'weighted':100,
-						'score':100
-					},
-					'name':q_body.get('query').replace('a','x').replace('e','j')
-				}]
-			}
+			'''
+			OpenRefine sends blocks of ten, can send multiple suggest requests to ES in a single
+			query.
+				- can use q# as the name of the suggest, for 1:1 matching
+				- need to ask for / limit to a few suggestions for a single term
+				- how handle no results?  is this 'match' in result?
+				- what do all labels mean?
+			'''
+
+			# # how to handle this?
+			if q_type == None:
+				q_type = 'mods_subject_topic'
+
+			matches = self._fuzz_match_on_mapped_field(q_type, q_string)
+
+			# handle matches
+			_results = []
+
+			if len(matches) > 0:
+				# build results
+
+				for match in matches:
+					_results.append({
+						'type':[{'id':q_type,'name':q_type}],
+						'id':match[0],
+						'match':True if match[1] == 100 else False,
+						'score':match[1],
+						'name':match[0]
+					})
+
+			# add to result_dict
+			result_dict[q_id] = {'result':_results}
 
 		# return results
 		logger.debug(result_dict)
 		return result_dict
+
+
+	def _fuzz_match_on_mapped_field(self, field_name, q_string):
+
+		# init terms
+		terms = []
+
+		# perform search on field
+		r = es_handle.search(
+			index=['j*'],
+			body={
+				'_source':[field_name],
+				'query':{
+					'match':{
+						'%s' % field_name:{
+							'query':q_string,
+							'fuzziness':2
+						}
+					}
+				}
+			}
+		)
+
+		# fuzz ratio to original term, and sort
+		for hit in r['hits']['hits']:
+			_ = hit['_source'][field_name]
+			if type(_) == list:
+				terms.extend(_)
+			else:
+				terms.append(_)
+		terms = list(set(terms))
+
+		# sort and fuzz cut-off
+		terms_fuzz_ratio = sorted(
+			[ (term, fuzz.ratio(term,q_string)) for term in terms if fuzz.ratio(term,q_string) > 50 ],
+			key=lambda tup: tup[1],
+			reverse=True)
+
+		# return
+		return terms_fuzz_ratio
 
 
 
