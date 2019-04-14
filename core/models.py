@@ -9739,6 +9739,11 @@ class OpenRefineReconService(object):
 	schemaSpace = 'http://localhost:8000/combine/type'
 	view = {
 		'url':'http://localhost:8000/combine/search?search_type=exact_phrase&q={{id}}'
+	},
+	preview = {
+		'url':'http://localhost:8000/combine/search?search_type=exact_phrase&q={{id}}',
+		'height':640,
+		'width':480
 	}
 	defaultTypes = [
 		{
@@ -9755,7 +9760,8 @@ class OpenRefineReconService(object):
 			'identifierSpace':self.identifierSpace,
 			'schemaSpace':self.schemaSpace,
 			'view':self.view,
-			'defaultTypes':self.defaultTypes
+			'defaultTypes':self.defaultTypes,
+			'preview':self.preview
 		}
 
 

@@ -32,6 +32,7 @@ from django.forms.models import model_to_dict
 from django.http import HttpResponse, JsonResponse, FileResponse
 from django.shortcuts import render, redirect
 from django.views import View
+from django.views.decorators.clickjacking import xframe_options_exempt
 from django.views.decorators.csrf import csrf_exempt
 
 # import models
@@ -2976,6 +2977,7 @@ def oai(request, subset=None):
 # Global Search													   #
 ####################################################################
 
+@xframe_options_exempt
 def search(request):
 
 	'''
