@@ -9728,15 +9728,23 @@ class OpenRefineReconService(object):
 
 	'''
 	Class to handle OpenRefine Reconciliation as a Service
+
+	TODO:
+		- consider hosts, should be public and accessible from OpenRefine context
 	'''
 
-	name = 'Combine OpenRefine Reconciliation Service'
+	name = 'Combine Metadata Aggregator'
 	identifierSpace = 'http://localhost:8000/combine/value'
 	schemaSpace = 'http://localhost:8000/combine/type'
 	view = {
-		'url':'http://localhost:8000/combine/search?search_type=exact_phrase&q='
+		'url':'http://localhost:8000/combine/search?search_type=exact_phrase&q={{id}}'
 	}
-
+	defaultTypes = [
+		{
+			'id': 'mapped_field_value',
+			'name': 'Mapped Field Value'
+		}
+	]
 
 	@property
 	def service_dict(self):
@@ -9745,17 +9753,57 @@ class OpenRefineReconService(object):
 			'name':self.name,
 			'identifierSpace':self.identifierSpace,
 			'schemaSpace':self.schemaSpace,
-			'view':self.view
+			'view':self.view,
+			'defaultTypes':self.defaultTypes
 		}
 
 
-	def query(self, request):
+	def query(self, params):
 
 		'''
 		Handle query from OpenRefine
 		'''
 
-		return {'msg':'nothing yet, but soon...'}
+		# get queries
+		queries = json.loads(params.get('queries',[]))
+		logger.debug(type(queries))
+
+		# result dict
+		result_dict = {}
+
+		# loop through queries and build results dict
+		for q_id, q_body in queries.items():
+
+			# parse query
+			q_string = q_body.get('query',None)
+			q_type = q_body.get('type',None)
+
+			# DEBUG
+			logger.debug('working on %s, field to match on %s' % (q_id, q_type))
+
+			# build dictionary
+			result_dict[q_id] = {
+				'result':[{
+					'type':[
+						{
+							'id':'string',
+							'name':'String'
+						}
+					],
+					'id':q_body.get('query'),
+					'match':True,
+					'score':100,
+					'all_labels':{
+						'weighted':100,
+						'score':100
+					},
+					'name':q_body.get('query').replace('a','x').replace('e','j')
+				}]
+			}
+
+		# return results
+		logger.debug(result_dict)
+		return result_dict
 
 
 

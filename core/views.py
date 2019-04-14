@@ -4783,72 +4783,51 @@ def json_response(func):
 	the response is JSONP.
 	"""
 	def decorator(request, *args, **kwargs):
+
 		objects = func(request, *args, **kwargs)
 		data = json.dumps(objects)
-		logger.debug("!!!! RETURNING VIA JSONP !!!!")
+
+		# GET
 		if request.method == 'GET':
+			logger.debug("--- GET request, returning JSONP ---")
 			data = '%s(%s);' % (request.GET.get('callback'), data)
+
+		# POST
 		if request.method == 'POST':
-			data = '%s(%s);' % (request.POST.get('callback'), data)
+			logger.debug("--- POST request, returning raw JSON ---")
+			return HttpResponse(data, "application/json")
+
+		# return
 		return HttpResponse(data, "text/javascript")
+
 	return decorator
 
-
-# def orrs(request):
-
-# 	# debug
-# 	logger.debug(request.GET)
-# 	logger.debug(set(list(request.GET.keys())))
-
-# 	# init ORRS
-# 	orrs = models.OpenRefineReconService()
-
-# 	# empty, return service
-# 	if len(request.GET) == 0 or set(list(request.GET.keys())) == set(['callback','_']):
-
-# 		# return JSON response
-# 		response = JsonResponse(orrs.service_dict)
-
-# 	# else, handle query
-# 	else:
-
-# 		# query
-# 		response = orrs.query(request.GET)
-
-# 		# return JSON response
-# 		response = JsonResponse(response)
-
-# 	# add headers
-# 	response['Access-Control-Allow-Origin'] = '*'
-# 	response['Access-Control-Allow-Methods'] = 'GET, POST, OPTIONS'
-# 	response['Access-Control-Allow-Headers'] = 'Origin, Accept, Content-Type, X-Requested-With, X-CSRF-Token'
-
-# 	# return
-# 	return response
 
 
 @csrf_exempt
 @json_response
 def orrs(request):
 
-	# debug
-	logger.debug(request.GET)
-	logger.debug(set(list(request.GET.keys())))
-
 	# init ORRS
 	orrs = models.OpenRefineReconService()
 
-	# empty, return service
-	if 'callback' in request.GET:
+	# GET request: service handshakes
+	if request.method == 'GET':
+
+		# debug
+		logger.debug(request.GET)
 
 		# return JSON response
 		return orrs.service_dict
 
-	# else, handle query
-	else:
+	# POST request: handle query
+	if request.method == 'POST':
+
+		# debug
+		logger.debug(request.POST)
 
 		# query
-		response = orrs.query(request.GET)
+		response = orrs.query(request.POST)
 
 		# return JSON response
 		return response
