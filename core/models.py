@@ -5704,6 +5704,9 @@ class CombineJob(object):
 			# remove mapping failures
 			re_job.remove_mapping_failures_from_db()
 
+			# remove from published subsets precounts
+			re_job.remove_from_published_precounts()
+
 			# where Job has Input Job, reset passed records
 			parent_input_jobs = JobInput.objects.filter(job_id = re_job.id)
 			for ji in parent_input_jobs:
