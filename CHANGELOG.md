@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+  - Automatically start Livy session if none present (#398)[https://github.com/WSULib/combine/issues/398]
+
 
 ## [`v0.8`] - 2019-04-??
 ### Added

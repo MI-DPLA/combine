@@ -332,39 +332,59 @@ class LivySession(models.Model):
 				or new session_id if started
 		'''
 
-		# retrieve active livy session and refresh
-		active_ls = LivySession.get_active_session()
-		active_ls.refresh_from_livy(save=False)
+		# if session_id is None, start a new session
+		if session_id == None:
 
-		# if passed session id matches and status is idle or busy
-		if session_id == active_ls.session_id:
+			logger.debug('active livy session not found, starting new one')
 
-			if active_ls.status in ['idle','busy']:
-				logger.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job' % active_ls.status)
+			# start and poll for new one
+			new_ls = LivySession()
+			new_ls.start_session()
 
-			else:
-				logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
+			logger.debug('polling for Livy session to start...')
+			results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
 
-				# destroy active livy session
-				active_ls.stop_session()
-				active_ls.delete()
-
-				# start and poll for new one
-				new_ls = LivySession()
-				new_ls.start_session()
-
-				logger.debug('polling for Livy session to start...')
-				results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
-
-				# pass new session id and continue to livy job submission
-				session_id = new_ls.session_id
+			# pass new session id and continue to livy job submission
+			session_id = new_ls.session_id
 
 			# return
 			return session_id
 
-		else:
-			logger.debug('requested livy session id does not match active livy session id')
-			return None
+		# if passed session id matches and status is idle or busy
+		elif session_id != None:
+
+			# retrieve active livy session and refresh
+			active_ls = LivySession.get_active_session()
+			active_ls.refresh_from_livy(save=False)
+
+			if session_id == active_ls.session_id:
+
+				if active_ls.status in ['idle','busy']:
+					logger.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job' % active_ls.status)
+
+				else:
+					logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
+
+					# destroy active livy session
+					active_ls.stop_session()
+					active_ls.delete()
+
+					# start and poll for new one
+					new_ls = LivySession()
+					new_ls.start_session()
+
+					logger.debug('polling for Livy session to start...')
+					results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
+
+					# pass new session id and continue to livy job submission
+					session_id = new_ls.session_id
+
+				# return
+				return session_id
+
+			else:
+				logger.debug('requested livy session id does not match active livy session id')
+				return None
 
 
 	def restart_session(self):
@@ -5337,9 +5357,15 @@ class CombineJob(object):
 		if self.livy_session:
 			self.prepare_job()
 
+		# no active livy session, creating
 		else:
-			logger.debug('could not start job, active livy session not found')
-			return False
+			livy_session_id = LivySession.ensure_active_session_id(None)
+			self.livy_session = LivySession.get_active_session()
+			self.prepare_job()
+
+		# else:
+		# 	logger.debug('could not start job, active livy session not found')
+		# 	return False
 
 
 	def submit_job_to_livy(self, job_code):

@@ -1161,6 +1161,10 @@ def job_dbdm(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -1226,6 +1230,10 @@ def rerun_jobs_prep(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -1272,6 +1280,10 @@ def clone_jobs(ct_id):
 
 	# get CombineTask (ct)
 	try:
+
+		# check for livy session
+		_check_livy_session()
+
 		ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 		logger.info('using %s' % ct)
 
@@ -1319,6 +1331,9 @@ def stateio_export(ct_id):
 	Background task to export state
 	'''
 
+	# check for livy session
+	_check_livy_session()
+
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
 
@@ -1342,6 +1357,9 @@ def stateio_import(ct_id):
 	Background task to import state
 	'''
 
+	# check for livy session
+	_check_livy_session()
+
 	ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 	logger.info('using %s' % ct)
 
@@ -1351,7 +1369,6 @@ def stateio_import(ct_id):
 		stateio_id=ct.task_params['stateio_id'],
 		import_name=ct.task_params['import_name'],
 		export_path=ct.task_params['export_path'])
-
 
 
 def _check_livy_session():
@@ -1364,9 +1381,18 @@ def _check_livy_session():
 	# check for presence of session
 	ls = models.LivySession.get_active_session()
 
-	# raise exception if False
+	# if False, attempt to start livy session
 	if not ls:
-		raise Exception('Spark required for this task, but no Livy session found.')
+
+		try:
+			ls_id = models.LivySession.ensure_active_session_id(None)
+			ls = models.LivySession.get_active_session()
+		except:
+			raise Exception('Error while attempting to start new Livy session')
+
+	# if still failing, raise exception
+	if not ls:
+		raise Exception('Spark required for this task, but could not start Livy session.')
 
 
 
