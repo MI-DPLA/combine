@@ -7241,6 +7241,9 @@ class DTElasticGenericSearch(View):
 		# if search term present, refine query
 		if search_term != '':
 
+			# escape colons
+			search_term = search_term.replace(':','\:')
+
 			# get search type
 			search_type = self.request.GET.get('search_type', None)
 
