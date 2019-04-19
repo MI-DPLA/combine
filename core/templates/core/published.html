@@ -3,6 +3,15 @@
 {% block content %}
 {% load core_template_filters %}
 
+<style>
+
+	/* special styling for disabled nodes in jstree*/
+	.jstree-default .jstree-disabled.jstree-clicked {
+		background:rgba(0,0,0,0);
+	}
+
+</style>
+
 <div class="row">
 	<div class="col-md-12">
 		<h3>Published Records{% if published.subset %} <strong>Subset: <code>{{published.subset}}</code></strong>{% endif %}</h3>
@@ -27,8 +36,7 @@
 								<div class="col-md-12">
 
 									<div class="tree_select">
-										<label>Select Organizations and/or Record Groups to include all Published Jobs in Published Subset</label>
-										<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i></button></p>
+										<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/></p>
 										<div id="jobs_hierarchy_tree"></div>
 
 										<script>
@@ -90,8 +98,6 @@
 											// post tree build
 											function post_tree_build(){
 
-												console.log('pre-selecting hierarchy from subset')
-
 												// handle parsing of jobs
 												jobs = JSON.parse(`{{job_hierarchy_json_subset|safe|escapejs}}`);
 												if (jobs != []){
@@ -100,6 +106,18 @@
 														js_tree.select_node(job);
 													})
 												}
+
+												// disable clicking of tree
+												$("#jobs_hierarchy_tree").bind('ready.jstree', function(event, data) {
+												  var $tree = $(this);
+												  $($tree.jstree().get_json($tree, {
+												      flat: true
+												    }))
+												    .each(function(index, value) {
+												      var node = $("#jobs_hierarchy_tree").jstree().disable_node(this.id);
+												      // console.log(node);
+												    });
+												});
 
 											}
 
@@ -120,11 +138,11 @@
 			</div>
 		</div>
 	</div>
-	{% if published.ps_doc.publish_set_ids|length == 0 %}
+	{% if published.ps_doc.publish_set_ids|length == 0 and published.ps_doc.hierarchy|length == 0 %}
 		<div class="row">
 			<div class="col-md-12">
 				<div class="alert alert-danger alert-dismissible fade show" role="alert">
-					It would appear this Published Subset has no sets!  This might result in no Records as part of this subset, unless it includes Records that were not part of any publish set.
+					This Published Subset contains no published sets <strong>or</strong> hierarchies (Organizations, Record Groups, and Jobs) to include, this may result in no Records collecting under this Published Subset.
 					<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 					<span aria-hidden="true">&times;</span>
 					</button>

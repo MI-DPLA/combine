@@ -107,8 +107,6 @@
 							// post tree build
 							function post_tree_build(){
 
-								console.log('pre-selecting hierarchy from subset')
-
 								// handle parsing of jobs
 								jobs = JSON.parse(`{{job_hierarchy_json_subset|safe|escapejs}}`);
 								if (jobs != []){

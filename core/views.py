@@ -2831,7 +2831,9 @@ def published(request, subset=None):
 			'es_index_str':published.esi.es_index_str,
 			'subsets':subsets,
 			'job_hierarchy_json':json.dumps(job_hierarchy),
-			'job_hierarchy_json_subset':json.dumps(published.ps_doc.get('hierarchy',[])),
+			'job_hierarchy_json_subset':json.dumps(
+				getattr(published,'ps_doc',{}).get('hierarchy',[])
+			),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
