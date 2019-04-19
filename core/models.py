@@ -4843,12 +4843,15 @@ class PublishedRecords(object):
 				hierarchy = self.ps_doc.get('hierarchy',[])
 				if len(hierarchy) > 0:
 
-					# DEBUG
-					logger.debug(hierarchy)
-
-					# get job ids and filter on published
+					# collect job, record group, and org ids
+					org_ids = [ int(_.split('|')[1]) for _ in hierarchy if _.startswith('org') ]
+					record_group_ids = [ int(_.split('|')[1]) for _ in hierarchy if _.startswith('record_group') ]
 					job_ids = [ int(_.split('|')[1]) for _ in hierarchy if _.startswith('job') ]
-					hierarchy_jobs = Job.objects.filter(published=True, pk__in=job_ids)
+
+					# OR query to get set of Jobs that match
+					hierarchy_jobs = Job.objects.filter(published=True, pk__in=job_ids) |\
+						Job.objects.filter(published=True, record_group__in=record_group_ids) |\
+						Job.objects.filter(published=True, record_group__organization__in=org_ids)
 
 					# merge with published jobs
 					self.published_jobs = self.published_jobs | hierarchy_jobs

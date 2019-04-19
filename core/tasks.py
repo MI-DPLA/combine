@@ -1098,6 +1098,9 @@ def job_publish(ct_id):
 			pr = models.PublishedRecords(subset=published_subset)
 			pr.add_publish_set_id_to_subset(publish_set_id=ct.task_params['publish_set_id'])
 
+		# REEVALUATE SUBSET HIERARCHY
+			# If the Org or Record Group exists in any published subset, re-evaluate that list of job|#
+
 		# remove from published subsets
 		cjob.job.remove_from_published_precounts()
 
@@ -1133,6 +1136,9 @@ def job_unpublish(ct_id):
 
 		# publish job
 		unpublish_results = cjob.job.unpublish()
+
+		# REEVALUATE SUBSET HIERARCHY
+			# If job|# exists in any subset, remove
 
 		# remove from published subsets
 		cjob.job.remove_from_published_precounts()
