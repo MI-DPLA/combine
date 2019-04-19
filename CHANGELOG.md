@@ -12,15 +12,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [`v0.8`] - 2019-04-??
 ### Added
   - Global search of Record's mapped fields
-  - Ability to add Organizations, Record Groups, and/or Jobs to Published Subsets (#395)[https://github.com/WSULib/combine/issues/395]
-  - Remove temporary payloads of static harvests on Job delete (#394)[https://github.com/WSULib/combine/issues/394]
+  - Ability to add Organizations, Record Groups, and/or Jobs to Published Subsets [#395](https://github.com/WSULib/combine/issues/395)
+  - Remove temporary payloads of static harvests on Job delete [#394](https://github.com/WSULib/combine/issues/394)
   - Added `CHANGELOG.md`
 
 ### Changed
   - Fixed precounts for Published Subsets when included Jobs mutate [#396](https://github.com/WSULib/combine/issues/396)
-
-### Removed
-  - Section about "changelog" vs "CHANGELOG".
 
 
 ## [previous]
