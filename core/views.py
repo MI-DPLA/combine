@@ -2852,8 +2852,12 @@ def published_subset_create(request):
 		# get all published sets
 		published = models.PublishedRecords()
 
+		# generate hierarchy_dict
+		job_hierarchy = _stateio_prepare_job_hierarchy()
+
 		return render(request, 'core/published_subset_create.html', {
 			'published':published,
+			'job_hierarchy_json':json.dumps(job_hierarchy),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2876,6 +2880,9 @@ def published_subset_create(request):
 		else:
 			include_non_set_records = False
 
+		# handle org / rg hierarchy
+		hierarchy = json.loads(request.POST.get('hierarchy', []))
+
 		# create new published subset
 		doc = mc_handle.combine.misc.insert_one(
 			{
@@ -2883,6 +2890,7 @@ def published_subset_create(request):
 				'description':request.POST.get('description',None),
 				'type':'published_subset',
 				'publish_set_ids':sets,
+				'hierarchy':hierarchy,
 				'include_non_set_records':include_non_set_records
 			})
 
@@ -2904,9 +2912,14 @@ def published_subset_edit(request, subset):
 		published_subset = models.PublishedRecords(subset=subset)
 		published_subset.ps_doc['id'] = str(published_subset.ps_doc['_id'])
 
+		# generate hierarchy_dict
+		job_hierarchy = _stateio_prepare_job_hierarchy()
+
 		return render(request, 'core/published_subset_edit.html', {
 			'published':published,
 			'published_subset':published_subset,
+			'job_hierarchy_json':json.dumps(job_hierarchy),
+			'job_hierarchy_json_subset':json.dumps(published_subset.ps_doc.get('hierarchy',[])),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
@@ -2924,12 +2937,16 @@ def published_subset_edit(request, subset):
 		else:
 			include_non_set_records = False
 
+		# handle org / rg hierarchy
+		hierarchy = json.loads(request.POST.get('hierarchy', []))
+
 		# update published subset
 		published = models.PublishedRecords(subset=subset)
 		published.update_subset({
 				'description':request.POST.get('description', None),
 				'type':'published_subset',
 				'publish_set_ids':sets,
+				'hierarchy':hierarchy,
 				'include_non_set_records':include_non_set_records
 			})
 		published.remove_subset_precounts()
@@ -4555,7 +4572,9 @@ def stateio_export(request):
 		return JsonResponse({'msg':'success'})
 
 
-def _stateio_prepare_job_hierarchy():
+def _stateio_prepare_job_hierarchy(
+	include_record_groups=True,
+	include_jobs=True):
 
 	# generate JSON that will be used by jstree to create Org, Record Group, Jobs selections
 	'''
@@ -4596,34 +4615,36 @@ def _stateio_prepare_job_hierarchy():
 			'icon':'la la-folder-open'
 		}
 
-		# loop through child Record Groups and add
-		for rg in org.recordgroup_set.all():
+		if include_record_groups:
+			# loop through child Record Groups and add
+			for rg in org.recordgroup_set.all():
 
-			# init rg dict
-			rg_dict = {
-				'id':'record_group|%s' % rg.id,
-				'text':rg.name,
-				'state':{'opened':False},
-				'children':[],
-				'icon':'la la-folder-open'
-			}
-
-			# loop through Jobs and add
-			for job in rg.job_set.all():
-
-				# init job dict
-				job_dict = {
-					'id':'job|%s' % job.id,
-					'text':job.name,
+				# init rg dict
+				rg_dict = {
+					'id':'record_group|%s' % rg.id,
+					'text':rg.name,
 					'state':{'opened':False},
-					'icon':'la la-file'
+					'children':[],
+					'icon':'la la-folder-open'
 				}
 
-				# append to rg
-				rg_dict['children'].append(job_dict)
+				if include_jobs:
+					# loop through Jobs and add
+					for job in rg.job_set.all():
 
-			# add back to org
-			org_dict['children'].append(rg_dict)
+						# init job dict
+						job_dict = {
+							'id':'job|%s' % job.id,
+							'text':job.name,
+							'state':{'opened':False},
+							'icon':'la la-file'
+						}
+
+						# append to rg
+						rg_dict['children'].append(job_dict)
+
+				# add back to org
+				org_dict['children'].append(rg_dict)
 
 		# add org to root hierarchy
 		hierarchy_dict['children'].append(org_dict)

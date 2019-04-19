@@ -4839,6 +4839,20 @@ class PublishedRecords(object):
 					non_set_published_jobs = Job.objects.filter(published=True, publish_set_id='')
 					self.published_jobs = self.published_jobs | non_set_published_jobs
 
+				# include any published Jobs from hierarchy, if present
+				hierarchy = self.ps_doc.get('hierarchy',[])
+				if len(hierarchy) > 0:
+
+					# DEBUG
+					logger.debug(hierarchy)
+
+					# get job ids and filter on published
+					job_ids = [ int(_.split('|')[1]) for _ in hierarchy if _.startswith('job') ]
+					hierarchy_jobs = Job.objects.filter(published=True, pk__in=job_ids)
+
+					# merge with published jobs
+					self.published_jobs = self.published_jobs | hierarchy_jobs
+
 		# set Mongo document count id
 		self.mongo_count_id = 'published_field_counts'
 		if self.subset != None:

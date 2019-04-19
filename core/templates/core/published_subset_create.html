@@ -39,6 +39,92 @@
 				{% endfor %}
 			</div>
 
+			<!-- Org, RecordGroup, Job filters -->
+			<div class="row">
+				<div class="col-md-12">
+
+					<div class="tree_select">
+						<label>Select Organizations and/or Record Groups to include all Published Jobs in Published Subset</label>
+						<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i></button></p>
+						<div id="jobs_hierarchy_tree"></div>
+
+						<script>
+
+							search_config = {
+								'show_only_matches':false, // isolate matches
+								'delay':500, // delay for search keyup
+								'fuzzy':false // fuzzy matching
+							}
+
+							// init hierarchy
+							job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe|escapejs}}`);
+
+							// init tree
+							$(document).ready(function(){
+								jobs_tree = $('#jobs_hierarchy_tree')
+								.bind('loaded.jstree', function(e, data) {
+								    post_tree_build();
+								})
+								.jstree({
+									'plugins':["wholerow","checkbox","search"],
+									'core':{
+										'data':job_hierarchy_obj
+									},
+									'search':search_config
+								});
+							});
+
+							// search
+							var to = false;
+								$('#jobs_search').keyup(function () {
+								if(to) { clearTimeout(to); }
+									to = setTimeout(function () {
+									var v = $('#jobs_search').val();
+								$('#jobs_hierarchy_tree').jstree(true).search(v);
+								}, search_config.delay);
+							});
+
+							// select matches
+							function jobs_search_select_matches(){
+								matches = $("#jobs_hierarchy_tree .jstree-search")
+								matches.each(function(index, match){jobs_tree.jstree(true).select_node(match);});
+							}
+
+							// dselect matches
+							function jobs_search_deselect_matches(){
+								matches = $("#jobs_hierarchy_tree .jstree-search")
+								matches.each(function(index, match){jobs_tree.jstree(true).deselect_node(match);});
+							}
+
+							// pre-submit
+							$('#subset_form').submit(function() {
+
+								// populate hidden hierarchy field
+								populate_hidden_hierarchy_field();
+
+							});
+
+							// post tree build
+							function post_tree_build(){
+								return true
+							}
+
+							// populate hidden field
+							function populate_hidden_hierarchy_field() {
+								// collect orgs and record groups
+								let jobs = jobs_tree.jstree(true).get_selected();
+
+								// write to hidden field
+								$("#hierarchy").val(JSON.stringify(jobs));
+							}
+
+						</script>
+					</div>
+					<input id="hierarchy" type="hidden" name="hierarchy" />
+
+				</div>
+			</div>
+
 			<div class="form-group">
 				<span class="switch switch-sm">
 					<input type="checkbox" class="switch-sm" id="include_non_set_records_toggle" name="include_non_set_records">
