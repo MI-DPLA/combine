@@ -5,7 +5,7 @@
 
 <div class="row">
 	<div class="col-md-12">
-		<h3>Published Records{% if published.subset %}: <strong>{{published.subset}}</strong>{% endif %}</h3>
+		<h3>Published Records{% if published.subset %} <strong>Subset: <code>{{published.subset}}</code></strong>{% endif %}</h3>
 	</div>
 </div>
 
@@ -14,7 +14,106 @@
 	<div class="row">
 		<div class="col-md-12">
 			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				You are viewing a <strong>subset</strong> of all published records for the following published sets: <code>[{{ published.ps_doc.publish_set_ids|join:", " }}]</code>.  <a href="{% url 'published' %}"><button type="button" class="btn btn-outline-info btn-sm">View All Published Records</button></a>
+				You are viewing a <strong>subset</strong> of all published records, which includes the following filters:<br><br>
+				<ul>
+					{% if published.ps_doc.publish_set_ids|length > 0 %}
+						<li>Publish Set IDs: [<code>{{ published.ps_doc.publish_set_ids|join:", " }}</code>]</li>
+					{% endif %}
+					{% if published.ps_doc.hierarchy|length > 0 %}
+						<li>Filtering based on Organizations, Record Groups, and Jobs:
+
+							<!-- Org, RecordGroup, Job filters -->
+							<div class="row">
+								<div class="col-md-12">
+
+									<div class="tree_select">
+										<label>Select Organizations and/or Record Groups to include all Published Jobs in Published Subset</label>
+										<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i></button></p>
+										<div id="jobs_hierarchy_tree"></div>
+
+										<script>
+
+											search_config = {
+												'show_only_matches':false, // isolate matches
+												'delay':500, // delay for search keyup
+												'fuzzy':false // fuzzy matching
+											}
+
+											// init hierarchy
+											job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe|escapejs}}`);
+
+											// init tree
+											$(document).ready(function(){
+												jobs_tree = $('#jobs_hierarchy_tree')
+												.bind('loaded.jstree', function(e, data) {
+												    post_tree_build();
+												})
+												.jstree({
+													'plugins':["wholerow","checkbox","search"],
+													'core':{
+														'data':job_hierarchy_obj
+													},
+													'search':search_config
+												});
+											});
+
+											// search
+											var to = false;
+												$('#jobs_search').keyup(function () {
+												if(to) { clearTimeout(to); }
+													to = setTimeout(function () {
+													var v = $('#jobs_search').val();
+												$('#jobs_hierarchy_tree').jstree(true).search(v);
+												}, search_config.delay);
+											});
+
+											// select matches
+											function jobs_search_select_matches(){
+												matches = $("#jobs_hierarchy_tree .jstree-search")
+												matches.each(function(index, match){jobs_tree.jstree(true).select_node(match);});
+											}
+
+											// dselect matches
+											function jobs_search_deselect_matches(){
+												matches = $("#jobs_hierarchy_tree .jstree-search")
+												matches.each(function(index, match){jobs_tree.jstree(true).deselect_node(match);});
+											}
+
+											// pre-submit
+											$('#subset_form').submit(function() {
+
+												// populate hidden hierarchy field
+												populate_hidden_hierarchy_field();
+
+											});
+
+											// post tree build
+											function post_tree_build(){
+
+												console.log('pre-selecting hierarchy from subset')
+
+												// handle parsing of jobs
+												jobs = JSON.parse(`{{job_hierarchy_json_subset|safe|escapejs}}`);
+												if (jobs != []){
+													js_tree = $("#jobs_hierarchy_tree").jstree();
+													jobs.map( function(job){
+														js_tree.select_node(job);
+													})
+												}
+
+											}
+
+										</script>
+									</div>
+									<input id="hierarchy" type="hidden" name="hierarchy" />
+
+								</div>
+							</div>
+
+						</li>
+					{% endif %}
+				</ul>
+				<a href="{% url 'published' %}"><button type="button" class="btn btn-outline-info btn-sm">View All Published Records</button></a>
 				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 				<span aria-hidden="true">&times;</span>
 				</button>

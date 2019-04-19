@@ -2820,6 +2820,9 @@ def published(request, subset=None):
 			counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
 		_['counts'] = counts
 
+	# generate hierarchy_dict
+	job_hierarchy = _stateio_prepare_job_hierarchy()
+
 	return render(request, 'core/published.html', {
 			'published':published,
 			'field_mappers':field_mappers,
@@ -2827,6 +2830,8 @@ def published(request, subset=None):
 			'field_counts':field_counts,
 			'es_index_str':published.esi.es_index_str,
 			'subsets':subsets,
+			'job_hierarchy_json':json.dumps(job_hierarchy),
+			'job_hierarchy_json_subset':json.dumps(published.ps_doc.get('hierarchy',[])),
 			'breadcrumbs':breadcrumb_parser(request)
 		})
 
