@@ -143,13 +143,21 @@ Publish Set IDs will be used to organzize the exported XML files in the resultin
 Published Subsets
 =================
 
-Published Subsets are user defined subsets of all currently published Records and Jobs in Combine.  They are created by selecting what Publish Set Identifiers to include in the subset (optionally including all Jobs without a Publish Set Identifier).  As Combine strives to be a single point of interaction for metadata harvesting, transformation, and publishing, it is expected that users may desire to expose only certain subsets of published records to downstream, non-Combine users.  Published Subsets allow for this.
+Published Subsets are user defined subsets of all currently published Records and Jobs in Combine.  They are created by selecting a combination of:
+
+  - **Publish Set Identifiers** to include in the subset
+  - all published Jobs **without** a Publish Set Identifier
+  - **Organizations, Record Groups, and Jobs** where all *published* Jobs are included
+
+As Combine strives to be a single point of interaction for metadata harvesting, transformation, and publishing, it is expected that users may desire to expose only certain subsets of published records to downstream, non-Combine users.  Published Subsets allow for this.
 
 For example, imagine a single instance of Combine that is used to harvest, transform, QA, and publish metadata in support of a DPLA service hub.  It may be convenient to *also* use this instance of Combine in support of a digital collection state portal.  While there may be overlap in what Records and Jobs are published to both DPLA and the state portal, there may be some metadata records that should only propagate to one, but not the other.
 
 By default, the built-in OAI-PMH server, and flat file exports, expose *all* published Records in Combine.  For many use cases, this might be perfectly acceptable.  Or, it may be such that careful use of Publish Set Identifiers -- which translate directly to OAI sets -- may be sufficient for managing that downstream consumers only harvest apporpriate records.
 
-If, however, this is not the case, and more granular control is need, Published Subsets may be a good option for selecting subsets of published Records, which are then exposed through their own unique OAI-PMH endpoint, or flat file exports.  In this scenario, the records bound for DPLA might be available through ``/oai/subset/dpla``, while the records bound for the state portal could be available for harvest from ``/oai/subset/state_portal``.
+If, however, this is not the case, and more granular control is need, Published Subsets may be a good option for selecting subsets of published Records, which are then exposed through their own unique OAI-PMH endpoint, or flat file exports.  In this scenario, the records bound for DPLA might be available through the subset ``dpla`` and the OAI endpoint ``/oai/subset/dpla``, while the records bound for the state portal could be available in the subset ``start_portal`` and available for OAI harvest from ``/oai/subset/state_portal``.
+
+All Published Subsets also allow the normal exporting of Records (flat XML, S3, etc.).
 
 
 Viewing Published Subsets
@@ -207,12 +215,14 @@ To create a Published Subset, click "Create Published Subset" at the bottom, whe
 
   - This is where published sets are selected to include in this Published Subset.  All or none may be included.
 
+- **Select Organizations, Record Groups, and Jobs**
+
+  - Select Organizations, Record Groups, and Jobs to include in Published Subset.  Selected Organizations and Record Groups will include all *published* Jobs that fall underneath.  In the instance where only select Jobs from a Record Group are selected, only those Jobs will be included, *not* the entire Record Group.
+  - **Note:** This is particularly helpful if a user wants to add an entire Organization or Record Group to a subset, confident that all Jobs created or deleted, published or unpublished, will collect under this Published Subset.
+
 - **Include Records without Publish Set Identifier**
 
   - This toggle will include Jobs/Records that have not been given a Publish Set Identifier in this Published Subset.
-
-
-
 
 
 
