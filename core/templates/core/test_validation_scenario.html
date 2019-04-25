@@ -44,6 +44,12 @@
 						</select>
 					</div>
 				</div>
+                <div class="col-md-8">
+                    <div class="form-group">
+                        <label for="vs_new_name">Create a new Validation Scenario with Name:</label>
+                        <input id="vs_new_name" type="text" class="form-control" name="name" />
+                    </div>
+                </div>
 			</div>
 
 			<!-- Validation Scenario payload -->
@@ -72,6 +78,8 @@
 			</div>
 			
 			<button class="btn btn-success btn-sm" id="test_vs">Test Validation</button>
+            <button class="btn btn-success btn-sm" id="save_vs">Save Validation Scenario</button>
+            <div id="save_feedback" class="alert alert-success" hidden="hidden">Save was successful!</div>
 		</div>
 	</div>
 
@@ -147,6 +155,30 @@
 
 			})
 		});
+
+        $(document).ready(function(){
+            $("#save_vs").click(function(){
+                console.log('clicked!')
+                var vs_name = $("#vs_new_name").val();
+                var vs_payload = $("#vs_payload").val();
+                var vs_type = $("#vs_type").val();
+
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'save_validation_scenario' %}",
+                    data: {
+                        'vs_name':vs_name,
+                        'vs_payload':vs_payload,
+                        'vs_type':vs_type,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'json',
+                    success: function(data){
+                        $('#save_feedback').removeAttr('hidden')
+                    }
+                })
+            })
+        })
 
 		$(document).ready(function(){
 			$("#test_vs").click(function(){

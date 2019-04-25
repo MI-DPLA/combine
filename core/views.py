@@ -2470,6 +2470,16 @@ def validation_scenario_payload(request, vs_id):
 	else:
 		return HttpResponse(vs.payload, content_type='text/plain')
 
+def save_validation_scenario(request):
+        # TODO: validate the model
+        # TODO: do we care about deduplicating validation scenarios?
+        new_validation_scenario = models.ValidationScenario(
+                name=request.POST['vs_name'],
+                payload=request.POST['vs_payload'],
+                validation_type=request.POST['vs_type']
+        )
+        result = new_validation_scenario.save()
+        return JsonResponse(model_to_dict(new_validation_scenario))
 
 def test_validation_scenario(request):
 

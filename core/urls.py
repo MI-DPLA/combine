@@ -78,6 +78,7 @@ urlpatterns = [
 	url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$', views.transformation_scenario_payload, name='transformation_scenario_payload'),
 	url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload, name='oai_endpoint_payload'),
 	url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload, name='validation_scenario_payload'),
+	url(r'^configuration/save_validation_scenario$', views.save_validation_scenario, name='save_validation_scenario'),
 	url(r'^configuration/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
 	url(r'^configuration/test_transformation_scenario$', views.test_transformation_scenario, name='test_transformation_scenario'),
 	url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$', views.rits_payload, name='rits_payload'),
