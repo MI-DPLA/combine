@@ -32,7 +32,7 @@ class CoreConfig(AppConfig):
 			None
 		'''
 
-		logger.debug('Core application ready method preperations firing')
+		logger.debug('Core application ready method preparations firing')
 
 		# create home working directory
 		self.create_home_working_directory()

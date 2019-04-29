@@ -250,7 +250,7 @@ def index(request):
 @login_required
 def system(request):
     # single Livy session
-    logger.debug("checking or active Livy session")
+    logger.debug("checking for active Livy session")
     livy_session = models.LivySession.get_active_session()
 
     # if session found, refresh
