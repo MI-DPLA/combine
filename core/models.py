@@ -70,8 +70,6 @@ from core.xml2kvp import XML2kvp
 # import background tasks
 from core import tasks
 
-# Livy
-
 # import elasticsearch and handles
 from core.es import es_handle
 import elasticsearch as es

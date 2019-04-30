@@ -11,8 +11,6 @@ from .views import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
-# Set logging levels for 3rd party modules
-logging.getLogger("requests").setLevel(logging.WARNING)
 
 def validation_scenario_payload(request, vs_id):
     '''
