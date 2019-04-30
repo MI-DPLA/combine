@@ -5,5 +5,4 @@ class OrganizationTestCase(TestCase):
     def test_get_organizations(self):
         c = Client()
         response = c.get('/combine/organization/all')
-        print(response.content)
         self.assertIn("No Organizations found!  Create one below...", str(response.content, 'utf-8'))
