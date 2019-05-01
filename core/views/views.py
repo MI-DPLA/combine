@@ -37,6 +37,9 @@ from core.mongo import *
 # import celery app
 from core.celery import celery_app
 
+from .record import record as record_view, record_document as record_document_view
+from .job import job_details as job_details_view
+
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
@@ -1728,9 +1731,9 @@ def analysis(request):
 
 @login_required
 def job_analysis(request):
-    '''
+    """
 	Run new analysis job
-	'''
+	"""
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -1934,7 +1937,7 @@ class DTRecordsJson(BaseDatatableView):
     def render_column(self, row, column):
 
         # construct record link
-        record_link = reverse(record, kwargs={
+        record_link = reverse(record_view, kwargs={
             'org_id': row.job.record_group.organization.id,
             'record_group_id': row.job.record_group.id,
             'job_id': row.job.id, 'record_id': str(row.id)
@@ -1953,7 +1956,7 @@ class DTRecordsJson(BaseDatatableView):
             # attempt to parse as XML and return if valid or not
             try:
                 xml = etree.fromstring(row.document.encode('utf-8'))
-                return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+                return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document_view, kwargs={
                     'org_id': row.job.record_group.organization.id,
                     'record_group_id': row.job.record_group.id,
                     'job_id': row.job.id, 'record_id': str(row.id)
@@ -1963,7 +1966,7 @@ class DTRecordsJson(BaseDatatableView):
 
         # handle associated job
         elif column == 'job':
-            return '<a href="%s"><code>%s</code></a>' % (reverse(job_details, kwargs={
+            return '<a href="%s"><code>%s</code></a>' % (reverse(job_details_view, kwargs={
                 'org_id': row.job.record_group.organization.id,
                 'record_group_id': row.job.record_group.id,
                 'job_id': row.job.id
@@ -2055,21 +2058,21 @@ class DTPublishedJson(BaseDatatableView):
         # handle document metadata
 
         if column == '_id':
-            return '<a href="%s">%s</a>' % (reverse(record, kwargs={
+            return '<a href="%s">%s</a>' % (reverse(record_view, kwargs={
                 'org_id': row.job.record_group.organization.id,
                 'record_group_id': row.job.record_group.id,
                 'job_id': row.job.id, 'record_id': str(row.id)
             }), str(row.id))
 
         if column == 'record_id':
-            return '<a href="%s">%s</a>' % (reverse(record, kwargs={
+            return '<a href="%s">%s</a>' % (reverse(record_view, kwargs={
                 'org_id': row.job.record_group.organization.id,
                 'record_group_id': row.job.record_group.id,
                 'job_id': row.job.id, 'record_id': str(row.id)
             }), row.record_id)
 
         if column == 'job_id':
-            return '<a href="%s">%s</a>' % (reverse(job_details, kwargs={
+            return '<a href="%s">%s</a>' % (reverse(job_details_view, kwargs={
                 'org_id': row.job.record_group.organization.id,
                 'record_group_id': row.job.record_group.id,
                 'job_id': row.job.id
@@ -2079,7 +2082,7 @@ class DTPublishedJson(BaseDatatableView):
             # attempt to parse as XML and return if valid or not
             try:
                 xml = etree.fromstring(row.document.encode('utf-8'))
-                return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
+                return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document_view, kwargs={
                     'org_id': row.job.record_group.organization.id,
                     'record_group_id': row.job.record_group.id,
                     'job_id': row.job.id, 'record_id': str(row.id)
@@ -2146,7 +2149,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
         # determine record link
         target_record = row.record
-        record_link = reverse(record, kwargs={
+        record_link = reverse(record_view, kwargs={
             'org_id': target_record.job.record_group.organization.id,
             'record_group_id': target_record.job.record_group.id,
             'job_id': target_record.job.id,
@@ -2221,7 +2224,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
         # determine record link
         target_record = row.record
-        record_link = "%s#validation_tab" % reverse(record, kwargs={
+        record_link = "%s#validation_tab" % reverse(record_view, kwargs={
             'org_id': target_record.job.record_group.organization.id,
             'record_group_id': target_record.job.record_group.id,
             'job_id': target_record.job.id,
@@ -2308,7 +2311,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
         # determine record link
         target_record = row
-        record_link = reverse(record, kwargs={
+        record_link = reverse(record_view, kwargs={
             'org_id': target_record.job.record_group.organization.id,
             'record_group_id': target_record.job.record_group.id,
             'job_id': target_record.job.id,
@@ -2390,7 +2393,7 @@ class JobRecordDiffs(BaseDatatableView):
     def render_column(self, row, column):
 
         # record link
-        record_link = "%s#job_type_specific_tab" % reverse(record, kwargs={
+        record_link = "%s#job_type_specific_tab" % reverse(record_view, kwargs={
             'org_id': row.job.record_group.organization.id,
             'record_group_id': row.job.record_group.id,
             'job_id': row.job.id, 'record_id': row.id
