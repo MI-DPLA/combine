@@ -6,3 +6,4 @@ from .job import *
 from .record import *
 from .transformation_scenario import *
 from .datatables import *
+from .field_mapper import *
