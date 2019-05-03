@@ -42,12 +42,12 @@ else:
 
 class OAIProvider(object):
 
-	'''
+	"""
 	Class for scaffolding and building responses to OAI queries
 
 	NOTE: Because the OAI-PMH protocol shares verbs with reserved words in Python (e.g. "set", or "from"),
 	easier to keep the HTTP request args to work with as a dictionary, and maintain the original OAI-PMH vocab.
-	'''
+	"""
 
 	def __init__(self, args, subset=None):
 
@@ -87,7 +87,7 @@ class OAIProvider(object):
 	# generate XML root node with OAI-PMH scaffolding
 	def scaffold(self):
 
-		'''
+		"""
 		Scaffold XML, OAI response
 
 		Args:
@@ -96,7 +96,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				- sets multiple attributes for response building
-		'''
+		"""
 
 		# build root node, nsmap, and attributes
 		NSMAP = {
@@ -141,7 +141,7 @@ class OAIProvider(object):
 
 	def retrieve_records(self, include_metadata=False):
 
-		'''
+		"""
 		Retrieve record(s) from DB for response
 
 		Args:
@@ -150,7 +150,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				- adds record(s) to self.record_nodes
-		'''
+		"""
 
 		stime = time.time()
 		logger.debug("retrieving records for verb %s" % (self.args['verb']))
@@ -201,7 +201,7 @@ class OAIProvider(object):
 
 	def set_resumption_token(self, records, completeListSize=None):
 
-		'''
+		"""
 		Set resumption tokens in DB under OAITransaction model
 
 		Args:
@@ -210,7 +210,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				- sets attributes related to resumption tokens
-		'''
+		"""
 
 		# set resumption token
 		if self.start + self.chunk_size < completeListSize:
@@ -241,7 +241,7 @@ class OAIProvider(object):
 	# convenience function to run all internal methods
 	def generate_response(self):
 
-		'''
+		"""
 		Returns OAI response as XML
 
 		Args:
@@ -249,7 +249,7 @@ class OAIProvider(object):
 
 		Returns:
 			(str): XML response
-		'''
+		"""
 
 		# check verb
 		if self.args['verb'] not in self.verb_routes.keys():
@@ -285,7 +285,7 @@ class OAIProvider(object):
 
 	def raise_error(self, error_code, error_msg):
 
-		'''
+		"""
 		Returns error as XML, OAI response
 
 		Args:
@@ -294,7 +294,7 @@ class OAIProvider(object):
 
 		Returns:
 			(str): XML response
-		'''
+		"""
 
 		# remove verb node
 		try:
@@ -314,7 +314,7 @@ class OAIProvider(object):
 	# serialize record nodes as XML response
 	def serialize(self):
 
-		'''
+		"""
 		Serialize all nodes as XML for returning
 
 		Args:
@@ -322,7 +322,7 @@ class OAIProvider(object):
 
 		Returns:
 			(str): XML response
-		'''
+		"""
 
 		return etree.tostring(self.root_node)
 
@@ -330,7 +330,7 @@ class OAIProvider(object):
 	# GetRecord
 	def _GetRecord(self):
 
-		'''
+		"""
 		OAI-PMH verb: GetRecord
 		Retrieve a single record based on record id, return
 
@@ -340,7 +340,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				sets single record node to self.record_nodes
-		'''
+		"""
 
 		stime = time.time()
 		logger.debug("retrieving record: %s" % (self.args['identifier']))
@@ -380,7 +380,7 @@ class OAIProvider(object):
 	# Identify
 	def _Identify(self):
 
-		'''
+		"""
 		OAI-PMH verb: Identify
 		Provide information about Repository / OAI Server
 
@@ -390,7 +390,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				sets description node text
-		'''
+		"""
 
 		# init OAIRecord
 		logger.debug('generating identify node')
@@ -398,7 +398,7 @@ class OAIProvider(object):
 		# write Identify node
 		description_node = etree.Element('description')
 		desc_text = 'Combine, integrated OAI-PMH.'
-		if self.subset != None:
+		if self.subset is not None:
 			desc_text += ' Note: You are receiving a published subset of this Combine instance named: %s.' % self.subset
 		description_node.text = desc_text
 		self.verb_node.append(description_node)
@@ -407,7 +407,7 @@ class OAIProvider(object):
 	# ListIdentifiers
 	def _ListIdentifiers(self):
 
-		'''
+		"""
 		OAI-PMH verb: ListIdentifiers
 		Lists identifiers
 
@@ -417,7 +417,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				sets multiple record nodes to self.record.nodes
-		'''
+		"""
 
 		self.retrieve_records()
 
@@ -425,7 +425,7 @@ class OAIProvider(object):
 	# ListMetadataFormats
 	def _ListMetadataFormats(self):
 
-		'''
+		"""
 		# OAI-PMH verb: ListMetadataFormats
 		# List all metadataformats, or optionally, available metadataformats for
 		# one item based on published metadata formats
@@ -434,7 +434,7 @@ class OAIProvider(object):
 			All published Records are undoubtedly of a metadata format, but this is opaque to Combine.  This
 			may change in the future, but for now, a shim is in place to return valid OAI-PMH responses for
 			the verb ListMetadataForamts
-		'''
+		"""
 
 		# generic metadata prefix shim
 		generic_metadata_hash = {
@@ -451,7 +451,7 @@ class OAIProvider(object):
 				logging.debug("identifier provided for ListMetadataFormats, confirming that identifier exists...")
 				single_record = self.published.get_record(self.args['identifier'])
 
-				if single_record != False:
+				if single_record:
 
 					mf_node = etree.Element('metadataFormat')
 
@@ -499,7 +499,7 @@ class OAIProvider(object):
 	# ListRecords
 	def _ListRecords(self):
 
-		'''
+		"""
 		OAI-PMH verb: ListRecords
 		Lists records; similar to ListIdentifiers, but includes metadata from record.document
 
@@ -509,7 +509,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				sets multiple record nodes to self.record.nodes
-		'''
+		"""
 
 		self.retrieve_records(include_metadata=True)
 
@@ -517,7 +517,7 @@ class OAIProvider(object):
 	# ListSets
 	def _ListSets(self):
 
-		'''
+		"""
 		OAI-PMH verb: ListSets
 		Lists available sets.  Sets are derived from the publish_set_id from a published Job
 
@@ -527,7 +527,7 @@ class OAIProvider(object):
 		Returns:
 			None
 				sets multiple set nodes
-		'''
+		"""
 
 		# generate response
 		for publish_set_id in self.published.sets:
@@ -542,9 +542,9 @@ class OAIProvider(object):
 
 class OAIRecord(object):
 
-	'''
+	"""
 	Initialize OAIRecord with pid and args
-	'''
+	"""
 
 	def __init__(self, args=None, record_id=None, publish_set_id=None, document=None, timestamp=None):
 
@@ -561,9 +561,9 @@ class OAIRecord(object):
 
 	def _construct_oai_identifier(self):
 
-		'''
+		"""
 		build OAI identifier
-		'''
+		"""
 
 		# if publish set id include
 		if self.publish_set_id:
@@ -576,7 +576,7 @@ class OAIRecord(object):
 
 	def init_record_node(self):
 
-		'''
+		"""
 		Initialize and scaffold record node
 
 		Args:
@@ -585,7 +585,7 @@ class OAIRecord(object):
 		Returns:
 			None
 				sets self.oai_record_node
-		'''
+		"""
 
 		# init node
 		self.oai_record_node = etree.Element('record')
@@ -613,7 +613,7 @@ class OAIRecord(object):
 
 	def include_metadata(self):
 
-		'''
+		"""
 		Method to retrieve metadata from record.document, and include in XML response (for GetRecord and ListRecords)
 
 		Args:
@@ -622,7 +622,7 @@ class OAIRecord(object):
 		Returns:
 			None
 				sets self.oai_record_node
-		'''
+		"""
 
 		# metadate node
 		metadata_node = etree.Element('metadata')

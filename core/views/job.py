@@ -16,9 +16,9 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def job_id_redirect(request, job_id):
-    '''
+    """
 	Route to redirect to more verbose Jobs URL
-	'''
+	"""
 
     # get job
     job = models.Job.objects.get(pk=job_id)
@@ -112,7 +112,7 @@ def stop_jobs(request):
     logger.debug(job_ids)
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_stop_toggle', False);
+    downstream_toggle = request.POST.get('downstream_stop_toggle', False)
     if downstream_toggle == 'true':
         downstream_toggle = True
     elif downstream_toggle == 'false':
@@ -168,7 +168,7 @@ def delete_jobs(request):
     logger.debug(job_ids)
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_delete_toggle', False);
+    downstream_toggle = request.POST.get('downstream_delete_toggle', False)
     if downstream_toggle == 'true':
         downstream_toggle = True
     elif downstream_toggle == 'false':
@@ -244,7 +244,7 @@ def move_jobs(request):
     record_group_id = request.POST.getlist('record_group_id')[0]
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_move_toggle', False);
+    downstream_toggle = request.POST.get('downstream_move_toggle', False)
     if downstream_toggle == 'true':
         downstream_toggle = True
     elif downstream_toggle == 'false':
@@ -356,7 +356,7 @@ def job_details(request, org_id, record_group_id, job_id):
         counts = mc_handle.combine.misc.find_one({'_id': 'published_field_counts_%s' % _['name']})
 
         # if counts not yet calculated, do now
-        if counts == None:
+        if counts is None:
             counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
@@ -499,7 +499,7 @@ def rerun_jobs(request):
     job_ids = request.POST.getlist('job_ids[]')
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_rerun_toggle', False);
+    downstream_toggle = request.POST.get('downstream_rerun_toggle', False)
     if downstream_toggle == 'true':
         downstream_toggle = True
     elif downstream_toggle == 'false':
@@ -573,14 +573,14 @@ def clone_jobs(request):
     job_ids = request.POST.getlist('job_ids[]')
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_clone_toggle', False);
+    downstream_toggle = request.POST.get('downstream_clone_toggle', False)
     if downstream_toggle == 'true':
         downstream_toggle = True
     elif downstream_toggle == 'false':
         downstream_toggle = False
 
     # get rerun toggle
-    rerun_on_clone = request.POST.get('rerun_on_clone', False);
+    rerun_on_clone = request.POST.get('rerun_on_clone', False)
     if rerun_on_clone == 'true':
         rerun_on_clone = True
     elif rerun_on_clone == 'false':
@@ -643,7 +643,7 @@ def job_parameters(request, org_id, record_group_id, job_id):
         # get job_details as JSON
         job_details_json = request.POST.get('job_details_json', None)
 
-        if job_details_json != None:
+        if job_details_json is not None:
             cjob.job.job_details = job_details_json
             cjob.job.save()
 
@@ -652,9 +652,9 @@ def job_parameters(request, org_id, record_group_id, job_id):
 
 @login_required
 def job_harvest_oai(request, org_id, record_group_id):
-    '''
+    """
 	Create a new OAI Harvest Job
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -702,7 +702,7 @@ def job_harvest_oai(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if not job_status:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -711,9 +711,9 @@ def job_harvest_oai(request, org_id, record_group_id):
 
 @login_required
 def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filename=False):
-    '''
+    """
 	Create a new static XML Harvest Job
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -759,7 +759,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if not job_status:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -768,9 +768,9 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 
 @login_required
 def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_filename=False):
-    '''
+    """
 	Create a new static XML Harvest Job
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -816,7 +816,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if not job_status:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -825,9 +825,9 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
 
 @login_required
 def job_transform(request, org_id, record_group_id):
-    '''
+    """
 	Create a new Transform Job
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
@@ -892,7 +892,7 @@ def job_transform(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if not job_status:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -901,9 +901,9 @@ def job_transform(request, org_id, record_group_id):
 
 @login_required
 def job_merge(request, org_id, record_group_id):
-    '''
+    """
 	Merge multiple jobs into a single job
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -965,7 +965,7 @@ def job_merge(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if not job_status:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -973,9 +973,9 @@ def job_merge(request, org_id, record_group_id):
 
 
 def job_lineage_json(request, org_id, record_group_id, job_id):
-    '''
+    """
 	Return job lineage as JSON
-	'''
+	"""
 
     # get job
     job = models.Job.objects.get(pk=int(job_id))

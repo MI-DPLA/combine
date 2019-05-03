@@ -42,9 +42,9 @@ from core.models import Job, ValidationScenario
 
 class ValidationScenarioSpark(object):
 
-	'''
+	"""
 	Class to organize methods and attributes used for running validation scenarios
-	'''
+	"""
 
 	def __init__(self,
 		spark=None,
@@ -52,13 +52,13 @@ class ValidationScenarioSpark(object):
 		records_df=None,
 		validation_scenarios=None):
 
-		'''
+		"""
 		Args:
 			spark (pyspark.sql.session.SparkSession): spark instance from static job methods
 			job (core.models.Job): Job instance
 			records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
 			validation_scenarios (list): list of ValidationScenario job ids as integers
-		'''
+		"""
 
 		self.spark = spark
 		self.job = job
@@ -73,7 +73,7 @@ class ValidationScenarioSpark(object):
 
 	def run_record_validation_scenarios(self):
 
-		'''
+		"""
 		Function to run validation scenarios
 		Results are written to RecordValidation table, one result, per record, per failed validation test.
 
@@ -87,7 +87,7 @@ class ValidationScenarioSpark(object):
 		Returns:
 			None
 				- writes validation fails to RecordValidation table
-		'''
+		"""
 
 		# refresh Django DB Connection
 		refresh_django_db_connection()
@@ -225,14 +225,14 @@ class ValidationScenarioSpark(object):
 
 		def validate_python_udf(vs_id, vs_name, pyvs_funcs, row):
 
-			'''
+			"""
 			Loop through test functions and aggregate in fail_dict to return with Row
 
 			Args:
 				vs_id (int): integer of validation scenario
 				pyvs_funcs (list): list of functions imported from user created python validation scenario payload
 				row ():
-			'''
+			"""
 
 			# prepare row as parsed document with PythonUDFRecord class
 			prvb = PythonUDFRecord(row)
@@ -260,13 +260,13 @@ class ValidationScenarioSpark(object):
 					test_result = func(prvb)
 
 					# if fail, append
-					if test_result != True:
+					if not test_result:
 
 						# bump fail count
 						results_dict['fail_count'] += 1
 
 						# if custom message override provided, use
-						if test_result != False:
+						if test_result:
 							results_dict['failed'].append(test_result)
 
 						# else, default to test message
@@ -476,11 +476,11 @@ class ValidationScenarioSpark(object):
 
 	def remove_validation_scenarios(self):
 
-		'''
+		"""
 		Method to update validity attribute of records after removal of validation scenarios
 			- approach is to update all INVALID Records that may now be valid by lack of
 			matching record_id in remaining validation failures
-		'''
+		"""
 
 		# read current failures from Mongo
 		failures_pipeline = json.dumps({'$match': {'job_id': self.job.id}})
@@ -512,9 +512,9 @@ class ValidationScenarioSpark(object):
 
 	def update_job_record_validity(self):
 
-		'''
+		"""
 		Method to update validity of Records in Job based on found RecordValidadtions
-		'''
+		"""
 
 		# get failures
 		pipeline = json.dumps({'$match':{'$and':[{'job_id': self.job.id}]}})

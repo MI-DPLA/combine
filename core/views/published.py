@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def published(request, subset=None):
-    '''
+    """
 	Published records
-	'''
+	"""
 
     # get instance of Published model
     published = models.PublishedRecords(subset=subset)
@@ -41,7 +41,7 @@ def published(request, subset=None):
         counts = mc_handle.combine.misc.find_one({'_id': 'published_field_counts_%s' % _['name']})
 
         # if counts not yet calculated, do now
-        if counts == None:
+        if counts is None:
             counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
@@ -65,7 +65,7 @@ def published(request, subset=None):
 
 @login_required
 def published_subset_create(request):
-    '''
+    """
 	Create subset of published records
 		- output should be a Mongo document in combine.misc
 		called "published_subset_[SUBSET]"
@@ -76,7 +76,7 @@ def published_subset_create(request):
 		- description
 		- publish sets to include
 			- also include "loose" records?
-	'''
+	"""
 
     if request.method == 'GET':
 
@@ -131,9 +131,9 @@ def published_subset_create(request):
 
 @login_required
 def published_subset_edit(request, subset):
-    '''
+    """
 	Edit Published Subset
-	'''
+	"""
 
     if request.method == 'GET':
 
@@ -187,9 +187,9 @@ def published_subset_edit(request, subset):
 
 @login_required
 def published_subset_delete(request, subset):
-    '''
+    """
 	Delete published subset
-	'''
+	"""
 
     d = mc_handle.combine.misc.delete_one({'type': 'published_subset', 'name': subset})
     logger.debug(d.raw_result)

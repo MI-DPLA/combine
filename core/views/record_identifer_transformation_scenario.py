@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def rits_payload(request, rits_id):
-    '''
+    """
 	View payload for record identifier transformation scenario
-	'''
+	"""
 
     # get transformation
     rt = models.RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
@@ -24,9 +24,9 @@ def rits_payload(request, rits_id):
 
 
 def test_rits(request):
-    '''
+    """
 	View to live test record identifier transformation scenarios
-	'''
+	"""
 
     # If GET, serve validation test screen
     if request.method == 'GET':

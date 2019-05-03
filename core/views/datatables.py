@@ -24,9 +24,9 @@ logger = logging.getLogger(__name__)
 
 
 class DTPublishedJson(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for Published records
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [
@@ -135,9 +135,9 @@ class DTPublishedJson(BaseDatatableView):
 
 
 class DTRecordsJson(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for Records table in Job Details
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [
@@ -268,9 +268,9 @@ class DTRecordsJson(BaseDatatableView):
 
 
 class DTIndexingFailuresJson(BaseDatatableView):
-    '''
+    """
 		Databales JSON response for Indexing Failures
-		'''
+		"""
 
     # define the columns that will be returned
     columns = ['_id', 'record_id', 'mapping_error']
@@ -318,9 +318,9 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 
 class DTJobValidationScenarioFailuresJson(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [
@@ -406,9 +406,9 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 
 class DTDPLABulkDataMatches(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [
@@ -491,10 +491,10 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
 
 class JobRecordDiffs(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for Records that were
 		transformed during a Transformation Job
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [
@@ -560,9 +560,9 @@ class JobRecordDiffs(BaseDatatableView):
 
 
 class CombineBackgroundTasksDT(BaseDatatableView):
-    '''
+    """
 		Prepare and return Datatables JSON for Records table in Job Details
-		'''
+		"""
 
     # define the columns that will be returned
     columns = [

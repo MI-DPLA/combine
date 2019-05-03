@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def field_mapper_payload(request, fm_id):
-    '''
+    """
 	View payload for field mapper
-	'''
+	"""
 
     # get transformation
     fm = models.FieldMapper.objects.get(pk=int(fm_id))
@@ -36,9 +36,9 @@ def field_mapper_payload(request, fm_id):
 
 
 def field_mapper_update(request):
-    '''
+    """
 	Create and save JSON to FieldMapper instance, or update pre-existing
-	'''
+	"""
 
     logger.debug(request.POST)
 
@@ -104,9 +104,9 @@ def field_mapper_update(request):
 
 
 def test_field_mapper(request):
-    '''
+    """
 	View to live test field mapper configurations
-	'''
+	"""
 
     if request.method == 'GET':
         # get field mapper

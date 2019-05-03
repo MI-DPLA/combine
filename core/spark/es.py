@@ -40,14 +40,14 @@ except:
 
 class ESIndex(object):
 
-	'''
+	"""
 	Class to organize methods for indexing mapped/flattened metadata into ElasticSearch (ES)
-	'''
+	"""
 
 	@staticmethod
 	def index_job_to_es_spark(spark, job, records_df, field_mapper_config):
 
-		'''
+		"""
 		Method to index records dataframe into ES
 
 		Args:
@@ -59,7 +59,7 @@ class ESIndex(object):
 		Returns:
 			None
 				- indexes records to ES
-		'''
+		"""
 
 		# init logging support
 		spark.sparkContext.setLogLevel('INFO')
@@ -195,7 +195,7 @@ class ESIndex(object):
 		wait_for_completion=True,
 		add_copied_from=None):
 
-		'''
+		"""
 		Method to duplicate one ES index to another
 
 		Args:
@@ -205,7 +205,7 @@ class ESIndex(object):
 
 		Returns:
 			(dict): results of reindex via elasticsearch client reindex request
-		'''
+		"""
 
 		# get ES handle
 		es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
@@ -261,14 +261,14 @@ class ESIndex(object):
 
 class BaseMapper(object):
 
-	'''
+	"""
 	All mappers extend this BaseMapper class.
 
 	Contains some useful methods and attributes that other mappers may use
 
 	Mappers expected to contain following methods:
 		- map_record()
-	'''
+	"""
 
 	# pre-compiled regex
 	blank_check_regex = re.compile(r"[^ \t\n]") # checker for blank spaces
@@ -277,9 +277,9 @@ class BaseMapper(object):
 
 	def get_namespaces(self):
 
-		'''
+		"""
 		Method to parse namespaces from XML document and save to self.nsmap
-		'''
+		"""
 
 		nsmap = {}
 		for ns in self.xml_root.xpath('//namespace::*'):
@@ -294,9 +294,9 @@ class BaseMapper(object):
 
 class XML2kvpMapper(BaseMapper):
 
-	'''
+	"""
 	Map XML to ElasticSearch friendly fields with XML2kvp
-	'''
+	"""
 
 
 	def __init__(self, field_mapper_config=None):
@@ -313,7 +313,7 @@ class XML2kvpMapper(BaseMapper):
 			fingerprint=None
 		):
 
-		'''
+		"""
 		Map record
 
 		Args:
@@ -328,7 +328,7 @@ class XML2kvpMapper(BaseMapper):
 			(tuple):
 				0 (str): ['success','fail']
 				1 (dict): details from mapping process, success or failure
-		'''
+		"""
 
 		try:
 

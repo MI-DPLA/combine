@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def record_group_id_redirect(request, record_group_id):
-    '''
+    """
 	Route to redirect to more verbose Record Group URL
-	'''
+	"""
 
     # get job
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -27,9 +27,9 @@ def record_group_id_redirect(request, record_group_id):
 
 
 def record_group_new(request, org_id):
-    '''
+    """
 	Create new Record Group
-	'''
+	"""
 
     # create new organization
     if request.method == 'POST':
@@ -43,9 +43,9 @@ def record_group_new(request, org_id):
 
 
 def record_group_delete(request, org_id, record_group_id):
-    '''
+    """
 	Create new Record Group
-	'''
+	"""
 
     # retrieve record group
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -77,12 +77,12 @@ def record_group_delete(request, org_id, record_group_id):
 
 @login_required
 def record_group(request, org_id, record_group_id):
-    '''
+    """
 	View information about a single record group, including any and all jobs run
 
 	Args:
 		record_group_id (str/int): PK for RecordGroup table
-	'''
+	"""
 
     logger.debug('retrieving record group ID: %s' % record_group_id)
 

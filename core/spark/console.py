@@ -39,16 +39,16 @@ from xml2kvp import XML2kvp
 
 def export_records_as_xml(spark, ct_id):
 
-	'''
-	Function to export multiple Jobs, with folder hierarchy for each Job
+    """
+    Function to export multiple Jobs, with folder hierarchy for each Job
 
-	Notes:
-		- exports to s3 as parquet
-			- with limited columns, can benefit from parquest's compression
+    Notes:
+        - exports to s3 as parquet
+            - with limited columns, can benefit from parquest's compression
 
-	Args:
-		ct_id (int): CombineBackgroundTask id
-	'''
+    Args:
+        ct_id (int): CombineBackgroundTask id
+    """
 
 	# init logging support
 	spark.sparkContext.setLogLevel('INFO')
@@ -198,28 +198,28 @@ def generate_validation_report(spark, output_path, task_params):
 def export_records_as_tabular_data(spark, ct_id):
 
 
-	'''
-	Function to export multiple Jobs, with folder hierarchy for each Job
+    """
+    Function to export multiple Jobs, with folder hierarchy for each Job
 
-	Notes:
-		- writes to s3 as JSONLines to avoid column names which contain characters
-		that parquet will not accept
-			- much less efficient storage-wise, but flexible for the field/column variety
-			that tabular data has
+    Notes:
+        - writes to s3 as JSONLines to avoid column names which contain characters
+        that parquet will not accept
+            - much less efficient storage-wise, but flexible for the field/column variety
+            that tabular data has
 
-	Args:
-		ct_id (int): CombineBackgroundTask id
+    Args:
+        ct_id (int): CombineBackgroundTask id
 
-	Expecting from CombineBackgroundTask:
-		output_path (str): base location for folder structure
-		job_dict (dict): dictionary of directory name --> list of Job ids
-			- e.g. single job: {'j29':[29]}
-			- e.g. published records: {'foo':[2,42], 'bar':[3]}
-				- in this case, a union will be performed for all Jobs within a single key
-		records_per_file (int): number of XML records per file
-		fm_export_config_json (str): JSON of configurations to be used
-		tabular_data_export_type (str): 'json' or 'csv'
-	'''
+    Expecting from CombineBackgroundTask:
+        output_path (str): base location for folder structure
+        job_dict (dict): dictionary of directory name --> list of Job ids
+            - e.g. single job: {'j29':[29]}
+            - e.g. published records: {'foo':[2,42], 'bar':[3]}
+                - in this case, a union will be performed for all Jobs within a single key
+        records_per_file (int): number of XML records per file
+        fm_export_config_json (str): JSON of configurations to be used
+        tabular_data_export_type (str): 'json' or 'csv'
+    """
 
 	# hydrate CombineBackgroundTask
 	ct = CombineBackgroundTask.objects.get(pk=int(ct_id))
@@ -302,22 +302,22 @@ def export_records_as_tabular_data(spark, ct_id):
 
 def _convert_xml_to_kvp(batch_rdd, fm_config):
 
-	'''
-	Sub-Function to convert RDD of XML to KVP
+    """
+    Sub-Function to convert RDD of XML to KVP
 
-	Args:
-		batch_rdd (RDD): RDD containing batch of Records rows
-		fm_config (dict): Dictionary of XML2kvp configurations to use for kvp_to_xml()
+    Args:
+        batch_rdd (RDD): RDD containing batch of Records rows
+        fm_config (dict): Dictionary of XML2kvp configurations to use for kvp_to_xml()
 
-	Returns
-		kvp_batch_rdd (RDD): RDD of JSONlines
-	'''
+    Returns
+        kvp_batch_rdd (RDD): RDD of JSONlines
+    """
 
 	def kvp_writer_udf(row, fm_config):
 
-		'''
-		Converts XML to kvpjson, for testing okay?
-		'''
+        """
+        Converts XML to kvpjson, for testing okay?
+        """
 
 		# get handler, that includes defaults
 		xml2kvp_defaults = XML2kvp(**fm_config)
@@ -369,16 +369,16 @@ def _write_rdd_to_s3(
 	access_key=settings.AWS_ACCESS_KEY_ID,
 	secret_key=settings.AWS_SECRET_ACCESS_KEY):
 
-	'''
-	Function to write RDD to S3
+    """
+    Function to write RDD to S3
 
-	Args:
-		rdd (RDD): RDD to write to S3
-		bucket (str): bucket string to write to
-		key (str): key/path to write to in S3 bucket
-		access_key (str): default to settings, override with access key
-		secret_key (str): default to settings, override with secret key
-	'''
+    Args:
+        rdd (RDD): RDD to write to S3
+        bucket (str): bucket string to write to
+        key (str): key/path to write to in S3 bucket
+        access_key (str): default to settings, override with access key
+        secret_key (str): default to settings, override with secret key
+    """
 
 	# dynamically set s3 credentials
 	spark.sparkContext._jsc.hadoopConfiguration().set("fs.s3a.access.key", access_key)
@@ -395,9 +395,9 @@ def _write_rdd_to_s3(
 
 def get_job_as_df(spark, job_id, remove_id=False):
 
-	'''
-	Convenience method to retrieve set of records as Spark DataFrame
-	'''
+    """
+    Convenience method to retrieve set of records as Spark DataFrame
+    """
 
 	pipeline = json.dumps({'$match': {'job_id': job_id}})
 	mdf = spark.read.format("com.mongodb.spark.sql.DefaultSource")\
@@ -424,19 +424,19 @@ def get_job_es(spark,
 	field_exclude=None,
 	as_rdd=False):
 
-	'''
-	Convenience method to retrieve mapped fields from ElasticSearch
+    """
+    Convenience method to retrieve mapped fields from ElasticSearch
 
-	Args:
+    Args:
 
-		job_id (int): job to retrieve
-		indices (list): list of index strings to retrieve from
-		doc_type (str): defaults to 'record', but configurable (e.g. 'item')
-		es_query (str): JSON string of ES query
-		field_include (str): comma seperated list of fields to include in response
-		field_exclude (str): comma seperated list of fields to exclude in response
-		as_rdd (boolean): boolean to return as RDD, or False to convert to DF
-	'''
+        job_id (int): job to retrieve
+        indices (list): list of index strings to retrieve from
+        doc_type (str): defaults to 'record', but configurable (e.g. 'item')
+        es_query (str): JSON string of ES query
+        field_include (str): comma seperated list of fields to include in response
+        field_exclude (str): comma seperated list of fields to exclude in response
+        as_rdd (boolean): boolean to return as RDD, or False to convert to DF
+    """
 
 	# handle indices
 	if job_id:

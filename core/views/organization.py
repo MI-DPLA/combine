@@ -11,9 +11,9 @@ logger = logging.getLogger(__name__)
 
 
 def organizations(request):
-    '''
+    """
 	View all Organizations
-	'''
+	"""
 
     # show organizations
     if request.method == 'GET':
@@ -39,9 +39,9 @@ def organizations(request):
 
 
 def organization(request, org_id):
-    '''
+    """
 	Details for Organization
-	'''
+	"""
 
     # get organization
     org = models.Organization.objects.get(pk=org_id)
@@ -58,13 +58,13 @@ def organization(request, org_id):
 
 
 def organization_delete(request, org_id):
-    '''
+    """
 	Delete Organization
 	Note: Through cascade deletes, would remove:
 		- RecordGroup
 			- Job
 				- Record
-	'''
+	"""
 
     # get organization
     org = models.Organization.objects.get(pk=org_id)

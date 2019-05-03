@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 def record(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	Single Record page
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -72,9 +72,9 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	View document for record
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -84,9 +84,9 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 
 
 def record_indexed_document(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	View indexed, ES document for record
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -96,9 +96,9 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
 
 
 def record_error(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	View document for record
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -108,12 +108,12 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 
 
 def record_validation_scenario(request, org_id, record_group_id, job_id, record_id, job_validation_id):
-    '''
+    """
 	Re-run validation test for single record
 
 	Returns:
 		results of validation
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -137,9 +137,9 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 
 
 def record_combined_diff_html(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	Return combined diff of Record against Input Record
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -160,11 +160,11 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
 
 
 def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, record_id):
-    '''
+    """
 	Return side_by_side diff of Record against Input Record
 		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
 		- if embed == true, strip some uncessary HTML and return
-	'''
+	"""
 
     # get record
     record = models.Record.objects.get(id=record_id)

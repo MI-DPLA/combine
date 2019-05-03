@@ -14,9 +14,9 @@ logger = logging.getLogger(__name__)
 
 @login_required
 def stateio(request):
-    '''
+    """
 	Root view for StateIO
-	'''
+	"""
 
     # retrieve exports and imports
     stateio_exports = models.StateIO.objects.filter(stateio_type='export')
@@ -32,9 +32,9 @@ def stateio(request):
 
 @login_required
 def stateio_state(request, state_id):
-    '''
+    """
 	Single state view
-	'''
+	"""
 
     # retrieve state
     state = models.StateIO.objects.get(id=state_id)
@@ -92,13 +92,13 @@ def stateio_state(request, state_id):
 
 
 def _generate_io_results_json(io_results):
-    '''
+    """
 	Function to generate jstree ready JSON when provided
 	with an export or import manifest
 
 	Args:
 		io_results (dict): Dictionary of IO results, either export or import
-	'''
+	"""
 
     # results_flag
     io_results_flag = False
@@ -196,9 +196,9 @@ def _generate_io_results_json(io_results):
 
 @login_required
 def stateio_state_manifest(request, state_id, manifest_type):
-    '''
+    """
 	View export/import manifest from state
-	'''
+	"""
 
     # retrieve state
     state = models.StateIO.objects.get(id=state_id)
@@ -209,9 +209,9 @@ def stateio_state_manifest(request, state_id, manifest_type):
 
 @login_required
 def stateio_state_delete(request, state_id):
-    '''
+    """
 	Delete single state view
-	'''
+	"""
 
     # retrieve state
     state = models.StateIO.objects.get(id=state_id)
@@ -225,9 +225,9 @@ def stateio_state_delete(request, state_id):
 
 @login_required
 def stateio_state_download(request, state_id):
-    '''
+    """
 	Download export state
-	'''
+	"""
 
     # retrieve state
     state = models.StateIO.objects.get(id=state_id)
@@ -246,9 +246,9 @@ def stateio_state_download(request, state_id):
 
 @login_required
 def stateio_state_stop(request, state_id):
-    '''
+    """
 	Attempt to stop state when running as bg task
-	'''
+	"""
 
     # retrieve state
     state = models.StateIO.objects.get(id=state_id)
@@ -268,9 +268,9 @@ def stateio_state_stop(request, state_id):
 
 @login_required
 def stateio_export(request):
-    '''
+    """
 	Export state
-	'''
+	"""
 
     if request.method == 'GET':
         # generate hierarchy_dict
@@ -332,7 +332,7 @@ def _stateio_prepare_job_hierarchy(
         include_record_groups=True,
         include_jobs=True):
     # generate JSON that will be used by jstree to create Org, Record Group, Jobs selections
-    '''
+    """
 	Target structure:
 	// Expected format of the node (there are no required fields)
 	{
@@ -348,7 +348,7 @@ def _stateio_prepare_job_hierarchy(
 	  li_attr     : {}  // attributes for the generated LI node
 	  a_attr      : {}  // attributes for the generated A node
 	}
-	'''
+	"""
     # init dictionary with root node
     hierarchy_dict = {
         'id': 'root_jobs',
@@ -409,7 +409,7 @@ def _stateio_prepare_job_hierarchy(
 
 def _stateio_prepare_config_scenarios():
     # generate JSON that will be used by jstree to create configuration scenarios
-    '''
+    """
 	Target structure:
 	// Expected format of the node (there are no required fields)
 	{
@@ -425,7 +425,7 @@ def _stateio_prepare_config_scenarios():
 	  li_attr     : {}  // attributes for the generated LI node
 	  a_attr      : {}  // attributes for the generated A node
 	}
-	'''
+	"""
     # init dictionary with root node
     config_scenarios_dict = {
         'id': 'root_config',
@@ -482,9 +482,9 @@ def _stateio_prepare_config_scenarios():
 
 @login_required
 def stateio_import(request):
-    '''
+    """
 	Import state
-	'''
+	"""
 
     if request.method == 'GET':
 
@@ -512,13 +512,13 @@ def stateio_import(request):
             logger.debug('importing state based on remote location: %s' % export_path)
 
         # handle file upload
-        elif type(request.FILES.get('export_upload_payload', None)) != None:
+        elif type(request.FILES.get('export_upload_payload', None)) is not None:
 
             logger.debug('handling file upload')
 
             # save file to disk
             payload = request.FILES.get('export_upload_payload', None)
-            new_file = '/tmp/%s' % (payload.name)
+            new_file = '/tmp/%s' % payload.name
             with open(new_file, 'wb') as f:
                 f.write(payload.read())
                 payload.close()

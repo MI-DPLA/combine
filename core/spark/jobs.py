@@ -79,9 +79,9 @@ class AmbiguousIdentifier(Exception):
 
 class CombineRecordSchema(object):
 
-	'''
+	"""
 	Class to organize Combine record spark dataframe schemas
-	'''
+	"""
 
 	def __init__(self):
 
@@ -113,10 +113,10 @@ class CombineRecordSchema(object):
 
 class CombineSparkJob(object):
 
-	'''
+	"""
 	Base class for Combine Spark Jobs.
 	Provides some usuable components for jobs.
-	'''
+	"""
 
 
 	def __init__(self, spark, **kwargs):
@@ -152,19 +152,19 @@ class CombineSparkJob(object):
 
 	def close_job(self):
 
-		'''
+		"""
 		Note to Job tracker that finished, and perform other long-running, one-time calculations
 		to speed up front-end
-		'''
+		"""
 
 		refresh_django_db_connection()
 
 		# if re-run, check if job was previously published and republish
 		if 'published' in self.job.job_details_dict.keys():
-			if self.job.job_details_dict['published']['status'] == True:
+			if self.job.job_details_dict['published']['status']:
 				self.logger.info('job params flagged for publishing')
 				self.job.publish(publish_set_id=self.job.publish_set_id)
-			elif self.job.job_details_dict['published']['status'] == False:
+			elif not self.job.job_details_dict['published']['status']:
 				self.logger.info('job params flagged for unpublishing')
 				self.job.unpublish()
 
@@ -182,9 +182,9 @@ class CombineSparkJob(object):
 
 	def update_jobGroup(self, description):
 
-		'''
+		"""
 		Method to update spark jobGroup
-		'''
+		"""
 
 		self.logger.info("### %s" % description)
 		self.spark.sparkContext.setJobGroup("%s" % self.job.id, "%s, Job #%s" % (description, self.job.id))
@@ -335,12 +335,12 @@ class CombineSparkJob(object):
 
 	def add_missing_columns(self, records):
 
-		'''
+		"""
 		Method to ensure records dataframe has all required columns from CombineRecordSchema
 
 		Args:
 			records (DataFrame): dataframe of records
-		'''
+		"""
 
 		# loop through required columns from CombineRecordSchema
 		self.logger.info("check for missing columns from CombineRecordSchema")
@@ -357,7 +357,7 @@ class CombineSparkJob(object):
 		index_records=settings.INDEX_TO_ES,
 		assign_combine_id=False):
 
-		'''
+		"""
 		Method to index records to DB and trigger indexing to ElasticSearch (ES)
 
 		Args:
@@ -371,7 +371,7 @@ class CombineSparkJob(object):
 				- determines if record_id unique among records DataFrame
 				- selects only columns that match CombineRecordSchema
 				- writes to DB, writes to avro files
-		'''
+		"""
 
 		# assign combine ID
 		if assign_combine_id:
@@ -455,7 +455,7 @@ class CombineSparkJob(object):
 
 	def record_input_filters(self, filtered_df, input_filters=None):
 
-		'''
+		"""
 		Method to apply filters to input Records
 
 		Args:
@@ -464,10 +464,10 @@ class CombineSparkJob(object):
 
 		Returns:
 			(pyspark.sql.DataFrame): DataFrame of records post filtering
-		'''
+		"""
 
 		# use input filters if provided, else fall back to job
-		if input_filters == None:
+		if input_filters is None:
 			input_filters = self.job_details['input_filters']
 
 		# filter to input record appropriate field
@@ -487,7 +487,7 @@ class CombineSparkJob(object):
 
 		# handle numerical filters
 		input_numerical_valve = input_filters['input_numerical_valve']
-		if input_numerical_valve != None:
+		if input_numerical_valve is not None:
 			filtered_df = filtered_df.limit(input_numerical_valve)
 
 		# handle es query valve
@@ -509,14 +509,14 @@ class CombineSparkJob(object):
 
 	def count_input_records(self, records):
 
-		'''
+		"""
 		Method to count records by job_id
 			- count records from input jobs if > 1
 			- otherwise assume Job.udpate_status() will calculate from single input job
 
 		Args:
 			records (dataframe): Records to count based on job_id
-		'''
+		"""
 
 		refresh_django_db_connection()
 		if 'input_job_ids' in self.job_details.keys() and len(self.job_details['input_job_ids']) > 1:
@@ -551,12 +551,12 @@ class CombineSparkJob(object):
 
 	def es_query_valve_filter(self, input_es_query_valve, filtered_df):
 
-		'''
+		"""
 		Method to handle input valve based on ElasticSearch query
 
 			- perform union if multiple input Jobs are used
 
-		'''
+		"""
 
 		# prepare input jobs list
 		if 'input_job_ids' in self.job_details.keys():
@@ -588,7 +588,7 @@ class CombineSparkJob(object):
 
 	def run_rits(self, records_df):
 
-		'''
+		"""
 		Method to run Record Identifier Transformation Scenarios (rits) if present.
 
 		RITS can be of three types:
@@ -605,13 +605,13 @@ class CombineSparkJob(object):
 
 		Returns:
 
-		'''
+		"""
 
 		# get rits ID from kwargs
 		rits_id = self.job_details.get('rits', False)
 
 		# if rits id provided
-		if rits_id and rits_id != None:
+		if rits_id and rits_id is not None:
 
 			# get RITS
 			rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
@@ -763,7 +763,7 @@ class CombineSparkJob(object):
 
 	def dpla_bulk_data_compare(self, records_df, es_rdd):
 
-		'''
+		"""
 		Method to compare against bulk data if provided
 
 		Args:
@@ -772,7 +772,7 @@ class CombineSparkJob(object):
 				Columns:
 					_1 : boolean, 'success'/'failure'
 					_2 : map, mapped fields
-		'''
+		"""
 
 		self.logger.info('Running DPLA Bulk Data Compare')
 		self.update_jobGroup('Running DPLA Bulk Data Compare')
@@ -784,7 +784,7 @@ class CombineSparkJob(object):
 			dbdd_id = False
 
 		# if rits id provided
-		if dbdd_id and dbdd_id != None:
+		if dbdd_id and dbdd_id is not None:
 
 			self.logger.info('DBDD id provided, retrieving and running...')
 
@@ -821,9 +821,9 @@ class CombineSparkJob(object):
 
 	def fingerprint_records(self, df):
 
-		'''
+		"""
 		Method to generate a crc32 hash "fingerprint" for each Record
-		'''
+		"""
 
 		# fingerprint Record document
 		df = df.withColumn('fingerprint', crc32(df.document))
@@ -833,13 +833,13 @@ class CombineSparkJob(object):
 
 class HarvestOAISpark(CombineSparkJob):
 
-	'''
+	"""
 	Spark code for harvesting OAI records
-	'''
+	"""
 
 	def spark_function(self):
 
-		'''
+		"""
 		Harvest records via OAI.
 
 		As a harvest type job, unlike other jobs, this introduces various fields to the Record for the first time:
@@ -858,7 +858,7 @@ class HarvestOAISpark(CombineSparkJob):
 			- harvests OAI records and writes to disk as avro files
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
+		"""
 
 		# init job
 		self.init_job()
@@ -943,13 +943,13 @@ class HarvestOAISpark(CombineSparkJob):
 
 class HarvestStaticXMLSpark(CombineSparkJob):
 
-	'''
+	"""
 	Spark code for harvesting static xml records
-	'''
+	"""
 
 	def spark_function(self):
 
-		'''
+		"""
 		Harvest static XML records provided by user.
 
 		Expected input structure:
@@ -979,7 +979,7 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 			- opens and parses static files from payload
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
+		"""
 
 		# init job
 		self.init_job()
@@ -1112,13 +1112,13 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 class HarvestTabularDataSpark(CombineSparkJob):
 
-	'''
+	"""
 	Spark code for harvesting tabular data (e.g. spreadsheets)
-	'''
+	"""
 
 	def spark_function(self):
 
-		'''
+		"""
 		Harvest tabular data provided by user, convert to XML records.
 			- handles Delimited data (e.g. csv, tsv) or JSON lines
 
@@ -1136,7 +1136,7 @@ class HarvestTabularDataSpark(CombineSparkJob):
 			- opens and parses static files from payload
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
+		"""
 
 		# init job
 		self.init_job()
@@ -1224,13 +1224,13 @@ class HarvestTabularDataSpark(CombineSparkJob):
 
 class TransformSpark(CombineSparkJob):
 
-	'''
+	"""
 	Spark code for Transform jobs
-	'''
+	"""
 
 	def spark_function(self):
 
-		'''
+		"""
 		Transform records based on Transformation Scenario.
 
 		Args:
@@ -1247,7 +1247,7 @@ class TransformSpark(CombineSparkJob):
 			- transforms records via XSL, writes new records to avro files on disk
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
+		"""
 
 		# init job
 		self.init_job()
@@ -1310,7 +1310,7 @@ class TransformSpark(CombineSparkJob):
 
 	def transform_xslt(self, transformation, records):
 
-		'''
+		"""
 		Method to transform records with XSLT, using pyjxslt server
 
 		Args:
@@ -1320,7 +1320,7 @@ class TransformSpark(CombineSparkJob):
 
 		Return:
 			records_trans (rdd): transformed records as RDD
-		'''
+		"""
 
 		def transform_xslt_pt_udf(pt):
 
@@ -1374,7 +1374,7 @@ class TransformSpark(CombineSparkJob):
 
 	def transform_python(self, transformation, records):
 
-		'''
+		"""
 		Transform records via python code snippet.
 
 		Required:
@@ -1387,7 +1387,7 @@ class TransformSpark(CombineSparkJob):
 
 		Return:
 			records_trans (rdd): transformed records as RDD
-		'''
+		"""
 
 		# define udf function for python transformation
 		def transform_python_pt_udf(pt):
@@ -1438,7 +1438,7 @@ class TransformSpark(CombineSparkJob):
 
 	def transform_openrefineactions(self, transformation, records, input_job_fm_config):
 
-		'''
+		"""
 		Transform records per OpenRefine Actions JSON
 
 		Args:
@@ -1448,7 +1448,7 @@ class TransformSpark(CombineSparkJob):
 
 		Return:
 			records_trans (rdd): transformed records as RDD
-		'''
+		"""
 
 		# define udf function for python transformation
 		def transform_openrefine_pt_udf(pt):
@@ -1540,14 +1540,14 @@ class TransformSpark(CombineSparkJob):
 
 class MergeSpark(CombineSparkJob):
 
-	'''
+	"""
 	Spark code for running Merge type jobs.  Also used for duplciation, analysis, and others.
 	Note: Merge jobs merge only successful documents from an input job, not the errors
-	'''
+	"""
 
 	def spark_function(self):
 
-		'''
+		"""
 		Harvest records, select non-null, and write to avro files
 
 		Args:
@@ -1563,7 +1563,7 @@ class MergeSpark(CombineSparkJob):
 			- merges records from previous jobs, writes new aggregated records to avro files on disk
 			- indexes records into DB
 			- map / flatten records and indexes to ES
-		'''
+		"""
 
 		# init job
 		self.init_job()
@@ -1604,11 +1604,11 @@ class MergeSpark(CombineSparkJob):
 
 class CombineSparkPatch(object):
 
-	'''
+	"""
 	Base class for Combine Spark Patches.
 		- these are considered categorically "secondary" to the main
 		CombineSparkJobs above, but may be just as long running
-	'''
+	"""
 
 
 	def __init__(self, spark, **kwargs):
@@ -1625,9 +1625,9 @@ class CombineSparkPatch(object):
 
 	def update_jobGroup(self, description, job_id):
 
-		'''
+		"""
 		Method to update spark jobGroup
-		'''
+		"""
 
 		self.logger.info("### %s" % description)
 		self.spark.sparkContext.setJobGroup("%s" % job_id, "%s, Job #%s" % (description, job_id))
@@ -1636,13 +1636,13 @@ class CombineSparkPatch(object):
 
 class ReindexSparkPatch(CombineSparkPatch):
 
-	'''
+	"""
 	Class to handle Job re-indexing
 
 	Args:
 		kwargs(dict):
 			- job_id (int): ID of Job to reindex
-	'''
+	"""
 
 	def spark_function(self):
 
@@ -1672,14 +1672,14 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 class RunNewValidationsSpark(CombineSparkPatch):
 
-	'''
+	"""
 	Class to run new validations for Job
 
 	Args:
 		kwargs(dict):
 			- job_id (int): ID of Job
 			- validation_scenarios (list): list of validation scenarios to run
-	'''
+	"""
 
 	def spark_function(self):
 
@@ -1710,14 +1710,14 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 class RemoveValidationsSpark(CombineSparkPatch):
 
-	'''
+	"""
 	Class to remove validations for Job
 
 	Args:
 		kwargs(dict):
 			- job_id (int): ID of Job
 			- validation_scenarios (list): list of validation scenarios to run
-	'''
+	"""
 
 	def spark_function(self):
 
@@ -1751,14 +1751,14 @@ class RemoveValidationsSpark(CombineSparkPatch):
 
 class RunDBDM(CombineSparkPatch):
 
-	'''
+	"""
 	Class to run DPLA Bulk Data Match as patch job
 
 	Args:
 		kwargs(dict):
 			- job_id (int): ID of Job
 			- dbdd_id (int): int of DBDD instance to use
-	'''
+	"""
 
 	def spark_function(self):
 
@@ -1800,9 +1800,9 @@ class RunDBDM(CombineSparkPatch):
 
 class CombineStateIO(object):
 
-	'''
+	"""
 	Base class for Combine State IO work.
-	'''
+	"""
 
 	def __init__(self, spark, **kwargs):
 
@@ -1822,23 +1822,23 @@ class CombineStateIO(object):
 
 	def update_jobGroup(self, group_id, description):
 
-		'''
+		"""
 		Method to update spark jobGroup
-		'''
+		"""
 
 		self.spark.sparkContext.setJobGroup(group_id, description)
 
 
 class CombineStateIOImport(CombineStateIO):
 
-	'''
+	"""
 	Class to handle state imports
 
 	Args:
 		kwargs(dict):
 			- import_path (str): string of unzipped export directory on disk
 			- import_manifest (dict): dictionary containing import information, including hash of old:new primary keys
-	'''
+	"""
 
 	def spark_function(self):
 
@@ -1854,9 +1854,9 @@ class CombineStateIOImport(CombineStateIO):
 
 	def _import_records(self):
 
-		'''
+		"""
 		Method to import records to Mongo
-		'''
+		"""
 
 		# import records
 		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Records')
@@ -1894,9 +1894,9 @@ class CombineStateIOImport(CombineStateIO):
 
 	def _import_validations(self):
 
-		'''
+		"""
 		Method to import validations to Mongo
-		'''
+		"""
 
 		# import validations
 		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Validations')
@@ -1957,14 +1957,14 @@ class CombineStateIOImport(CombineStateIO):
 
 	def _import_mapped_fields(self, reindex=True):
 
-		'''
+		"""
 		Method to import mapped fields to ElasticSearch
 			- re-map and index, based on saved Job params
 			- inefficient to export/import ElasticSearch records, when modifying values
 
 		QUESTION: Why is this partitioned to 200, when reading from Mongo appears to be
 			the same for Re-Indexing?
-		'''
+		"""
 
 		# import mapped fields
 		self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex), 'StateIO: Importing Mapped Fields')
@@ -2012,7 +2012,7 @@ class CombineStateIOImport(CombineStateIO):
 					d = json.loads(row)
 
 					# return tuple with exposed original id
-					return (d['db_id'], row)
+					return d['db_id'], row
 
 				orig_id_rdd = json_lines_rdd.map(lambda row: parser_udf(row))
 
@@ -2056,7 +2056,7 @@ class CombineStateIOImport(CombineStateIO):
 						if type(v) == list:
 							d[k] = tuple(v)
 
-					return (row['_1'], d)
+					return row['_1'], d
 
 				new_id_rdd = new_id_rdd.map(lambda row: update_db_id_udf(row))
 

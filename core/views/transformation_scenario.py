@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def transformation_scenario_payload(request, trans_id):
-    '''
+    """
 	View payload for transformation scenario
-	'''
+	"""
 
     # get transformation
     transformation = models.Transformation.objects.get(pk=int(trans_id))
@@ -34,9 +34,9 @@ def transformation_scenario_payload(request, trans_id):
 
 
 def test_transformation_scenario(request):
-    '''
+    """
 	View to live test transformation scenarios
-	'''
+	"""
 
     # If GET, serve transformation test screen
     if request.method == 'GET':

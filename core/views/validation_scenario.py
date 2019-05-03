@@ -13,9 +13,9 @@ logger = logging.getLogger(__name__)
 
 
 def validation_scenario_payload(request, vs_id):
-    '''
+    """
 	View payload for validation scenario
-	'''
+	"""
 
     # get transformation
     vs = models.ValidationScenario.objects.get(pk=int(vs_id))
@@ -42,9 +42,9 @@ def save_validation_scenario(request):
 
 
 def test_validation_scenario(request):
-    '''
+    """
 	View to live test validation scenario
-	'''
+	"""
 
     # If GET, serve validation test screen
     if request.method == 'GET':
