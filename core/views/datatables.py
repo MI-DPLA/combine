@@ -16,6 +16,7 @@ from .views import bg_task, bg_task_cancel, bg_task_delete
 
 logger = logging.getLogger(__name__)
 
+
 ####################################################################
 # Datatables endpoints 											   #
 # https://bitbucket.org/pigletto/django-datatables-view/overview   #
@@ -131,7 +132,6 @@ class DTPublishedJson(BaseDatatableView):
 
         # return
         return qs
-
 
 
 class DTRecordsJson(BaseDatatableView):
@@ -265,6 +265,7 @@ class DTRecordsJson(BaseDatatableView):
 
         # return
         return qs
+
 
 class DTIndexingFailuresJson(BaseDatatableView):
     '''
@@ -402,6 +403,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
                     logger.debug('recieved 24 chars, but not ObjectId')
         # return
         return qs
+
 
 class DTDPLABulkDataMatches(BaseDatatableView):
     '''
@@ -555,6 +557,7 @@ class JobRecordDiffs(BaseDatatableView):
 
         # return
         return qs
+
 
 class CombineBackgroundTasksDT(BaseDatatableView):
     '''

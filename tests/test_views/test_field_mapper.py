@@ -2,6 +2,7 @@ from django.test import Client, TestCase
 
 from core.models import FieldMapper
 
+
 class FieldMapperTestCase(TestCase):
     def test_field_mapper_payload_config_json(self):
         c = Client()

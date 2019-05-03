@@ -2,6 +2,7 @@ from django.test import Client, TestCase
 
 from core.models import Organization, User
 
+
 class RecordGroupTestCase(TestCase):
     def test_new_record_group(self):
         org = Organization.objects.create(name="Test Organization")

@@ -39,9 +39,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 # breadcrumb parser
 def breadcrumb_parser(request):
-    '''
-	Rudimentary breadcrumbs parser
-	'''
+    """
+    Rudimentary breadcrumbs parser
+    """
 
     crumbs = []
 
@@ -91,7 +91,7 @@ def breadcrumb_parser(request):
             logger.debug("breadcrumbs: org is for analysis, skipping")
         else:
             crumbs.append((
-                "<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % j.record_group.organization.name,
+                "<span class='font-weight-bold'>Organization</span> - <code>%s</code>" % j.record_group.organization.name,
                 reverse('organization', kwargs={'org_id': j.record_group.organization.id})))
         if j.record_group.for_analysis:
             logger.debug("breadcrumbs: rg is for analysis, skipping")
@@ -99,11 +99,10 @@ def breadcrumb_parser(request):
             crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % j.record_group.name,
                            reverse('record_group', kwargs={'org_id': j.record_group.organization.id,
                                                            'record_group_id': j.record_group.id})))
-        crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, reverse('job_details',
-                                                                                                       kwargs={
-                                                                                                           'org_id': j.record_group.organization.id,
-                                                                                                           'record_group_id': j.record_group.id,
-                                                                                                           'job_id': j.id})))
+        crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name,
+                       reverse('job_details', kwargs=dict(org_id=j.record_group.organization.id,
+                                                          record_group_id=j.record_group.id,
+                                                          job_id=j.id))))
         crumbs.append(("<span class='font-weight-bold'>Field Analysis - <code>%s</code></span>" % field_name,
                        '%s?%s' % (regex_match.group(1), request.META['QUERY_STRING'])))
 
@@ -138,7 +137,7 @@ def breadcrumb_parser(request):
             crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
         else:
             crumbs.append(
-                ("<span class='font-weight-bold'>Organzation</span> - <code>%s</code>" % org.name, org_m.group(1)))
+                ("<span class='font-weight-bold'>Organization</span> - <code>%s</code>" % org.name, org_m.group(1)))
 
     # record_group
     rg_m = re.match(r'(.+?/record_group/([0-9]+))', request.path)
@@ -173,9 +172,10 @@ def breadcrumb_parser(request):
     # background task
     regex_match = re.match(r'(.+?/background_tasks/task/([0-9]+))', request.path)
     if regex_match:
-        bg_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
+        background_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
         crumbs.append(
-            ("<span class='font-weight-bold'>Task - <code>%s</code></span>" % (bg_task.name), reverse('bg_tasks')))
+            ("<span class='font-weight-bold'>Task - <code>%s</code></span>" % background_task.name,
+             reverse('bg_tasks')))
 
     # stateio
     regex_match = re.match(r'(.+?/stateio.*)', request.path)
@@ -186,7 +186,7 @@ def breadcrumb_parser(request):
     regex_match = re.match(r'(.+?/stateio/state/([0-9a-z].*))', request.path)
     if regex_match:
         state = models.StateIO.objects.get(id=regex_match.group(2))
-        crumbs.append(("<span class='font-weight-bold'>State - <code>%s</code></span>" % (state.name),
+        crumbs.append(("<span class='font-weight-bold'>State - <code>%s</code></span>" % state.name,
                        reverse('stateio_state', kwargs={'state_id': regex_match.group(2)})))
 
     # stateio - export
@@ -279,7 +279,7 @@ def system(request):
     # get celery worker status
     active_tasks = celery_app.control.inspect().active()
 
-    if active_tasks == None:
+    if active_tasks is None:
         celery_status = 'stopped'
     else:
         if len(next(iter(active_tasks.values()))) == 0:
@@ -314,7 +314,7 @@ def livy_session_start(request):
         logger.debug('single, active session found, and restart flag passed, restarting')
 
         # restart
-        new_ls = active_ls.restart_session()
+        active_ls.restart_session()
 
     # redirect
     return redirect('system')
@@ -368,11 +368,11 @@ def bgtasks_proc_stderr_log(request):
 
 
 def system_bg_status(request):
-    '''
-	View to return status on:
-		- Livy session
-		- celery worker
-	'''
+    """
+    View to return status on:
+        - Livy session
+        - celery worker
+    """
 
     # get livy status
     lv = models.LivySession.get_active_session()
@@ -388,7 +388,7 @@ def system_bg_status(request):
     # get celery worker status
     active_tasks = celery_app.control.inspect().active()
 
-    if active_tasks == None:
+    if active_tasks is None:
         celery_status = 'stopped'
     else:
         if len(next(iter(active_tasks.values()))) == 0:
@@ -409,9 +409,9 @@ def system_bg_status(request):
 
 @login_required
 def job_reports_create_validation(request, org_id, record_group_id, job_id):
-    '''
-	Generate job report based on validation results
-	'''
+    """
+    Generate job report based on validation results
+    """
 
     # retrieve job
     cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -474,9 +474,9 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
         ct.save()
 
         # run celery task
-        bg_task = tasks.create_validation_report.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.create_validation_report.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # redirect to Background Tasks
@@ -485,11 +485,11 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
 
 @login_required
 def job_update(request, org_id, record_group_id, job_id):
-    '''
-	Update Job in one of several ways:
-		- re-map and index
-		- run new / different validations
-	'''
+    """
+    Update Job in one of several ways:
+        - re-map and index
+        - run new / different validations
+    """
 
     # retrieve job
     cjob = models.CombineJob.get_combine_job(int(job_id))
@@ -506,7 +506,7 @@ def job_update(request, org_id, record_group_id, job_id):
         # get all bulk downloads
         bulk_downloads = models.DPLABulkDataDownload.objects.all()
 
-        # get uptdate type from GET params
+        # get update type from GET params
         update_type = request.GET.get('update_type', None)
 
         # render page
@@ -540,13 +540,15 @@ def job_update(request, org_id, record_group_id, job_id):
             fm_config_json = request.POST.get('fm_config_json')
 
             # init re-index
-            ct = cjob.reindex_bg_task(fm_config_json=fm_config_json)
+            cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
             # set gms
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
-                'html': '<p><strong>Re-Indexing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                    cjob.job.name, reverse('bg_tasks')),
+                'html': '<p><strong>Re-Indexing Job:</strong><br>%s</p>'
+                        '<p><a href="%s"><button type="button" '
+                        'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                            cjob.job.name, reverse('bg_tasks')),
                 'class': 'success'
             })
 
@@ -565,13 +567,16 @@ def job_update(request, org_id, record_group_id, job_id):
                 id__in=[int(vs_id) for vs_id in validation_scenarios])
 
             # init bg task
-            bg_task = cjob.new_validations_bg_task([vs.id for vs in validations])
+            cjob.new_validations_bg_task([vs.id for vs in validations])
 
             # set gms
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
-                'html': '<p><strong>Running New Validations for Job:</strong><br>%s<br><br><strong>Validation Scenarios:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                    cjob.job.name, '<br>'.join([vs.name for vs in validations]), reverse('bg_tasks')),
+                'html': '<p><strong>Running New Validations for Job:</strong><br>%s<br>'
+                        '<br><strong>Validation Scenarios:</strong><br>%s</p>'
+                        '<p><a href="%s"><button type="button" '
+                        'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                            cjob.job.name, '<br>'.join([vs.name for vs in validations]), reverse('bg_tasks')),
                 'class': 'success'
             })
 
@@ -586,14 +591,16 @@ def job_update(request, org_id, record_group_id, job_id):
             jv_id = request.POST.get('jv_id', False)
 
             # initiate Combine BG Task
-            bg_task = cjob.remove_validation_bg_task(jv_id)
+            cjob.remove_validation_bg_task(jv_id)
 
             # set gms
             vs = models.JobValidation.objects.get(pk=int(jv_id)).validation_scenario
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
-                'html': '<p><strong>Removing Validation for Job:</strong><br>%s<br><br><strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                    cjob.job.name, vs.name, reverse('bg_tasks')),
+                'html': '<p><strong>Removing Validation for Job:</strong><br>%s<br><br>'
+                        '<strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" '
+                        'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                            cjob.job.name, vs.name, reverse('bg_tasks')),
                 'class': 'success'
             })
 
@@ -608,14 +615,16 @@ def job_update(request, org_id, record_group_id, job_id):
             dbdd_id = request.POST.get('dbdd', False)
 
             # initiate Combine BG Task
-            bg_task = cjob.dbdm_bg_task(dbdd_id)
+            cjob.dbdm_bg_task(dbdd_id)
 
             # set gms
             dbdd = models.DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
-                'html': '<p><strong>Running DPLA Bulk Data comparison for Job:</strong><br>%s<br><br><strong>Bulk Data S3 key:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                    cjob.job.name, dbdd.s3_key, reverse('bg_tasks')),
+                'html': '<p><strong>Running DPLA Bulk Data comparison for Job:</strong><br>%s<br><br>'
+                        '<strong>Bulk Data S3 key:</strong><br>%s</p><p><a href="%s"><button type="button" '
+                        'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                            cjob.job.name, dbdd.s3_key, reverse('bg_tasks')),
                 'class': 'success'
             })
 
@@ -630,12 +639,12 @@ def job_update(request, org_id, record_group_id, job_id):
 ####################################################################
 
 def document_download(request):
-    '''
-	Args (GET params):
-		file_location: location on disk for file
-		file_download_name: desired download name
-		content_type: ContentType Headers
-	'''
+    """
+    Args (GET params):
+        file_location: location on disk for file
+        file_download_name: desired download name
+        content_type: ContentType Headers
+    """
 
     # known download format params
     download_format_hash = {
@@ -669,6 +678,7 @@ def document_download(request):
     download_format = request.GET.get('download_format', None)
     filepath = request.GET.get('filepath', None)
     name = request.GET.get('name', 'download')
+    # TODO: content_type is never used
     content_type = request.GET.get('content_type', 'text/plain')
     preview = request.GET.get('preview', False)
 
@@ -723,14 +733,14 @@ def job_indexing_failures(request, org_id, record_group_id, job_id):
 
 @login_required
 def field_analysis_docs(request, es_index, filter_type):
-    '''
+    """
 
-	Table of documents that match a filtered ES query.
+    Table of documents that match a filtered ES query.
 
-	Args:
-		es_index (str): string ES index name
-		filter_type (str): what kind of filtering to impose on documents returned
-	'''
+    Args:
+        es_index (str): string ES index name
+        filter_type (str): what kind of filtering to impose on documents returned
+    """
 
     # regardless of filtering type, get field name
     field_name = request.GET.get('field_name')
@@ -810,7 +820,6 @@ def job_validation_scenario_failures(request, org_id, record_group_id, job_id, j
     })
 
 
-
 ####################################################################
 # Configuration 												   #
 ####################################################################
@@ -849,9 +858,9 @@ def configuration(request):
 
 @login_required
 def oai_endpoint_payload(request, oai_endpoint_id):
-    '''
-	Return JSON of saved OAI endpoint information
-	'''
+    """
+    Return JSON of saved OAI endpoint information
+    """
 
     # retrieve OAIEndpoint
     oai_endpoint = models.OAIEndpoint.objects.get(pk=oai_endpoint_id)
@@ -863,17 +872,19 @@ def oai_endpoint_payload(request, oai_endpoint_id):
     return JsonResponse(oai_endpoint.__dict__)
 
 
-
 @login_required
 def dpla_bulk_data_download(request):
-    '''
-	View to support the downloading of DPLA bulk data
-	'''
+    """
+    View to support the downloading of DPLA bulk data
+    """
 
     if request.method == 'GET':
 
         # if S3 credentials set
-        if settings.AWS_ACCESS_KEY_ID and settings.AWS_SECRET_ACCESS_KEY and settings.AWS_ACCESS_KEY_ID != None and settings.AWS_SECRET_ACCESS_KEY != None:
+        if settings.AWS_ACCESS_KEY_ID and \
+                settings.AWS_SECRET_ACCESS_KEY and \
+                settings.AWS_ACCESS_KEY_ID is not None and \
+                settings.AWS_SECRET_ACCESS_KEY is not None:
 
             # get DPLABulkDataClient and keys from DPLA bulk download
             dbdc = models.DPLABulkDataClient()
@@ -907,10 +918,10 @@ def dpla_bulk_data_download(request):
 ####################################################################
 
 def oai(request, subset=None):
-    '''
-	Parse GET parameters, send to OAIProvider instance from oai.py
-	Return XML results
-	'''
+    """
+    Parse GET parameters, send to OAIProvider instance from oai.py
+    Return XML results
+    """
 
     # get OAIProvider instance
     op = OAIProvider(request.GET, subset=subset)
@@ -924,9 +935,9 @@ def oai(request, subset=None):
 ####################################################################
 
 def search(request):
-    '''
-	Global search of Records
-	'''
+    """
+    Global search of Records
+    """
 
     # if search term present, use
     q = request.GET.get('q', None)
@@ -987,17 +998,19 @@ def export_documents(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_documents.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_documents.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
-            'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s">'
+                    '<button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button>'
+                    '</a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1027,17 +1040,18 @@ def export_documents(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_documents.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_documents.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
-            'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" '
+                    'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1087,17 +1101,18 @@ def export_mapped_fields(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_mapped_fields.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_mapped_fields.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
-            'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" '
+                    'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1129,17 +1144,18 @@ def export_mapped_fields(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_mapped_fields.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_mapped_fields.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
-            'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" '
+                    'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1189,17 +1205,18 @@ def export_tabular_data(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_tabular_data.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_tabular_data.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
-            'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" '
+                    'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1213,6 +1230,7 @@ def export_tabular_data(request,
         logger.debug('exporting tabular data from published records')
 
         # get instance of Published model
+        # TODO: not used
         published = models.PublishedRecords()
 
         # initiate Combine BG Task
@@ -1234,17 +1252,18 @@ def export_tabular_data(request,
         ct = _handle_export_output(request, export_source, ct)
 
         # run celery task
-        bg_task = tasks.export_tabular_data.delay(ct.id)
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
+        background_task = tasks.export_tabular_data.delay(ct.id)
+        logger.debug('firing bg task: %s' % background_task)
+        ct.celery_task_id = background_task.task_id
         ct.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
-            'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                target, reverse('bg_tasks')),
+            'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" '
+                    'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
+                        target, reverse('bg_tasks')),
             'class': 'success'
         })
 
@@ -1252,18 +1271,18 @@ def export_tabular_data(request,
 
 
 def _handle_export_output(request, export_source, ct):
-    '''
-	Function to handle export outputs
-		- currently only augmenting with S3 export
+    """
+    Function to handle export outputs
+        - currently only augmenting with S3 export
 
-	Args:
-		request: request object
-		export_source: ['job','published']
-		ct (CombineBackgroundTask): instance of ct to augment
+    Args:
+        request: request object
+        export_source: ['job','published']
+        ct (CombineBackgroundTask): instance of ct to augment
 
-	Returns:
-		ct (CombineBackgroundTask)
-	'''
+    Returns:
+        ct (CombineBackgroundTask)
+    """
 
     # handle s3 export
     s3_export = request.POST.get('s3_export', False)
@@ -1272,7 +1291,7 @@ def _handle_export_output(request, export_source, ct):
 
     # if s3_export
     if s3_export:
-        # udpate task params
+        # update task params
         ct.update_task_params({
             's3_export': True,
             's3_bucket': request.POST.get('s3_bucket', None),
@@ -1290,9 +1309,9 @@ def _handle_export_output(request, export_source, ct):
 ####################################################################
 
 def analysis(request):
-    '''
-	Analysis home
-	'''
+    """
+    Analysis home
+    """
 
     # get all jobs associated with record group
     analysis_jobs = models.Job.objects.filter(job_type='AnalysisJob')
@@ -1324,8 +1343,8 @@ def analysis(request):
 @login_required
 def job_analysis(request):
     """
-	Run new analysis job
-	"""
+    Run new analysis job
+    """
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -1389,7 +1408,7 @@ def job_analysis(request):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if job_status == False:
+        if job_status is False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -1463,7 +1482,6 @@ def bg_task_cancel(request, task_id):
     return redirect('bg_tasks')
 
 
-
 ####################################################################
 # Global Messages												   #
 ####################################################################
@@ -1485,4 +1503,3 @@ def gm_delete(request):
             'gm_id': gm_id,
             'num_removed': results
         })
-

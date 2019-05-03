@@ -10,6 +10,7 @@ from .views import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
+
 def rits_payload(request, rits_id):
     '''
 	View payload for record identifier transformation scenario

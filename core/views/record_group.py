@@ -8,7 +8,8 @@ from core import models, forms, tasks
 
 from .views import breadcrumb_parser
 
-logger =logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
+
 
 @login_required
 def record_group_id_redirect(request, record_group_id):
@@ -115,4 +116,3 @@ def record_group(request, org_id, record_group_id):
         'record_groups': record_groups,
         'breadcrumbs': breadcrumb_parser(request)
     })
-

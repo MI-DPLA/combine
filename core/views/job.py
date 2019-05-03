@@ -13,6 +13,7 @@ from .views import breadcrumb_parser, mc_handle
 
 logger = logging.getLogger(__name__)
 
+
 @login_required
 def job_id_redirect(request, job_id):
     '''
@@ -987,4 +988,3 @@ def job_lineage_json(request, org_id, record_group_id, job_id):
         'nodes': job_lineage['nodes'],
         'edges': job_lineage['edges']
     })
-
