@@ -6,7 +6,8 @@ from django.shortcuts import redirect, render
 
 from core import models
 
-from .views import breadcrumb_parser, _stateio_prepare_job_hierarchy, mc_handle
+from .views import breadcrumb_parser, mc_handle
+from .stateio import _stateio_prepare_job_hierarchy
 
 logger = logging.getLogger(__name__)
 
