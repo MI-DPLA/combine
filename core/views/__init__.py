@@ -8,3 +8,4 @@ from .transformation_scenario import *
 from .datatables import *
 from .field_mapper import *
 from .published import *
+from .record_identifer_transformation_scenario import *
