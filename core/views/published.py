@@ -11,6 +11,7 @@ from .stateio import _stateio_prepare_job_hierarchy
 
 logger = logging.getLogger(__name__)
 
+
 @login_required
 def published(request, subset=None):
     '''
@@ -195,4 +196,3 @@ def published_subset_delete(request, subset):
     d = mc_handle.combine.misc.delete_one({'_id': 'published_field_counts_%s' % subset})
     logger.debug(d.raw_result)
     return redirect('published')
-

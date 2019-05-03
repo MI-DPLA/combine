@@ -102,4 +102,3 @@ def test_validation_scenario(request):
             vs.delete()
 
             return HttpResponse(str(e), content_type="text/plain")
-

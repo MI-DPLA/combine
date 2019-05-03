@@ -2,6 +2,7 @@ from django.test import TestCase, Client
 
 from core.models import Transformation
 
+
 class TransformationTestCase(TestCase):
     def test_transformation_scenario_payload(self):
         c = Client()

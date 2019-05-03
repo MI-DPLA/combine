@@ -11,6 +11,7 @@ from .views import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
+
 def field_mapper_payload(request, fm_id):
     '''
 	View payload for field mapper
@@ -152,4 +153,3 @@ def test_field_mapper(request):
 
             logger.debug('field mapper was unsucessful')
             return JsonResponse({'error': str(e)})
-

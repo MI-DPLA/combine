@@ -11,6 +11,7 @@ from .views import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
+
 def transformation_scenario_payload(request, trans_id):
     '''
 	View payload for transformation scenario
@@ -146,4 +147,3 @@ def test_transformation_scenario(request):
             except:
                 logger.debug('could not delete temporary transformation')
             return HttpResponse(str(e), content_type="text/plain")
-

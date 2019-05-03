@@ -2,6 +2,7 @@ from django.test import Client, TestCase
 
 from core.models import RecordIdentifierTransformationScenario
 
+
 class RecordIdentifierTransformationScenarioTestCase(TestCase):
     def test_rits_payload(self):
         rits = RecordIdentifierTransformationScenario.objects.create(regex_match_payload='test match',

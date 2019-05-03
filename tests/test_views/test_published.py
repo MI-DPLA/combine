@@ -3,6 +3,7 @@ from django.test import Client, TestCase
 from core import models
 from core.models import Job, Organization, Record, RecordGroup, User
 
+
 class PublishedTestCase(TestCase):
     def test_get_published(self):
         user = User.objects.create(username='combine', password='combine', is_superuser=True)

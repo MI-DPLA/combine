@@ -10,6 +10,7 @@ from .views import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
+
 def record(request, org_id, record_group_id, job_id, record_id):
     '''
 	Single Record page
@@ -191,4 +192,3 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
 
     else:
         return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
-
