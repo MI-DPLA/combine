@@ -1,25 +1,21 @@
-
 # generic imports
 import django
 from lxml import etree
 import os
 import sys
 
-
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
-	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-	sys.path.append('/opt/combine')
-	django.setup()	
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+    sys.path.append('/opt/combine')
+    django.setup()
 
 # import django settings
 from django.conf import settings
 from django.db import connection
 
 
-
 def refresh_django_db_connection():
-
     """
     Function to refresh connection to Django DB.
     
@@ -37,104 +33,99 @@ def refresh_django_db_connection():
         None
     """
 
-	connection.close()
-	connection.connect()
-
+    connection.close()
+    connection.connect()
 
 
 class PythonUDFRecord(object):
-
     """
     Class to provide a slim-downed version of core.models.Record that is used for spark UDF functions,
     and for previewing python based validations and transformations
     """
 
-	def __init__(self, record_input, non_row_input=False, record_id=None, document=None):
-
+    def __init__(self, record_input, non_row_input=False, record_id=None, document=None):
         """
         Instantiated in one of two ways
             1) from a DB row representing a Record in its entirety
             2) manually passed record_id or document (or both), triggered by non_row_input Flag
                 - for example, this is used for testing record_id transformations
         """
+        if non_row_input:
 
-		if non_row_input:
+            # if record_id provided, set
+            if record_id:
+                self.record_id = record_id
 
-			# if record_id provided, set
-			if record_id:
-				self.record_id = record_id
+            # if document provided, set and parse
+            if document:
+                self.document = document
 
-			# if document provided, set and parse
-			if document:
-				self.document = document
+                try:
 
-				try:
+                    # parse XML string, save
+                    self.xml = etree.fromstring(self.document.encode('utf-8'))
 
-					# parse XML string, save
-					self.xml = etree.fromstring(self.document.encode('utf-8'))
+                    # get namespace map, popping None values
+                    _nsmap = self.xml.nsmap.copy()
+                    try:
+                        _nsmap.pop(None)
+                    except:
+                        pass
+                    self.nsmap = _nsmap
 
-					# get namespace map, popping None values
-					_nsmap = self.xml.nsmap.copy()
-					try:
-						_nsmap.pop(None)
-					except:
-						pass
-					self.nsmap = _nsmap
+                except:
 
-				except:
+                    self.xml = None
+                    self.nsmap = None
 
-					self.xml = None
-					self.nsmap = None
+        else:
 
-		else:
+            # row
+            self._row = record_input
 
-			# row
-			self._row = record_input
+            # get db id
+            try:
+                self.id = self._row._id
+            except:
+                pass
 
-			# get db id
-			try:
-				self.id = self._row._id
-			except:
-				pass
+            # get record id
+            self.record_id = self._row.record_id
 
-			# get record id
-			self.record_id = self._row.record_id
+            # document string
+            self.document = self._row.document
 
-			# document string
-			self.document = self._row.document
+            # set error
+            self.error = self._row.error
 
-			# set error
-			self.error = self._row.error
+            try:
 
-			try:
+                # parse XML string, save
+                self.xml = etree.fromstring(self.document.encode('utf-8'))
 
-				# parse XML string, save
-				self.xml = etree.fromstring(self.document.encode('utf-8'))
+                # get namespace map, popping None values
+                _nsmap = self.xml.nsmap.copy()
+                try:
+                    _nsmap.pop(None)
+                except:
+                    pass
+                self.nsmap = _nsmap
 
-				# get namespace map, popping None values
-				_nsmap = self.xml.nsmap.copy()
-				try:
-					_nsmap.pop(None)
-				except:
-					pass
-				self.nsmap = _nsmap
+                # set inverted nsmap
+                self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
 
-				# set inverted nsmap
-				self.nsmap_inv = {v: k for k, v in self.nsmap.items()}
+            except:
 
-			except:
+                self.xml = None
+                self.nsmap = None
 
-				self.xml = None
-				self.nsmap = None
 
-			
 def df_union_all(dfs):
-
     """
     Function to merge list of DataFrames
     """
 
-	if len(dfs) > 1:
-		return dfs[0].unionAll(df_union_all(dfs[1:]))
-	else:
-		return dfs[0]
+    if len(dfs) > 1:
+        return dfs[0].unionAll(df_union_all(dfs[1:]))
+    else:
+        return dfs[0]
