@@ -12,7 +12,7 @@ from django_datatables_view.base_datatable_view import BaseDatatableView
 
 from .job import job_details
 from .record import record, record_document
-from .background_tasks import bg_task, bg_task_cancel, bg_task_delete
+from .core_background_tasks import bg_task, bg_task_cancel, bg_task_delete
 
 logger = logging.getLogger(__name__)
 
