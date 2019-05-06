@@ -4,12 +4,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## Unreleased
 
   - Automatically start Livy session if none present (#398)[https://github.com/WSULib/combine/issues/398]
 
 
-## [`v0.8`] - 2019-04-??
+## `v0.9`
+### Added
+### Changed
+  - Update XML2kvp to limit values at 32k characters [#403](https://github.com/WSULib/combine/issues/403)
+
+
+## `v0.8`
 ### Added
   - Global search of Record's mapped fields
   - Ability to add Organizations, Record Groups, and/or Jobs to Published Subsets [#395](https://github.com/WSULib/combine/issues/395)
@@ -20,5 +26,5 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - Fixed precounts for Published Subsets when included Jobs mutate [#396](https://github.com/WSULib/combine/issues/396)
 
 
-## [previous]
+## Previous
 See [GitHub wiki Roadmap](https://github.com/WSULib/combine/wiki/Roadmap).
