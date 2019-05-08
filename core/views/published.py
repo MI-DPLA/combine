@@ -5,8 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from core import models
+from core.mongo import mc_handle
 
-from .view_helpers import breadcrumb_parser, mc_handle
+from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
 
 logger = logging.getLogger(__name__)

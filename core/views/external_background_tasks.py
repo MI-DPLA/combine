@@ -9,7 +9,7 @@ from core import models
 
 from core.celery import celery_app
 
-from core.mongo import *
+from core.mongo import settings
 
 from .view_helpers import breadcrumb_parser
 

@@ -11,7 +11,9 @@ from django.shortcuts import redirect, render
 
 from core import models, tasks
 
-from .view_helpers import breadcrumb_parser, mc_handle
+from core.mongo import mc_handle
+
+from .view_helpers import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 

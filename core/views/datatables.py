@@ -6,7 +6,7 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 
 from core import models
-from core.mongo import *
+from core.mongo import mongoengine, ObjectId
 
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
