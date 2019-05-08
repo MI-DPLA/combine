@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 
 from core import models
 
-from .views import breadcrumb_parser
+from .view_helpers import breadcrumb_parser
 
 
 def analysis(request):

@@ -1,4 +1,4 @@
-from .views import *
+from .view_helpers import *
 from .validation_scenario import *
 from .organization import *
 from .record_group import *

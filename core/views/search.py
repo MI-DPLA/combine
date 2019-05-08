@@ -3,7 +3,7 @@ import logging
 
 from django.shortcuts import render
 
-from .views import breadcrumb_parser
+from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
 
 logger = logging.getLogger(__name__)

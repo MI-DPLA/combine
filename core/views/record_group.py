@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 
 from core import models, forms, tasks
 
-from .views import breadcrumb_parser
+from .view_helpers import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 

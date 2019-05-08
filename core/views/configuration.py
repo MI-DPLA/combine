@@ -8,7 +8,7 @@ from core import models
 
 from core.mongo import *
 
-from .views import breadcrumb_parser
+from .view_helpers import breadcrumb_parser
 
 logger = logging.getLogger(__name__)
 
