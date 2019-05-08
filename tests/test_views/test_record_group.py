@@ -6,7 +6,8 @@ from core.models import Organization, User
 class RecordGroupTestCase(TestCase):
     def test_new_record_group(self):
         org = Organization.objects.create(name="Test Organization")
-        u = User.objects.create(username='combine', password='combine', is_superuser=True)
+        u = User.objects.create(
+            username='combine', password='combine', is_superuser=True)
         c = Client()
         c.force_login(u)
         response = c.post(f'/combine/organization/{org.id}/record_group/new',

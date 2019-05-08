@@ -89,7 +89,8 @@ def livy_session_start(request):
         livy_session.start_session()
 
     elif type(active_ls) == models.LivySession and request.GET.get('restart') == 'true':
-        logger.debug('single, active session found, and restart flag passed, restarting')
+        logger.debug(
+            'single, active session found, and restart flag passed, restarting')
 
         # restart
         active_ls.restart_session()

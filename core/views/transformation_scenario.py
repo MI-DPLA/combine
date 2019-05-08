@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 def transformation_scenario_payload(request, trans_id):
     """
-	View payload for transformation scenario
-	"""
+        View payload for transformation scenario
+        """
 
     # get transformation
     transformation = models.Transformation.objects.get(pk=int(trans_id))
@@ -35,13 +35,14 @@ def transformation_scenario_payload(request, trans_id):
 
 def test_transformation_scenario(request):
     """
-	View to live test transformation scenarios
-	"""
+        View to live test transformation scenarios
+        """
 
     # If GET, serve transformation test screen
     if request.method == 'GET':
         # get validation scenarios
-        transformation_scenarios = models.Transformation.objects.filter(use_as_include=False)
+        transformation_scenarios = models.Transformation.objects.filter(
+            use_as_include=False)
 
         # check if limiting to one, pre-existing record
         q = request.GET.get('q', None)
@@ -80,7 +81,8 @@ def test_transformation_scenario(request):
                 # loop through transformations
                 for trans in sel_trans:
                     # init Transformation instance
-                    trans = models.Transformation.objects.get(pk=int(trans['trans_id']))
+                    trans = models.Transformation.objects.get(
+                        pk=int(trans['trans_id']))
 
                     # transform with record
                     trans_results = trans.transform_record(record_iter)
@@ -133,14 +135,18 @@ def test_transformation_scenario(request):
                     diff_html = diff_dict['side_by_side_html']
 
                     # strip some CSS
-                    diff_html = diff_html.replace('<div class="container">', '<div>')
-                    diff_html = diff_html.replace('padding-left:30px;', '/*padding-left:30px;*/')
-                    diff_html = diff_html.replace('padding-right:30px;', '/*padding-right:30px;*/')
+                    diff_html = diff_html.replace(
+                        '<div class="container">', '<div>')
+                    diff_html = diff_html.replace(
+                        'padding-left:30px;', '/*padding-left:30px;*/')
+                    diff_html = diff_html.replace(
+                        'padding-right:30px;', '/*padding-right:30px;*/')
 
                 return HttpResponse(diff_html, content_type="text/xml")
 
         except Exception as e:
-            logger.debug('test transformation scenario was unsucessful, deleting temporary')
+            logger.debug(
+                'test transformation scenario was unsucessful, deleting temporary')
             try:
                 if request.POST.get('trans_test_type') == 'single':
                     trans.delete()

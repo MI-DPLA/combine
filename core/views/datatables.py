@@ -25,8 +25,8 @@ logger = logging.getLogger(__name__)
 
 class DTPublishedJson(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for Published records
-		"""
+                Prepare and return Datatables JSON for Published records
+                """
 
     # define the columns that will be returned
     columns = [
@@ -128,7 +128,8 @@ class DTPublishedJson(BaseDatatableView):
                 except:
                     logger.debug('recieved 24 chars, but not ObjectId')
             else:
-                qs = qs.filter(mongoengine.Q(record_id=search) | mongoengine.Q(publish_set_id=search))
+                qs = qs.filter(mongoengine.Q(record_id=search) |
+                               mongoengine.Q(publish_set_id=search))
 
         # return
         return qs
@@ -136,8 +137,8 @@ class DTPublishedJson(BaseDatatableView):
 
 class DTRecordsJson(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for Records table in Job Details
-		"""
+                Prepare and return Datatables JSON for Records table in Job Details
+                """
 
     # define the columns that will be returned
     columns = [
@@ -269,8 +270,8 @@ class DTRecordsJson(BaseDatatableView):
 
 class DTIndexingFailuresJson(BaseDatatableView):
     """
-		Databales JSON response for Indexing Failures
-		"""
+                Databales JSON response for Indexing Failures
+                """
 
     # define the columns that will be returned
     columns = ['_id', 'record_id', 'mapping_error']
@@ -319,8 +320,8 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
 class DTJobValidationScenarioFailuresJson(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
-		"""
+                Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+                """
 
     # define the columns that will be returned
     columns = [
@@ -351,7 +352,8 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job
-        jv = models.JobValidation.objects.get(pk=self.kwargs['job_validation_id'])
+        jv = models.JobValidation.objects.get(
+            pk=self.kwargs['job_validation_id'])
 
         # return filtered queryset
         return jv.get_record_validation_failures()
@@ -407,8 +409,8 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
 class DTDPLABulkDataMatches(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
-		"""
+                Prepare and return Datatables JSON for RecordValidation failures from Job, per Validation Scenario
+                """
 
     # define the columns that will be returned
     columns = [
@@ -492,9 +494,9 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
 class JobRecordDiffs(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for Records that were
-		transformed during a Transformation Job
-		"""
+                Prepare and return Datatables JSON for Records that were
+                transformed during a Transformation Job
+                """
 
     # define the columns that will be returned
     columns = [
@@ -553,7 +555,8 @@ class JobRecordDiffs(BaseDatatableView):
         # handle search
         search = self.request.GET.get(u'search[value]', None)
         if search:
-            qs = qs.filter(Q(id__contains=search) | Q(record_id__contains=search) | Q(document__contains=search))
+            qs = qs.filter(Q(id__contains=search) | Q(
+                record_id__contains=search) | Q(document__contains=search))
 
         # return
         return qs
@@ -561,8 +564,8 @@ class JobRecordDiffs(BaseDatatableView):
 
 class CombineBackgroundTasksDT(BaseDatatableView):
     """
-		Prepare and return Datatables JSON for Records table in Job Details
-		"""
+                Prepare and return Datatables JSON for Records table in Job Details
+                """
 
     # define the columns that will be returned
     columns = [
@@ -621,7 +624,6 @@ class CombineBackgroundTasksDT(BaseDatatableView):
         elif column == 'duration':
             return row.calc_elapsed_as_string()
 
-
         elif column == 'actions':
             return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to cancel this task?\');">Stop <i class="la la-stop"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
                 reverse(bg_task, kwargs={'task_id': row.id}),
@@ -638,7 +640,8 @@ class CombineBackgroundTasksDT(BaseDatatableView):
         # handle search
         search = self.request.GET.get(u'search[value]', None)
         if search:
-            qs = qs.filter(Q(id__contains=search) | Q(name__contains=search) | Q(verbose_name__contains=search))
+            qs = qs.filter(Q(id__contains=search) | Q(
+                name__contains=search) | Q(verbose_name__contains=search))
 
         # return
         return qs

@@ -18,7 +18,7 @@ from django.db import connection
 def refresh_django_db_connection():
     """
     Function to refresh connection to Django DB.
-    
+
     Behavior with python files uploaded to Spark context via Livy is atypical when
     it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
     apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').

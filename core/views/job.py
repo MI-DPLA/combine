@@ -21,8 +21,8 @@ logger = logging.getLogger(__name__)
 @login_required
 def job_id_redirect(request, job_id):
     """
-	Route to redirect to more verbose Jobs URL
-	"""
+        Route to redirect to more verbose Jobs URL
+        """
 
     # get job
     job = models.Job.objects.get(pk=job_id)
@@ -322,7 +322,8 @@ def job_details(request, org_id, record_group_id, job_id):
     else:
         if cjob.job.finished:
             field_counts = cjob.count_indexed_fields()
-            cjob.job.update_job_details({'mapped_field_analysis': field_counts}, save=True)
+            cjob.job.update_job_details(
+                {'mapped_field_analysis': field_counts}, save=True)
         else:
             logger.debug('job not finished, not setting')
             field_counts = {}
@@ -357,11 +358,13 @@ def job_details(request, org_id, record_group_id, job_id):
     for _ in published_subsets:
 
         # add counts
-        counts = mc_handle.combine.misc.find_one({'_id': 'published_field_counts_%s' % _['name']})
+        counts = mc_handle.combine.misc.find_one(
+            {'_id': 'published_field_counts_%s' % _['name']})
 
         # if counts not yet calculated, do now
         if counts is None:
-            counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
+            counts = models.PublishedRecords(
+                subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
     # get field mappers
@@ -657,11 +660,12 @@ def job_parameters(request, org_id, record_group_id, job_id):
 @login_required
 def job_harvest_oai(request, org_id, record_group_id):
     """
-	Create a new OAI Harvest Job
-	"""
+        Create a new OAI Harvest Job
+        """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+    record_group = models.RecordGroup.objects.filter(
+        id=record_group_id).first()
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -716,11 +720,12 @@ def job_harvest_oai(request, org_id, record_group_id):
 @login_required
 def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filename=False):
     """
-	Create a new static XML Harvest Job
-	"""
+        Create a new static XML Harvest Job
+        """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+    record_group = models.RecordGroup.objects.filter(
+        id=record_group_id).first()
 
     # get validation scenarios
     validation_scenarios = models.ValidationScenario.objects.all()
@@ -773,11 +778,12 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
 @login_required
 def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_filename=False):
     """
-	Create a new static XML Harvest Job
-	"""
+        Create a new static XML Harvest Job
+        """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+    record_group = models.RecordGroup.objects.filter(
+        id=record_group_id).first()
 
     # get validation scenarios
     validation_scenarios = models.ValidationScenario.objects.all()
@@ -830,11 +836,12 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
 @login_required
 def job_transform(request, org_id, record_group_id):
     """
-	Create a new Transform Job
-	"""
+        Create a new Transform Job
+        """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(id=record_group_id).first()
+    record_group = models.RecordGroup.objects.filter(
+        id=record_group_id).first()
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -844,14 +851,16 @@ def job_transform(request, org_id, record_group_id):
 
         # if all jobs, retrieve all jobs
         if input_job_scope == 'all_jobs':
-            input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+            input_jobs = models.Job.objects.exclude(
+                job_type='AnalysisJob').all()
 
         # else, limit to RecordGroup
         else:
             input_jobs = record_group.job_set.all()
 
         # get all transformation scenarios
-        transformations = models.Transformation.objects.filter(use_as_include=False)
+        transformations = models.Transformation.objects.filter(
+            use_as_include=False)
 
         # get validation scenarios
         validation_scenarios = models.ValidationScenario.objects.all()
@@ -906,8 +915,8 @@ def job_transform(request, org_id, record_group_id):
 @login_required
 def job_merge(request, org_id, record_group_id):
     """
-	Merge multiple jobs into a single job
-	"""
+        Merge multiple jobs into a single job
+        """
 
     # retrieve record group
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -920,7 +929,8 @@ def job_merge(request, org_id, record_group_id):
 
         # if all jobs, retrieve all jobs
         if input_job_scope == 'all_jobs':
-            input_jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+            input_jobs = models.Job.objects.exclude(
+                job_type='AnalysisJob').all()
 
         # else, limit to RecordGroup
         else:
@@ -978,8 +988,8 @@ def job_merge(request, org_id, record_group_id):
 
 def job_lineage_json(request, org_id, record_group_id, job_id):
     """
-	Return job lineage as JSON
-	"""
+        Return job lineage as JSON
+        """
 
     # get job
     job = models.Job.objects.get(pk=int(job_id))
@@ -1016,7 +1026,8 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
         else:
             if cjob.job.finished:
                 field_counts = cjob.count_indexed_fields()
-                cjob.job.update_job_details({'mapped_field_analysis': field_counts}, save=True)
+                cjob.job.update_job_details(
+                    {'mapped_field_analysis': field_counts}, save=True)
             else:
                 logger.debug('job not finished, not setting')
                 field_counts = {}
@@ -1050,7 +1061,8 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
         }
 
         # cast to int
-        task_params['validation_scenarios'] = [int(vs_id) for vs_id in task_params['validation_scenarios']]
+        task_params['validation_scenarios'] = [
+            int(vs_id) for vs_id in task_params['validation_scenarios']]
 
         # remove select, reserved fields if in mapped field request
         task_params['mapped_field_include'] = [f for f in task_params['mapped_field_include'] if
@@ -1151,7 +1163,8 @@ def job_update(request, org_id, record_group_id, job_id):
         # handle new validations
         if update_type == 'validations':
             # get requested validation scenarios
-            validation_scenarios = request.POST.getlist('validation_scenario', [])
+            validation_scenarios = request.POST.getlist(
+                'validation_scenario', [])
 
             # get validations
             validations = models.ValidationScenario.objects.filter(
@@ -1185,7 +1198,8 @@ def job_update(request, org_id, record_group_id, job_id):
             cjob.remove_validation_bg_task(jv_id)
 
             # set gms
-            vs = models.JobValidation.objects.get(pk=int(jv_id)).validation_scenario
+            vs = models.JobValidation.objects.get(
+                pk=int(jv_id)).validation_scenario
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Removing Validation for Job:</strong><br>%s<br><br>'
@@ -1372,7 +1386,8 @@ def field_analysis_docs(request, es_index, filter_type):
         matches = request.GET.get('matches')
         dt_get_params.append(('matches', matches))
 
-        value = request.GET.get('value', None)  # default None if checking non-matches to value
+        # default None if checking non-matches to value
+        value = request.GET.get('value', None)
         if value:
             dt_get_params.append(('filter_value', value))
 

@@ -7,10 +7,12 @@ class BackgroundTaskTestCase(TestCase):
     def test_get_bg_tasks(self):
         c = Client()
         response = c.get('/combine/background_tasks')
-        self.assertIn(b'Some tasks in Combine are long running and must be run in the background.', response.content)
+        self.assertIn(
+            b'Some tasks in Combine are long running and must be run in the background.', response.content)
 
     def test_get_bg_task(self):
-        user = User.objects.create(username='combine', password='combine', is_superuser=True)
+        user = User.objects.create(
+            username='combine', password='combine', is_superuser=True)
         c = Client()
         c.force_login(user)
         org = Organization.objects.create(name="Test Organization")

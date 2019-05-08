@@ -13,11 +13,12 @@ logger = logging.getLogger(__name__)
 
 def rits_payload(request, rits_id):
     """
-	View payload for record identifier transformation scenario
-	"""
+        View payload for record identifier transformation scenario
+        """
 
     # get transformation
-    rt = models.RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+    rt = models.RecordIdentifierTransformationScenario.objects.get(
+        pk=int(rits_id))
 
     # return as json package
     return JsonResponse(model_to_dict(rt))
@@ -25,8 +26,8 @@ def rits_payload(request, rits_id):
 
 def test_rits(request):
     """
-	View to live test record identifier transformation scenarios
-	"""
+        View to live test record identifier transformation scenarios
+        """
 
     # If GET, serve validation test screen
     if request.method == 'GET':
@@ -56,7 +57,8 @@ def test_rits(request):
 
             # get record
             if request.POST.get('db_id', False):
-                record = models.Record.objects.get(id=request.POST.get('db_id'))
+                record = models.Record.objects.get(
+                    id=request.POST.get('db_id'))
             else:
                 return JsonResponse({'results': 'Please select a record from the table above!', 'success': False})
 

@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 @login_required
 def configuration(request):
     # get all transformations
-    transformations = models.Transformation.objects.filter(use_as_include=False)
+    transformations = models.Transformation.objects.filter(
+        use_as_include=False)
 
     # get all OAI endpoints
     oai_endpoints = models.OAIEndpoint.objects.all()
@@ -100,4 +101,3 @@ def dpla_bulk_data_download(request):
 
         # return to configuration screen
         return redirect('configuration')
-

@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 @login_required
 def record_group_id_redirect(request, record_group_id):
     """
-	Route to redirect to more verbose Record Group URL
-	"""
+        Route to redirect to more verbose Record Group URL
+        """
 
     # get job
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -28,8 +28,8 @@ def record_group_id_redirect(request, record_group_id):
 
 def record_group_new(request, org_id):
     """
-	Create new Record Group
-	"""
+        Create new Record Group
+        """
 
     # create new organization
     if request.method == 'POST':
@@ -44,8 +44,8 @@ def record_group_new(request, org_id):
 
 def record_group_delete(request, org_id, record_group_id):
     """
-	Create new Record Group
-	"""
+        Create new Record Group
+        """
 
     # retrieve record group
     record_group = models.RecordGroup.objects.get(pk=record_group_id)
@@ -66,7 +66,8 @@ def record_group_delete(request, org_id, record_group_id):
     ct.save()
 
     # run celery task
-    bg_task = tasks.delete_model_instance.delay('RecordGroup', record_group.id, )
+    bg_task = tasks.delete_model_instance.delay(
+        'RecordGroup', record_group.id, )
     logger.debug('firing bg task: %s' % bg_task)
     ct.celery_task_id = bg_task.task_id
     ct.save()
@@ -78,11 +79,11 @@ def record_group_delete(request, org_id, record_group_id):
 @login_required
 def record_group(request, org_id, record_group_id):
     """
-	View information about a single record group, including any and all jobs run
+        View information about a single record group, including any and all jobs run
 
-	Args:
-		record_group_id (str/int): PK for RecordGroup table
-	"""
+        Args:
+                record_group_id (str/int): PK for RecordGroup table
+        """
 
     logger.debug('retrieving record group ID: %s' % record_group_id)
 

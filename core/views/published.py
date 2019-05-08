@@ -16,8 +16,8 @@ logger = logging.getLogger(__name__)
 @login_required
 def published(request, subset=None):
     """
-	Published records
-	"""
+        Published records
+        """
 
     # get instance of Published model
     published = models.PublishedRecords(subset=subset)
@@ -39,11 +39,13 @@ def published(request, subset=None):
     for _ in subsets:
 
         # add counts
-        counts = mc_handle.combine.misc.find_one({'_id': 'published_field_counts_%s' % _['name']})
+        counts = mc_handle.combine.misc.find_one(
+            {'_id': 'published_field_counts_%s' % _['name']})
 
         # if counts not yet calculated, do now
         if counts is None:
-            counts = models.PublishedRecords(subset=_['name']).count_indexed_fields()
+            counts = models.PublishedRecords(
+                subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
     # generate hierarchy_dict
@@ -67,17 +69,17 @@ def published(request, subset=None):
 @login_required
 def published_subset_create(request):
     """
-	Create subset of published records
-		- output should be a Mongo document in combine.misc
-		called "published_subset_[SUBSET]"
+        Create subset of published records
+                - output should be a Mongo document in combine.misc
+                called "published_subset_[SUBSET]"
 
-	Subset Form/Doc
-		- slug/id for subset: lowercase, no spaces, sanitize
-		- human name
-		- description
-		- publish sets to include
-			- also include "loose" records?
-	"""
+        Subset Form/Doc
+                - slug/id for subset: lowercase, no spaces, sanitize
+                - human name
+                - description
+                - publish sets to include
+                        - also include "loose" records?
+        """
 
     if request.method == 'GET':
 
@@ -92,7 +94,6 @@ def published_subset_create(request):
             'job_hierarchy_json': json.dumps(job_hierarchy),
             'breadcrumbs': breadcrumb_parser(request)
         })
-
 
     elif request.method == 'POST':
 
@@ -133,8 +134,8 @@ def published_subset_create(request):
 @login_required
 def published_subset_edit(request, subset):
     """
-	Edit Published Subset
-	"""
+        Edit Published Subset
+        """
 
     if request.method == 'GET':
 
@@ -153,7 +154,6 @@ def published_subset_edit(request, subset):
             'job_hierarchy_json_subset': json.dumps(published_subset.ps_doc.get('hierarchy', [])),
             'breadcrumbs': breadcrumb_parser(request)
         })
-
 
     elif request.method == 'POST':
 
@@ -189,11 +189,13 @@ def published_subset_edit(request, subset):
 @login_required
 def published_subset_delete(request, subset):
     """
-	Delete published subset
-	"""
+        Delete published subset
+        """
 
-    d = mc_handle.combine.misc.delete_one({'type': 'published_subset', 'name': subset})
+    d = mc_handle.combine.misc.delete_one(
+        {'type': 'published_subset', 'name': subset})
     logger.debug(d.raw_result)
-    d = mc_handle.combine.misc.delete_one({'_id': 'published_field_counts_%s' % subset})
+    d = mc_handle.combine.misc.delete_one(
+        {'_id': 'published_field_counts_%s' % subset})
     logger.debug(d.raw_result)
     return redirect('published')

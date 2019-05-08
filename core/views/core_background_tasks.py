@@ -6,7 +6,7 @@ from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger =logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 def bg_tasks(request):

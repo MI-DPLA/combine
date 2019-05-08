@@ -14,8 +14,8 @@ logger = logging.getLogger(__name__)
 
 def validation_scenario_payload(request, vs_id):
     """
-	View payload for validation scenario
-	"""
+        View payload for validation scenario
+        """
 
     # get transformation
     vs = models.ValidationScenario.objects.get(pk=int(vs_id))
@@ -43,8 +43,8 @@ def save_validation_scenario(request):
 
 def test_validation_scenario(request):
     """
-	View to live test validation scenario
-	"""
+        View to live test validation scenario
+        """
 
     # If GET, serve validation test screen
     if request.method == 'GET':
@@ -98,7 +98,8 @@ def test_validation_scenario(request):
 
         except Exception as e:
 
-            logger.debug('test validation scenario was unsucessful, deleting temporary vs')
+            logger.debug(
+                'test validation scenario was unsucessful, deleting temporary vs')
             vs.delete()
 
             return HttpResponse(str(e), content_type="text/plain")

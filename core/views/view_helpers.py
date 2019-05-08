@@ -21,7 +21,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # breadcrumb parser
 def breadcrumb_parser(request):
     """
-    Rudimentary breadcrumbs parser
+    Rudimentary breadcrumbs parserf
     """
 
     crumbs = []
@@ -29,20 +29,24 @@ def breadcrumb_parser(request):
     # livy/spark
     regex_match = re.match(r'(.+?/livy_sessions)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Livy/Spark</span>", reverse('livy_sessions')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Livy/Spark</span>", reverse('livy_sessions')))
 
     # configurations
     regex_match = re.match(r'(.+?/configuration)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Configuration</span>", reverse('configuration')))
 
     # search
     regex_match = re.match(r'(.+?/search)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Search</span>", reverse('search')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Search</span>", reverse('search')))
 
     # configurations/test_validation_scenario
-    regex_match = re.match(r'(.+?/configuration/test_validation_scenario)', request.path)
+    regex_match = re.match(
+        r'(.+?/configuration/test_validation_scenario)', request.path)
     if regex_match:
         crumbs.append(
             ("<span class='font-weight-bold'>Test Validation Scenario</span>", reverse('test_validation_scenario')))
@@ -50,15 +54,18 @@ def breadcrumb_parser(request):
     # all jobs
     regex_match = re.match(r'(.+?/jobs/all)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>All Jobs</span>", reverse('all_jobs')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>All Jobs</span>", reverse('all_jobs')))
 
     # analysis
     regex_match = re.match(r'(.+?/analysis)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
 
     # field analysis
-    regex_match = re.match(r'(.+?/analysis/es/index/j([0-9]+)/field_analysis.*)', request.path)
+    regex_match = re.match(
+        r'(.+?/analysis/es/index/j([0-9]+)/field_analysis.*)', request.path)
     if regex_match:
 
         # get job
@@ -90,7 +97,8 @@ def breadcrumb_parser(request):
     # published
     pub_m = re.match(r'(.+?/published.*)', request.path)
     if pub_m:
-        crumbs.append(("<span class='font-weight-bold'>Published</span>", reverse('published')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Published</span>", reverse('published')))
 
     # published subset create
     pub_m = re.match(r'(.+?/published/subsets/create)', request.path)
@@ -107,15 +115,18 @@ def breadcrumb_parser(request):
     # organization
     pub_m = re.match(r'(.+?/organization/.*)', request.path)
     if pub_m:
-        crumbs.append(("<span class='font-weight-bold'>Organizations</span>", reverse('organizations')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Organizations</span>", reverse('organizations')))
 
     # org
     org_m = re.match(r'(.+?/organization/([0-9]+))', request.path)
     if org_m:
         org = models.Organization.objects.get(pk=int(org_m.group(2)))
         if org.for_analysis:
-            logger.debug("breadcrumbs: org is for analysis, converting breadcrumbs")
-            crumbs.append(("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
+            logger.debug(
+                "breadcrumbs: org is for analysis, converting breadcrumbs")
+            crumbs.append(
+                ("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
         else:
             crumbs.append(
                 ("<span class='font-weight-bold'>Organization</span> - <code>%s</code>" % org.name, org_m.group(1)))
@@ -125,7 +136,8 @@ def breadcrumb_parser(request):
     if rg_m:
         rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
         if rg.for_analysis:
-            logger.debug("breadcrumbs: rg is for analysis, converting breadcrumbs")
+            logger.debug(
+                "breadcrumbs: rg is for analysis, converting breadcrumbs")
         else:
             crumbs.append(
                 ("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % rg.name, rg_m.group(1)))
@@ -135,25 +147,31 @@ def breadcrumb_parser(request):
     if j_m:
         j = models.Job.objects.get(pk=int(j_m.group(2)))
         if j.record_group.for_analysis:
-            crumbs.append(("<span class='font-weight-bold'>Analysis</span> - %s" % j.name, j_m.group(1)))
+            crumbs.append(
+                ("<span class='font-weight-bold'>Analysis</span> - %s" % j.name, j_m.group(1)))
         else:
-            crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
+            crumbs.append(
+                ("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
 
     # record
     r_m = re.match(r'(.+?/record/([0-9a-z]+))', request.path)
     if r_m:
         r = models.Record.objects.get(id=r_m.group(2))
-        crumbs.append(("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
 
     # background tasks
     regex_match = re.match(r'(.+?/background_tasks)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Background Tasks</span>", reverse('bg_tasks')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Background Tasks</span>", reverse('bg_tasks')))
 
     # background task
-    regex_match = re.match(r'(.+?/background_tasks/task/([0-9]+))', request.path)
+    regex_match = re.match(
+        r'(.+?/background_tasks/task/([0-9]+))', request.path)
     if regex_match:
-        background_task = models.CombineBackgroundTask.objects.get(pk=int(regex_match.group(2)))
+        background_task = models.CombineBackgroundTask.objects.get(
+            pk=int(regex_match.group(2)))
         crumbs.append(
             ("<span class='font-weight-bold'>Task - <code>%s</code></span>" % background_task.name,
              reverse('bg_tasks')))
@@ -161,7 +179,8 @@ def breadcrumb_parser(request):
     # stateio
     regex_match = re.match(r'(.+?/stateio.*)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>State Export/Import</span>", reverse('stateio')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>State Export/Import</span>", reverse('stateio')))
 
     # stateio - state details
     regex_match = re.match(r'(.+?/stateio/state/([0-9a-z].*))', request.path)
@@ -173,13 +192,14 @@ def breadcrumb_parser(request):
     # stateio - export
     regex_match = re.match(r'(.+?/stateio/export.*)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Export</span>", reverse('stateio_export')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Export</span>", reverse('stateio_export')))
 
     # stateio - export
     regex_match = re.match(r'(.+?/stateio/import.*)', request.path)
     if regex_match:
-        crumbs.append(("<span class='font-weight-bold'>Import</span>", reverse('stateio_import')))
+        crumbs.append(
+            ("<span class='font-weight-bold'>Import</span>", reverse('stateio_import')))
 
     # return
     return crumbs
-

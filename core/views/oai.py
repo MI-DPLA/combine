@@ -14,5 +14,3 @@ def oai(request, subset=None):
 
     # return XML
     return HttpResponse(op.generate_response(), content_type='text/xml')
-
-

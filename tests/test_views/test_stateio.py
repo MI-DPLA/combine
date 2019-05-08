@@ -5,7 +5,8 @@ from core.models import StateIO, User
 
 class StateIOTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create(username='combine', password='combine', is_superuser=True)
+        self.user = User.objects.create(
+            username='combine', password='combine', is_superuser=True)
         self.client = Client()
         self.client.force_login(self.user)
 

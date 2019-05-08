@@ -29,6 +29,3 @@ def index(request):
         'published_record_count': "{:,}".format(published_record_count),
         'job_count': "{:,}".format(job_count)
     })
-
-
-

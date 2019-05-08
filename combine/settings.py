@@ -33,7 +33,7 @@ SECRET_KEY = '$)1(piv72**m&3bmb)j!=f-h4=of6_knu=c8lj31n7k=y36oi%'
 DEBUG = True
 
 
-ALLOWED_HOSTS = ['*'] # for dev, allowing all hosts
+ALLOWED_HOSTS = ['*']  # for dev, allowing all hosts
 
 
 # Application definition
@@ -201,18 +201,3 @@ try:
     from combine.localsettings import *
 except ImportError:
     pass
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

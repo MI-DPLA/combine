@@ -13,8 +13,8 @@ logger = logging.getLogger(__name__)
 
 def record(request, org_id, record_group_id, job_id, record_id):
     """
-	Single Record page
-	"""
+        Single Record page
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -39,13 +39,15 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
     # retrieve diffs, if any, from input record
     # request only combined diff at this point
-    record_diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
+    record_diff_dict = record.get_input_record_diff(
+        output='combined_gen', combined_as_html=True)
 
     # retrieve field mapper config json used
     try:
         job_fm_config_json = json.dumps(job_details['field_mapper_config'])
     except:
-        job_fm_config_json = json.dumps({'error': 'job field mapping configuration json could not be found'})
+        job_fm_config_json = json.dumps(
+            {'error': 'job field mapping configuration json could not be found'})
 
     # attempt to get document as pretty print
     try:
@@ -73,8 +75,8 @@ def record(request, org_id, record_group_id, job_id, record_id):
 
 def record_document(request, org_id, record_group_id, job_id, record_id):
     """
-	View document for record
-	"""
+        View document for record
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -85,8 +87,8 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
 
 def record_indexed_document(request, org_id, record_group_id, job_id, record_id):
     """
-	View indexed, ES document for record
-	"""
+        View indexed, ES document for record
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -97,8 +99,8 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
 
 def record_error(request, org_id, record_group_id, job_id, record_id):
     """
-	View document for record
-	"""
+        View document for record
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -109,11 +111,11 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
 
 def record_validation_scenario(request, org_id, record_group_id, job_id, record_id, job_validation_id):
     """
-	Re-run validation test for single record
+        Re-run validation test for single record
 
-	Returns:
-		results of validation
-	"""
+        Returns:
+                results of validation
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
@@ -138,14 +140,15 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
 
 def record_combined_diff_html(request, org_id, record_group_id, job_id, record_id):
     """
-	Return combined diff of Record against Input Record
-	"""
+        Return combined diff of Record against Input Record
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
 
     # get side_by_side diff as HTML
-    diff_dict = record.get_input_record_diff(output='combined_gen', combined_as_html=True)
+    diff_dict = record.get_input_record_diff(
+        output='combined_gen', combined_as_html=True)
 
     if diff_dict:
 
@@ -161,10 +164,10 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
 
 def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, record_id):
     """
-	Return side_by_side diff of Record against Input Record
-		- uses sxsdiff (https://github.com/timonwong/sxsdiff)
-		- if embed == true, strip some uncessary HTML and return
-	"""
+        Return side_by_side diff of Record against Input Record
+                - uses sxsdiff (https://github.com/timonwong/sxsdiff)
+                - if embed == true, strip some uncessary HTML and return
+        """
 
     # get record
     record = models.Record.objects.get(id=record_id)
