@@ -9,7 +9,7 @@ from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def validation_scenario_payload(request, vs_id):
@@ -18,14 +18,13 @@ def validation_scenario_payload(request, vs_id):
         """
 
     # get transformation
-    vs = models.ValidationScenario.objects.get(pk=int(vs_id))
+    validation_scenario = models.ValidationScenario.objects.get(pk=int(vs_id))
 
-    if vs.validation_type == 'sch':
+    if validation_scenario.validation_type == 'sch':
         # return document as XML
-        return HttpResponse(vs.payload, content_type='text/xml')
+        return HttpResponse(validation_scenario.payload, content_type='text/xml')
 
-    else:
-        return HttpResponse(vs.payload, content_type='text/plain')
+    return HttpResponse(validation_scenario.payload, content_type='text/plain')
 
 
 def save_validation_scenario(request):
@@ -37,7 +36,7 @@ def save_validation_scenario(request):
         payload=request.POST['vs_payload'],
         validation_type=request.POST['vs_type']
     )
-    result = new_validation_scenario.save()
+    new_validation_scenario.save()
     return JsonResponse(model_to_dict(new_validation_scenario))
 
 
@@ -68,38 +67,37 @@ def test_validation_scenario(request):
     # If POST, provide raw result of validation test
     if request.method == 'POST':
 
-        logger.debug('running test validation and returning')
+        LOGGER.debug('running test validation and returning')
 
         # get record
         record = models.Record.objects.get(id=request.POST.get('db_id'))
 
         try:
             # init new validation scenario
-            vs = models.ValidationScenario(
+            validation_scenario = models.ValidationScenario(
                 name='temp_vs_%s' % str(uuid.uuid4()),
                 payload=request.POST.get('vs_payload'),
                 validation_type=request.POST.get('vs_type'),
                 default_run=False
             )
-            vs.save()
+            validation_scenario.save()
 
             # validate with record
-            vs_results = vs.validate_record(record)
+            vs_results = validation_scenario.validate_record(record)
 
             # delete vs
-            vs.delete()
+            validation_scenario.delete()
 
             if request.POST.get('vs_results_format') == 'raw':
                 return HttpResponse(vs_results['raw'], content_type="text/plain")
-            elif request.POST.get('vs_results_format') == 'parsed':
+            if request.POST.get('vs_results_format') == 'parsed':
                 return JsonResponse(vs_results['parsed'])
-            else:
-                raise Exception('validation results format not recognized')
+            raise Exception('validation results format not recognized')
 
-        except Exception as e:
+        except Exception as err:
 
-            logger.debug(
+            LOGGER.debug(
                 'test validation scenario was unsucessful, deleting temporary vs')
-            vs.delete()
+            validation_scenario.delete()
 
-            return HttpResponse(str(e), content_type="text/plain")
+            return HttpResponse(str(err), content_type="text/plain")

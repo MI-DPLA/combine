@@ -16,8 +16,8 @@ def index(request):
     record_count = models.Record.objects.all().count()
 
     # get published records count
-    pr = models.PublishedRecords()
-    published_record_count = pr.records.count()
+    pub_records = models.PublishedRecords()
+    published_record_count = pub_records.records.count()
 
     # get job count
     job_count = models.Job.objects.all().count()

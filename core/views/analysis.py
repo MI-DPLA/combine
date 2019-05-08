@@ -76,7 +76,7 @@ def job_analysis(request):
         rits = models.RecordIdentifierTransformationScenario.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
         bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -92,7 +92,7 @@ def job_analysis(request):
             'xml2kvp_handle': models.XML2kvp(),
             'analysis_type': analysis_type,
             'bulk_downloads': bulk_downloads,
-            'job_lineage_json': json.dumps(ld)
+            'job_lineage_json': json.dumps(job_lineage)
         })
 
     # if POST, submit job
@@ -100,7 +100,7 @@ def job_analysis(request):
 
         cjob = models.CombineJob.init_combine_job(
             user=request.user,
-            record_group=record_group,
+            # TODO: record_group=record_group,
             job_type_class=models.AnalysisJob,
             job_params=request.POST)
 

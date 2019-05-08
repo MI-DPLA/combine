@@ -7,7 +7,7 @@ from django.shortcuts import redirect
 from core import models
 from core.models import tasks
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def export_documents(request,
@@ -24,13 +24,13 @@ def export_documents(request,
 
     # export for single job
     if export_source == 'job':
-        logger.debug('exporting documents from Job')
+        LOGGER.debug('exporting documents from Job')
 
         # retrieve job
         cjob = models.CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Documents for Job: %s' % cjob.job.name,
             task_type='export_documents',
             task_params_json=json.dumps({
@@ -39,16 +39,16 @@ def export_documents(request,
                 'archive_type': archive_type
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_documents.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_documents.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -68,10 +68,10 @@ def export_documents(request,
 
     # export for published
     if export_source == 'published':
-        logger.debug('exporting documents for published records')
+        LOGGER.debug('exporting documents for published records')
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Documents for Published Records',
             task_type='export_documents',
             task_params_json=json.dumps({
@@ -81,16 +81,16 @@ def export_documents(request,
                 'archive_type': archive_type
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_documents.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_documents.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -125,13 +125,13 @@ def export_mapped_fields(request,
 
     # export for single job
     if export_source == 'job':
-        logger.debug('exporting mapped fields from Job')
+        LOGGER.debug('exporting mapped fields from Job')
 
         # retrieve job
         cjob = models.CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Mapped Fields for Job: %s' % cjob.job.name,
             task_type='export_mapped_fields',
             task_params_json=json.dumps({
@@ -142,16 +142,16 @@ def export_mapped_fields(request,
                 'mapped_field_include': mapped_field_include
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_mapped_fields.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_mapped_fields.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -170,10 +170,10 @@ def export_mapped_fields(request,
 
     # export for published
     if export_source == 'published':
-        logger.debug('exporting mapped fields from published records')
+        LOGGER.debug('exporting mapped fields from published records')
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Mapped Fields for Published Records',
             task_type='export_mapped_fields',
             task_params_json=json.dumps({
@@ -185,16 +185,16 @@ def export_mapped_fields(request,
                 'mapped_field_include': mapped_field_include
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_mapped_fields.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_mapped_fields.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -229,13 +229,13 @@ def export_tabular_data(request,
 
     # export for single job
     if export_source == 'job':
-        logger.debug('exporting tabular data from Job')
+        LOGGER.debug('exporting tabular data from Job')
 
         # retrieve job
         cjob = models.CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Tabular Data for Job: %s' % cjob.job.name,
             task_type='export_tabular_data',
             task_params_json=json.dumps({
@@ -246,16 +246,16 @@ def export_tabular_data(request,
                 'fm_export_config_json': fm_export_config_json
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_tabular_data.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_tabular_data.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -274,14 +274,14 @@ def export_tabular_data(request,
 
     # export for published
     if export_source == 'published':
-        logger.debug('exporting tabular data from published records')
+        LOGGER.debug('exporting tabular data from published records')
 
         # get instance of Published model
         # TODO: not used
-        published = models.PublishedRecords()
+        models.PublishedRecords()
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Export Tabular Data for Published Records',
             task_type='export_tabular_data',
             task_params_json=json.dumps({
@@ -293,16 +293,16 @@ def export_tabular_data(request,
                 'fm_export_config_json': fm_export_config_json
             })
         )
-        ct.save()
+        combine_task.save()
 
         # handle export output configurations
-        ct = _handle_export_output(request, export_source, ct)
+        combine_task = _handle_export_output(request, export_source, combine_task)
 
         # run celery task
-        background_task = tasks.export_tabular_data.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.export_tabular_data.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # set gm
         gmc = models.GlobalMessageClient(request.session)
@@ -317,7 +317,7 @@ def export_tabular_data(request,
         return redirect('published')
 
 
-def _handle_export_output(request, export_source, ct):
+def _handle_export_output(request, export_source, combine_task):
     """
     Function to handle export outputs
         - currently only augmenting with S3 export
@@ -325,7 +325,7 @@ def _handle_export_output(request, export_source, ct):
     Args:
         request: request object
         export_source: ['job','published']
-        ct (CombineBackgroundTask): instance of ct to augment
+        combine_task (CombineBackgroundTask): instance of ct to augment
 
     Returns:
         ct (CombineBackgroundTask)
@@ -339,7 +339,7 @@ def _handle_export_output(request, export_source, ct):
     # if s3_export
     if s3_export:
         # update task params
-        ct.update_task_params({
+        combine_task.update_task_params({
             's3_export': True,
             's3_bucket': request.POST.get('s3_bucket', None),
             's3_key': request.POST.get('s3_key', None),
@@ -347,5 +347,5 @@ def _handle_export_output(request, export_source, ct):
         })
 
     # save and return
-    ct.save()
-    return ct
+    combine_task.save()
+    return combine_task

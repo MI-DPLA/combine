@@ -9,7 +9,7 @@ from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 @login_required
@@ -127,7 +127,7 @@ def _generate_io_results_json(io_results):
     # loop through jobs and configs
     for obj_type, obj_subsets in model_type_hash.items():
 
-        logger.debug('building %s' % obj_type)
+        LOGGER.debug('building %s', obj_type)
 
         # obj_type_flag
         obj_type_flag = False
@@ -180,7 +180,7 @@ def _generate_io_results_json(io_results):
                 )
 
             # append model type dict to
-            if len(io_results[model_key]) > 0:
+            if io_results[model_key]:
                 io_results_flag = True
                 obj_type_flag = True
                 obj_type_dict['children'].append(model_type_dict)
@@ -192,8 +192,7 @@ def _generate_io_results_json(io_results):
     # if results found for any type, return and imply True
     if io_results_flag:
         return io_results_json
-    else:
-        return False
+    return False
 
 
 @login_required
@@ -294,7 +293,7 @@ def stateio_export(request):
         export_name = request.POST.get('export_name', None)
         if export_name == '':
             export_name = None
-        logger.debug('initing export: %s' % export_name)
+        LOGGER.debug('initing export: %s', export_name)
 
         # capture and parse jobs_hierarchy_ids
         jobs_hierarchy_ids = request.POST.getlist('jobs_hierarchy_ids[]')
@@ -310,7 +309,7 @@ def stateio_export(request):
                                 '|' in config_id]
 
         # init export as bg task
-        ct = models.StateIOClient.export_state_bg_task(
+        combine_task = models.StateIOClient.export_state_bg_task(
             export_name=export_name,
             jobs=jobs,
             record_groups=record_groups,
@@ -319,13 +318,13 @@ def stateio_export(request):
         )
 
         # retrieve StateIO instance, use metadata for msg
-        stateio = models.StateIO.objects.get(id=ct.task_params['stateio_id'])
+        stateio_instance = models.StateIO.objects.get(id=combine_task.task_params['stateio_id'])
 
         # set gms
         gmc = models.GlobalMessageClient(request.session)
         gmc.add_gm({
             'html': '<p><strong>Exporting State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (
-                stateio.name),
+                stateio_instance.name),
             'class': 'success'
         })
 
@@ -377,12 +376,12 @@ def _stateio_prepare_job_hierarchy(
 
         if include_record_groups:
             # loop through child Record Groups and add
-            for rg in org.recordgroup_set.all():
+            for record_group in org.recordgroup_set.all():
 
                 # init rg dict
                 rg_dict = {
-                    'id': 'record_group|%s' % rg.id,
-                    'text': rg.name,
+                    'id': 'record_group|%s' % record_group.id,
+                    'text': record_group.name,
                     'state': {'opened': False},
                     'children': [],
                     'icon': 'la la-folder-open'
@@ -390,7 +389,7 @@ def _stateio_prepare_job_hierarchy(
 
                 if include_jobs:
                     # loop through Jobs and add
-                    for job in rg.job_set.all():
+                    for job in record_group.job_set.all():
                         # init job dict
                         job_dict = {
                             'id': 'job|%s' % job.id,
@@ -466,20 +465,20 @@ def _stateio_prepare_config_scenarios():
 
     # loop through models and append to config scenarios dict
     for model_tup in [
-        (config_scenarios_dict, models.ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
-         'validations'),
-        (
-            config_scenarios_dict, models.Transformation, 'transformations', 'Transformation Scenarios',
-            'transformations'),
-        (config_scenarios_dict, models.OAIEndpoint,
-         'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
-        (config_scenarios_dict, models.RecordIdentifierTransformationScenario, 'rits',
-         'Record Identifier Transformation Scenarios', 'rits'),
-        (config_scenarios_dict, models.FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations',
-         'field_mapper_configs'),
-        (config_scenarios_dict, models.DPLABulkDataDownload,
-         'dbdds', 'DPLA Bulk Data Downloads', 'dbdd')
-    ]:
+            (config_scenarios_dict, models.ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
+             'validations'),
+            (
+                config_scenarios_dict, models.Transformation, 'transformations', 'Transformation Scenarios',
+                'transformations'),
+            (config_scenarios_dict, models.OAIEndpoint,
+             'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
+            (config_scenarios_dict, models.RecordIdentifierTransformationScenario, 'rits',
+             'Record Identifier Transformation Scenarios', 'rits'),
+            (config_scenarios_dict, models.FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations',
+             'field_mapper_configs'),
+            (config_scenarios_dict, models.DPLABulkDataDownload,
+             'dbdds', 'DPLA Bulk Data Downloads', 'dbdd')
+        ]:
         # add to config_scenarios_dict
         _add_config_scenarios(*model_tup)
 
@@ -495,61 +494,60 @@ def stateio_import(request):
 
     if request.method == 'GET':
 
-        # return
         return render(request, 'core/stateio_import.html', {
             'breadcrumbs': breadcrumb_parser(request)
         })
 
-    elif request.method == 'POST':
+    if request.method == 'POST':
 
         # capture optional export name
         import_name = request.POST.get('import_name', None)
         if import_name == '':
             import_name = None
-        logger.debug('initing import: %s' % import_name)
+        LOGGER.debug('initing import: %s', import_name)
 
         # handle filesystem location
         if request.POST.get('filesystem_location', None) not in ['', None]:
             export_path = request.POST.get('filesystem_location').strip()
-            logger.debug(
-                'importing state based on filesystem location: %s' % export_path)
+            LOGGER.debug(
+                'importing state based on filesystem location: %s', export_path)
 
         # handle URL
         elif request.POST.get('url_location', None) not in ['', None]:
             export_path = request.POST.get('url_location').strip()
-            logger.debug(
-                'importing state based on remote location: %s' % export_path)
+            LOGGER.debug(
+                'importing state based on remote location: %s', export_path)
 
         # handle file upload
         elif type(request.FILES.get('export_upload_payload', None)) is not None:
 
-            logger.debug('handling file upload')
+            LOGGER.debug('handling file upload')
 
             # save file to disk
             payload = request.FILES.get('export_upload_payload', None)
             new_file = '/tmp/%s' % payload.name
-            with open(new_file, 'wb') as f:
-                f.write(payload.read())
+            with open(new_file, 'wb') as file:
+                file.write(payload.read())
                 payload.close()
 
             # set export_path
             export_path = new_file
-            logger.debug('saved uploaded state to %s' % export_path)
+            LOGGER.debug('saved uploaded state to %s', export_path)
 
         # init export as bg task
-        ct = models.StateIOClient.import_state_bg_task(
+        combine_task = models.StateIOClient.import_state_bg_task(
             import_name=import_name,
             export_path=export_path
         )
 
         # retrieve StateIO instance, use metadata for msg
-        stateio = models.StateIO.objects.get(id=ct.task_params['stateio_id'])
+        stateio_instance = models.StateIO.objects.get(id=combine_task.task_params['stateio_id'])
 
         # set gms
         gmc = models.GlobalMessageClient(request.session)
         gmc.add_gm({
             'html': '<p><strong>Importing State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (
-                stateio.name),
+                stateio_instance.name),
             'class': 'success'
         })
 

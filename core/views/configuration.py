@@ -10,7 +10,7 @@ from core.mongo import settings
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 @login_required
@@ -91,7 +91,7 @@ def dpla_bulk_data_download(request):
 
     if request.method == 'POST':
         # OLD ######################################################################
-        logger.debug('initiating bulk data download')
+        LOGGER.debug('initiating bulk data download')
 
         # get DPLABulkDataClient
         dbdc = models.DPLABulkDataClient()

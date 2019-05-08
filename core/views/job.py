@@ -15,7 +15,7 @@ from core.mongo import mc_handle
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 @login_required
@@ -36,15 +36,15 @@ def job_id_redirect(request, job_id):
 
 @login_required
 def all_jobs(request):
+    """
+    View to show all jobs, across all Organizations, RecordGroups, and Job types
+
+    GET Args:
+        include_analysis: if true, include Analysis type jobs
+    """
+
     # get all the record groups.
     record_groups = models.RecordGroup.objects.exclude(for_analysis=True)
-
-    '''
-	View to show all jobs, across all Organizations, RecordGroups, and Job types
-
-	GET Args:
-		include_analysis: if true, include Analysis type jobs
-	'''
 
     # capture include_analysis GET param if present
     include_analysis = request.GET.get('include_analysis', False)
@@ -57,9 +57,9 @@ def all_jobs(request):
 
     # get job lineage for all jobs
     if include_analysis:
-        ld = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=False)
+        job_lineage = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=False)
     else:
-        ld = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=True)
+        job_lineage = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=True)
 
     # loop through jobs and update status
     for job in jobs:
@@ -69,14 +69,14 @@ def all_jobs(request):
     return render(request, 'core/all_jobs.html', {
         'jobs': jobs,
         'record_groups': record_groups,
-        'job_lineage_json': json.dumps(ld),
+        'job_lineage_json': json.dumps(job_lineage),
         'breadcrumbs': breadcrumb_parser(request)
     })
 
 
 @login_required
 def job_delete(request, org_id, record_group_id, job_id):
-    logger.debug('deleting job by id: %s' % job_id)
+    LOGGER.debug('deleting job by id: %s', job_id)
 
     # get job
     job = models.Job.objects.get(pk=job_id)
@@ -88,7 +88,7 @@ def job_delete(request, org_id, record_group_id, job_id):
     job.save()
 
     # initiate Combine BG Task
-    ct = models.CombineBackgroundTask(
+    combine_task = models.CombineBackgroundTask(
         name='Delete Job: %s' % job.name,
         task_type='delete_model_instance',
         task_params_json=json.dumps({
@@ -96,13 +96,13 @@ def job_delete(request, org_id, record_group_id, job_id):
             'job_id': job.id
         })
     )
-    ct.save()
+    combine_task.save()
 
     # run celery task
     bg_task = tasks.delete_model_instance.delay('Job', job.id)
-    logger.debug('firing bg task: %s' % bg_task)
-    ct.celery_task_id = bg_task.task_id
-    ct.save()
+    LOGGER.debug('firing bg task: %s', bg_task)
+    combine_task.celery_task_id = bg_task.task_id
+    combine_task.save()
 
     # redirect
     return redirect(request.META.get('HTTP_REFERER'))
@@ -110,10 +110,10 @@ def job_delete(request, org_id, record_group_id, job_id):
 
 @login_required
 def stop_jobs(request):
-    logger.debug('stopping jobs')
+    LOGGER.debug('stopping jobs')
 
     job_ids = request.POST.getlist('job_ids[]')
-    logger.debug(job_ids)
+    LOGGER.debug(job_ids)
 
     # get downstream toggle
     downstream_toggle = request.POST.get('downstream_stop_toggle', False)
@@ -147,7 +147,7 @@ def stop_jobs(request):
 
     # # loop through and update visible elements of Job for front-end
     for job in ordered_job_delete_set:
-        logger.debug('stopping Job: %s' % job)
+        LOGGER.debug('stopping Job: %s', job)
 
         # stop job
         job.stop_job()
@@ -166,10 +166,10 @@ def stop_jobs(request):
 
 @login_required
 def delete_jobs(request):
-    logger.debug('deleting jobs')
+    LOGGER.debug('deleting jobs')
 
     job_ids = request.POST.getlist('job_ids[]')
-    logger.debug(job_ids)
+    LOGGER.debug(job_ids)
 
     # get downstream toggle
     downstream_toggle = request.POST.get('downstream_delete_toggle', False)
@@ -203,7 +203,7 @@ def delete_jobs(request):
 
     # # loop through and update visible elements of Job for front-end
     for job in ordered_job_delete_set:
-        logger.debug('deleting Job: %s' % job)
+        LOGGER.debug('deleting Job: %s', job)
 
         # set job status to deleting
         job.name = "%s (DELETING)" % job.name
@@ -212,7 +212,7 @@ def delete_jobs(request):
         job.save()
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name='Delete Job: #%s' % job.name,
             task_type='delete_model_instance',
             task_params_json=json.dumps({
@@ -220,13 +220,13 @@ def delete_jobs(request):
                 'job_id': job.id
             })
         )
-        ct.save()
+        combine_task.save()
 
         # run celery task
         bg_task = tasks.delete_model_instance.delay('Job', job.id, )
-        logger.debug('firing bg task: %s' % bg_task)
-        ct.celery_task_id = bg_task.task_id
-        ct.save()
+        LOGGER.debug('firing bg task: %s', bg_task)
+        combine_task.celery_task_id = bg_task.task_id
+        combine_task.save()
 
     # set gms
     gmc = models.GlobalMessageClient(request.session)
@@ -242,7 +242,7 @@ def delete_jobs(request):
 
 @login_required
 def move_jobs(request):
-    logger.debug('moving jobs')
+    LOGGER.debug('moving jobs')
 
     job_ids = request.POST.getlist('job_ids[]')
     record_group_id = request.POST.getlist('record_group_id')[0]
@@ -279,13 +279,13 @@ def move_jobs(request):
 
     # loop through jobs
     for job in ordered_job_move_set:
-        logger.debug('moving Job: %s' % job)
+        LOGGER.debug('moving Job: %s', job)
 
         new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
         job.record_group = new_record_group
         job.save()
 
-        logger.debug('Job %s has been moved' % job)
+        LOGGER.debug('Job %s has been moved', job)
 
     # redirect
     return JsonResponse({'results': True})
@@ -293,7 +293,7 @@ def move_jobs(request):
 
 @login_required
 def job_details(request, org_id, record_group_id, job_id):
-    logger.debug('details for job id: %s' % job_id)
+    LOGGER.debug('details for job id: %s', job_id)
 
     # get CombineJob
     cjob = models.CombineJob.get_combine_job(job_id)
@@ -314,18 +314,18 @@ def job_details(request, org_id, record_group_id, job_id):
     q = request.GET.get('q', None)
 
     # job details and job type specific augment
-    job_details = cjob.job.job_details_dict
+    job_detail = cjob.job.job_details_dict
 
     # mapped field analysis, generate if not part of job_details
-    if 'mapped_field_analysis' in job_details.keys():
-        field_counts = job_details['mapped_field_analysis']
+    if 'mapped_field_analysis' in job_detail.keys():
+        field_counts = job_detail['mapped_field_analysis']
     else:
         if cjob.job.finished:
             field_counts = cjob.count_indexed_fields()
             cjob.job.update_job_details(
                 {'mapped_field_analysis': field_counts}, save=True)
         else:
-            logger.debug('job not finished, not setting')
+            LOGGER.debug('job not finished, not setting')
             field_counts = {}
 
     # OAI Harvest
@@ -349,7 +349,7 @@ def job_details(request, org_id, record_group_id, job_id):
         pass
 
     # get published records, primarily for published sets
-    pr = models.PublishedRecords()
+    pub_records = models.PublishedRecords()
 
     # get published subsets with PublishedRecords static method
     published_subsets = models.PublishedRecords.get_subsets()
@@ -381,8 +381,8 @@ def job_details(request, org_id, record_group_id, job_id):
         'job_lineage_json': json.dumps(job_lineage),
         'dpla_bulk_data_matches': dpla_bulk_data_matches,
         'q': q,
-        'job_details': job_details,
-        'pr': pr,
+        'job_details': job_detail,
+        'pr': pub_records,
         'published_subsets': published_subsets,
         'es_index_str': cjob.esi.es_index_str,
         'breadcrumbs': breadcrumb_parser(request)
@@ -391,17 +391,17 @@ def job_details(request, org_id, record_group_id, job_id):
 
 @login_required
 def job_errors(request, org_id, record_group_id, job_id):
-    logger.debug('retrieving errors for job id: %s' % job_id)
+    LOGGER.debug('retrieving errors for job id: %s', job_id)
 
     # get CombineJob
     cjob = models.CombineJob.get_combine_job(job_id)
 
-    job_errors = cjob.get_job_errors()
+    job_error_list = cjob.get_job_errors()
 
     # return
     return render(request, 'core/job_errors.html', {
         'cjob': cjob,
-        'job_errors': job_errors,
+        'job_errors': job_error_list,
         'breadcrumbs': breadcrumb_parser(request)
     })
 
@@ -448,7 +448,7 @@ def job_update_name(request, org_id, record_group_id, job_id):
 
 @login_required
 def job_publish(request, org_id, record_group_id, job_id):
-    logger.debug(request.POST)
+    LOGGER.debug(request.POST)
 
     # get preferred metadata index mapper
     publish_set_id = request.POST.get('publish_set_id', None)
@@ -460,7 +460,7 @@ def job_publish(request, org_id, record_group_id, job_id):
     cjob = models.CombineJob.get_combine_job(job_id)
 
     # init publish
-    bg_task = cjob.publish_bg_task(
+    cjob.publish_bg_task(
         publish_set_id=publish_set_id,
         in_published_subsets=published_subsets)
 
@@ -483,7 +483,7 @@ def job_unpublish(request, org_id, record_group_id, job_id):
     cjob = models.CombineJob.get_combine_job(job_id)
 
     # init unpublish
-    bg_task = cjob.unpublish_bg_task()
+    cjob.unpublish_bg_task()
 
     # set gms
     gmc = models.GlobalMessageClient(request.session)
@@ -500,7 +500,7 @@ def job_unpublish(request, org_id, record_group_id, job_id):
 
 @login_required
 def rerun_jobs(request):
-    logger.debug('re-running jobs')
+    LOGGER.debug('re-running jobs')
 
     # get job ids
     job_ids = request.POST.getlist('job_ids[]')
@@ -546,20 +546,20 @@ def rerun_jobs(request):
         re_job.save()
 
     # initiate Combine BG Task
-    ct = models.CombineBackgroundTask(
+    combine_task = models.CombineBackgroundTask(
         name="Rerun Jobs Prep",
         task_type='rerun_jobs_prep',
         task_params_json=json.dumps({
             'ordered_job_rerun_set': [j.id for j in ordered_job_rerun_set]
         })
     )
-    ct.save()
+    combine_task.save()
 
     # run celery task
-    bg_task = tasks.rerun_jobs_prep.delay(ct.id)
-    logger.debug('firing bg task: %s' % bg_task)
-    ct.celery_task_id = bg_task.task_id
-    ct.save()
+    bg_task = tasks.rerun_jobs_prep.delay(combine_task.id)
+    LOGGER.debug('firing bg task: %s', bg_task)
+    combine_task.celery_task_id = bg_task.task_id
+    combine_task.save()
 
     # set gms
     gmc = models.GlobalMessageClient(request.session)
@@ -575,7 +575,7 @@ def rerun_jobs(request):
 
 @login_required
 def clone_jobs(request):
-    logger.debug('cloning jobs')
+    LOGGER.debug('cloning jobs')
 
     job_ids = request.POST.getlist('job_ids[]')
 
@@ -605,7 +605,7 @@ def clone_jobs(request):
     ordered_job_clone_set = sorted(list(job_clone_set), key=lambda j: j.id)
 
     # initiate Combine BG Task
-    ct = models.CombineBackgroundTask(
+    combine_task = models.CombineBackgroundTask(
         name="Clone Jobs",
         task_type='clone_jobs',
         task_params_json=json.dumps({
@@ -614,13 +614,13 @@ def clone_jobs(request):
             'rerun_on_clone': rerun_on_clone
         })
     )
-    ct.save()
+    combine_task.save()
 
     # run celery task
-    bg_task = tasks.clone_jobs.delay(ct.id)
-    logger.debug('firing bg task: %s' % bg_task)
-    ct.celery_task_id = bg_task.task_id
-    ct.save()
+    bg_task = tasks.clone_jobs.delay(combine_task.id)
+    LOGGER.debug('firing bg task: %s', bg_task)
+    combine_task.celery_task_id = bg_task.task_id
+    combine_task.save()
 
     # set gms
     gmc = models.GlobalMessageClient(request.session)
@@ -872,7 +872,7 @@ def job_transform(request, org_id, record_group_id):
         rits = models.RecordIdentifierTransformationScenario.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
         bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -887,7 +887,7 @@ def job_transform(request, org_id, record_group_id):
             'rits': rits,
             'field_mappers': field_mappers,
             'xml2kvp_handle': models.XML2kvp(),
-            'job_lineage_json': json.dumps(ld),
+            'job_lineage_json': json.dumps(job_lineage),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -946,7 +946,7 @@ def job_merge(request, org_id, record_group_id):
         field_mappers = models.FieldMapper.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        ld = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
         bulk_downloads = models.DPLABulkDataDownload.objects.all()
@@ -961,7 +961,7 @@ def job_merge(request, org_id, record_group_id):
             'rits': rits,
             'field_mappers': field_mappers,
             'xml2kvp_handle': models.XML2kvp(),
-            'job_lineage_json': json.dumps(ld),
+            'job_lineage_json': json.dumps(job_lineage),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -1029,7 +1029,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
                 cjob.job.update_job_details(
                     {'mapped_field_analysis': field_counts}, save=True)
             else:
-                logger.debug('job not finished, not setting')
+                LOGGER.debug('job not finished, not setting')
                 field_counts = {}
 
         # render page
@@ -1069,18 +1069,18 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
                                                f not in ['record_id', 'db_id', 'oid', '_id']]
 
         # initiate Combine BG Task
-        ct = models.CombineBackgroundTask(
+        combine_task = models.CombineBackgroundTask(
             name=combine_task_name,
             task_type='validation_report',
             task_params_json=json.dumps(task_params)
         )
-        ct.save()
+        combine_task.save()
 
         # run celery task
-        background_task = tasks.create_validation_report.delay(ct.id)
-        logger.debug('firing bg task: %s' % background_task)
-        ct.celery_task_id = background_task.task_id
-        ct.save()
+        background_task = tasks.create_validation_report.delay(combine_task.id)
+        LOGGER.debug('firing bg task: %s', background_task)
+        combine_task.celery_task_id = background_task.task_id
+        combine_task.save()
 
         # redirect to Background Tasks
         return redirect('bg_tasks')
@@ -1127,15 +1127,15 @@ def job_update(request, org_id, record_group_id, job_id):
     # if POST, submit job
     if request.method == 'POST':
 
-        logger.debug('updating job')
-        logger.debug(request.POST)
+        LOGGER.debug('updating job')
+        LOGGER.debug(request.POST)
 
         # retrieve job
         cjob = models.CombineJob.get_combine_job(int(job_id))
 
         # get update type
         update_type = request.POST.get('update_type', None)
-        logger.debug('running job update: %s' % update_type)
+        LOGGER.debug('running job update: %s', update_type)
 
         # handle re-index
         if update_type == 'reindex':
@@ -1198,14 +1198,14 @@ def job_update(request, org_id, record_group_id, job_id):
             cjob.remove_validation_bg_task(jv_id)
 
             # set gms
-            vs = models.JobValidation.objects.get(
+            validation_scenario = models.JobValidation.objects.get(
                 pk=int(jv_id)).validation_scenario
             gmc = models.GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Removing Validation for Job:</strong><br>%s<br><br>'
                         '<strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" '
                         'class="btn btn-outline-primary btn-sm">View Background Tasks</button></a></p>' % (
-                            cjob.job.name, vs.name, reverse('bg_tasks')),
+                            cjob.job.name, validation_scenario.name, reverse('bg_tasks')),
                 'class': 'success'
             })
 
@@ -1416,11 +1416,11 @@ def job_validation_scenario_failures(request, org_id, record_group_id, job_id, j
     cjob = models.CombineJob.get_combine_job(job_id)
 
     # get job validation instance
-    jv = models.JobValidation.objects.get(pk=int(job_validation_id))
+    job_validation = models.JobValidation.objects.get(pk=int(job_validation_id))
 
     # return
     return render(request, 'core/job_validation_scenario_failures.html', {
         'cjob': cjob,
-        'jv': jv,
+        'jv': job_validation,
         'breadcrumbs': breadcrumb_parser(request)
     })

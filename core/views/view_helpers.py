@@ -11,7 +11,7 @@ from django.core.urlresolvers import reverse
 # import models
 from core import models
 
-# Get an instance of a logger
+# Get an instance of a LOGGER
 logger = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules

@@ -7,7 +7,7 @@ from core import forms, models, tasks
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def organizations(request):
@@ -17,7 +17,7 @@ def organizations(request):
 
     # show organizations
     if request.method == 'GET':
-        logger.debug('retrieving organizations')
+        LOGGER.debug('retrieving organizations')
 
         # get all organizations
         orgs = models.Organization.objects.exclude(for_analysis=True).all()
@@ -31,9 +31,9 @@ def organizations(request):
     # create new organization
     if request.method == 'POST':
         # create new org
-        logger.debug(request.POST)
-        f = forms.OrganizationForm(request.POST)
-        new_org = f.save()
+        LOGGER.debug(request.POST)
+        form = forms.OrganizationForm(request.POST)
+        new_org = form.save()
 
         return redirect('organization', org_id=new_org.id)
 
@@ -75,7 +75,7 @@ def organization_delete(request, org_id):
     org.save()
 
     # initiate Combine BG Task
-    ct = models.CombineBackgroundTask(
+    combine_task = models.CombineBackgroundTask(
         name='Delete Organization: %s' % org.name,
         task_type='delete_model_instance',
         task_params_json=json.dumps({
@@ -83,12 +83,12 @@ def organization_delete(request, org_id):
             'org_id': org.id
         })
     )
-    ct.save()
+    combine_task.save()
 
     # run celery task
     bg_task = tasks.delete_model_instance.delay('Organization', org.id, )
-    logger.debug('firing bg task: %s' % bg_task)
-    ct.celery_task_id = bg_task.task_id
-    ct.save()
+    LOGGER.debug('firing bg task: %s', bg_task)
+    combine_task.celery_task_id = bg_task.task_id
+    combine_task.save()
 
     return redirect('organizations')

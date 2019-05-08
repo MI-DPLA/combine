@@ -6,7 +6,7 @@ from django.shortcuts import render
 from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def search(request):
@@ -18,7 +18,7 @@ def search(request):
     q = request.GET.get('q', None)
     if q:
         search_params = json.dumps({'q': q})
-        logger.debug(search_params)
+        LOGGER.debug(search_params)
     else:
         search_params = None
 

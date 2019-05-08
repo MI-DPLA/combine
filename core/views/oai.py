@@ -10,7 +10,7 @@ def oai(request, subset=None):
     """
 
     # get OAIProvider instance
-    op = OAIProvider(request.GET, subset=subset)
+    provider = OAIProvider(request.GET, subset=subset)
 
     # return XML
-    return HttpResponse(op.generate_response(), content_type='text/xml')
+    return HttpResponse(provider.generate_response(), content_type='text/xml')

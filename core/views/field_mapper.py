@@ -1,15 +1,15 @@
 import json
-import jsonschema
 import logging
+import jsonschema
 
-from django.http import HttpResponse, JsonResponse
+from django.http import JsonResponse
 from django.shortcuts import render
 
 from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def field_mapper_payload(request, fm_id):
@@ -18,21 +18,21 @@ def field_mapper_payload(request, fm_id):
         """
 
     # get transformation
-    fm = models.FieldMapper.objects.get(pk=int(fm_id))
+    field_mapper = models.FieldMapper.objects.get(pk=int(fm_id))
 
     # get type
     doc_type = request.GET.get('type', None)
 
-    if fm.field_mapper_type == 'xml2kvp':
+    if field_mapper.field_mapper_type == 'xml2kvp':
 
         if not doc_type:
-            return HttpResponse(fm.config_json, content_type='application/json')
+            return JsonResponse(field_mapper.config_json)
 
-        elif doc_type and doc_type == 'config':
-            return HttpResponse(fm.config_json, content_type='application/json')
+        if doc_type and doc_type == 'config':
+            return JsonResponse(field_mapper.config_json)
 
-        elif doc_type and doc_type == 'payload':
-            return HttpResponse(fm.payload, content_type='application/json')
+        if doc_type and doc_type == 'payload':
+            return JsonResponse(field_mapper.payload)
 
 
 def field_mapper_update(request):
@@ -40,16 +40,16 @@ def field_mapper_update(request):
         Create and save JSON to FieldMapper instance, or update pre-existing
         """
 
-    logger.debug(request.POST)
+    LOGGER.debug(request.POST)
 
     # get update type
     update_type = request.POST.get('update_type')
 
     # handle new FieldMapper creation
     if update_type == 'new':
-        logger.debug('creating new FieldMapper instance')
+        LOGGER.debug('creating new FieldMapper instance')
 
-        fm = models.FieldMapper(
+        field_mapper = models.FieldMapper(
             name=request.POST.get('fm_name'),
             config_json=request.POST.get('fm_config_json'),
             field_mapper_type='xml2kvp'
@@ -57,49 +57,49 @@ def field_mapper_update(request):
 
         # validate fm_config before creating
         try:
-            fm.validate_config_json()
-            fm.save()
+            field_mapper.validate_config_json()
+            field_mapper.save()
             return JsonResponse({'results': True,
                                  'msg': 'New Field Mapper configurations were <strong>saved</strong> as: <strong>%s</strong>' % request.POST.get(
                                      'fm_name')}, status=201)
-        except jsonschema.ValidationError as e:
+        except jsonschema.ValidationError as err:
             return JsonResponse({'results': False,
                                  'msg': 'Could not <strong>create</strong> <strong>%s</strong>, the following error was had: %s' % (
-                                     fm.name, str(e))}, status=409)
+                                     field_mapper.name, str(err))}, status=409)
 
     # handle update
     if update_type == 'update':
-        logger.debug('updating pre-existing FieldMapper instance')
+        LOGGER.debug('updating pre-existing FieldMapper instance')
 
         # get fm instance
-        fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+        field_mapper = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
 
         # update and save
-        fm.config_json = request.POST.get('fm_config_json')
+        field_mapper.config_json = request.POST.get('fm_config_json')
 
         # validate fm_config before updating
         try:
-            fm.validate_config_json()
-            fm.save()
+            field_mapper.validate_config_json()
+            field_mapper.save()
             return JsonResponse({'results': True,
-                                 'msg': 'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % fm.name},
+                                 'msg': 'Field Mapper configurations for <strong>%s</strong> were <strong>updated</strong>' % field_mapper.name},
                                 status=200)
-        except jsonschema.ValidationError as e:
+        except jsonschema.ValidationError as err:
             return JsonResponse({'results': False,
                                  'msg': 'Could not <strong>update</strong> <strong>%s</strong>, the following error was had: %s' % (
-                                     fm.name, str(e))}, status=409)
+                                     field_mapper.name, str(err))}, status=409)
 
     # handle delete
     if update_type == 'delete':
-        logger.debug('deleting pre-existing FieldMapper instance')
+        LOGGER.debug('deleting pre-existing FieldMapper instance')
 
         # get fm instance
-        fm = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+        field_mapper = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
 
         # delete
-        fm.delete()
+        field_mapper.delete()
         return JsonResponse({'results': True,
-                             'msg': 'Field Mapper configurations for <strong>%s</strong> were <strong>deleted</strong>' % fm.name},
+                             'msg': 'Field Mapper configurations for <strong>%s</strong> were <strong>deleted</strong>' % field_mapper.name},
                             status=200)
 
 
@@ -113,6 +113,7 @@ def test_field_mapper(request):
         field_mappers = models.FieldMapper.objects.all()
 
         # check if limiting to one, pre-existing record
+        # TODO: what is q?
         q = request.GET.get('q', None)
 
         # check for pre-requested transformation scenario
@@ -130,14 +131,14 @@ def test_field_mapper(request):
     # If POST, provide mapping of record
     if request.method == 'POST':
 
-        logger.debug('running test field mapping')
-        logger.debug(request.POST)
+        LOGGER.debug('running test field mapping')
+        LOGGER.debug(request.POST)
 
         # get record
         record = models.Record.objects.get(id=request.POST.get('db_id'))
 
         # get field mapper info
-        field_mapper = request.POST.get('field_mapper')
+        request.POST.get('field_mapper') # TODO: unused
         fm_config_json = request.POST.get('fm_config_json')
 
         try:
@@ -149,7 +150,7 @@ def test_field_mapper(request):
             # return as JSON
             return JsonResponse(kvp_dict)
 
-        except Exception as e:
+        except Exception as err:
 
-            logger.debug('field mapper was unsucessful')
-            return JsonResponse({'error': str(e)})
+            LOGGER.debug('field mapper was unsucessful')
+            return JsonResponse({'error': str(err)})

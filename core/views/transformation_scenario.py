@@ -9,7 +9,7 @@ from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def transformation_scenario_payload(request, trans_id):
@@ -61,7 +61,7 @@ def test_transformation_scenario(request):
     # If POST, provide raw result of validation test
     if request.method == 'POST':
 
-        logger.debug('running test transformation and returning')
+        LOGGER.debug('running test transformation and returning')
 
         # get response type
         response_type = request.POST.get('response_type', False)
@@ -115,7 +115,7 @@ def test_transformation_scenario(request):
                 return HttpResponse(trans_results, content_type="text/xml")
 
             # get diff of original record as combined results
-            elif response_type == 'combined_html':
+            if response_type == 'combined_html':
 
                 # get combined diff as HTML
                 diff_dict = record.get_record_diff(xml_string=trans_results, output='combined_gen',
@@ -126,7 +126,7 @@ def test_transformation_scenario(request):
                 return HttpResponse(diff_html, content_type="text/xml")
 
             # get diff of original record as side_by_side
-            elif response_type == 'side_by_side_html':
+            if response_type == 'side_by_side_html':
 
                 # get side_by_side diff as HTML
                 diff_dict = record.get_record_diff(xml_string=trans_results, output='side_by_side_html',
@@ -144,12 +144,12 @@ def test_transformation_scenario(request):
 
                 return HttpResponse(diff_html, content_type="text/xml")
 
-        except Exception as e:
-            logger.debug(
+        except Exception as err:
+            LOGGER.debug(
                 'test transformation scenario was unsucessful, deleting temporary')
             try:
                 if request.POST.get('trans_test_type') == 'single':
                     trans.delete()
             except:
-                logger.debug('could not delete temporary transformation')
-            return HttpResponse(str(e), content_type="text/plain")
+                LOGGER.debug('could not delete temporary transformation')
+            return HttpResponse(str(err), content_type="text/plain")

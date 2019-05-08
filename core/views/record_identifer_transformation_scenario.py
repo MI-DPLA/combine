@@ -8,7 +8,7 @@ from core import models
 
 from .view_helpers import breadcrumb_parser
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 def rits_payload(request, rits_id):
@@ -17,11 +17,11 @@ def rits_payload(request, rits_id):
         """
 
     # get transformation
-    rt = models.RecordIdentifierTransformationScenario.objects.get(
+    rits = models.RecordIdentifierTransformationScenario.objects.get(
         pk=int(rits_id))
 
     # return as json package
-    return JsonResponse(model_to_dict(rt))
+    return JsonResponse(model_to_dict(rits))
 
 
 def test_rits(request):
@@ -47,8 +47,8 @@ def test_rits(request):
     # If POST, provide raw result of validation test
     if request.method == 'POST':
 
-        logger.debug('testing record identifier transformation')
-        logger.debug(request.POST)
+        LOGGER.debug('testing record identifier transformation')
+        LOGGER.debug(request.POST)
 
         try:
 
@@ -64,15 +64,15 @@ def test_rits(request):
 
             # determine testing type
             if request.POST['record_id_transform_target'] == 'record_id':
-                logger.debug('configuring test for record_id')
+                LOGGER.debug('configuring test for record_id')
                 request.POST['test_transform_input'] = record.record_id
             elif request.POST['record_id_transform_target'] == 'document':
-                logger.debug('configuring test for record_id')
+                LOGGER.debug('configuring test for record_id')
                 request.POST['test_transform_input'] = record.document
 
             # instantiate rits and return test
             rits = models.RITSClient(request.POST)
             return JsonResponse(rits.test_user_input())
 
-        except Exception as e:
-            return JsonResponse({'results': str(e), 'success': False})
+        except Exception as err:
+            return JsonResponse({'results': str(err), 'success': False})

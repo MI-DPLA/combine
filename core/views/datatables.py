@@ -4,17 +4,17 @@ from lxml import etree
 
 from django.core.urlresolvers import reverse
 from django.db.models import Q
+from django_datatables_view.base_datatable_view import BaseDatatableView
 
 from core import models
 from core.mongo import mongoengine, ObjectId
 
-from django_datatables_view.base_datatable_view import BaseDatatableView
 
 from .job import job_details
 from .record import record, record_document
 from .core_background_tasks import bg_task, bg_task_cancel, bg_task_delete
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 
 ####################################################################
@@ -62,10 +62,10 @@ class DTPublishedJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get PublishedRecords instance
-        pr = models.PublishedRecords(subset=self.kwargs.get('subset', None))
+        pub_records = models.PublishedRecords(subset=self.kwargs.get('subset', None))
 
         # return queryset
-        return pr.records
+        return pub_records.records
 
     def render_column(self, row, column):
 
@@ -95,7 +95,7 @@ class DTPublishedJson(BaseDatatableView):
         if column == 'document':
             # attempt to parse as XML and return if valid or not
             try:
-                xml = etree.fromstring(row.document.encode('utf-8'))
+                etree.fromstring(row.document.encode('utf-8'))
                 return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
                     'org_id': row.job.record_group.organization.id,
                     'record_group_id': row.job.record_group.id,
@@ -126,7 +126,7 @@ class DTPublishedJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    logger.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('recieved 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search) |
                                mongoengine.Q(publish_set_id=search))
@@ -190,8 +190,7 @@ class DTRecordsJson(BaseDatatableView):
             return job.get_records(success=success_filter)
 
         # else, return all records
-        else:
-            return models.Record.objects
+        return models.Record.objects
 
     def render_column(self, row, column):
 
@@ -211,10 +210,10 @@ class DTRecordsJson(BaseDatatableView):
             return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
         # handle document
-        elif column == 'document':
+        if column == 'document':
             # attempt to parse as XML and return if valid or not
             try:
-                xml = etree.fromstring(row.document.encode('utf-8'))
+                etree.fromstring(row.document.encode('utf-8'))
                 return '<a target="_blank" href="%s">Valid XML</a>' % (reverse(record_document, kwargs={
                     'org_id': row.job.record_group.organization.id,
                     'record_group_id': row.job.record_group.id,
@@ -224,7 +223,7 @@ class DTRecordsJson(BaseDatatableView):
                 return '<span style="color: red;">Invalid XML</span>'
 
         # handle associated job
-        elif column == 'job':
+        if column == 'job':
             return '<a href="%s"><code>%s</code></a>' % (reverse(job_details, kwargs={
                 'org_id': row.job.record_group.organization.id,
                 'record_group_id': row.job.record_group.id,
@@ -232,21 +231,18 @@ class DTRecordsJson(BaseDatatableView):
             }), row.job.name)
 
         # handle unique
-        elif column == 'unique':
+        if column == 'unique':
             if row.unique:
                 return '<span style="color:green;">Unique in Job</span>'
-            else:
-                return '<span style="color:red;">Duplicate in Job</span>'
+            return '<span style="color:red;">Duplicate in Job</span>'
 
         # handle validation_results
-        elif column == 'valid':
+        if column == 'valid':
             if row.valid:
                 return '<span style="color:green;">Valid</span>'
-            else:
-                return '<span style="color:red;">Invalid</span>'
+            return '<span style="color:red;">Invalid</span>'
 
-        else:
-            return super(DTRecordsJson, self).render_column(row, column)
+        return super(DTRecordsJson, self).render_column(row, column)
 
     def filter_queryset(self, qs):
         # use parameters passed in GET request to filter queryset
@@ -260,7 +256,7 @@ class DTRecordsJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    logger.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('recieved 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 
@@ -314,8 +310,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
         if column == 'job':
             return row.job.name
 
-        else:
-            return super(DTIndexingFailuresJson, self).render_column(row, column)
+        return super(DTIndexingFailuresJson, self).render_column(row, column)
 
 
 class DTJobValidationScenarioFailuresJson(BaseDatatableView):
@@ -352,11 +347,11 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job
-        jv = models.JobValidation.objects.get(
+        job_validation = models.JobValidation.objects.get(
             pk=self.kwargs['job_validation_id'])
 
         # return filtered queryset
-        return jv.get_record_validation_failures()
+        return job_validation.get_record_validation_failures()
 
     def render_column(self, row, column):
 
@@ -376,19 +371,18 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
             return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
         # handle record record_id
-        elif column == 'record':
+        if column == 'record':
             # get target record from row
             target_record = row.record
             return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
         # handle results_payload
-        elif column == 'results_payload':
-            rp = json.loads(row.results_payload)['failed']
-            return ', '.join(rp)
+        if column == 'results_payload':
+            result_payload = json.loads(row.results_payload)['failed']
+            return ', '.join(result_payload)
 
         # handle all else
-        else:
-            return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
+        return super(DTJobValidationScenarioFailuresJson, self).render_column(row, column)
 
     def filter_queryset(self, qs):
         # use parameters passed in GET request to filter queryset
@@ -402,7 +396,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(record_id=oid))
                 except:
-                    logger.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('recieved 24 chars, but not ObjectId')
         # return
         return qs
 
@@ -442,7 +436,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
         # return queryset filtered for match/miss
         if self.kwargs['match_type'] == 'matches':
             return job.get_records().filter(dbdm=True)
-        elif self.kwargs['match_type'] == 'misses':
+        if self.kwargs['match_type'] == 'misses':
             return job.get_records().filter(dbdm=False)
 
     def render_column(self, row, column):
@@ -463,14 +457,13 @@ class DTDPLABulkDataMatches(BaseDatatableView):
             return '<a href="%s">%s</a>' % (record_link, target_record.id)
 
         # handle record record_id
-        elif column == 'record_id':
+        if column == 'record_id':
             # get target record from row
             target_record = row
             return '<a href="%s">%s</a>' % (record_link, target_record.record_id)
 
         # handle all else
-        else:
-            return super(DTDPLABulkDataMatches, self).render_column(row, column)
+        return super(DTDPLABulkDataMatches, self).render_column(row, column)
 
     def filter_queryset(self, qs):
         # use parameters passed in GET request to filter queryset
@@ -484,7 +477,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    logger.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('recieved 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 
@@ -545,8 +538,7 @@ class JobRecordDiffs(BaseDatatableView):
         if column == 'record_id':
             return '<a href="%s"><code>%s</code></a>' % (record_link, row.record_id)
 
-        else:
-            return super(JobRecordDiffs, self).render_column(row, column)
+        return super(JobRecordDiffs, self).render_column(row, column)
 
     def filter_queryset(self, qs):
 
@@ -609,30 +601,26 @@ class CombineBackgroundTasksDT(BaseDatatableView):
         if column == 'task_type':
             return row.get_task_type_display()
 
-        elif column == 'celery_task_id':
+        if column == 'celery_task_id':
             return '<code>%s</code>' % row.celery_task_id
 
-        elif column == 'completed':
+        if column == 'completed':
             if row.completed:
                 if row.celery_status in ['STOPPED', 'REVOKED']:
                     return "<span class='text-danger'>%s</span>" % row.celery_status
-                else:
-                    return "<span class='text-success'>%s</span>" % row.celery_status
-            else:
-                return "<span class='text-warning'>%s</span>" % row.celery_status
+                return "<span class='text-success'>%s</span>" % row.celery_status
+            return "<span class='text-warning'>%s</span>" % row.celery_status
 
-        elif column == 'duration':
+        if column == 'duration':
             return row.calc_elapsed_as_string()
 
-        elif column == 'actions':
+        if column == 'actions':
             return '<a href="%s"><button type="button" class="btn btn-success btn-sm">Results <i class="la la-info-circle"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to cancel this task?\');">Stop <i class="la la-stop"></i></button></a> <a href="%s"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm(\'Are you sure you want to remove this task?\');">Delete <i class="la la-close"></i></button></a>' % (
                 reverse(bg_task, kwargs={'task_id': row.id}),
                 reverse(bg_task_cancel, kwargs={'task_id': row.id}),
                 reverse(bg_task_delete, kwargs={'task_id': row.id}),
             )
-
-        else:
-            return super(CombineBackgroundTasksDT, self).render_column(row, column)
+        return super(CombineBackgroundTasksDT, self).render_column(row, column)
 
     def filter_queryset(self, qs):
         # use parameters passed in GET request to filter queryset
