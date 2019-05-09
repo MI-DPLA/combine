@@ -26,13 +26,13 @@ def field_mapper_payload(request, fm_id):
     if field_mapper.field_mapper_type == 'xml2kvp':
 
         if not doc_type:
-            return JsonResponse(field_mapper.config_json)
+            return JsonResponse(field_mapper.config_json, safe=False)
 
         if doc_type and doc_type == 'config':
-            return JsonResponse(field_mapper.config_json)
+            return JsonResponse(field_mapper.config_json, safe=False)
 
         if doc_type and doc_type == 'payload':
-            return JsonResponse(field_mapper.payload)
+            return JsonResponse(field_mapper.payload, safe=False)
 
 
 def field_mapper_update(request):

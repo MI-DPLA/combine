@@ -10,7 +10,7 @@ class FieldMapperTestCase(TestCase):
                                                   config_json='{}')
         response = c.get(
             f'/combine/configuration/field_mapper/{field_mapper.id}/payload')
-        self.assertEqual(b'{}', response.content)
+        self.assertEqual(b'"{}"', response.content)
 
     def test_field_mapper_payload(self):
         c = Client()
@@ -18,4 +18,4 @@ class FieldMapperTestCase(TestCase):
                                                   payload='test payload')
         response = c.get(
             f'/combine/configuration/field_mapper/{field_mapper.id}/payload?type=payload')
-        self.assertEqual(b'test payload', response.content)
+        self.assertEqual(b'"test payload"', response.content)
