@@ -65,11 +65,11 @@ def test_livy_start_session(use_active_livy):
 
 			# pause
 			time.sleep(1)
-			
+
 			# refresh session
 			VO.livy_session.refresh_from_livy()
 			logger.info(VO.livy_session.status)
-			
+
 			# check status
 			if VO.livy_session.status != 'idle':
 				continue
@@ -105,8 +105,7 @@ def test_record_group_create():
 	VO.rg = RecordGroup(
 		organization=VO.org,
 		name='test_record_group_%s' % uuid.uuid4().hex,
-		description='',
-		publish_set_id='test_record_group_pub_id'
+		description=''
 	)
 	VO.rg.save()
 	assert type(VO.rg.id) == int
@@ -125,7 +124,7 @@ def prepare_records():
 	# parse file
 	xml_tree = etree.parse('tests/data/mods_250.xml')
 	xml_root = xml_tree.getroot()
-	
+
 	# get namespaces
 	nsmap = {}
 	for ns in xml_root.xpath('//namespace::*'):
@@ -166,7 +165,7 @@ def test_static_harvest():
 	}
 
 	# initiate job
-	cjob = HarvestStaticXMLJob(			
+	cjob = HarvestStaticXMLJob(
 		job_name='test_static_harvest',
 		job_note='',
 		user=VO.user,
@@ -188,10 +187,10 @@ def test_static_harvest():
 
 		# pause
 		time.sleep(1)
-		
+
 		# refresh session
 		cjob.job.update_status()
-		
+
 		# check status
 		if cjob.job.status != 'available':
 			continue
@@ -233,7 +232,7 @@ def prepare_transform():
 		payload=xsl_string,
 		transformation_type='xslt',
 		filepath='will_be_updated'
-	)	
+	)
 	trans.save()
 
 	# return transformation
@@ -259,7 +258,7 @@ def test_static_transform():
 		transformation=VO.transformation_scenario,
 		index_mapper='GenericMapper'
 	)
-	
+
 	# start job and update status
 	job_status = cjob.start_job()
 
@@ -273,10 +272,10 @@ def test_static_transform():
 
 		# pause
 		time.sleep(1)
-		
+
 		# refresh session
 		cjob.job.update_status()
-		
+
 		# check status
 		if cjob.job.status != 'available':
 			continue
@@ -417,7 +416,7 @@ def test_duplicate():
 		index_mapper='GenericMapper',
 		validation_scenarios=[VO.schematron_validation_scenario.id, VO.python_validation_scenario.id]
 	)
-	
+
 	# start job and update status
 	job_status = cjob.start_job()
 
@@ -431,10 +430,10 @@ def test_duplicate():
 
 		# pause
 		time.sleep(1)
-		
+
 		# refresh session
 		cjob.job.update_status()
-		
+
 		# check status
 		if cjob.job.status != 'available':
 			continue
@@ -495,7 +494,7 @@ def test_livy_stop_session(use_active_livy):
 
 	if use_active_livy:
 		assert True
-	
+
 	# stop livy session used for testing
 	else:
 		# attempt stop
@@ -506,11 +505,11 @@ def test_livy_stop_session(use_active_livy):
 
 			# pause
 			time.sleep(1)
-			
+
 			# refresh session
 			VO.livy_session.refresh_from_livy()
 			logger.info(VO.livy_session.status)
-			
+
 			# check status
 			if VO.livy_session.status != 'gone':
 				continue

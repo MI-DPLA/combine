@@ -1079,8 +1079,12 @@ def job_publish(request, org_id, record_group_id, job_id):
 
 	logger.debug(request.POST)
 
-	# get preferred metadata index mapper
+	# capture entered publish set id
 	publish_set_id = request.POST.get('publish_set_id', None)
+
+	# override with pre-existing publish set id is selected
+	if request.POST.get('existing_publish_set_id', None) != None:
+		publish_set_id = request.POST.get('existing_publish_set_id')
 
 	# get published subsets to include in
 	published_subsets = request.POST.getlist('published_subsets', [])

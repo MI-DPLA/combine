@@ -232,7 +232,7 @@
 					{% else %}
 					<div class="row">
 						<div class="col-md-8">
-							<p>This job is currently <strong>unpublished</strong>.  Publish using the form below:</p>
+							<p>This job is currently <strong>unpublished</strong>.  Publish using the form below, by optionally creating a <a target="_blank" href="https://combine.readthedocs.io/en/master/publishing.html#how-does-publishing-work-in-combine">Publish Set ID</a>, and optionally including in a <a target="_blank" href="https://combine.readthedocs.io/en/master/publishing.html#published-subsets">Published Subset</a>:</p>
 							<form method="POST" action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
 								{% csrf_token %}
@@ -243,8 +243,22 @@
 									<small id="publish_set_id_help" class="form-text text-muted">Publish Set ID may be left blank to not include in a Publish set.</small>
 								</div>
 
-								<p><strong>Include this Publish Set in a pre-existing <a target="_blank" href="https://combine.readthedocs.io/en/dev/publishing.html#published-subsets">Published Subset</a>?</strong></p>
+								{% if pr.sets|length > 0 %}
+									<div class="form-group">
+										<label>Or, include Job in a pre-existing Publish Set ID:</label>
+										{% for set,jobs in pr.sets.items %}
+											<div class="radio">
+												<label>
+													<input type="radio" value="{{set}}" name="existing_publish_set_id" /> {{set}}
+												</label>
+											</div>
+										{% endfor %}
+									</div>
+								{% endif %}
+
 								{% if published_subsets|length > 0 %}
+
+									<p><strong>Include this Publish Set in a pre-existing <a target="_blank" href="https://combine.readthedocs.io/en/dev/publishing.html#published-subsets">Published Subset</a>?</strong></p>
 
 									<table class="table table-bordered table-hover">
 										<tr>
@@ -270,10 +284,6 @@
 										{% endfor %}
 
 									</table>
-
-								{% else %}
-
-									<p>No Published Subsets have been created, <a href="">create one now</a>.</p>
 
 								{% endif %}
 
