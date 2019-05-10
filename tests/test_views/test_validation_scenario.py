@@ -9,9 +9,24 @@ def test_record_has_words(record, test_message='record has words'):
     return True
     """
 
+    def setUp(self):
+        self.org = Organization.objects.create(name="Test Organization")
+        self.user = User.objects.create(
+            username='combine', password='combine', is_superuser=True)
+        self.record_group = RecordGroup.objects.create(
+            organization=self.org, name="Test Record Group")
+        self.job = Job.objects.create(record_group=self.record_group,
+                                      user=self.user,
+                                      job_type="HarvestJob")
+        self.record = Record.objects.create(
+            job_id=self.job.id,
+            record_id='testrecord',
+            document='Some strings!'
+        )
+        self.c = Client()
+
     def test_save_validation_scenario(self):
-        c = Client()
-        response = c.post('/combine/configuration/save_validation_scenario',
+        response = self.c.post('/combine/configuration/save_validation_scenario',
                           {'vs_name': 'Test Validate',
                            'vs_payload': 'Some python code',
                            'vs_type': 'python'})
@@ -25,43 +40,41 @@ def test_record_has_words(record, test_message='record has words'):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        c = Client()
-        response = c.get(f'/combine/configuration/validation/{scenario.id}/payload')
+        response = self.c.get(f'/combine/configuration/validation/{scenario.id}/payload')
         self.assertEqual(b'Some python code', response.content)
 
     def test_validation_scenario_payload_xml(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some schematron',
                                                      validation_type='sch')
-        c = Client()
-        response = c.get(f'/combine/configuration/validation/{scenario.id}/payload')
+        response = self.c.get(f'/combine/configuration/validation/{scenario.id}/payload')
         self.assertEqual(b'Some schematron', response.content)
 
     def test_validation_scenario_test(self):
-        c = Client()
-        response = c.get('/combine/configuration/test_validation_scenario')
+        response = self.c.get('/combine/configuration/test_validation_scenario')
         self.assertIn(b'Test Validation Scenario', response.content)
 
-    def test_validation_scenario_test_post(self):
-        org = Organization.objects.create(name="Test Organization")
-        user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
-        record_group = RecordGroup.objects.create(
-            organization=org, name="Test Record Group")
-        job = Job.objects.create(record_group=record_group,
-                                 user=user,
-                                 job_type="HarvestJob")
-        record = Record.objects.create(
-            job_id=job.id,
-            record_id='testrecord',
-            document='Some strings!'
-        )
-        c = Client()
-        response = c.post('/combine/configuration/test_validation_scenario',
-                          {
-                              'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
-                              'vs_type': 'python',
-                              'db_id': record.id,
-                              'vs_results_format': 'raw'
-                          })
-        self.assertEqual(b'{"fail_count": 0, "passed": ["record has words"], "failed": [], "total_tests": 1}', response.content)
+    def test_validation_scenario_test_post_raw(self):
+        response = self.validation_scenario_test('raw')
+        self.assertEqual(response.__getitem__('content-type'), 'text/plain')
+        self.assertEqual(b'{"fail_count": 0, "passed": ["record has words"], "failed": [], "total_tests": 1}',
+                         response.content)
+
+    def test_validation_scenario_test_post_parsed(self):
+        response = self.validation_scenario_test('parsed')
+        self.assertEqual(response.__getitem__('content-type'), 'application/json')
+        self.assertEqual(b'{"fail_count": 0, "passed": ["record has words"], "failed": [], "total_tests": 1}',
+                         response.content)
+
+    def test_validation_scenario_test_post_unrecognized(self):
+        response = self.validation_scenario_test('other')
+        self.assertEqual(b'validation results format not recognized', response.content)
+
+    def validation_scenario_test(self, results_format):
+        return self.c.post('/combine/configuration/test_validation_scenario',
+                           {
+                               'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
+                               'vs_type': 'python',
+                               'db_id': self.record.id,
+                               'vs_results_format': results_format
+                           })

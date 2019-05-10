@@ -96,8 +96,10 @@ def test_validation_scenario(request):
 
         except Exception as err:
 
-            LOGGER.debug(
-                'test validation scenario was unsucessful, deleting temporary vs')
-            validation_scenario.delete()
+            if validation_scenario.id:
+                # TODO: Not sure how to invoke this code
+                LOGGER.debug(
+                    'test validation scenario was unsuccessful, deleting temporary vs')
+                validation_scenario.delete()
 
             return HttpResponse(str(err), content_type="text/plain")
