@@ -27,6 +27,7 @@ from core.models import *
 # Tests Setup
 #############################################################################
 
+@pytest.mark.run(order=1)
 def test_organization_create(VO):
 
 	'''
@@ -42,6 +43,7 @@ def test_organization_create(VO):
 	assert type(VO.org.id) == int
 
 
+@pytest.mark.run(order=2)
 def test_record_group_create(VO):
 
 	'''
@@ -63,6 +65,7 @@ def test_record_group_create(VO):
 # Test Harvest
 #############################################################################
 
+@pytest.mark.run(order=3)
 def test_static_harvest(VO):
 
 	'''
@@ -164,6 +167,7 @@ def prepare_transform():
 	return trans
 
 
+@pytest.mark.run(order=4)
 def test_static_transform(VO):
 
 	'''
@@ -242,6 +246,7 @@ def test_static_transform(VO):
 # # Test Validation Scenarios
 # #############################################################################
 
+@pytest.mark.run(order=5)
 def test_add_schematron_validation_scenario(VO):
 
 	'''
@@ -268,6 +273,7 @@ def test_add_schematron_validation_scenario(VO):
 	assert type(VO.schematron_validation_scenario.id) == int
 
 
+@pytest.mark.run(order=6)
 def test_add_python_validation_scenario(VO):
 
 	'''
@@ -294,6 +300,7 @@ def test_add_python_validation_scenario(VO):
 	assert type(VO.python_validation_scenario.id) == int
 
 
+@pytest.mark.run(order=7)
 def test_schematron_validation(VO):
 
 	# get target records
@@ -315,6 +322,7 @@ def test_schematron_validation(VO):
 	assert vs_results['parsed']['fail_count'] == 1
 
 
+@pytest.mark.run(order=8)
 def test_python_validation(VO):
 
 	# validate harvest record with python
@@ -339,6 +347,7 @@ def test_python_validation(VO):
 # # Test Duplicate/Merge Job
 # #############################################################################
 
+@pytest.mark.run(order=9)
 def test_merge_duplicate(VO):
 
 	'''
@@ -427,10 +436,12 @@ def test_merge_duplicate(VO):
 #############################################################################
 # Tests Teardown
 #############################################################################
-def test_org_delete(keep_records, VO):
+
+@pytest.mark.last
+def test_teardown(keep_records, VO):
 
 	'''
-	Test removal of organization with cascading deletes
+	Test teardown
 	'''
 
 	# assert delete of org and children
@@ -439,11 +450,12 @@ def test_org_delete(keep_records, VO):
 	else:
 		assert True
 
-
-def test_validation_scenario_teardown(VO):
-
 	assert VO.schematron_validation_scenario.delete()[0] > 0
 	assert VO.python_validation_scenario.delete()[0] > 0
+
+
+
+
 
 
 
