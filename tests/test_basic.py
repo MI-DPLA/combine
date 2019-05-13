@@ -1,11 +1,6 @@
-
-from core.models import *
 import django
 import os
-import shutil
 import sys
-import time
-import uuid
 
 # logging
 import logging
@@ -18,7 +13,7 @@ sys.path.append('/opt/combine')
 django.setup()
 
 # import core
-
+from core.models import *
 
 # global variables object "VO"
 class Vars(object):
@@ -39,6 +34,7 @@ VO = Vars()
 #############################################################################
 # Tests Setup
 #############################################################################
+
 
 def test_organization_create():
     '''
