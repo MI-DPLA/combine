@@ -6220,8 +6220,11 @@ class HarvestStaticXMLJob(HarvestJob):
 			# if only this job, remove
 			if len(payload_deps) == 0:
 
-				logger.debug('removing payload_dir: %s' % payload_dir)
-				shutil.rmtree(payload_dir)
+				try:
+					logger.debug('removing payload_dir: %s' % payload_dir)
+					shutil.rmtree(payload_dir)
+				except Exception as e:
+					logger.debug('trouble removing payload_dir: %s' % str(e))
 
 			else:
 

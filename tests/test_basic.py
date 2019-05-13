@@ -13,7 +13,6 @@ import logging
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-# setup django environment
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
@@ -22,7 +21,6 @@ from django.conf import settings
 
 # import core
 from core.models import *
-
 
 
 # global variables object "VO"
@@ -43,42 +41,6 @@ VO = Vars()
 #############################################################################
 # Tests Setup
 #############################################################################
-def test_livy_start_session(use_active_livy):
-
-	'''
-	Test Livy session can be started
-	'''
-
-	# if use active livy
-	if use_active_livy:
-		VO.livy_session = LivySession.get_active_session()
-		VO.livy_session.refresh_from_livy()
-
-	# create livy session
-	else:
-		# start livy session
-		VO.livy_session = LivySession()
-		VO.livy_session.start_session()
-
-		# poll until session idle, limit to 60 seconds
-		for x in range(0,240):
-
-			# pause
-			time.sleep(1)
-
-			# refresh session
-			VO.livy_session.refresh_from_livy()
-			logger.info(VO.livy_session.status)
-
-			# check status
-			if VO.livy_session.status != 'idle':
-				continue
-			else:
-				break
-
-	# assert
-	assert VO.livy_session.status == 'idle'
-
 
 def test_organization_create():
 
@@ -115,37 +77,6 @@ def test_record_group_create():
 #############################################################################
 # Test Harvest
 #############################################################################
-def prepare_records():
-
-	'''
-	Unzip 250 MODS records to temp location, feed to test_static_harvest()
-	'''
-
-	# parse file
-	xml_tree = etree.parse('tests/data/mods_250.xml')
-	xml_root = xml_tree.getroot()
-
-	# get namespaces
-	nsmap = {}
-	for ns in xml_root.xpath('//namespace::*'):
-		if ns[0]:
-			nsmap[ns[0]] = ns[1]
-
-	# find mods records
-	mods_roots = xml_root.xpath('//mods:mods', namespaces=nsmap)
-
-	# create temp dir
-	payload_dir = '/tmp/%s' % uuid.uuid4().hex
-	os.makedirs(payload_dir)
-
-	# write MODS to temp dir
-	for mods in mods_roots:
-		with open(os.path.join(payload_dir, '%s.xml' % uuid.uuid4().hex), 'w') as f:
-			f.write(etree.tostring(mods).decode('utf-8'))
-
-	# return payload dir
-	return payload_dir
-
 
 def test_static_harvest():
 
@@ -153,25 +84,35 @@ def test_static_harvest():
 	Test static harvest of XML records from disk
 	'''
 
-	# prepare test data
-	payload_dir = prepare_records()
+	# copy test data to /tmp
+	payload_dir = '/tmp/%s' % uuid.uuid4().hex
+	shutil.copytree('/opt/combine/tests/data/static_harvest_data', payload_dir)
 
-	# build payload dictionary
-	payload_dict = {
-		'type':'location',
-		'payload_dir':payload_dir,
-		'xpath_document_root':'/mods:mods',
-		'xpath_record_id':''
+	# emulate request.POST
+	request_dict = {
+		'dbdd': '',
+		'job_note': '',
+		'xpath_record_id': '',
+		'static_filepath': payload_dir,
+		'fm_config_json': '{"add_literals":{},"capture_attribute_values":[],"concat_values_on_all_fields":false,"concat_values_on_fields":{},"copy_to":{},"copy_to_regex":{},"copy_value_to_regex":{},"error_on_delims_collision":false,"exclude_attributes":[],"exclude_elements":[],"include_all_attributes":false,"include_attributes":[],"include_sibling_id":false,"multivalue_delim":"|","node_delim":"_","ns_prefix_delim":"|","remove_copied_key":true,"remove_copied_value":false,"remove_ns_prefix":true,"repeating_element_suffix_count":false,"self_describing":false,"skip_attribute_ns_declarations":true,"skip_repeating_values":true,"skip_root":false,"split_values_on_all_fields":false,"split_values_on_fields":{}}',
+		'static_payload': '',
+		'job_name': '',
+		'field_mapper': 'default',
+		'rits': '',
+		'additional_namespace_decs': 'xmlns:mods="http://www.loc.gov/mods/v3"',
+		'document_element_root': 'mods:mods'
 	}
+	query_dict = QueryDict('', mutable=True)
+	query_dict.update(request_dict)
 
-	# initiate job
-	cjob = HarvestStaticXMLJob(
-		job_name='test_static_harvest',
-		job_note='',
-		user=VO.user,
-		record_group=VO.rg,
-		index_mapper='GenericMapper',
-		payload_dict=payload_dict
+	# init job, using Variable Object (VO)
+	cjob = CombineJob.init_combine_job(
+		user = VO.user,
+		record_group = VO.rg,
+		job_type_class = HarvestStaticXMLJob,
+		job_params = query_dict,
+		files = {},
+		hash_payload_filename = False
 	)
 
 	# start job and update status
@@ -183,7 +124,7 @@ def test_static_harvest():
 		cjob.job.save()
 
 	# poll until complete
-	for x in range(0,240):
+	for x in range(0, 480):
 
 		# pause
 		time.sleep(1)
@@ -207,18 +148,17 @@ def test_static_harvest():
 	assert VO.static_harvest_cjob.job.status == 'available'
 
 	# assert record count is 250
-	dcount = VO.static_harvest_cjob.get_detailed_job_record_count()
-	assert dcount['records'] == 250
-	assert dcount['errors'] == 0
+	assert VO.static_harvest_cjob.job.record_count == 250
 
 	# assert no indexing failures
 	assert len(VO.static_harvest_cjob.get_indexing_failures()) == 0
 
 
 
-#############################################################################
-# Test Transform
-#############################################################################
+# #############################################################################
+# # Test Transform
+# #############################################################################
+
 def prepare_transform():
 
 	'''
@@ -248,16 +188,30 @@ def test_static_transform():
 	# prepare and capture temporary transformation scenario
 	VO.transformation_scenario = prepare_transform()
 
-	# initiate job
-	cjob = TransformJob(
-		job_name='test_static_transform_job',
-		job_note='',
-		user=VO.user,
-		record_group=VO.rg,
-		input_job=VO.static_harvest_cjob.job,
-		transformation=VO.transformation_scenario,
-		index_mapper='GenericMapper'
-	)
+	# emulate request.POST
+	request_dict = {
+		'dbdd': '',
+		'field_mapper': 'default',
+		'filter_dupe_record_ids': 'true',
+		'fm_config_json': '{"add_literals":{},"capture_attribute_values":[],"concat_values_on_all_fields":false,"concat_values_on_fields":{},"copy_to":{},"copy_to_regex":{},"copy_value_to_regex":{},"error_on_delims_collision":false,"exclude_attributes":[],"exclude_elements":[],"include_all_attributes":false,"include_attributes":[],"include_sibling_id":false,"multivalue_delim":"|","node_delim":"_","ns_prefix_delim":"|","remove_copied_key":true,"remove_copied_value":false,"remove_ns_prefix":true,"repeating_element_suffix_count":false,"self_describing":false,"skip_attribute_ns_declarations":true,"skip_repeating_values":true,"skip_root":false,"split_values_on_all_fields":false,"split_values_on_fields":{}}',
+		'input_es_query_valve': '',
+		'input_job_id': VO.static_harvest_cjob.job.id,
+		'input_numerical_valve': '',
+		'input_validity_valve': 'all',
+		'job_name': '',
+		'job_note': '',
+		'rits': '',
+		'sel_trans_json': '[{"index":0,"trans_id":%s}]' % VO.transformation_scenario.id
+	 }
+	query_dict = QueryDict('', mutable=True)
+	query_dict.update(request_dict)
+
+	# init job
+	cjob = CombineJob.init_combine_job(
+		user = VO.user,
+		record_group = VO.rg,
+		job_type_class = TransformJob,
+		job_params = query_dict)
 
 	# start job and update status
 	job_status = cjob.start_job()
@@ -268,7 +222,7 @@ def test_static_transform():
 		cjob.job.save()
 
 	# poll until complete
-	for x in range(0,240):
+	for x in range(0, 480):
 
 		# pause
 		time.sleep(1)
@@ -289,9 +243,7 @@ def test_static_transform():
 	assert VO.static_transform_cjob.job.status == 'available'
 
 	# assert record count is 250
-	dcount = VO.static_transform_cjob.get_detailed_job_record_count()
-	assert dcount['records'] == 250
-	assert dcount['errors'] == 0
+	assert VO.static_transform_cjob.job.record_count == 250
 
 	# assert no indexing failures
 	assert len(VO.static_transform_cjob.get_indexing_failures()) == 0
@@ -301,9 +253,10 @@ def test_static_transform():
 
 
 
-#############################################################################
-# Test Validation Scenarios
-#############################################################################
+# #############################################################################
+# # Test Validation Scenarios
+# #############################################################################
+
 def test_add_schematron_validation_scenario():
 
 	'''
@@ -397,25 +350,49 @@ def test_python_validation():
 
 
 
-#############################################################################
-# Test Duplicate/Merge Job
-#############################################################################
-def test_duplicate():
+# #############################################################################
+# # Test Duplicate/Merge Job
+# #############################################################################
+
+def test_merge_duplicate():
 
 	'''
 	Duplicate Transform job, applying newly created validation scenarios
 	'''
 
-	# initiate job
-	cjob = MergeJob(
-		job_name='test_merge_job_with_validation',
-		job_note='',
-		user=VO.user,
-		record_group=VO.rg,
-		input_jobs=[VO.static_transform_cjob.job],
-		index_mapper='GenericMapper',
-		validation_scenarios=[VO.schematron_validation_scenario.id, VO.python_validation_scenario.id]
-	)
+	# emulate request.POST
+	request_dict = {
+		'dbdd': '',
+		'field_mapper': 'default',
+		'filter_dupe_record_ids': 'true',
+		'fm_config_json': '{"add_literals":{},"capture_attribute_values":[],"concat_values_on_all_fields":false,"concat_values_on_fields":{},"copy_to":{},"copy_to_regex":{},"copy_value_to_regex":{},"error_on_delims_collision":false,"exclude_attributes":[],"exclude_elements":[],"include_all_attributes":false,"include_attributes":[],"include_sibling_id":false,"multivalue_delim":"|","node_delim":"_","ns_prefix_delim":"|","remove_copied_key":true,"remove_copied_value":false,"remove_ns_prefix":true,"repeating_element_suffix_count":false,"self_describing":false,"skip_attribute_ns_declarations":true,"skip_repeating_values":true,"skip_root":false,"split_values_on_all_fields":false,"split_values_on_fields":{}}',
+		'input_es_query_valve': '',
+		'input_numerical_valve': '',
+		'input_validity_valve': 'all',
+		'job_name': '',
+		'job_note': '',
+		'rits': ''
+	 }
+	query_dict = QueryDict('', mutable=True)
+	query_dict.update(request_dict)
+
+	# set input jobs with QueryDict.setlist
+	query_dict.setlist('input_job_id', [
+		VO.static_harvest_cjob.job.id,
+		VO.static_transform_cjob.job.id
+	])
+	# set validation scenarios with QueryDict.setlist
+	query_dict.setlist('validation_scenario', [
+		VO.schematron_validation_scenario.id,
+		VO.python_validation_scenario.id
+	])
+
+	# init job
+	cjob = CombineJob.init_combine_job(
+		user = VO.user,
+		record_group = VO.rg,
+		job_type_class = MergeJob,
+		job_params = query_dict)
 
 	# start job and update status
 	job_status = cjob.start_job()
@@ -426,7 +403,7 @@ def test_duplicate():
 		cjob.job.save()
 
 	# poll until complete
-	for x in range(0,240):
+	for x in range(0, 480):
 
 		# pause
 		time.sleep(1)
@@ -447,9 +424,7 @@ def test_duplicate():
 	assert VO.merge_cjob.job.status == 'available'
 
 	# assert record count is 250
-	dcount = VO.merge_cjob.get_detailed_job_record_count()
-	assert dcount['records'] == 250
-	assert dcount['errors'] == 0
+	assert VO.merge_cjob.job.record_count == 250
 
 	# assert validation scenarios applied
 	job_validation_scenarios = VO.merge_cjob.job.jobvalidation_set.all()
@@ -457,7 +432,7 @@ def test_duplicate():
 
 	# loop through validation scenarios and confirm that both show 250 failures
 	for jv in job_validation_scenarios:
-		assert jv.get_record_validation_failures().count() == 250
+		assert jv.get_record_validation_failures().count() == 232
 
 	# assert no indexing failures
 	assert len(VO.merge_cjob.get_indexing_failures()) == 0
@@ -486,39 +461,7 @@ def test_validation_scenario_teardown():
 	assert VO.python_validation_scenario.delete()[0] > 0
 
 
-def test_livy_stop_session(use_active_livy):
 
-	'''
-	Test Livy session can be stopped
-	'''
-
-	if use_active_livy:
-		assert True
-
-	# stop livy session used for testing
-	else:
-		# attempt stop
-		VO.livy_session.stop_session()
-
-		# poll until session idle, limit to 60 seconds
-		for x in range(0,240):
-
-			# pause
-			time.sleep(1)
-
-			# refresh session
-			VO.livy_session.refresh_from_livy()
-			logger.info(VO.livy_session.status)
-
-			# check status
-			if VO.livy_session.status != 'gone':
-				continue
-			else:
-				VO.livy_session.delete()
-				break
-
-		# assert
-		assert VO.livy_session.status == 'gone'
 
 
 
