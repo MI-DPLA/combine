@@ -463,6 +463,9 @@ class XML2kvp(object):
         appending new values to pre-existing keys
         '''
 
+		# sanitize value
+		value = self._sanitize_value(value)
+
         # join on node delimiter
         k = self.node_delim.join(hops)
 
@@ -636,6 +639,24 @@ class XML2kvp(object):
         except:
             pass
         self.nsmap = _nsmap
+
+
+	def _sanitize_value(self, value):
+
+		'''
+		Method to sanitize value before storage in ElasticSearch
+
+		Current sanitations:
+			- length: Lucene index limited to 32,766, limiting to 32,000
+		'''
+
+		# limit length
+		if len(value) > 32000:
+			value = value[:32000]
+
+		# return
+		return value
+
 
     @staticmethod
     def xml_to_kvp(xml_input, handler=None, return_handler=False, **kwargs):
