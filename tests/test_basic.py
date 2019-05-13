@@ -23,26 +23,11 @@ from django.conf import settings
 from core.models import *
 
 
-# global variables object "VO"
-class Vars(object):
-
-	'''
-	Object to capture and store variables used across tests
-	'''
-
-	def __init__(self):
-
-		# combine user
-		self.user = User.objects.filter(username='combine').first()
-
-VO = Vars()
-
-
 #############################################################################
 # Tests Setup
 #############################################################################
 
-def test_organization_create():
+def test_organization_create(VO):
 
 	'''
 	Test creation of organization
@@ -57,7 +42,7 @@ def test_organization_create():
 	assert type(VO.org.id) == int
 
 
-def test_record_group_create():
+def test_record_group_create(VO):
 
 	'''
 	Test creation of record group
@@ -78,7 +63,7 @@ def test_record_group_create():
 # Test Harvest
 #############################################################################
 
-def test_static_harvest():
+def test_static_harvest(VO):
 
 	'''
 	Test static harvest of XML records from disk
@@ -179,7 +164,7 @@ def prepare_transform():
 	return trans
 
 
-def test_static_transform():
+def test_static_transform(VO):
 
 	'''
 	Test static harvest of XML records from disk
@@ -257,7 +242,7 @@ def test_static_transform():
 # # Test Validation Scenarios
 # #############################################################################
 
-def test_add_schematron_validation_scenario():
+def test_add_schematron_validation_scenario(VO):
 
 	'''
 	Add schematron validation
@@ -283,7 +268,7 @@ def test_add_schematron_validation_scenario():
 	assert type(VO.schematron_validation_scenario.id) == int
 
 
-def test_add_python_validation_scenario():
+def test_add_python_validation_scenario(VO):
 
 	'''
 	Add python code snippet validation
@@ -309,7 +294,7 @@ def test_add_python_validation_scenario():
 	assert type(VO.python_validation_scenario.id) == int
 
 
-def test_schematron_validation():
+def test_schematron_validation(VO):
 
 	# get target records
 	VO.harvest_record = VO.static_harvest_cjob.job.get_records().first()
@@ -330,7 +315,7 @@ def test_schematron_validation():
 	assert vs_results['parsed']['fail_count'] == 1
 
 
-def test_python_validation():
+def test_python_validation(VO):
 
 	# validate harvest record with python
 	'''
@@ -354,7 +339,7 @@ def test_python_validation():
 # # Test Duplicate/Merge Job
 # #############################################################################
 
-def test_merge_duplicate():
+def test_merge_duplicate(VO):
 
 	'''
 	Duplicate Transform job, applying newly created validation scenarios
@@ -442,7 +427,7 @@ def test_merge_duplicate():
 #############################################################################
 # Tests Teardown
 #############################################################################
-def test_org_delete(keep_records):
+def test_org_delete(keep_records, VO):
 
 	'''
 	Test removal of organization with cascading deletes
@@ -455,7 +440,7 @@ def test_org_delete(keep_records):
 		assert True
 
 
-def test_validation_scenario_teardown():
+def test_validation_scenario_teardown(VO):
 
 	assert VO.schematron_validation_scenario.delete()[0] > 0
 	assert VO.python_validation_scenario.delete()[0] > 0
