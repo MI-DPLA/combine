@@ -1,4 +1,3 @@
-
 import django
 from lxml import etree
 import os
@@ -10,6 +9,7 @@ import uuid
 
 # logging
 import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -25,31 +25,31 @@ from core.models import *
 
 # use active livy
 def pytest_addoption(parser):
-	parser.addoption('--keep_records', action="store_true")
+    parser.addoption('--keep_records', action="store_true")
 
 
 @pytest.fixture
 def keep_records(request):
-	return request.config.getoption("--keep_records")
+    return request.config.getoption("--keep_records")
 
 
 # global variables object "VO"
 class Vars(object):
+    '''
+    Object to capture and store variables used across tests
+    '''
 
-	'''
-	Object to capture and store variables used across tests
-	'''
+    def __init__(self):
+        # debug
+        self.ping = 'pong'
 
-	def __init__(self):
+        # combine user
+        self.user = User.objects.filter(username='combine').first()
 
-		# debug
-		self.ping = 'pong'
 
-		# combine user
-		self.user = User.objects.filter(username='combine').first()
 _VO = Vars()
+
 
 @pytest.fixture
 def VO(request):
-
-	return _VO
+    return _VO

@@ -28,7 +28,6 @@ version = ''
 # The full version, including alpha/beta/rc tags
 release = ''
 
-
 # -- General configuration ---------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -68,7 +67,6 @@ exclude_patterns = ['_build', 'Thumbs.db', '.DS_Store']
 # The name of the Pygments (syntax highlighting) style to use.
 pygments_style = 'manni'
 
-
 # -- Options for HTML output -------------------------------------------------
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for
@@ -103,7 +101,6 @@ html_static_path = ['_static']
 # Output file base name for HTML help builder.
 htmlhelp_basename = 'Combinedoc'
 
-
 # -- Options for LaTeX output ------------------------------------------------
 
 latex_elements = {
@@ -132,7 +129,6 @@ latex_documents = [
      'Michigan State DPLA Service Hub', 'manual'),
 ]
 
-
 # -- Options for manual page output ------------------------------------------
 
 # One entry per manual page. List of tuples
@@ -141,7 +137,6 @@ man_pages = [
     (master_doc, 'combine', 'Combine Documentation',
      [author], 1)
 ]
-
 
 # -- Options for Texinfo output ----------------------------------------------
 
@@ -154,10 +149,8 @@ texinfo_documents = [
      'Miscellaneous'),
 ]
 
+
 # -- Custom Setup for CSS ----------------------------------------------
 
 def setup(app):
     app.add_stylesheet('css/custom.css')
-
-
-    

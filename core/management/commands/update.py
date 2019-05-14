@@ -1,4 +1,3 @@
-
 # generic imports
 import datetime
 import logging
@@ -19,334 +18,306 @@ from core.models import *
 logger = logging.getLogger(__name__)
 
 
-
 class Command(BaseCommand):
+    '''
+    Manage command to update Combine.
 
-	'''
-	Manage command to update Combine.
+    Performs the following:
+        - pull from github, updates all branches
+        - if relase passed, checkout release/branch
+        - pip install requirements
+        - collect static django
+        - restart gunicorn, livy session, celery
+    '''
 
-	Performs the following:
-		- pull from github, updates all branches
-		- if relase passed, checkout release/branch
-		- pip install requirements
-		- collect static django
-		- restart gunicorn, livy session, celery
-	'''
+    help = 'Update Combine'
 
-	help = 'Update Combine'
+    # python path
+    PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
 
+    def add_arguments(self, parser):
 
-	# python path
-	PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
+        # release
+        parser.add_argument(
+            '--release',
+            dest='release',
+            help='GitHub branch/release to update to',
+            type=str,
+            default=None
+        )
 
+        # update method
+        parser.add_argument(
+            '--run_update_snippet',
+            dest='run_update_snippet',
+            help='Update code snippet to run',
+            type=str,
+            default=None
+        )
 
-	def add_arguments(self, parser):
+        # update method
+        parser.add_argument(
+            '--run_update_snippets_only',
+            action='store_true',
+            help='Run update snippets only during update'
+        )
 
-		# release
-		parser.add_argument(
-			'--release',
-			dest='release',
-			help='GitHub branch/release to update to',
-			type=str,
-			default=None
-		)
+    def handle(self, *args, **options):
 
-		# update method
-		parser.add_argument(
-			'--run_update_snippet',
-			dest='run_update_snippet',
-			help='Update code snippet to run',
-			type=str,
-			default=None
-		)
+        '''
+        Handler for updates to Combine
+        '''
 
-		# update method
-		parser.add_argument(
-			'--run_update_snippets_only',
-			action='store_true',
-			help='Run update snippets only during update'
-		)
+        logger.debug('Updating Combine')
 
+        # run update snippet if passed
+        if options.get('run_update_snippet'):
+            self.run_update_snippet(args, options)
 
-	def handle(self, *args, **options):
+        # else, run update
+        else:
+            self.update(args, options)
 
-		'''
-		Handler for updates to Combine
-		'''
+    def update(self, args, options):
 
-		logger.debug('Updating Combine')
+        '''
+        Method to handle branch/tagged release update
+        '''
 
-		# run update snippet if passed
-		if options.get('run_update_snippet'):
-			self.run_update_snippet(args, options)
+        # do not run at all if Combine is Docker deployed
+        if getattr(settings, 'COMBINE_DEPLOYMENT', 'server') != 'docker':
 
-		# else, run update
-		else:
-			self.update(args, options)
+            # if not running update snippets only
+            if not options.get('run_update_snippets_only', False):
 
+                # git pull
+                os.system('git pull')
 
-	def update(self, args, options):
+                # checkout release if provided
+                if options.get('release', None) != None:
+                    release = options['release']
+                    logger.debug('release/branch provided, checking out: %s' % release)
 
-		'''
-		Method to handle branch/tagged release update
-		'''
+                    # git checkout
+                    os.system('git checkout %s' % release)
 
-		# do not run at all if Combine is Docker deployed
-		if getattr(settings,'COMBINE_DEPLOYMENT','server') != 'docker':
+                # install requirements as combine user
+                os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
 
-			# if not running update snippets only
-			if not options.get('run_update_snippets_only', False):
+                # collect django static
+                os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
 
-				# git pull
-				os.system('git pull')
+                # restart gunicorn
+                self._restart_gunicorn()
 
-				# checkout release if provided
-				if options.get('release', None) != None:
-					release = options['release']
-					logger.debug('release/branch provided, checking out: %s' % release)
+                # restart livy and livy session
+                self._restart_livy()
 
-					# git checkout
-					os.system('git checkout %s' % release)
+                # restart celery background tasks
+                self._restart_celery()
 
-				# install requirements as combine user
-				os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
+            # run update code snippets
+            vuh = VersionUpdateHelper()
+            vuh.run_update_snippets()
 
-				# collect django static
-				os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
+            # return
+            self.stdout.write(self.style.SUCCESS('Update complete.'))
 
-				# restart gunicorn
-				self._restart_gunicorn()
+        # docker return
+        else:
+            self.stdout.write(self.style.ERROR('Update script does not currently support Docker deployment.'))
 
-				# restart livy and livy session
-				self._restart_livy()
+    def _restart_gunicorn(self):
 
-				# restart celery background tasks
-				self._restart_celery()
+        # get supervisor handle
+        sp = SupervisorRPCClient()
+        # fire action
+        results = sp.restart_process('gunicorn')
+        logger.debug(results)
 
-			# run update code snippets
-			vuh = VersionUpdateHelper()
-			vuh.run_update_snippets()
+    def _restart_livy(self):
 
-			# return
-			self.stdout.write(self.style.SUCCESS('Update complete.'))
+        # get supervisor handle
+        sp = SupervisorRPCClient()
+        # fire action
+        results = sp.restart_process('livy')
+        logger.debug(results)
 
-		# docker return
-		else:
-			self.stdout.write(self.style.ERROR('Update script does not currently support Docker deployment.'))
+        # sleep
+        time.sleep(10)
 
+        # get active livy sessions - restart or start
+        active_ls = LivySession.get_active_session()
+        if not active_ls:
+            logger.debug('active livy session not found, starting')
+            livy_session = LivySession()
+            livy_session.start_session()
+        else:
+            logger.debug('single, active session found, and restart flag passed, restarting')
+            new_ls = active_ls.restart_session()
 
-	def _restart_gunicorn(self):
+    def _restart_celery(self):
 
-		# get supervisor handle
-		sp = SupervisorRPCClient()
-		# fire action
-		results = sp.restart_process('gunicorn')
-		logger.debug(results)
+        # get supervisor handle
+        sp = SupervisorRPCClient()
+        # fire action
+        results = sp.restart_process('celery')
+        logger.debug(results)
 
+    def run_update_snippet(self, args, options):
 
-	def _restart_livy(self):
+        '''
+        Method to run update snippet if passed
+        '''
 
-		# get supervisor handle
-		sp = SupervisorRPCClient()
-		# fire action
-		results = sp.restart_process('livy')
-		logger.debug(results)
+        # init VersionUpdateHelper instance
+        vuh = VersionUpdateHelper()
 
-		# sleep
-		time.sleep(10)
-
-		# get active livy sessions - restart or start
-		active_ls = LivySession.get_active_session()
-		if not active_ls:
-			logger.debug('active livy session not found, starting')
-			livy_session = LivySession()
-			livy_session.start_session()
-		else:
-			logger.debug('single, active session found, and restart flag passed, restarting')
-			new_ls = active_ls.restart_session()
-
-
-	def _restart_celery(self):
-
-		# get supervisor handle
-		sp = SupervisorRPCClient()
-		# fire action
-		results = sp.restart_process('celery')
-		logger.debug(results)
-
-
-	def run_update_snippet(self, args, options):
-
-		'''
-		Method to run update snippet if passed
-		'''
-
-		# init VersionUpdateHelper instance
-		vuh = VersionUpdateHelper()
-
-		# get snippet
-		snippet = getattr(vuh, options.get('run_update_snippet'), None)
-		if snippet != None:
-			snippet()
-		else:
-			logger.debug('Update snippet "%s" could not be found' % options.get('run_update_snippet', None))
-
+        # get snippet
+        snippet = getattr(vuh, options.get('run_update_snippet'), None)
+        if snippet != None:
+            snippet()
+        else:
+            logger.debug('Update snippet "%s" could not be found' % options.get('run_update_snippet', None))
 
 
 class VersionUpdateHelper(object):
+    '''
+    Class to manage actions specific to version-to-version updates
+    '''
 
-	'''
-	Class to manage actions specific to version-to-version updates
-	'''
+    # python path
+    PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
 
-	# python path
-	PYTHON_PATH = sys.executable.rstrip('python').rstrip('/')
+    def __init__(self):
 
+        # registered, ordered list of snippets
+        self.registered_snippets = [
+            self.v0_4__set_job_baseline_combine_version,
+            self.v0_4__update_transform_job_details,
+            self.v0_4__set_job_current_combine_version,
+            self.v0_7_1__fix_redis_version_mismatches
+        ]
 
-	def __init__(self):
+    def run_update_snippets(self):
 
-		# registered, ordered list of snippets
-		self.registered_snippets = [
-			self.v0_4__set_job_baseline_combine_version,
-			self.v0_4__update_transform_job_details,
-			self.v0_4__set_job_current_combine_version,
-			self.v0_7_1__fix_redis_version_mismatches
-		]
+        '''
+        Method to loop through update snippets and fire
+        '''
 
+        for snippet in self.registered_snippets:
+            try:
+                snippet()
+            except Exception as e:
+                logger.debug('Could not run udpate snippet: %s' % snippet.__name__)
+                logger.debug(str(e))
 
-	def run_update_snippets(self):
+    def v0_4__set_job_baseline_combine_version(self):
 
-		'''
-		Method to loop through update snippets and fire
-		'''
+        '''
+        Method to set combine_version as v0.1 in job_details for all lacking version
+        '''
 
-		for snippet in self.registered_snippets:
-			try:
-				snippet()
-			except Exception as e:
-				logger.debug('Could not run udpate snippet: %s' % snippet.__name__)
-				logger.debug(str(e))
+        logger.debug('v0_4__set_job_baseline_combine_version: setting Job combine_version to v0.1 if not set')
 
+        # get Transform Jobs
+        jobs = Job.objects.all()
 
-	def v0_4__set_job_baseline_combine_version(self):
+        # loop through jobs
+        for job in jobs:
 
-		'''
-		Method to set combine_version as v0.1 in job_details for all lacking version
-		'''
+            # check for combine_version key
+            if not job.job_details_dict.get('combine_version', False):
+                logger.debug('stamping v0.1 combine_version to Job: %s' % (job))
 
-		logger.debug('v0_4__set_job_baseline_combine_version: setting Job combine_version to v0.1 if not set')
+                # update job_details
+                job.update_job_details({'combine_version': 'v0.1'})
 
-		# get Transform Jobs
-		jobs = Job.objects.all()
+    def v0_4__set_job_current_combine_version(self):
 
-		# loop through jobs
-		for job in jobs:
+        '''
+        Method to set combine_version as current Combine version in job_details
+        '''
 
-			# check for combine_version key
-			if not job.job_details_dict.get('combine_version', False):
+        logger.debug('v0_4__set_job_current_combine_version: checking and setting Job combine_version to %s' % (
+            settings.COMBINE_VERSION))
 
-				logger.debug('stamping v0.1 combine_version to Job: %s' % (job))
+        # get Transform Jobs
+        jobs = Job.objects.all()
 
-				# update job_details
-				job.update_job_details({'combine_version':'v0.1'})
+        # loop through jobs
+        for job in jobs:
 
+            # compare and stamp
+            if version.parse(job.job_details_dict['combine_version']) < version.parse(settings.COMBINE_VERSION):
+                logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
 
-	def v0_4__set_job_current_combine_version(self):
+                # update job_details
+                job.update_job_details({'combine_version': settings.COMBINE_VERSION})
 
-		'''
-		Method to set combine_version as current Combine version in job_details
-		'''
+    def v0_4__update_transform_job_details(self):
 
-		logger.debug('v0_4__set_job_current_combine_version: checking and setting Job combine_version to %s' % (settings.COMBINE_VERSION))
+        '''
+        Method to update job_details for Transform Jobs if from_v < v0.4 or None
+        '''
 
-		# get Transform Jobs
-		jobs = Job.objects.all()
+        logger.debug('v0_4__update_transform_job_details: updating job details for pre v0.4 Transform Jobs')
 
-		# loop through jobs
-		for job in jobs:
+        # get Transform Jobs
+        trans_jobs = Job.objects.filter(job_type='TransformJob')
 
-			# compare and stamp
-			if version.parse(job.job_details_dict['combine_version']) < version.parse(settings.COMBINE_VERSION):
+        # loop through and check for single Transformation Scenario
+        for job in trans_jobs:
 
-				logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
+            # check version
+            if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):
 
-				# update job_details
-				job.update_job_details({'combine_version':settings.COMBINE_VERSION})
+                logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (
+                job, job.job_details_dict['combine_version']))
 
+                # check for 'transformation' key in job_details
+                if job.job_details_dict.get('transformation', False):
 
-	def v0_4__update_transform_job_details(self):
+                    # get transform details
+                    trans_details = job.job_details_dict.get('transformation')
 
-		'''
-		Method to update job_details for Transform Jobs if from_v < v0.4 or None
-		'''
+                    # check for 'id' key at this level, indicating < v0.4
+                    if 'id' in trans_details.keys():
+                        logger.debug('Transform Job "%s" requires job details updating, performing' % job)
 
-		logger.debug('v0_4__update_transform_job_details: updating job details for pre v0.4 Transform Jobs')
+                        # create dictionary
+                        trans_dict = {
+                            'scenarios': [
+                                {
+                                    'id': trans_details['id'],
+                                    'name': trans_details['name'],
+                                    'type': trans_details['type'],
+                                    'type_human': trans_details['type'],
+                                    'index': 0
+                                }
+                            ],
+                            'scenarios_json': '[{"index":0,"trans_id":%s}]' % trans_details['id']
+                        }
 
-		# get Transform Jobs
-		trans_jobs = Job.objects.filter(job_type='TransformJob')
+                        # update job_details
+                        job.update_job_details({'transformation': trans_dict})
 
-		# loop through and check for single Transformation Scenario
-		for job in trans_jobs:
+    def v0_7_1__fix_redis_version_mismatches(self):
 
-			# check version
-			if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):
+        '''
+        Method to fix any redis version mismatches
+        '''
 
-				logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (job, job.job_details_dict['combine_version']))
+        if version.parse(settings.COMBINE_VERSION) == version.parse('v0.7'):
+            logger.debug('v0_7_1__fix_redis_version_mismatches: fixing redis versioning')
 
-				# check for 'transformation' key in job_details
-				if job.job_details_dict.get('transformation', False):
+            # ensure redis version
+            os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))
+            os.system('%s/pip install redis==3.2.1 celery==4.3.0' % (self.PYTHON_PATH))
 
-					# get transform details
-					trans_details = job.job_details_dict.get('transformation')
-
-					# check for 'id' key at this level, indicating < v0.4
-					if 'id' in trans_details.keys():
-
-						logger.debug('Transform Job "%s" requires job details updating, performing' % job)
-
-						# create dictionary
-						trans_dict = {
-							'scenarios':[
-								{
-									'id':trans_details['id'],
-									'name':trans_details['name'],
-									'type':trans_details['type'],
-									'type_human':trans_details['type'],
-									'index':0
-								}
-							],
-							'scenarios_json':'[{"index":0,"trans_id":%s}]' % trans_details['id']
-						}
-
-						# update job_details
-						job.update_job_details({'transformation':trans_dict})
-
-
-	def v0_7_1__fix_redis_version_mismatches(self):
-
-		'''
-		Method to fix any redis version mismatches
-		'''
-
-		if version.parse(settings.COMBINE_VERSION) == version.parse('v0.7'):
-
-			logger.debug('v0_7_1__fix_redis_version_mismatches: fixing redis versioning')
-
-			# ensure redis version
-			os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))
-			os.system('%s/pip install redis==3.2.1 celery==4.3.0' % (self.PYTHON_PATH))
-
-			# restart celery background tasks
-			# get supervisor handle
-			sp = SupervisorRPCClient()
-			# fire action
-			results = sp.restart_process('celery')
-			logger.debug(results)
-
-
-
-
-
-
-
-
+            # restart celery background tasks
+            # get supervisor handle
+            sp = SupervisorRPCClient()
+            # fire action
+            results = sp.restart_process('celery')
+            logger.debug(results)

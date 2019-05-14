@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 ### Changed
   - Update XML2kvp to limit values at 32k characters [#403](https://github.com/WSULib/combine/issues/403)
+  - Converting tabs to spaces per PEP 8 recs
 
 
 ## `v0.8`

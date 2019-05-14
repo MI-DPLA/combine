@@ -12,41 +12,38 @@ from django.conf import settings
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
 # NOTE: manual configuration of core app not currently used, but leaving if needed
 class CoreConfig(AppConfig):
+    name = 'core'
 
-	name = 'core'
+    def ready(self):
+        '''
+        ready() method fires once, when application is loaded and ready
+        https://docs.djangoproject.com/en/dev/ref/applications/#django.apps.AppConfig.ready
 
-	def ready(self):
+        This fires any functions defined here that are needed when Combine starts.
 
-		'''
-		ready() method fires once, when application is loaded and ready
-		https://docs.djangoproject.com/en/dev/ref/applications/#django.apps.AppConfig.ready
+        Args:
+            (django.apps.AppConfig): instance of 'Core' application config
 
-		This fires any functions defined here that are needed when Combine starts.
+        Returns:
+            None
+        '''
 
-		Args:
-			(django.apps.AppConfig): instance of 'Core' application config
+        logger.debug('Core application ready method preperations firing')
 
-		Returns:
-			None
-		'''
+        # create home working directory
+        self.create_home_working_directory()
 
-		logger.debug('Core application ready method preperations firing')
+    def create_home_working_directory(self):
+        '''
+        Method to create directory /home/combine/data/combine if does not exist
+        '''
 
-		# create home working directory
-		self.create_home_working_directory()
+        # parse home working directory
+        hwd = settings.BINARY_STORAGE.split('file://')[-1]
 
-
-	def create_home_working_directory(self):
-
-		'''
-		Method to create directory /home/combine/data/combine if does not exist
-		'''
-
-		# parse home working directory
-		hwd = settings.BINARY_STORAGE.split('file://')[-1]
-
-		# create if not exists
-		if not os.path.exists(hwd):
-			os.makedirs(hwd)
+        # create if not exists
+        if not os.path.exists(hwd):
+            os.makedirs(hwd)
