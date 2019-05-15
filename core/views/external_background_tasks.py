@@ -105,11 +105,12 @@ def livy_session_stop(request, session_id):
 
     livy_session = models.LivySession.objects.filter(id=session_id).first()
 
-    # attempt to stop with Livy
-    models.LivyClient.stop_session(livy_session.session_id)
+    if livy_session is not None:
+        # attempt to stop with Livy
+        models.LivyClient.stop_session(livy_session.session_id)
 
-    # remove from DB
-    livy_session.delete()
+        # remove from DB
+        livy_session.delete()
 
     # redirect
     return redirect('system')
@@ -170,10 +171,13 @@ def system_bg_status(request):
     if active_tasks is None:
         celery_status = 'stopped'
     else:
+        # TODO: what?
         if next(iter(active_tasks.values())):
             celery_status = 'idle'
         elif next(iter(active_tasks.values())):
             celery_status = 'busy'
+        else:
+            celery_status = 'unknown'
 
     # return json
     return JsonResponse({

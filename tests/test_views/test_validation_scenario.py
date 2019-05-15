@@ -1,6 +1,7 @@
 from django.test import Client, TestCase
 
 from core.models import ValidationScenario, Organization, Record, RecordGroup, Job, User
+from tests.test_views.utils import TestConfiguration
 
 
 class ValidationScenarioTestCase(TestCase):
@@ -10,19 +11,7 @@ def test_record_has_words(record, test_message='record has words'):
     """
 
     def setUp(self):
-        self.org = Organization.objects.create(name="Test Organization")
-        self.user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
-        self.record_group = RecordGroup.objects.create(
-            organization=self.org, name="Test Record Group")
-        self.job = Job.objects.create(record_group=self.record_group,
-                                      user=self.user,
-                                      job_type="HarvestJob")
-        self.record = Record.objects.create(
-            job_id=self.job.id,
-            record_id='testrecord',
-            document='Some strings!'
-        )
+        self.config = TestConfiguration()
         self.c = Client()
 
     def test_save_validation_scenario(self):
@@ -75,6 +64,6 @@ def test_record_has_words(record, test_message='record has words'):
                            {
                                'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
                                'vs_type': 'python',
-                               'db_id': self.record.id,
+                               'db_id': self.config.record.id,
                                'vs_results_format': results_format
                            })
