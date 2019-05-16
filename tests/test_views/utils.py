@@ -11,7 +11,8 @@ class TestConfiguration:
                                                        name="Test Record Group")
         self.job = Job.objects.create(record_group=self.record_group,
                                       user=self.user,
-                                      job_type="HarvestJob")
+                                      job_type="HarvestJob",
+                                      job_details='{"test_key": "test value"}')
         self.record = Record.objects.create(job_id=self.job.id,
                                             record_id='testrecord',
                                             document='test document')

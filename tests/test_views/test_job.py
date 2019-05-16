@@ -85,3 +85,37 @@ class JobTestCase(TestCase):
                                })
         self.assertRedirects(response, self.config.record_group_path())
         # TODO: test that it actually published
+
+    def test_job_unpublish(self):
+        response = self.c.post(f'{self.config.job_path()}/unpublish')
+        self.assertRedirects(response, self.config.record_group_path())
+
+    def test_rerun_jobs(self):
+        response = self.c.post('/combine/jobs/rerun_jobs',
+                               {
+                                   'job_ids[]': [self.config.job.id]
+                               })
+        self.assertEqual(response.json()['results'], True)
+        job = Job.objects.get(id=self.config.job.id)
+        self.assertEqual(job.status, 'initializing')
+
+    def test_clone_jobs(self):
+        response = self.c.post('/combine/jobs/clone_jobs',
+                               {
+                                   'job_ids[]': [self.config.job.id]
+                               })
+        self.assertEqual(response.json()['results'], True)
+
+    def test_get_job_parameters(self):
+        response = self.c.get(f'{self.config.job_path()}/job_parameters')
+        self.assertEqual(response.json()['test_key'], 'test value')
+
+    def test_post_job_parameters(self):
+        new_details = '{"test_key": "test value", "second_key": "second value"}'
+        response = self.c.post(f'{self.config.job_path()}/job_parameters',
+                               {
+                                   'job_details_json': new_details
+                               })
+        self.assertEqual(response.json()['msg'], 'Job Parameters updated!')
+        job = Job.objects.get(id=self.config.job.id)
+        self.assertEqual(job.job_details, new_details)
