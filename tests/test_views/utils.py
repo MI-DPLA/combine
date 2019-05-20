@@ -5,7 +5,6 @@ class TestConfiguration:
     def __init__(self):
         self.user = User.objects.create(
             username='combine', password='combine', is_superuser=True)
-        self.record = None
         self.org = Organization.objects.create(name="Test Organization")
         self.record_group = RecordGroup.objects.create(organization=self.org,
                                                        name="Test Record Group")
@@ -27,3 +26,6 @@ class TestConfiguration:
             job_id = self.job.id
 
         return f'{self.record_group_path()}/job/{job_id}'
+
+    def record_path(self):
+        return f'{self.job_path()}/record/{self.record.id}'

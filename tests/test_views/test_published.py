@@ -9,9 +9,9 @@ class PublishedTestCase(TestCase):
     def setUp(self):
         self.c = Client()
         self.config = TestConfiguration()
+        self.c.force_login(self.config.user)
 
     def test_get_published(self):
-        self.c.force_login(self.config.user)
         self.config.job.publish(publish_set_id='test publish id')
         publish_records = models.PublishedRecords().records
         # For some reason this accumulates records every time I run it
