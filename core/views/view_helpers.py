@@ -21,7 +21,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # breadcrumb parser
 def breadcrumb_parser(request):
     """
-    Rudimentary breadcrumbs parserf
+    Rudimentary breadcrumbs parser
     """
 
     crumbs = []
@@ -46,7 +46,7 @@ def breadcrumb_parser(request):
 
     # configurations/test_validation_scenario
     regex_match = re.match(
-        r'(.+?/configuration/test_validation_scenario)', request.path)
+        r'(.+?/configuration/validation/test)', request.path)
     if regex_match:
         crumbs.append(
             ("<span class='font-weight-bold'>Test Validation Scenario</span>", reverse('test_validation_scenario')))

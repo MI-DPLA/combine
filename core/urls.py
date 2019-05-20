@@ -115,12 +115,6 @@ urlpatterns = [
         views.transformation_scenario_payload, name='transformation_scenario_payload'),
     url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$',
         views.oai_endpoint_payload, name='oai_endpoint_payload'),
-    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$',
-        views.validation_scenario_payload, name='validation_scenario_payload'),
-    url(r'^configuration/create_validation_scenario$',
-        views.create_validation_scenario, name='create_validation_scenario'),
-    url(r'^configuration/test_validation_scenario$',
-        views.test_validation_scenario, name='test_validation_scenario'),
     url(r'^configuration/test_transformation_scenario$',
         views.test_transformation_scenario, name='test_transformation_scenario'),
     url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$',
@@ -134,6 +128,14 @@ urlpatterns = [
         views.test_field_mapper, name='test_field_mapper'),
     url(r'^configuration/dpla_bulk_data/download$',
         views.dpla_bulk_data_download, name='dpla_bulk_data_download'),
+
+    # Validation Scenarios
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$',
+        views.validation_scenario_payload, name='validation_scenario_payload'),
+    url(r'^configuration/validation/create$',
+        views.create_validation_scenario, name='create_validation_scenario'),
+    url(r'^configuration/validation/test$',
+        views.test_validation_scenario, name='test_validation_scenario'),
 
     # Publish
     url(r'^published$', views.published, name='published'),
