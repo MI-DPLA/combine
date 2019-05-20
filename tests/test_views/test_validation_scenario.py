@@ -1,6 +1,7 @@
 from django.test import Client, TestCase
+from django.urls import reverse
 
-from core.models import ValidationScenario, Organization, Record, RecordGroup, Job, User
+from core.models import ValidationScenario
 from tests.test_views.utils import TestConfiguration
 
 
@@ -15,7 +16,7 @@ def test_record_has_words(record, test_message='record has words'):
         self.c = Client()
 
     def test_create_validation_scenario(self):
-        response = self.c.post('/combine/configuration/create_validation_scenario',
+        response = self.c.post(reverse('create_validation_scenario'),
                           {'vs_name': 'Test Validate',
                            'vs_payload': 'Some python code',
                            'vs_type': 'python'})
@@ -29,18 +30,18 @@ def test_record_has_words(record, test_message='record has words'):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        response = self.c.get(f'/combine/configuration/validation/{scenario.id}/payload')
+        response = self.c.get(reverse('validation_scenario_payload', args=[scenario.id]))
         self.assertEqual(b'Some python code', response.content)
 
     def test_validation_scenario_payload_xml(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some schematron',
                                                      validation_type='sch')
-        response = self.c.get(f'/combine/configuration/validation/{scenario.id}/payload')
+        response = self.c.get(reverse('validation_scenario_payload', args=[scenario.id]))
         self.assertEqual(b'Some schematron', response.content)
 
     def test_validation_scenario_test(self):
-        response = self.c.get('/combine/configuration/test_validation_scenario')
+        response = self.c.get(reverse('test_validation_scenario'))
         self.assertIn(b'Test Validation Scenario', response.content)
 
     def test_validation_scenario_test_post_raw(self):
@@ -60,7 +61,7 @@ def test_record_has_words(record, test_message='record has words'):
         self.assertEqual(b'validation results format not recognized', response.content)
 
     def validation_scenario_test(self, results_format):
-        return self.c.post('/combine/configuration/test_validation_scenario',
+        return self.c.post(reverse('test_validation_scenario'),
                            {
                                'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
                                'vs_type': 'python',
