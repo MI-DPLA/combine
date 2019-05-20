@@ -1,0 +1,21 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h4>Validation Scenario: {{ validation_scenario.name }}</h4>
+		</div>
+	</div>
+
+	<div class="row">
+        <form action="{{ validation_scenario.id }}" method="post">
+            {% csrf_token %}
+            <table>
+                {{ form }}
+            </table>
+            <input type="submit" value="Submit" />
+        </form>
+	</div>
+
+{% endblock %}

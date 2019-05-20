@@ -6,25 +6,50 @@ from tests.test_views.utils import TestConfiguration
 
 
 class ValidationScenarioTestCase(TestCase):
-    simple_validation_payload = """
-def test_record_has_words(record, test_message='record has words'):
-    return True
-    """
+    simple_validation_payload = """def test_record_has_words(record, test_message='record has words'):
+    return True"""
 
     def setUp(self):
         self.config = TestConfiguration()
         self.c = Client()
 
-    def test_create_validation_scenario(self):
+    def test_create_validation_scenario_get(self):
+        response = self.c.get(reverse('create_validation_scenario'))
+        print(response.content)
+        self.assertIn(b'Create new Validation Scenario', response.content)
+
+    def test_create_validation_scenario_post(self):
         response = self.c.post(reverse('create_validation_scenario'),
-                          {'vs_name': 'Test Validate',
-                           'vs_payload': 'Some python code',
-                           'vs_type': 'python'})
+                          {'name': 'Test Validate',
+                           'payload': 'Some python code',
+                           'validation_type': 'python'})
         json = response.json()
         self.assertIsNotNone(json['id'])
         self.assertEqual(json['name'], 'Test Validate')
         self.assertEqual(json['payload'], 'Some python code')
         self.assertEqual(json['validation_type'], 'python')
+
+    def test_validation_scenario_get(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some python code',
+                                                     validation_type='python')
+        response = self.c.get(reverse('validation_scenario', args=[scenario.id]))
+        self.assertIn(b'Test Validate', response.content)
+
+    def test_validation_scenario_post(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some python code',
+                                                     validation_type='python')
+        response = self.c.post(reverse('validation_scenario', args=[scenario.id]),
+                               {
+                                   'payload': ValidationScenarioTestCase.simple_validation_payload,
+                                   'name': scenario.name,
+                                   'validation_type': scenario.validation_type
+                               })
+        json = response.json()
+        self.assertEqual(json['id'], scenario.id)
+        self.assertEqual(json['name'], scenario.name)
+        self.assertEqual(json['payload'], ValidationScenarioTestCase.simple_validation_payload)
 
     def test_validation_scenario_payload(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',

@@ -5,7 +5,8 @@ from django.http import HttpResponse, JsonResponse
 from django.forms.models import model_to_dict
 from django.shortcuts import render
 
-from core import models
+from core.models import ValidationScenario, Record
+from core.forms import ValidationScenarioForm
 
 from .view_helpers import breadcrumb_parser
 
@@ -18,7 +19,7 @@ def validation_scenario_payload(request, vs_id):
         """
 
     # get transformation
-    validation_scenario = models.ValidationScenario.objects.get(pk=int(vs_id))
+    validation_scenario = ValidationScenario.objects.get(pk=int(vs_id))
 
     if validation_scenario.validation_type == 'sch':
         # return document as XML
@@ -31,13 +32,34 @@ def create_validation_scenario(request):
     # TODO: validate the model
     # TODO: do we care about deduplicating validation scenarios?
     # TODO: error handling
-    new_validation_scenario = models.ValidationScenario(
-        name=request.POST['vs_name'],
-        payload=request.POST['vs_payload'],
-        validation_type=request.POST['vs_type']
-    )
-    new_validation_scenario.save()
-    return JsonResponse(model_to_dict(new_validation_scenario))
+    if request.method == "POST":
+        new_validation_scenario = ValidationScenario(
+            name=request.POST['name'],
+            payload=request.POST['payload'],
+            validation_type=request.POST['validation_type']
+        )
+        new_validation_scenario.save()
+        return JsonResponse(model_to_dict(new_validation_scenario))
+    form = ValidationScenarioForm()
+    return render(request, 'core/new_validation_scenario.html', {
+        'form': form
+    })
+
+
+def validation_scenario(request, vs_id):
+    scenario = ValidationScenario.objects.get(pk=int(vs_id))
+    if request.method == "POST":
+        form = ValidationScenarioForm(request.POST)
+        if form.is_valid():
+            for key in form.cleaned_data:
+                setattr(scenario, key, form.cleaned_data[key])
+            scenario.save()
+        return JsonResponse(model_to_dict(scenario))
+    form = ValidationScenarioForm(model_to_dict(scenario))
+    return render(request, 'core/validation_scenario.html', {
+        'validation_scenario': scenario,
+        'form': form
+    })
 
 
 def test_validation_scenario(request):
@@ -48,7 +70,7 @@ def test_validation_scenario(request):
     # If GET, serve validation test screen
     if request.method == 'GET':
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # check if limiting to one, pre-existing record
         q = request.GET.get('q', None)
@@ -70,11 +92,11 @@ def test_validation_scenario(request):
         LOGGER.debug('running test validation and returning')
 
         # get record
-        record = models.Record.objects.get(id=request.POST.get('db_id'))
+        record = Record.objects.get(id=request.POST.get('db_id'))
 
         try:
             # init new validation scenario
-            validation_scenario = models.ValidationScenario(
+            validation_scenario = ValidationScenario(
                 name='temp_vs_%s' % str(uuid.uuid4()),
                 payload=request.POST.get('vs_payload'),
                 validation_type=request.POST.get('vs_type'),
