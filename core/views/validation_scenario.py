@@ -27,7 +27,7 @@ def validation_scenario_payload(request, vs_id):
     return HttpResponse(validation_scenario.payload, content_type='text/plain')
 
 
-def save_validation_scenario(request):
+def create_validation_scenario(request):
     # TODO: validate the model
     # TODO: do we care about deduplicating validation scenarios?
     # TODO: error handling

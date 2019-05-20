@@ -14,8 +14,8 @@ def test_record_has_words(record, test_message='record has words'):
         self.config = TestConfiguration()
         self.c = Client()
 
-    def test_save_validation_scenario(self):
-        response = self.c.post('/combine/configuration/save_validation_scenario',
+    def test_create_validation_scenario(self):
+        response = self.c.post('/combine/configuration/create_validation_scenario',
                           {'vs_name': 'Test Validate',
                            'vs_payload': 'Some python code',
                            'vs_type': 'python'})
