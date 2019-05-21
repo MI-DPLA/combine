@@ -1,9 +1,11 @@
 import logging
 import uuid
 
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
 from django.forms.models import model_to_dict
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
 
 from core.models import ValidationScenario, Record
 from core.forms import ValidationScenarioForm
@@ -39,7 +41,7 @@ def create_validation_scenario(request):
             validation_type=request.POST['validation_type']
         )
         new_validation_scenario.save()
-        return JsonResponse(model_to_dict(new_validation_scenario))
+        return redirect(reverse('configuration'))
     form = ValidationScenarioForm()
     return render(request, 'core/new_validation_scenario.html', {
         'form': form
@@ -54,12 +56,21 @@ def validation_scenario(request, vs_id):
             for key in form.cleaned_data:
                 setattr(scenario, key, form.cleaned_data[key])
             scenario.save()
-        return JsonResponse(model_to_dict(scenario))
+        return redirect(reverse('configuration'))
     form = ValidationScenarioForm(model_to_dict(scenario))
     return render(request, 'core/validation_scenario.html', {
         'validation_scenario': scenario,
         'form': form
     })
+
+
+def delete_validation_scenario(request, vs_id):
+    try:
+        scenario = ValidationScenario.objects.get(pk=int(vs_id))
+        scenario.delete()
+    except ObjectDoesNotExist:
+        pass
+    return redirect(reverse('configuration'))
 
 
 def test_validation_scenario(request):

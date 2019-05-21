@@ -134,8 +134,10 @@ urlpatterns = [
         views.validation_scenario_payload, name='validation_scenario_payload'),
     url(r'^configuration/validation/create$',
         views.create_validation_scenario, name='create_validation_scenario'),
-    url(r'^configuration/validation/(?P<vs_id>[0-9]+)',
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)$',
         views.validation_scenario, name='validation_scenario'),
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/delete$',
+        views.delete_validation_scenario, name='delete_validation_scenario'),
     url(r'^configuration/validation/test$',
         views.test_validation_scenario, name='test_validation_scenario'),
 

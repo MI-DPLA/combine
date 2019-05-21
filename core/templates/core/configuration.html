@@ -130,6 +130,7 @@
 						<th>Type</th>
 						<th>Path on disk</th>
 						<th>Validation Payload</th>
+                        <th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -140,6 +141,14 @@
 						<td>{{vs.get_validation_type_display}}</td>
 						<td><code>{{vs.filepath}}</code></td>
 						<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Payload</a></td>
+                        <td>
+                            <a href="{%  url 'validation_scenario' vs_id=vs.id %}" >
+                                <button class="btn btn-sm btn-info">Edit</button>
+                            </a>
+                            <a href="{% url 'delete_validation_scenario' vs_id=vs.id %}" >
+                                <button class="btn btn-sm btn-danger">Delete</button>
+                            </a>
+                        </td>
 					</tr>
 				{% endfor %}
 				</tbody>
@@ -149,7 +158,14 @@
 				    $('#validations_table').DataTable({});			    
 				} );
 			</script>
-			<p><a href="{% url 'test_validation_scenario' %}"><button type="button" class="btn btn-success btn-sm">Test Validation Scenario <i class="la la-wrench"></i></button></a></p>
+			<p>
+                <a href="{% url 'test_validation_scenario' %}">
+                    <button type="button" class="btn btn-success btn-sm">Test Validation Scenario <i class="la la-wrench"></i></button>
+                </a>
+                <a href="{% url 'create_validation_scenario' %}">
+                    <button type="button" class="btn btn-info btn-sm">Create Validation Scenario <i class="la la-plus"></i></button>
+                </a>
+            </p>
 		</div>
 	</div>
 

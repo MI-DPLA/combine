@@ -1,5 +1,6 @@
 from django.test import Client, TestCase
 from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import ValidationScenario
 from tests.test_views.utils import TestConfiguration
@@ -12,10 +13,10 @@ class ValidationScenarioTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
         self.c = Client()
+        self.c.force_login(self.config.user)
 
     def test_create_validation_scenario_get(self):
         response = self.c.get(reverse('create_validation_scenario'))
-        print(response.content)
         self.assertIn(b'Create new Validation Scenario', response.content)
 
     def test_create_validation_scenario_post(self):
@@ -23,11 +24,12 @@ class ValidationScenarioTestCase(TestCase):
                           {'name': 'Test Validate',
                            'payload': 'Some python code',
                            'validation_type': 'python'})
-        json = response.json()
-        self.assertIsNotNone(json['id'])
-        self.assertEqual(json['name'], 'Test Validate')
-        self.assertEqual(json['payload'], 'Some python code')
-        self.assertEqual(json['validation_type'], 'python')
+        self.assertRedirects(response, '/combine/configuration')
+        scenario = ValidationScenario.objects.get(name='Test Validate')
+        self.assertIsNotNone(scenario.id)
+        self.assertEqual(scenario.name, 'Test Validate')
+        self.assertEqual(scenario.payload, 'Some python code')
+        self.assertEqual(scenario.validation_type, 'python')
 
     def test_validation_scenario_get(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
@@ -46,10 +48,27 @@ class ValidationScenarioTestCase(TestCase):
                                    'name': scenario.name,
                                    'validation_type': scenario.validation_type
                                })
-        json = response.json()
-        self.assertEqual(json['id'], scenario.id)
-        self.assertEqual(json['name'], scenario.name)
-        self.assertEqual(json['payload'], ValidationScenarioTestCase.simple_validation_payload)
+        self.assertRedirects(response, '/combine/configuration')
+        scenario = ValidationScenario.objects.get(name='Test Validate')
+        self.assertIsNotNone(scenario.id)
+        self.assertEqual(scenario.name, 'Test Validate')
+        self.assertEqual(scenario.payload, ValidationScenarioTestCase.simple_validation_payload)
+
+    def test_validation_scenario_delete(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some python code',
+                                                     validation_type='python')
+        response = self.c.delete(reverse('delete_validation_scenario', args=[scenario.id]))
+        self.assertRedirects(response, '/combine/configuration')
+        try:
+            ValidationScenario.objects.get(pk=int(scenario.id))
+            self.assertEqual(True, False)
+        except ObjectDoesNotExist:
+            self.assertEqual(True, True)
+
+    def test_validation_scenario_delete_nonexistent(self):
+        response = self.c.delete(reverse('delete_validation_scenario', args=[12345]))
+        self.assertRedirects(response, '/combine/configuration')
 
     def test_validation_scenario_payload(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
