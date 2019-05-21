@@ -411,6 +411,19 @@ class LivySession(models.Model):
 		return new_ls
 
 
+	def session_port(self):
+
+		'''
+		Method to return port from sparkUiURL
+		'''
+
+		spark_url = getattr(self, 'sparkUiUrl', None)
+		if spark_url is not None:
+			return spark_url.split(':')[-1]
+		else:
+			return False
+
+
 
 class Organization(models.Model):
 

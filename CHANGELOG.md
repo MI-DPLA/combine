@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
   - Update XML2kvp to limit values at 32k characters [#403](https://github.com/WSULib/combine/issues/403)
   - Converting tabs to spaces per PEP 8 recs
+  - Updating [DPLA Ingestion3](https://github.com/dpla/ingestion3)
+  - For Ansible build, setting default Spark application to `local[*]` as opposed to local, standalone cluster [#29](https://github.com/WSULib/combine-playbook/issues/29)
 
 
 ## `v0.8`
