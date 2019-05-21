@@ -119,5 +119,5 @@ combine/localsettings.py
 # Combine static files
 /static
 
-# JetBrains idea files
-.idea/
+# PyCharm IDE
+.idea

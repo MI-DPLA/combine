@@ -2,9 +2,7 @@ import re
 
 
 def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo element"):
-
-    titleInfo_elements = record.xml.xpath(
-        '//mods:titleInfo', namespaces=record.nsmap)
+    titleInfo_elements = record.xml.xpath('//mods:titleInfo', namespaces=record.nsmap)
     if len(titleInfo_elements) > 0:
         return True
     else:
@@ -12,7 +10,6 @@ def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo
 
 
 def test_check_dateIssued_format(record, test_message="check mods:dateIssued is YYYY-MM-DD or YYYY or YYYY-YYYY"):
-
     # get dateIssued elements
     dateIssued_elements = record.xml.xpath(
         '//mods:dateIssued', namespaces=record.nsmap)

@@ -18,7 +18,6 @@ from core import models
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
-
 # attempt to load metadataPrefix map from localSettings, otherwise provide default
 if hasattr(settings, 'METADATA_PREFIXES'):
     metadataPrefix_hash = settings.METADATA_PREFIXES
@@ -40,7 +39,6 @@ else:
 
 
 class OAIProvider(object):
-
     """
     Class for scaffolding and building responses to OAI queries
 
@@ -195,8 +193,7 @@ class OAIProvider(object):
 
         # report
         record_nodes_num = len(self.record_nodes)
-        logger.debug("%s record(s) returned in %s" %
-                     (record_nodes_num, (float(time.time()) - float(stime))))
+        logger.debug("%s record(s) returned in %s" % (record_nodes_num, (float(time.time()) - float(stime))))
 
     def set_resumption_token(self, records, completeListSize=None):
         """
@@ -212,7 +209,6 @@ class OAIProvider(object):
 
         # set resumption token
         if self.start + self.chunk_size < completeListSize:
-
             # set token and slice parameters to DB
             token = str(uuid.uuid4())
             logger.debug('setting resumption token: %s' % token)
@@ -277,7 +273,8 @@ class OAIProvider(object):
 
             # raise error
             else:
-                return self.raise_error('badResumptionToken', 'The resumptionToken %s is not found' % self.args['resumptionToken'])
+                return self.raise_error('badResumptionToken',
+                                        'The resumptionToken %s is not found' % self.args['resumptionToken'])
 
         # fire verb reponse building
         self.verb_routes[self.args['verb']]()
@@ -370,8 +367,7 @@ class OAIProvider(object):
 
         # report
         etime = time.time()
-        logger.debug("%s record(s) returned in %sms" % (
-            len(self.record_nodes), (float(etime) - float(stime)) * 1000))
+        logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
 
     # Identify
     def _Identify(self):
@@ -528,7 +524,6 @@ class OAIProvider(object):
 
 
 class OAIRecord(object):
-
     """
     Initialize OAIRecord with pid and args
     """

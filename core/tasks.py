@@ -19,6 +19,7 @@ from django.conf import settings
 
 # Get an instance of a logger
 import logging
+
 logger = logging.getLogger(__name__)
 
 # import celery app
@@ -29,6 +30,7 @@ from core import models as models
 
 # AWS
 import boto3
+
 
 # TODO: need some handling for failed Jobs which may not be available, but will not be changing,
 # to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
@@ -138,8 +140,8 @@ def create_validation_report(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # set archive filename of loose XML files
@@ -246,7 +248,6 @@ def create_validation_report(ct_id):
 
 @celery_app.task()
 def export_mapped_fields(ct_id):
-
     # get CombineTask (ct)
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
@@ -257,7 +258,6 @@ def export_mapped_fields(ct_id):
 
             # handle single Job
             if 'job_id' in ct.task_params.keys():
-
                 # get CombineJob
                 cjob = models.CombineJob.get_combine_job(
                     int(ct.task_params['job_id']))
@@ -282,7 +282,6 @@ def export_mapped_fields(ct_id):
 
             # handle published records
             if 'published' in ct.task_params.keys():
-
                 # set output filename
                 output_path = '/tmp/%s' % uuid.uuid4().hex
                 os.mkdir(output_path)
@@ -319,7 +318,6 @@ def export_mapped_fields(ct_id):
 
             # handle single Job
             if 'job_id' in ct.task_params.keys():
-
                 # get CombineJob
                 cjob = models.CombineJob.get_combine_job(
                     int(ct.task_params['job_id']))
@@ -342,7 +340,6 @@ def export_mapped_fields(ct_id):
 
             # handle published records
             if 'published' in ct.task_params.keys():
-
                 # set output filename
                 output_path = '/tmp/%s' % uuid.uuid4().hex
                 os.mkdir(output_path)
@@ -464,7 +461,6 @@ def export_mapped_fields(ct_id):
 
 @celery_app.task()
 def export_tabular_data(ct_id):
-
     # get CombineTask (ct)
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
 
@@ -473,7 +469,6 @@ def export_tabular_data(ct_id):
 
     # handle single Job
     if 'job_id' in ct.task_params.keys():
-
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
@@ -532,8 +527,8 @@ def export_tabular_data(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # handle s3 bucket
@@ -596,7 +591,6 @@ def export_tabular_data(ct_id):
 
 
 def _create_export_tabular_data_archive(ct):
-
     # rewrite with extensions
     export_parts = glob.glob('%s/**/part*' % ct.task_params['output_path'])
     for part in export_parts:
@@ -618,7 +612,8 @@ def _create_export_tabular_data_archive(ct):
             ct.task_params['output_path'], ct.task_params['archive_filename_root'])
 
         with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as zip:
-            for f in glob.glob('%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+            for f in glob.glob(
+                    '%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
                 zip.write(f, '/'.join(f.split('/')[-2:]))
 
     # tar
@@ -632,7 +627,8 @@ def _create_export_tabular_data_archive(ct):
             ct.task_params['output_path'], ct.task_params['archive_filename_root'])
 
         with tarfile.open(export_output_archive, 'w') as tar:
-            for f in glob.glob('%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+            for f in glob.glob(
+                    '%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
                 tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
     # tar.gz
@@ -646,7 +642,8 @@ def _create_export_tabular_data_archive(ct):
             ct.task_params['output_path'], ct.task_params['archive_filename_root'])
 
         with tarfile.open(export_output_archive, 'w:gz') as tar:
-            for f in glob.glob('%s/**/*.%ss' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
+            for f in glob.glob(
+                    '%s/**/*.%ss' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
                 tar.add(f, arcname='/'.join(f.split('/')[-2:]))
 
     # cleanup directory
@@ -684,7 +681,6 @@ def export_documents(ct_id):
 
     # handle single Job
     if 'job_id' in ct.task_params.keys():
-
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
@@ -746,8 +742,8 @@ def export_documents(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # handle s3 bucket
@@ -812,7 +808,6 @@ def export_documents(ct_id):
 
 
 def _create_export_documents_archive(ct):
-
     # loop through parts, group XML docs with rool XML element, and save as new XML file
     logger.info('grouping documents in XML files')
 
@@ -927,8 +922,8 @@ def job_reindex(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # get new mapping
@@ -989,13 +984,13 @@ def job_new_validations(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # loop through validation jobs, and remove from DB if share validation scenario
-        cjob.job.remove_validation_jobs(validation_scenarios=[int(
-            vs_id) for vs_id in ct.task_params['validation_scenarios']])
+        cjob.job.remove_validation_jobs(
+            validation_scenarios=[int(vs_id) for vs_id in ct.task_params['validation_scenarios']])
 
         # update job_details
         cjob.job.refresh_from_db()
@@ -1082,8 +1077,8 @@ def job_remove_validation(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # remove Job Validation from job_details
@@ -1123,7 +1118,6 @@ def job_remove_validation(ct_id):
 
 @celery_app.task()
 def job_publish(ct_id):
-
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
@@ -1168,7 +1162,6 @@ def job_publish(ct_id):
 
 @celery_app.task()
 def job_unpublish(ct_id):
-
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
@@ -1207,7 +1200,6 @@ def job_unpublish(ct_id):
 
 @celery_app.task()
 def job_dbdm(ct_id):
-
     # get CombineTask (ct)
     try:
 
@@ -1221,8 +1213,8 @@ def job_dbdm(ct_id):
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
         # set dbdm as False for all Records in Job
-        clear_result = models.mc_handle.combine.record.update_many(
-            {'job_id': cjob.job.id}, {'$set': {'dbdm': False}}, upsert=False)
+        clear_result = models.mc_handle.combine.record.update_many({'job_id': cjob.job.id}, {'$set': {'dbdm': False}},
+                                                                   upsert=False)
 
         # generate spark code
         spark_code = 'from jobs import RunDBDM\nRunDBDM(spark, job_id="%(job_id)s", dbdd_id=%(dbdd_id)s).spark_function()' % {
@@ -1238,8 +1230,8 @@ def job_dbdm(ct_id):
 
         # poll until complete
         logger.info('polling for Spark job to complete...')
-        results = polling.poll(lambda: models.LivyClient().job_status(
-            submit.headers['Location']).json(), check_success=spark_job_done, step=5, poll_forever=True)
+        results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
+                               check_success=spark_job_done, step=5, poll_forever=True)
         logger.info(results)
 
         # update job_details
@@ -1280,7 +1272,6 @@ def job_dbdm(ct_id):
 
 @celery_app.task()
 def rerun_jobs_prep(ct_id):
-
     # get CombineTask (ct)
     try:
 
@@ -1292,7 +1283,6 @@ def rerun_jobs_prep(ct_id):
 
         # loop through and run
         for job_id in ct.task_params['ordered_job_rerun_set']:
-
             # cjob
             cjob = models.CombineJob.get_combine_job(job_id)
 
@@ -1441,5 +1431,4 @@ def _check_livy_session():
 
     # if still failing, raise exception
     if not ls:
-        raise Exception(
-            'Spark required for this task, but could not start Livy session.')
+        raise Exception('Spark required for this task, but could not start Livy session.')

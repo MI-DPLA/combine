@@ -12,11 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-
     help = 'Remove orphaned Records from Mongo that have no associated Job'
 
     def handle(self, *args, **options):
-
         # removing records with no job_id field
         no_job_ids = Record.objects(mongoengine.Q(job_id__exists=False))
         logger.debug('removing %s records without job_id field' %

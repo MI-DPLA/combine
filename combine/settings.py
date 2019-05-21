@@ -12,14 +12,11 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 
 import os
 
-
 # Combine Version
 COMBINE_VERSION = 'v0.9'
 
-
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/1.11/howto/deployment/checklist/
@@ -28,13 +25,10 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '$)1(piv72**m&3bmb)j!=f-h4=of6_knu=c8lj31n7k=y36oi%'
 
-
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-
 ALLOWED_HOSTS = ['*']  # for dev, allowing all hosts
-
 
 # Application definition
 
@@ -82,7 +76,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'combine.wsgi.application'
-
 
 # Database
 # https://docs.djangoproject.com/en/1.11/ref/settings/#databases
@@ -134,12 +127,10 @@ USE_L10N = True
 
 USE_TZ = True
 
-
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/1.11/howto/static-files/
 STATIC_URL = '/static/'
 STATIC_ROOT = '/opt/combine/static'
-
 
 # Logging
 LOGGING = {
@@ -187,7 +178,6 @@ LOGGING = {
         },
     },
 }
-
 
 # shell_plus additional imports
 SHELL_PLUS_POST_IMPORTS = {

@@ -109,7 +109,6 @@ from toposort import toposort, toposort_flatten, CircularDependencyError
 ####################################################################
 
 class LivySession(models.Model):
-
     '''
     Model to manage Livy sessions.
     '''
@@ -402,9 +401,20 @@ class LivySession(models.Model):
 
         return new_ls
 
+        def session_port(self):
+
+            '''
+            Method to return port from sparkUiURL
+            '''
+
+            spark_url = getattr(self, 'sparkUiUrl', None)
+            if spark_url is not None:
+                return spark_url.split(':')[-1]
+            else:
+                return False
+
 
 class Organization(models.Model):
-
     '''
     Model to manage Organizations in Combine.
     Organizations contain Record Groups, and are the highest level of organization in Combine.
@@ -430,7 +440,6 @@ class Organization(models.Model):
 
             # loop through jobs
             for job in rg.job_set.all():
-
                 total_record_count += job.record_count
 
         # return
@@ -438,7 +447,6 @@ class Organization(models.Model):
 
 
 class RecordGroup(models.Model):
-
     '''
     Model to manage Record Groups in Combine.
     Record Groups are members of Organizations, and contain Jobs
@@ -491,7 +499,7 @@ class RecordGroup(models.Model):
         ld['edges'].sort(key=lambda x: x['id'])
 
         # return
-        logger.debug('lineage calc time elapsed: %s' % (time.time()-stime))
+        logger.debug('lineage calc time elapsed: %s' % (time.time() - stime))
         return ld
 
     def published_jobs(self):
@@ -528,7 +536,6 @@ class RecordGroup(models.Model):
 
         # loop through jobs
         for job in self.job_set.all():
-
             total_record_count += job.record_count
 
         # return
@@ -536,7 +543,6 @@ class RecordGroup(models.Model):
 
 
 class Job(models.Model):
-
     '''
     Model to manage jobs in Combine.
     Jobs are members of Record Groups, and contain Records.
@@ -609,10 +615,9 @@ class Job(models.Model):
         if not self.deleted:
 
             # if job in various status, and not finished, ping livy
-            if self.status in ['initializing', 'waiting', 'pending', 'starting', 'running', 'available', 'gone']\
-                    and self.url != None\
+            if self.status in ['initializing', 'waiting', 'pending', 'starting', 'running', 'available', 'gone'] \
+                    and self.url != None \
                     and not self.finished:
-
                 logger.debug('pinging Livy for Job status: %s' % self)
                 self.refresh_from_livy(save=False)
 
@@ -621,7 +626,6 @@ class Job(models.Model):
 
                 # if finished, count
                 if self.finished:
-
                     # update record count
                     self.update_record_count(save=False)
 
@@ -908,7 +912,7 @@ class Job(models.Model):
 
         if 'detailed_record_count' in self.job_details_dict.keys() and not force_recount:
             logger.debug(
-                'total detailed record count retrieve elapsed: %s' % (time.time()-stime))
+                'total detailed record count retrieve elapsed: %s' % (time.time() - stime))
             return self.job_details_dict['detailed_record_count']
 
         else:
@@ -934,7 +938,7 @@ class Job(models.Model):
 
             # return
             logger.debug('total detailed record count calc elapsed: %s' %
-                         (time.time()-stime))
+                         (time.time() - stime))
             return r_count_dict
 
     def job_output_as_filesystem(self):
@@ -1084,7 +1088,8 @@ class Job(models.Model):
                     if 'input_filters' in self.job_details_dict:
 
                         # check for job specific filters to use for edge
-                        if 'job_specific' in self.job_details_dict['input_filters'].keys() and str(from_node) in self.job_details_dict['input_filters']['job_specific'].keys():
+                        if 'job_specific' in self.job_details_dict['input_filters'].keys() and str(from_node) in \
+                                self.job_details_dict['input_filters']['job_specific'].keys():
 
                             logger.debug(
                                 'found job type specifics for input job: %s, applying to edge' % from_node)
@@ -1131,9 +1136,12 @@ class Job(models.Model):
                                     'id': edge_id,
                                     'from': from_node,
                                     'to': to_node,
-                                    'input_validity_valve': self.job_details_dict['input_filters']['input_validity_valve'],
-                                    'input_numerical_valve': self.job_details_dict['input_filters']['input_numerical_valve'],
-                                    'filter_dupe_record_ids': self.job_details_dict['input_filters']['filter_dupe_record_ids'],
+                                    'input_validity_valve': self.job_details_dict['input_filters'][
+                                        'input_validity_valve'],
+                                    'input_numerical_valve': self.job_details_dict['input_filters'][
+                                        'input_numerical_valve'],
+                                    'filter_dupe_record_ids': self.job_details_dict['input_filters'][
+                                        'filter_dupe_record_ids'],
                                     'total_records_passed': link.passed_records
                                 }
                                 # add es query flag
@@ -1303,7 +1311,8 @@ class Job(models.Model):
         if self.finished:
 
             # check job_details for dbdm key in job_details, indicating bulk data check
-            if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and self.job_details_dict['dbdm']['dbdd'] != None:
+            if 'dbdm' in self.job_details_dict.keys() and 'dbdd' in self.job_details_dict['dbdm'].keys() and \
+                    self.job_details_dict['dbdm']['dbdd'] != None:
 
                 # get dbdm
                 dbdm = self.job_details_dict.get('dbdm', False)
@@ -1315,7 +1324,6 @@ class Job(models.Model):
 
                     # get misses and matches, counting if not yet done
                     if dbdm['matches'] == None and dbdm['misses'] == None:
-
                         # matches
                         dbdm['matches'] = self.get_records().filter(
                             dbdm=True).count()
@@ -1449,7 +1457,7 @@ class Job(models.Model):
 
         # mongo db command
         result = mc_handle.combine.record.update_many({'job_id': self.id}, {
-                                                      '$set': {'published': True, 'publish_set_id': publish_set_id}}, upsert=False)
+            '$set': {'published': True, 'publish_set_id': publish_set_id}}, upsert=False)
         logger.debug('Matched %s, marked as published %s' %
                      (result.matched_count, result.modified_count))
 
@@ -1462,9 +1470,9 @@ class Job(models.Model):
         # add to job details
         self.update_job_details({
             'published': {
-                                'status': True,
-                                'publish_set_id': self.publish_set_id
-                                }
+                'status': True,
+                'publish_set_id': self.publish_set_id
+            }
         })
 
         # return
@@ -1484,7 +1492,7 @@ class Job(models.Model):
 
         # mongo db command
         result = mc_handle.combine.record.update_many({'job_id': self.id}, {
-                                                      '$set': {'published': False, 'publish_set_id': None}}, upsert=False)
+            '$set': {'published': False, 'publish_set_id': None}}, upsert=False)
         logger.debug('Matched %s, marked as unpublished %s' %
                      (result.matched_count, result.modified_count))
 
@@ -1497,9 +1505,9 @@ class Job(models.Model):
         # add to job details
         self.update_job_details({
             'published': {
-                                'status': False,
-                                'publish_set_id': None
-                                }
+                'status': False,
+                'publish_set_id': None
+            }
         })
 
         # return
@@ -1868,7 +1876,6 @@ class Job(models.Model):
 
 
 class JobTrack(models.Model):
-
     '''
     Model to record information about jobs from Spark context, as not to interfere with model `Job` transactions
     '''
@@ -1882,7 +1889,6 @@ class JobTrack(models.Model):
 
 
 class JobInput(models.Model):
-
     '''
     Model to manage input jobs for other jobs.
     Provides a one-to-many relationship for a job and potential multiple input jobs
@@ -1898,7 +1904,6 @@ class JobInput(models.Model):
 
 
 class OAIEndpoint(models.Model):
-
     '''
     Model to manage user added OAI endpoints
     '''
@@ -1932,7 +1937,6 @@ class OAIEndpoint(models.Model):
 
 
 class Transformation(models.Model):
-
     '''
     Model to handle "transformation scenarios".	Envisioned to faciliate more than just XSL transformations, but
     currently, only XSLT is handled downstream
@@ -2145,7 +2149,6 @@ class Transformation(models.Model):
                 # check for http
                 if href:
                     if href.lower().startswith('http'):
-
                         logger.debug(
                             'external HTTP href found for xsl:include: %s' % href)
 
@@ -2170,7 +2173,6 @@ class Transformation(models.Model):
 
 
 class OAITransaction(models.Model):
-
     '''
     Model to manage transactions from OAI server, including all requests and resumption tokens when needed.
 
@@ -2189,7 +2191,6 @@ class OAITransaction(models.Model):
 
 
 class Record(mongoengine.Document):
-
     # fields
     combine_id = mongoengine.StringField()
     document = mongoengine.StringField()
@@ -2563,15 +2564,20 @@ class Record(mongoengine.Document):
         record_lineage_urls = {
             'record': {
                 'name': self.record_id,
-                'path': reverse('record', kwargs={'org_id': self.job.record_group.organization.id, 'record_group_id': self.job.record_group.id, 'job_id': self.job.id, 'record_id': self.id})
+                'path': reverse('record', kwargs={'org_id': self.job.record_group.organization.id,
+                                                  'record_group_id': self.job.record_group.id, 'job_id': self.job.id,
+                                                  'record_id': self.id})
             },
             'job': {
                 'name': self.job.name,
-                'path': reverse('job_details', kwargs={'org_id': self.job.record_group.organization.id, 'record_group_id': self.job.record_group.id, 'job_id': self.job.id})
+                'path': reverse('job_details', kwargs={'org_id': self.job.record_group.organization.id,
+                                                       'record_group_id': self.job.record_group.id,
+                                                       'job_id': self.job.id})
             },
             'record_group': {
                 'name': self.job.record_group.name,
-                'path': reverse('record_group', kwargs={'org_id': self.job.record_group.organization.id, 'record_group_id': self.job.record_group.id})
+                'path': reverse('record_group', kwargs={'org_id': self.job.record_group.organization.id,
+                                                        'record_group_id': self.job.record_group.id})
             },
             'organization': {
                 'name': self.job.record_group.organization.name,
@@ -2736,12 +2742,11 @@ class Record(mongoengine.Document):
 
         stime = time.time()
         mapped_fields = mapper.map_record(record_string=self.document)
-        logger.debug('mapping elapsed: %s' % (time.time()-stime))
+        logger.debug('mapping elapsed: %s' % (time.time() - stime))
         return mapped_fields
 
 
 class IndexMappingFailure(mongoengine.Document):
-
     db_id = mongoengine.StringField()
     record_id = mongoengine.StringField()
     job_id = mongoengine.IntField()
@@ -2792,7 +2797,6 @@ class IndexMappingFailure(mongoengine.Document):
 
 
 class ValidationScenario(models.Model):
-
     '''
     Model to handle validation scenarios used to validate records.
     '''
@@ -3101,7 +3105,6 @@ class ValidationScenario(models.Model):
 
 
 class JobValidation(models.Model):
-
     '''
     Model to record one-to-many relationship between jobs and validation scenarios run against its records
     '''
@@ -3126,8 +3129,8 @@ class JobValidation(models.Model):
                 (django.db.models.query.QuerySet): RecordValidation queryset of records from self.job and self.validation_scenario
         '''
 
-        rvfs = RecordValidation.objects\
-            .filter(validation_scenario_id=self.validation_scenario.id)\
+        rvfs = RecordValidation.objects \
+            .filter(validation_scenario_id=self.validation_scenario.id) \
             .filter(job_id=self.job.id)
         return rvfs
 
@@ -3159,8 +3162,8 @@ class JobValidation(models.Model):
         Method to delete record validations associated with this validation job
         '''
 
-        rvfs = RecordValidation.objects\
-            .filter(validation_scenario_id=self.validation_scenario.id)\
+        rvfs = RecordValidation.objects \
+            .filter(validation_scenario_id=self.validation_scenario.id) \
             .filter(job_id=self.job.id)
         del_results = rvfs.delete()
         logger.debug('%s validations removed' % del_results)
@@ -3168,7 +3171,6 @@ class JobValidation(models.Model):
 
 
 class RecordValidation(mongoengine.Document):
-
     # fields
     record_id = mongoengine.ReferenceField(
         Record, reverse_delete_rule=mongoengine.CASCADE)
@@ -3232,7 +3234,6 @@ class RecordValidation(mongoengine.Document):
 
 
 class FieldMapper(models.Model):
-
     '''
     Model to handle different Field Mappers
     '''
@@ -3273,7 +3274,6 @@ class FieldMapper(models.Model):
 
 
 class RecordIdentifierTransformationScenario(models.Model):
-
     '''
     Model to manage transformation scenarios for Record's record_ids (RITS)
     '''
@@ -3302,7 +3302,6 @@ class RecordIdentifierTransformationScenario(models.Model):
 
 
 class DPLABulkDataDownload(models.Model):
-
     '''
     Model to handle the management of DPLA bulk data downloads
     '''
@@ -3334,7 +3333,6 @@ class DPLABulkDataDownload(models.Model):
 
 
 class CombineBackgroundTask(models.Model):
-
     '''
     Model for long running, background tasks
     '''
@@ -3506,7 +3504,6 @@ class CombineBackgroundTask(models.Model):
 
 
 class StateIO(mongoengine.Document):
-
     '''
     Model to facilitate the recording of State Exports and Imports in Combine
             - flexible to both, defined by stateio_type
@@ -3642,7 +3639,6 @@ class StateIO(mongoengine.Document):
             FieldMapper,
             DPLABulkDataDownload
         ]:
-
             logger.debug('retrieving all config scenarios for: %s' %
                          conf_model.__name__)
             conf_model_instances.extend(['%s|%s' % (
@@ -3727,7 +3723,6 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
 
 @receiver(models.signals.pre_delete, sender=Organization)
 def delete_org_pre_delete(sender, instance, **kwargs):
-
     # mark child record groups as deleted
     logger.debug('marking all child Record Groups as deleting')
     for record_group in instance.recordgroup_set.all():
@@ -3738,7 +3733,6 @@ def delete_org_pre_delete(sender, instance, **kwargs):
         # mark child jobs as deleted
         logger.debug('marking all child Jobs as deleting')
         for job in record_group.job_set.all():
-
             job.name = "%s (DELETING)" % job.name
             job.deleted = True
             job.status = 'deleting'
@@ -3747,11 +3741,9 @@ def delete_org_pre_delete(sender, instance, **kwargs):
 
 @receiver(models.signals.pre_delete, sender=RecordGroup)
 def delete_record_group_pre_delete(sender, instance, **kwargs):
-
     # mark child jobs as deleted
     logger.debug('marking all child Jobs as deleting')
     for job in instance.job_set.all():
-
         job.name = "%s (DELETING)" % job.name
         job.deleted = True
         job.status = 'deleting'
@@ -3772,7 +3764,6 @@ def save_job_post_save(sender, instance, created, **kwargs):
 
     # if the record was just created, then update job output (ensures this only runs once)
     if created and instance.job_type != 'AnalysisJob':
-
         # set output based on job type
         logger.debug('setting job output for job')
         instance.job_output = '%s/organizations/%s/record_group/%s/jobs/%s/%s' % (
@@ -3848,7 +3839,6 @@ def delete_job_validation_pre_delete(sender, instance, **kwargs):
 
 @receiver(models.signals.post_delete, sender=Job)
 def delete_job_post_delete(sender, instance, **kwargs):
-
     logger.debug('job %s was deleted successfully' % instance)
 
 
@@ -3938,7 +3928,6 @@ def save_validation_scenario_to_disk(sender, instance, **kwargs):
 
 @receiver(models.signals.pre_delete, sender=DPLABulkDataDownload)
 def delete_dbdd_pre_delete(sender, instance, **kwargs):
-
     # remove download from disk
     if os.path.exists(instance.filepath):
         logger.debug('removing %s from disk' % instance.filepath)
@@ -3955,7 +3944,6 @@ def delete_dbdd_pre_delete(sender, instance, **kwargs):
 
 @receiver(models.signals.post_init, sender=CombineBackgroundTask)
 def background_task_post_init(sender, instance, **kwargs):
-
     # if exists already, update status
     if instance.id:
         instance.update()
@@ -3963,7 +3951,6 @@ def background_task_post_init(sender, instance, **kwargs):
 
 @receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
 def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
-
     # if export dir exists in task_output, delete as well
     if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
         try:
@@ -3983,7 +3970,6 @@ mongoengine.signals.pre_delete.connect(StateIO.pre_delete, sender=StateIO)
 ####################################################################
 
 class LivyClient(object):
-
     '''
     Client used for HTTP requests made to Livy server.
     On init, pull Livy information and credentials from settings.
@@ -4035,10 +4021,10 @@ class LivyClient(object):
             self.server_host,
             self.server_port,
             url.lstrip('/')),
-            data=data,
-            params=params,
-            headers=headers,
-            files=files)
+                                   data=data,
+                                   params=params,
+                                   headers=headers,
+                                   files=files)
         # or, with session, session.prepare_request(request)
         prepped_request = request.prepare()
 
@@ -4222,7 +4208,6 @@ class LivyClient(object):
 
 
 class SparkAppAPIClient(object):
-
     '''
     Client to communicate with Spark Application created by Livy Session
 
@@ -4367,7 +4352,6 @@ class SparkAppAPIClient(object):
 ####################################################################
 
 class ESIndex(object):
-
     '''
     Model to aggregate methods useful for accessing and analyzing ElasticSearch indices
     '''
@@ -4414,7 +4398,7 @@ class ESIndex(object):
                 'combine_id',
                 'xml2kvp_meta',
                 'fingerprint']
-            ]
+                           ]
 
             # sort alphabetically that influences results list
             field_names.sort()
@@ -4450,7 +4434,7 @@ class ESIndex(object):
 
             # documents without
             field_dict['doc_missing'] = sr_dict['hits']['total'] - \
-                field_dict['doc_instances']
+                                        field_dict['doc_instances']
 
             # distinct ratio
             if field_dict['val_instances'] > 0:
@@ -4466,7 +4450,8 @@ class ESIndex(object):
             # one, distinct value for this field, for this document
             if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
                     and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
-                    and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
+                    and len(
+                set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
                 field_dict['one_distinct_per_doc'] = True
             else:
                 field_dict['one_distinct_per_doc'] = False
@@ -4502,7 +4487,8 @@ class ESIndex(object):
                         field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
         '''
 
-        if self.es_index != [] and es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+        if self.es_index != [] and es_handle.indices.exists(index=self.es_index) and \
+                es_handle.search(index=self.es_index)['hits']['total'] > 0:
 
             # DEBUG
             stime = time.time()
@@ -4545,7 +4531,7 @@ class ESIndex(object):
 
             # DEBUG
             logger.debug('count indexed fields elapsed: %s' %
-                         (time.time()-stime))
+                         (time.time() - stime))
 
             # prepare dictionary for return
             return_dict = {
@@ -4604,7 +4590,7 @@ class ESIndex(object):
         # add agg bucket for field values
         if not metrics_only:
             s.aggs.bucket(field_name, A('terms', field='%s.keyword' %
-                                        field_name, size=terms_limit))
+                                                       field_name, size=terms_limit))
 
         # return zero
         s = s[0]
@@ -4646,7 +4632,6 @@ class ESIndex(object):
 
 
 class PublishedRecords(object):
-
     '''
     Model to manage the aggregation and retrieval of published records.
     '''
@@ -4692,7 +4677,6 @@ class PublishedRecords(object):
                 # include any published Jobs from hierarchy, if present
                 hierarchy = self.ps_doc.get('hierarchy', [])
                 if len(hierarchy) > 0:
-
                     # collect job, record group, and org ids
                     org_ids = [int(_.split('|')[1])
                                for _ in hierarchy if _.startswith('org')]
@@ -4702,10 +4686,10 @@ class PublishedRecords(object):
                                for _ in hierarchy if _.startswith('job')]
 
                     # OR query to get set of Jobs that match
-                    hierarchy_jobs = Job.objects.filter(published=True, pk__in=job_ids) |\
-                        Job.objects.filter(published=True, record_group__in=record_group_ids) |\
-                        Job.objects.filter(
-                            published=True, record_group__organization__in=org_ids)
+                    hierarchy_jobs = Job.objects.filter(published=True, pk__in=job_ids) | \
+                                     Job.objects.filter(published=True, record_group__in=record_group_ids) | \
+                                     Job.objects.filter(
+                                         published=True, record_group__organization__in=org_ids)
 
                     # merge with published jobs
                     self.published_jobs = self.published_jobs | hierarchy_jobs
@@ -4794,7 +4778,6 @@ class PublishedRecords(object):
 
             # if published_field_counts
             if published_field_counts:
-
                 # add id and replace (upsert if necessary)
                 published_field_counts['_id'] = self.mongo_count_id
                 doc = mc_handle.combine.misc.replace_one(
@@ -4830,7 +4813,8 @@ class PublishedRecords(object):
         if includes_publish_set_id:
             logger.debug(
                 'filtering Published Subsets to those that include publish_set_id: %s' % includes_publish_set_id)
-            return list(mc_handle.combine.misc.find({'type': 'published_subset', 'publish_set_ids': includes_publish_set_id}))
+            return list(
+                mc_handle.combine.misc.find({'type': 'published_subset', 'publish_set_ids': includes_publish_set_id}))
 
         else:
             return list(mc_handle.combine.misc.find({'type': 'published_subset'}))
@@ -4882,7 +4866,6 @@ class PublishedRecords(object):
 
 
 class CombineJob(object):
-
     '''
     Class to aggregate methods useful for managing and inspecting jobs.
 
@@ -4908,7 +4891,6 @@ class CombineJob(object):
 
         # if job_id provided, attempt to retrieve and parse output
         if self.job_id:
-
             # retrieve job
             self.get_job(self.job_id)
 
@@ -5138,7 +5120,7 @@ class CombineJob(object):
 
             # finally, append to job_specific dictionary for input_filters
             input_filters['job_specific'][job_spec_form_dict['input_job_id']
-                                          ] = job_spec_dict
+            ] = job_spec_dict
 
         # finish input filters
         return input_filters
@@ -5545,7 +5527,6 @@ class CombineJob(object):
 
             # optionally, update status for GUI representation
             if set_gui_status:
-
                 re_job.timestamp = datetime.datetime.now()
                 re_job.status = 'initializing'
                 re_job.record_count = 0
@@ -5663,7 +5644,8 @@ class CombineJob(object):
 
                     # handle input_job_ids
                     update_dict['input_job_ids'] = [clones[ji.input_job].id if job_id ==
-                                                    ji.input_job.id else job_id for job_id in clone.job.job_details_dict['input_job_ids']]
+                                                                               ji.input_job.id else job_id for job_id in
+                                                    clone.job.job_details_dict['input_job_ids']]
 
                     # handle record input filters
                     update_dict['input_filters'] = clone.job.job_details_dict['input_filters']
@@ -5703,7 +5685,6 @@ class CombineJob(object):
 
 
 class HarvestJob(CombineJob):
-
     '''
     Harvest records to Combine.
 
@@ -5760,7 +5741,6 @@ class HarvestJob(CombineJob):
 
 
 class HarvestOAIJob(HarvestJob):
-
     '''
     Harvest records from OAI-PMH endpoint
     Extends core.models.HarvestJob
@@ -5793,7 +5773,6 @@ class HarvestOAIJob(HarvestJob):
 
         # if job_id not provided, assume new Job
         if not job_id:
-
             # write job details
             self.job.update_job_details(job_details)
 
@@ -5853,9 +5832,9 @@ class HarvestOAIJob(HarvestJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import HarvestOAISpark\nHarvestOAISpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -5875,7 +5854,6 @@ class HarvestOAIJob(HarvestJob):
 
 
 class HarvestStaticXMLJob(HarvestJob):
-
     '''
     Harvest records from static XML files
     Extends core.models.HarvestJob
@@ -5907,7 +5885,6 @@ class HarvestStaticXMLJob(HarvestJob):
 
         # if job_id not provided, assume new Job
         if not job_id:
-
             # write job details
             self.job.update_job_details(job_details)
 
@@ -5996,9 +5973,9 @@ class HarvestStaticXMLJob(HarvestJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import HarvestStaticXMLSpark\nHarvestStaticXMLSpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -6047,7 +6024,6 @@ class HarvestStaticXMLJob(HarvestJob):
 
 
 class HarvestTabularDataJob(HarvestJob):
-
     '''
     Harvest records from tabular data
     Extends core.models.HarvestJob
@@ -6079,7 +6055,6 @@ class HarvestTabularDataJob(HarvestJob):
 
         # if job_id not provided, assume new Job
         if not job_id:
-
             # write job details
             self.job.update_job_details(job_details)
 
@@ -6151,9 +6126,9 @@ class HarvestTabularDataJob(HarvestJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import HarvestTabularDataSpark\nHarvestTabularDataSpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -6172,7 +6147,6 @@ class HarvestTabularDataJob(HarvestJob):
 
 
 class TransformJob(CombineJob):
-
     '''
     Apply an XSLT transformation to a Job
     '''
@@ -6284,9 +6258,9 @@ class TransformJob(CombineJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import TransformSpark\nTransformSpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -6311,7 +6285,6 @@ class TransformJob(CombineJob):
 
 
 class MergeJob(CombineJob):
-
     '''
     Merge multiple jobs into a single job
     '''
@@ -6402,9 +6375,9 @@ class MergeJob(CombineJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import MergeSpark\nMergeSpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -6423,7 +6396,6 @@ class MergeJob(CombineJob):
 
 
 class AnalysisJob(CombineJob):
-
     '''
     Analysis job
             - Analysis job are unique in name and some functionality, but closely mirror Merge Jobs in execution
@@ -6580,9 +6552,9 @@ class AnalysisJob(CombineJob):
         # prepare job code
         job_code = {
             'code': 'from jobs import MergeSpark\nMergeSpark(spark, job_id="%(job_id)s").spark_function()' %
-            {
-                    'job_id': self.job.id
-            }
+                    {
+                        'job_id': self.job.id
+                    }
         }
 
         # return job code if requested
@@ -6605,7 +6577,6 @@ class AnalysisJob(CombineJob):
 ####################################################################
 
 class DTElasticFieldSearch(View):
-
     '''
     Model to query ElasticSearch and return DataTables ready JSON.
     This model is a Django Class-based view.
@@ -6857,7 +6828,7 @@ class DTElasticFieldSearch(View):
 
         # end time
         logger.debug('DTElasticFieldSearch calc time: %s' %
-                     (time.time()-stime))
+                     (time.time() - stime))
 
         # for all search types, build and return response
         return JsonResponse(self.DToutput)
@@ -6921,10 +6892,10 @@ class DTElasticFieldSearch(View):
 
             # place record's org_id, record_group_id, and job_id in front
             row_data = [
-                record.job.record_group.organization.id,
-                record.job.record_group.id,
-                record.job.id
-            ] + row_data
+                           record.job.record_group.organization.id,
+                           record.job.record_group.id,
+                           record.job.id
+                       ] + row_data
 
             # add list to object
             self.DToutput['data'].append(row_data)
@@ -6990,7 +6961,6 @@ class DTElasticFieldSearch(View):
 
         # loop through field values
         for index, row in self.query_results.iterrows():
-
             # iterate through columns and place in list
             row_data = [row.key, row.doc_count]
 
@@ -6999,7 +6969,6 @@ class DTElasticFieldSearch(View):
 
 
 class DTElasticGenericSearch(View):
-
     '''
     Model to query ElasticSearch and return DataTables ready JSON.
     This model is a Django Class-based view.
@@ -7176,7 +7145,7 @@ class DTElasticGenericSearch(View):
 
         # end time
         logger.debug('DTElasticGenericSearch: response time %s' %
-                     (time.time()-stime))
+                     (time.time() - stime))
 
         # for all search types, build and return response
         return JsonResponse(self.DToutput)
@@ -7276,7 +7245,6 @@ class DTElasticGenericSearch(View):
 ####################################################################
 
 class CombineOAIClient(object):
-
     '''
     This class provides a client to test the built-in OAI server for Combine
     '''
@@ -7355,7 +7323,6 @@ class CombineOAIClient(object):
 ####################################################################
 
 class RITSClient(object):
-
     '''
     class to handle the record_id transformation scenarios
     '''
@@ -7372,7 +7339,6 @@ class RITSClient(object):
 
         # parse regex
         if self.qd.get('record_id_transform_type', None) == 'regex':
-
             # set type
             self.transform_type = 'regex'
 
@@ -7385,7 +7351,6 @@ class RITSClient(object):
 
         # parse python
         if self.qd.get('record_id_transform_type', None) == 'python':
-
             # set type
             self.transform_type = 'python'
 
@@ -7397,7 +7362,6 @@ class RITSClient(object):
 
         # parse xpath
         if self.qd.get('record_id_transform_type', None) == 'xpath':
-
             # set type
             self.transform_type = 'xpath'
 
@@ -7475,7 +7439,6 @@ class RITSClient(object):
 ####################################################################
 
 class DPLABulkDataClient(object):
-
     '''
     Client to faciliate browsing, downloading, and indexing of bulk DPLA data
 
@@ -7565,7 +7528,8 @@ class DPLABulkDataClient(object):
         bulk_reader = self.get_bulk_reader(filepath)
 
         # index using streaming
-        for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
+        for i in es.helpers.streaming_bulk(self.es_handle, bulk_reader.es_doc_generator(
+                bulk_reader.get_record_generator(limit=limit, attr='record'), index_name=index_name), chunk_size=500):
             continue
 
         logger.debug("index to ES elapsed: %s" % (time.time() - stime))
@@ -7597,7 +7561,7 @@ class DPLABulkDataClient(object):
 
         # return
         logger.debug('retrieved %s keys in %s' %
-                     (len(keys), time.time()-stime))
+                     (len(keys), time.time() - stime))
         return keys
 
     def _sizeof_fmt(self, num, suffix='B'):
@@ -7652,7 +7616,6 @@ class DPLABulkDataClient(object):
 
 
 class BulkDataJSONReader(object):
-
     '''
     Class to handle the reading of DPLA bulk data
     '''
@@ -7720,7 +7683,6 @@ class BulkDataJSONReader(object):
 
 
 class DPLARecord(object):
-
     '''
     Small class to model a parsed DPLA JSON record
     '''
@@ -7752,7 +7714,6 @@ class DPLARecord(object):
 ####################################################################
 
 class OpenRefineActionsClient(object):
-
     '''
     This class / client is to handle the transformation of Record documents (XML)
     using the history of actions JSON output from OpenRefine.
@@ -7836,7 +7797,6 @@ class SupervisorRPCClient(object):
 ####################################################################
 
 class GlobalMessageClient(object):
-
     '''
     Client to handle CRUD for global messages
 
@@ -7935,7 +7895,6 @@ class GlobalMessageClient(object):
 ####################################################################
 
 class StateIOClient(object):
-
     '''
     Client to facilitate export and import of states in Combine, including:
             - Organizations, Record Groups, and Jobs
@@ -8037,7 +7996,8 @@ class StateIOClient(object):
         # set export_roots with model instances
         self.export_roots = {
             'jobs': [Job.objects.get(pk=int(job)) if type(job) in [int, str] else job for job in jobs],
-            'record_groups': [RecordGroup.objects.get(pk=int(rg)) if type(rg) in [int, str] else rg for rg in record_groups],
+            'record_groups': [RecordGroup.objects.get(pk=int(rg)) if type(rg) in [int, str] else rg for rg in
+                              record_groups],
             'orgs': [Organization.objects.get(pk=int(org)) if type(org) in [int, str] else org for org in orgs],
         }
         # set export_root_ids with model ids
@@ -8090,7 +8050,6 @@ class StateIOClient(object):
 
         # if jobs present from export_roots
         if len(self.export_job_set) > 0:
-
             # based on Jobs identified from export_roots, collect all connected Jobs
             self._collect_related_jobs()
 
@@ -8379,7 +8338,6 @@ class StateIOClient(object):
 
         # loop through jobs and export
         for job in self.export_dict['jobs']:
-
             # prepare command
             cmd = 'mongoexport --host %(mongo_host)s:27017 --db combine --collection record --out %(record_exports_path)s/j%(job_id)s_mongo_records.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
                 'job_id': job.id,
@@ -8402,7 +8360,6 @@ class StateIOClient(object):
 
         # loop through jobs and export
         for job in self.export_dict['jobs']:
-
             # prepare command
             cmd = 'mongoexport --host %(mongo_host)s:27017 --db combine --collection record_validation --out %(validation_exports_path)s/j%(job_id)s_mongo_validations.json --type=json -v --query \'{"job_id":%(job_id)s}\'' % {
                 'job_id': job.id,
@@ -8428,7 +8385,6 @@ class StateIOClient(object):
 
         # loop through jobs and export
         for job in self.export_dict['jobs']:
-
             # build command list
             cmd = [
                 "elasticdump",
@@ -8520,7 +8476,6 @@ class StateIOClient(object):
 
         # if compressing, zip up directory, and remove originals after archive created
         if self.compress:
-
             logger.debug("compressiong exported state at %s" %
                          self.export_path)
 
@@ -8573,7 +8528,6 @@ class StateIOClient(object):
 
             # loop through exports for type
             for e in self.export_dict[export_type]:
-
                 logger.debug('writing %s to export_manifest' % e)
 
                 # bump counter
@@ -8675,7 +8629,8 @@ class StateIOClient(object):
             'name': self.import_manifest['import_name'],
             'import_id': self.import_manifest['import_id'],
             'export_path': self.import_manifest['export_path'],
-            'import_manifest': {k: v for k, v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest']},
+            'import_manifest': {k: v for k, v in self.import_manifest.items() if
+                                k not in ['pk_hash', 'export_manifest']},
             'status': 'running'
         }
         if stateio_id == None:
@@ -8721,7 +8676,8 @@ class StateIOClient(object):
         self.stateio.update(**{
             'export_path': self.export_path,
             'export_manifest': self.export_manifest,
-            'import_manifest': {k: v for k, v in self.import_manifest.items() if k not in ['pk_hash', 'export_manifest']},
+            'import_manifest': {k: v for k, v in self.import_manifest.items() if
+                                k not in ['pk_hash', 'export_manifest']},
             'import_path': self.import_path,
             'status': 'finished',
             'finished': True
@@ -8730,7 +8686,7 @@ class StateIOClient(object):
         self.stateio.save()
 
         logger.debug('state %s imported in %ss' %
-                     (self.import_id, (time.time()-import_stime)))
+                     (self.import_id, (time.time() - import_stime)))
 
     def _load_state(self, export_path):
         '''
@@ -8806,7 +8762,6 @@ class StateIOClient(object):
 
         # if import_base_dir != self.import_path, move everything to self.import_path
         if import_base_dir != self.import_path:
-
             # mv everything to import dir
             os.system('mv %s/* %s' % (import_base_dir, self.import_path))
 
@@ -9066,8 +9021,10 @@ class StateIOClient(object):
                     logger.debug('rehydrating %s' % rg)
 
                     # checking parent org exists, and contains record group with same name
-                    rg_match = RecordGroup.objects\
-                        .filter(name=rg.object.name, organization__name=self._get_django_model_instance(org.object.id, Organization).object.name).order_by('id')
+                    rg_match = RecordGroup.objects \
+                        .filter(name=rg.object.name, organization__name=self._get_django_model_instance(org.object.id,
+                                                                                                        Organization).object.name).order_by(
+                        'id')
 
                     # matching Record Group found
                     if rg_match.count() > 0:
@@ -9098,7 +9055,6 @@ class StateIOClient(object):
         ############################
         # loop through ORDERED job ids, and rehydrate, capturing new PK in pk_hash
         for job_id in self.export_manifest['jobs']:
-
             # get deserialized Job
             job = self._get_django_model_instance(job_id, Job)
             logger.debug('rehydrating %s' % job.object.name)
@@ -9251,7 +9207,6 @@ class StateIOClient(object):
 
                 # confirm that id has changed, indicating newly created and not mapped from pre-existing
                 if obj.object.id in inv_pk_hash.keys() and obj.object.id != inv_pk_hash[obj.object.id]:
-
                     logger.debug('writing %s to import_manifest' % obj)
 
                     # bump count

@@ -1,4 +1,3 @@
-
 # general
 from core.celery import celery_app
 from django.conf import settings
@@ -59,8 +58,9 @@ def combine_git_info(request):
     '''
 
     # one liner for branch or tag
-    git_head = subprocess.Popen('head_name="$(git symbolic-ref HEAD 2>/dev/null)" || head_name="$(git describe --tags)"; echo $head_name',
-                                shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
+    git_head = subprocess.Popen(
+        'head_name="$(git symbolic-ref HEAD 2>/dev/null)" || head_name="$(git describe --tags)"; echo $head_name',
+        shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).stdout.read().decode('utf-8').rstrip("\n")
     if "/" in git_head:
         git_head = git_head.split('/')[-1]
 

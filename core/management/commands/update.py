@@ -1,4 +1,3 @@
-
 # generic imports
 import datetime
 import logging
@@ -20,7 +19,6 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-
     '''
     Manage command to update Combine.
 
@@ -128,8 +126,7 @@ class Command(BaseCommand):
 
         # docker return
         else:
-            self.stdout.write(self.style.ERROR(
-                'Update script does not currently support Docker deployment.'))
+            self.stdout.write(self.style.ERROR('Update script does not currently support Docker deployment.'))
 
     def _restart_gunicorn(self):
 
@@ -185,9 +182,7 @@ class Command(BaseCommand):
             logger.debug('Update snippet "%s" could not be found' %
                          options.get('run_update_snippet', None))
 
-
 class VersionUpdateHelper(object):
-
     '''
     Class to manage actions specific to version-to-version updates
     '''
@@ -234,9 +229,7 @@ class VersionUpdateHelper(object):
 
             # check for combine_version key
             if not job.job_details_dict.get('combine_version', False):
-
-                logger.debug(
-                    'stamping v0.1 combine_version to Job: %s' % (job))
+                logger.debug('stamping v0.1 combine_version to Job: %s' % (job))
 
                 # update job_details
                 job.update_job_details({'combine_version': 'v0.1'})
@@ -257,13 +250,10 @@ class VersionUpdateHelper(object):
 
             # compare and stamp
             if version.parse(job.job_details_dict['combine_version']) < version.parse(settings.COMBINE_VERSION):
-
-                logger.debug('stamping %s combine_version to Job: %s' %
-                             (settings.COMBINE_VERSION, job))
+                logger.debug('stamping %s combine_version to Job: %s' % (settings.COMBINE_VERSION, job))
 
                 # update job_details
-                job.update_job_details(
-                    {'combine_version': settings.COMBINE_VERSION})
+                job.update_job_details({'combine_version': settings.COMBINE_VERSION})
 
     def v0_4__update_transform_job_details(self):
         '''
@@ -293,9 +283,7 @@ class VersionUpdateHelper(object):
 
                     # check for 'id' key at this level, indicating < v0.4
                     if 'id' in trans_details.keys():
-
-                        logger.debug(
-                            'Transform Job "%s" requires job details updating, performing' % job)
+                        logger.debug('Transform Job "%s" requires job details updating, performing' % job)
 
                         # create dictionary
                         trans_dict = {
@@ -320,9 +308,7 @@ class VersionUpdateHelper(object):
         '''
 
         if version.parse(settings.COMBINE_VERSION) == version.parse('v0.7'):
-
-            logger.debug(
-                'v0_7_1__fix_redis_version_mismatches: fixing redis versioning')
+            logger.debug('v0_7_1__fix_redis_version_mismatches: fixing redis versioning')
 
             # ensure redis version
             os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))

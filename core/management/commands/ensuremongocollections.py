@@ -1,4 +1,3 @@
-
 # generic imports
 import logging
 
@@ -13,11 +12,9 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-
     help = 'Ensure Mongo collections are created, and have proper indices'
 
     def handle(self, *args, **options):
-
         # Record model
         logger.debug('ensuring indices for record collection')
         Record.ensure_indexes()
@@ -31,5 +28,4 @@ class Command(BaseCommand):
         IndexMappingFailure.ensure_indexes()
 
         # return
-        self.stdout.write(self.style.SUCCESS(
-            'Mongo collections and indices verified and/or created'))
+        self.stdout.write(self.style.SUCCESS('Mongo collections and indices verified and/or created'))

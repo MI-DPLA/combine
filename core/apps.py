@@ -12,11 +12,11 @@ from django.conf import settings
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
 
+
 # NOTE: manual configuration of core app not currently used, but leaving if needed
 
 
 class CoreConfig(AppConfig):
-
     name = 'core'
 
     def ready(self):

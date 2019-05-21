@@ -76,7 +76,6 @@ class ESIndex(object):
                 field_mapper_config=field_mapper_config)
 
             for row in pt:
-
                 yield mapper.map_record(
                     record_string=row.document,
                     db_id=row._id.oid,
@@ -96,7 +95,6 @@ class ESIndex(object):
 
         # if failures, write
         if not failures_rdd.isEmpty():
-
             logger.info('###ES 3 -- writing indexing failures')
 
             failures_df = failures_rdd.map(lambda row: Row(
@@ -125,7 +123,6 @@ class ESIndex(object):
         index_name = 'j%s' % job.id
         es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
         if not es_handle_temp.indices.exists(index_name):
-
             # put combine es index templates
             template_body = {
                 'template': '*',
@@ -291,7 +288,6 @@ class BaseMapper(object):
 
 
 class XML2kvpMapper(BaseMapper):
-
     """
     Map XML to ElasticSearch friendly fields with XML2kvp
     """

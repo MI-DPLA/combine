@@ -5,7 +5,6 @@ from core.models import *
 
 
 class Command(BaseCommand):
-
     help = 'Bootstrap Combine with some demo Transformation and Validation scenarios'
 
     # def add_arguments(self, parser):
@@ -32,7 +31,7 @@ class Command(BaseCommand):
             with open(os.path.join(payload_dir, '%s.xml' % uuid.uuid4().hex), 'w') as f:
                 f.write(etree.tostring(mods).decode('utf-8'))
 
-        # create demo XSLT transformation
+        ## create demo XSLT transformation
         with open('tests/data/mods_transform.xsl', 'r') as f:
             xsl_string = f.read()
         trans = Transformation(
@@ -42,7 +41,7 @@ class Command(BaseCommand):
         )
         trans.save()
 
-        # create demo validation scenarios
+        ## create demo validation scenarios
         # schematron validation
         with open('tests/data/qs_schematron_validation.sch', 'r') as f:
             sch_payload = f.read()
@@ -66,5 +65,4 @@ class Command(BaseCommand):
         python_validation_scenario.save()
 
         # return
-        self.stdout.write(self.style.SUCCESS(
-            'Quickstart bootstrapping complete.'))
+        self.stdout.write(self.style.SUCCESS('Quickstart bootstrapping complete.'))

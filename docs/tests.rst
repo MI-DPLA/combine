@@ -10,7 +10,7 @@ Instead, Combine uses out-of-the-box `pytest <https://docs.pytest.org/en/latest/
 Demo data
 =========
 
-In the directory `/tests`, some demo data is provided for simulating harvest, transform, merge, and publishing records.  
+In the directory `/tests`, some demo data is provided for simulating harvest, transform, merge, and publishing records.
 
 * ``mods_250.xml`` - 250 MODS records, as returned from an OAI-PMH response
 	* during testing this file is parsed, and 250 discrete XML files are written to a temp location to be used for a test static XML harvest
@@ -24,8 +24,6 @@ Running tests
 **Note:** *Because Combine currently only allows one job to run at a time, and these tests are essentially small jobs that will be run, it is important that no other jobs are running in Combine while running tests.*
 
 Tests should be run from the root directory of Combine, if Ansible or Vagrant builds, likely at ``/opt/combine``.  Also requires sourcing the anaconda Combine environment with `source activate combine`.
-
-It is worth noting whether or not there is an active Livy session already for Combine, or if one should be created and destroyed for testing.  Combine, at least at the time of this writing, operates only with a single Livy instance.  By default, tests will create and destroy a Livy session, but this can be skipped in favor of using an active session by including the flag ``--use_active_livy``.
 
 Testing creates a test ``Organization``, ``RecordGroup``, and ``Job``'s during testing. By default, these are removed after testing, but can be kept for viewing or analysis by including the flag ``--keep_records``.
 
@@ -44,4 +42,11 @@ Examples
 
 .. code-block:: bash
 
-	pytest -s --use_active_livy --keep_records
+	pytest -s --keep_records
+
+
+**run tests, ignore file test_basic.py, and ignore warnings**
+
+.. code-block:: bash
+
+	pytest -s --ignore=tests/test_basic.py -p no:warnings

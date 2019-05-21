@@ -1,9 +1,15 @@
 import django
+from lxml import etree
 import os
+import pytest
+import shutil
 import sys
+import time
+import uuid
 
 # logging
 import logging
+
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
@@ -11,32 +17,18 @@ logger.setLevel(logging.DEBUG)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
+from django.conf import settings
 
 # import core
 from core.models import *
-
-# global variables object "VO"
-class Vars(object):
-
-    '''
-    Object to capture and store variables used across tests
-    '''
-
-    def __init__(self):
-
-        # combine user
-        self.user = User.objects.filter(username='combine').first()
-
-
-VO = Vars()
 
 
 #############################################################################
 # Tests Setup
 #############################################################################
 
-
-def test_organization_create():
+@pytest.mark.run(order=1)
+def test_organization_create(VO):
     '''
     Test creation of organization
     '''
@@ -50,7 +42,8 @@ def test_organization_create():
     assert type(VO.org.id) == int
 
 
-def test_record_group_create():
+@pytest.mark.run(order=2)
+def test_record_group_create(VO):
     '''
     Test creation of record group
     '''
@@ -69,7 +62,8 @@ def test_record_group_create():
 # Test Harvest
 #############################################################################
 
-def test_static_harvest():
+@pytest.mark.run(order=3)
+def test_static_harvest(VO):
     '''
     Test static harvest of XML records from disk
     '''
@@ -167,7 +161,8 @@ def prepare_transform():
     return trans
 
 
-def test_static_transform():
+@pytest.mark.run(order=4)
+def test_static_transform(VO):
     '''
     Test static harvest of XML records from disk
     '''
@@ -243,7 +238,8 @@ def test_static_transform():
 # # Test Validation Scenarios
 # #############################################################################
 
-def test_add_schematron_validation_scenario():
+@pytest.mark.run(order=5)
+def test_add_schematron_validation_scenario(VO):
     '''
     Add schematron validation
     '''
@@ -268,7 +264,8 @@ def test_add_schematron_validation_scenario():
     assert type(VO.schematron_validation_scenario.id) == int
 
 
-def test_add_python_validation_scenario():
+@pytest.mark.run(order=6)
+def test_add_python_validation_scenario(VO):
     '''
     Add python code snippet validation
     '''
@@ -293,46 +290,42 @@ def test_add_python_validation_scenario():
     assert type(VO.python_validation_scenario.id) == int
 
 
-def test_schematron_validation():
-
+@pytest.mark.run(order=7)
+def test_schematron_validation(VO):
     # get target records
     VO.harvest_record = VO.static_harvest_cjob.job.get_records().first()
     VO.transform_record = VO.static_transform_cjob.job.get_records().first()
 
     # validate harvest record with schematron
     '''
-	expecting failure count of 2
-	'''
-    vs_results = VO.schematron_validation_scenario.validate_record(
-        VO.harvest_record)
+    expecting failure count of 2
+    '''
+    vs_results = VO.schematron_validation_scenario.validate_record(VO.harvest_record)
     assert vs_results['parsed']['fail_count'] == 2
 
     # validate transform record with schematron
     '''
-	expecting failure count of 1
-	'''
-    vs_results = VO.schematron_validation_scenario.validate_record(
-        VO.transform_record)
+    expecting failure count of 1
+    '''
+    vs_results = VO.schematron_validation_scenario.validate_record(VO.transform_record)
     assert vs_results['parsed']['fail_count'] == 1
 
 
-def test_python_validation():
-
+@pytest.mark.run(order=8)
+def test_python_validation(VO):
     # validate harvest record with python
     '''
     expecting failure count of 1
     '''
-    vs_results = VO.python_validation_scenario.validate_record(
-        VO.harvest_record)
+    vs_results = VO.python_validation_scenario.validate_record(VO.harvest_record)
     print(vs_results)
     assert vs_results['parsed']['fail_count'] == 1
 
     # validate transform record with python
     '''
-	expecting failure count of 1
-	'''
-    vs_results = VO.python_validation_scenario.validate_record(
-        VO.transform_record)
+    expecting failure count of 1
+    '''
+    vs_results = VO.python_validation_scenario.validate_record(VO.transform_record)
     print(vs_results)
     assert vs_results['parsed']['fail_count'] == 1
 
@@ -341,7 +334,8 @@ def test_python_validation():
 # # Test Duplicate/Merge Job
 # #############################################################################
 
-def test_merge_duplicate():
+@pytest.mark.run(order=9)
+def test_merge_duplicate(VO):
     '''
     Duplicate Transform job, applying newly created validation scenarios
     '''
@@ -427,9 +421,11 @@ def test_merge_duplicate():
 #############################################################################
 # Tests Teardown
 #############################################################################
-def test_org_delete(keep_records):
+
+@pytest.mark.last
+def test_teardown(keep_records, VO):
     '''
-    Test removal of organization with cascading deletes
+    Test teardown
     '''
 
     # assert delete of org and children
@@ -437,9 +433,6 @@ def test_org_delete(keep_records):
         assert VO.org.delete()[0] > 0
     else:
         assert True
-
-
-def test_validation_scenario_teardown():
 
     assert VO.schematron_validation_scenario.delete()[0] > 0
     assert VO.python_validation_scenario.delete()[0] > 0

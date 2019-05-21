@@ -1,4 +1,3 @@
-
 # generic imports
 import django
 import json
@@ -13,9 +12,9 @@ from pyspark.sql.types import StringType, StructField, StructType, BooleanType, 
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
-	os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
-	sys.path.append('/opt/combine')
-	django.setup()
+    os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
+    sys.path.append('/opt/combine')
+    django.setup()
 
 # import django settings
 from django.conf import settings
@@ -76,7 +75,6 @@ def export_records_as_xml(spark, ct_id):
 
                 # get dfs and columns
                 for job_id in job_ids:
-
                     print("Adding job #%s" % job_id)
 
                     # get df
@@ -110,8 +108,8 @@ def export_records_as_xml(spark, ct_id):
                 math.ceil(rdd_to_write.count() / settings.TARGET_RECORDS_PER_PARTITION))
 
             # convert to DataFrame and write to s3 as parquet
-            rdd_to_write.toDF().write.mode('overwrite').parquet('s3a://%s/%s' %
-                              (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
+        rdd_to_write.toDF().write.mode('overwrite').parquet(
+            's3a://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key']))
 
         # write to disk
         else:
@@ -143,7 +141,6 @@ def export_records_as_xml(spark, ct_id):
 
 
 def generate_validation_report(spark, output_path, task_params):
-
     job_id = task_params['job_id']
     validation_scenarios = [int(vs_id)
                                 for vs_id in task_params['validation_scenarios']]
@@ -263,8 +260,9 @@ def export_records_as_tabular_data(spark, ct_id):
 
                 # handle multiple jobs
                 else:
-                    rdds.extend([get_job_as_df(spark, job_id).select(
-                        ['document', 'combine_id', 'record_id']).rdd for job_id in job_ids])
+                rdds.extend(
+                    [get_job_as_df(spark, job_id).select(['document', 'combine_id', 'record_id']).rdd for job_id in
+                     job_ids])
 
             # union all
             batch_rdd = spark.sparkContext.union(rdds)
@@ -299,8 +297,8 @@ def export_records_as_tabular_data(spark, ct_id):
                 # handle multiple jobs
                 else:
 
-                    rdds = [get_job_as_df(spark, job_id).select(
-                        ['document', 'combine_id', 'record_id']).rdd for job_id in job_ids]
+                rdds = [get_job_as_df(spark, job_id).select(['document', 'combine_id', 'record_id']).rdd for job_id in
+                        job_ids]
                     batch_rdd = spark.sparkContext.union(rdds)
 
                 # convert rdd
@@ -365,13 +363,11 @@ def _convert_xml_to_kvp(batch_rdd, fm_config):
 
 
 def _write_tabular_json(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
-
         # write JSON lines
     kvp_batch_rdd.saveAsTextFile('%s/%s' % (base_path, folder_name))
 
 
 def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
-
     # read rdd to DataFrame
     kvp_batch_df = spark.read.json(kvp_batch_rdd)
 
@@ -500,7 +496,6 @@ def get_job_es(spark,
 
 
 def get_sql_job_as_df(spark, job_id, remove_id=False):
-
     sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record',properties=settings.COMBINE_DATABASE)
     sqldf = sqldf.filter(sqldf['job_id'] == job_id)
 
@@ -512,7 +507,6 @@ def get_sql_job_as_df(spark, job_id, remove_id=False):
 
 
 def copy_sql_to_mongo(spark, job_id):
-
     # get sql job
     sdf = get_sql_job_as_df(spark, job_id, remove_id=True)
 
@@ -528,7 +522,6 @@ def copy_sql_to_mongo(spark, job_id):
 
 
 def copy_sql_to_mongo_adv(spark, job_id, lowerBound, upperBound, numPartitions):
-
     sqldf = spark.read.jdbc(
         settings.COMBINE_DATABASE['jdbc_url'],
         'core_record',

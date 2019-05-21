@@ -56,7 +56,8 @@ from django.conf import settings
 from django.db import connection, transaction
 
 # import select models from Core
-from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
+from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, \
+    RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
 # import mongo dependencies
 from core.mongo import *
@@ -81,7 +82,6 @@ class CombineRecordSchema(object):
     """
 
     def __init__(self):
-
         # schema for Combine records
         self.schema = StructType([
             StructField('combine_id', StringType(), True),
@@ -102,7 +102,6 @@ class CombineRecordSchema(object):
         # fields
         self.field_names = [
             f.name for f in self.schema.fields if f.name != 'id']
-
 
 ####################################################################
 # Spark Jobs 		 											   #
@@ -132,8 +131,8 @@ class CombineSparkJob(object):
         refresh_django_db_connection()
 
         # get job
-        results = polling.poll(lambda: Job.objects.filter(
-            id=int(self.kwargs['job_id'])).count() == 1, step=1, timeout=60)
+        results = polling.poll(lambda: Job.objects.filter(id=int(self.kwargs['job_id'])).count() == 1, step=1,
+                               timeout=60)
         self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
 
         # start job_track instance, marking job start
@@ -179,8 +178,7 @@ class CombineSparkJob(object):
         """
 
         self.logger.info("### %s" % description)
-        self.spark.sparkContext.setJobGroup(
-            "%s" % self.job.id, "%s, Job #%s" % (description, self.job.id))
+        self.spark.sparkContext.setJobGroup("%s" % self.job.id, "%s, Job #%s" % (description, self.job.id))
 
     def get_input_records(self, filter_input_records=True):
 
@@ -189,7 +187,8 @@ class CombineSparkJob(object):
                          for job_id in self.job_details['input_job_ids']]
 
         # if job_specific input filters set, handle
-        if 'job_specific' in self.job_details['input_filters'].keys() and len(self.job_details['input_filters']['job_specific']) > 0:
+        if 'job_specific' in self.job_details['input_filters'].keys() and len(
+                self.job_details['input_filters']['job_specific']) > 0:
 
             # debug
             self.logger.info("Job specific input filters found, handling")
@@ -224,7 +223,8 @@ class CombineSparkJob(object):
                     .option("database", "combine")\
                     .option("collection", "record")\
                     .option("partitioner", "MongoSamplePartitioner")\
-                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB)\
+                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",
+                            settings.MONGO_READ_PARTITION_SIZE_MB) \
                     .option("pipeline", pipeline).load()
 
                 # optionally filter
@@ -239,8 +239,9 @@ class CombineSparkJob(object):
 
             # group like/identical input filter parameters, run together
             # https://stackoverflow.com/questions/52484043/group-key-value-pairs-in-python-dictionary-by-value-maintaining-original-key-as
-            grouped_spec_dicts = [{'input_filters': k, 'job_ids': [int(job_id) for job_id in list(map(itemgetter(
-                0), g))]} for k, g in groupby(sorted(job_spec_dicts.items(), key=lambda t: t[1].items()), itemgetter(1))]
+            grouped_spec_dicts = [
+                {'input_filters': k, 'job_ids': [int(job_id) for job_id in list(map(itemgetter(0), g))]} for k, g in
+                groupby(sorted(job_spec_dicts.items(), key=lambda t: t[1].items()), itemgetter(1))]
 
             # next, loop through spec'ed jobs, retrieve and filter
             for job_spec_group in grouped_spec_dicts:
@@ -268,13 +269,14 @@ class CombineSparkJob(object):
                     .option("database", "combine")\
                     .option("collection", "record")\
                     .option("partitioner", "MongoSamplePartitioner")\
-                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB)\
+                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",
+                            settings.MONGO_READ_PARTITION_SIZE_MB) \
                     .option("pipeline", pipeline).load()
 
                 # optionally filter
                 if filter_input_records:
-                    job_spec_records = self.record_input_filters(
-                        job_spec_records, input_filters=job_spec_group['input_filters'])
+                    job_spec_records = self.record_input_filters(job_spec_records,
+                                                                 input_filters=job_spec_group['input_filters'])
 
                 # add CombineRecordSchema columns if absent
                 job_spec_records = self.add_missing_columns(job_spec_records)
@@ -449,8 +451,7 @@ class CombineSparkJob(object):
             return db_records
 
         else:
-            raise Exception(
-                "No successful records written to disk for Job: %s" % self.job.name)
+            raise Exception("No successful records written to disk for Job: %s" % self.job.name)
 
     def record_input_filters(self, filtered_df, input_filters=None):
         """
@@ -531,21 +532,18 @@ class CombineSparkJob(object):
 
             # loop through input jobs, init, and write
             for input_job_count in record_counts.collect():
-
                 # remove from input_jobs
                 input_jobs.remove(input_job_count['job_id'])
 
                 # set passed records and save
-                input_job = JobInput.objects.filter(
-                    job_id=self.job.id, input_job_id=int(input_job_count['job_id'])).first()
+                input_job = JobInput.objects.filter(job_id=self.job.id,
+                                                    input_job_id=int(input_job_count['job_id'])).first()
                 input_job.passed_records = input_job_count['count']
                 input_job.save()
 
             # loop through any remaining jobs, where absence indicates 0 records passed
             for input_job_id in input_jobs:
-
-                input_job = JobInput.objects.filter(
-                    job_id=self.job.id, input_job_id=int(input_job_id)).first()
+                input_job = JobInput.objects.filter(job_id=self.job.id, input_job_id=int(input_job_id)).first()
                 input_job.passed_records = 0
                 input_job.save()
 
@@ -811,8 +809,8 @@ class CombineSparkJob(object):
                 dpla_df, es_df['_2']['dpla_isShownAt'] == dpla_df['isShownAt'], 'leftsemi')
 
             # select records from records_df for updating (writing)
-            update_dbdm_df = records_df.join(
-                matches_df, records_df['_id']['oid'] == matches_df['_2']['db_id'], 'leftsemi')
+            update_dbdm_df = records_df.join(matches_df, records_df['_id']['oid'] == matches_df['_2']['db_id'],
+                                             'leftsemi')
 
             # set dbdm column to True
             update_dbdm_df = update_dbdm_df.withColumn(
@@ -880,7 +878,7 @@ class HarvestOAISpark(CombineSparkJob):
         # remove scope entirely if harvesting all records, not sets
         if self.job_details['oai_params']['scope_type'] != 'harvestAllRecords':
             df = df.option(self.job_details['oai_params']['scope_type'], self.job_details['oai_params']['scope_value'])\
-
+ \
         # harvest
         df = df.load()
 
@@ -910,8 +908,7 @@ class HarvestOAISpark(CombineSparkJob):
                 else:
                     return 'none'
 
-            metadata_udf = udf(
-                lambda col_val: find_metadata_udf(col_val), StringType())
+            metadata_udf = udf(lambda col_val: find_metadata_udf(col_val), StringType())
             records = records.select(
                 *[metadata_udf(col).alias('document') if col == 'document' else col for col in records.columns])
 
@@ -953,7 +950,6 @@ class HarvestOAISpark(CombineSparkJob):
 
 
 class HarvestStaticXMLSpark(CombineSparkJob):
-
     """
     Spark code for harvesting static xml records
     """
@@ -1127,7 +1123,6 @@ class HarvestStaticXMLSpark(CombineSparkJob):
 
 
 class HarvestTabularDataSpark(CombineSparkJob):
-
     """
     Spark code for harvesting tabular data (e.g. spreadsheets)
     """
@@ -1242,7 +1237,6 @@ class HarvestTabularDataSpark(CombineSparkJob):
 
 
 class TransformSpark(CombineSparkJob):
-
     """
     Spark code for Transform jobs
     """
@@ -1300,7 +1294,6 @@ class TransformSpark(CombineSparkJob):
 
             # if OpenRefine type transformation
             if transformation.transformation_type == 'openrefine':
-
                 # get XML2kvp settings from input Job
                 input_job_details = input_job.job_details_dict
                 input_job_fm_config = input_job_details['field_mapper_config']
@@ -1319,8 +1312,13 @@ class TransformSpark(CombineSparkJob):
         records_trans = records
 
         # write `transformed` column based on new fingerprint
-        records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"), input_records.combine_id == records_trans.combine_id, 'left').select(*['records_trans.%s' % c for c in records_trans.columns if c not in [
-            'transformed']], pyspark_sql_functions.when(records_trans.fingerprint != input_records.fingerprint, pyspark_sql_functions.lit(True)).otherwise(pyspark_sql_functions.lit(False)).alias('transformed'))
+        records_trans = records_trans.alias("records_trans").join(input_records.alias("input_records"),
+                                                                  input_records.combine_id == records_trans.combine_id,
+                                                                  'left').select(
+            *['records_trans.%s' % c for c in records_trans.columns if c not in ['transformed']],
+            pyspark_sql_functions.when(records_trans.fingerprint != input_records.fingerprint,
+                                       pyspark_sql_functions.lit(True)).otherwise(
+                pyspark_sql_functions.lit(False)).alias('transformed'))
 
         # index records to DB and index to ElasticSearch
         self.save_records(
@@ -1558,7 +1556,6 @@ class TransformSpark(CombineSparkJob):
 
 
 class MergeSpark(CombineSparkJob):
-
     """
     Spark code for running Merge type jobs.  Also used for duplciation, analysis, and others.
     Note: Merge jobs merge only successful documents from an input job, not the errors
@@ -1621,7 +1618,6 @@ class MergeSpark(CombineSparkJob):
 
 
 class CombineSparkPatch(object):
-
     """
     Base class for Combine Spark Patches.
             - these are considered categorically "secondary" to the main
@@ -1629,7 +1625,6 @@ class CombineSparkPatch(object):
     """
 
     def __init__(self, spark, **kwargs):
-
         self.spark = spark
 
         self.kwargs = kwargs
@@ -1648,9 +1643,7 @@ class CombineSparkPatch(object):
         self.spark.sparkContext.setJobGroup(
             "%s" % job_id, "%s, Job #%s" % (description, job_id))
 
-
 class ReindexSparkPatch(CombineSparkPatch):
-
     """
     Class to handle Job re-indexing
 
@@ -1660,7 +1653,6 @@ class ReindexSparkPatch(CombineSparkPatch):
     """
 
     def spark_function(self):
-
         # get job and set to self
         self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
         self.update_jobGroup('Running Re-Index Job', self.job.id)
@@ -1685,7 +1677,6 @@ class ReindexSparkPatch(CombineSparkPatch):
 
 
 class RunNewValidationsSpark(CombineSparkPatch):
-
     """
     Class to run new validations for Job
 
@@ -1696,7 +1687,6 @@ class RunNewValidationsSpark(CombineSparkPatch):
     """
 
     def spark_function(self):
-
         # get job and set to self
         self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
         self.update_jobGroup('Running New Validation Scenarios', self.job.id)
@@ -1723,7 +1713,6 @@ class RunNewValidationsSpark(CombineSparkPatch):
 
 
 class RemoveValidationsSpark(CombineSparkPatch):
-
     """
     Class to remove validations for Job
 
@@ -1765,7 +1754,6 @@ class RemoveValidationsSpark(CombineSparkPatch):
 
 
 class RunDBDM(CombineSparkPatch):
-
     """
     Class to run DPLA Bulk Data Match as patch job
 
@@ -1776,7 +1764,6 @@ class RunDBDM(CombineSparkPatch):
     """
 
     def spark_function(self):
-
         # get job and set to self
         self.job = Job.objects.get(pk=int(self.kwargs['job_id']))
         self.update_jobGroup('Running DPLA Bulk Data Match', self.job.id)
@@ -1817,13 +1804,11 @@ class RunDBDM(CombineSparkPatch):
 ####################################################################
 
 class CombineStateIO(object):
-
     """
     Base class for Combine State IO work.
     """
 
     def __init__(self, spark, **kwargs):
-
         self.spark = spark
 
         self.kwargs = kwargs
@@ -1846,7 +1831,6 @@ class CombineStateIO(object):
 
 
 class CombineStateIOImport(CombineStateIO):
-
     """
     Class to handle state imports
 
@@ -1931,7 +1915,6 @@ class CombineStateIOImport(CombineStateIO):
 
             # check for dataframe rows to proceed
             if len(validations_df.take(1)) > 0:
-
                 # read first row to get old validation_scenario_id, and run through pk_hash for new one
                 row = validations_df.take(1)[0]
                 vs_id = int(row.validation_scenario_id['$numberLong'])
@@ -1949,12 +1932,14 @@ class CombineStateIOImport(CombineStateIO):
                     .option("database", "combine")\
                     .option("collection", "record")\
                     .option("partitioner", "MongoSamplePartitioner")\
-                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB)\
+                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",
+                            settings.MONGO_READ_PARTITION_SIZE_MB) \
                     .option("pipeline", pipeline).load()
 
                 # join on validations_df.record_id : records_df.orig_id
-                updated_validations_df = validations_df.drop('_id').alias('validations_df').join(records_df.select(
-                    '_id', 'orig_id').alias('records_df'), validations_df['record_id'] == records_df['orig_id'])
+                updated_validations_df = validations_df.drop('_id').alias('validations_df').join(
+                    records_df.select('_id', 'orig_id').alias('records_df'),
+                    validations_df['record_id'] == records_df['orig_id'])
 
                 # update record_id
                 updated_validations_df = updated_validations_df.withColumn(
@@ -1965,14 +1950,16 @@ class CombineStateIOImport(CombineStateIO):
                     validations_df.columns).drop('_id')
 
                 # flatten
-                updated_validations_df = updated_validations_df.withColumn(
-                    'fail_count', updated_validations_df.fail_count['$numberLong'].cast(LongType()))
-                updated_validations_df = updated_validations_df.withColumn(
-                    'job_id', pyspark_sql_functions.lit(int(clone_job_id)).cast(LongType()))
+                updated_validations_df = updated_validations_df.withColumn('fail_count',
+                                                                           updated_validations_df.fail_count[
+                                                                               '$numberLong'].cast(LongType()))
+                updated_validations_df = updated_validations_df.withColumn('job_id', pyspark_sql_functions.lit(
+                    int(clone_job_id)).cast(LongType()))
 
                 # update validation scenario id
-                updated_validations_df = updated_validations_df.withColumn(
-                    'validation_scenario_id', pyspark_sql_functions.lit(int(new_vs_id)).cast(LongType()))
+                updated_validations_df = updated_validations_df.withColumn('validation_scenario_id',
+                                                                           pyspark_sql_functions.lit(
+                                                                               int(new_vs_id)).cast(LongType()))
 
                 # write records to MongoDB
                 updated_validations_df.write.format("com.mongodb.spark.sql.DefaultSource")\
@@ -1992,8 +1979,8 @@ class CombineStateIOImport(CombineStateIO):
         """
 
         # import mapped fields
-        self.update_jobGroup(self.import_manifest.get(
-            'import_id', uuid.uuid4().hex), 'StateIO: Importing Mapped Fields')
+        self.update_jobGroup(self.import_manifest.get('import_id', uuid.uuid4().hex),
+                             'StateIO: Importing Mapped Fields')
 
         # loop through jobs
         for orig_job_id, clone_job_id in self.import_manifest['pk_hash']['jobs'].items():
@@ -2011,7 +1998,8 @@ class CombineStateIOImport(CombineStateIO):
                     .option("database", "combine")\
                     .option("collection", "record")\
                     .option("partitioner", "MongoSamplePartitioner")\
-                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB)\
+                    .option("spark.mongodb.input.partitionerOptions.partitionSizeMB",
+                            settings.MONGO_READ_PARTITION_SIZE_MB) \
                     .option("pipeline", pipeline).load()
 
                 # reindex
@@ -2096,7 +2084,6 @@ class CombineStateIOImport(CombineStateIO):
                 index_name = 'j%s' % clone_job_id
                 es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
                 if not es_handle_temp.indices.exists(index_name):
-
                     # put combine es index templates
                     template_body = {
                         'template': '*',

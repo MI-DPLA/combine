@@ -1,4 +1,3 @@
-
 # generic imports
 import datetime
 import logging
@@ -14,7 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-
     '''
     Manage command to trigger the state export of:
             - all Organizations (and downstream Jobs);
@@ -24,7 +22,6 @@ class Command(BaseCommand):
     help = 'Using State Export/Import, export state of all Jobs and Configuration Scenarios'
 
     def add_arguments(self, parser):
-
         # add optional organization ids to skip
         parser.add_argument(
             '--skip_json',
@@ -34,7 +31,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-
         logger.debug('Exporting state of all Jobs and Configuration Scenarios')
 
         # init StateIO instance - sio

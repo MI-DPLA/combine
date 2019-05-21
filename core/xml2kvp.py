@@ -15,17 +15,14 @@ import time
 import uuid
 import xmltodict
 
-
 # init logger
 logger = logging.getLogger(__name__)
-
 
 # sibling hash regex
 sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
 
 
 class XML2kvp(object):
-
     '''
     Class to handle the parsing of XML into Key/Value Pairs
 
@@ -334,8 +331,8 @@ class XML2kvp(object):
                 self.sibling_hash_counter[hash_val] = 1
             else:
                 self.sibling_hash_counter[hash_val] += 1
-            sibling_hash = '%s%s' % (hashlib.md5(str(hash_val).encode(
-                'utf-8')).hexdigest()[:4], str(self.sibling_hash_counter[hash_val]).zfill(2))
+            sibling_hash = '%s%s' % (hashlib.md5(str(hash_val).encode('utf-8')).hexdigest()[:4],
+                                     str(self.sibling_hash_counter[hash_val]).zfill(2))
 
             # handle all attributes for node first
             for k, v in in_v.items():
@@ -348,9 +345,9 @@ class XML2kvp(object):
                         self._process_kvp(temp_hops, v)
 
                     # format and append if including
-                    if self.include_all_attributes or (len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
-                        hops = self._format_and_append_hop(
-                            hops, 'attribute', k, v)
+                    if self.include_all_attributes or (
+                            len(self.include_attributes) > 0 and k.lstrip('@') in self.include_attributes):
+                        hops = self._format_and_append_hop(hops, 'attribute', k, v)
 
             # set hop length that will be returned to
             hop_len = len(hops)
@@ -366,9 +363,7 @@ class XML2kvp(object):
 
                     # recurse with non attribute nodes (element or text)
                     if not k.startswith('@'):
-
-                        hops = self._format_and_append_hop(
-                            hops, 'element', k, None, sibling_hash=sibling_hash)
+                        hops = self._format_and_append_hop(hops, 'element', k, None, sibling_hash=sibling_hash)
 
                         # recurse
                         self._xml_dict_parser(k, v, hops=hops)
@@ -381,7 +376,6 @@ class XML2kvp(object):
 
             hop_len = len(hops)
             for d in in_v:
-
                 # recurse
                 self._xml_dict_parser(None, d, hops=hops)
 
@@ -455,7 +449,8 @@ class XML2kvp(object):
 
         if any(delim in value for delim in [self.node_delim, self.ns_prefix_delim]):
             raise self.DelimiterCollision('collision for key value: "%s", collides with a configured delimiter: %s' %
-                                          (value, {'node_delim': self.node_delim, 'ns_prefix_delim': self.ns_prefix_delim}))
+                                          (value,
+                                           {'node_delim': self.node_delim, 'ns_prefix_delim': self.ns_prefix_delim}))
 
     def _process_kvp(self, hops, value):
         '''
@@ -550,7 +545,8 @@ class XML2kvp(object):
                 self.kvp_dict[k] = value
 
             # pre-existing, but not yet list, convert
-            elif not self.repeating_element_suffix_count and k in self.kvp_dict.keys() and type(self.kvp_dict[k]) != list:
+            elif not self.repeating_element_suffix_count and k in self.kvp_dict.keys() and type(
+                    self.kvp_dict[k]) != list:
 
                 if self.skip_repeating_values and value == self.kvp_dict[k]:
                     pass
@@ -843,7 +839,6 @@ class XML2kvp(object):
 
                 # loop through values
                 for value in v:
-
                     # copy hops
                     hops_copy = deepcopy(hops)
 
@@ -929,7 +924,8 @@ class XML2kvp(object):
                     part = part.replace(handler.ns_prefix_delim, ':')
 
                 # if part not followed by attribute, append no attribute qualifier
-                if ((i+1) < len(k_parts) and not k_parts[(i+1)].startswith('@')) or ((i+1) == len(k_parts) and not part.startswith('@')):
+                if ((i + 1) < len(k_parts) and not k_parts[(i + 1)].startswith('@')) or (
+                        (i + 1) == len(k_parts) and not part.startswith('@')):
                     part += '[not(@*)]'
 
                 # append to xpath
@@ -954,7 +950,6 @@ class XML2kvp(object):
 
         # cleanup after loop
         if on_attrib:
-
             # close attrib brackets
             xpath += ']'
 
@@ -1027,8 +1022,8 @@ class XML2kvp(object):
                 elif type(values) in [tuple, list]:
                     values_len = len(values)
                 if len(matched_elements) != values_len:
-                    logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' %
-                                 (k, v, values_len, len(matched_elements)))
+                    logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (
+                    k, v, values_len, len(matched_elements)))
             except etree.XPathEvalError:
                 logger.debug('problem with xpath statement: %s' % v)
                 logger.debug('could not calculate %s --> %s' % (k, v))
@@ -1039,8 +1034,7 @@ class XML2kvp(object):
         stime = time.time()
         for x in range(0, iterations):
             XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
-        print("avg for %s iterations: %s" %
-              (iterations, (time.time()-stime) / float(iterations)))
+        print("avg for %s iterations: %s" % (iterations, (time.time() - stime) / float(iterations)))
 
     def schema_as_table(self, table_format='rst'):
         '''
@@ -1115,7 +1109,6 @@ class XML2kvp(object):
 
 
 class XMLRecord(object):
-
     '''
     Class to scaffold and create XML records from XML2kvp kvp
     '''
@@ -1190,8 +1183,8 @@ class XMLRecord(object):
             for node in nodes:
 
                 # check if sibling hash present as attribute, and not already completed
-                if 'sibling_hash_id' in node.attrib and node.attrib.get('sibling_hash_id') not in finished_sibling_hashes:
-
+                if 'sibling_hash_id' in node.attrib and node.attrib.get(
+                        'sibling_hash_id') not in finished_sibling_hashes:
                     # get hash
                     sibling_hash = node.attrib.get('sibling_hash_id')
 
