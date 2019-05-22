@@ -122,12 +122,8 @@ urlpatterns = [
 
     # Configuration
     url(r'^configuration$', views.configuration, name='configuration'),
-    url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$',
-        views.transformation_scenario_payload, name='transformation_scenario_payload'),
     url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$',
         views.oai_endpoint_payload, name='oai_endpoint_payload'),
-    url(r'^configuration/test_transformation_scenario$',
-        views.test_transformation_scenario, name='test_transformation_scenario'),
     url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$',
         views.rits_payload, name='rits_payload'),
     url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
@@ -151,6 +147,18 @@ urlpatterns = [
         views.delete_validation_scenario, name='delete_validation_scenario'),
     url(r'^configuration/validation/test$',
         views.test_validation_scenario, name='test_validation_scenario'),
+
+    # Transformation Scenarios
+    url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$',
+        views.transformation_scenario_payload, name='transformation_scenario_payload'),
+    url(r'^configuration/transformation/create$',
+        views.create_transformation_scenario, name='create_transformation_scenario'),
+    url(r'^configuration/transformation/(?P<ts_id>[0-9]+)$',
+        views.transformation_scenario, name='transformation_scenario'),
+    url(r'^configuration/transformation/(?P<ts_id>[0-9]+)/delete',
+        views.delete_transformation_scenario, name='delete_transformation_scenario'),
+    url(r'^configuration/transformation/test$',
+        views.test_transformation_scenario, name='test_transformation_scenario'),
 
     # Publish
     url(r'^published$', views.published, name='published'),

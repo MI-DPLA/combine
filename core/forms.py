@@ -1,7 +1,7 @@
 from django.forms import ModelForm
 
 # import models from core for forms
-from core.models import Organization, RecordGroup, ValidationScenario
+from core.models import Organization, RecordGroup, Transformation, ValidationScenario
 
 class OrganizationForm(ModelForm):
     class Meta:
@@ -20,3 +20,10 @@ class ValidationScenarioForm(ModelForm):
     class Meta:
         model = ValidationScenario
         fields = ['name', 'payload', 'validation_type', 'filepath', 'default_run']
+
+
+class TransformationForm(ModelForm):
+
+    class Meta:
+        model = Transformation
+        fields = ['name', 'payload', 'transformation_type', 'filepath', 'use_as_include']

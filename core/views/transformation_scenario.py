@@ -2,10 +2,14 @@ import json
 import logging
 import uuid
 
+from django.forms.models import model_to_dict
 from django.http import HttpResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
 
-from core import models
+from core.models import Record, Transformation
+from core.forms import TransformationForm
 
 from .view_helpers import breadcrumb_parser
 
@@ -18,7 +22,7 @@ def transformation_scenario_payload(request, trans_id):
         """
 
     # get transformation
-    transformation = models.Transformation.objects.get(pk=int(trans_id))
+    transformation = Transformation.objects.get(pk=int(trans_id))
 
     # return transformation as XML
     if transformation.transformation_type == 'xslt':
@@ -33,6 +37,46 @@ def transformation_scenario_payload(request, trans_id):
         return HttpResponse(transformation.payload, content_type='text/plain')
 
 
+def create_transformation_scenario(request):
+    if request.method == "POST":
+        new_transformation = Transformation(
+            name=request.POST['name'],
+            payload=request.POST['payload'],
+            transformation_type=request.POST['transformation_type']
+        )
+        new_transformation.save()
+        return redirect(reverse('configuration'))
+    form = TransformationForm()
+    return render(request, 'core/new_transformation_scenario.html', {
+        'form': form
+    })
+
+
+def transformation_scenario(request, ts_id):
+    scenario = Transformation.objects.get(pk=int(ts_id))
+    if request.method == 'POST':
+        form = TransformationForm(request.POST)
+        if form.is_valid():
+            for key in form.cleaned_data:
+                setattr(scenario, key, form.cleaned_data[key])
+            scenario.save()
+        return redirect(reverse('configuration'))
+    form = TransformationForm(model_to_dict(scenario))
+    return render(request, 'core/transformation_scenario.html', {
+        'transformation_scenario': scenario,
+        'form': form
+    })
+
+
+def delete_transformation_scenario(request, ts_id):
+    try:
+        transformation = Transformation.objects.get(pk=int(ts_id))
+        transformation.delete()
+    except ObjectDoesNotExist:
+        pass
+    return redirect(reverse('configuration'))
+
+
 def test_transformation_scenario(request):
     """
         View to live test transformation scenarios
@@ -41,7 +85,7 @@ def test_transformation_scenario(request):
     # If GET, serve transformation test screen
     if request.method == 'GET':
         # get validation scenarios
-        transformation_scenarios = models.Transformation.objects.filter(
+        transformation_scenarios = Transformation.objects.filter(
             use_as_include=False)
 
         # check if limiting to one, pre-existing record
@@ -67,8 +111,8 @@ def test_transformation_scenario(request):
         response_type = request.POST.get('response_type', False)
 
         # get record
-        record = models.Record.objects.get(id=request.POST.get('db_id'))
-        record_iter = models.Record.objects.get(id=request.POST.get('db_id'))
+        record = Record.objects.get(id=request.POST.get('db_id'))
+        record_iter = Record.objects.get(id=request.POST.get('db_id'))
 
         try:
 
@@ -81,7 +125,7 @@ def test_transformation_scenario(request):
                 # loop through transformations
                 for trans in sel_trans:
                     # init Transformation instance
-                    trans = models.Transformation.objects.get(
+                    trans = Transformation.objects.get(
                         pk=int(trans['trans_id']))
 
                     # transform with record
@@ -97,7 +141,7 @@ def test_transformation_scenario(request):
             elif request.POST.get('trans_test_type') == 'single':
 
                 # init new transformation scenario
-                trans = models.Transformation(
+                trans = Transformation(
                     name='temp_trans_%s' % str(uuid.uuid4()),
                     payload=request.POST.get('trans_payload'),
                     transformation_type=request.POST.get('trans_type')
