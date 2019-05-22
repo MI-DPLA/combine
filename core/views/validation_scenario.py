@@ -58,7 +58,7 @@ def validation_scenario(request, vs_id):
             scenario.save()
         return redirect(reverse('configuration'))
     form = ValidationScenarioForm(model_to_dict(scenario))
-    return render(request, 'core/validation_scenario.html', {
+    return render(request, 'core/edit_validation_scenario.html', {
         'validation_scenario': scenario,
         'form': form
     })

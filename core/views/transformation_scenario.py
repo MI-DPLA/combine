@@ -62,7 +62,7 @@ def transformation_scenario(request, ts_id):
             scenario.save()
         return redirect(reverse('configuration'))
     form = TransformationForm(model_to_dict(scenario))
-    return render(request, 'core/transformation_scenario.html', {
+    return render(request, 'core/edit_transformation_scenario.html', {
         'transformation_scenario': scenario,
         'form': form
     })
