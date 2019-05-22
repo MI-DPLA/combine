@@ -1,7 +1,8 @@
 from django.forms import ModelForm
 
 # import models from core for forms
-from core.models import Organization, RecordGroup, Transformation, ValidationScenario
+from core.models import Organization, RecordGroup, RecordIdentifierTransformationScenario,\
+    Transformation, ValidationScenario
 
 class OrganizationForm(ModelForm):
     class Meta:
@@ -27,3 +28,11 @@ class TransformationForm(ModelForm):
     class Meta:
         model = Transformation
         fields = ['name', 'payload', 'transformation_type', 'filepath', 'use_as_include']
+
+
+class RITSForm(ModelForm):
+
+    class Meta:
+        model = RecordIdentifierTransformationScenario
+        fields = ['name', 'transformation_type', 'transformation_target', 'regex_match_payload',
+                  'regex_replace_payload', 'python_payload', 'xpath_payload']

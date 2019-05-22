@@ -2,9 +2,12 @@ import logging
 
 from django.http import JsonResponse
 from django.forms.models import model_to_dict
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.core.exceptions import ObjectDoesNotExist
 
-from core import models
+from core.models import RecordIdentifierTransformationScenario, Record, RITSClient
+from core.forms import RITSForm
 
 from .view_helpers import breadcrumb_parser
 
@@ -17,11 +20,49 @@ def rits_payload(request, rits_id):
         """
 
     # get transformation
-    rits = models.RecordIdentifierTransformationScenario.objects.get(
+    rits = RecordIdentifierTransformationScenario.objects.get(
         pk=int(rits_id))
 
     # return as json package
     return JsonResponse(model_to_dict(rits))
+
+
+def create_rits(request):
+    if request.method == 'POST':
+        form = RITSForm(request.POST)
+        if form.is_valid():
+            new_rits = RecordIdentifierTransformationScenario(**form.cleaned_data)
+            new_rits.save()
+        return redirect(reverse('configuration'))
+    form = RITSForm()
+    return render(request, 'core/new_record_identifier_transformation_scenario.html', {
+        'form': form
+    })
+
+
+def edit_rits(request, rits_id):
+    rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+    if request.method == 'POST':
+        form = RITSForm(request.POST)
+        if form.is_valid():
+            for key in form.cleaned_data:
+                setattr(rits, key, form.cleaned_data[key])
+            rits.save()
+        return redirect(reverse('configuration'))
+    form = RITSForm(model_to_dict(rits))
+    return render(request, 'core/edit_record_identifier_transformation_scenario.html', {
+        'rits': rits,
+        'form': form
+    })
+
+
+def delete_rits(request, rits_id):
+    try:
+        rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+        rits.delete()
+    except ObjectDoesNotExist:
+        pass
+    return redirect(reverse('configuration'))
 
 
 def test_rits(request):
@@ -35,7 +76,7 @@ def test_rits(request):
         q = request.GET.get('q', None)
 
         # get record identifier transformation scenarios
-        rits = models.RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformationScenario.objects.all()
 
         # return
         return render(request, 'core/test_rits.html', {
@@ -57,7 +98,7 @@ def test_rits(request):
 
             # get record
             if request.POST.get('db_id', False):
-                record = models.Record.objects.get(
+                record = Record.objects.get(
                     id=request.POST.get('db_id'))
             else:
                 return JsonResponse({'results': 'Please select a record from the table above!', 'success': False})
@@ -71,7 +112,7 @@ def test_rits(request):
                 request.POST['test_transform_input'] = record.document
 
             # instantiate rits and return test
-            rits = models.RITSClient(request.POST)
+            rits = RITSClient(request.POST)
             return JsonResponse(rits.test_user_input())
 
         except Exception as err:

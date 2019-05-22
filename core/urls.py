@@ -164,6 +164,12 @@ urlpatterns = [
     # Record Identifier Transformation Scenarios
     url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$',
         views.rits_payload, name='rits_payload'),
+    url(r'^configuration/rits/create$',
+        views.create_rits, name='create_rits'),
+    url(r'^configuration/rits/(?P<rits_id>[0-9]+)$',
+        views.edit_rits, name='edit_rits'),
+    url(r'^configuration/rits/(?P<rits_id>[0-9]+)/delete$',
+         views.delete_rits, name='delete_rits'),
     url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
 
     # Publish

@@ -196,6 +196,7 @@
 						<th>Name</th>
 						<th>Type</th>
 						<th>Target</th>
+                        <th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -205,6 +206,14 @@
 						<td>{{rt.name}}</td>
 						<td>{{rt.get_transformation_type_display}}</td>
 						<td>{{rt.get_transformation_target_display}}</td>
+                        <td>
+                            <a href="{% url 'edit_rits' rits_id=rt.id %}">
+                                <button class="btn btn-sm btn-info">Edit</button>
+                            </a>
+                            <a href="{% url 'delete_rits' rits_id=rt.id %}">
+                                <button class="btn btn-sm btn-danger">Delete</button>
+                            </a>
+                        </td>
 					</tr>
 				{% endfor %}
 				</tbody>
@@ -214,7 +223,14 @@
 				    $('#rits_table').DataTable({});			    
 				} );
 			</script>
-			<p><a href="{% url 'test_rits' %}"><button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario <i class="la la-wrench"></i></button></a></p>
+			<p>
+                <a href="{% url 'test_rits' %}">
+                    <button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario <i class="la la-wrench"></i></button>
+                </a>
+                <a href="{% url 'create_rits' %}">
+                    <button type="button" class="btn btn-sm btn-info">Create Record Identifier Transformation Scenario <i class="la la-plus"></i></button>
+                </a>
+            </p>
 		</div>
 	</div>
 
