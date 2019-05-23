@@ -61,11 +61,8 @@ class ValidationScenarioTestCase(TestCase):
                                                      validation_type='python')
         response = self.c.delete(reverse('delete_validation_scenario', args=[scenario.id]))
         self.assertRedirects(response, '/combine/configuration')
-        try:
+        with self.assertRaises(ObjectDoesNotExist):
             ValidationScenario.objects.get(pk=int(scenario.id))
-            self.fail('Did not delete validation scenario')
-        except ObjectDoesNotExist:
-            pass
 
     def test_validation_scenario_delete_nonexistent(self):
         response = self.c.delete(reverse('delete_validation_scenario', args=[12345]))

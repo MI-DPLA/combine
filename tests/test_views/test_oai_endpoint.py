@@ -66,11 +66,8 @@ class ConfigurationTestCase(TestCase):
         endpoint = OAIEndpoint.objects.create(name='Test OAI')
         response = self.c.delete(reverse('delete_oai_endpoint', args=[endpoint.id]))
         self.assertRedirects(response, reverse('configuration'))
-        try:
+        with self.assertRaises(ObjectDoesNotExist):
             OAIEndpoint.objects.get(pk=int(endpoint.id))
-            self.fail('Did not delete OAI endpoint')
-        except ObjectDoesNotExist:
-            pass
 
     def test_delete_oai_endpoint_nonexistent(self):
         response = self.c.delete(reverse('delete_oai_endpoint', args=[12345]))

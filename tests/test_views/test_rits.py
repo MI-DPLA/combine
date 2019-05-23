@@ -68,11 +68,8 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         )
         response = self.c.delete(reverse('delete_rits', args=[rits.id]))
         self.assertRedirects(response, reverse('configuration'))
-        try:
+        with self.assertRaises(ObjectDoesNotExist):
             RecordIdentifierTransformationScenario.objects.get(pk=int(rits.id))
-            self.fail('Did not delete rits')
-        except ObjectDoesNotExist:
-            pass
 
     def test_rits_delete_nonexistent(self):
         response = self.c.delete(reverse('delete_rits', args=[12345]))

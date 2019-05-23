@@ -61,11 +61,8 @@ class TransformationTestCase(TestCase):
             transformation_type='python')
         response = self.c.delete(reverse('delete_transformation_scenario', args=[transformation.id]))
         self.assertRedirects(response, '/combine/configuration')
-        try:
+        with self.assertRaises(ObjectDoesNotExist):
             Transformation.objects.get(pk=int(transformation.id))
-            self.fail('Did not delete transformation')
-        except ObjectDoesNotExist:
-            pass
 
     def test_transformation_scenario_delete_nonexistent(self):
         response = self.c.delete(reverse('delete_transformation_scenario', args=[12345]))
