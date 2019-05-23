@@ -17,18 +17,19 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         self.assertIn(b'Create new Record Identifier Transformation Scenario', response.content)
 
     def test_create_rits_post(self):
-        response = self.c.post(reverse('create_rits'), {
+        post_body = {
             'name': 'Test RITS',
             'transformation_type': 'python',
             'transformation_target': 'document',
             'python_payload': 'test payload'
-        })
+        }
+        response = self.c.post(reverse('create_rits'), post_body)
         self.assertRedirects(response, reverse('configuration'))
         rits = RecordIdentifierTransformationScenario.objects.get(name='Test RITS')
         self.assertIsNotNone(rits.id)
-        self.assertEqual(rits.transformation_type, 'python')
-        self.assertEqual(rits.transformation_target, 'document')
-        self.assertEqual(rits.python_payload, 'test payload')
+        rits_dict = rits.as_dict()
+        for item in post_body:
+            self.assertEqual(rits_dict[item], post_body[item])
 
     def test_rits_get(self):
         rits = RecordIdentifierTransformationScenario.objects.create(

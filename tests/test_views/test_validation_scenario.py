@@ -20,15 +20,17 @@ class ValidationScenarioTestCase(TestCase):
         self.assertIn(b'Create new Validation Scenario', response.content)
 
     def test_create_validation_scenario_post(self):
-        response = self.c.post(reverse('create_validation_scenario'), {
+        post_body = {
             'name': 'Test Validate',
             'payload': 'Some python code',
-            'validation_type': 'python'})
+            'validation_type': 'python'}
+        response = self.c.post(reverse('create_validation_scenario'), post_body)
         self.assertRedirects(response, '/combine/configuration')
         scenario = ValidationScenario.objects.get(name='Test Validate')
         self.assertIsNotNone(scenario.id)
-        self.assertEqual(scenario.payload, 'Some python code')
-        self.assertEqual(scenario.validation_type, 'python')
+        scenario_dict = scenario.as_dict()
+        for item in post_body:
+            self.assertEqual(scenario_dict[item], post_body[item])
 
     def test_validation_scenario_get(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',

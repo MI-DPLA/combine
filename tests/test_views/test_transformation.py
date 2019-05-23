@@ -17,16 +17,18 @@ class TransformationTestCase(TestCase):
         self.assertIn(b'Create new Transformation Scenario', response.content)
 
     def test_create_transformation_scenario_post(self):
-        response = self.c.post(reverse('create_transformation_scenario'), {
+        post_body = {
             'name': 'Test Transform',
             'payload': 'test payload',
             'transformation_type': 'python'
-        })
+        }
+        response = self.c.post(reverse('create_transformation_scenario'), post_body)
         self.assertRedirects(response, '/combine/configuration')
         transform = Transformation.objects.get(name='Test Transform')
         self.assertIsNotNone(transform.id)
-        self.assertEqual(transform.payload, 'test payload')
-        self.assertEqual(transform.transformation_type, 'python')
+        transform_dict = transform.as_dict()
+        for item in post_body:
+            self.assertEqual(transform_dict[item], post_body[item])
 
     def test_transformation_scenario_get(self):
         transformation = Transformation.objects.create(

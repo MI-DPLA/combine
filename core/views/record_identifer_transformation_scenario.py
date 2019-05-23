@@ -52,7 +52,7 @@ def edit_rits(request, rits_id):
     form = RITSForm(model_to_dict(rits))
     return render(request, 'core/edit_record_identifier_transformation_scenario.html', {
         'rits': rits,
-        'form': form
+        'form': form,
     })
 
 
