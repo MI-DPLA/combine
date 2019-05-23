@@ -12,11 +12,11 @@ class ValidationScenarioTestCase(TestCase):
 
     def setUp(self):
         self.config = TestConfiguration()
-        self.c = Client()
-        self.c.force_login(self.config.user)
+        self.client = Client()
+        self.client.force_login(self.config.user)
 
     def test_create_validation_scenario_get(self):
-        response = self.c.get(reverse('create_validation_scenario'))
+        response = self.client.get(reverse('create_validation_scenario'))
         self.assertIn(b'Create new Validation Scenario', response.content)
 
     def test_create_validation_scenario_post(self):
@@ -24,8 +24,8 @@ class ValidationScenarioTestCase(TestCase):
             'name': 'Test Validate',
             'payload': 'Some python code',
             'validation_type': 'python'}
-        response = self.c.post(reverse('create_validation_scenario'), post_body)
-        self.assertRedirects(response, '/combine/configuration')
+        response = self.client.post(reverse('create_validation_scenario'), post_body)
+        self.assertRedirects(response, reverse('configuration'))
         scenario = ValidationScenario.objects.get(name='Test Validate')
         self.assertIsNotNone(scenario.id)
         scenario_dict = scenario.as_dict()
@@ -36,20 +36,19 @@ class ValidationScenarioTestCase(TestCase):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        response = self.c.get(reverse('validation_scenario', args=[scenario.id]))
+        response = self.client.get(reverse('validation_scenario', args=[scenario.id]))
         self.assertIn(b'Test Validate', response.content)
 
     def test_validation_scenario_post(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        response = self.c.post(reverse('validation_scenario', args=[scenario.id]),
-                               {
-                                   'payload': ValidationScenarioTestCase.simple_validation_payload,
-                                   'name': scenario.name,
-                                   'validation_type': scenario.validation_type
-                               })
-        self.assertRedirects(response, '/combine/configuration')
+        response = self.client.post(reverse('validation_scenario', args=[scenario.id]), {
+            'payload': ValidationScenarioTestCase.simple_validation_payload,
+            'name': scenario.name,
+            'validation_type': scenario.validation_type
+        })
+        self.assertRedirects(response, reverse('configuration'))
         scenario = ValidationScenario.objects.get(name='Test Validate')
         self.assertIsNotNone(scenario.id)
         self.assertEqual(scenario.name, 'Test Validate')
@@ -59,31 +58,31 @@ class ValidationScenarioTestCase(TestCase):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        response = self.c.delete(reverse('delete_validation_scenario', args=[scenario.id]))
-        self.assertRedirects(response, '/combine/configuration')
+        response = self.client.delete(reverse('delete_validation_scenario', args=[scenario.id]))
+        self.assertRedirects(response, reverse('configuration'))
         with self.assertRaises(ObjectDoesNotExist):
             ValidationScenario.objects.get(pk=int(scenario.id))
 
     def test_validation_scenario_delete_nonexistent(self):
-        response = self.c.delete(reverse('delete_validation_scenario', args=[12345]))
-        self.assertRedirects(response, '/combine/configuration')
+        response = self.client.delete(reverse('delete_validation_scenario', args=[12345]))
+        self.assertRedirects(response, reverse('configuration'))
 
     def test_validation_scenario_payload(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
-        response = self.c.get(reverse('validation_scenario_payload', args=[scenario.id]))
+        response = self.client.get(reverse('validation_scenario_payload', args=[scenario.id]))
         self.assertEqual(b'Some python code', response.content)
 
     def test_validation_scenario_payload_xml(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some schematron',
                                                      validation_type='sch')
-        response = self.c.get(reverse('validation_scenario_payload', args=[scenario.id]))
+        response = self.client.get(reverse('validation_scenario_payload', args=[scenario.id]))
         self.assertEqual(b'Some schematron', response.content)
 
     def test_validation_scenario_test(self):
-        response = self.c.get(reverse('test_validation_scenario'))
+        response = self.client.get(reverse('test_validation_scenario'))
         self.assertIn(b'Test Validation Scenario', response.content)
 
     def test_validation_scenario_test_post_raw(self):
@@ -103,10 +102,9 @@ class ValidationScenarioTestCase(TestCase):
         self.assertEqual(b'validation results format not recognized', response.content)
 
     def validation_scenario_test(self, results_format):
-        return self.c.post(reverse('test_validation_scenario'),
-                           {
-                               'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
-                               'vs_type': 'python',
-                               'db_id': self.config.record.id,
-                               'vs_results_format': results_format
-                           })
+        return self.client.post(reverse('test_validation_scenario'), {
+            'vs_payload': ValidationScenarioTestCase.simple_validation_payload,
+            'vs_type': 'python',
+            'db_id': self.config.record.id,
+            'vs_results_format': results_format
+        })

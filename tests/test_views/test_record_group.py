@@ -1,18 +1,21 @@
 from django.test import Client, TestCase
+from django.urls import reverse
 
-from core.models import Organization, User
+from core.models import RecordGroup, Organization, User
 
 
 class RecordGroupTestCase(TestCase):
     def test_new_record_group(self):
         org = Organization.objects.create(name="Test Organization")
-        u = User.objects.create(
+        user = User.objects.create(
             username='combine', password='combine', is_superuser=True)
-        c = Client()
-        c.force_login(u)
-        response = c.post(f'/combine/organization/{org.id}/record_group/new',
-                          {'organization': org.id,
-                           'name': 'Test Record Group'})
-        self.assertEqual(response.status_code, 302)
-        redirect = c.get(response.url)
+        client = Client()
+        client.force_login(user)
+        response = client.post(reverse('record_group_new', args=[org.id]), {
+            'organization': org.id,
+            'name': 'Test Record Group'
+        })
+        record_group = RecordGroup.objects.get(name='Test Record Group')
+        self.assertRedirects(response, reverse('record_group', args=[org.id, record_group.id]))
+        redirect = client.get(response.url)
         self.assertIn('Test Record Group', str(redirect.content, 'utf-8'))

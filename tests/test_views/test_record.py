@@ -44,7 +44,6 @@ def test_record_has_words(record, test_message='record has words'):
         response = self.client.get(f'{self.config.record_path()}/diff/combined')
         self.assertEqual(b'Record was not altered during Transformation.', response.content)
 
-    def test_record_combined_diff_html(self):
+    def test_record_side_by_side_diff_html(self):
         response = self.client.get(f'{self.config.record_path()}/diff/side_by_side')
-        print(response.content)
         self.assertEqual(b'Record was not altered during Transformation.', response.content)
