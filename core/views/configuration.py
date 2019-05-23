@@ -47,22 +47,6 @@ def configuration(request):
 
 
 @login_required
-def oai_endpoint_payload(request, oai_endpoint_id):
-    """
-    Return JSON of saved OAI endpoint information
-    """
-
-    # retrieve OAIEndpoint
-    oai_endpoint = models.OAIEndpoint.objects.get(pk=oai_endpoint_id)
-
-    # pop state
-    oai_endpoint.__dict__.pop('_state')
-
-    # return as json
-    return JsonResponse(oai_endpoint.__dict__)
-
-
-@login_required
 def dpla_bulk_data_download(request):
     """
     View to support the downloading of DPLA bulk data

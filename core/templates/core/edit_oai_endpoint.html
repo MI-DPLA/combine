@@ -1,0 +1,21 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+	<div class="row">
+		<div class="col-md-12">
+			<h4>OAI Endpoint: {{ oai_endpoint.name }}</h4>
+		</div>
+	</div>
+
+	<div class="row">
+        <form action="{{ oai_endpoint.id }}" method="post">
+            {% csrf_token %}
+            <table>
+                {{ form }}
+            </table>
+            <input type="submit" value="Submit" />
+        </form>
+	</div>
+
+{% endblock %}

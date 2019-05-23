@@ -15,12 +15,6 @@ class ConfigurationTestCase(TestCase):
         # TODO: test something real
         print(response)
 
-    def test_oai_endpoint_payload(self):
-        oai_endpoint = OAIEndpoint.objects.create()
-        response = self.c.get(f'/combine/configuration/oai_endpoint/{oai_endpoint.id}/payload')
-        # TODO: test something real
-        print(response)
-
     def test_get_dpla_bulk_data_download(self):
         response = self.c.get('/combine/configuration/dpla_bulk_data/download')
         # TODO: test something real

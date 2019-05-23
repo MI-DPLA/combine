@@ -1,5 +1,4 @@
 from django.conf.urls import url
-from django.contrib import admin
 from django.contrib.auth import views as auth_views
 
 from . import views
@@ -128,6 +127,12 @@ urlpatterns = [
     # OAI Endpoints
     url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$',
         views.oai_endpoint_payload, name='oai_endpoint_payload'),
+    url(r'^configuration/oai_endpoint/create$',
+        views.create_oai_endpoint, name='create_oai_endpoint'),
+    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)$',
+        views.edit_oai_endpoint, name='edit_oai_endpoint'),
+    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/delete$',
+        views.delete_oai_endpoint, name='delete_oai_endpoint'),
 
     # Validation Scenarios
     url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$',

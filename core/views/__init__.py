@@ -19,3 +19,4 @@ from .global_messages import *
 from .search import *
 from .oai import *
 from .configuration import *
+from .oai_endpoint import *

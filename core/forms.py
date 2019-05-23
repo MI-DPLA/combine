@@ -2,7 +2,7 @@ from django.forms import ModelForm
 
 # import models from core for forms
 from core.models import Organization, RecordGroup, RecordIdentifierTransformationScenario,\
-    Transformation, ValidationScenario
+    Transformation, ValidationScenario, OAIEndpoint
 
 class OrganizationForm(ModelForm):
     class Meta:
@@ -36,3 +36,10 @@ class RITSForm(ModelForm):
         model = RecordIdentifierTransformationScenario
         fields = ['name', 'transformation_type', 'transformation_target', 'regex_match_payload',
                   'regex_replace_payload', 'python_payload', 'xpath_payload']
+
+
+class OAIEndpointForm(ModelForm):
+
+    class Meta:
+        model = OAIEndpoint
+        fields = ['name', 'endpoint', 'verb', 'metadataPrefix', 'scope_type', 'scope_value']
