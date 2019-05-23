@@ -47,8 +47,9 @@ def create_transformation_scenario(request):
         new_transformation.save()
         return redirect(reverse('configuration'))
     form = TransformationForm()
-    return render(request, 'core/new_transformation_scenario.html', {
-        'form': form
+    return render(request, 'core/new_configuration_object.html', {
+        'form': form,
+        'object_name': 'Transformation Scenario'
     })
 
 
@@ -62,9 +63,10 @@ def transformation_scenario(request, ts_id):
             scenario.save()
         return redirect(reverse('configuration'))
     form = TransformationForm(model_to_dict(scenario))
-    return render(request, 'core/edit_transformation_scenario.html', {
-        'transformation_scenario': scenario,
-        'form': form
+    return render(request, 'core/edit_configuration_object.html', {
+        'object': scenario,
+        'form': form,
+        'object_name': 'Transformation Scenario',
     })
 
 

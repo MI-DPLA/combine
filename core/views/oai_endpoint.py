@@ -34,8 +34,9 @@ def create_oai_endpoint(request):
             new_endpoint.save()
         return redirect(reverse('configuration'))
     form = OAIEndpointForm
-    return render(request, 'core/new_oai_endpoint.html', {
-        'form': form
+    return render(request, 'core/new_configuration_object.html', {
+        'form': form,
+        'object_name': 'OAI Endpoint',
     })
 
 
@@ -52,9 +53,10 @@ def edit_oai_endpoint(request, oai_endpoint_id):
             print(form.errors.as_json())
         return redirect(reverse('configuration'))
     form = OAIEndpointForm(model_to_dict(oai_endpoint))
-    return render(request, 'core/edit_oai_endpoint.html', {
-        'oai_endpoint': oai_endpoint,
+    return render(request, 'core/edit_configuration_object.html', {
+        'object': oai_endpoint,
         'form': form,
+        'object_name': 'OAI Endpoint',
     })
 
 

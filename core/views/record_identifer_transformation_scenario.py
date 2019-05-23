@@ -35,8 +35,9 @@ def create_rits(request):
             new_rits.save()
         return redirect(reverse('configuration'))
     form = RITSForm()
-    return render(request, 'core/new_record_identifier_transformation_scenario.html', {
-        'form': form
+    return render(request, 'core/new_configuration_object.html', {
+        'form': form,
+        'object_name': 'Record Identifier Transformation Scenario',
     })
 
 
@@ -50,9 +51,10 @@ def edit_rits(request, rits_id):
             rits.save()
         return redirect(reverse('configuration'))
     form = RITSForm(model_to_dict(rits))
-    return render(request, 'core/edit_record_identifier_transformation_scenario.html', {
-        'rits': rits,
+    return render(request, 'core/edit_configuration_object.html', {
+        'object': rits,
         'form': form,
+        'object_name': 'Record Identifier Transformation Scenario',
     })
 
 
