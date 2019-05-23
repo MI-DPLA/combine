@@ -3,9 +3,13 @@ import logging
 import jsonschema
 
 from django.http import JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, redirect
+from django.urls import reverse
+from django.forms import model_to_dict
+from django.core.exceptions import ObjectDoesNotExist
 
-from core import models
+from core.models import FieldMapper, Record, XML2kvp
+from core.forms import FieldMapperForm
 
 from .view_helpers import breadcrumb_parser
 
@@ -18,7 +22,7 @@ def field_mapper_payload(request, fm_id):
         """
 
     # get transformation
-    field_mapper = models.FieldMapper.objects.get(pk=int(fm_id))
+    field_mapper = FieldMapper.objects.get(pk=int(fm_id))
 
     # get type
     doc_type = request.GET.get('type', None)
@@ -35,6 +39,50 @@ def field_mapper_payload(request, fm_id):
             return JsonResponse(field_mapper.payload, safe=False)
 
 
+def create_field_mapper(request):
+    if request.method == "POST":
+        form = FieldMapperForm(request.POST)
+        if form.is_valid():
+            new_field_mapper = FieldMapper(**form.cleaned_data)
+            new_field_mapper.save()
+        else:
+            print(form.errors.as_json())
+        return redirect(reverse('configuration'))
+    form = FieldMapperForm
+    return render(request, 'core/new_configuration_object.html', {
+        'form': form,
+        'object_name': 'Field Mapper',
+    })
+
+
+def edit_field_mapper(request, fm_id):
+    field_mapper = FieldMapper.objects.get(pk=int(fm_id))
+    if request.method == 'POST':
+        form = FieldMapperForm(request.POST)
+        if form.is_valid():
+            for key in form.cleaned_data:
+                setattr(field_mapper, key, form.cleaned_data[key])
+            field_mapper.save()
+        else:
+            print(form.errors.as_json())
+        return redirect(reverse('configuration'))
+    form = FieldMapperForm(model_to_dict(field_mapper))
+    return render(request, 'core/edit_configuration_object.html', {
+        'object': field_mapper,
+        'form': form,
+        'object_name': 'Field Mapper',
+    })
+
+
+def delete_field_mapper(request, fm_id):
+    try:
+        field_mapper = FieldMapper.objects.get(pk=int(fm_id))
+        field_mapper.delete()
+    except ObjectDoesNotExist:
+        pass
+    return redirect(reverse('configuration'))
+
+
 def field_mapper_update(request):
     """
         Create and save JSON to FieldMapper instance, or update pre-existing
@@ -49,7 +97,7 @@ def field_mapper_update(request):
     if update_type == 'new':
         LOGGER.debug('creating new FieldMapper instance')
 
-        field_mapper = models.FieldMapper(
+        field_mapper = FieldMapper(
             name=request.POST.get('fm_name'),
             config_json=request.POST.get('fm_config_json'),
             field_mapper_type='xml2kvp'
@@ -72,7 +120,7 @@ def field_mapper_update(request):
         LOGGER.debug('updating pre-existing FieldMapper instance')
 
         # get fm instance
-        field_mapper = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+        field_mapper = FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
 
         # update and save
         field_mapper.config_json = request.POST.get('fm_config_json')
@@ -94,7 +142,7 @@ def field_mapper_update(request):
         LOGGER.debug('deleting pre-existing FieldMapper instance')
 
         # get fm instance
-        field_mapper = models.FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
+        field_mapper = FieldMapper.objects.get(pk=int(request.POST.get('fm_id')))
 
         # delete
         field_mapper.delete()
@@ -110,7 +158,7 @@ def test_field_mapper(request):
 
     if request.method == 'GET':
         # get field mapper
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
 
         # check if limiting to one, pre-existing record
         # TODO: what is q?
@@ -124,7 +172,7 @@ def test_field_mapper(request):
             'q': q,
             'fmid': fmid,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'breadcrumbs': breadcrumb_parser(request)
         })
 
@@ -135,7 +183,7 @@ def test_field_mapper(request):
         LOGGER.debug(request.POST)
 
         # get record
-        record = models.Record.objects.get(id=request.POST.get('db_id'))
+        record = Record.objects.get(id=request.POST.get('db_id'))
 
         # get field mapper info
         request.POST.get('field_mapper') # TODO: unused
@@ -145,7 +193,7 @@ def test_field_mapper(request):
 
             # parse record with XML2kvp
             fm_config = json.loads(fm_config_json)
-            kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
+            kvp_dict = XML2kvp.xml_to_kvp(record.document, **fm_config)
 
             # return as JSON
             return JsonResponse(kvp_dict)

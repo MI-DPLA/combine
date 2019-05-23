@@ -3259,6 +3259,9 @@ class FieldMapper(models.Model):
     def __str__(self):
         return '%s, FieldMapper: #%s' % (self.name, self.id)
 
+    def as_dict(self):
+        return self.__dict__
+
     @property
     def config(self):
 

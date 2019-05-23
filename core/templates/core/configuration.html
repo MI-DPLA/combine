@@ -21,6 +21,7 @@
 						<th>Name</th>
 						<th>Type</th>					
 						<th>Configuration JSON</th>
+                        <th></th>
 					</tr>
 				</thead>
 				<tbody>
@@ -30,6 +31,14 @@
 						<td>{{fm.name}}</td>
 						<td>{{fm.get_field_mapper_type_display}}</td>						
 						<td><a href="{% url 'field_mapper_payload' fm_id=fm.id %}?doc_type=config">View configuration JSON</a></td>
+                        <td>
+                            <a href="{% url 'edit_field_mapper' fm_id=fm.id %}">
+                                <button type="button" class="btn btn-info btn-sm">Edit</button>
+                            </a>
+                            <a href="{% url 'delete_field_mapper' fm_id=fm.id %}">
+                                <button type="button" class="btn btn-sm btn-danger">Delete</button>
+                            </a>
+                        </td>
 					</tr>
 				{% endfor %}
 				</tbody>
@@ -39,7 +48,14 @@
 				    $('#field_mappers_table').DataTable({});			    
 				} );
 			</script>
-			<p><a href="{% url 'test_field_mapper' %}"><button type="button" class="btn btn-success btn-sm">Test Field Mapper <i class="la la-wrench"></i></button></a></p>
+			<p>
+                <a href="{% url 'test_field_mapper' %}">
+                    <button type="button" class="btn btn-success btn-sm">Test Field Mapper <i class="la la-wrench"></i></button>
+                </a>
+                <a href="{% url 'create_field_mapper' %}">
+                    <button type="button" class="btn btn-info btn-sm">Create Field Mapper <i class="la la-plus"></i></button>
+                </a>
+            </p>
 		</div>
 	</div>
 

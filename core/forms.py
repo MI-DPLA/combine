@@ -2,7 +2,7 @@ from django.forms import ModelForm
 
 # import models from core for forms
 from core.models import Organization, RecordGroup, RecordIdentifierTransformationScenario,\
-    Transformation, ValidationScenario, OAIEndpoint
+    Transformation, ValidationScenario, OAIEndpoint, FieldMapper
 
 class OrganizationForm(ModelForm):
     class Meta:
@@ -43,3 +43,10 @@ class OAIEndpointForm(ModelForm):
     class Meta:
         model = OAIEndpoint
         fields = ['name', 'endpoint', 'verb', 'metadataPrefix', 'scope_type', 'scope_value']
+
+
+class FieldMapperForm(ModelForm):
+
+    class Meta:
+        model = FieldMapper
+        fields = ['name', 'payload', 'config_json', 'field_mapper_type']

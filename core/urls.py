@@ -161,6 +161,12 @@ urlpatterns = [
     # Field Mapper Configurations
     url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/payload$',
         views.field_mapper_payload, name='field_mapper_payload'),
+    url(r'^configuration/field_mapper/create',
+        views.create_field_mapper, name='create_field_mapper'),
+    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)$',
+        views.edit_field_mapper, name='edit_field_mapper'),
+    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/delete$',
+        views.delete_field_mapper, name='delete_field_mapper'),
     url(r'^configuration/field_mapper/update$',
         views.field_mapper_update, name='field_mapper_update'),
     url(r'^configuration/test_field_mapper$',
