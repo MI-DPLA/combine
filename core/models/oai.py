@@ -18,6 +18,26 @@ logger = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 
+class OAITransaction(models.Model):
+
+	'''
+	Model to manage transactions from OAI server, including all requests and resumption tokens when needed.
+
+	Improvement: expire resumption tokens after some time.
+	'''
+
+	verb = models.CharField(max_length=255)
+	start = models.IntegerField(null=True, default=None)
+	chunk_size = models.IntegerField(null=True, default=None)
+	publish_set_id = models.CharField(max_length=255, null=True, default=None)
+	token = models.CharField(max_length=1024, db_index=True)
+	args = models.CharField(max_length=1024)
+
+
+	def __str__(self):
+		return 'OAI Transaction: %s, resumption token: %s' % (self.id, self.token)
+
+
 
 class CombineOAIClient(object):
 
@@ -100,3 +120,5 @@ class CombineOAIClient(object):
 		'''
 
 		return sickle.GetRecord(identifier = oai_record_id, metadataPrefix = self.metadata_prefix)
+
+
