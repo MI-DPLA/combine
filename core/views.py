@@ -4,28 +4,18 @@ from __future__ import unicode_literals
 # generic
 import ast
 import datetime
-import hashlib
 import json
 import jsonschema
 import logging
-from lxml import etree, isoschematron
-import os
-import pdb
+from lxml import etree
 import re
-import requests
-import textwrap
-import time
-from types import ModuleType
 from urllib.parse import urlencode
 import uuid
 
 # django
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
-from django.core import serializers
-from django.core.files.uploadedfile import InMemoryUploadedFile, TemporaryUploadedFile
 from django.core.urlresolvers import reverse
-from django.db import connection
 from django.db.models import Q
 from django.db.models.query import QuerySet
 from django.forms.models import model_to_dict
@@ -35,7 +25,9 @@ from django.views import View
 
 # import models
 from core import models, forms
-from core.es import es_handle
+
+# import xml2kvp
+from core.xml2kvp import XML2kvp
 
 # import oai server
 from core.oai import OAIProvider
@@ -984,7 +976,7 @@ def job_details(request, org_id, record_group_id, job_id):
         'record_count_details': record_count_details,
         'field_counts': field_counts,
         'field_mappers': field_mappers,
-        'xml2kvp_handle': models.XML2kvp(),
+        'xml2kvp_handle': XML2kvp(),
         'job_lineage_json': json.dumps(job_lineage),
         'dpla_bulk_data_matches': dpla_bulk_data_matches,
         'q': q,
@@ -1301,7 +1293,7 @@ def job_harvest_oai(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -1356,7 +1348,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -1413,7 +1405,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -1491,7 +1483,7 @@ def job_transform(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'job_lineage_json': json.dumps(ld),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
@@ -1564,7 +1556,7 @@ def job_merge(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'job_lineage_json': json.dumps(ld),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
@@ -1721,7 +1713,7 @@ def job_update(request, org_id, record_group_id, job_id):
             'validation_scenarios': validation_scenarios,
             'field_mappers': field_mappers,
             'bulk_downloads': bulk_downloads,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'orig_fm_config_json': orig_fm_config_json,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -2646,7 +2638,7 @@ def test_field_mapper(request):
             'q': q,
             'fmid': fmid,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'breadcrumbs': breadcrumb_parser(request)
         })
 
@@ -2667,7 +2659,7 @@ def test_field_mapper(request):
 
             # parse record with XML2kvp
             fm_config = json.loads(fm_config_json)
-            kvp_dict = models.XML2kvp.xml_to_kvp(record.document, **fm_config)
+            kvp_dict = XML2kvp.xml_to_kvp(record.document, **fm_config)
 
             # return as JSON
             return JsonResponse(kvp_dict)
@@ -2759,7 +2751,7 @@ def published(request, subset=None):
     return render(request, 'core/published.html', {
         'published': published,
         'field_mappers': field_mappers,
-        'xml2kvp_handle': models.XML2kvp(),
+        'xml2kvp_handle': XML2kvp(),
         'field_counts': field_counts,
         'es_index_str': published.esi.es_index_str,
         'subsets': subsets,
@@ -3374,7 +3366,7 @@ def job_analysis(request):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': XML2kvp(),
             'analysis_type': analysis_type,
             'bulk_downloads': bulk_downloads,
             'job_lineage_json': json.dumps(ld)

@@ -15,8 +15,9 @@ from types import ModuleType
 import pyjxslt
 
 # django imports
+from django import forms
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models
 
 # import xml2kvp
 from core.xml2kvp import XML2kvp
@@ -37,23 +38,30 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # import ElasticSearch BaseMapper and PythonUDFRecord
 from core.spark.utils import PythonUDFRecord
 
-# core models imports
-# from core.models.job import CombineJob
-
 
 
 class OAIEndpoint(models.Model):
 
 	'''
 	Model to manage user added OAI endpoints
+	For more information, see: https://github.com/dpla/ingestion3
 	'''
 
-	name = models.CharField(max_length=255)
+	name = models.CharField(max_length=255, null=True)
 	endpoint = models.CharField(max_length=255)
-	verb = models.CharField(max_length=128, null=True, default='ListRecords')
-	metadataPrefix = models.CharField(max_length=128)
-	scope_type = models.CharField(max_length=128, null=True, default='harvestAllSets') # expecting one of setList, whiteList, blackList
-	scope_value = models.CharField(max_length=1024, null=True, default='true')
+	verb = models.CharField(max_length=128, null=True, default='ListRecords', blank=True) # HiddenInput
+	metadataPrefix = models.CharField(max_length=128, null=True, blank=True)
+	scope_type = models.CharField(
+		max_length=128,
+		null=True,
+		blank=True,
+		choices=[
+			('harvestAllSets', 'Harvest records from all sets'),
+			('setList', 'Comma-separated lists of sets to include in the harvest'),
+			('blackList', 'Comma-separated lists of sets to exclude from the harvest')
+		],
+		default='harvestAllSets')
+	scope_value = models.CharField(max_length=1024, null=True, blank=True, default='true')
 
 
 	def __str__(self):
@@ -85,7 +93,7 @@ class Transformation(models.Model):
 	currently, only XSLT is handled downstream
 	'''
 
-	name = models.CharField(max_length=255)
+	name = models.CharField(max_length=255, null=True)
 	payload = models.TextField()
 	transformation_type = models.CharField(
 		max_length=255,
@@ -95,7 +103,7 @@ class Transformation(models.Model):
 			('openrefine','Open Refine Actions')
 		]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
 	use_as_include = models.BooleanField(default=False)
 
 
@@ -323,7 +331,7 @@ class ValidationScenario(models.Model):
 	Model to handle validation scenarios used to validate records.
 	'''
 
-	name = models.CharField(max_length=255)
+	name = models.CharField(max_length=255, null=True)
 	payload = models.TextField()
 	validation_type = models.CharField(
 		max_length=255,
@@ -334,7 +342,7 @@ class ValidationScenario(models.Model):
 			('xsd','XML Schema')
 		]
 	)
-	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True)
+	filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
 	default_run = models.BooleanField(default=1)
 
 
@@ -540,6 +548,9 @@ class ValidationScenario(models.Model):
 			]
 		'''
 
+		# core models imports
+		from core.models.job import CombineJob
+
 		# parse es validation payload
 		es_payload = json.loads(self.payload)
 
@@ -637,7 +648,7 @@ class FieldMapper(models.Model):
 	Model to handle different Field Mappers
 	'''
 
-	name = models.CharField(max_length=128)
+	name = models.CharField(max_length=128, null=True)
 	payload = models.TextField(null=True, default=None, blank=True)
 	config_json = models.TextField(null=True, default=None, blank=True)
 	field_mapper_type = models.CharField(
@@ -707,11 +718,11 @@ class DPLABulkDataDownload(models.Model):
 	Model to handle the management of DPLA bulk data downloads
 	'''
 
-	s3_key = models.CharField(max_length=255)
-	downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True)
-	filepath = models.CharField(max_length=255, null=True, default=None)
-	es_index = models.CharField(max_length=255, null=True, default=None)
-	uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
+	s3_key = models.CharField(max_length=255, null=True, blank=True)
+	downloaded_timestamp = models.DateTimeField(null=True, auto_now_add=True) # HiddenInput
+	filepath = models.CharField(max_length=255, null=True, default=None, blank=True) # HiddenInput
+	es_index = models.CharField(max_length=255, null=True, default=None, blank=True) # HiddenInput
+	uploaded_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False, blank=True) # HiddenInput
 	status = models.CharField(
 		max_length=255,
 		choices=[
@@ -721,7 +732,7 @@ class DPLABulkDataDownload(models.Model):
 			('finished','Downloaded and Indexed')
 		],
 		default='init'
-	)
+	) # HiddenInput
 
 	def __str__(self):
 		return '%s, DPLABulkDataDownload: #%s' % (self.s3_key, self.id)

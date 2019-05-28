@@ -2,16 +2,23 @@
 from __future__ import unicode_literals
 
 # generic imports
+from collections import OrderedDict
+from lxml import etree
+import binascii
 import datetime
+import difflib
 import django
 import hashlib
 import inspect
+import io
 import json
 import logging
 import os
-import shutil
 import re
+import requests
+import shutil
 import time
+import urllib.parse
 import uuid
 import zipfile
 
@@ -21,6 +28,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
 from django.utils.datastructures import MultiValueDict
+from django.core.urlresolvers import reverse
 
 # import xml2kvp
 from core.xml2kvp import XML2kvp
@@ -30,6 +38,8 @@ from core import tasks
 
 # import elasticsearch and handles
 from core.es import es_handle
+from elasticsearch.exceptions import NotFoundError
+from elasticsearch_dsl import Search
 
 # import mongo dependencies
 from core.mongo import *
@@ -39,6 +49,10 @@ logger = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
+# sxsdiff
+from sxsdiff import DiffCalculator
+from sxsdiff.generators.github import GitHubStyledGenerator
 
 # toposort
 from toposort import toposort_flatten
