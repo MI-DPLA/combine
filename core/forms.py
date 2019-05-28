@@ -4,6 +4,7 @@ from django.forms import ModelForm
 from core.models import Organization, RecordGroup, RecordIdentifierTransformationScenario,\
     Transformation, ValidationScenario, OAIEndpoint, FieldMapper
 
+
 class OrganizationForm(ModelForm):
     class Meta:
         model = Organization
@@ -20,14 +21,14 @@ class ValidationScenarioForm(ModelForm):
 
     class Meta:
         model = ValidationScenario
-        fields = ['name', 'payload', 'validation_type', 'filepath', 'default_run']
+        fields = ['name', 'payload', 'validation_type', 'default_run']
 
 
 class TransformationForm(ModelForm):
 
     class Meta:
         model = Transformation
-        fields = ['name', 'payload', 'transformation_type', 'filepath', 'use_as_include']
+        fields = ['name', 'payload', 'transformation_type', 'use_as_include']
 
 
 class RITSForm(ModelForm):
@@ -42,7 +43,7 @@ class OAIEndpointForm(ModelForm):
 
     class Meta:
         model = OAIEndpoint
-        fields = ['name', 'endpoint', 'verb', 'metadataPrefix', 'scope_type', 'scope_value']
+        fields = ['name', 'endpoint', 'metadataPrefix', 'scope_type', 'scope_value']
 
 
 class FieldMapperForm(ModelForm):
