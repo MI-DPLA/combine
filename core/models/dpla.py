@@ -34,6 +34,11 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # AWS
 import boto3
 
+# core models imports
+from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
+    RecordIdentifierTransformationScenario, DPLABulkDataDownload
+from core.models.tasks import CombineBackgroundTask
+
 
 
 class DPLABulkDataClient(object):

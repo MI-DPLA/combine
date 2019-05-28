@@ -26,8 +26,15 @@ logger = logging.getLogger(__name__)
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
 
-# Datatables
-from core.models.datatables import DTElasticFieldSearch, DTElasticGenericSearch
+# core models imports
+from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
+    RecordIdentifierTransformationScenario, DPLABulkDataDownload
+from core.models.job import Job, IndexMappingFailure, JobValidation, JobTrack, JobInput, CombineJob, HarvestJob,\
+	HarvestOAIJob, HarvestStaticXMLJob, HarvestTabularDataJob, TransformJob, MergeJob, AnalysisJob
+from core.models.livy_spark import LivySession, LivyClient, SparkAppAPIClient
+from core.models.organization import Organization
+from core.models.record_group import RecordGroup
+from core.models.tasks import CombineBackgroundTask
 
 
 class StateIO(mongoengine.Document):

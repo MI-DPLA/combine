@@ -22,6 +22,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 from celery.result import AsyncResult
 from celery.task.control import revoke
 
+# core models imports
+from core.models import job as mod_job
+
 
 
 class CombineBackgroundTask(models.Model):
@@ -191,7 +194,7 @@ class CombineBackgroundTask(models.Model):
 		if 'job_id' in self.task_params.keys():
 			job_id = self.task_params['job_id']
 			logger.debug('attempt to kill spark jobs related to Job: %s' % job_id)
-			j = Job.objects.get(pk=int(job_id))
+			j = mod_job.Job.objects.get(pk=int(job_id))
 			j.stop_job(cancel_livy_statement=False, kill_spark_jobs=True)
 
 		# revoke celery task

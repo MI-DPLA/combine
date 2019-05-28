@@ -37,6 +37,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 # import ElasticSearch BaseMapper and PythonUDFRecord
 from core.spark.utils import PythonUDFRecord
 
+# core models imports
+# from core.models.job import CombineJob
+
 
 
 class OAIEndpoint(models.Model):
@@ -625,6 +628,7 @@ class ValidationScenario(models.Model):
 			'parsed':results_dict,
 			'raw':validation_msg
 		}
+
 
 
 class FieldMapper(models.Model):

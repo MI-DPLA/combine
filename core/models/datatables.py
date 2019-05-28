@@ -28,6 +28,10 @@ logger = logging.getLogger(__name__)
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
 
+# core models imports
+from core.models.elasticsearch import ESIndex
+from core.models.job import Record, RecordValidation
+
 
 
 class DTElasticFieldSearch(View):

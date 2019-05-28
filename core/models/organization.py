@@ -5,7 +5,7 @@ from __future__ import unicode_literals
 import logging
 
 # django imports
-from django.db import models, transaction
+from django.db import models
 
 # import mongo dependencies
 from core.mongo import *

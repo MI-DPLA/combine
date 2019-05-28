@@ -7,6 +7,7 @@ import sickle
 
 # django imports
 from django.conf import settings
+from django.db import models
 
 # import mongo dependencies
 from core.mongo import *
@@ -16,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 
 class OAITransaction(models.Model):
