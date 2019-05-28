@@ -12,7 +12,7 @@ from django.core.urlresolvers import reverse
 from core import models
 
 # Get an instance of a LOGGER
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -69,28 +69,28 @@ def breadcrumb_parser(request):
     if regex_match:
 
         # get job
-        j = models.Job.objects.get(pk=int(regex_match.group(2)))
+        job = models.Job.objects.get(pk=int(regex_match.group(2)))
 
         # get field for analysis
         field_name = request.GET.get('field_name', None)
 
         # append crumbs
-        if j.record_group.organization.for_analysis:
-            logger.debug("breadcrumbs: org is for analysis, skipping")
+        if job.record_group.organization.for_analysis:
+            LOGGER.debug("breadcrumbs: org is for analysis, skipping")
         else:
             crumbs.append((
-                "<span class='font-weight-bold'>Organization</span> - <code>%s</code>" % j.record_group.organization.name,
-                reverse('organization', kwargs={'org_id': j.record_group.organization.id})))
-        if j.record_group.for_analysis:
-            logger.debug("breadcrumbs: rg is for analysis, skipping")
+                "<span class='font-weight-bold'>Organization</span> - <code>%s</code>" % job.record_group.organization.name,
+                reverse('organization', kwargs={'org_id': job.record_group.organization.id})))
+        if job.record_group.for_analysis:
+            LOGGER.debug("breadcrumbs: rg is for analysis, skipping")
         else:
-            crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % j.record_group.name,
-                           reverse('record_group', kwargs={'org_id': j.record_group.organization.id,
-                                                           'record_group_id': j.record_group.id})))
-        crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name,
-                       reverse('job_details', kwargs=dict(org_id=j.record_group.organization.id,
-                                                          record_group_id=j.record_group.id,
-                                                          job_id=j.id))))
+            crumbs.append(("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % job.record_group.name,
+                           reverse('record_group', kwargs={'org_id': job.record_group.organization.id,
+                                                           'record_group_id': job.record_group.id})))
+        crumbs.append(("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % job.name,
+                       reverse('job_details', kwargs=dict(org_id=job.record_group.organization.id,
+                                                          record_group_id=job.record_group.id,
+                                                          job_id=job.id))))
         crumbs.append(("<span class='font-weight-bold'>Field Analysis - <code>%s</code></span>" % field_name,
                        '%s?%s' % (regex_match.group(1), request.META['QUERY_STRING'])))
 
@@ -123,7 +123,7 @@ def breadcrumb_parser(request):
     if org_m:
         org = models.Organization.objects.get(pk=int(org_m.group(2)))
         if org.for_analysis:
-            logger.debug(
+            LOGGER.debug(
                 "breadcrumbs: org is for analysis, converting breadcrumbs")
             crumbs.append(
                 ("<span class='font-weight-bold'>Analysis</span>", reverse('analysis')))
@@ -134,31 +134,31 @@ def breadcrumb_parser(request):
     # record_group
     rg_m = re.match(r'(.+?/record_group/([0-9]+))', request.path)
     if rg_m:
-        rg = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
-        if rg.for_analysis:
-            logger.debug(
+        record_group = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
+        if record_group.for_analysis:
+            LOGGER.debug(
                 "breadcrumbs: rg is for analysis, converting breadcrumbs")
         else:
             crumbs.append(
-                ("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % rg.name, rg_m.group(1)))
+                ("<span class='font-weight-bold'>RecordGroup</span> - <code>%s</code>" % record_group.name, rg_m.group(1)))
 
     # job
     j_m = re.match(r'(.+?/job/([0-9]+))', request.path)
     if j_m:
-        j = models.Job.objects.get(pk=int(j_m.group(2)))
-        if j.record_group.for_analysis:
+        job = models.Job.objects.get(pk=int(j_m.group(2)))
+        if job.record_group.for_analysis:
             crumbs.append(
-                ("<span class='font-weight-bold'>Analysis</span> - %s" % j.name, j_m.group(1)))
+                ("<span class='font-weight-bold'>Analysis</span> - %s" % job.name, j_m.group(1)))
         else:
             crumbs.append(
-                ("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % j.name, j_m.group(1)))
+                ("<span class='font-weight-bold'>Job</span> - <code>%s</code>" % job.name, j_m.group(1)))
 
     # record
     r_m = re.match(r'(.+?/record/([0-9a-z]+))', request.path)
     if r_m:
-        r = models.Record.objects.get(id=r_m.group(2))
+        record = models.Record.objects.get(id=r_m.group(2))
         crumbs.append(
-            ("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % r.record_id, r_m.group(1)))
+            ("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % record.record_id, r_m.group(1)))
 
     # background tasks
     regex_match = re.match(r'(.+?/background_tasks)', request.path)

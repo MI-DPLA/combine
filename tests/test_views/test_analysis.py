@@ -1,15 +1,14 @@
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from core.models import User
+from tests.test_views.utils import TestConfiguration
 
 
 class AnalysisTestCase(TestCase):
     def setUp(self):
         self.client = Client()
-        self.user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
-        self.client.force_login(self.user)
+        self.config = TestConfiguration()
+        self.client.force_login(self.config.user)
 
     def test_get_analysis(self):
         response = self.client.get(reverse('analysis'))

@@ -6,7 +6,7 @@ from core.models import OAIEndpoint
 from tests.test_views.utils import TestConfiguration
 
 
-class ConfigurationTestCase(TestCase):
+class OAIEndpointTestCase(TestCase):
     def setUp(self):
         self.client = Client()
         self.config = TestConfiguration()

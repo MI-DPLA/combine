@@ -161,15 +161,14 @@ def test_field_mapper(request):
         field_mappers = FieldMapper.objects.all()
 
         # check if limiting to one, pre-existing record
-        # TODO: what is q?
-        q = request.GET.get('q', None)
+        get_q = request.GET.get('q', None)
 
         # check for pre-requested transformation scenario
         fmid = request.GET.get('fmid', None)
 
         # return
         return render(request, 'core/test_field_mapper.html', {
-            'q': q,
+            'q': get_q,
             'fmid': fmid,
             'field_mappers': field_mappers,
             'xml2kvp_handle': XML2kvp(),

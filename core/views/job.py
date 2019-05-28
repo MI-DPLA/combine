@@ -311,7 +311,7 @@ def job_details(request, org_id, record_group_id, job_id):
     dpla_bulk_data_matches = cjob.job.get_dpla_bulk_data_matches()
 
     # check if limiting to one, pre-existing record
-    q = request.GET.get('q', None)
+    get_q = request.GET.get('q', None)
 
     # job details and job type specific augment
     job_detail = cjob.job.job_details_dict
@@ -328,24 +328,25 @@ def job_details(request, org_id, record_group_id, job_id):
             LOGGER.debug('job not finished, not setting')
             field_counts = {}
 
+    # TODO: What is this accomplishing?
     # OAI Harvest
-    if type(cjob) == models.HarvestOAIJob:
+    if isinstance(cjob, models.HarvestOAIJob):
         pass
 
     # Static Harvest
-    elif type(cjob) == models.HarvestStaticXMLJob:
+    elif isinstance(cjob, models.HarvestStaticXMLJob):
         pass
 
     # Transform
-    elif type(cjob) == models.TransformJob:
+    elif isinstance(cjob, models.TransformJob):
         pass
 
     # Merge/Duplicate
-    elif type(cjob) == models.MergeJob:
+    elif isinstance(cjob, models.MergeJob):
         pass
 
     # Analysis
-    elif type(cjob) == models.AnalysisJob:
+    elif isinstance(cjob, models.AnalysisJob):
         pass
 
     # get published records, primarily for published sets
@@ -380,7 +381,7 @@ def job_details(request, org_id, record_group_id, job_id):
         'xml2kvp_handle': models.XML2kvp(),
         'job_lineage_json': json.dumps(job_lineage),
         'dpla_bulk_data_matches': dpla_bulk_data_matches,
-        'q': q,
+        'q': get_q,
         'job_details': job_detail,
         'pr': pub_records,
         'published_subsets': published_subsets,
@@ -454,7 +455,7 @@ def job_publish(request, org_id, record_group_id, job_id):
     publish_set_id = request.POST.get('publish_set_id', None)
 
     # override with pre-existing publish set id is selected
-    if request.POST.get('existing_publish_set_id', None) != None:
+    if request.POST.get('existing_publish_set_id', None) is not None:
         publish_set_id = request.POST.get('existing_publish_set_id')
 
     # get published subsets to include in

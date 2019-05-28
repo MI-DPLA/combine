@@ -54,17 +54,17 @@ def create_transformation_scenario(request):
 
 
 def transformation_scenario(request, ts_id):
-    scenario = Transformation.objects.get(pk=int(ts_id))
+    transformation = Transformation.objects.get(pk=int(ts_id))
     if request.method == 'POST':
         form = TransformationForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
-                setattr(scenario, key, form.cleaned_data[key])
-            scenario.save()
+                setattr(transformation, key, form.cleaned_data[key])
+            transformation.save()
         return redirect(reverse('configuration'))
-    form = TransformationForm(model_to_dict(scenario))
+    form = TransformationForm(model_to_dict(transformation))
     return render(request, 'core/edit_configuration_object.html', {
-        'object': scenario,
+        'object': transformation,
         'form': form,
         'object_name': 'Transformation Scenario',
     })
@@ -91,14 +91,14 @@ def test_transformation_scenario(request):
             use_as_include=False)
 
         # check if limiting to one, pre-existing record
-        q = request.GET.get('q', None)
+        get_q = request.GET.get('q', None)
 
         # check for pre-requested transformation scenario
         tsid = request.GET.get('transformation_scenario', None)
 
         # return
         return render(request, 'core/test_transformation_scenario.html', {
-            'q': q,
+            'q': get_q,
             'tsid': tsid,
             'transformation_scenarios': transformation_scenarios,
             'breadcrumbs': breadcrumb_parser(request)

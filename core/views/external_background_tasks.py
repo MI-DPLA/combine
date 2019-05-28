@@ -23,7 +23,7 @@ def system(request):
     livy_session = models.LivySession.get_active_session()
 
     # if session found, refresh
-    if type(livy_session) == models.LivySession:
+    if isinstance(livy_session, models.LivySession):
 
         # refresh
         livy_session.refresh_from_livy()
@@ -31,7 +31,7 @@ def system(request):
         # create and append to list
         livy_sessions = [livy_session]
 
-    elif type(livy_session) == QuerySet:
+    elif isinstance(livy_session, QuerySet):
 
         # loop and refresh
         for session in livy_session:
@@ -88,7 +88,7 @@ def livy_session_start(request):
         livy_session = models.LivySession()
         livy_session.start_session()
 
-    elif type(active_ls) == models.LivySession and request.GET.get('restart') == 'true':
+    elif isinstance(active_ls, models.LivySession) and request.GET.get('restart') == 'true':
         LOGGER.debug(
             'single, active session found, and restart flag passed, restarting')
 
@@ -157,7 +157,7 @@ def system_bg_status(request):
     # get livy status
     livy_session = models.LivySession.get_active_session()
     if livy_session:
-        if type(livy_session) == models.LivySession:
+        if isinstance(livy_session, models.LivySession):
             # refresh single session
             livy_session.refresh_from_livy()
             # set status

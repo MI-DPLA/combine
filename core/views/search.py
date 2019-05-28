@@ -15,9 +15,9 @@ def search(request):
     """
 
     # if search term present, use
-    q = request.GET.get('q', None)
-    if q:
-        search_params = json.dumps({'q': q})
+    get_q = request.GET.get('q', None)
+    if get_q:
+        search_params = json.dumps({'q': get_q})
         LOGGER.debug(search_params)
     else:
         search_params = None
@@ -26,7 +26,7 @@ def search(request):
     job_hierarchy = _stateio_prepare_job_hierarchy()
 
     return render(request, 'core/search.html', {
-        'search_string': q,
+        'search_string': get_q,
         'search_params': search_params,
         'job_hierarchy_json': json.dumps(job_hierarchy),
         'breadcrumbs': breadcrumb_parser(request),

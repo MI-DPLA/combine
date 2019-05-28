@@ -21,13 +21,13 @@ def validation_scenario_payload(request, vs_id):
         """
 
     # get transformation
-    validation_scenario = ValidationScenario.objects.get(pk=int(vs_id))
+    scenario = ValidationScenario.objects.get(pk=int(vs_id))
 
-    if validation_scenario.validation_type == 'sch':
+    if scenario.validation_type == 'sch':
         # return document as XML
-        return HttpResponse(validation_scenario.payload, content_type='text/xml')
+        return HttpResponse(scenario.payload, content_type='text/xml')
 
-    return HttpResponse(validation_scenario.payload, content_type='text/plain')
+    return HttpResponse(scenario.payload, content_type='text/plain')
 
 
 def create_validation_scenario(request):
@@ -86,14 +86,14 @@ def test_validation_scenario(request):
         validation_scenarios = ValidationScenario.objects.all()
 
         # check if limiting to one, pre-existing record
-        q = request.GET.get('q', None)
+        get_q = request.GET.get('q', None)
 
         # check for pre-requested transformation scenario
         vsid = request.GET.get('validation_scenario', None)
 
         # return
         return render(request, 'core/test_validation_scenario.html', {
-            'q': q,
+            'q': get_q,
             'vsid': vsid,
             'validation_scenarios': validation_scenarios,
             'breadcrumbs': breadcrumb_parser(request)
@@ -109,19 +109,19 @@ def test_validation_scenario(request):
 
         try:
             # init new validation scenario
-            validation_scenario = ValidationScenario(
+            scenario = ValidationScenario(
                 name='temp_vs_%s' % str(uuid.uuid4()),
                 payload=request.POST.get('vs_payload'),
                 validation_type=request.POST.get('vs_type'),
                 default_run=False
             )
-            validation_scenario.save()
+            scenario.save()
 
             # validate with record
-            vs_results = validation_scenario.validate_record(record)
+            vs_results = scenario.validate_record(record)
 
             # delete vs
-            validation_scenario.delete()
+            scenario.delete()
 
             if request.POST.get('vs_results_format') == 'raw':
                 return HttpResponse(vs_results['raw'], content_type="text/plain")
@@ -131,10 +131,10 @@ def test_validation_scenario(request):
 
         except Exception as err:
 
-            if validation_scenario.id:
+            if scenario.id:
                 # TODO: Not sure how to invoke this code
                 LOGGER.debug(
                     'test validation scenario was unsuccessful, deleting temporary vs')
-                validation_scenario.delete()
+                scenario.delete()
 
             return HttpResponse(str(err), content_type="text/plain")

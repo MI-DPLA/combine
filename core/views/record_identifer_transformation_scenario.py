@@ -75,14 +75,14 @@ def test_rits(request):
     # If GET, serve validation test screen
     if request.method == 'GET':
         # check if limiting to one, pre-existing record
-        q = request.GET.get('q', None)
+        get_q = request.GET.get('q', None)
 
         # get record identifier transformation scenarios
         rits = RecordIdentifierTransformationScenario.objects.all()
 
         # return
         return render(request, 'core/test_rits.html', {
-            'q': q,
+            'q': get_q,
             'rits': rits,
             'breadcrumbs': breadcrumb_parser(request)
         })

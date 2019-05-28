@@ -519,7 +519,7 @@ def stateio_import(request):
                 'importing state based on remote location: %s', export_path)
 
         # handle file upload
-        elif type(request.FILES.get('export_upload_payload', None)) is not None:
+        elif request.FILES.get('export_upload_payload', None) is not None:
 
             LOGGER.debug('handling file upload')
 
