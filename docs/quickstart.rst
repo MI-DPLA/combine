@@ -49,7 +49,7 @@ and it's recommended to do so in order:
 For simplicity's sake, we will assume Combine is installed on a server
 with the domain name of ``combine``, though likely running at the IP
 ``192.168.45.10``, which the Ansible/Vagrant install from
-`Combine-Playbook <https://github.com/WSULib/combine-playbook>`__
+`Combine-Playbook <https://github.com/MI-DPLA/combine-playbook>`__
 defaults to. On most systems you can point that IP to a domain name like
 ``combine`` by modifying your ``/etc/hosts`` file on your local machine.
 **Note:** ``combine`` and ``192.168.45.10`` might be used

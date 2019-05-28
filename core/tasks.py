@@ -33,7 +33,7 @@ import boto3
 
 
 # TODO: need some handling for failed Jobs which may not be available, but will not be changing,
-# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
+# to prevent infinite polling (https://github.com/MI-DPLA/combine/issues/192)
 def spark_job_done(response):
     return response['state'] == 'available'
 
