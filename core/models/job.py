@@ -1407,6 +1407,9 @@ class Job(models.Model):
 			- if job's publish_set_id part of Published Subset, remove that pre-count as well
 		'''
 
+		# import
+		from core.models.publishing import PublishedRecords
+
 		# remove global published pre-count
 		if self.published:
 			d = mc_handle.combine.misc.delete_one({'_id':'published_field_counts'})

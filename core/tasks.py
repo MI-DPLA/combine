@@ -1227,7 +1227,7 @@ def job_dbdm(ct_id):
 
 @celery_app.task()
 def rerun_jobs_prep(ct_id):
-    # get CombineTask (ct)
+
     try:
 
         # check for livy session
