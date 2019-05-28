@@ -33,5 +33,5 @@ class ExternalBackgroundTaskTestCase(TestCase):
     def test_system_bg_status(self):
         response = self.client.get('/combine/system/bg_status')
         json = response.json()
-        self.assertEqual(json['celery_status'], 'stopped')
+        self.assertEqual(json['celery_status'], 'unknown')
         self.assertEqual(json['livy_status'], 'stopped')
