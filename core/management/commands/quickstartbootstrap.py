@@ -12,7 +12,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        ## prepare demo MODS files		
+        # prepare demo MODS files
         # parse file
         xml_tree = etree.parse('tests/data/mods_250.xml')
         xml_root = xml_tree.getroot()

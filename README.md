@@ -18,8 +18,8 @@ Combine has a fair amount of server components, dependencies, and configurations
 
 ### Docker
 
-A GitHub repository [Combine-Docker](https://github.com/WSULib/combine-docker) exists to help stand up an instance of Combine as a series of interconnected Docker containers.
+A GitHub repository [Combine-Docker](https://github.com/MI-DPLA/combine-docker) exists to help stand up an instance of Combine as a series of interconnected Docker containers.
 
 ### Server Provisioning with Vagrant and/or Ansible
 
-To this end, use the repository, [Combine-playbook](https://github.com/WSULib/combine-playbook), which has been created to assist with provisioning a server with everything neccessary, and in place, to run Combine.  This repository provides routes for server provisioning via [Vagrant](https://www.vagrantup.com/) and/or [Ansible](https://www.ansible.com/). Please visit the [Combine-playbook](https://github.com/WSULib/combine-playbook) repository for more information about installation.
+To this end, use the repository, [Combine-playbook](https://github.com/MI-DPLA/combine-playbook), which has been created to assist with provisioning a server with everything neccessary, and in place, to run Combine.  This repository provides routes for server provisioning via [Vagrant](https://www.vagrantup.com/) and/or [Ansible](https://www.ansible.com/). Please visit the [Combine-playbook](https://github.com/MI-DPLA/combine-playbook) repository for more information about installation.

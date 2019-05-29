@@ -23,11 +23,11 @@ class Command(BaseCommand):
     Manage command to update Combine.
 
     Performs the following:
-        - pull from github, updates all branches
-        - if relase passed, checkout release/branch
-        - pip install requirements
-        - collect static django
-        - restart gunicorn, livy session, celery
+            - pull from github, updates all branches
+            - if relase passed, checkout release/branch
+            - pip install requirements
+            - collect static django
+            - restart gunicorn, livy session, celery
     '''
 
     help = 'Update Combine'
@@ -63,7 +63,6 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options):
-
         '''
         Handler for updates to Combine
         '''
@@ -79,7 +78,6 @@ class Command(BaseCommand):
             self.update(args, options)
 
     def update(self, args, options):
-
         '''
         Method to handle branch/tagged release update
         '''
@@ -96,16 +94,19 @@ class Command(BaseCommand):
                 # checkout release if provided
                 if options.get('release', None) != None:
                     release = options['release']
-                    logger.debug('release/branch provided, checking out: %s' % release)
+                    logger.debug(
+                        'release/branch provided, checking out: %s' % release)
 
                     # git checkout
                     os.system('git checkout %s' % release)
 
                 # install requirements as combine user
-                os.system('%s/pip install -r requirements.txt' % (self.PYTHON_PATH))
+                os.system('%s/pip install -r requirements.txt' %
+                          (self.PYTHON_PATH))
 
                 # collect django static
-                os.system('%s/python manage.py collectstatic --noinput' % (self.PYTHON_PATH))
+                os.system('%s/python manage.py collectstatic --noinput' %
+                          (self.PYTHON_PATH))
 
                 # restart gunicorn
                 self._restart_gunicorn()
@@ -153,7 +154,8 @@ class Command(BaseCommand):
             livy_session = LivySession()
             livy_session.start_session()
         else:
-            logger.debug('single, active session found, and restart flag passed, restarting')
+            logger.debug(
+                'single, active session found, and restart flag passed, restarting')
             new_ls = active_ls.restart_session()
 
     def _restart_celery(self):
@@ -165,7 +167,6 @@ class Command(BaseCommand):
         logger.debug(results)
 
     def run_update_snippet(self, args, options):
-
         '''
         Method to run update snippet if passed
         '''
@@ -178,8 +179,8 @@ class Command(BaseCommand):
         if snippet != None:
             snippet()
         else:
-            logger.debug('Update snippet "%s" could not be found' % options.get('run_update_snippet', None))
-
+            logger.debug('Update snippet "%s" could not be found' %
+                         options.get('run_update_snippet', None))
 
 class VersionUpdateHelper(object):
     '''
@@ -200,7 +201,6 @@ class VersionUpdateHelper(object):
         ]
 
     def run_update_snippets(self):
-
         '''
         Method to loop through update snippets and fire
         '''
@@ -209,16 +209,17 @@ class VersionUpdateHelper(object):
             try:
                 snippet()
             except Exception as e:
-                logger.debug('Could not run udpate snippet: %s' % snippet.__name__)
+                logger.debug('Could not run udpate snippet: %s' %
+                             snippet.__name__)
                 logger.debug(str(e))
 
     def v0_4__set_job_baseline_combine_version(self):
-
         '''
         Method to set combine_version as v0.1 in job_details for all lacking version
         '''
 
-        logger.debug('v0_4__set_job_baseline_combine_version: setting Job combine_version to v0.1 if not set')
+        logger.debug(
+            'v0_4__set_job_baseline_combine_version: setting Job combine_version to v0.1 if not set')
 
         # get Transform Jobs
         jobs = Job.objects.all()
@@ -234,7 +235,6 @@ class VersionUpdateHelper(object):
                 job.update_job_details({'combine_version': 'v0.1'})
 
     def v0_4__set_job_current_combine_version(self):
-
         '''
         Method to set combine_version as current Combine version in job_details
         '''
@@ -256,12 +256,12 @@ class VersionUpdateHelper(object):
                 job.update_job_details({'combine_version': settings.COMBINE_VERSION})
 
     def v0_4__update_transform_job_details(self):
-
         '''
         Method to update job_details for Transform Jobs if from_v < v0.4 or None
         '''
 
-        logger.debug('v0_4__update_transform_job_details: updating job details for pre v0.4 Transform Jobs')
+        logger.debug(
+            'v0_4__update_transform_job_details: updating job details for pre v0.4 Transform Jobs')
 
         # get Transform Jobs
         trans_jobs = Job.objects.filter(job_type='TransformJob')
@@ -273,7 +273,7 @@ class VersionUpdateHelper(object):
             if version.parse(job.job_details_dict['combine_version']) < version.parse('v0.4'):
 
                 logger.debug('Transform Job "%s" is Combine version %s, checking if needs updating' % (
-                job, job.job_details_dict['combine_version']))
+                    job, job.job_details_dict['combine_version']))
 
                 # check for 'transformation' key in job_details
                 if job.job_details_dict.get('transformation', False):
@@ -290,10 +290,10 @@ class VersionUpdateHelper(object):
                             'scenarios': [
                                 {
                                     'id': trans_details['id'],
-                                    'name': trans_details['name'],
-                                    'type': trans_details['type'],
-                                    'type_human': trans_details['type'],
-                                    'index': 0
+                                    'name':trans_details['name'],
+                                    'type':trans_details['type'],
+                                    'type_human':trans_details['type'],
+                                    'index':0
                                 }
                             ],
                             'scenarios_json': '[{"index":0,"trans_id":%s}]' % trans_details['id']
@@ -303,7 +303,6 @@ class VersionUpdateHelper(object):
                         job.update_job_details({'transformation': trans_dict})
 
     def v0_7_1__fix_redis_version_mismatches(self):
-
         '''
         Method to fix any redis version mismatches
         '''
@@ -313,7 +312,8 @@ class VersionUpdateHelper(object):
 
             # ensure redis version
             os.system('%s/pip uninstall redis celery -y' % (self.PYTHON_PATH))
-            os.system('%s/pip install redis==3.2.1 celery==4.3.0' % (self.PYTHON_PATH))
+            os.system('%s/pip install redis==3.2.1 celery==4.3.0' %
+                      (self.PYTHON_PATH))
 
             # restart celery background tasks
             # get supervisor handle

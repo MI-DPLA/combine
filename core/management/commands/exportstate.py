@@ -15,8 +15,8 @@ logger = logging.getLogger(__name__)
 class Command(BaseCommand):
     '''
     Manage command to trigger the state export of:
-        - all Organizations (and downstream Jobs);
-        - all Configuration Scenarios
+            - all Organizations (and downstream Jobs);
+            - all Configuration Scenarios
     '''
 
     help = 'Using State Export/Import, export state of all Jobs and Configuration Scenarios'

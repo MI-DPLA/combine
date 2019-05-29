@@ -22,7 +22,8 @@ def combine_settings(request):
         'COMBINE_DEPLOYMENT',
         'COMBINE_VERSION'
     ]
-    combine_settings_dict = {k: getattr(settings, k, None) for k in combine_settings_keys}
+    combine_settings_dict = {k: getattr(
+        settings, k, None) for k in combine_settings_keys}
 
     # return
     return combine_settings_dict

@@ -16,11 +16,11 @@ from django.db import connection
 
 
 def refresh_django_db_connection():
-    '''
+    """
     Function to refresh connection to Django DB.
 
     Behavior with python files uploaded to Spark context via Livy is atypical when
-    it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther
+    it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
     apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
 
     Running this function before jobs ensures that the connection is fresh between these python files
@@ -31,27 +31,25 @@ def refresh_django_db_connection():
 
     Returns:
         None
-    '''
+    """
 
     connection.close()
     connection.connect()
 
 
 class PythonUDFRecord(object):
-    '''
+    """
     Class to provide a slim-downed version of core.models.Record that is used for spark UDF functions,
     and for previewing python based validations and transformations
-    '''
+    """
 
     def __init__(self, record_input, non_row_input=False, record_id=None, document=None):
-
-        '''
+        """
         Instantiated in one of two ways
             1) from a DB row representing a Record in its entirety
             2) manually passed record_id or document (or both), triggered by non_row_input Flag
                 - for example, this is used for testing record_id transformations
-        '''
-
+        """
         if non_row_input:
 
             # if record_id provided, set
@@ -123,9 +121,9 @@ class PythonUDFRecord(object):
 
 
 def df_union_all(dfs):
-    '''
+    """
     Function to merge list of DataFrames
-    '''
+    """
 
     if len(dfs) > 1:
         return dfs[0].unionAll(df_union_all(dfs[1:]))
