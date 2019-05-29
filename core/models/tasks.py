@@ -58,10 +58,8 @@ class CombineBackgroundTask(models.Model):
 	finish_timestamp = models.DateTimeField(null=True, default=None, auto_now_add=False)
 	completed = models.BooleanField(default=False)
 
-
 	def __str__(self):
 		return 'CombineBackgroundTask: %s, ID #%s, Celery Task ID #%s' % (self.name, self.id, self.celery_task_id)
-
 
 	def update(self):
 

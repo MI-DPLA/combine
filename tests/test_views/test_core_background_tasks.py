@@ -1,22 +1,16 @@
 from django.test import TestCase, Client
 
-from core.models import CombineBackgroundTask, Job, Organization, RecordGroup, User
+from core.models import CombineBackgroundTask
+from tests.test_views.utils import TestConfiguration
 
 
 class BackgroundTaskTestCase(TestCase):
     def setUp(self):
         self.client = Client()
-        user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
-        org = Organization.objects.create(name="Test Organization")
-        record_group = RecordGroup.objects.create(organization=org,
-                                                  name="Test Record Group")
-        job = Job.objects.create(record_group=record_group,
-                                 user=user,
-                                 job_type="HarvestJob")
-        task_params_json = {"job_id": job.id,
-                            "record_group_id": record_group.id,
-                            "org_id": org.id}
+        self.config = TestConfiguration()
+        task_params_json = {"job_id": self.config.job.id,
+                            "record_group_id": self.config.record_group.id,
+                            "org_id": self.config.org.id}
         self.bg_task = CombineBackgroundTask.objects.create(celery_task_id='test celery id',
                                                             task_type='job_reindex',
                                                             task_params_json=str(task_params_json).replace("\'", "\""))

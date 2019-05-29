@@ -83,7 +83,8 @@ class TransformationTestCase(TestCase):
         self.assertRedirects(response, reverse('configuration'))
 
     def test_transformation_scenario_payload(self):
-        transformation = Transformation.objects.create(
-            payload='test payload', transformation_type='python')
+        transformation = Transformation.objects.create(name='Test Transform',
+                                                       payload='test payload',
+                                                       transformation_type='python')
         response = self.client.get(reverse('transformation_scenario_payload', args=[transformation.id]))
         self.assertEqual(b'test payload', response.content)

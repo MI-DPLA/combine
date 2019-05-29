@@ -1,14 +1,14 @@
 from django.test import Client, TestCase
 
-from core.models import StateIO, User
+from core.models import StateIO
+from tests.test_views.utils import TestConfiguration
 
 
 class StateIOTestCase(TestCase):
     def setUp(self):
-        self.user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
         self.client = Client()
-        self.client.force_login(self.user)
+        self.config = TestConfiguration()
+        self.client.force_login(self.config.user)
 
     def test_state_io(self):
         in_io = StateIO.objects.create(name="test import i/o",

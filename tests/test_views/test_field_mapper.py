@@ -41,7 +41,8 @@ class FieldMapperTestCase(TestCase):
         self.assertIn(b'Test Field Mapper', response.content)
 
     def test_edit_field_mapper_post(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='python',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='python',
                                                   payload='some code')
         fm_id = field_mapper.id
         post_body = {
@@ -57,7 +58,8 @@ class FieldMapperTestCase(TestCase):
             self.assertEqual(field_mapper_dict[item], post_body[item])
 
     def test_edit_field_mapper_invalid(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='python',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='python',
                                                   payload='some code')
         post_body = {
             'payload': 'some other code',
@@ -66,7 +68,8 @@ class FieldMapperTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_delete_field_mapper(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='python',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='python',
                                                   payload='some code')
         response = self.client.delete(reverse('delete_field_mapper', args=[field_mapper.id]))
         self.assertRedirects(response, reverse('configuration'))
@@ -78,19 +81,22 @@ class FieldMapperTestCase(TestCase):
         self.assertRedirects(response, reverse('configuration'))
 
     def test_field_mapper_payload_config_json(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='xml2kvp',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='xml2kvp',
                                                   config_json='{}')
         response = self.client.get(reverse('field_mapper_payload', args=[field_mapper.id]))
         self.assertEqual(b'"{}"', response.content)
 
     def test_field_mapper_payload(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='xml2kvp',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='xml2kvp',
                                                   payload='test payload')
         response = self.client.get(f'{reverse("field_mapper_payload", args=[field_mapper.id])}?type=payload')
         self.assertEqual(b'"test payload"', response.content)
 
     def test_field_mapper_payload_config_config(self):
-        field_mapper = FieldMapper.objects.create(field_mapper_type='xml2kvp',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='xml2kvp',
                                                   config_json='{}')
         response = self.client.get(f'{reverse("field_mapper_payload", args=[field_mapper.id])}?type=config')
         self.assertEqual(b'"{}"', response.content)

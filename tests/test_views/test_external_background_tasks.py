@@ -1,15 +1,14 @@
 from django.test import Client, TestCase
 
-from core.models import User
 from core import models
+from tests.test_views.utils import TestConfiguration
 
 
 class ExternalBackgroundTaskTestCase(TestCase):
     def setUp(self):
         self.client = Client()
-        user = User.objects.create(
-            username='combine', password='combine', is_superuser=True)
-        self.client.force_login(user)
+        self.config = TestConfiguration()
+        self.client.force_login(self.config.user)
 
     def test_get_system(self):
         response = self.client.get('/combine/system')

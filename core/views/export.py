@@ -4,8 +4,7 @@ import logging
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
-from core import models
-from core.models import tasks
+from core import models, tasks
 
 LOGGER = logging.getLogger(__name__)
 

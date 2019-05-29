@@ -8,7 +8,8 @@ from django.urls import reverse
 from django.forms import model_to_dict
 from django.core.exceptions import ObjectDoesNotExist
 
-from core.models import FieldMapper, Record, XML2kvp
+from core.models import FieldMapper, Record
+from core.xml2kvp import XML2kvp
 from core.forms import FieldMapperForm
 
 from .view_helpers import breadcrumb_parser

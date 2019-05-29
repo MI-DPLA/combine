@@ -4,7 +4,7 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from core import models
+from core import models, xml2kvp
 from core.mongo import mc_handle
 
 from .view_helpers import breadcrumb_parser
@@ -54,7 +54,7 @@ def published(request, subset=None):
     return render(request, 'core/published.html', {
         'published': pub_records,
         'field_mappers': field_mappers,
-        'xml2kvp_handle': models.XML2kvp(),
+        'xml2kvp_handle': xml2kvp.XML2kvp(),
         'field_counts': field_counts,
         'es_index_str': pub_records.esi.es_index_str,
         'subsets': subsets,

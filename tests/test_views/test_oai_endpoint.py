@@ -13,8 +13,9 @@ class OAIEndpointTestCase(TestCase):
         self.client.force_login(self.config.user)
 
     def test_oai_endpoint_payload(self):
-        oai_endpoint = OAIEndpoint.objects.create(name='Test OAI')
-        response = self.client.get(reverse('oai_endpoint_payload', args=[oai_endpoint.id]))
+        endpoint = OAIEndpoint.objects.create(name='Test OAI',
+                                              metadataPrefix='prefix')
+        response = self.client.get(reverse('oai_endpoint_payload', args=[endpoint.id]))
         json = response.json()
         self.assertEqual(json['name'], 'Test OAI')
 
@@ -44,12 +45,14 @@ class OAIEndpointTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_edit_oai_endpoint_get(self):
-        endpoint = OAIEndpoint.objects.create(name='Test OAI')
+        endpoint = OAIEndpoint.objects.create(name='Test OAI',
+                                              metadataPrefix='prefix')
         response = self.client.get(reverse('edit_oai_endpoint', args=[endpoint.id]))
         self.assertIn(b'Test OAI', response.content)
 
     def test_edit_oai_endpoint_post(self):
-        endpoint = OAIEndpoint.objects.create(name='Test OAI')
+        endpoint = OAIEndpoint.objects.create(name='Test OAI',
+                                              metadataPrefix='prefix')
         endpoint_id = endpoint.id
         post_body = {
             'name': 'Test OAI Endpoint',
@@ -67,7 +70,8 @@ class OAIEndpointTestCase(TestCase):
             self.assertEqual(endpoint_dict[item], post_body[item])
 
     def test_edit_oai_endpoint_invalid(self):
-        endpoint = OAIEndpoint.objects.create(name='Test OAI')
+        endpoint = OAIEndpoint.objects.create(name='Test OAI',
+                                              metadataPrefix='prefix')
         post_body = {
             'name': 'Test OAI Endpoint',
         }
@@ -75,7 +79,8 @@ class OAIEndpointTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_delete_oai_endpoint(self):
-        endpoint = OAIEndpoint.objects.create(name='Test OAI')
+        endpoint = OAIEndpoint.objects.create(name='Test OAI',
+                                              metadataPrefix='prefix')
         response = self.client.delete(reverse('delete_oai_endpoint', args=[endpoint.id]))
         self.assertRedirects(response, reverse('configuration'))
         with self.assertRaises(ObjectDoesNotExist):

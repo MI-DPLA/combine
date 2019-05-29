@@ -110,6 +110,8 @@ class Transformation(models.Model):
 	def __str__(self):
 		return 'Transformation: %s, transformation type: %s' % (self.name, self.transformation_type)
 
+	def as_dict(self):
+		return self.__dict__
 
 	def transform_record(self, row):
 
@@ -350,6 +352,8 @@ class ValidationScenario(models.Model):
 		return 'ValidationScenario: %s, validation type: %s, default run: %s' % (
 			self.name, self.validation_type, self.default_run)
 
+	def as_dict(self):
+		return self.__dict__
 
 	def validate_record(self, row):
 
@@ -663,6 +667,8 @@ class FieldMapper(models.Model):
 	def __str__(self):
 		return '%s, FieldMapper: #%s' % (self.name, self.id)
 
+	def as_dict(self):
+		return self.__dict__
 
 	@property
 	def config(self):
@@ -710,6 +716,8 @@ class RecordIdentifierTransformationScenario(models.Model):
 	def __str__(self):
 		return '%s, RITS: #%s' % (self.name, self.id)
 
+	def as_dict(self):
+		return self.__dict__
 
 
 class DPLABulkDataDownload(models.Model):

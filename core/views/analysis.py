@@ -3,7 +3,7 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
-from core import models
+from core import models, xml2kvp
 
 from .view_helpers import breadcrumb_parser
 
@@ -89,7 +89,7 @@ def job_analysis(request):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'analysis_type': analysis_type,
             'bulk_downloads': bulk_downloads,
             'job_lineage_json': json.dumps(job_lineage)

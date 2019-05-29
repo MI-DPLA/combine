@@ -1,4 +1,6 @@
-from core.models import User, Organization, RecordGroup, Job, Record
+from django.contrib.auth.models import User
+
+from core.models import Organization, RecordGroup, Job, Record
 
 
 class TestConfiguration:

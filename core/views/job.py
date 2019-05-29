@@ -9,7 +9,7 @@ from django.core.urlresolvers import reverse
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import redirect, render
 
-from core import models, tasks
+from core import models, tasks, xml2kvp
 
 from core.mongo import mc_handle
 
@@ -378,7 +378,7 @@ def job_details(request, org_id, record_group_id, job_id):
         'record_count_details': record_count_details,
         'field_counts': field_counts,
         'field_mappers': field_mappers,
-        'xml2kvp_handle': models.XML2kvp(),
+        'xml2kvp_handle': xml2kvp.XML2kvp(),
         'job_lineage_json': json.dumps(job_lineage),
         'dpla_bulk_data_matches': dpla_bulk_data_matches,
         'q': get_q,
@@ -752,7 +752,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
