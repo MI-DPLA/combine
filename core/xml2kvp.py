@@ -8,11 +8,8 @@ import hashlib
 import json
 from lxml import etree
 import logging
-import pdb
-from pprint import pprint, pformat
 import re
 import time
-import uuid
 import xmltodict
 
 # init logger
@@ -20,6 +17,7 @@ logger = logging.getLogger(__name__)
 
 # sibling hash regex
 sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
+
 
 
 class XML2kvp(object):
@@ -809,7 +807,7 @@ class XML2kvp(object):
 
             # write values and number of nodes
             # # convert with ast.literal_eval to circumvent lists/tuples record as strings in pyspark
-            # # https://github.com/WSULib/combine/issues/361#issuecomment-442510950
+            # # https://github.com/MI-DPLA/combine/issues/361#issuecomment-442510950
             if type(v) == str:
 
                 # evaluate to expose lists or tuples
@@ -1106,6 +1104,7 @@ class XML2kvp(object):
 
         # return
         return k
+
 
 
 class XMLRecord(object):

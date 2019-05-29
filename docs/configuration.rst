@@ -401,7 +401,7 @@ An alternative to XSLT transformations are created Transformation Scenarios that
 
 For Transformation Jobs in Combine, each Record in the input Job is fed to the Transformation Scenario.  If the ``transformation type`` is ``xslt``, the XSLT stylesheet for that Transformation Scenario is used as-is on the Record's raw XML.  However, if the ``transformation type`` is ``python``, the python code provided for the Transformation Scenario will be used.
 
-The python code snippet may include as many imports or function definitions as needed, but will require one function that each Record will be passed to, and this function must be named ``python_record_transformation``.  Additionally, this function must expect one function argument, a passed instance of what is called a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  In Spark, "UDF" often refers to a "User Defined Function"; which is precisely what this parsed Record instance is passed to in the case of a Transformation.  This is a convenience class that parses a Record in Combine for easy interaction within Transformation, Validation, and Record Identifier Transformation Scenarios.   A ``PythonUDFRecord`` instance has the following representations of the Record:
+The python code snippet may include as many imports or function definitions as needed, but will require one function that each Record will be passed to, and this function must be named ``python_record_transformation``.  Additionally, this function must expect one function argument, a passed instance of what is called a `PythonUDFRecord <https://github.com/MI-DPLA/combine/blob/master/core/spark/utils.py#L45-L105>`_.  In Spark, "UDF" often refers to a "User Defined Function"; which is precisely what this parsed Record instance is passed to in the case of a Transformation.  This is a convenience class that parses a Record in Combine for easy interaction within Transformation, Validation, and Record Identifier Transformation Scenarios.   A ``PythonUDFRecord`` instance has the following representations of the Record:
 
   - ``record_id`` - The Record Identifier of the Record
   - ``document`` - raw, XML for the Record (what is passed to XSLT records)
@@ -561,7 +561,7 @@ Python Code Snippet
 
 Similar to Transformation Scenarios, python code may also be used for the Validation Scenarios payload.  When a Validation is run for a Record, and a python code snippet type is detected, all defined function names that begin with ``test_`` will be used as separate, distinct Validation tests.  This very similar to how `pytest <https://docs.pytest.org/en/latest/contents.html>`_ looks for function names prefixed with ``test_``.  It is not perfect, but relatively simple and effective.
 
-These functions must expect two arguments.  The first is an instance of a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_.  As detailed above, ``PythonUDFRecord`` instances are a parsed, convenient way to interact with Combine Records.  A ``PythonUDFRecord`` instance has the following representations of the Record:
+These functions must expect two arguments.  The first is an instance of a `PythonUDFRecord <https://github.com/MI-DPLA/combine/blob/master/core/spark/utils.py#L45-L105>`_.  As detailed above, ``PythonUDFRecord`` instances are a parsed, convenient way to interact with Combine Records.  A ``PythonUDFRecord`` instance has the following representations of the Record:
 
   - ``record_id`` - The Record Identifier of the Record
   - ``document`` - raw, XML for the Record (what is passed to XSLT records)
@@ -673,7 +673,7 @@ All RITS have the following values:
   - ``Transformation target`` - the RITS payload and type may use the pre-existing Record Identifier as input, or the Record's raw, XML record
   - ``Regex match payload`` - If using regex, the regular expression to **match**
   - ``Regex replace payload`` - If using regex, the regular expression to **replace** that match with (allows values from groups)
-  - ``Python payload`` - python code snippet, that will be passed an instance of a `PythonUDFRecord <https://github.com/WSULib/combine/blob/master/core/spark/utils.py#L45-L105>`_
+  - ``Python payload`` - python code snippet, that will be passed an instance of a `PythonUDFRecord <https://github.com/MI-DPLA/combine/blob/master/core/spark/utils.py#L45-L105>`_
   - ``Xpath payload`` - single XPath expression as a string
 
 .. figure:: img/config_add_rits.png

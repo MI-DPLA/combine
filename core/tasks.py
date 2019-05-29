@@ -33,9 +33,7 @@ import boto3
 
 
 # TODO: need some handling for failed Jobs which may not be available, but will not be changing,
-# to prevent infinite polling (https://github.com/WSULib/combine/issues/192)
-
-
+# to prevent infinite polling (https://github.com/MI-DPLA/combine/issues/192)
 def spark_job_done(response):
     return response['state'] == 'available'
 
@@ -1272,7 +1270,7 @@ def job_dbdm(ct_id):
 
 @celery_app.task()
 def rerun_jobs_prep(ct_id):
-    # get CombineTask (ct)
+
     try:
 
         # check for livy session
