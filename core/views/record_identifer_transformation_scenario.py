@@ -28,13 +28,15 @@ def rits_payload(request, rits_id):
 
 
 def create_rits(request):
+    form = None
     if request.method == 'POST':
         form = RITSForm(request.POST)
         if form.is_valid():
             new_rits = RecordIdentifierTransformationScenario(**form.cleaned_data)
             new_rits.save()
-        return redirect(reverse('configuration'))
-    form = RITSForm()
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = RITSForm()
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Record Identifier Transformation Scenario',
@@ -43,14 +45,16 @@ def create_rits(request):
 
 def edit_rits(request, rits_id):
     rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+    form = None
     if request.method == 'POST':
         form = RITSForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
                 setattr(rits, key, form.cleaned_data[key])
             rits.save()
-        return redirect(reverse('configuration'))
-    form = RITSForm(model_to_dict(rits))
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = RITSForm(model_to_dict(rits))
     return render(request, 'core/edit_configuration_object.html', {
         'object': rits,
         'form': form,

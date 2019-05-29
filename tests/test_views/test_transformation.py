@@ -30,6 +30,10 @@ class TransformationTestCase(TestCase):
         for item in post_body:
             self.assertEqual(transform_dict[item], post_body[item])
 
+    def test_create_transformation_scenario_invalid(self):
+        response = self.client.post(reverse('create_transformation_scenario'), {})
+        self.assertIn(b'This field is required.', response.content)
+
     def test_transformation_scenario_get(self):
         transformation = Transformation.objects.create(
             name='Test Transform',
@@ -53,6 +57,16 @@ class TransformationTestCase(TestCase):
         self.assertIsNotNone(transform.id)
         self.assertEqual(transform.payload, 'some other payload')
         self.assertEqual(transform.transformation_type, 'python')
+
+    def test_transformation_scenario_invalid(self):
+        transformation = Transformation.objects.create(
+            name='Test Transform',
+            payload='test payload',
+            transformation_type='python')
+        response = self.client.post(reverse('transformation_scenario', args=[transformation.id]), {
+            'payload': 'some other payload',
+        })
+        self.assertIn(b'This field is required.', response.content)
 
     def test_transformation_scenario_delete(self):
         transformation = Transformation.objects.create(

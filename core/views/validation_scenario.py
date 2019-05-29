@@ -31,18 +31,16 @@ def validation_scenario_payload(request, vs_id):
 
 
 def create_validation_scenario(request):
-    # TODO: validate the model
     # TODO: do we care about deduplicating validation scenarios?
-    # TODO: error handling
+    form = None
     if request.method == "POST":
-        new_validation_scenario = ValidationScenario(
-            name=request.POST['name'],
-            payload=request.POST['payload'],
-            validation_type=request.POST['validation_type']
-        )
-        new_validation_scenario.save()
-        return redirect(reverse('configuration'))
-    form = ValidationScenarioForm()
+        form = ValidationScenarioForm(request.POST)
+        if form.is_valid():
+            new_scenario = ValidationScenario(**form.cleaned_data)
+            new_scenario.save()
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = ValidationScenarioForm()
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Validation Scenario',
@@ -51,14 +49,16 @@ def create_validation_scenario(request):
 
 def validation_scenario(request, vs_id):
     scenario = ValidationScenario.objects.get(pk=int(vs_id))
+    form = None
     if request.method == "POST":
         form = ValidationScenarioForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
                 setattr(scenario, key, form.cleaned_data[key])
             scenario.save()
-        return redirect(reverse('configuration'))
-    form = ValidationScenarioForm(model_to_dict(scenario))
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = ValidationScenarioForm(model_to_dict(scenario))
     return render(request, 'core/edit_configuration_object.html', {
         'object': scenario,
         'form': form,

@@ -40,15 +40,15 @@ def field_mapper_payload(request, fm_id):
 
 
 def create_field_mapper(request):
+    form = None
     if request.method == "POST":
         form = FieldMapperForm(request.POST)
         if form.is_valid():
             new_field_mapper = FieldMapper(**form.cleaned_data)
             new_field_mapper.save()
-        else:
-            print(form.errors.as_json())
-        return redirect(reverse('configuration'))
-    form = FieldMapperForm
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = FieldMapperForm
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Field Mapper',
@@ -57,16 +57,16 @@ def create_field_mapper(request):
 
 def edit_field_mapper(request, fm_id):
     field_mapper = FieldMapper.objects.get(pk=int(fm_id))
+    form = None
     if request.method == 'POST':
         form = FieldMapperForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
                 setattr(field_mapper, key, form.cleaned_data[key])
             field_mapper.save()
-        else:
-            print(form.errors.as_json())
-        return redirect(reverse('configuration'))
-    form = FieldMapperForm(model_to_dict(field_mapper))
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = FieldMapperForm(model_to_dict(field_mapper))
     return render(request, 'core/edit_configuration_object.html', {
         'object': field_mapper,
         'form': form,

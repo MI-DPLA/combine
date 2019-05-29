@@ -38,15 +38,15 @@ def transformation_scenario_payload(request, trans_id):
 
 
 def create_transformation_scenario(request):
+    form = None
     if request.method == "POST":
-        new_transformation = Transformation(
-            name=request.POST['name'],
-            payload=request.POST['payload'],
-            transformation_type=request.POST['transformation_type']
-        )
-        new_transformation.save()
-        return redirect(reverse('configuration'))
-    form = TransformationForm()
+        form = TransformationForm(request.POST)
+        if form.is_valid():
+            new_transformation = Transformation(**form.cleaned_data)
+            new_transformation.save()
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = TransformationForm()
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Transformation Scenario'
@@ -55,14 +55,16 @@ def create_transformation_scenario(request):
 
 def transformation_scenario(request, ts_id):
     transformation = Transformation.objects.get(pk=int(ts_id))
+    form = None
     if request.method == 'POST':
         form = TransformationForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
                 setattr(transformation, key, form.cleaned_data[key])
             transformation.save()
-        return redirect(reverse('configuration'))
-    form = TransformationForm(model_to_dict(transformation))
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = TransformationForm(model_to_dict(transformation))
     return render(request, 'core/edit_configuration_object.html', {
         'object': transformation,
         'form': form,

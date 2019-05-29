@@ -32,6 +32,10 @@ class ValidationScenarioTestCase(TestCase):
         for item in post_body:
             self.assertEqual(scenario_dict[item], post_body[item])
 
+    def test_create_validation_scenario_invalid(self):
+        response = self.client.post(reverse('create_validation_scenario'), {})
+        self.assertIn(b'This field is required.', response.content)
+
     def test_validation_scenario_get(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
@@ -53,6 +57,15 @@ class ValidationScenarioTestCase(TestCase):
         self.assertIsNotNone(scenario.id)
         self.assertEqual(scenario.name, 'Test Validate')
         self.assertEqual(scenario.payload, ValidationScenarioTestCase.simple_validation_payload)
+
+    def test_validation_scenario_invalid(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some python code',
+                                                     validation_type='python')
+        response = self.client.post(reverse('validation_scenario', args=[scenario.id]), {
+            'payload': ValidationScenarioTestCase.simple_validation_payload,
+        })
+        self.assertIn(b'This field is required.', response.content)
 
     def test_validation_scenario_delete(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',

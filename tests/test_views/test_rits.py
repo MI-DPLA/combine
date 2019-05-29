@@ -31,6 +31,10 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         for item in post_body:
             self.assertEqual(rits_dict[item], post_body[item])
 
+    def test_create_rits_invalid(self):
+        response = self.client.post(reverse('create_rits'), {})
+        self.assertIn(b'This field is required.', response.content)
+
     def test_rits_get(self):
         rits = RecordIdentifierTransformationScenario.objects.create(
             name='Test RITS',
@@ -58,6 +62,18 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         updated_rits = RecordIdentifierTransformationScenario.objects.get(name='Test RITS')
         self.assertEqual(updated_rits.python_payload, 'some other payload')
         self.assertEqual(updated_rits.id, rits.id)
+
+    def test_rits_post_invalid(self):
+        rits = RecordIdentifierTransformationScenario.objects.create(
+            name='Test RITS',
+            transformation_type='python',
+            transformation_target='document',
+            python_payload='test payload'
+        )
+        response = self.client.post(reverse('edit_rits', args=[rits.id]), {
+            'python_payload': 'some other payload',
+        })
+        self.assertIn(b'This field is required.', response.content)
 
     def test_rits_delete(self):
         rits = RecordIdentifierTransformationScenario.objects.create(

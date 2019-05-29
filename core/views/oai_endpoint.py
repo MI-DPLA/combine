@@ -27,13 +27,15 @@ def oai_endpoint_payload(request, oai_endpoint_id):
 
 @login_required
 def create_oai_endpoint(request):
+    form = None
     if request.method == "POST":
         form = OAIEndpointForm(request.POST)
         if form.is_valid():
             new_endpoint = OAIEndpoint(**form.cleaned_data)
             new_endpoint.save()
-        return redirect(reverse('configuration'))
-    form = OAIEndpointForm
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = OAIEndpointForm
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'OAI Endpoint',
@@ -43,16 +45,16 @@ def create_oai_endpoint(request):
 @login_required
 def edit_oai_endpoint(request, oai_endpoint_id):
     oai_endpoint = OAIEndpoint.objects.get(pk=int(oai_endpoint_id))
+    form = None
     if request.method == 'POST':
         form = OAIEndpointForm(request.POST)
         if form.is_valid():
             for key in form.cleaned_data:
                 setattr(oai_endpoint, key, form.cleaned_data[key])
             oai_endpoint.save()
-        else:
-            print(form.errors.as_json())
-        return redirect(reverse('configuration'))
-    form = OAIEndpointForm(model_to_dict(oai_endpoint))
+            return redirect(reverse('configuration'))
+    if form is None:
+        form = OAIEndpointForm(model_to_dict(oai_endpoint))
     return render(request, 'core/edit_configuration_object.html', {
         'object': oai_endpoint,
         'form': form,

@@ -39,6 +39,10 @@ class OAIEndpointTestCase(TestCase):
         for item in post_body:
             self.assertEqual(endpoint_dict[item], post_body[item])
 
+    def test_create_oai_endpoint_invalid(self):
+        response = self.client.post(reverse('create_oai_endpoint'), {})
+        self.assertIn(b'This field is required.', response.content)
+
     def test_edit_oai_endpoint_get(self):
         endpoint = OAIEndpoint.objects.create(name='Test OAI')
         response = self.client.get(reverse('edit_oai_endpoint', args=[endpoint.id]))
@@ -61,6 +65,14 @@ class OAIEndpointTestCase(TestCase):
         endpoint_dict = endpoint.as_dict()
         for item in post_body:
             self.assertEqual(endpoint_dict[item], post_body[item])
+
+    def test_edit_oai_endpoint_invalid(self):
+        endpoint = OAIEndpoint.objects.create(name='Test OAI')
+        post_body = {
+            'name': 'Test OAI Endpoint',
+        }
+        response = self.client.post(reverse('edit_oai_endpoint', args=[endpoint.id]), post_body)
+        self.assertIn(b'This field is required.', response.content)
 
     def test_delete_oai_endpoint(self):
         endpoint = OAIEndpoint.objects.create(name='Test OAI')

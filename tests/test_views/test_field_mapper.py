@@ -29,6 +29,10 @@ class FieldMapperTestCase(TestCase):
         for item in post_body:
             self.assertEqual(field_mapper_dict[item], post_body[item])
 
+    def test_create_field_mapper_invalid(self):
+        response = self.client.post(reverse('create_field_mapper'), {})
+        self.assertIn(b'This field is required.', response.content)
+
     def test_edit_field_mapper_get(self):
         field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
                                                   field_mapper_type='python',
@@ -51,6 +55,15 @@ class FieldMapperTestCase(TestCase):
         field_mapper_dict = field_mapper.as_dict()
         for item in post_body:
             self.assertEqual(field_mapper_dict[item], post_body[item])
+
+    def test_edit_field_mapper_invalid(self):
+        field_mapper = FieldMapper.objects.create(field_mapper_type='python',
+                                                  payload='some code')
+        post_body = {
+            'payload': 'some other code',
+        }
+        response = self.client.post(reverse('edit_field_mapper', args=[field_mapper.id]), post_body)
+        self.assertIn(b'This field is required.', response.content)
 
     def test_delete_field_mapper(self):
         field_mapper = FieldMapper.objects.create(field_mapper_type='python',
