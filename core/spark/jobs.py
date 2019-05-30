@@ -103,6 +103,7 @@ class CombineRecordSchema(object):
         self.field_names = [
             f.name for f in self.schema.fields if f.name != 'id']
 
+
 ####################################################################
 # Spark Jobs 		 											   #
 ####################################################################

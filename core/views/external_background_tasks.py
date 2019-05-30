@@ -60,10 +60,12 @@ def system(request):
     if active_tasks is None:
         celery_status = 'stopped'
     else:
-        if not next(iter(active_tasks.values())):
+        if len(next(iter(active_tasks.values()))) == 0:
             celery_status = 'idle'
-        elif next(iter(active_tasks.values())):
+        elif len(next(iter(active_tasks.values()))) > 0:
             celery_status = 'busy'
+        else:
+            celery_status = 'unknown'
 
     # return
     return render(request, 'core/system.html', {
@@ -168,13 +170,15 @@ def system_bg_status(request):
     # get celery worker status
     active_tasks = celery_app.control.inspect().active()
 
+    # if None, assume celery app stopeed
     if active_tasks is None:
         celery_status = 'stopped'
+
+    # else, determine if idle, busy, or unknown state
     else:
-        # TODO: what?
-        if next(iter(active_tasks.values())):
+        if len(next(iter(active_tasks.values()))) == 0:
             celery_status = 'idle'
-        elif next(iter(active_tasks.values())):
+        elif len(next(iter(active_tasks.values()))) > 0:
             celery_status = 'busy'
         else:
             celery_status = 'unknown'

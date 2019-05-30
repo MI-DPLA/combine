@@ -1949,10 +1949,6 @@ class CombineJob(object):
 			self.livy_session = LivySession.get_active_session()
 			self.prepare_job()
 
-		# else:
-		# 	logger.debug('could not start job, active livy session not found')
-		# 	return False
-
 
 	def submit_job_to_livy(self, job_code):
 

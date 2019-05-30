@@ -696,7 +696,7 @@ def job_harvest_oai(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -715,7 +715,7 @@ def job_harvest_oai(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if not job_status:
+        if job_status == False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -773,7 +773,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if not job_status:
+        if job_status == False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -810,7 +810,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
         })
@@ -831,7 +831,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if not job_status:
+        if job_status == False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -891,7 +891,7 @@ def job_transform(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'job_lineage_json': json.dumps(job_lineage),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
@@ -910,7 +910,7 @@ def job_transform(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if not job_status:
+        if job_status == False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -965,7 +965,7 @@ def job_merge(request, org_id, record_group_id):
             'validation_scenarios': validation_scenarios,
             'rits': rits,
             'field_mappers': field_mappers,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'job_lineage_json': json.dumps(job_lineage),
             'bulk_downloads': bulk_downloads,
             'breadcrumbs': breadcrumb_parser(request)
@@ -984,7 +984,7 @@ def job_merge(request, org_id, record_group_id):
         job_status = cjob.start_job()
 
         # if job_status is absent, report job status as failed
-        if not job_status:
+        if job_status == False:
             cjob.job.status = 'failed'
             cjob.job.save()
 
@@ -1124,7 +1124,7 @@ def job_update(request, org_id, record_group_id, job_id):
             'validation_scenarios': validation_scenarios,
             'field_mappers': field_mappers,
             'bulk_downloads': bulk_downloads,
-            'xml2kvp_handle': models.XML2kvp(),
+            'xml2kvp_handle': xml2kvp.XML2kvp(),
             'orig_fm_config_json': orig_fm_config_json,
             'breadcrumbs': breadcrumb_parser(request)
         })
