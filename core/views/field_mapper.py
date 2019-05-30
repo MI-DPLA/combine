@@ -18,9 +18,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 def field_mapper_payload(request, fm_id):
+
     """
-        View payload for field mapper
-        """
+    View payload for field mapper
+    """
 
     # get transformation
     field_mapper = FieldMapper.objects.get(pk=int(fm_id))
@@ -31,16 +32,17 @@ def field_mapper_payload(request, fm_id):
     if field_mapper.field_mapper_type == 'xml2kvp':
 
         if not doc_type:
-            return JsonResponse(field_mapper.config_json, safe=False)
+            return JsonResponse(json.loads(field_mapper.config_json))
 
         if doc_type and doc_type == 'config':
-            return JsonResponse(field_mapper.config_json, safe=False)
+            return JsonResponse(json.loads(field_mapper.config_json))
 
         if doc_type and doc_type == 'payload':
-            return JsonResponse(field_mapper.payload, safe=False)
+            return JsonResponse(json.loads(field_mapper.payload))
 
 
 def create_field_mapper(request):
+
     form = None
     if request.method == "POST":
         form = FieldMapperForm(request.POST)
@@ -57,6 +59,7 @@ def create_field_mapper(request):
 
 
 def edit_field_mapper(request, fm_id):
+
     field_mapper = FieldMapper.objects.get(pk=int(fm_id))
     form = None
     if request.method == 'POST':
@@ -76,6 +79,7 @@ def edit_field_mapper(request, fm_id):
 
 
 def delete_field_mapper(request, fm_id):
+
     try:
         field_mapper = FieldMapper.objects.get(pk=int(fm_id))
         field_mapper.delete()
@@ -85,9 +89,10 @@ def delete_field_mapper(request, fm_id):
 
 
 def field_mapper_update(request):
+
     """
-        Create and save JSON to FieldMapper instance, or update pre-existing
-        """
+    Create and save JSON to FieldMapper instance, or update pre-existing
+    """
 
     LOGGER.debug(request.POST)
 
@@ -153,9 +158,10 @@ def field_mapper_update(request):
 
 
 def test_field_mapper(request):
+
     """
-        View to live test field mapper configurations
-        """
+    View to live test field mapper configurations
+    """
 
     if request.method == 'GET':
         # get field mapper
