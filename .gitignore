@@ -121,3 +121,6 @@ combine/localsettings.py
 
 # PyCharm IDE
 .idea
+
+# VIM
+*.swp
