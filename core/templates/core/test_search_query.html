@@ -1,0 +1,55 @@
+{% extends 'core/base.html' %}
+
+{% block content %}
+
+<div class="row">
+    <div class="col-md-8">
+        <h2>Build ElasticSearch Query</h2>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <label for="index">Select index to query against</label>
+            <select id="index" class="form-control">
+                {% for i in indices %}
+                <option value='{{ i }}'>{{ i }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Query Body</h3>
+        <p>Type your query into the textbox below:</p>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <textarea id="es_query_payload" class="form-control" rows="7"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <button class="btn btn-success btn-sm" id="test_query">Test Query</button>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12">
+        <h3>Query Result</h3>
+
+        <div class="row">
+            <div class="col-md-12">
+                <div class="form-group">
+                    <textarea id="es_query_result" class="form-control" rows="7"></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
