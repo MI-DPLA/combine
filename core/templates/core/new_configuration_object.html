@@ -9,13 +9,15 @@
 	</div>
 
 	<div class="row">
-        <form action="create" method="post">
-            {% csrf_token %}
-            <table>
-                {{ form }}
-            </table>
-            <input type="submit" value="Submit" />
-        </form>
+        <div class="col-md-12">
+            <form action="create" method="post">
+                {% csrf_token %}
+                <table>
+                    {{ form }}
+                </table>
+                <input type="submit" value="Submit" />
+            </form>
+        </div>
 	</div>
 
 {% endblock %}
