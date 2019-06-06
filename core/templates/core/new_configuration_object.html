@@ -9,13 +9,17 @@
 	</div>
 
 	<div class="row">
-        <div class="col-md-12">
+        <div class="col-md-8">
+
+            {% load crispy_forms_tags %}
+
             <form action="create" method="post">
                 {% csrf_token %}
-                <table>
-                    {{ form }}
-                </table>
-                <input type="submit" value="Submit" />
+
+                {{ form|crispy }}
+
+                <button type="submit" class="btn btn-primary">Create</button>
+
             </form>
         </div>
 	</div>

@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-    'django.contrib.humanize'
+    'django.contrib.humanize',
+    'crispy_forms'
 ]
 
 MIDDLEWARE = [
@@ -183,6 +184,9 @@ LOGGING = {
 SHELL_PLUS_POST_IMPORTS = {
     ('inc.console', '*')
 }
+
+# crispy forms
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 #########################
 # Import localsettings.py

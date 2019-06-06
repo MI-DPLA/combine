@@ -9,6 +9,9 @@ body {
 .bold {
 	font-weight: bold;
 }
+#breadcrumbs {
+    margin-top:10px;
+}
 .breadcrumb {
 	padding: 0.5rem 1rem;
 	margin-bottom: 0.5rem;
