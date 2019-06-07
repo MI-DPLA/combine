@@ -3784,15 +3784,6 @@ class Record(mongoengine.Document):
 		return record_lineage_urls
 
 
-	def get_dpla_bulk_data_match(self):
-
-		'''
-		Method to return single DPLA Bulk Data Match
-		'''
-
-		return DPLABulkDataMatch.objects.filter(record=self)
-
-
 	def get_input_record_diff(self, output='all', combined_as_html=False):
 
 		'''
