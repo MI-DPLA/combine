@@ -176,16 +176,16 @@ class Transformation(models.Model):
             trans_result = temp_pyts.python_record_transformation(prtb)
 
             # check that trans_result is a list
-            if type(trans_result) != list:
+            if not isinstance(trans_result, list):
                 raise Exception('Python transformation should return a list, but got type %s' % type(trans_result))
 
             # convert any possible byte responses to string
             if trans_result[2] == True:
-                if type(trans_result[0]) == bytes:
+                if isinstance(trans_result[0], bytes):
                     trans_result[0] = trans_result[0].decode('utf-8')
                 return trans_result[0]
             if trans_result[2] == False:
-                if type(trans_result[1]) == bytes:
+                if isinstance(trans_result[1], bytes):
                     trans_result[1] = trans_result[1].decode('utf-8')
                 return trans_result[1]
 
@@ -283,7 +283,7 @@ class Transformation(models.Model):
             # handle empty, global namespace
             _nsmap = xsl.nsmap.copy()
             try:
-                global_ns = _nsmap.pop(None)
+                _nsmap.pop(None)
                 _nsmap['global_ns'] = ns0
             except:
                 pass
@@ -571,7 +571,7 @@ class ValidationScenario(models.Model):
             query = Search(using=es_handle, index=cjob.esi.es_index)
 
             # update query with search body
-            query = query.update_from_dict(t['es_query'])
+            query = query.update_from_dict(test['es_query'])
 
             # add row to query
             query = query.query("term", db_id=str(row.id))
@@ -623,12 +623,10 @@ class ValidationScenario(models.Model):
         # validate
         try:
             xmlschema.assertValid(record_xml)
-            is_valid = True
             validation_msg = 'Document is valid'
             results_dict['passed'].append(validation_msg)
 
         except etree.DocumentInvalid as err:
-            is_valid = False
             validation_msg = str(err)
             results_dict['failed'].append(validation_msg)
             results_dict['fail_count'] += 1
