@@ -144,7 +144,10 @@ disable=print-statement,
         missing-docstring,
         inconsistent-return-statements,
         wrong-import-position,
-        wrong-import-order
+        wrong-import-order,
+        singleton-comparison,
+        bare-except,
+        broad-except
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
