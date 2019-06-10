@@ -148,7 +148,10 @@ disable=print-statement,
         singleton-comparison,
         bare-except,
         broad-except,
-        pointless-string-statement
+        pointless-string-statement,
+        dangerous-default-value,
+        attribute-defined-outside-init,
+        len-as-condition
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
