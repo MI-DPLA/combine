@@ -95,7 +95,7 @@ class StateIO(mongoengine.Document):
 
     # pre_delete method
     @classmethod
-    def pre_delete(cls, _sender, document, **_kwargs):
+    def pre_delete(cls, sender, document, **kwargs):
 
         LOGGER.debug('preparing to delete %s', document)
 

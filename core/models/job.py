@@ -305,7 +305,7 @@ class Job(models.Model):
             except:
                 LOGGER.warning('trouble retrieving Jobs from Spark App API')
                 filtered_jobs = []
-            if filtered_jobs > 0:
+            if len(filtered_jobs) > 0:
                 return filtered_jobs
             return None
 

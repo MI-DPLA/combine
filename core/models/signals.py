@@ -32,7 +32,7 @@ from core.models.tasks import CombineBackgroundTask
 
 
 @receiver(signals.user_logged_in)
-def user_login_handle_livy_sessions(_sender, user, **_kwargs):
+def user_login_handle_livy_sessions(sender, user, **kwargs):
 
     '''
     When user logs in, handle check for pre-existing sessions or creating
@@ -70,7 +70,7 @@ def user_login_handle_livy_sessions(_sender, user, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=Organization)
-def delete_org_pre_delete(_sender, instance, **_kwargs):
+def delete_org_pre_delete(sender, instance, **kwargs):
 
     # mark child record groups as deleted
     LOGGER.debug('marking all child Record Groups as deleting')
@@ -90,7 +90,7 @@ def delete_org_pre_delete(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=RecordGroup)
-def delete_record_group_pre_delete(_sender, instance, **_kwargs):
+def delete_record_group_pre_delete(sender, instance, **kwargs):
 
     # mark child jobs as deleted
     LOGGER.debug('marking all child Jobs as deleting')
@@ -103,7 +103,7 @@ def delete_record_group_pre_delete(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.post_save, sender=Job)
-def save_job_post_save(_sender, instance, created, **_kwargs):
+def save_job_post_save(sender, instance, created, **kwargs):
 
     '''
     After job is saved, update job output
@@ -130,7 +130,7 @@ def save_job_post_save(_sender, instance, created, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=Job)
-def delete_job_pre_delete(_sender, instance, **_kwargs):
+def delete_job_pre_delete(sender, instance, **kwargs):
 
     '''
     When jobs are removed, some actions are performed:
@@ -183,7 +183,7 @@ def delete_job_pre_delete(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=JobValidation)
-def delete_job_validation_pre_delete(_sender, instance, **_kwargs):
+def delete_job_validation_pre_delete(sender, instance, **kwargs):
 
     '''
     Signal to remove RecordValidations from DB if JobValidation removed
@@ -193,13 +193,13 @@ def delete_job_validation_pre_delete(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.post_delete, sender=Job)
-def delete_job_post_delete(_sender, instance, **_kwargs):
+def delete_job_post_delete(sender, instance, **kwargs):
 
     LOGGER.debug('job %s was deleted successfully', instance)
 
 
 @receiver(models.signals.pre_save, sender=Transformation)
-def save_transformation_to_disk(_sender, instance, **_kwargs):
+def save_transformation_to_disk(sender, instance, **kwargs):
 
     '''
     Pre-save work for Transformations
@@ -239,7 +239,7 @@ def save_transformation_to_disk(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.pre_save, sender=ValidationScenario)
-def save_validation_scenario_to_disk(_sender, instance, **_kwargs):
+def save_validation_scenario_to_disk(sender, instance, **kwargs):
 
     '''
     When users enter a payload for a validation scenario, write to disk for use in Spark context
@@ -281,7 +281,7 @@ def save_validation_scenario_to_disk(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=DPLABulkDataDownload)
-def delete_dbdd_pre_delete(_sender, instance, **_kwargs):
+def delete_dbdd_pre_delete(sender, instance, **kwargs):
 
     # remove download from disk
     if os.path.exists(instance.filepath):
@@ -298,7 +298,7 @@ def delete_dbdd_pre_delete(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.post_init, sender=CombineBackgroundTask)
-def background_task_post_init(_sender, instance, **_kwargs):
+def background_task_post_init(sender, instance, **kwargs):
 
     # if exists already, update status
     if instance.id:
@@ -306,7 +306,7 @@ def background_task_post_init(_sender, instance, **_kwargs):
 
 
 @receiver(models.signals.pre_delete, sender=CombineBackgroundTask)
-def background_task_pre_delete_django_tasks(_sender, instance, **_kwargs):
+def background_task_pre_delete_django_tasks(sender, instance, **kwargs):
 
     # if export dir exists in task_output, delete as well
     if instance.task_output != {} and 'export_dir' in instance.task_output.keys():
