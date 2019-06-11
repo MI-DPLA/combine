@@ -97,7 +97,8 @@ def organization_delete(request, org_id):
 
 def organization_run_jobs(request, org_id):
     org = Organization.objects.get(pk=int(org_id))
-    org.run_all_jobs()
+    jobs = org.all_jobs()
+    tasks.rerun_jobs(jobs)
     return redirect('organizations')
 
 

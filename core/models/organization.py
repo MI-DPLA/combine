@@ -2,7 +2,9 @@
 from __future__ import unicode_literals
 
 # generic imports
+import datetime
 import logging
+from itertools import chain
 
 # django imports
 from django.db import models
@@ -48,3 +50,9 @@ class Organization(models.Model):
 
         # return
         return total_record_count
+
+    def all_jobs(self):
+        groups = [group.job_set.all() for group in self.recordgroup_set.all()]
+        jobs = list(chain.from_iterable(groups))
+        ordered_jobs = sorted(jobs, key=lambda j: j.id)
+        return ordered_jobs
