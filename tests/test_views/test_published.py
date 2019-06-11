@@ -1,6 +1,6 @@
 from django.test import Client, TestCase
 
-from core import models
+from core.models import PublishedRecords
 
 from tests.test_views.utils import TestConfiguration
 
@@ -13,7 +13,7 @@ class PublishedTestCase(TestCase):
 
     def test_get_published(self):
         self.config.job.publish(publish_set_id='test publish id')
-        publish_records = models.PublishedRecords().records
+        publish_records = PublishedRecords().records
         # For some reason this accumulates records every time I run it
         # TODO: what the heck?
         print(publish_records.count())

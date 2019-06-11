@@ -1,7 +1,6 @@
 # python modules
 from concurrent.futures.thread import ThreadPoolExecutor
 import datetime
-import hashlib
 import json
 import logging
 from lxml import etree
@@ -13,7 +12,7 @@ from django.conf import settings
 from django.urls import reverse
 
 # import models
-from core import models
+from core.models import PublishedRecords, OAITransaction
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
@@ -76,7 +75,7 @@ class OAIProvider(object):
             self.publish_set_id = None
 
         # get instance of Published model
-        self.published = models.PublishedRecords(subset=self.subset)
+        self.published = PublishedRecords(subset=self.subset)
 
         # begin scaffolding
         self.scaffold()
@@ -212,7 +211,7 @@ class OAIProvider(object):
             # set token and slice parameters to DB
             token = str(uuid.uuid4())
             logger.debug('setting resumption token: %s' % token)
-            oai_trans = models.OAITransaction(
+            oai_trans = OAITransaction(
                 verb=self.args['verb'],
                 start=self.start + self.chunk_size,
                 chunk_size=self.chunk_size,
@@ -256,7 +255,7 @@ class OAIProvider(object):
         if 'resumptionToken' in self.args.keys():
 
             # retrieve token params and alter args and search_params
-            ot_query = models.OAITransaction.objects.filter(
+            ot_query = OAITransaction.objects.filter(
                 token=self.args['resumptionToken'])
             if ot_query.count() == 1:
                 ot = ot_query.first()

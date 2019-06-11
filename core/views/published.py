@@ -4,8 +4,9 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from core import models, xml2kvp
+from core import xml2kvp
 from core.mongo import mc_handle
+from core.models import PublishedRecords, FieldMapper
 
 from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
@@ -20,7 +21,7 @@ def published(request, subset=None):
         """
 
     # get instance of Published model
-    pub_records = models.PublishedRecords(subset=subset)
+    pub_records = PublishedRecords(subset=subset)
 
     # get field counts
     if pub_records.records.count() > 0:
@@ -30,10 +31,10 @@ def published(request, subset=None):
         field_counts = {}
 
     # get field mappers
-    field_mappers = models.FieldMapper.objects.all()
+    field_mappers = FieldMapper.objects.all()
 
     # get published subsets with PublishedRecords static method
-    subsets = models.PublishedRecords.get_subsets()
+    subsets = PublishedRecords.get_subsets()
 
     # loop through subsets and enrich
     for _ in subsets:
@@ -44,7 +45,7 @@ def published(request, subset=None):
 
         # if counts not yet calculated, do now
         if counts is None:
-            counts = models.PublishedRecords(
+            counts = PublishedRecords(
                 subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
@@ -84,7 +85,7 @@ def published_subset_create(request):
     if request.method == 'GET':
 
         # get all published sets
-        pub_records = models.PublishedRecords()
+        pub_records = PublishedRecords()
 
         # generate hierarchy_dict
         job_hierarchy = _stateio_prepare_job_hierarchy()
@@ -137,8 +138,8 @@ def published_subset_edit(request, subset):
     if request.method == 'GET':
 
         # get subset published records
-        pub_records = models.PublishedRecords()
-        published_subset = models.PublishedRecords(subset=subset)
+        pub_records = PublishedRecords()
+        published_subset = PublishedRecords(subset=subset)
         published_subset.ps_doc['id'] = str(published_subset.ps_doc['_id'])
 
         # generate hierarchy_dict
@@ -166,7 +167,7 @@ def published_subset_edit(request, subset):
         hierarchy = json.loads(request.POST.get('hierarchy', []))
 
         # update published subset
-        pub_records = models.PublishedRecords(subset=subset)
+        pub_records = PublishedRecords(subset=subset)
         pub_records.update_subset({
             'description': request.POST.get('description', None),
             'type': 'published_subset',

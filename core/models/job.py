@@ -30,7 +30,7 @@ from django.utils.datastructures import MultiValueDict
 from django.core.urlresolvers import reverse
 
 from core.xml2kvp import XML2kvp
-from core import tasks
+from core import tasks, models as core_models
 from core.es import es_handle
 from core.mongo import mongoengine, mc_handle
 from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, DPLABulkDataDownload
@@ -38,7 +38,6 @@ from core.models.elasticsearch import ESIndex
 from core.models.livy_spark import LivySession, LivyClient, SparkAppAPIClient
 from core.models.organization import Organization
 from core.models.record_group import RecordGroup
-from core.models.tasks import CombineBackgroundTask
 
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search
@@ -2089,7 +2088,7 @@ class CombineJob(object):
                 fm_config_json = json.dumps(fm_config_json)
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='Re-Map and Index Job: %s' % self.job.name,
             task_type='job_reindex',
             task_params_json=json.dumps({
@@ -2118,7 +2117,7 @@ class CombineJob(object):
         '''
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='New Validations for Job: %s' % self.job.name,
             task_type='job_new_validations',
             task_params_json=json.dumps({
@@ -2144,7 +2143,7 @@ class CombineJob(object):
         '''
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='Remove Validation %s for Job: %s' % (jv_id, self.job.name),
             task_type='job_remove_validation',
             task_params_json=json.dumps({
@@ -2170,7 +2169,7 @@ class CombineJob(object):
         '''
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='Publish Job: %s' % (self.job.name),
             task_type='job_publish',
             task_params_json=json.dumps({
@@ -2197,7 +2196,7 @@ class CombineJob(object):
         '''
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='Unpublish Job: %s' % (self.job.name),
             task_type='job_unpublish',
             task_params_json=json.dumps({
@@ -2222,7 +2221,7 @@ class CombineJob(object):
         '''
 
         # initiate Combine BG Task
-        combine_task = CombineBackgroundTask(
+        combine_task = core_models.CombineBackgroundTask(
             name='Run DPLA Bulk Data Match for Job: %s' % (self.job.name),
             task_type='job_dbdm',
             task_params_json=json.dumps({

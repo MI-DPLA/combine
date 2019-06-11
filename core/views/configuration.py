@@ -3,8 +3,8 @@ import logging
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
-from core import models
-
+from core.models import Transformation, OAIEndpoint, ValidationScenario, FieldMapper,\
+    RecordIdentifierTransformationScenario, DPLABulkDataDownload, DPLABulkDataClient
 from core.mongo import settings
 
 from .view_helpers import breadcrumb_parser
@@ -15,23 +15,23 @@ LOGGER = logging.getLogger(__name__)
 @login_required
 def configuration(request):
     # get all transformations
-    transformations = models.Transformation.objects.filter(
+    transformations = Transformation.objects.filter(
         use_as_include=False)
 
     # get all OAI endpoints
-    oai_endpoints = models.OAIEndpoint.objects.all()
+    oai_endpoints = OAIEndpoint.objects.all()
 
     # get all validation scenarios
-    validation_scenarios = models.ValidationScenario.objects.all()
+    validation_scenarios = ValidationScenario.objects.all()
 
     # get record identifier transformation scenarios
-    rits = models.RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformationScenario.objects.all()
 
     # get all bulk downloads
-    bulk_downloads = models.DPLABulkDataDownload.objects.all()
+    bulk_downloads = DPLABulkDataDownload.objects.all()
 
     # get field mappers
-    field_mappers = models.FieldMapper.objects.all()
+    field_mappers = FieldMapper.objects.all()
 
     # return
     return render(request, 'core/configuration.html', {
@@ -60,7 +60,7 @@ def dpla_bulk_data_download(request):
                 settings.AWS_SECRET_ACCESS_KEY is not None:
 
             # get DPLABulkDataClient and keys from DPLA bulk download
-            dbdc = models.DPLABulkDataClient()
+            dbdc = DPLABulkDataClient()
             bulk_data_keys = dbdc.retrieve_keys()
 
         else:
@@ -77,7 +77,7 @@ def dpla_bulk_data_download(request):
         LOGGER.debug('initiating bulk data download')
 
         # get DPLABulkDataClient
-        dbdc = models.DPLABulkDataClient()
+        dbdc = DPLABulkDataClient()
 
         # initiate download
         dbdc.download_and_index_bulk_data(request.POST.get('object_key', None))

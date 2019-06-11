@@ -6,7 +6,8 @@ from django.core.urlresolvers import reverse
 from django.db.models import Q
 from django_datatables_view.base_datatable_view import BaseDatatableView
 
-from core import models
+from core.models import PublishedRecords, Job, Record, IndexMappingFailure, JobValidation,\
+    CombineBackgroundTask
 from core.mongo import mongoengine, ObjectId
 
 
@@ -62,7 +63,7 @@ class DTPublishedJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get PublishedRecords instance
-        pub_records = models.PublishedRecords(subset=self.kwargs.get('subset', None))
+        pub_records = PublishedRecords(subset=self.kwargs.get('subset', None))
 
         # return queryset
         return pub_records.records
@@ -180,7 +181,7 @@ class DTRecordsJson(BaseDatatableView):
         if 'job_id' in self.kwargs.keys():
 
             # get jobself.kwargs['job_id']
-            job = models.Job.objects.get(pk=self.kwargs['job_id'])
+            job = Job.objects.get(pk=self.kwargs['job_id'])
 
             # return filtered queryset
             if 'success_filter' in self.kwargs.keys():
@@ -190,7 +191,7 @@ class DTRecordsJson(BaseDatatableView):
             return job.get_records(success=success_filter)
 
         # else, return all records
-        return models.Record.objects
+        return Record.objects
 
     def render_column(self, row, column):
 
@@ -284,10 +285,10 @@ class DTIndexingFailuresJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job
-        job = models.Job.objects.get(pk=self.kwargs['job_id'])
+        job = Job.objects.get(pk=self.kwargs['job_id'])
 
         # return filtered queryset
-        return models.IndexMappingFailure.objects(job_id=job.id)
+        return IndexMappingFailure.objects(job_id=job.id)
 
     def render_column(self, row, column):
 
@@ -347,7 +348,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job
-        job_validation = models.JobValidation.objects.get(
+        job_validation = JobValidation.objects.get(
             pk=self.kwargs['job_validation_id'])
 
         # return filtered queryset
@@ -431,7 +432,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job and records
-        job = models.Job.objects.get(pk=self.kwargs['job_id'])
+        job = Job.objects.get(pk=self.kwargs['job_id'])
 
         # return queryset filtered for match/miss
         if self.kwargs['match_type'] == 'matches':
@@ -515,7 +516,7 @@ class JobRecordDiffs(BaseDatatableView):
         # return queryset used as base for futher sorting/filtering
 
         # get job
-        job = models.Job.objects.get(pk=self.kwargs['job_id'])
+        job = Job.objects.get(pk=self.kwargs['job_id'])
         job_records = job.get_records()
 
         # filter for records that were transformed
@@ -594,7 +595,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
     def get_initial_queryset(self):
 
         # return queryset used as base for futher sorting/filtering
-        return models.CombineBackgroundTask.objects
+        return CombineBackgroundTask.objects
 
     def render_column(self, row, column):
 

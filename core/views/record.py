@@ -4,7 +4,7 @@ import logging
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 
-from core import models
+from core.models import Record, ValidationScenario
 
 from .view_helpers import breadcrumb_parser
 
@@ -17,7 +17,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # build ancestry in both directions
     record_stages = rec.get_record_stages()
@@ -79,7 +79,7 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # return document as XML
     return HttpResponse(rec.document, content_type='text/xml')
@@ -91,7 +91,7 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # return ES document as JSON
     return JsonResponse(rec.get_es_doc())
@@ -103,7 +103,7 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # return document as XML
     return HttpResponse("<pre>%s</pre>" % rec.error)
@@ -118,10 +118,10 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # get validation scenario
-    validation_scenario = models.ValidationScenario.objects.get(pk=int(job_validation_id))
+    validation_scenario = ValidationScenario.objects.get(pk=int(job_validation_id))
 
     # schematron type validation
     if validation_scenario.validation_type == 'sch':
@@ -144,7 +144,7 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # get side_by_side diff as HTML
     diff_dict = rec.get_input_record_diff(
@@ -169,7 +169,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
         """
 
     # get record
-    rec = models.Record.objects.get(id=record_id)
+    rec = Record.objects.get(id=record_id)
 
     # check for embed flag
     request.GET.get('embed', False)

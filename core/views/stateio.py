@@ -5,7 +5,9 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import render, redirect
 
-from core import models
+from core.models import StateIO, StateIOClient, OAIEndpoint, RecordIdentifierTransformationScenario,\
+    GlobalMessageClient, Organization, ValidationScenario, Transformation, FieldMapper,\
+    DPLABulkDataDownload
 
 from .view_helpers import breadcrumb_parser
 
@@ -19,8 +21,8 @@ def stateio(request):
         """
 
     # retrieve exports and imports
-    stateio_exports = models.StateIO.objects.filter(stateio_type='export')
-    stateio_imports = models.StateIO.objects.filter(stateio_type='import')
+    stateio_exports = StateIO.objects.filter(stateio_type='export')
+    stateio_imports = StateIO.objects.filter(stateio_type='import')
 
     # return
     return render(request, 'core/stateio.html', {
@@ -37,13 +39,13 @@ def stateio_state(request, state_id):
         """
 
     # retrieve state
-    state = models.StateIO.objects.get(id=state_id)
+    state = StateIO.objects.get(id=state_id)
 
     # handle export state
     if state.stateio_type == 'export':
 
         # retrieve imports, if any, that share this export_id
-        associated_imports = models.StateIO.objects.filter(
+        associated_imports = StateIO.objects.filter(
             export_manifest__export_id=state.export_id,
             stateio_type='import')
 
@@ -67,7 +69,7 @@ def stateio_state(request, state_id):
 
         if state.status == 'finished':
             # retrieve export used for import, if exists in same instance of Combine
-            associated_export_q = models.StateIO.objects.filter(
+            associated_export_q = StateIO.objects.filter(
                 export_id=state.export_manifest['export_id'],
                 stateio_type='export')
             if associated_export_q.count() == 1:
@@ -202,7 +204,7 @@ def stateio_state_manifest(request, state_id, manifest_type):
         """
 
     # retrieve state
-    state = models.StateIO.objects.get(id=state_id)
+    state = StateIO.objects.get(id=state_id)
 
     # return
     return JsonResponse(getattr(state, manifest_type, None))
@@ -215,7 +217,7 @@ def stateio_state_delete(request, state_id):
         """
 
     # retrieve state
-    state = models.StateIO.objects.get(id=state_id)
+    state = StateIO.objects.get(id=state_id)
 
     # delete and redirect
     state.delete()
@@ -231,7 +233,7 @@ def stateio_state_download(request, state_id):
         """
 
     # retrieve state
-    state = models.StateIO.objects.get(id=state_id)
+    state = StateIO.objects.get(id=state_id)
 
     # set filepath as download location on disk
     filepath = state.export_path
@@ -252,7 +254,7 @@ def stateio_state_stop(request, state_id):
         """
 
     # retrieve state
-    state = models.StateIO.objects.get(id=state_id)
+    state = StateIO.objects.get(id=state_id)
 
     # issue cancel
     if state.bg_task:
@@ -309,7 +311,7 @@ def stateio_export(request):
                                 '|' in config_id]
 
         # init export as bg task
-        combine_task = models.StateIOClient.export_state_bg_task(
+        combine_task = StateIOClient.export_state_bg_task(
             export_name=export_name,
             jobs=jobs,
             record_groups=record_groups,
@@ -318,10 +320,10 @@ def stateio_export(request):
         )
 
         # retrieve StateIO instance, use metadata for msg
-        stateio_instance = models.StateIO.objects.get(id=combine_task.task_params['stateio_id'])
+        stateio_instance = StateIO.objects.get(id=combine_task.task_params['stateio_id'])
 
         # set gms
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         gmc.add_gm({
             'html': '<p><strong>Exporting State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (
                 stateio_instance.name),
@@ -363,7 +365,7 @@ def _stateio_prepare_job_hierarchy(
     }
 
     # add Organizations --> Record Group --> Jobs
-    for org in models.Organization.objects.filter(for_analysis=False):
+    for org in Organization.objects.filter(for_analysis=False):
 
         # init org dict
         org_dict = {
@@ -465,18 +467,18 @@ def _stateio_prepare_config_scenarios():
 
     # loop through models and append to config scenarios dict
     for model_tup in [
-            (config_scenarios_dict, models.ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
+            (config_scenarios_dict, ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
              'validations'),
             (
-                config_scenarios_dict, models.Transformation, 'transformations', 'Transformation Scenarios',
+                config_scenarios_dict, Transformation, 'transformations', 'Transformation Scenarios',
                 'transformations'),
-            (config_scenarios_dict, models.OAIEndpoint,
+            (config_scenarios_dict, OAIEndpoint,
              'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
-            (config_scenarios_dict, models.RecordIdentifierTransformationScenario, 'rits',
+            (config_scenarios_dict, RecordIdentifierTransformationScenario, 'rits',
              'Record Identifier Transformation Scenarios', 'rits'),
-            (config_scenarios_dict, models.FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations',
+            (config_scenarios_dict, FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations',
              'field_mapper_configs'),
-            (config_scenarios_dict, models.DPLABulkDataDownload,
+            (config_scenarios_dict, DPLABulkDataDownload,
              'dbdds', 'DPLA Bulk Data Downloads', 'dbdd')
         ]:
         # add to config_scenarios_dict
@@ -535,16 +537,16 @@ def stateio_import(request):
             LOGGER.debug('saved uploaded state to %s', export_path)
 
         # init export as bg task
-        combine_task = models.StateIOClient.import_state_bg_task(
+        combine_task = StateIOClient.import_state_bg_task(
             import_name=import_name,
             export_path=export_path
         )
 
         # retrieve StateIO instance, use metadata for msg
-        stateio_instance = models.StateIO.objects.get(id=combine_task.task_params['stateio_id'])
+        stateio_instance = StateIO.objects.get(id=combine_task.task_params['stateio_id'])
 
         # set gms
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         gmc.add_gm({
             'html': '<p><strong>Importing State:</strong><br>%s</p><p>Refresh this page for updates: <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (
                 stateio_instance.name),

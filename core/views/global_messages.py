@@ -1,8 +1,7 @@
 from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 
-from core import models
-
+from core.models import GlobalMessageClient
 
 @login_required
 def gm_delete(request):
@@ -11,7 +10,7 @@ def gm_delete(request):
         gm_id = request.POST.get('gm_id')
 
         # init GlobalMessageClient
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
 
         # delete by id
         results = gmc.delete_gm(gm_id)

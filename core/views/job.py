@@ -9,8 +9,12 @@ from django.core.urlresolvers import reverse
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import redirect, render
 
-from core import models, tasks, xml2kvp
-
+from core import tasks, xml2kvp
+from core.models import RecordGroup, Job, CombineBackgroundTask, PublishedRecords,\
+    CombineJob, AnalysisJob, GlobalMessageClient, OAIEndpoint, TransformJob,\
+    MergeJob, RecordIdentifierTransformationScenario, FieldMapper, DPLABulkDataDownload,\
+    ValidationScenario, HarvestOAIJob, HarvestStaticXMLJob, Transformation, JobValidation,\
+    HarvestTabularDataJob, ESIndex
 from core.mongo import mc_handle
 
 from .view_helpers import breadcrumb_parser
@@ -25,7 +29,7 @@ def job_id_redirect(request, job_id):
         """
 
     # get job
-    job = models.Job.objects.get(pk=job_id)
+    job = Job.objects.get(pk=job_id)
 
     # redirect
     return redirect('job_details',
@@ -44,22 +48,22 @@ def all_jobs(request):
     """
 
     # get all the record groups.
-    record_groups = models.RecordGroup.objects.exclude(for_analysis=True)
+    record_groups = RecordGroup.objects.exclude(for_analysis=True)
 
     # capture include_analysis GET param if present
     include_analysis = request.GET.get('include_analysis', False)
 
     # get all jobs associated with record group
     if include_analysis:
-        jobs = models.Job.objects.all()
+        jobs = Job.objects.all()
     else:
-        jobs = models.Job.objects.exclude(job_type='AnalysisJob').all()
+        jobs = Job.objects.exclude(job_type='AnalysisJob').all()
 
     # get job lineage for all jobs
     if include_analysis:
-        job_lineage = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=False)
+        job_lineage = Job.get_all_jobs_lineage(exclude_analysis_jobs=False)
     else:
-        job_lineage = models.Job.get_all_jobs_lineage(exclude_analysis_jobs=True)
+        job_lineage = Job.get_all_jobs_lineage(exclude_analysis_jobs=True)
 
     # loop through jobs and update status
     for job in jobs:
@@ -79,7 +83,7 @@ def job_delete(request, org_id, record_group_id, job_id):
     LOGGER.debug('deleting job by id: %s', job_id)
 
     # get job
-    job = models.Job.objects.get(pk=job_id)
+    job = Job.objects.get(pk=job_id)
 
     # set job status to deleting
     job.name = "%s (DELETING)" % job.name
@@ -88,7 +92,7 @@ def job_delete(request, org_id, record_group_id, job_id):
     job.save()
 
     # initiate Combine BG Task
-    combine_task = models.CombineBackgroundTask(
+    combine_task = CombineBackgroundTask(
         name='Delete Job: %s' % job.name,
         task_type='delete_model_instance',
         task_params_json=json.dumps({
@@ -129,7 +133,7 @@ def stop_jobs(request):
     for job_id in job_ids:
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # if including downstream
         if downstream_toggle:
@@ -153,7 +157,7 @@ def stop_jobs(request):
         job.stop_job()
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<p><strong>Stopped Job(s):</strong><br>%s</p>' % (
             '<br>'.join([j.name for j in ordered_job_delete_set])),
@@ -185,7 +189,7 @@ def delete_jobs(request):
     for job_id in job_ids:
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # if including downstream
         if downstream_toggle:
@@ -212,7 +216,7 @@ def delete_jobs(request):
         job.save()
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Delete Job: #%s' % job.name,
             task_type='delete_model_instance',
             task_params_json=json.dumps({
@@ -229,7 +233,7 @@ def delete_jobs(request):
         combine_task.save()
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<p><strong>Deleting Job(s):</strong><br>%s</p><p>Refresh this page to update status of removing Jobs. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button></p>' % (
             '<br>'.join([j.name for j in ordered_job_delete_set])),
@@ -261,7 +265,7 @@ def move_jobs(request):
     for job_id in job_ids:
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # if including downstream
         if downstream_toggle:
@@ -281,7 +285,7 @@ def move_jobs(request):
     for job in ordered_job_move_set:
         LOGGER.debug('moving Job: %s', job)
 
-        new_record_group = models.RecordGroup.objects.get(pk=record_group_id)
+        new_record_group = RecordGroup.objects.get(pk=record_group_id)
         job.record_group = new_record_group
         job.save()
 
@@ -296,7 +300,7 @@ def job_details(request, org_id, record_group_id, job_id):
     LOGGER.debug('details for job id: %s', job_id)
 
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # update status
     cjob.job.update_status()
@@ -330,30 +334,30 @@ def job_details(request, org_id, record_group_id, job_id):
 
     # TODO: What is this accomplishing?
     # OAI Harvest
-    if isinstance(cjob, models.HarvestOAIJob):
+    if isinstance(cjob, HarvestOAIJob):
         pass
 
     # Static Harvest
-    elif isinstance(cjob, models.HarvestStaticXMLJob):
+    elif isinstance(cjob, HarvestStaticXMLJob):
         pass
 
     # Transform
-    elif isinstance(cjob, models.TransformJob):
+    elif isinstance(cjob, TransformJob):
         pass
 
     # Merge/Duplicate
-    elif isinstance(cjob, models.MergeJob):
+    elif isinstance(cjob, MergeJob):
         pass
 
     # Analysis
-    elif isinstance(cjob, models.AnalysisJob):
+    elif isinstance(cjob, AnalysisJob):
         pass
 
     # get published records, primarily for published sets
-    pub_records = models.PublishedRecords()
+    pub_records = PublishedRecords()
 
     # get published subsets with PublishedRecords static method
-    published_subsets = models.PublishedRecords.get_subsets()
+    published_subsets = PublishedRecords.get_subsets()
 
     # loop through subsets and enrich
     for _ in published_subsets:
@@ -364,12 +368,12 @@ def job_details(request, org_id, record_group_id, job_id):
 
         # if counts not yet calculated, do now
         if counts is None:
-            counts = models.PublishedRecords(
+            counts = PublishedRecords(
                 subset=_['name']).count_indexed_fields()
         _['counts'] = counts
 
     # get field mappers
-    field_mappers = models.FieldMapper.objects.all()
+    field_mappers = FieldMapper.objects.all()
 
     # return
     return render(request, 'core/job_details.html', {
@@ -395,7 +399,7 @@ def job_errors(request, org_id, record_group_id, job_id):
     LOGGER.debug('retrieving errors for job id: %s', job_id)
 
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     job_error_list = cjob.get_job_errors()
 
@@ -412,7 +416,7 @@ def job_update_note(request, org_id, record_group_id, job_id):
     if request.method == 'POST':
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # get job note
         job_note = request.POST.get('job_note')
@@ -432,7 +436,7 @@ def job_update_name(request, org_id, record_group_id, job_id):
     if request.method == 'POST':
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # get job note
         job_name = request.POST.get('job_name')
@@ -462,7 +466,7 @@ def job_publish(request, org_id, record_group_id, job_id):
     published_subsets = request.POST.getlist('published_subsets', [])
 
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # init publish
     cjob.publish_bg_task(
@@ -470,7 +474,7 @@ def job_publish(request, org_id, record_group_id, job_id):
         in_published_subsets=published_subsets)
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<p><strong>Publishing Job:</strong><br>%s<br><br><strong>Publish Set ID:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' % (
             cjob.job.name, publish_set_id, reverse('published')),
@@ -485,13 +489,13 @@ def job_publish(request, org_id, record_group_id, job_id):
 @login_required
 def job_unpublish(request, org_id, record_group_id, job_id):
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # init unpublish
     cjob.unpublish_bg_task()
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<p><strong>Unpublishing Job:</strong><br>%s</p><p><a href="%s"><button type="button" class="btn btn-outline-primary btn-sm">View Published Records</button></a></p>' % (
             cjob.job.name, reverse('published')),
@@ -524,7 +528,7 @@ def rerun_jobs(request):
     for job_id in job_ids:
 
         # get CombineJob
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
 
         # if including downstream
         if downstream_toggle:
@@ -551,7 +555,7 @@ def rerun_jobs(request):
         re_job.save()
 
     # initiate Combine BG Task
-    combine_task = models.CombineBackgroundTask(
+    combine_task = CombineBackgroundTask(
         name="Rerun Jobs Prep",
         task_type='rerun_jobs_prep',
         task_params_json=json.dumps({
@@ -567,7 +571,7 @@ def rerun_jobs(request):
     combine_task.save()
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<strong>Preparing to Rerun Job(s):</strong><br>%s<br><br>Refresh this page to update status of Jobs rerunning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' % '<br>'.join(
             [str(j.name) for j in ordered_job_rerun_set]),
@@ -603,14 +607,14 @@ def clone_jobs(request):
 
     # loop through job_ids and add
     for job_id in job_ids:
-        cjob = models.CombineJob.get_combine_job(job_id)
+        cjob = CombineJob.get_combine_job(job_id)
         job_clone_set.add(cjob.job)
 
     # sort and run
     ordered_job_clone_set = sorted(list(job_clone_set), key=lambda j: j.id)
 
     # initiate Combine BG Task
-    combine_task = models.CombineBackgroundTask(
+    combine_task = CombineBackgroundTask(
         name="Clone Jobs",
         task_type='clone_jobs',
         task_params_json=json.dumps({
@@ -628,7 +632,7 @@ def clone_jobs(request):
     combine_task.save()
 
     # set gms
-    gmc = models.GlobalMessageClient(request.session)
+    gmc = GlobalMessageClient(request.session)
     gmc.add_gm({
         'html': '<strong>Cloning Job(s):</strong><br>%s<br><br>Including downstream? <strong>%s</strong><br><br>Refresh this page to update status of Jobs cloning. <button class="btn-sm btn-outline-primary" onclick="location.reload();">Refresh</button>' % (
             '<br>'.join([str(j.name) for j in ordered_job_clone_set]), downstream_toggle),
@@ -642,7 +646,7 @@ def clone_jobs(request):
 @login_required
 def job_parameters(request, org_id, record_group_id, job_id):
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # if GET, return JSON
     if request.method == 'GET':
@@ -669,25 +673,25 @@ def job_harvest_oai(request, org_id, record_group_id):
         """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(
+    record_group = RecordGroup.objects.filter(
         id=record_group_id).first()
 
     # if GET, prepare form
     if request.method == 'GET':
         # retrieve all OAI endoints
-        oai_endpoints = models.OAIEndpoint.objects.all()
+        oai_endpoints = OAIEndpoint.objects.all()
 
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # get record identifier transformation scenarios
-        rits = models.RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformationScenario.objects.all()
 
         # get field mappers
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
 
         # get all bulk downloads
-        bulk_downloads = models.DPLABulkDataDownload.objects.all()
+        bulk_downloads = DPLABulkDataDownload.objects.all()
 
         # render page
         return render(request, 'core/job_harvest_oai.html', {
@@ -704,10 +708,10 @@ def job_harvest_oai(request, org_id, record_group_id):
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             record_group=record_group,
-            job_type_class=models.HarvestOAIJob,
+            job_type_class=HarvestOAIJob,
             job_params=request.POST
         )
 
@@ -729,20 +733,20 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
         """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(
+    record_group = RecordGroup.objects.filter(
         id=record_group_id).first()
 
     # get validation scenarios
-    validation_scenarios = models.ValidationScenario.objects.all()
+    validation_scenarios = ValidationScenario.objects.all()
 
     # get field mappers
-    field_mappers = models.FieldMapper.objects.all()
+    field_mappers = FieldMapper.objects.all()
 
     # get record identifier transformation scenarios
-    rits = models.RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformationScenario.objects.all()
 
     # get all bulk downloads
-    bulk_downloads = models.DPLABulkDataDownload.objects.all()
+    bulk_downloads = DPLABulkDataDownload.objects.all()
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -760,10 +764,10 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             record_group=record_group,
-            job_type_class=models.HarvestStaticXMLJob,
+            job_type_class=HarvestStaticXMLJob,
             job_params=request.POST,
             files=request.FILES,
             hash_payload_filename=hash_payload_filename
@@ -787,20 +791,20 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
         """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(
+    record_group = RecordGroup.objects.filter(
         id=record_group_id).first()
 
     # get validation scenarios
-    validation_scenarios = models.ValidationScenario.objects.all()
+    validation_scenarios = ValidationScenario.objects.all()
 
     # get field mappers
-    field_mappers = models.FieldMapper.objects.all()
+    field_mappers = FieldMapper.objects.all()
 
     # get record identifier transformation scenarios
-    rits = models.RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformationScenario.objects.all()
 
     # get all bulk downloads
-    bulk_downloads = models.DPLABulkDataDownload.objects.all()
+    bulk_downloads = DPLABulkDataDownload.objects.all()
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -818,10 +822,10 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             record_group=record_group,
-            job_type_class=models.HarvestTabularDataJob,
+            job_type_class=HarvestTabularDataJob,
             job_params=request.POST,
             files=request.FILES,
             hash_payload_filename=hash_payload_filename
@@ -845,7 +849,7 @@ def job_transform(request, org_id, record_group_id):
         """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.filter(
+    record_group = RecordGroup.objects.filter(
         id=record_group_id).first()
 
     # if GET, prepare form
@@ -856,7 +860,7 @@ def job_transform(request, org_id, record_group_id):
 
         # if all jobs, retrieve all jobs
         if input_job_scope == 'all_jobs':
-            input_jobs = models.Job.objects.exclude(
+            input_jobs = Job.objects.exclude(
                 job_type='AnalysisJob').all()
 
         # else, limit to RecordGroup
@@ -864,23 +868,23 @@ def job_transform(request, org_id, record_group_id):
             input_jobs = record_group.job_set.all()
 
         # get all transformation scenarios
-        transformations = models.Transformation.objects.filter(
+        transformations = Transformation.objects.filter(
             use_as_include=False)
 
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # get field mappers
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
 
         # get record identifier transformation scenarios
-        rits = models.RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformationScenario.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
-        bulk_downloads = models.DPLABulkDataDownload.objects.all()
+        bulk_downloads = DPLABulkDataDownload.objects.all()
 
         # render page
         return render(request, 'core/job_transform.html', {
@@ -900,10 +904,10 @@ def job_transform(request, org_id, record_group_id):
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             record_group=record_group,
-            job_type_class=models.TransformJob,
+            job_type_class=TransformJob,
             job_params=request.POST)
 
         # start job and update status
@@ -924,7 +928,7 @@ def job_merge(request, org_id, record_group_id):
         """
 
     # retrieve record group
-    record_group = models.RecordGroup.objects.get(pk=record_group_id)
+    record_group = RecordGroup.objects.get(pk=record_group_id)
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -934,7 +938,7 @@ def job_merge(request, org_id, record_group_id):
 
         # if all jobs, retrieve all jobs
         if input_job_scope == 'all_jobs':
-            input_jobs = models.Job.objects.exclude(
+            input_jobs = Job.objects.exclude(
                 job_type='AnalysisJob').all()
 
         # else, limit to RecordGroup
@@ -942,19 +946,19 @@ def job_merge(request, org_id, record_group_id):
             input_jobs = record_group.job_set.all()
 
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # get record identifier transformation scenarios
-        rits = models.RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformationScenario.objects.all()
 
         # get field mappers
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
-        bulk_downloads = models.DPLABulkDataDownload.objects.all()
+        bulk_downloads = DPLABulkDataDownload.objects.all()
 
         # render page
         return render(request, 'core/job_merge.html', {
@@ -974,10 +978,10 @@ def job_merge(request, org_id, record_group_id):
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             record_group=record_group,
-            job_type_class=models.MergeJob,
+            job_type_class=MergeJob,
             job_params=request.POST)
 
         # start job and update status
@@ -997,7 +1001,7 @@ def job_lineage_json(request, org_id, record_group_id, job_id):
         """
 
     # get job
-    job = models.Job.objects.get(pk=int(job_id))
+    job = Job.objects.get(pk=int(job_id))
 
     # get lineage
     job_lineage = job.get_lineage()
@@ -1020,7 +1024,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
     """
 
     # retrieve job
-    cjob = models.CombineJob.get_combine_job(int(job_id))
+    cjob = CombineJob.get_combine_job(int(job_id))
 
     # if GET, prepare form
     if request.method == 'GET':
@@ -1074,7 +1078,7 @@ def job_reports_create_validation(request, org_id, record_group_id, job_id):
                                                f not in ['record_id', 'db_id', 'oid', '_id']]
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name=combine_task_name,
             task_type='validation_report',
             task_params_json=json.dumps(task_params)
@@ -1100,19 +1104,19 @@ def job_update(request, org_id, record_group_id, job_id):
     """
 
     # retrieve job
-    cjob = models.CombineJob.get_combine_job(int(job_id))
+    cjob = CombineJob.get_combine_job(int(job_id))
 
     # if GET, prepare form
     if request.method == 'GET':
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # get field mappers
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
         orig_fm_config_json = cjob.job.get_fm_config_json()
 
         # get all bulk downloads
-        bulk_downloads = models.DPLABulkDataDownload.objects.all()
+        bulk_downloads = DPLABulkDataDownload.objects.all()
 
         # get update type from GET params
         update_type = request.GET.get('update_type', None)
@@ -1136,7 +1140,7 @@ def job_update(request, org_id, record_group_id, job_id):
         LOGGER.debug(request.POST)
 
         # retrieve job
-        cjob = models.CombineJob.get_combine_job(int(job_id))
+        cjob = CombineJob.get_combine_job(int(job_id))
 
         # get update type
         update_type = request.POST.get('update_type', None)
@@ -1151,7 +1155,7 @@ def job_update(request, org_id, record_group_id, job_id):
             cjob.reindex_bg_task(fm_config_json=fm_config_json)
 
             # set gms
-            gmc = models.GlobalMessageClient(request.session)
+            gmc = GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Re-Indexing Job:</strong><br>%s</p>'
                         '<p><a href="%s"><button type="button" '
@@ -1172,14 +1176,14 @@ def job_update(request, org_id, record_group_id, job_id):
                 'validation_scenario', [])
 
             # get validations
-            validations = models.ValidationScenario.objects.filter(
+            validations = ValidationScenario.objects.filter(
                 id__in=[int(vs_id) for vs_id in validation_scenarios])
 
             # init bg task
             cjob.new_validations_bg_task([vs.id for vs in validations])
 
             # set gms
-            gmc = models.GlobalMessageClient(request.session)
+            gmc = GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Running New Validations for Job:</strong><br>%s<br>'
                         '<br><strong>Validation Scenarios:</strong><br>%s</p>'
@@ -1203,9 +1207,9 @@ def job_update(request, org_id, record_group_id, job_id):
             cjob.remove_validation_bg_task(jv_id)
 
             # set gms
-            validation_scenario = models.JobValidation.objects.get(
+            validation_scenario = JobValidation.objects.get(
                 pk=int(jv_id)).validation_scenario
-            gmc = models.GlobalMessageClient(request.session)
+            gmc = GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Removing Validation for Job:</strong><br>%s<br><br>'
                         '<strong>Validation Scenario:</strong><br>%s</p><p><a href="%s"><button type="button" '
@@ -1228,8 +1232,8 @@ def job_update(request, org_id, record_group_id, job_id):
             cjob.dbdm_bg_task(dbdd_id)
 
             # set gms
-            dbdd = models.DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
-            gmc = models.GlobalMessageClient(request.session)
+            dbdd = DPLABulkDataDownload.objects.get(pk=int(dbdd_id))
+            gmc = GlobalMessageClient(request.session)
             gmc.add_gm({
                 'html': '<p><strong>Running DPLA Bulk Data comparison for Job:</strong><br>%s<br><br>'
                         '<strong>Bulk Data S3 key:</strong><br>%s</p><p><a href="%s"><button type="button" '
@@ -1315,7 +1319,7 @@ def field_analysis(request, es_index):
     field_name = request.GET.get('field_name')
 
     # get ESIndex, evaluating stringified list
-    esi = models.ESIndex(ast.literal_eval(es_index))
+    esi = ESIndex(ast.literal_eval(es_index))
 
     # get analysis for field
     field_metrics = esi.field_analysis(field_name, metrics_only=True)
@@ -1332,7 +1336,7 @@ def field_analysis(request, es_index):
 @login_required
 def job_indexing_failures(request, org_id, record_group_id, job_id):
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # return
     return render(request, 'core/job_indexing_failures.html', {
@@ -1356,7 +1360,7 @@ def field_analysis_docs(request, es_index, filter_type):
     field_name = request.GET.get('field_name')
 
     # get ESIndex
-    esi = models.ESIndex(ast.literal_eval(es_index))
+    esi = ESIndex(ast.literal_eval(es_index))
 
     # begin construction of DT GET params with 'fields_names'
     dt_get_params = [
@@ -1418,10 +1422,10 @@ def field_analysis_docs(request, es_index, filter_type):
 @login_required
 def job_validation_scenario_failures(request, org_id, record_group_id, job_id, job_validation_id):
     # get CombineJob
-    cjob = models.CombineJob.get_combine_job(job_id)
+    cjob = CombineJob.get_combine_job(job_id)
 
     # get job validation instance
-    job_validation = models.JobValidation.objects.get(pk=int(job_validation_id))
+    job_validation = JobValidation.objects.get(pk=int(job_validation_id))
 
     # return
     return render(request, 'core/job_validation_scenario_failures.html', {

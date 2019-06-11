@@ -4,7 +4,8 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
-from core import models, forms, tasks
+from core import forms, tasks
+from core.models import RecordGroup, CombineBackgroundTask, Job, PublishedRecords
 
 from .view_helpers import breadcrumb_parser
 
@@ -18,7 +19,7 @@ def record_group_id_redirect(request, record_group_id):
         """
 
     # get job
-    rec_group = models.RecordGroup.objects.get(pk=record_group_id)
+    rec_group = RecordGroup.objects.get(pk=record_group_id)
 
     # redirect
     return redirect('record_group',
@@ -48,14 +49,14 @@ def record_group_delete(request, org_id, record_group_id):
         """
 
     # retrieve record group
-    rec_group = models.RecordGroup.objects.get(pk=record_group_id)
+    rec_group = RecordGroup.objects.get(pk=record_group_id)
 
     # set job status to deleting
     rec_group.name = "%s (DELETING)" % rec_group.name
     rec_group.save()
 
     # initiate Combine BG Task
-    combine_task = models.CombineBackgroundTask(
+    combine_task = CombineBackgroundTask(
         name='Delete RecordGroup: %s' % rec_group.name,
         task_type='delete_model_instance',
         task_params_json=json.dumps({
@@ -88,13 +89,13 @@ def record_group(request, org_id, record_group_id):
     LOGGER.debug('retrieving record group ID: %s', record_group_id)
 
     # retrieve record group
-    rec_group = models.RecordGroup.objects.get(pk=int(record_group_id))
+    rec_group = RecordGroup.objects.get(pk=int(record_group_id))
 
     # get all jobs associated with record group
-    jobs = models.Job.objects.filter(record_group=record_group_id)
+    jobs = Job.objects.filter(record_group=record_group_id)
 
     # get all currently applied publish set ids
-    publish_set_ids = models.PublishedRecords.get_publish_set_ids()
+    publish_set_ids = PublishedRecords.get_publish_set_ids()
 
     # loop through jobs
     for job in jobs:
@@ -105,7 +106,7 @@ def record_group(request, org_id, record_group_id):
     job_lineage = rec_group.get_jobs_lineage()
 
     # get all record groups for this organization
-    record_groups = models.RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(
+    record_groups = RecordGroup.objects.filter(organization=org_id).exclude(id=record_group_id).exclude(
         for_analysis=True)
 
     # render page
