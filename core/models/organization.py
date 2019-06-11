@@ -27,10 +27,8 @@ class Organization(models.Model):
     timestamp = models.DateTimeField(null=True, auto_now_add=True)
     for_analysis = models.BooleanField(default=0)
 
-
     def __str__(self):
         return 'Organization: %s' % self.name
-
 
     def total_record_count(self):
 

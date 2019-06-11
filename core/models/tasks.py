@@ -106,7 +106,6 @@ class CombineBackgroundTask(models.Model):
             self.save()
             LOGGER.debug(str(err))
 
-
     def calc_elapsed_as_string(self):
 
         # determine time elapsed in seconds
@@ -130,7 +129,6 @@ class CombineBackgroundTask(models.Model):
 
         return "%d:%02d:%02d" % (hours, minutes, seconds)
 
-
     @property
     def task_params(self):
 
@@ -141,7 +139,6 @@ class CombineBackgroundTask(models.Model):
         if self.task_params_json:
             return json.loads(self.task_params_json)
         return {}
-
 
     def update_task_params(self, update_d, save=True):
 
@@ -164,7 +161,6 @@ class CombineBackgroundTask(models.Model):
         if save:
             self.save()
 
-
     @property
     def task_output(self):
 
@@ -175,7 +171,6 @@ class CombineBackgroundTask(models.Model):
         if self.task_output_json:
             return json.loads(self.task_output_json)
         return {}
-
 
     def cancel(self):
 

@@ -2,25 +2,21 @@
 import glob
 import fileinput
 import json
-import math
+import logging
 import os
-import pdb
 import polling
 import shutil
-import subprocess
 import tarfile
-import time
 import uuid
 import zipfile
 
 # django imports
-from django.db import connection, transaction
 from django.conf import settings
 
-# Get an instance of a logger
+# Get an instance of a LOGGER
 import logging
 
-logger = logging.getLogger(__name__)
+LOGGER = logging.getLogger(__name__)
 
 # import celery app
 from .celery import celery_app
@@ -53,14 +49,14 @@ def delete_model_instance(instance_model, instance_id):
 
         # get model instance
         i = m.objects.get(pk=int(instance_id))
-        logger.info('retrieved %s model, instance ID %s, deleting' %
+        LOGGER.info('retrieved %s model, instance ID %s, deleting' %
                     (m.__name__, instance_id))
 
         # delete
         return i.delete()
 
     else:
-        logger.info('Combine model %s not found, aborting' % (instance_model))
+        LOGGER.info('Combine model %s not found, aborting' % (instance_model))
 
 
 @celery_app.task()
@@ -79,13 +75,13 @@ def download_and_index_bulk_data(dbdd_id):
     dbdc = models.DPLABulkDataClient()
 
     # download data
-    logger.info('downloading %s' % dbdd.s3_key)
+    LOGGER.info('downloading %s' % dbdd.s3_key)
     dbdd.status = 'downloading'
     dbdd.save()
     download_results = dbdc.download_bulk_data(dbdd.s3_key, dbdd.filepath)
 
     # index data
-    logger.info('indexing %s' % dbdd.filepath)
+    LOGGER.info('indexing %s' % dbdd.filepath)
     dbdd.status = 'indexing'
     dbdd.save()
     es_index = dbdc.index_to_es(dbdd.s3_key, dbdd.filepath)
@@ -114,7 +110,7 @@ def create_validation_report(ct_id):
     # get CombineJob
     cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
-    logger.info(ct.task_params)
+    LOGGER.info(ct.task_params)
 
     try:
 
@@ -129,29 +125,29 @@ def create_validation_report(ct_id):
             'output_path': output_path,
             'task_params': ct.task_params
         }
-        logger.info(spark_code)
+        LOGGER.info(spark_code)
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # set archive filename of loose XML files
         archive_filename_root = '/tmp/%s.%s' % (
             ct.task_params['report_name'], ct.task_params['report_format'])
 
         # loop through partitioned parts, coalesce and write to single file
-        logger.info('coalescing output parts')
+        LOGGER.info('coalescing output parts')
 
         # glob parts
         export_parts = glob.glob('%s/part*' % output_path)
-        logger.info('found %s documents to group' % len(export_parts))
+        LOGGER.info('found %s documents to group' % len(export_parts))
 
         # if output not found, exit
         if len(export_parts) == 0:
@@ -190,17 +186,17 @@ def create_validation_report(ct_id):
                     fout.write(line)
 
             # removing partitioned output
-            logger.info('removing dir: %s' % output_path)
+            LOGGER.info('removing dir: %s' % output_path)
             shutil.rmtree(output_path)
 
             # optionally, compress file
             if ct.task_params['compression_type'] == 'none':
-                logger.info('no compression requested, continuing')
+                LOGGER.info('no compression requested, continuing')
                 output_filename = archive_filename_root
 
             elif ct.task_params['compression_type'] == 'zip':
 
-                logger.info('creating compressed zip archive')
+                LOGGER.info('creating compressed zip archive')
                 report_format = 'zip'
 
                 # establish output archive file
@@ -213,7 +209,7 @@ def create_validation_report(ct_id):
             # tar.gz
             elif ct.task_params['compression_type'] == 'targz':
 
-                logger.info('creating compressed tar archive')
+                LOGGER.info('creating compressed tar archive')
                 report_format = 'targz'
 
                 # establish output archive file
@@ -235,7 +231,7 @@ def create_validation_report(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -304,7 +300,7 @@ def export_mapped_fields(ct_id):
 
             # if fields provided, limit
             if ct.task_params['mapped_field_include']:
-                logger.info(
+                LOGGER.info(
                     'specific fields selected, adding to elasticdump command:')
                 searchBody = {
                     "_source": ct.task_params['mapped_field_include']
@@ -366,22 +362,22 @@ def export_mapped_fields(ct_id):
 
             # if fields provided, limit
             if ct.task_params['mapped_field_include']:
-                logger.info(
+                LOGGER.info(
                     'specific fields selected, adding to es2csv command:')
                 cmd.append(
                     '-f ' + " ".join(["'%s'" % field for field in ct.task_params['mapped_field_include']]))
 
         # execute compiled command
-        logger.info(cmd)
+        LOGGER.info(cmd)
         os.system(" ".join(cmd))
 
         # handle compression
         if ct.task_params['archive_type'] == 'none':
-            logger.info('uncompressed csv file requested, continuing')
+            LOGGER.info('uncompressed csv file requested, continuing')
 
         elif ct.task_params['archive_type'] == 'zip':
 
-            logger.info('creating compressed zip archive')
+            LOGGER.info('creating compressed zip archive')
             content_type = 'application/zip'
 
             # establish output archive file
@@ -397,7 +393,7 @@ def export_mapped_fields(ct_id):
         # tar.gz
         elif ct.task_params['archive_type'] == 'targz':
 
-            logger.info('creating compressed tar archive')
+            LOGGER.info('creating compressed tar archive')
             content_type = 'application/gzip'
 
             # establish output archive file
@@ -413,7 +409,7 @@ def export_mapped_fields(ct_id):
         # handle s3 bucket
         if ct.task_params.get('s3_export', False):
 
-            logger.debug('writing archive file to S3')
+            LOGGER.debug('writing archive file to S3')
 
             # upload to s3
             s3 = boto3.resource('s3',
@@ -432,7 +428,7 @@ def export_mapped_fields(ct_id):
                 'export_output': 's3://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key'].lstrip('/')),
             })
             ct.save()
-            logger.info(ct.task_output_json)
+            LOGGER.info(ct.task_output_json)
 
         # handle local filesystem
         else:
@@ -448,7 +444,7 @@ def export_mapped_fields(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -475,7 +471,7 @@ def export_tabular_data(ct_id):
 
         # build job_dictionary
         job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
-        logger.info(job_dict)
+        LOGGER.info(job_dict)
 
     # handle published records
     if 'published' in ct.task_params.keys():
@@ -511,7 +507,7 @@ def export_tabular_data(ct_id):
     # prepare spark code
     spark_code = "from console import *\nexport_records_as_tabular_data(spark, %d)" % (
         int(ct_id))
-    logger.info(spark_code)
+    LOGGER.info(spark_code)
 
     # submit spark code to livy
     try:
@@ -519,15 +515,15 @@ def export_tabular_data(ct_id):
         # check for livy session
         _check_livy_session()
 
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # handle s3 bucket
         if ct.task_params.get('s3_export', False):
@@ -548,7 +544,7 @@ def export_tabular_data(ct_id):
                 shutil.rmtree(ct.task_params['output_path'])
 
             elif ct.task_params.get('s3_export_type') == 'spark_df':
-                logger.debug(
+                LOGGER.debug(
                     's3 export type was spark_df, nothing to cleanup or do')
 
             # save export output to Combine Task output
@@ -558,7 +554,7 @@ def export_tabular_data(ct_id):
                 'export_output': 's3://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key'].lstrip('/')),
             })
             ct.save()
-            logger.info(ct.task_output_json)
+            LOGGER.info(ct.task_output_json)
 
         # handle local filesystem
         else:
@@ -575,11 +571,11 @@ def export_tabular_data(ct_id):
                 'export_dir': "/".join(ct.task_params['export_output_archive'].split('/')[:-1])
             })
             ct.save()
-            logger.info(ct.task_output_json)
+            LOGGER.info(ct.task_output_json)
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -602,7 +598,7 @@ def _create_export_tabular_data_archive(ct):
     # zip
     if ct.task_params['archive_type'] == 'zip':
 
-        logger.info('creating compressed zip archive')
+        LOGGER.info('creating compressed zip archive')
         content_type = 'application/zip'
 
         # establish output archive file
@@ -617,7 +613,7 @@ def _create_export_tabular_data_archive(ct):
     # tar
     elif ct.task_params['archive_type'] == 'tar':
 
-        logger.info('creating uncompressed tar archive')
+        LOGGER.info('creating uncompressed tar archive')
         content_type = 'application/tar'
 
         # establish output archive file
@@ -632,7 +628,7 @@ def _create_export_tabular_data_archive(ct):
     # tar.gz
     elif ct.task_params['archive_type'] == 'targz':
 
-        logger.info('creating compressed tar archive')
+        LOGGER.info('creating compressed tar archive')
         content_type = 'application/gzip'
 
         # establish output archive file
@@ -646,7 +642,7 @@ def _create_export_tabular_data_archive(ct):
 
     # cleanup directory
     for d in pre_archive_dirs:
-        logger.info('removing dir: %s' % d)
+        LOGGER.info('removing dir: %s' % d)
         shutil.rmtree(d)
 
     # update task params
@@ -672,7 +668,7 @@ def export_documents(ct_id):
 
     # get CombineBackgroundTask
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    logger.info('using %s' % ct)
+    LOGGER.info('using %s' % ct)
 
     # generate spark code
     output_path = '/tmp/%s' % str(uuid.uuid4())
@@ -687,7 +683,7 @@ def export_documents(ct_id):
 
         # build job_dictionary
         job_dict = {'j%s' % cjob.job.id: [cjob.job.id]}
-        logger.info(job_dict)
+        LOGGER.info(job_dict)
 
     # handle published records
     if 'published' in ct.task_params.keys():
@@ -713,7 +709,7 @@ def export_documents(ct_id):
             job.id for job in pr.published_jobs.filter(publish_set_id='')]
 
         # debug
-        logger.info(job_dict)
+        LOGGER.info(job_dict)
 
     # update task params
     ct.refresh_from_db()
@@ -726,7 +722,7 @@ def export_documents(ct_id):
     # prepare spark code
     spark_code = "import math,uuid\nfrom console import *\nexport_records_as_xml(spark, %d)" % (
         int(ct_id))
-    logger.info(spark_code)
+    LOGGER.info(spark_code)
 
     try:
 
@@ -734,22 +730,22 @@ def export_documents(ct_id):
         _check_livy_session()
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # handle s3 bucket
         if ct.task_params.get('s3_export', False):
 
             if ct.task_params.get('s3_export_type') == 'archive':
 
-                logger.debug('writing archive file to S3')
+                LOGGER.debug('writing archive file to S3')
 
                 # create single archive file
                 ct = _create_export_documents_archive(ct)
@@ -765,7 +761,7 @@ def export_documents(ct_id):
                 shutil.rmtree(ct.task_params['output_path'])
 
             elif ct.task_params.get('s3_export_type') == 'spark_df':
-                logger.debug(
+                LOGGER.debug(
                     's3 export type was spark_df, nothing to cleanup or do')
 
             # save export output to Combine Task output
@@ -775,7 +771,7 @@ def export_documents(ct_id):
                 'export_output': 's3://%s/%s' % (ct.task_params['s3_bucket'], ct.task_params['s3_key'].lstrip('/')),
             })
             ct.save()
-            logger.info(ct.task_output_json)
+            LOGGER.info(ct.task_output_json)
 
         # handle local filesystem
         else:
@@ -792,11 +788,11 @@ def export_documents(ct_id):
                 'export_dir': "/".join(ct.task_params['export_output_archive'].split('/')[:-1])
             })
             ct.save()
-            logger.info(ct.task_output_json)
+            LOGGER.info(ct.task_output_json)
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -807,10 +803,10 @@ def export_documents(ct_id):
 
 def _create_export_documents_archive(ct):
     # loop through parts, group XML docs with rool XML element, and save as new XML file
-    logger.info('grouping documents in XML files')
+    LOGGER.info('grouping documents in XML files')
 
     export_parts = glob.glob('%s/**/part*' % ct.task_params['output_path'])
-    logger.info('found %s documents to write as XML' % len(export_parts))
+    LOGGER.info('found %s documents to write as XML' % len(export_parts))
     for part in export_parts:
         with open('%s.xml' % part, 'w') as f:
             f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
@@ -824,7 +820,7 @@ def _create_export_documents_archive(ct):
     # zip
     if ct.task_params['archive_type'] == 'zip':
 
-        logger.info('creating compressed zip archive')
+        LOGGER.info('creating compressed zip archive')
         content_type = 'application/zip'
 
         # establish output archive file
@@ -838,7 +834,7 @@ def _create_export_documents_archive(ct):
     # tar
     elif ct.task_params['archive_type'] == 'tar':
 
-        logger.info('creating uncompressed tar archive')
+        LOGGER.info('creating uncompressed tar archive')
         content_type = 'application/tar'
 
         # establish output archive file
@@ -852,7 +848,7 @@ def _create_export_documents_archive(ct):
     # tar.gz
     elif ct.task_params['archive_type'] == 'targz':
 
-        logger.info('creating compressed tar archive')
+        LOGGER.info('creating compressed tar archive')
         content_type = 'application/gzip'
 
         # establish output archive file
@@ -865,7 +861,7 @@ def _create_export_documents_archive(ct):
 
     # cleanup directory
     for d in pre_archive_dirs:
-        logger.info('removing dir: %s' % d)
+        LOGGER.info('removing dir: %s' % d)
         shutil.rmtree(d)
 
     # update task params
@@ -896,7 +892,7 @@ def job_reindex(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -914,15 +910,15 @@ def job_reindex(ct_id):
         }
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # get new mapping
         mapped_field_analysis = cjob.count_indexed_fields()
@@ -940,7 +936,7 @@ def job_reindex(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -963,7 +959,7 @@ def job_new_validations(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -973,18 +969,18 @@ def job_new_validations(ct_id):
             'job_id': cjob.job.id,
             'validation_scenarios': str([int(vs_id) for vs_id in ct.task_params['validation_scenarios']]),
         }
-        logger.info(spark_code)
+        LOGGER.info(spark_code)
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # loop through validation jobs, and remove from DB if share validation scenario
         cjob.job.remove_validation_jobs(
@@ -1004,7 +1000,7 @@ def job_new_validations(ct_id):
         }, save=True)
 
         # write validation links
-        logger.info('writing validations job links')
+        LOGGER.info('writing validations job links')
         for vs_id in ct.task_params['validation_scenarios']:
             val_job = models.JobValidation(
                 job=cjob.job,
@@ -1014,7 +1010,7 @@ def job_new_validations(ct_id):
             val_job.save()
 
         # update failure counts
-        logger.info('updating failure counts for new validation jobs')
+        LOGGER.info('updating failure counts for new validation jobs')
         for jv in cjob.job.jobvalidation_set.filter(failure_count=None):
             jv.validation_failure_count(force_recount=True)
 
@@ -1027,7 +1023,7 @@ def job_new_validations(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1049,7 +1045,7 @@ def job_remove_validation(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1066,18 +1062,18 @@ def job_remove_validation(ct_id):
             'job_id': cjob.job.id,
             'validation_scenarios': str([jv.validation_scenario.id]),
         }
-        logger.info(spark_code)
+        LOGGER.info(spark_code)
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # remove Job Validation from job_details
         cjob.job.refresh_from_db()
@@ -1105,7 +1101,7 @@ def job_remove_validation(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1119,7 +1115,7 @@ def job_publish(ct_id):
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1133,7 +1129,7 @@ def job_publish(ct_id):
 
         # add publish_set_id to published subsets if present, and remove precount
         for published_subset in ct.task_params['in_published_subsets']:
-            logger.debug(
+            LOGGER.debug(
                 'adding publish_set_id to Published Subset: %s' % published_subset)
             pr = models.PublishedRecords(subset=published_subset)
             pr.add_publish_set_id_to_subset(
@@ -1149,7 +1145,7 @@ def job_publish(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1163,7 +1159,7 @@ def job_unpublish(ct_id):
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1187,7 +1183,7 @@ def job_unpublish(ct_id):
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1205,7 +1201,7 @@ def job_dbdm(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1219,18 +1215,18 @@ def job_dbdm(ct_id):
             'job_id': cjob.job.id,
             'dbdd_id': int(ct.task_params['dbdd_id'])
         }
-        logger.info(spark_code)
+        LOGGER.info(spark_code)
 
         # submit to livy
-        logger.info('submitting code to Spark')
+        LOGGER.info('submitting code to Spark')
         submit = models.LivyClient().submit_job(
             cjob.livy_session.session_id, {'code': spark_code})
 
         # poll until complete
-        logger.info('polling for Spark job to complete...')
+        LOGGER.info('polling for Spark job to complete...')
         results = polling.poll(lambda: models.LivyClient().job_status(submit.headers['Location']).json(),
                                check_success=spark_job_done, step=5, poll_forever=True)
-        logger.info(results)
+        LOGGER.info(results)
 
         # update job_details
         cjob.job.refresh_from_db()
@@ -1255,11 +1251,11 @@ def job_dbdm(ct_id):
             'dbdd_results': results
         })
         ct.save()
-        logger.info(ct.task_output_json)
+        LOGGER.info(ct.task_output_json)
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1277,7 +1273,7 @@ def rerun_jobs_prep(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # loop through and run
         for job_id in ct.task_params['ordered_job_rerun_set']:
@@ -1294,11 +1290,11 @@ def rerun_jobs_prep(ct_id):
             'msg': 'Jobs prepared for rerunning, running or queued as Spark jobs'
         })
         ct.save()
-        logger.info(ct.task_output_json)
+        LOGGER.info(ct.task_output_json)
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1325,7 +1321,7 @@ def clone_jobs(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        logger.info('using %s' % ct)
+        LOGGER.info('using %s' % ct)
 
         # loop through and run
         skip_clones = []
@@ -1351,11 +1347,11 @@ def clone_jobs(ct_id):
             'msg': 'Jobs cloned'
         })
         ct.save()
-        logger.info(ct.task_output_json)
+        LOGGER.info(ct.task_output_json)
 
     except Exception as e:
 
-        logger.info(str(e))
+        LOGGER.info(str(e))
 
         # attempt to capture error and return for task
         ct.task_output_json = json.dumps({
@@ -1374,7 +1370,7 @@ def stateio_export(ct_id):
     _check_livy_session()
 
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    logger.info('using %s' % ct)
+    LOGGER.info('using %s' % ct)
 
     # begin export
     sio_client = models.StateIOClient()
@@ -1399,7 +1395,7 @@ def stateio_import(ct_id):
     _check_livy_session()
 
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    logger.info('using %s' % ct)
+    LOGGER.info('using %s' % ct)
 
     # begin import
     sio_client = models.StateIOClient()

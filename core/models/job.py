@@ -89,10 +89,8 @@ class Job(models.Model):
     elapsed = models.IntegerField(null=True, default=0)
     deleted = models.BooleanField(default=0)
 
-
     def __str__(self):
         return '%s, Job #%s' % (self.name, self.id)
-
 
     def job_type_family(self):
 
@@ -115,7 +113,6 @@ class Job(models.Model):
 
         # else, return job_type untouched
         return self.job_type
-
 
     def update_status(self):
 
@@ -157,7 +154,6 @@ class Job(models.Model):
             # finally, save
             self.save()
 
-
     def calc_elapsed(self):
 
         '''
@@ -191,7 +187,6 @@ class Job(models.Model):
         else:
             return 0
 
-
     def elapsed_as_string(self):
 
         '''
@@ -201,7 +196,6 @@ class Job(models.Model):
         minutes, seconds = divmod(self.elapsed, 60)
         hours, minutes = divmod(minutes, 60)
         return "%d:%02d:%02d" % (hours, minutes, seconds)
-
 
     def calc_records_per_second(self):
 
@@ -228,7 +222,6 @@ class Job(models.Model):
             return None
         except:
             return None
-
 
     def refresh_from_livy(self, save=True):
 
@@ -282,7 +275,6 @@ class Job(models.Model):
             LOGGER.debug(livy_response.status_code)
             LOGGER.debug(livy_response.json())
 
-
     def get_spark_jobs(self):
 
         '''
@@ -310,7 +302,6 @@ class Job(models.Model):
 
         return False
 
-
     def has_spark_failures(self):
 
         '''
@@ -327,7 +318,6 @@ class Job(models.Model):
             return False
 
         return None
-
 
     def get_records(self, success=True):
 
@@ -351,7 +341,6 @@ class Job(models.Model):
         # return
         return records
 
-
     def get_errors(self):
 
         '''
@@ -368,7 +357,6 @@ class Job(models.Model):
 
         # return
         return errors
-
 
     def update_record_count(self, save=True):
 
@@ -398,7 +386,6 @@ class Job(models.Model):
         # if save, save
         if save:
             self.save()
-
 
     def get_total_input_job_record_count(self):
 
@@ -430,7 +417,6 @@ class Job(models.Model):
             return input_jobs_dict
 
         return None
-
 
     def get_detailed_job_record_count(self, force_recount=False):
 
@@ -473,7 +459,6 @@ class Job(models.Model):
         LOGGER.debug('total detailed record count calc elapsed: %s', (time.time()-stime))
         return r_count_dict
 
-
     def job_output_as_filesystem(self):
 
         '''
@@ -488,7 +473,6 @@ class Job(models.Model):
         '''
 
         return self.job_output.replace('file://', '').rstrip('/')
-
 
     def get_output_files(self):
 
@@ -505,7 +489,6 @@ class Job(models.Model):
         output_dir = self.job_output_as_filesystem()
         return [os.path.join(output_dir, f) for f in os.listdir(output_dir) if f.endswith('.avro')]
 
-
     def index_results_save_path(self):
 
         '''
@@ -521,7 +504,6 @@ class Job(models.Model):
         # index results save path
         return '%s/organizations/%s/record_group/%s/jobs/indexing/%s' % (
             settings.BINARY_STORAGE.rstrip('/'), self.record_group.organization.id, self.record_group.id, self.id)
-
 
     def get_lineage(self):
 
@@ -560,7 +542,6 @@ class Job(models.Model):
 
         # return
         return lineage_dict
-
 
     def _get_parent_jobs(self, job, lineage_dict):
 
@@ -715,7 +696,6 @@ class Job(models.Model):
                 # recurse
                 self._get_parent_jobs(parent_job, lineage_dict)
 
-
     @staticmethod
     def get_all_jobs_lineage(
             organization=None,
@@ -778,7 +758,6 @@ class Job(models.Model):
         # return
         return lineage_dict
 
-
     def validation_results(self, force_recount=False):
 
         '''
@@ -836,7 +815,6 @@ class Job(models.Model):
         # return
         return results
 
-
     def get_dpla_bulk_data_matches(self):
 
         '''
@@ -886,7 +864,6 @@ class Job(models.Model):
         else:
             return False
 
-
     def drop_es_index(self, clear_mapped_field_analysis=True):
 
         '''
@@ -912,7 +889,6 @@ class Job(models.Model):
                 with transaction.atomic():
                     self.save()
 
-
     def get_fm_config_json(self, as_dict=False):
 
         '''
@@ -933,7 +909,6 @@ class Job(models.Model):
             LOGGER.debug('error retrieving fm_config_json: %s', str(err))
             return False
 
-
     @property
     def job_details_dict(self):
 
@@ -944,7 +919,6 @@ class Job(models.Model):
         if self.job_details:
             return json.loads(self.job_details)
         return {}
-
 
     def update_job_details(self, update_dict, save=True):
 
@@ -976,7 +950,6 @@ class Job(models.Model):
 
         # return
         return job_details
-
 
     def publish(self, publish_set_id=None):
 
@@ -1015,7 +988,6 @@ class Job(models.Model):
         # return
         return True
 
-
     def unpublish(self):
 
         '''
@@ -1050,7 +1022,6 @@ class Job(models.Model):
         # return
         return True
 
-
     def remove_records_from_db(self):
 
         '''
@@ -1061,7 +1032,6 @@ class Job(models.Model):
         mc_handle.combine.record.delete_many({'job_id':self.id})
         LOGGER.debug('removed records from db')
         return True
-
 
     def remove_validations_from_db(self):
 
@@ -1075,7 +1045,6 @@ class Job(models.Model):
         LOGGER.debug('removed validations from db')
         return True
 
-
     def remove_mapping_failures_from_db(self):
 
         '''
@@ -1086,7 +1055,6 @@ class Job(models.Model):
         mc_handle.combine.index_mapping_failure.delete_many({'job_id':self.id})
         LOGGER.debug('removed mapping failures from db')
         return True
-
 
     def remove_validation_jobs(self, validation_scenarios=None):
 
@@ -1117,7 +1085,6 @@ class Job(models.Model):
 
         # return
         return True
-
 
     def get_downstream_jobs(
             self,
@@ -1173,14 +1140,12 @@ class Job(models.Model):
             return Job._topographic_sort_jobs(job_set)
         return list(job_set)
 
-
     def get_upstream_jobs(self, topographic_sort=True):
 
         '''
         Method to retrieve upstream jobs
             - placeholder for now
         '''
-
 
     @staticmethod
     def _topographic_sort_jobs(job_set):
@@ -1261,7 +1226,6 @@ class Job(models.Model):
         else:
             LOGGER.debug('active Livy session not found, unable to cancel Livy statement or kill Spark application jobs')
 
-
     def add_input_job(self, input_job, job_spec_input_filters=None):
 
         '''
@@ -1308,7 +1272,6 @@ class Job(models.Model):
         LOGGER.debug('cannot add Input Job to Job type: %s', self.job_type_family())
         return False
 
-
     def remove_input_job(self, input_job):
 
         '''
@@ -1351,7 +1314,6 @@ class Job(models.Model):
         LOGGER.debug('cannot add Input Job to Job type: %s', self.job_type_family())
         return False
 
-
     def remove_as_input_job(self):
 
         '''
@@ -1368,7 +1330,6 @@ class Job(models.Model):
             input_job_ids = child.job_details_dict['input_job_ids']
             input_job_ids.remove(self.id)
             child.update_job_details({'input_job_ids':input_job_ids})
-
 
     def remove_from_published_precounts(self):
 
@@ -1395,7 +1356,6 @@ class Job(models.Model):
                 for subset in subsets:
                     delete = mc_handle.combine.misc.delete_one({'_id':'published_field_counts_%s' % subset['name']})
                     LOGGER.debug(delete.raw_result)
-
 
     def remove_temporary_files(self):
 

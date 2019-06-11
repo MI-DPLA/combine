@@ -182,7 +182,7 @@ def delete_jobs(request):
     elif downstream_toggle == 'false':
         downstream_toggle = False
 
-    # set of jobs to rerun
+    # set of jobs to delete
     job_delete_set = set()
 
     # loop through job_ids
@@ -194,7 +194,7 @@ def delete_jobs(request):
         # if including downstream
         if downstream_toggle:
 
-            # add rerun lineage for this job to set
+            # add delete lineage for this job to set
             job_delete_set.update(cjob.job.get_downstream_jobs())
 
         # else, just job
@@ -258,7 +258,7 @@ def move_jobs(request):
     elif downstream_toggle == 'false':
         downstream_toggle = False
 
-    # set of jobs to rerun
+    # set of jobs to move
     job_move_set = set()
 
     # loop through job_ids
@@ -270,7 +270,7 @@ def move_jobs(request):
         # if including downstream
         if downstream_toggle:
 
-            # add rerun lineage for this job to set
+            # add move lineage for this job to set
             job_move_set.update(cjob.job.get_downstream_jobs())
 
         # else, just job
