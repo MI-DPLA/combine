@@ -6,9 +6,6 @@ from django.shortcuts import render
 from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
 
-from core.es import es_handle
-from elasticsearch_dsl import Search
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -35,20 +32,3 @@ def search(request):
         'breadcrumbs': breadcrumb_parser(request),
         'page_title': ' | Search'
     })
-
-def test_search_query(request):
-    """
-    Develop ElasticSearch queries against existing Records to use for other Jobs.
-    """
-
-    indices = list(filter(lambda i: i[0] != '.', es_handle.indices.stats()['indices'].keys()))
-    indices.sort()
-
-    LOGGER.debug("********************")
-    LOGGER.debug(indices)
-    LOGGER.debug("********************")
-
-    return render(request, 'core/test_search_query.html', {
-        'indices': indices
-    })
-

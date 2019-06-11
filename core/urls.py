@@ -217,7 +217,6 @@ urlpatterns = [
 
     # Global Search
     url(r'^search$', views.search, name='search'),
-    url(r'^search/test_search_query$', views.test_search_query, name='test_search_query'),
 
     # Datatables Endpoints
     url(r'^datatables/all_records/records_dt_json$', views.DTRecordsJson.as_view(), name='all_records_dt_json'),
