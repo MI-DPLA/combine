@@ -1264,6 +1264,18 @@ def job_dbdm(ct_id):
         ct.save()
 
 
+def rerun_jobs(jobs):
+    for job in jobs:
+        job.prepare_for_rerunning()
+
+    combine_task = models.CombineBackgroundTask.to_rerun_jobs([j.id for j in jobs])
+
+    bg_task = rerun_jobs_prep.delay(combine_task.id)
+    LOGGER.debug('firing bg task: %s', bg_task)
+    combine_task.celery_task_id = bg_task.task_id
+    combine_task.save()
+
+
 @celery_app.task()
 def rerun_jobs_prep(ct_id):
 

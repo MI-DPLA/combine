@@ -1183,6 +1183,14 @@ class Job(models.Model):
         topo_sorted_jobs = list(toposort_flatten(edge_hash, sort=False))
         return topo_sorted_jobs
 
+    def prepare_for_rerunning(self):
+        self.timestamp = datetime.datetime.now()
+        self.status = 'initializing'
+        self.record_count = 0
+        self.finished = False
+        self.elapsed = 0
+        self.deleted = True
+        self.save()
 
     def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
 

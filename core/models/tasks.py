@@ -193,3 +193,15 @@ class CombineBackgroundTask(models.Model):
         self.refresh_from_db()
         self.completed = True
         self.save()
+
+    @classmethod
+    def to_rerun_jobs(cls, job_ids):
+        task = cls(
+            name="Rerun Jobs Prep",
+            task_type='rerun_jobs_prep',
+            task_params_json=json.dumps({
+                'ordered_job_rerun_set': job_ids
+            })
+        )
+        task.save()
+        return task

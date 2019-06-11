@@ -1,5 +1,4 @@
 import ast
-import datetime
 import json
 import logging
 from urllib.parse import urlencode
@@ -544,31 +543,7 @@ def rerun_jobs(request):
     # sort and run
     ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
 
-    # # loop through and update visible elements of Job for front-end
-    for re_job in ordered_job_rerun_set:
-        re_job.timestamp = datetime.datetime.now()
-        re_job.status = 'initializing'
-        re_job.record_count = 0
-        re_job.finished = False
-        re_job.elapsed = 0
-        re_job.deleted = True
-        re_job.save()
-
-    # initiate Combine BG Task
-    combine_task = CombineBackgroundTask(
-        name="Rerun Jobs Prep",
-        task_type='rerun_jobs_prep',
-        task_params_json=json.dumps({
-            'ordered_job_rerun_set': [j.id for j in ordered_job_rerun_set]
-        })
-    )
-    combine_task.save()
-
-    # run celery task
-    bg_task = tasks.rerun_jobs_prep.delay(combine_task.id)
-    LOGGER.debug('firing bg task: %s', bg_task)
-    combine_task.celery_task_id = bg_task.task_id
-    combine_task.save()
+    tasks.rerun_jobs(ordered_job_rerun_set)
 
     # set gms
     gmc = GlobalMessageClient(request.session)
