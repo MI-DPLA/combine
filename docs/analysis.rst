@@ -28,13 +28,13 @@ Below, is an example of an Analysis Job comparing two Jobs, from *different* Rec
 Analyzing Indexed Fields
 ========================
 
-Undoubtedly one of Combine's more interesting, confusing, and potentially powerful areas is the indexing of Record's XML into ElasticSearch.  This section will outline how that happens, and some possible insights that can be gleamed from the results.
+Undoubtedly one of Combine's more interesting, confusing, and potentially powerful areas is the indexing of Record XML into ElasticSearch.  This section will outline how that happens, and some possible insights that can be gleamed from the results.
 
 
 How and Why?
 ------------
 
-All Records in Combine store their raw metadata as XML in MySQL.  With that raw metadata, are some other fields about validity, internal identifiers, etc., as they relate to the Record.  But, because the metadata is still an opaque XML "blob" at this point, it does not allow for inspection or analysis.  To this end, when all Jobs are run, all Records are also **indexed** in ElasticSearch.
+All Records in Combine store their raw metadata as XML in a Mongo database.  With that raw metadata, are some other fields about validity, internal identifiers, etc., as they relate to the Record.  But, because the metadata is still an opaque XML "blob" at this point, it does not allow for inspection or analysis.  To this end, when all Jobs are run, all Records are also **indexed** in ElasticSearch.
 
 As many who have worked with complex metadata can attest to, flattening or mapping hierarchical metadata to a flat document store like ElasticSearch or Solr is difficult.  Combine approaches this problem by generically flattening all elements in a Record's XML document into XPath paths, which are converted into field names that are stored in ElasticSearch.  This includes attributes as well, further dynamically defining the ElasticSearch field name.
 
@@ -52,17 +52,13 @@ would become the following ElasticSearch field name:
 
 While ``mods_accessCondition_@type_useAndReproduction`` is not terribly pleasant to look at, it's telling where this value came from inside the XML document.  And most importantly, this generic XPath flattening approach can be applied across all XML documents that Combine might encounter.
 
-When running Jobs, users `can select what "Index Mapper" to use <workflow.html#id2>`_, and a user may notice in addition to the ``Generic XPath based mapper``, which is outlined above, Combine also ships with another mapper called ``Custom MODS mapper``.  This is mentioned to point out that other, custom mappers could be created and used if desired.
-
-The ``Custom MODS mapper`` is based on an old XSLT flattening map from MODS to Solr that early versions of Islandora used.  The results from this mapper result in far fewer indexed fields, which has pros and cons.  If the mapping is known and tightly controlled, this could be helpful for precise analysis of where information is going.  But, the generic mapper will -- in some way -- map all values from the XML record to ElasicSearch for analysis, albeit with unsightly field names.  Choices, choices!
-
-Creating a custom mapper would require writing a new class in the file ``core/spark/es.py``, matching the functionality of a pre-existing mapper like ``class GenericMapper(BaseMapper)``.
+This "flattening", aka "mapping", of XML to fields that can be stored and readily queried in ElasticSearch is done through `Field Mapping Configurations <configuration.html#field-mapper-configurations>`__.
 
 
 Breakdown of indexed fields for a Job
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-When viewing the details of a Job, the tab "Field Analysis" shows a breakdown of all fields, for all documents in ElasticSearch, from this job in a table.  These are essentially facets.
+When viewing the details of a Job, the tab "Mapped Fields" shows a breakdown of all fields, for all records in this job, in a table.  They can be thought of roughly as **facets** for the Job.
 
 .. figure:: img/job_indexed_fields_example.png
    :alt: Example of Field Analysis tab from Job details, showing all indexed fields for a Job
@@ -70,7 +66,7 @@ When viewing the details of a Job, the tab "Field Analysis" shows a breakdown of
 
    Example of Field Analysis tab from Job details, showing all indexed fields for a Job
 
-There is a button "Show field analysis explanation" that outlines what the various columns mean:
+There is a button "What does these numbers mean?" that outlines what the various columns mean:
 
 .. figure:: img/field_analysis_explain.png
    :alt: Collapsible explanation of indexed fields breakdown table
