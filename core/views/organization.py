@@ -4,7 +4,7 @@ import json
 from django.shortcuts import render, redirect
 
 from core import forms, tasks
-from core.models import Organization, RecordGroup, CombineBackgroundTask
+from core.models import Organization, RecordGroup, CombineBackgroundTask, GlobalMessageClient
 
 from .view_helpers import breadcrumb_parser
 
@@ -99,6 +99,12 @@ def organization_run_jobs(request, org_id):
     org = Organization.objects.get(pk=int(org_id))
     jobs = org.all_jobs()
     tasks.rerun_jobs(jobs)
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<strong>Preparing to Rerun Job(s):</strong><br>%s' % '<br>'.join(
+            [str(j.name) for j in jobs]),
+        'class': 'success'
+    })
     return redirect('organizations')
 
 
