@@ -10,114 +10,109 @@ import uuid
 from django.contrib.sessions.backends.db import SessionStore
 from django.contrib.sessions.models import Session
 
-# import mongo dependencies
-from core.mongo import *
-
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 
-class GlobalMessageClient(object):
+class GlobalMessageClient():
 
-	'''
-	Client to handle CRUD for global messages
+    '''
+    Client to handle CRUD for global messages
 
-	Message dictionary structure {
-		html (str): string of HTML content to display
-		class (str): class of Bootstrap styling, [success, warning, danger, info]
-		id (uuid4): unique id for removing
-	}
-	'''
+    Message dictionary structure {
+        html (str): string of HTML content to display
+        class (str): class of Bootstrap styling, [success, warning, danger, info]
+        id (uuid4): unique id for removing
+    }
+    '''
 
-	def __init__(self, session=None):
+    def __init__(self, session=None):
 
-		# use session if provided
-		if type(session) == SessionStore:
-			self.session = session
+        # use session if provided
+        if isinstance(session, SessionStore):
+            self.session = session
 
-		# if session_key provided, use
-		elif type(session) == str:
-			self.session = SessionStore(session_key=session)
+        # if session_key provided, use
+        elif isinstance(session, str):
+            self.session = SessionStore(session_key=session)
 
-		# else, set to session
-		else:
-			self.session = session
-
-
-	def load_most_recent_session(self):
-
-		'''
-		Method to retrieve most recent session
-		'''
-
-		s = Session.objects.order_by('expire_date').last()
-		self.__init__(s.session_key)
-		return self
+        # else, set to session
+        else:
+            self.session = session
 
 
-	def add_gm(self, gm_dict, forced_delay=2):
+    def load_most_recent_session(self):
 
-		'''
-		Method to add message
+        '''
+        Method to retrieve most recent session
+        '''
 
-		Args:
-			gm_dict (dict): Dictionary of message contents
-			forced_delay (int): Forced delay as convenient squeeze point to stave race condititions
-		'''
-
-		# check for 'gms' key in session, create if not present
-		if 'gms' not in self.session:
-			self.session['gms'] = []
-
-		# create unique id and add
-		if 'id' not in gm_dict:
-			gm_dict['id'] = uuid.uuid4().hex
-
-		# append gm dictionary
-		self.session['gms'].append(gm_dict)
-
-		# save
-		self.session.save()
-
-		# enforce forced delay
-		if forced_delay:
-			time.sleep(forced_delay)
+        session = Session.objects.order_by('expire_date').last()
+        self.__init__(session.session_key)
+        return self
 
 
-	def delete_gm(self, gm_id):
+    def add_gm(self, gm_dict, forced_delay=2):
 
-		'''
-		Method to remove message
-		'''
+        '''
+        Method to add message
 
-		if 'gms' not in self.session:
-			logger.debug('no global messages found, returning False')
-			return False
+        Args:
+            gm_dict (dict): Dictionary of message contents
+            forced_delay (int): Forced delay as convenient squeeze point to stave race condititions
+        '''
 
-		else:
+        # check for 'gms' key in session, create if not present
+        if 'gms' not in self.session:
+            self.session['gms'] = []
 
-			logger.debug('removing gm: %s' % gm_id)
+        # create unique id and add
+        if 'id' not in gm_dict:
+            gm_dict['id'] = uuid.uuid4().hex
 
-			# grab total gms
-			pre_len = len(self.session['gms'])
+        # append gm dictionary
+        self.session['gms'].append(gm_dict)
 
-			# loop through messages to find and remove
-			self.session['gms'][:] = [gm for gm in self.session['gms'] if gm.get('id') != gm_id]
-			self.session.save()
+        # save
+        self.session.save()
 
-			# return results
-			return pre_len - len(self.session['gms'])
+        # enforce forced delay
+        if forced_delay:
+            time.sleep(forced_delay)
 
 
-	def clear(self):
+    def delete_gm(self, gm_id):
 
-		'''
-		Method to clear all messages
-		'''
+        '''
+        Method to remove message
+        '''
 
-		self.session.clear()
-		self.session.save()
+        if 'gms' not in self.session:
+            LOGGER.debug('no global messages found, returning False')
+            return False
+
+        LOGGER.debug('removing gm: %s', gm_id)
+
+        # grab total gms
+        pre_len = len(self.session['gms'])
+
+        # loop through messages to find and remove
+        self.session['gms'][:] = [gm for gm in self.session['gms'] if gm.get('id') != gm_id]
+        self.session.save()
+
+        # return results
+        return pre_len - len(self.session['gms'])
+
+
+    def clear(self):
+
+        '''
+        Method to clear all messages
+        '''
+
+        self.session.clear()
+        self.session.save()

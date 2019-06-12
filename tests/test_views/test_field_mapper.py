@@ -85,21 +85,21 @@ class FieldMapperTestCase(TestCase):
                                                   field_mapper_type='xml2kvp',
                                                   config_json='{}')
         response = self.client.get(reverse('field_mapper_payload', args=[field_mapper.id]))
-        self.assertEqual(b'"{}"', response.content)
+        self.assertEqual(b'{}', response.content)
 
     def test_field_mapper_payload(self):
         field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
                                                   field_mapper_type='xml2kvp',
-                                                  payload='test payload')
+                                                  payload='{"payload": "test payload"}')
         response = self.client.get(f'{reverse("field_mapper_payload", args=[field_mapper.id])}?type=payload')
-        self.assertEqual(b'"test payload"', response.content)
+        self.assertEqual(b'{"payload": "test payload"}', response.content)
 
     def test_field_mapper_payload_config_config(self):
         field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
                                                   field_mapper_type='xml2kvp',
                                                   config_json='{}')
         response = self.client.get(f'{reverse("field_mapper_payload", args=[field_mapper.id])}?type=config')
-        self.assertEqual(b'"{}"', response.content)
+        self.assertEqual(b'{}', response.content)
 
     def test_field_mapper_update_new(self):
         response = self.client.post(reverse('field_mapper_update'), {

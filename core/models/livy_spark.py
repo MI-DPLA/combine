@@ -11,13 +11,10 @@ import requests
 
 # django imports
 from django.conf import settings
-from django.db import models, transaction
+from django.db import models
 
-# import mongo dependencies
-from core.mongo import *
-
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
@@ -26,711 +23,711 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 class LivySession(models.Model):
 
-	'''
-	Model to manage Livy sessions.
-	'''
+    '''
+    Model to manage Livy sessions.
+    '''
 
-	name = models.CharField(max_length=128)
-	session_id = models.IntegerField()
-	session_url = models.CharField(max_length=128)
-	status = models.CharField(max_length=30, null=True)
-	session_timestamp = models.CharField(max_length=128)
-	appId = models.CharField(max_length=128, null=True)
-	driverLogUrl = models.CharField(max_length=255, null=True)
-	sparkUiUrl = models.CharField(max_length=255, null=True)
-	active = models.BooleanField(default=0)
-	timestamp = models.DateTimeField(null=True, auto_now_add=True)
+    name = models.CharField(max_length=128)
+    session_id = models.IntegerField()
+    session_url = models.CharField(max_length=128)
+    status = models.CharField(max_length=30, null=True)
+    session_timestamp = models.CharField(max_length=128)
+    appId = models.CharField(max_length=128, null=True)
+    driverLogUrl = models.CharField(max_length=255, null=True)
+    sparkUiUrl = models.CharField(max_length=255, null=True)
+    active = models.BooleanField(default=0)
+    timestamp = models.DateTimeField(null=True, auto_now_add=True)
 
 
-	def __str__(self):
-		return 'Livy session: %s, status: %s' % (self.name, self.status)
+    def __str__(self):
+        return 'Livy session: %s, status: %s' % (self.name, self.status)
 
 
-	def refresh_from_livy(self, save=True):
+    def refresh_from_livy(self, save=True):
 
-		'''
-		Method to ping Livy for session status and update DB
+        '''
+        Method to ping Livy for session status and update DB
 
-		Args:
-			None
+        Args:
+            None
 
-		Returns:
-			None
-				- updates attributes of self
-		'''
+        Returns:
+            None
+                - updates attributes of self
+        '''
 
-		logger.debug('querying Livy for session status')
+        LOGGER.debug('querying Livy for session status')
 
-		# query Livy for session status
-		livy_response = LivyClient().session_status(self.session_id)
+        # query Livy for session status
+        livy_response = LivyClient().session_status(self.session_id)
 
-		# if response
-		if livy_response != False:
+        # if response
+        if livy_response != False:
 
-			# parse response and set self values
-			response = livy_response.json()
-			headers = livy_response.headers
+            # parse response and set self values
+            response = livy_response.json()
+            headers = livy_response.headers
 
-			# if status_code 404, set as gone
-			if livy_response.status_code == 404:
+            # if status_code 404, set as gone
+            if livy_response.status_code == 404:
 
-				logger.debug('session not found, setting status to gone')
-				self.status = 'gone'
+                LOGGER.debug('session not found, setting status to gone')
+                self.status = 'gone'
 
-				# update
-				if save:
-					self.save()
+                # update
+                if save:
+                    self.save()
 
-				# return self
-				return self.status
+                # return self
+                return self.status
 
-			elif livy_response.status_code == 200:
+            if livy_response.status_code == 200:
 
-				# update Livy information
-				logger.debug('session found, updating status')
+                # update Livy information
+                LOGGER.debug('session found, updating status')
 
-				# update status
-				self.status = response['state']
-				if self.status in ['starting','idle','busy']:
-					self.active = True
+                # update status
+                self.status = response['state']
+                if self.status in ['starting', 'idle', 'busy']:
+                    self.active = True
 
-				self.session_timestamp = headers['Date']
+                self.session_timestamp = headers['Date']
 
-				# gather information about registered application in spark cluster
-				try:
-					spark_app_id = SparkAppAPIClient.get_application_id(self, self.session_id)
-					self.appId = spark_app_id
-				except:
-					pass
+                # gather information about registered application in spark cluster
+                try:
+                    spark_app_id = SparkAppAPIClient.get_application_id(self, self.session_id)
+                    self.appId = spark_app_id
+                except:
+                    pass
 
-				# update
-				if save:
-					self.save()
+                # update
+                if save:
+                    self.save()
 
-				# return self
-				return self.status
+                # return self
+                return self.status
 
-			else:
+            LOGGER.debug('error: livy request http code: %s', livy_response.status_code)
+            LOGGER.debug('error: livy request content: %s', livy_response.content)
+            return False
 
-				logger.debug('error: livy request http code: %s' % livy_response.status_code)
-				logger.debug('error: livy request content: %s' % livy_response.content)
-				return False
+        # else, do nothing
+        LOGGER.debug('error communicating with Livy, doing nothing')
+        return False
 
-		# else, do nothing
-		else:
 
-			logger.debug('error communicating with Livy, doing nothing')
-			return False
+    def start_session(self):
 
+        '''
+        Method to start Livy session with Livy HttpClient
 
-	def start_session(self):
+        Args:
+            None
 
-		'''
-		Method to start Livy session with Livy HttpClient
+        Returns:
+            None
+        '''
 
-		Args:
-			None
+        # get default config from localsettings
+        livy_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
 
-		Returns:
-			None
-		'''
+        # confirm SPARK_APPLICATION_ROOT_PORT is open
+        # increment if need be, attempting 100 port increment, setting to livy_session_config
+        spark_ui_port = settings.SPARK_APPLICATION_ROOT_PORT
+        for _ in range(0, 100):
+            try:
+                # TODO: probably should not use load-bearing exceptions
+                _ = requests.get('http://localhost:%s' % spark_ui_port)
+                LOGGER.debug('port %s in use, incrementing...', spark_ui_port)
+                spark_ui_port += 1
+            except requests.ConnectionError:
+                LOGGER.debug('port %s open, using for LivySession', spark_ui_port)
+                livy_session_config['conf']['spark_ui_port'] = spark_ui_port
+                break
 
-		# get default config from localsettings
-		livy_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
+        # create livy session, get response
+        livy_response = LivyClient().create_session(config=livy_session_config)
 
-		# confirm SPARK_APPLICATION_ROOT_PORT is open
-		# increment if need be, attempting 100 port increment, setting to livy_session_config
-		spark_ui_port = settings.SPARK_APPLICATION_ROOT_PORT
-		for x in range(0,100):
-			try:
-				r = requests.get('http://localhost:%s' % spark_ui_port)
-				logger.debug('port %s in use, incrementing...' % spark_ui_port)
-				spark_ui_port += 1
-			except requests.ConnectionError:
-				logger.debug('port %s open, using for LivySession' % spark_ui_port)
-				livy_session_config['conf']['spark_ui_port'] = spark_ui_port
-				break
+        # parse response and set instance values
+        response = livy_response.json()
+        LOGGER.debug(response)
+        headers = livy_response.headers
 
-		# create livy session, get response
-		livy_response = LivyClient().create_session(config=livy_session_config)
+        self.name = 'Livy Session, sessionId %s' % (response['id'])
+        self.session_id = int(response['id'])
+        self.session_url = headers['Location']
+        self.status = response['state']
+        self.session_timestamp = headers['Date']
+        self.active = True
+        self.sparkUiUrl = '%s:%s' % (settings.SPARK_HOST, spark_ui_port)
 
-		# parse response and set instance values
-		response = livy_response.json()
-		logger.debug(response)
-		headers = livy_response.headers
+        # update db
+        self.save()
 
-		self.name = 'Livy Session, sessionId %s' % (response['id'])
-		self.session_id = int(response['id'])
-		self.session_url = headers['Location']
-		self.status = response['state']
-		self.session_timestamp = headers['Date']
-		self.active = True
-		self.sparkUiUrl = '%s:%s' % (settings.SPARK_HOST, spark_ui_port)
 
-		# update db
-		self.save()
+    def stop_session(self):
 
+        '''
+        Method to stop Livy session with Livy HttpClient
 
-	def stop_session(self):
+        Args:
+            None
 
-		'''
-		Method to stop Livy session with Livy HttpClient
+        Returns:
+            None
+        '''
 
-		Args:
-			None
+        # stop session
+        LivyClient.stop_session(self.session_id)
 
-		Returns:
-			None
-		'''
+        # update from Livy
+        self.refresh_from_livy()
 
-		# stop session
-		LivyClient.stop_session(self.session_id)
 
-		# update from Livy
-		self.refresh_from_livy()
+    @staticmethod
+    def get_active_session():
 
+        '''
+        Convenience method to return single active livy session,
+        or multiple if multiple exist
 
-	@staticmethod
-	def get_active_session():
+        Args:
+            None
 
-		'''
-		Convenience method to return single active livy session,
-		or multiple if multiple exist
+        Returns:
+            (LivySession): active Livy session instance
+        '''
 
-		Args:
-			None
+        active_livy_sessions = LivySession.objects.filter(active=True)
 
-		Returns:
-			(LivySession): active Livy session instance
-		'''
+        if active_livy_sessions.count() == 1:
+            return active_livy_sessions.first()
 
-		active_livy_sessions = LivySession.objects.filter(active=True)
+        if active_livy_sessions.count() == 0:
+            return False
 
-		if active_livy_sessions.count() == 1:
-			return active_livy_sessions.first()
+        if active_livy_sessions.count() > 1:
+            return active_livy_sessions
 
-		elif active_livy_sessions.count() == 0:
-			return False
 
-		elif active_livy_sessions.count() > 1:
-			return active_livy_sessions
+    def get_log_lines(self, size=10):
 
+        '''
+        Method to return last 10 log lines
+        '''
 
-	def get_log_lines(self, size=10):
+        log_response = LivyClient.get_log_lines(
+            self.session_id,
+            size=size)
 
-		'''
-		Method to return last 10 log lines
-		'''
+        return log_response.json()
 
-		log_response = LivyClient.get_log_lines(
-			self.session_id,
-			size=size)
 
-		return log_response.json()
+    @staticmethod
+    def ensure_active_session_id(session_id):
 
+        '''
+        Method to ensure passed session id:
+            - matches current active Livy session saved to DB
+            - in a state to recieve additional jobs
 
-	@staticmethod
-	def ensure_active_session_id(session_id):
+        Args:
+            session_id (int): session id to check
 
-		'''
-		Method to ensure passed session id:
-			- matches current active Livy session saved to DB
-			- in a state to recieve additional jobs
+        Returns:
+            (int): passed sessionid if active and ready,
+                or new session_id if started
+        '''
 
-		Args:
-			session_id (int): session id to check
+        # if session_id is None, start a new session
+        if session_id == None:
 
-		Returns:
-			(int): passed sessionid if active and ready,
-				or new session_id if started
-		'''
+            LOGGER.debug('active livy session not found, starting new one')
 
-		# if session_id is None, start a new session
-		if session_id == None:
+            # start and poll for new one
+            new_ls = LivySession()
+            new_ls.start_session()
 
-			logger.debug('active livy session not found, starting new one')
+            LOGGER.debug('polling for Livy session to start...')
+            _results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
 
-			# start and poll for new one
-			new_ls = LivySession()
-			new_ls.start_session()
+            # pass new session id and continue to livy job submission
+            session_id = new_ls.session_id
 
-			logger.debug('polling for Livy session to start...')
-			results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
+            # return
+            return session_id
 
-			# pass new session id and continue to livy job submission
-			session_id = new_ls.session_id
+        # if passed session id matches and status is idle or busy
+        if session_id != None:
 
-			# return
-			return session_id
+            # retrieve active livy session and refresh
+            active_ls = LivySession.get_active_session()
+            active_ls.refresh_from_livy(save=False)
 
-		# if passed session id matches and status is idle or busy
-		elif session_id != None:
+            if session_id == active_ls.session_id:
 
-			# retrieve active livy session and refresh
-			active_ls = LivySession.get_active_session()
-			active_ls.refresh_from_livy(save=False)
+                if active_ls.status in ['idle', 'busy']:
+                    LOGGER.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job', active_ls.status)
 
-			if session_id == active_ls.session_id:
+                else:
+                    LOGGER.debug('active livy session is found, state %s, but stale, restarting livy session', active_ls.status)
 
-				if active_ls.status in ['idle','busy']:
-					logger.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job' % active_ls.status)
+                    # destroy active livy session
+                    active_ls.stop_session()
+                    active_ls.delete()
 
-				else:
-					logger.debug('active livy session is found, state %s, but stale, restarting livy session' % active_ls.status)
+                    # start and poll for new one
+                    new_ls = LivySession()
+                    new_ls.start_session()
 
-					# destroy active livy session
-					active_ls.stop_session()
-					active_ls.delete()
+                    LOGGER.debug('polling for Livy session to start...')
+                    _results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
 
-					# start and poll for new one
-					new_ls = LivySession()
-					new_ls.start_session()
+                    # pass new session id and continue to livy job submission
+                    session_id = new_ls.session_id
 
-					logger.debug('polling for Livy session to start...')
-					results = polling.poll(lambda: new_ls.refresh_from_livy() == 'idle', step=5, timeout=120)
+                # return
+                return session_id
 
-					# pass new session id and continue to livy job submission
-					session_id = new_ls.session_id
+            LOGGER.debug('requested livy session id does not match active livy session id')
+            return None
 
-				# return
-				return session_id
 
-			else:
-				logger.debug('requested livy session id does not match active livy session id')
-				return None
+    def restart_session(self):
 
+        '''
+        Method to restart Livy session
+        '''
 
-	def restart_session(self):
+        # stop and destroy self
+        self.stop_session()
+        self.delete()
 
-		'''
-		Method to restart Livy session
-		'''
+        # start and poll for new one
+        new_ls = LivySession()
+        new_ls.start_session()
 
-		# stop and destroy self
-		self.stop_session()
-		self.delete()
+        # poll until ready
+        def livy_session_ready(response):
+            return response in ['idle', 'gone']
 
-		# start and poll for new one
-		new_ls = LivySession()
-		new_ls.start_session()
+        LOGGER.debug('polling for Livy session to start...')
+        _results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, timeout=120)
 
-		# poll until ready
-		def livy_session_ready(response):
-			return response in ['idle','gone']
+        return new_ls
 
-		logger.debug('polling for Livy session to start...')
-		results = polling.poll(lambda: new_ls.refresh_from_livy(), check_success=livy_session_ready, step=5, timeout=120)
 
-		return new_ls
+    def session_port(self):
 
+        '''
+        Method to return port from sparkUiURL
+        '''
 
-	def session_port(self):
+        spark_url = getattr(self, 'sparkUiUrl', None)
+        if spark_url is not None:
+            return spark_url.split(':')[-1]
+        return False
 
-		'''
-		Method to return port from sparkUiURL
-		'''
 
-		spark_url = getattr(self, 'sparkUiUrl', None)
-		if spark_url is not None:
-			return spark_url.split(':')[-1]
-		else:
-			return False
 
+class LivyClient():
 
+    '''
+    Client used for HTTP requests made to Livy server.
+    On init, pull Livy information and credentials from settings.
 
-class LivyClient(object):
+    This Class uses a combination of raw HTTP requests to Livy server, and the built-in
+    python-api HttpClient.
+        - raw requests are helpful for starting sessions, and getting session status
+        - HttpClient useful for submitting jobs, closing session
 
-	'''
-	Client used for HTTP requests made to Livy server.
-	On init, pull Livy information and credentials from settings.
+    Sets class attributes from Django settings
+    '''
 
-	This Class uses a combination of raw HTTP requests to Livy server, and the built-in
-	python-api HttpClient.
-		- raw requests are helpful for starting sessions, and getting session status
-		- HttpClient useful for submitting jobs, closing session
+    server_host = settings.LIVY_HOST
+    server_port = settings.LIVY_PORT
+    default_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
 
-	Sets class attributes from Django settings
-	'''
 
-	server_host = settings.LIVY_HOST
-	server_port = settings.LIVY_PORT
-	default_session_config = settings.LIVY_DEFAULT_SESSION_CONFIG
+    @classmethod
+    def http_request(
+            cls,
+            http_method,
+            url,
+            data=None,
+            params=None,
+            headers={'Content-Type':'application/json'},
+            files=None,
+            stream=False
+        ):
 
+        '''
+        Make HTTP request to Livy serer.
 
-	@classmethod
-	def http_request(self,
-			http_method,
-			url,
-			data=None,
-			params=None,
-			headers={'Content-Type':'application/json'},
-			files=None,
-			stream=False
-		):
+        Args:
+            verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
+            url (str): expecting path only, as host is provided by settings
+            data (str,file): payload of data to send for request
+            headers (dict): optional dictionary of headers passed directly to requests.request,
+                defaults to JSON content-type request
+            files (dict): optional dictionary of files passed directly to requests.request
+            stream (bool): passed directly to requests.request for stream parameter
+        '''
 
-		'''
-		Make HTTP request to Livy serer.
+        # prepare data as JSON string
+        if not isinstance(data, str):
+            data = json.dumps(data)
 
-		Args:
-			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
-			url (str): expecting path only, as host is provided by settings
-			data (str,file): payload of data to send for request
-			headers (dict): optional dictionary of headers passed directly to requests.request,
-				defaults to JSON content-type request
-			files (dict): optional dictionary of files passed directly to requests.request
-			stream (bool): passed directly to requests.request for stream parameter
-		'''
+        # build session
+        session = requests.Session()
 
-		# prepare data as JSON string
-		if type(data) != str:
-			data = json.dumps(data)
+        # build request
+        request = requests.Request(
+            http_method,
+            "http://%s:%s/%s" % (
+                cls.server_host,
+                cls.server_port,
+                url.lstrip('/')),
+            data=data,
+            params=params,
+            headers=headers,
+            files=files)
+        prepped_request = request.prepare() # or, with session, session.prepare_request(request)
 
-		# build session
-		session = requests.Session()
+        # send request
+        try:
+            response = session.send(
+                prepped_request,
+                stream=stream,
+            )
 
-		# build request
-		request = requests.Request(http_method, "http://%s:%s/%s" % (
-			self.server_host,
-			self.server_port,
-			url.lstrip('/')),
-			data=data,
-			params=params,
-			headers=headers,
-			files=files)
-		prepped_request = request.prepare() # or, with session, session.prepare_request(request)
+            # return
+            return response
 
-		# send request
-		try:
-			response = session.send(
-				prepped_request,
-				stream=stream,
-			)
+        except requests.ConnectionError as err:
+            LOGGER.debug("LivyClient: error sending http request to Livy")
+            LOGGER.debug(str(err))
+            return False
 
-			# return
-			return response
 
-		except requests.ConnectionError as e:
-			logger.debug("LivyClient: error sending http request to Livy")
-			logger.debug(str(e))
-			return False
+    @classmethod
+    def get_sessions(cls):
 
+        '''
+        Return current Livy sessions
 
-	@classmethod
-	def get_sessions(self):
+        Args:
+            None
 
-		'''
-		Return current Livy sessions
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			None
+        livy_sessions = cls.http_request('GET', 'sessions')
+        return livy_sessions
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		livy_sessions = self.http_request('GET','sessions')
-		return livy_sessions
+    @classmethod
+    def create_session(cls, config=None):
 
+        '''
+        Initialize Livy/Spark session.
 
-	@classmethod
-	def create_session(self, config=None):
+        Args:
+            config (dict): optional configuration for Livy session, defaults to settings.LIVY_DEFAULT_SESSION_CONFIG
 
-		'''
-		Initialize Livy/Spark session.
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			config (dict): optional configuration for Livy session, defaults to settings.LIVY_DEFAULT_SESSION_CONFIG
+        # if optional session config provided, use, otherwise use default session config from localsettings
+        if config:
+            data = config
+        else:
+            data = cls.default_session_config
 
-		Returns:
-			(dict): Livy server response
-		'''
+        # issue POST request to create new Livy session
+        return cls.http_request('POST', 'sessions', data=data)
 
-		# if optional session config provided, use, otherwise use default session config from localsettings
-		if config:
-			data = config
-		else:
-			data = self.default_session_config
 
-		# issue POST request to create new Livy session
-		return self.http_request('POST', 'sessions', data=data)
+    @classmethod
+    def session_status(cls, session_id):
 
+        '''
+        Return status of Livy session based on session id
 
-	@classmethod
-	def session_status(self, session_id):
+        Args:
+            session_id (str/int): Livy session id
 
-		'''
-		Return status of Livy session based on session id
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			session_id (str/int): Livy session id
+        return cls.http_request('GET', 'sessions/%s' % session_id)
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		return self.http_request('GET','sessions/%s' % session_id)
+    @classmethod
+    def stop_session(cls, session_id):
 
+        '''
+        Assume session id's are unique, change state of session DB based on session id only
+            - as opposed to passing session row, which while convenient, would limit this method to
+            only stopping sessions with a LivySession row in the DB
 
-	@classmethod
-	def stop_session(self, session_id):
+        QUESTION: Should this attempt to kill all Jobs in spark app upon closing?
 
-		'''
-		Assume session id's are unique, change state of session DB based on session id only
-			- as opposed to passing session row, which while convenient, would limit this method to
-			only stopping sessions with a LivySession row in the DB
+        Args:
+            session_id (str/int): Livy session id
 
-		QUESTION: Should this attempt to kill all Jobs in spark app upon closing?
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			session_id (str/int): Livy session id
+        # remove session
+        return cls.http_request('DELETE', 'sessions/%s' % session_id)
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		# remove session
-		return self.http_request('DELETE','sessions/%s' % session_id)
+    @classmethod
+    def get_jobs(cls, session_id):
 
+        '''
+        Get all jobs (statements) for a session
 
-	@classmethod
-	def get_jobs(self, session_id, python_code):
+        Args:
+            session_id (str/int): Livy session id
 
-		'''
-		Get all jobs (statements) for a session
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			session_id (str/int): Livy session id
+        # statement
+        jobs = cls.http_request('GET', 'sessions/%s/statements' % session_id)
+        return jobs
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		# statement
-		jobs = self.http_request('GET', 'sessions/%s/statements' % session_id)
-		return job
+    @classmethod
+    def job_status(cls, job_url):
 
+        '''
+        Get status of job (statement) for a session
 
-	@classmethod
-	def job_status(self, job_url):
+        Args:
+            job_url (str/int): full URL for statement in Livy session
 
-		'''
-		Get status of job (statement) for a session
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			job_url (str/int): full URL for statement in Livy session
+        # statement
+        statement = cls.http_request('GET', job_url)
+        return statement
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		# statement
-		statement = self.http_request('GET', job_url)
-		return statement
+    @classmethod
+    def submit_job(
+            cls,
+            session_id,
+            python_code,
+            ensure_livy_session=True
+        ):
 
+        '''
+        Submit job via HTTP request to /statements
 
-	@classmethod
-	def submit_job(self,
-		session_id,
-		python_code,
-		ensure_livy_session=True):
+        Args:
+            session_id (str/int): Livy session id
+            python_code (str):
 
-		'''
-		Submit job via HTTP request to /statements
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			session_id (str/int): Livy session id
-			python_code (str):
+        # if ensure_livy_session
+        if ensure_livy_session:
+            LOGGER.debug('ensuring Livy session')
+            session_id = LivySession.ensure_active_session_id(session_id)
 
-		Returns:
-			(dict): Livy server response
-		'''
+        if session_id != None:
 
-		# if ensure_livy_session
-		if ensure_livy_session:
-			logger.debug('ensuring Livy session')
-			session_id = LivySession.ensure_active_session_id(session_id)
+            # submit statement
+            job = cls.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
+            return job
 
-		if session_id != None:
+        return False
 
-			# submit statement
-			job = self.http_request('POST', 'sessions/%s/statements' % session_id, data=json.dumps(python_code))
-			return job
 
-		else:
-			return False
+    @classmethod
+    def stop_job(cls, job_url):
 
+        '''
+        Stop job via HTTP request to /statements
 
-	@classmethod
-	def stop_job(self, job_url):
+        Args:
+            job_url (str/int): full URL for statement in Livy session
 
-		'''
-		Stop job via HTTP request to /statements
+        Returns:
+            (dict): Livy server response
+        '''
 
-		Args:
-			job_url (str/int): full URL for statement in Livy session
+        # statement
+        statement = cls.http_request('POST', '%s/cancel' % job_url)
+        return statement
 
-		Returns:
-			(dict): Livy server response
-		'''
 
-		# statement
-		statement = self.http_request('POST', '%s/cancel' % job_url)
-		return statement
+    @classmethod
+    def get_log_lines(cls, session_id, size=10):
 
+        '''
+        Return lines from Livy log
 
-	@classmethod
-	def get_log_lines(self, session_id, size=10):
+        Args:
+            session_id (str/int): Livy session id
+            size (int): Max number of lines
 
-		'''
-		Return lines from Livy log
+        Returns:
+            (list): Log lines
+        '''
 
-		Args:
-			session_id (str/int): Livy session id
-			size (int): Max number of lines
+        return cls.http_request('GET', 'sessions/%s/log' % session_id, params={'size':size})
 
-		Returns:
-			(list): Log lines
-		'''
 
-		return self.http_request('GET','sessions/%s/log' % session_id, params={'size':size})
 
+class SparkAppAPIClient():
 
+    '''
+    Client to communicate with Spark Application created by Livy Session
 
-class SparkAppAPIClient(object):
+    TODO:
+        - the Spark Application port can change (https://github.com/MI-DPLA/combine/issues/243)
+            - SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_ROOT_PORT
+            - increment from 4040, consider looping through until valid app found?
+    '''
 
-	'''
-	Client to communicate with Spark Application created by Livy Session
+    @classmethod
+    def http_request(
+            cls,
+            livy_session,
+            http_method,
+            url,
+            data=None,
+            params=None,
+            headers={'Content-Type':'application/json'},
+            files=None,
+            stream=False
+        ):
 
-	TODO:
-		- the Spark Application port can change (https://github.com/MI-DPLA/combine/issues/243)
-			- SPARK_APPLICATION_API_BASE is based on 4040 for SPARK_APPLICATION_ROOT_PORT
-			- increment from 4040, consider looping through until valid app found?
-	'''
+        '''
+        Make HTTP request to Spark Application API
 
-	@classmethod
-	def http_request(self,
-			livy_session,
-			http_method,
-			url,
-			data=None,
-			params=None,
-			headers={'Content-Type':'application/json'},
-			files=None,
-			stream=False
-		):
+        Args:
+            livy_session (core.models.LivySession): instance of LivySession that contains sparkUiUrl
+            verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
+            url (str): expecting path only, as host is provided by settings
+            data (str,file): payload of data to send for request
+            headers (dict): optional dictionary of headers passed directly to requests.request,
+                defaults to JSON content-type request
+            files (dict): optional dictionary of files passed directly to requests.request
+            stream (bool): passed directly to requests.request for stream parameter
+        '''
 
-		'''
-		Make HTTP request to Spark Application API
+        # prepare data as JSON string
+        if not isinstance(data, str):
+            data = json.dumps(data)
 
-		Args:
-			livy_session (core.models.LivySession): instance of LivySession that contains sparkUiUrl
-			verb (str): HTTP verb to use for request, e.g. POST, GET, etc.
-			url (str): expecting path only, as host is provided by settings
-			data (str,file): payload of data to send for request
-			headers (dict): optional dictionary of headers passed directly to requests.request,
-				defaults to JSON content-type request
-			files (dict): optional dictionary of files passed directly to requests.request
-			stream (bool): passed directly to requests.request for stream parameter
-		'''
+        # build request
+        session = requests.Session()
+        request = requests.Request(
+            http_method,
+            "http://%s%s" % ("%s" % livy_session.sparkUiUrl, url),
+            data=data,
+            params=params,
+            headers=headers,
+            files=files
+        )
+        prepped_request = request.prepare()
+        response = session.send(
+            prepped_request,
+            stream=stream,
+        )
+        return response
 
-		# prepare data as JSON string
-		if type(data) != str:
-			data = json.dumps(data)
 
-		# build request
-		session = requests.Session()
-		request = requests.Request(http_method, "http://%s%s" % ("%s" % livy_session.sparkUiUrl, url),
-			data=data,
-			params=params,
-			headers=headers,
-			files=files)
-		prepped_request = request.prepare()
-		response = session.send(
-			prepped_request,
-			stream=stream,
-		)
-		return response
+    @classmethod
+    def get_application_id(cls, livy_session, livy_session_id):
 
+        '''
+        Attempt to retrieve application ID based on Livy Session ID
 
-	@classmethod
-	def get_application_id(self, livy_session, livy_session_id):
+        Args:
+            None
 
-		'''
-		Attempt to retrieve application ID based on Livy Session ID
+        Returns:
+            (dict): Spark Application API response
+        '''
 
-		Args:
-			None
+        # get list of applications
+        applications = cls.http_request(livy_session, 'GET', '/api/v1/applications').json()
 
-		Returns:
-			(dict): Spark Application API response
-		'''
+        # loop through and look for Livy session
+        for app in applications:
+            if app['name'] == 'livy-session-%s' % livy_session_id:
+                LOGGER.debug('found application matching Livy session id: %s', app['id'])
+                return app['id']
 
-		# get list of applications
-		applications = self.http_request(livy_session, 'GET','/api/v1/applications').json()
 
-		# loop through and look for Livy session
-		for app in applications:
-			if app['name'] == 'livy-session-%s' % livy_session_id:
-				logger.debug('found application matching Livy session id: %s' % app['id'])
-				return app['id']
+    @classmethod
+    def get_spark_jobs_by_job_group(cls, livy_session, spark_app_id, job_group, parse_dates=False, calc_duration=True):
 
+        '''
+        Method to retrieve all Jobs from application, then filter by job_group
+        '''
 
-	@classmethod
-	def get_spark_jobs_by_jobGroup(self, livy_session, spark_app_id, jobGroup, parse_dates=False, calc_duration=True):
+        # get all jobs from application
+        jobs = cls.http_request(livy_session, 'GET', '/api/v1/applications/%s/jobs' % spark_app_id).json()
 
-		'''
-		Method to retrieve all Jobs from application, then filter by jobGroup
-		'''
+        # loop through and filter
+        filtered_jobs = [job for job in jobs if 'job_group' in job.keys() and job['job_group'] == str(job_group)]
 
-		# get all jobs from application
-		jobs = self.http_request(livy_session, 'GET','/api/v1/applications/%s/jobs' % spark_app_id).json()
+        # convert to datetimes
+        if parse_dates:
+            for job in filtered_jobs:
+                job['submissionTime'] = dateutil.parser.parse(job['submissionTime'])
+                if 'completionTime' in job.keys():
+                    job['completionTime'] = dateutil.parser.parse(job['completionTime'])
 
-		# loop through and filter
-		filtered_jobs = [ job for job in jobs if 'jobGroup' in job.keys() and job['jobGroup'] == str(jobGroup) ]
+        # calc duration if flagged
+        if calc_duration:
+            for job in filtered_jobs:
 
-		# convert to datetimes
-		if parse_dates:
-			for job in filtered_jobs:
-				job['submissionTime'] = dateutil.parser.parse(job['submissionTime'])
-				if 'completionTime' in job.keys():
-					job['completionTime'] = dateutil.parser.parse(job['completionTime'])
+                # prepare dates
+                if not parse_dates:
+                    submission_time = dateutil.parser.parse(job['submissionTime'])
+                    if 'completionTime' in job.keys():
+                        completion_time = dateutil.parser.parse(job['completionTime'])
+                    else:
+                        completion_time = datetime.datetime.now()
+                else:
+                    submission_time = job['submissionTime']
+                    if 'completionTime' in job.keys():
+                        completion_time = job['completionTime']
+                    else:
+                        completion_time = datetime.datetime.now()
 
-		# calc duration if flagged
-		if calc_duration:
-			for job in filtered_jobs:
+                # calc and append
+                job['duration'] = (completion_time.replace(tzinfo=None) - submission_time.replace(tzinfo=None)).seconds
+                minutes, seconds = divmod(job['duration'], 60)
+                hours, minutes = divmod(minutes, 60)
+                job['duration_s'] = "%d:%02d:%02d" % (hours, minutes, seconds)
 
-				# prepare dates
-				if not parse_dates:
-					st = dateutil.parser.parse(job['submissionTime'])
-					if 'completionTime' in job.keys():
-						ct = dateutil.parser.parse(job['completionTime'])
-					else:
-						ct = datetime.datetime.now()
-				else:
-					st = job['submissionTime']
-					if 'completionTime' in job.keys():
-						ct = job['completionTime']
-					else:
-						ct = datetime.datetime.now()
+        return filtered_jobs
 
-				# calc and append
-				job['duration'] = (ct.replace(tzinfo=None) - st.replace(tzinfo=None)).seconds
-				m, s = divmod(job['duration'], 60)
-				h, m = divmod(m, 60)
-				job['duration_s'] = "%d:%02d:%02d" % (h, m, s)
 
-		return filtered_jobs
+    @classmethod
+    def kill_job(cls, livy_session, job_id):
 
+        '''
+        Method to send kill command via GET request to Spark Job id
+        '''
 
-	@classmethod
-	def kill_job(self, livy_session, job_id):
-
-		'''
-		Method to send kill command via GET request to Spark Job id
-		'''
-
-		kill_request = self.http_request(livy_session, 'GET','/jobs/job/kill/', params={'id':job_id})
-		if kill_request.status_code == 200:
-			return True
-		else:
-			return False
+        kill_request = cls.http_request(livy_session, 'GET', '/jobs/job/kill/', params={'id':job_id})
+        return bool(kill_request.status_code == 200)

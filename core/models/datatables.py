@@ -14,701 +14,696 @@ import pandas as pd
 from django.http import JsonResponse
 from django.views import View
 
-# import elasticsearch and handles
 from core.es import es_handle
+from core.models.elasticsearch import ESIndex
+from core.models.job import Record
+
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
 
-# import mongo dependencies
-from core.mongo import *
-
-# Get an instance of a logger
-logger = logging.getLogger(__name__)
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
 
-# core models imports
-from core.models.elasticsearch import ESIndex
-from core.models.job import Record, RecordValidation
-
-
 
 class DTElasticFieldSearch(View):
 
-	'''
-	Model to query ElasticSearch and return DataTables ready JSON.
-	This model is a Django Class-based view.
-	This model is located in core.models, as it still may function seperate from a Django view.
-
-	NOTE: Consider breaking aggregation search to own class, very different approach
-	'''
-
-	def __init__(self,
-			fields=None,
-			es_index=None,
-			DTinput={
-				'draw':None,
-				'start':0,
-				'length':10
-			}):
-
-		'''
-		Args:
-			fields (list): list of fields to return from ES index
-			es_index (str): ES index
-			DTinput (dict): DataTables formatted GET parameters as dictionary
-
-		Returns:
-			None
-				- sets parameters
-		'''
-
-		logger.debug('initiating DTElasticFieldSearch connector')
-
-		# fields to retrieve from index
-		self.fields = fields
-
-		# ES index
-		self.es_index = es_index
-
-		# dictionary INPUT DataTables ajax
-		self.DTinput = DTinput
-
-		# placeholder for query to build
-		self.query = None
-
-		# request
-		self.request = None
-
-		# dictionary OUTPUT to DataTables
-		# self.DToutput = DTResponse().__dict__
-		self.DToutput = {
-			'draw': None,
-			'recordsTotal': None,
-			'recordsFiltered': None,
-			'data': []
-		}
-		self.DToutput['draw'] = DTinput['draw']
-
-
-	def filter(self):
-
-		'''
-		Filter based on DTinput paramters
-
-		Args:
-			None
-
-		Returns:
-			None
-				- modifies self.query
-		'''
-
-		# filtering applied before DataTables input
-		filter_type = self.request.GET.get('filter_type', None)
-		filter_field = self.request.GET.get('filter_field', None)
-		filter_value = self.request.GET.get('filter_value', None)
-
-		# equals filtering
-		if filter_type == 'equals':
-			logger.debug('equals type filtering')
-
-			# determine if including or excluding
-			matches = self.request.GET.get('matches', None)
-			if matches and matches.lower() == 'true':
-				matches = True
-			else:
-				matches = False
-
-			# filter query
-			logger.debug('filtering by field:value: %s:%s' % (filter_field, filter_value))
-
-			if matches:
-				logger.debug('filtering to matches')
-				self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-			else:
-				# filter where filter_field == filter_value AND filter_field exists
-				logger.debug('filtering to non-matches')
-				self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
-				self.query = self.query.filter(Q('exists', field=filter_field))
-
-		# exists filtering
-		elif filter_type == 'exists':
-			logger.debug('exists type filtering')
-
-			# determine if including or excluding
-			exists = self.request.GET.get('exists', None)
-			if exists and exists.lower() == 'true':
-				exists = True
-			else:
-				exists = False
+    '''
+    Model to query ElasticSearch and return DataTables ready JSON.
+    This model is a Django Class-based view.
+    This model is located in core.models, as it still may function seperate from a Django view.
+
+    NOTE: Consider breaking aggregation search to own class, very different approach
+    '''
+
+    def __init__(
+            self,
+            fields=None,
+            es_index=None,
+            dt_input={
+                'draw':None,
+                'start':0,
+                'length':10
+            }
+        ):
+        '''
+        Args:
+            fields (list): list of fields to return from ES index
+            es_index (str): ES index
+            dt_input (dict): DataTables formatted GET parameters as dictionary
+
+        Returns:
+            None
+                - sets parameters
+        '''
+
+        LOGGER.debug('initiating DTElasticFieldSearch connector')
+
+        # fields to retrieve from index
+        self.fields = fields
+
+        # ES index
+        self.es_index = es_index
+
+        # dictionary INPUT DataTables ajax
+        self.dt_input = dt_input
+
+        # placeholder for query to build
+        self.query = None
+
+        # request
+        self.request = None
+
+        # dictionary OUTPUT to DataTables
+        # self.dt_output = DTResponse().__dict__
+        self.dt_output = {
+            'draw': None,
+            'recordsTotal': None,
+            'recordsFiltered': None,
+            'data': []
+        }
+        self.dt_output['draw'] = dt_input['draw']
+
+
+    def filter(self):
+
+        '''
+        Filter based on dt_input paramters
+
+        Args:
+            None
+
+        Returns:
+            None
+                - modifies self.query
+        '''
+
+        # filtering applied before DataTables input
+        filter_type = self.request.GET.get('filter_type', None)
+        filter_field = self.request.GET.get('filter_field', None)
+        filter_value = self.request.GET.get('filter_value', None)
+
+        # equals filtering
+        if filter_type == 'equals':
+            LOGGER.debug('equals type filtering')
+
+            # determine if including or excluding
+            matches = self.request.GET.get('matches', None)
+            matches = bool(matches and matches.lower() == 'true')
+
+            # filter query
+            LOGGER.debug('filtering by field:value: %s:%s', filter_field, filter_value)
+
+            if matches:
+                LOGGER.debug('filtering to matches')
+                self.query = self.query.filter(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+            else:
+                # filter where filter_field == filter_value AND filter_field exists
+                LOGGER.debug('filtering to non-matches')
+                self.query = self.query.exclude(Q('term', **{'%s.keyword' % filter_field : filter_value}))
+                self.query = self.query.filter(Q('exists', field=filter_field))
+
+        # exists filtering
+        elif filter_type == 'exists':
+            LOGGER.debug('exists type filtering')
+
+            # determine if including or excluding
+            exists = self.request.GET.get('exists', None)
+            exists = bool(exists and exists.lower() == 'true')
 
-			# filter query
-			if exists:
-				logger.debug('filtering to exists')
-				self.query = self.query.filter(Q('exists', field=filter_field))
-			else:
-				logger.debug('filtering to non-exists')
-				self.query = self.query.exclude(Q('exists', field=filter_field))
+            # filter query
+            if exists:
+                LOGGER.debug('filtering to exists')
+                self.query = self.query.filter(Q('exists', field=filter_field))
+            else:
+                LOGGER.debug('filtering to non-exists')
+                self.query = self.query.exclude(Q('exists', field=filter_field))
 
-		# further filter by DT provided keyword
-		if self.DTinput['search[value]'] != '':
-			logger.debug('general type filtering')
-			self.query = self.query.query('match', _all=self.DTinput['search[value]'])
+        # further filter by DT provided keyword
+        if self.dt_input['search[value]'] != '':
+            LOGGER.debug('general type filtering')
+            self.query = self.query.query('match', _all=self.dt_input['search[value]'])
 
 
-	def sort(self):
+    def sort(self):
 
-		'''
-		Sort based on DTinput parameters.
+        '''
+        Sort based on dt_input parameters.
 
-		Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
+        Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
 
-		Args:
-			None
+        Args:
+            None
 
-		Returns:
-			None
-				- modifies self.query_results
-		'''
+        Returns:
+            None
+                - modifies self.query_results
+        '''
 
-		# get sort params from DTinput
-		sorting_cols = 0
-		sort_key = 'order[%s][column]' % (sorting_cols)
-		while sort_key in self.DTinput:
-			sorting_cols += 1
-			sort_key = 'order[%s][column]' % (sorting_cols)
+        # get sort params from dt_input
+        sorting_cols = 0
+        sort_key = 'order[%s][column]' % (sorting_cols)
+        while sort_key in self.dt_input:
+            sorting_cols += 1
+            sort_key = 'order[%s][column]' % (sorting_cols)
 
-		for i in range(sorting_cols):
-			# sorting column
-			sort_dir = 'asc'
-			sort_col = int(self.DTinput.get('order[%s][column]' % (i)))
-			# sorting order
-			sort_dir = self.DTinput.get('order[%s][dir]' % (i))
+        for i in range(sorting_cols):
+            # sorting column
+            sort_dir = 'asc'
+            sort_col = int(self.dt_input.get('order[%s][column]' % (i)))
+            # sorting order
+            sort_dir = self.dt_input.get('order[%s][dir]' % (i))
 
-			logger.debug('detected sort: %s / %s' % (sort_col, sort_dir))
+            LOGGER.debug('detected sort: %s / %s', sort_col, sort_dir)
 
-		# field per doc (ES Search Results)
-		if self.search_type == 'fields_per_doc':
+        # field per doc (ES Search Results)
+        if self.search_type == 'fields_per_doc':
 
-			# determine if field is sortable
-			if sort_col < len(self.fields):
+            # determine if field is sortable
+            if sort_col < len(self.fields):
 
-				# if db_id, do not add keyword
-				if self.fields[sort_col] == 'db_id':
-					sort_field_string = self.fields[sort_col]
-				# else, add .keyword
-				else:
-					sort_field_string = "%s.keyword" % self.fields[sort_col]
+                # if db_id, do not add keyword
+                if self.fields[sort_col] == 'db_id':
+                    sort_field_string = self.fields[sort_col]
+                # else, add .keyword
+                else:
+                    sort_field_string = "%s.keyword" % self.fields[sort_col]
 
-				if sort_dir == 'desc':
-					sort_field_string = "-%s" % sort_field_string
-				logger.debug("sortable field, sorting by %s, %s" % (sort_field_string, sort_dir))
-			else:
-				logger.debug("cannot sort by column %s" % sort_col)
+                if sort_dir == 'desc':
+                    sort_field_string = "-%s" % sort_field_string
+                LOGGER.debug("sortable field, sorting by %s, %s", sort_field_string, sort_dir)
+            else:
+                LOGGER.debug("cannot sort by column %s", sort_col)
 
-			# apply sorting to query
-			self.query = self.query.sort(sort_field_string)
+            # apply sorting to query
+            self.query = self.query.sort(sort_field_string)
 
-		# value per field (DataFrame)
-		if self.search_type == 'values_per_field':
+        # value per field (DataFrame)
+        if self.search_type == 'values_per_field':
 
-			if sort_col < len(self.query_results.columns):
-				asc = True
-				if sort_dir == 'desc':
-					asc = False
-				self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
+            if sort_col < len(self.query_results.columns):
+                asc = True
+                if sort_dir == 'desc':
+                    asc = False
+                self.query_results = self.query_results.sort_values(self.query_results.columns[sort_col], ascending=asc)
 
 
-	def paginate(self):
+    def paginate(self):
 
-		'''
-		Paginate based on DTinput paramters
+        '''
+        Paginate based on dt_input paramters
 
-		Args:
-			None
+        Args:
+            None
 
-		Returns:
-			None
-				- modifies self.query
-		'''
+        Returns:
+            None
+                - modifies self.query
+        '''
 
-		# using offset (start) and limit (length)
-		start = int(self.DTinput['start'])
-		length = int(self.DTinput['length'])
+        # using offset (start) and limit (length)
+        start = int(self.dt_input['start'])
+        length = int(self.dt_input['length'])
 
-		if self.search_type == 'fields_per_doc':
-			self.query = self.query[start : (start + length)]
+        if self.search_type == 'fields_per_doc':
+            self.query = self.query[start : (start + length)]
 
-		if self.search_type == 'values_per_field':
-			self.query_results = self.query_results[start : (start + length)]
+        if self.search_type == 'values_per_field':
+            self.query_results = self.query_results[start : (start + length)]
 
 
-	def to_json(self):
+    def to_json(self):
 
-		'''
-		Return DToutput as JSON
+        '''
+        Return dt_output as JSON
 
-		Returns:
-			(json)
-		'''
+        Returns:
+            (json)
+        '''
 
-		return json.dumps(self.DToutput)
+        return json.dumps(self.dt_output)
 
 
-	def get(self, request, es_index, search_type):
+    def get(self, request, es_index, search_type):
 
-		'''
-		Django Class-based view, GET request.
-		Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
+        '''
+        Django Class-based view, GET request.
+        Route to appropriate response builder (e.g. fields_per_doc, values_per_field)
 
-		Args:
-			request (django.request): request object
-			es_index (str): ES index
-		'''
+        Args:
+            request (django.request): request object
+            es_index (str): ES index
+        '''
 
-		# save request
-		self.request = request
+        # save request
+        self.request = request
 
-		# handle es index
-		esi = ESIndex(ast.literal_eval(es_index))
-		self.es_index = esi.es_index
+        # handle es index
+        esi = ESIndex(ast.literal_eval(es_index))
+        self.es_index = esi.es_index
 
-		# save DT params
-		self.DTinput = self.request.GET
+        # save DT params
+        self.dt_input = self.request.GET
 
-		# time respond build
-		stime = time.time()
+        # time respond build
+        stime = time.time()
 
-		# return fields per document
-		if search_type == 'fields_per_doc':
-			self.fields_per_doc()
+        # return fields per document
+        if search_type == 'fields_per_doc':
+            self.fields_per_doc()
 
-		# aggregate-based search, count of values per field
-		if search_type == 'values_per_field':
-			self.values_per_field()
+        # aggregate-based search, count of values per field
+        if search_type == 'values_per_field':
+            self.values_per_field()
 
-		# end time
-		logger.debug('DTElasticFieldSearch calc time: %s' % (time.time()-stime))
+        # end time
+        LOGGER.debug('DTElasticFieldSearch calc time: %s', (time.time()-stime))
 
-		# for all search types, build and return response
-		return JsonResponse(self.DToutput)
+        # for all search types, build and return response
+        return JsonResponse(self.dt_output)
 
 
-	def fields_per_doc(self):
+    def fields_per_doc(self):
 
-		'''
-		Perform search to get all fields, for all docs.
-		Loops through self.fields, returns rows per ES document with values (or None) for those fields.
-		Helpful for high-level understanding of documents for a given query.
+        '''
+        Perform search to get all fields, for all docs.
+        Loops through self.fields, returns rows per ES document with values (or None) for those fields.
+        Helpful for high-level understanding of documents for a given query.
 
-		Note: can be used outside of Django context, but must set self.fields first
-		'''
+        Note: can be used outside of Django context, but must set self.fields first
+        '''
 
-		# set search type
-		self.search_type = 'fields_per_doc'
+        # set search type
+        self.search_type = 'fields_per_doc'
 
-		# get field names
-		if self.request:
-			field_names = self.request.GET.getlist('field_names')
-			self.fields = field_names
+        # get field names
+        if self.request:
+            field_names = self.request.GET.getlist('field_names')
+            self.fields = field_names
 
-		# initiate es query
-		self.query = Search(using=es_handle, index=self.es_index)
+        # initiate es query
+        self.query = Search(using=es_handle, index=self.es_index)
 
-		# get total document count, pre-filtering
-		self.DToutput['recordsTotal'] = self.query.count()
+        # get total document count, pre-filtering
+        self.dt_output['recordsTotal'] = self.query.count()
 
-		# apply filtering to ES query
-		self.filter()
+        # apply filtering to ES query
+        self.filter()
 
-		# apply sorting to ES query
-		self.sort()
+        # apply sorting to ES query
+        self.sort()
 
-		# self.sort()
-		self.paginate()
+        # self.sort()
+        self.paginate()
 
-		# get document count, post-filtering
-		self.DToutput['recordsFiltered'] = self.query.count()
+        # get document count, post-filtering
+        self.dt_output['recordsFiltered'] = self.query.count()
 
-		# execute and retrieve search
-		self.query_results = self.query.execute()
+        # execute and retrieve search
+        self.query_results = self.query.execute()
 
-		# loop through hits
-		for hit in self.query_results.hits:
+        # loop through hits
+        for hit in self.query_results.hits:
 
-			# get combine record
-			record = Record.objects.get(id=hit.db_id)
+            # get combine record
+            record = Record.objects.get(id=hit.db_id)
 
-			# loop through rows, add to list while handling data types
-			row_data = []
-			for field in self.fields:
-				field_value = getattr(hit, field, None)
+            # loop through rows, add to list while handling data types
+            row_data = []
+            for field in self.fields:
+                field_value = getattr(hit, field, None)
 
-				# handle ES lists
-				if type(field_value) == AttrList:
-					row_data.append(str(field_value))
+                # handle ES lists
+                if isinstance(field_value, AttrList):
+                    row_data.append(str(field_value))
 
-				# all else, append
-				else:
-					row_data.append(field_value)
+                # all else, append
+                else:
+                    row_data.append(field_value)
 
-			# place record's org_id, record_group_id, and job_id in front
-			row_data = [
-					record.job.record_group.organization.id,
-					record.job.record_group.id,
-					record.job.id
-					] + row_data
+            # place record's org_id, record_group_id, and job_id in front
+            row_data = [
+                record.job.record_group.organization.id,
+                record.job.record_group.id,
+                record.job.id
+            ] + row_data
 
-			# add list to object
-			self.DToutput['data'].append(row_data)
+            # add list to object
+            self.dt_output['data'].append(row_data)
 
 
-	def values_per_field(self, terms_limit=10000):
+    def values_per_field(self, terms_limit=10000):
 
-		'''
-		Perform aggregation-based search to get count of values for single field.
-		Helpful for understanding breakdown of a particular field's values and usage across documents.
+        '''
+        Perform aggregation-based search to get count of values for single field.
+        Helpful for understanding breakdown of a particular field's values and usage across documents.
 
-		Note: can be used outside of Django context, but must set self.fields first
-		'''
+        Note: can be used outside of Django context, but must set self.fields first
+        '''
 
-		# set search type
-		self.search_type = 'values_per_field'
+        # set search type
+        self.search_type = 'values_per_field'
 
-		# get single field
-		if self.request:
-			self.fields = self.request.GET.getlist('field_names')
-			self.field = self.fields[0]
-		else:
-			self.field = self.fields[0] # expects only one for this search type, take first
+        # get single field
+        if self.request:
+            self.fields = self.request.GET.getlist('field_names')
+            self.field = self.fields[0]
+        else:
+            self.field = self.fields[0] # expects only one for this search type, take first
 
-		# initiate es query
-		self.query = Search(using=es_handle, index=self.es_index)
+        # initiate es query
+        self.query = Search(using=es_handle, index=self.es_index)
 
-		# add agg bucket for field values
-		self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=terms_limit))
+        # add agg bucket for field values
+        self.query.aggs.bucket(self.field, A('terms', field='%s.keyword' % self.field, size=terms_limit))
 
-		# return zero
-		self.query = self.query[0]
+        # return zero
+        self.query = self.query[0]
 
-		# apply filtering to ES query
-		self.filter()
+        # apply filtering to ES query
+        self.filter()
 
-		# execute search and convert to dataframe
-		sr = self.query.execute()
-		self.query_results = pd.DataFrame([ val.to_dict() for val in sr.aggs[self.field]['buckets'] ])
+        # execute search and convert to dataframe
+        search_result = self.query.execute()
+        self.query_results = pd.DataFrame([val.to_dict() for val in search_result.aggs[self.field]['buckets']])
 
-		# rearrange columns
-		cols = self.query_results.columns.tolist()
-		cols = cols[-1:] + cols[:-1]
-		self.query_results = self.query_results[cols]
+        # rearrange columns
+        cols = self.query_results.columns.tolist()
+        cols = cols[-1:] + cols[:-1]
+        self.query_results = self.query_results[cols]
 
-		# get total document count, pre-filtering
-		self.DToutput['recordsTotal'] = len(self.query_results)
+        # get total document count, pre-filtering
+        self.dt_output['recordsTotal'] = len(self.query_results)
 
-		# get document count, post-filtering
-		self.DToutput['recordsFiltered'] = len(self.query_results)
+        # get document count, post-filtering
+        self.dt_output['recordsFiltered'] = len(self.query_results)
 
-		# apply sorting to DataFrame
-		'''
-		Think through if sorting on ES query or resulting Dataframe is better option.
-		Might have to be DataFrame, as sorting is not allowed for aggregations in ES when they are string type:
-		https://discuss.elastic.co/t/ordering-terms-aggregation-based-on-pipeline-metric/31839/2
-		'''
-		self.sort()
+        # apply sorting to DataFrame
+        '''
+        Think through if sorting on ES query or resulting Dataframe is better option.
+        Might have to be DataFrame, as sorting is not allowed for aggregations in ES when they are string type:
+        https://discuss.elastic.co/t/ordering-terms-aggregation-based-on-pipeline-metric/31839/2
+        '''
+        self.sort()
 
-		# paginate
-		self.paginate()
+        # paginate
+        self.paginate()
 
-		# loop through field values
-		for index, row in self.query_results.iterrows():
+        # loop through field values
+        for index, row in self.query_results.iterrows():
 
-			# iterate through columns and place in list
-			row_data = [row.key, row.doc_count]
+            # iterate through columns and place in list
+            row_data = [row.key, row.doc_count]
 
-			# add list to object
-			self.DToutput['data'].append(row_data)
+            # add list to object
+            self.dt_output['data'].append(row_data)
 
 
 
 class DTElasticGenericSearch(View):
 
-	'''
-	Model to query ElasticSearch and return DataTables ready JSON.
-	This model is a Django Class-based view.
-	This model is located in core.models, as it still may function seperate from a Django view.
-	'''
+    '''
+    Model to query ElasticSearch and return DataTables ready JSON.
+    This model is a Django Class-based view.
+    This model is located in core.models, as it still may function seperate from a Django view.
+    '''
+
+    def __init__(
+            self,
+            fields=['db_id', 'combine_id', 'record_id'],
+            es_index='j*',
+            dt_input={
+                'draw':None,
+                'start':0,
+                'length':10
+            }
+        ):
+        '''
+        Args:
+            fields (list): list of fields to return from ES index
+            es_index (str): ES index
+            dt_input (dict): DataTables formatted GET parameters as dictionary
 
-	def __init__(self,
-			fields=['db_id','combine_id','record_id'],
-			es_index='j*',
-			DTinput={
-				'draw':None,
-				'start':0,
-				'length':10
-			}):
+        Returns:
+            None
+                - sets parameters
+        '''
 
-		'''
-		Args:
-			fields (list): list of fields to return from ES index
-			es_index (str): ES index
-			DTinput (dict): DataTables formatted GET parameters as dictionary
+        LOGGER.debug('initiating DTElasticGenericSearch connector')
 
-		Returns:
-			None
-				- sets parameters
-		'''
+        # fields to retrieve from index
+        self.fields = fields
 
-		logger.debug('initiating DTElasticGenericSearch connector')
+        # ES index
+        self.es_index = es_index
 
-		# fields to retrieve from index
-		self.fields = fields
+        # dictionary INPUT DataTables ajax
+        self.dt_input = dt_input
 
-		# ES index
-		self.es_index = es_index
+        # placeholder for query to build
+        self.query = None
 
-		# dictionary INPUT DataTables ajax
-		self.DTinput = DTinput
+        # request
+        self.request = None
 
-		# placeholder for query to build
-		self.query = None
+        # dictionary OUTPUT to DataTables
+        # self.dt_output = DTResponse().__dict__
+        self.dt_output = {
+            'draw': None,
+            'recordsTotal': None,
+            'recordsFiltered': None,
+            'data': []
+        }
+        self.dt_output['draw'] = dt_input['draw']
 
-		# request
-		self.request = None
 
-		# dictionary OUTPUT to DataTables
-		# self.DToutput = DTResponse().__dict__
-		self.DToutput = {
-			'draw': None,
-			'recordsTotal': None,
-			'recordsFiltered': None,
-			'data': []
-		}
-		self.DToutput['draw'] = DTinput['draw']
+    def filter(self):
 
+        '''
+        Filter based on dt_input paramters
 
-	def filter(self):
+        Args:
+            None
 
-		'''
-		Filter based on DTinput paramters
+        Returns:
+            None
+                - modifies self.query
+        '''
 
-		Args:
-			None
+        LOGGER.debug('DTElasticGenericSearch: filtering')
 
-		Returns:
-			None
-				- modifies self.query
-		'''
+        # get search string if present
+        search_term = self.request.GET.get('search[value]')
 
-		logger.debug('DTElasticGenericSearch: filtering')
+        # if search term present, refine query
+        if search_term != '':
 
-		# get search string if present
-		search_term = self.request.GET.get('search[value]')
+            # escape colons
+            search_term = search_term.replace(':', '\:')
 
-		# if search term present, refine query
-		if search_term != '':
+            # get search type
+            search_type = self.request.GET.get('search_type', None)
 
-			# escape colons
-			search_term = search_term.replace(':','\:')
+            # exact phrase (full case-sensitive string)
+            if search_type == 'exact_phrase':
 
-			# get search type
-			search_type = self.request.GET.get('search_type', None)
+                self.query = self.query.query(
+                    Q(
+                        "multi_match",
+                        query=search_term.replace("'", "\'"),
+                        fields=['*.keyword']))
 
-			# exact phrase (full case-sensitive string)
-			if search_type == 'exact_phrase':
+            # wildcard (wildcard searching against full keyword)
+            elif search_type == 'wildcard':
 
-				self.query = self.query.query(Q("multi_match",
-					query=search_term.replace("'","\'"),
-					fields=['*.keyword']))
+                self.query = self.query.query(
+                    'query_string',
+                    query=search_term.replace("'", "\'"),
+                    fields=["*.keyword"],
+                    analyze_wildcard=True)
 
-			# wildcard (wildcard searching against full keyword)
-			elif search_type == 'wildcard':
+            # any token (matches single tokens)
+            elif search_type in ['any_token', None]:
 
-				self.query = self.query.query('query_string',
-					query=search_term.replace("'","\'"),
-					fields=["*.keyword"],
-					analyze_wildcard=True)
+                self.query = self.query.query(
+                    "match",
+                    _all=search_term.replace("'", "\'"))
 
-			# any token (matches single tokens)
-			elif search_type in ['any_token', None]:
 
-				self.query = self.query.query("match",
-					_all=search_term.replace("'","\'"))
+    def sort(self):
 
+        '''
+        Sort based on dt_input parameters.
 
-	def sort(self):
+        Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
 
-		'''
-		Sort based on DTinput parameters.
+        Args:
+            None
 
-		Note: Sorting is different for the different types of requests made to DTElasticFieldSearch.
+        Returns:
+            None
+                - modifies self.query_results
+        '''
 
-		Args:
-			None
+        # if using deep paging, will need to implement some sorting to search_after
+        self.query = self.query.sort('record_id.keyword', 'db_id.keyword')
 
-		Returns:
-			None
-				- modifies self.query_results
-		'''
 
-		# if using deep paging, will need to implement some sorting to search_after
-		self.query = self.query.sort('record_id.keyword','db_id.keyword')
+    def paginate(self):
 
+        '''
+        Paginate based on dt_input paramters
 
-	def paginate(self):
+        Args:
+            None
 
-		'''
-		Paginate based on DTinput paramters
+        Returns:
+            None
+                - modifies self.query
+        '''
 
-		Args:
-			None
+        # using offset (start) and limit (length)
+        start = int(self.dt_input['start'])
+        length = int(self.dt_input['length'])
+        self.query = self.query[start : (start + length)]
 
-		Returns:
-			None
-				- modifies self.query
-		'''
+        # use search_after for "deep paging"
+        """
+        This will require capturing current sorts from the DT table, and applying last
+        value here
+        """
+        # self.query = self.query.extra(search_after=['036182a450f31181cf678197523e2023',1182966])
 
-		# using offset (start) and limit (length)
-		start = int(self.DTinput['start'])
-		length = int(self.DTinput['length'])
-		self.query = self.query[start : (start + length)]
 
-		# use search_after for "deep paging"
-		'''
-		This will require capturing current sorts from the DT table, and applying last
-		value here
-		'''
-		# self.query = self.query.extra(search_after=['036182a450f31181cf678197523e2023',1182966])
+    def to_json(self):
 
+        '''
+        Return dt_output as JSON
 
-	def to_json(self):
+        Returns:
+            (json)
+        '''
 
-		'''
-		Return DToutput as JSON
+        return json.dumps(self.dt_output)
 
-		Returns:
-			(json)
-		'''
 
-		return json.dumps(self.DToutput)
+    def get(self, request):
 
+        '''
+        Django Class-based view, GET request.
 
-	def get(self, request):
+        Args:
+            request (django.request): request object
+            es_index (str): ES index
+        '''
 
-		'''
-		Django Class-based view, GET request.
+        # save parameters to self
+        self.request = request
+        self.dt_input = self.request.GET
 
-		Args:
-			request (django.request): request object
-			es_index (str): ES index
-		'''
+        # filter indices if need be
+        self.filter_es_indices()
 
-		# save parameters to self
-		self.request = request
-		self.DTinput = self.request.GET
+        # time respond build
+        stime = time.time()
 
-		# filter indices if need be
-		self.filter_es_indices()
+        # execute search
+        self.search()
 
-		# time respond build
-		stime = time.time()
+        # end time
+        LOGGER.debug('DTElasticGenericSearch: response time %s', (time.time()-stime))
 
-		# execute search
-		self.search()
+        # for all search types, build and return response
+        return JsonResponse(self.dt_output)
 
-		# end time
-		logger.debug('DTElasticGenericSearch: response time %s' % (time.time()-stime))
 
-		# for all search types, build and return response
-		return JsonResponse(self.DToutput)
+    def filter_es_indices(self):
 
+        filter_jobs = [
+            'j%s' % int(job_id.split('|')[-1])
+            for job_id in self.request.GET.getlist('jobs[]')
+            if job_id.startswith('job')
+        ]
+        if len(filter_jobs) > 0:
+            self.es_index = filter_jobs
+        else:
+            self.es_index = 'j*'
 
-	def filter_es_indices(self):
 
-		filter_jobs = [
-				'j%s' % int(job_id.split('|')[-1])
-				for job_id in self.request.GET.getlist('jobs[]')
-				if job_id.startswith('job')
-			]
-		if len(filter_jobs) > 0:
-			self.es_index = filter_jobs
-		else:
-			self.es_index = 'j*'
+    def search(self):
 
+        '''
+        Execute search
+        '''
 
-	def search(self):
+        # initiate es query
+        self.query = Search(using=es_handle, index=self.es_index)
 
-		'''
-		Execute search
-		'''
+        # get total document count, pre-filtering
+        self.dt_output['recordsTotal'] = self.query.count()
 
-		# initiate es query
-		self.query = Search(using=es_handle, index=self.es_index)
+        # apply filtering to ES query
+        self.filter()
 
-		# get total document count, pre-filtering
-		self.DToutput['recordsTotal'] = self.query.count()
+        # # apply sorting to ES query
+        self.sort()
 
-		# apply filtering to ES query
-		self.filter()
+        # # self.sort()
+        self.paginate()
 
-		# # apply sorting to ES query
-		self.sort()
+        # get document count, post-filtering
+        self.dt_output['recordsFiltered'] = self.query.count()
 
-		# # self.sort()
-		self.paginate()
+        # execute and retrieve search
+        self.query_results = self.query.execute()
 
-		# get document count, post-filtering
-		self.DToutput['recordsFiltered'] = self.query.count()
+        # loop through hits
+        for hit in self.query_results.hits:
 
-		# execute and retrieve search
-		self.query_results = self.query.execute()
+            try:
 
-		# loop through hits
-		for hit in self.query_results.hits:
+                # get combine record
+                record = Record.objects.get(id=hit.db_id)
 
-			try:
+                # loop through rows, add to list while handling data types
+                row_data = []
+                for field in self.fields:
+                    field_value = getattr(hit, field, None)
 
-				# get combine record
-				record = Record.objects.get(id=hit.db_id)
+                    # handle ES lists
+                    if isinstance(field_value, AttrList):
+                        row_data.append(str(field_value))
 
-				# loop through rows, add to list while handling data types
-				row_data = []
-				for field in self.fields:
-					field_value = getattr(hit, field, None)
+                    # all else, append
+                    else:
+                        row_data.append(field_value)
 
-					# handle ES lists
-					if type(field_value) == AttrList:
-						row_data.append(str(field_value))
+                # add record lineage in front
+                row_data = self._prepare_record_hierarchy_links(record, row_data)
 
-					# all else, append
-					else:
-						row_data.append(field_value)
+                # add list to object
+                self.dt_output['data'].append(row_data)
 
-				# add record lineage in front
-				row_data = self._prepare_record_hierarchy_links(record, row_data)
+            except Exception as err:
+                LOGGER.debug("error retrieving DB record based on id %s, from index %s: %s", hit.db_id, hit.meta.index, str(err))
 
-				# add list to object
-				self.DToutput['data'].append(row_data)
 
-			except Exception as e:
-				logger.debug("error retrieving DB record based on id %s, from index %s: %s" % (hit.db_id, hit.meta.index, str(e)))
+    @staticmethod
+    def _prepare_record_hierarchy_links(record, row_data):
 
+        '''
+        Method to prepare links based on the hierarchy of the Record
+        '''
 
-	def _prepare_record_hierarchy_links(self, record, row_data):
+        urls = record.get_lineage_url_paths()
 
-		'''
-		Method to prepare links based on the hierarchy of the Record
-		'''
+        to_append = [
+            '<a href="%s">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
+            '<a href="%s">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
+            '<a href="%s"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
+            urls['record']['path'],
+        ]
 
-		urls = record.get_lineage_url_paths()
-
-		to_append = [
-			'<a href="%s">%s</a>' % (urls['organization']['path'], urls['organization']['name']),
-			'<a href="%s">%s</a>' % (urls['record_group']['path'], urls['record_group']['name']),
-			'<a href="%s"><span class="%s">%s</span></a>' % (urls['job']['path'], record.job.job_type_family(), urls['job']['name']),
-			urls['record']['path'],
-		]
-
-		return to_append + row_data
+        return to_append + row_data
