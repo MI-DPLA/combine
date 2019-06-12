@@ -4,6 +4,8 @@ from django.contrib.auth import views as auth_views
 from . import views
 from .models import DTElasticFieldSearch, DTElasticGenericSearch
 
+from graphene_django.views import GraphQLView
+
 urlpatterns = [
 
     # System
@@ -275,6 +277,9 @@ urlpatterns = [
     url(r'^stateio/state/(?P<state_id>[0-9a-z]+)/stop$', views.stateio_state_stop, name='stateio_state_stop'),
     url(r'^stateio/export$', views.stateio_export, name='stateio_export'),
     url(r'^stateio/import$', views.stateio_import, name='stateio_import'),
+
+    # GraphQL
+    url(r'^graphql$', GraphQLView.as_view(graphiql=True)),
 
     # General
     url(r'^login$', auth_views.login, name='login'),

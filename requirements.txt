@@ -25,6 +25,7 @@ enum34==1.1.6
 filelock==2.0.6
 future==0.16.0
 futures==3.1.1
+graphene-django==2.3.0
 idna==2.6
 ipython==6.1.0
 ipython-genutils==0.2.0

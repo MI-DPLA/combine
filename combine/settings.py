@@ -42,7 +42,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django_extensions',
     'django.contrib.humanize',
-    'crispy_forms'
+    'crispy_forms',
+    'graphene_django'
 ]
 
 MIDDLEWARE = [
@@ -187,6 +188,11 @@ SHELL_PLUS_POST_IMPORTS = {
 
 # crispy forms
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
+
+# GraphQL
+GRAPHENE = {
+    'SCHEMA': 'core.graphql.schema.schema'
+}
 
 #########################
 # Import localsettings.py
