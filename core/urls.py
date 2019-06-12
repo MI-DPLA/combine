@@ -24,6 +24,8 @@ urlpatterns = [
         views.organization_delete, name='organization_delete'),
     url(r'^organization/(?P<org_id>[0-9]+)/run_jobs$',
         views.organization_run_jobs, name='organization_run_jobs'),
+    url(r'^organization/(?P<org_id>[0-9]+)/stop_jobs$',
+        views.organization_stop_jobs, name='organization_stop_jobs'),
 
     # Record Groups
     url(r'^record_group/(?P<record_group_id>[0-9]+)$', views.record_group_id_redirect, name='record_group_id_redirect'),

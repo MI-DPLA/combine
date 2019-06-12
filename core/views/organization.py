@@ -109,4 +109,17 @@ def organization_run_jobs(request, org_id):
 
 
 def organization_stop_jobs(request, org_id):
-    pass
+    org = Organization.objects.get(pk=int(org_id))
+    jobs = org.all_jobs()
+    for job in jobs:
+        LOGGER.debug('stopping Job: %s', job)
+        job.stop_job()
+
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<p><strong>Stopped Job(s):</strong><br>%s</p>' % (
+            '<br>'.join([j.name for j in jobs])),
+        'class': 'danger'
+    })
+
+    return redirect('organizations')

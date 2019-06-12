@@ -16,7 +16,6 @@ LOGGER = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 
-
 class Organization(models.Model):
 
     '''

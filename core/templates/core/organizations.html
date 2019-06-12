@@ -45,6 +45,9 @@
                                     <a href="{% url 'organization_run_jobs' org_id=org.id %}">
                                         <button type="button" class="btn btn-info btn-sm">Run All Jobs</button>
                                     </a>
+                                    <a href="{% url 'organization_stop_jobs' org_id=org.id %}" onclick="return confirm('Are you sure you want to stop all running Jobs for this Organization?')">
+                                        <button type="button" class="btn btn-warning btn-sm">Stop All Jobs</button>
+                                    </a>
                                 </td>
 							</tr>
 						{% endfor %}
