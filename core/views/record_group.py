@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from core import forms, tasks
-from core.models import RecordGroup, CombineBackgroundTask, Job, PublishedRecords
+from core.models import RecordGroup, CombineBackgroundTask, Job, PublishedRecords, GlobalMessageClient
 
 from .view_helpers import breadcrumb_parser
 
@@ -118,3 +118,34 @@ def record_group(request, org_id, record_group_id):
         'record_groups': record_groups,
         'breadcrumbs': breadcrumb_parser(request)
     })
+
+
+@login_required
+def record_group_run_jobs(request, org_id, record_group_id):
+    group = RecordGroup.objects.get(pk=int(record_group_id))
+    jobs = group.all_jobs()
+    tasks.rerun_jobs(jobs)
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<strong>Preparing to Rerun Job(s):</strong><br>%s' % '<br>'.join(
+            [str(j.name) for j in jobs]),
+        'class': 'success'
+    })
+    return redirect('organization', org_id=group.organization_id)
+
+@login_required
+def record_group_stop_jobs(request, org_id, record_group_id):
+    group = RecordGroup.objects.get(pk=int(record_group_id))
+    jobs = group.all_jobs()
+    for job in jobs:
+        LOGGER.debug('stopping Job: %s', job)
+        job.stop_job()
+
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<p><strong>Stopped Job(s):</strong><br>%s</p>' % (
+            '<br>'.join([j.name for j in jobs])),
+        'class': 'danger'
+    })
+
+    return redirect('organization', org_id=group.organization_id)

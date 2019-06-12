@@ -34,6 +34,10 @@ urlpatterns = [
         name='record_group'),
     url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete,
         name='record_group_delete'),
+    url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/run_jobs$',
+        views.record_group_run_jobs, name='record_group_run_jobs'),
+    url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/stop_jobs$',
+        views.record_group_stop_jobs, name='record_group_stop_jobs'),
 
     # Jobs
     url(r'^job/(?P<job_id>[0-9]+)$', views.job_id_redirect, name='job_id_redirect'),

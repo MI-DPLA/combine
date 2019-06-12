@@ -51,7 +51,17 @@
 									<td></td>
 								{% endif %}
 								<td>{{ record_group.timestamp }}</td>
-								<td><a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');"><button type="button" class="btn btn-danger btn-sm">Delete <i class="la la-close"></i></button></a></td>
+								<td>
+                                    <a href="{% url 'record_group_delete' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to delete this Record Group?');">
+                                        <button type="button" class="btn btn-danger btn-sm">Delete <i class="la la-close"></i></button>
+                                    </a>
+                                    <a href="{% url 'record_group_run_jobs' org_id=record_group.organization.id record_group_id=record_group.id %}">
+                                        <button type="button" class="btn btn-info btn-sm">Run All Jobs</button>
+                                    </a>
+                                    <a href="{% url 'record_group_stop_jobs' org_id=record_group.organization.id record_group_id=record_group.id %}" onclick="return confirm('Are you sure you want to stop all Jobs for this Record Group?');">
+                                        <button type="button" class="btn btn-warning btn-sm">Stop All Jobs</button>
+                                    </a>
+                                </td>
 							</tr>
 						{% endfor %}
 					</tbody>

@@ -18,7 +18,6 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 from core.models.organization import Organization
 
 
-
 class RecordGroup(models.Model):
 
     '''
@@ -33,10 +32,8 @@ class RecordGroup(models.Model):
     # publish_set_id = models.CharField(max_length=128, null=True, default=None, blank=True)
     for_analysis = models.BooleanField(default=0)
 
-
     def __str__(self):
         return 'Record Group: %s' % self.name
-
 
     def get_jobs_lineage(self):
 
@@ -78,12 +75,10 @@ class RecordGroup(models.Model):
         LOGGER.debug('lineage calc time elapsed: %s', (time.time()-stime))
         return lineage_dict
 
-
     def published_jobs(self):
 
         # get published jobs for rg
         return self.job_set.filter(published=True)
-
 
     def is_published(self):
 
@@ -105,7 +100,6 @@ class RecordGroup(models.Model):
             return False
         return True
 
-
     def total_record_count(self):
 
         '''
@@ -121,3 +115,8 @@ class RecordGroup(models.Model):
 
         # return
         return total_record_count
+
+    def all_jobs(self):
+        jobs = self.job_set.all()
+        ordered_jobs = sorted(jobs, key=lambda j: j.id)
+        return ordered_jobs

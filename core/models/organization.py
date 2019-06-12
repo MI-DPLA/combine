@@ -51,7 +51,7 @@ class Organization(models.Model):
         return total_record_count
 
     def all_jobs(self):
-        groups = [group.job_set.all() for group in self.recordgroup_set.all()]
+        groups = [group.all_jobs() for group in self.recordgroup_set.all()]
         jobs = list(chain.from_iterable(groups))
         ordered_jobs = sorted(jobs, key=lambda j: j.id)
         return ordered_jobs
