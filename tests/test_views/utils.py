@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 
-from core.models import Organization, RecordGroup, Job, Record
+from core.models import Organization, RecordGroup, Job, Record, GlobalMessageClient
 
 
 class TestConfiguration:
@@ -13,7 +13,8 @@ class TestConfiguration:
         self.job = Job.objects.create(record_group=self.record_group,
                                       user=self.user,
                                       job_type="HarvestJob",
-                                      job_details='{"test_key": "test value"}')
+                                      job_details='{"test_key": "test value"}',
+                                      name="Test Job")
         self.record = Record.objects.create(job_id=self.job.id,
                                             record_id='testrecord',
                                             document='test document')
@@ -31,3 +32,11 @@ class TestConfiguration:
 
     def record_path(self):
         return f'{self.job_path()}/record/{self.record.id}'
+
+
+def most_recent_global_message():
+    gmc = GlobalMessageClient()
+    gmc.load_most_recent_session()
+    gm = gmc.session['gms'][0]
+    return gm
+

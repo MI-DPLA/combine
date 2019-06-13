@@ -2,7 +2,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from core.models import Organization
-from tests.test_views.utils import TestConfiguration
+from tests.test_views.utils import TestConfiguration, most_recent_global_message
 
 
 class OrganizationTestCase(TestCase):
@@ -34,3 +34,20 @@ class OrganizationTestCase(TestCase):
         config = TestConfiguration()
         response = self.client.get(reverse('organization_delete', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))
+
+    def test_organization_run_jobs(self):
+        config = TestConfiguration()
+        response = self.client.get(reverse('organization_run_jobs', args=[config.org.id]))
+        self.assertRedirects(response, reverse('organizations'))
+        gm = most_recent_global_message()
+        self.assertEqual(gm['html'], '<strong>Preparing to Rerun Job(s):</strong><br>Test Job')
+        self.assertEqual(gm['class'], 'success')
+
+    def test_organization_stop_jobs(self):
+        config = TestConfiguration()
+        response = self.client.get(reverse('organization_stop_jobs', args=[config.org.id]))
+        self.assertRedirects(response, reverse('organizations'))
+        gm = most_recent_global_message()
+        self.assertEqual(gm['html'], '<p><strong>Stopped Job(s):</strong><br>Test Job</p>')
+        self.assertEqual(gm['class'], 'danger')
+
