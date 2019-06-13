@@ -5,7 +5,7 @@ from core.models import Organization
 from tests.utils import TestConfiguration, most_recent_global_message
 
 
-class OrganizationTestCase(TestCase):
+class OrganizationViewTestCase(TestCase):
     def setUp(self):
         self.client = Client()
 

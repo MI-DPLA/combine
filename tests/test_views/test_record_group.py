@@ -5,7 +5,7 @@ from core.models import RecordGroup
 from tests.utils import TestConfiguration
 
 
-class RecordGroupTestCase(TestCase):
+class RecordGroupViewTestCase(TestCase):
     def setUp(self) -> None:
         self.client = Client()
         self.config = TestConfiguration()
