@@ -1,8 +1,8 @@
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from core.models import RecordGroup
-from tests.utils import TestConfiguration
+from core.models import RecordGroup, Job
+from tests.utils import TestConfiguration, most_recent_global_message
 
 
 class RecordGroupViewTestCase(TestCase):
@@ -20,3 +20,33 @@ class RecordGroupViewTestCase(TestCase):
         self.assertRedirects(response, reverse('record_group', args=[self.config.org.id, record_group.id]))
         redirect = self.client.get(response.url)
         self.assertIn('Test Record Group', str(redirect.content, 'utf-8'))
+
+    def test_record_group_run_jobs(self):
+        other_rg = RecordGroup.objects.create(organization=self.config.org,
+                                              name="Other Record Group")
+        Job.objects.create(record_group=other_rg,
+                           user=self.config.user,
+                           job_type='MergeJob',
+                           job_details='{"test_key": "test value"}',
+                           name="Other Job")
+        response = self.client.get(reverse('record_group_run_jobs', args=[self.config.org.id,
+                                                                          self.config.record_group.id]))
+        self.assertRedirects(response, reverse('organization', args=[self.config.org.id]))
+        gm = most_recent_global_message()
+        self.assertEqual(gm['html'], '<strong>Preparing to Rerun Job(s):</strong><br>Test Job')
+        self.assertEqual(gm['class'], 'success')
+
+    def test_record_group_stop_jobs(self):
+        other_rg = RecordGroup.objects.create(organization=self.config.org,
+                                              name="Other Record Group")
+        Job.objects.create(record_group=other_rg,
+                           user=self.config.user,
+                           job_type='MergeJob',
+                           job_details='{"test_key": "test value"}',
+                           name="Other Job")
+        response = self.client.get(reverse('record_group_stop_jobs', args=[self.config.org.id,
+                                                                           self.config.record_group.id]))
+        self.assertRedirects(response, reverse('organization', args=[self.config.org.id]))
+        gm = most_recent_global_message()
+        self.assertEqual(gm['html'], '<p><strong>Stopped Job(s):</strong><br>Test Job</p>')
+        self.assertEqual(gm['class'], 'danger')
