@@ -2,7 +2,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from core.models import RecordGroup
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class RecordGroupTestCase(TestCase):

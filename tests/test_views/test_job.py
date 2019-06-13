@@ -3,7 +3,7 @@ from django.core.urlresolvers import reverse
 
 
 from core.models import Job, RecordGroup
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class JobTestCase(TestCase):

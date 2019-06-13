@@ -2,7 +2,7 @@ from django.test import TestCase, Client
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 from core.models import Transformation
 
 

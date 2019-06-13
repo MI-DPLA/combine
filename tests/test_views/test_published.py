@@ -2,7 +2,7 @@ from django.test import Client, TestCase
 
 from core.models import PublishedRecords
 
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class PublishedTestCase(TestCase):

@@ -1,6 +1,6 @@
 from django.test import Client, TestCase
 
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class IndexTestCase(TestCase):

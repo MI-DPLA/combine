@@ -2,7 +2,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 
 from core.models import Organization
-from tests.test_views.utils import TestConfiguration, most_recent_global_message
+from tests.utils import TestConfiguration, most_recent_global_message
 
 
 class OrganizationTestCase(TestCase):
