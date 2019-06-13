@@ -3534,27 +3534,40 @@ class Record(mongoengine.Document):
             (dict): ES document
         '''
 
-        # init search
-        search = Search(using=es_handle, index='j%s' % self.job_id)
-        search = search.query('match', _id=str(self.id))
+        # if saved already to instance, return
+        if hasattr(self,'_es_doc'):
+            return getattr(self,'_es_doc')
 
-        # drop combine fields if flagged
-        if drop_combine_fields:
-            search = search.source(exclude=['combine_id', 'db_id', 'fingerprint', 'publish_set_id', 'record_id'])
+        # else, query ES and return
+        else:
+            # init search
+            search = Search(using=es_handle, index='j%s' % self.job_id)
+            search = search.query('match', _id=str(self.id))
 
-        # execute search and capture as dictionary
-        try:
-            search_result = search.execute()
-            sr_dict = search_result.to_dict()
-        except NotFoundError:
-            LOGGER.debug('mapped fields for record not found in ElasticSearch')
-            return {}
+            # drop combine fields if flagged
+            if drop_combine_fields:
+                search = search.source(exclude=['combine_id', 'db_id', 'fingerprint', 'publish_set_id', 'record_id'])
 
-        # return
-        try:
-            return sr_dict['hits']['hits'][0]['_source']
-        except:
-            return {}
+            # execute search and capture as dictionary
+            try:
+                search_result = search.execute()
+                sr_dict = search_result.to_dict()
+
+                # save to instance
+                try:
+                    self._es_doc = sr_dict['hits']['hits'][0]['_source']
+                except:
+                    self._es_doc = {}
+
+            except NotFoundError:
+                LOGGER.debug('mapped fields for record not found in ElasticSearch')
+                return {}
+
+            # return
+            try:
+                return sr_dict['hits']['hits'][0]['_source']
+            except:
+                return {}
 
 
     @property
