@@ -92,6 +92,23 @@ class StateIO(mongoengine.Document):
     def timestamp(self):
         return self.id.generation_time if self.id else None
 
+    # statuses: initializing,running,finished
+    @property
+    def progress_bar_motion(self):
+        return self.status in 'initializing,running'
+
+    @property
+    def progress_bar_color(self):
+        if self.status in 'initializing':
+            return 'warning'
+        if self.status in 'finished':
+            return 'success'
+        return ''
+
+    @property
+    def progress_bar_status(self):
+        return self.status
+
 
     # pre_delete method
     @classmethod
@@ -244,7 +261,6 @@ class StateIOClient():
 
         # ensure working directories exist
         self._confirm_working_dirs()
-
 
     @staticmethod
     def _confirm_working_dirs():
