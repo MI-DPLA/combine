@@ -1,5 +1,6 @@
 from django.conf.urls import url
 from django.contrib.auth import views as auth_views
+from django.views.decorators.csrf import csrf_exempt
 
 from . import views
 from .models import DTElasticFieldSearch, DTElasticGenericSearch
@@ -279,7 +280,8 @@ urlpatterns = [
     url(r'^stateio/import$', views.stateio_import, name='stateio_import'),
 
     # GraphQL
-    url(r'^graphql$', GraphQLView.as_view(graphiql=True)),
+    url(r'^graphiql$', GraphQLView.as_view(graphiql=True)),
+    url(r'^graphql$', csrf_exempt(GraphQLView.as_view(graphiql=False))),
 
     # General
     url(r'^login$', auth_views.login, name='login'),
