@@ -2011,6 +2011,28 @@ class CombineJob(object):
         return self.esi.count_indexed_fields(job_record_count=self.job.record_count)
 
 
+    def mapped_fields_analysis(self):
+
+        '''
+        Method to return calculate & store and/or return numerical analysis of all mapped fields
+
+        :return: dict
+        '''
+
+        # mapped field analysis, generate if not part of job_details
+        if 'mapped_field_analysis' in self.job.job_details_dict.keys():
+            return self.job.job_details_dict.get('mapped_field_analysis')
+        else:
+            if self.job.finished:
+                mapped_field_analysis = self.count_indexed_fields()
+                self.job.update_job_details(
+                    {'mapped_field_analysis': mapped_field_analysis}, save=True)
+                return mapped_field_analysis
+            else:
+                LOGGER.debug('job not finished, not setting')
+                return {}
+
+
     def field_analysis(self, field_name):
 
         '''

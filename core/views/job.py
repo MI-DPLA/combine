@@ -314,19 +314,7 @@ def job_details(request, org_id, record_group_id, job_id):
     get_q = request.GET.get('q', None)
 
     # job details and job type specific augment
-    job_detail = cjob.job.job_details_dict
-
-    # mapped field analysis, generate if not part of job_details
-    if 'mapped_field_analysis' in job_detail.keys():
-        field_counts = job_detail['mapped_field_analysis']
-    else:
-        if cjob.job.finished:
-            field_counts = cjob.count_indexed_fields()
-            cjob.job.update_job_details(
-                {'mapped_field_analysis': field_counts}, save=True)
-        else:
-            LOGGER.debug('job not finished, not setting')
-            field_counts = {}
+    job_details = cjob.job.job_details_dict
 
     # TODO: What is this accomplishing?
     # OAI Harvest
@@ -376,13 +364,13 @@ def job_details(request, org_id, record_group_id, job_id):
         'cjob': cjob,
         'record_group': cjob.job.record_group,
         'record_count_details': record_count_details,
-        'field_counts': field_counts,
+        'field_counts': cjob.mapped_fields_analysis(),
         'field_mappers': field_mappers,
         'xml2kvp_handle': xml2kvp.XML2kvp(),
         'job_lineage_json': json.dumps(job_lineage),
         'dpla_bulk_data_matches': dpla_bulk_data_matches,
         'q': get_q,
-        'job_details': job_detail,
+        'job_details': job_details,
         'pr': pub_records,
         'published_subsets': published_subsets,
         'es_index_str': cjob.esi.es_index_str,
