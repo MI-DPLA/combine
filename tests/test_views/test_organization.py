@@ -1,7 +1,7 @@
 from django.test import Client, TestCase
 from django.urls import reverse
 
-from core.models import Organization
+from core.models import Organization, RecordGroup, Job
 from tests.utils import TestConfiguration, most_recent_global_message
 
 
@@ -37,6 +37,14 @@ class OrganizationViewTestCase(TestCase):
 
     def test_organization_run_jobs(self):
         config = TestConfiguration()
+        other_org = Organization.objects.create(name="Other Org")
+        other_rg = RecordGroup.objects.create(organization=other_org,
+                                              name="Other Record Group")
+        Job.objects.create(record_group=other_rg,
+                           user=config.user,
+                           job_type='MergeJob',
+                           job_details='{"test_key": "test value"}',
+                           name="Other Job")
         response = self.client.get(reverse('organization_run_jobs', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))
         gm = most_recent_global_message()
@@ -45,6 +53,14 @@ class OrganizationViewTestCase(TestCase):
 
     def test_organization_stop_jobs(self):
         config = TestConfiguration()
+        other_org = Organization.objects.create(name="Other Org")
+        other_rg = RecordGroup.objects.create(organization=other_org,
+                                              name="Other Record Group")
+        Job.objects.create(record_group=other_rg,
+                           user=config.user,
+                           job_type='MergeJob',
+                           job_details='{"test_key": "test value"}',
+                           name="Other Job")
         response = self.client.get(reverse('organization_stop_jobs', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))
         gm = most_recent_global_message()
