@@ -93,6 +93,40 @@ class JobTestCase(TestCase):
         self.assertEqual(response.json()['results'], True)
         job = Job.objects.get(id=self.config.job.id)
         self.assertEqual(job.status, 'initializing')
+        downstream_job = Job.objects.get(id=self.config.downstream_job.id)
+        self.assertIsNone(downstream_job.status)
+
+    def test_rerun_jobs_downstream(self):
+        response = self.client.post('/combine/jobs/rerun_jobs', {
+            'job_ids[]': [self.config.job.id],
+            'downstream_rerun_toggle': 'true'
+        })
+        self.assertEqual(response.json()['results'], True)
+        job = Job.objects.get(id=self.config.job.id)
+        self.assertEqual(job.status, 'initializing')
+        downstream_job = Job.objects.get(id=self.config.downstream_job.id)
+        self.assertEqual(downstream_job.status, 'initializing')
+
+    def test_rerun_jobs_not_upstream(self):
+        response = self.client.post('/combine/jobs/rerun_jobs', {
+            'job_ids[]': [self.config.downstream_job.id]
+        })
+        self.assertEqual(response.json()['results'], True)
+        job = Job.objects.get(id=self.config.downstream_job.id)
+        self.assertEqual(job.status, 'initializing')
+        upstream_job = Job.objects.get(id=self.config.job.id)
+        self.assertIsNone(upstream_job.status)
+
+    def test_rerun_jobs_upstream(self):
+        response = self.client.post('/combine/jobs/rerun_jobs', {
+            'job_ids[]': [self.config.downstream_job.id],
+            'upstream_rerun_toggle': 'true'
+        })
+        self.assertEqual(response.json()['results'], True)
+        job = Job.objects.get(id=self.config.downstream_job.id)
+        self.assertEqual(job.status, 'initializing')
+        upstream_job = Job.objects.get(id=self.config.job.id)
+        self.assertEqual(upstream_job.status, 'initializing')
 
     def test_clone_jobs(self):
         response = self.client.post('/combine/jobs/clone_jobs', {

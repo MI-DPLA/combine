@@ -1162,12 +1162,46 @@ class Job(models.Model):
             return Job._topographic_sort_jobs(job_set)
         return list(job_set)
 
-    def get_upstream_jobs(self, topographic_sort=True):
+    def get_upstream_jobs(self, topographic_sort=True, depth=None):
 
         '''
         Method to retrieve upstream jobs
             - placeholder for now
         '''
+        def _job_recurse(job_node, rec_depth):
+
+            # bump recurse levels
+            rec_depth += 1
+
+            # get children
+            upstream_jobs = JobInput.objects.filter(job=job_node)
+
+            # if children, re-run
+            if upstream_jobs.count() > 0:
+
+                # recurse
+                for upstream_job in upstream_jobs:
+
+                    # add to sets
+                    job_set.add(upstream_job.input_job)
+
+                    # recurse
+                    if depth == None or (depth != None and rec_depth < depth):
+                        if upstream_job.input_job not in visited:
+                            _job_recurse(upstream_job.input_job, rec_depth)
+                            visited.add(upstream_job.input_job)
+        visited = set()
+        job_set = {self}
+
+        # recurse
+        _job_recurse(self, 0)
+
+        LOGGER.debug('job set: %s', job_set)
+        # return topographically sorted
+        if topographic_sort:
+            return Job._topographic_sort_jobs(job_set)
+        return list(job_set)
+
 
     @staticmethod
     def _topographic_sort_jobs(job_set):
