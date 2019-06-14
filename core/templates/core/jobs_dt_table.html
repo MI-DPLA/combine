@@ -53,26 +53,14 @@
 					{% endif %}
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
 					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						{% if job.status in 'initializing,resetting,waiting' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-						</div>
-						{% elif job.status == 'running' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-						</div>
-						{% elif job.status in 'available,gone' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">finished</div>
-						</div>						
-						{% elif job.status in 'cancelled,cancelling' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">cancelled</div>
-						</div>
-						{% elif job.status in 'failed' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">failed</div>
-						</div>
+                        {% if job.status in 'initializing,resetting,waiting,running,available,gone,cancelled,cancelling,failed' %}
+							<div class="progress progress-bar
+                                  {% if job.progress_bar_motion %}progress-bar-striped progress-bar-animated{% endif %}
+                                  {% if job.progress_bar_color is not '' %}bg-{{ job.progress_bar_color }}{% endif %}"
+                                 role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                 style="width: 100%">
+                                {{job.progress_bar_status}}
+                            </div>
 						{% else %}
 						{{ job.status }}
 						{% endif %}

@@ -333,12 +333,12 @@ a directory of 250 MODS files (this was created during bootstrapping):
     /tmp/combine/qs/mods
 
 Next, we need to provide an XPath query that locates each discrete
-record within the provided MODS file. Under the section "Locate Document", for the 
+record within the provided MODS file. Under the section "Find and Parse XML Records", for the
 form field ``Root XML Element``, enter the following:
 
 ::
 
-    /mods:mods
+    mods:mods
 
 
 For the time being, we can ignore the section "Locate Identifier in Document" which would allow us to find a unique identifier via XPath in the document.  By default, it will assign a random identifier based on a hash of the document string.

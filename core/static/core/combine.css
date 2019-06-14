@@ -324,3 +324,6 @@ div.grayed_dt_row, td.grayed_dt_row {
     border-color: #dee2e6 #dee2e6 #fff;
 }
 
+.progress-bar.bg-warning {
+    color: #0c0c0c;
+}

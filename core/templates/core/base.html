@@ -87,6 +87,9 @@
 	          <li class="nav-item">
                   <a class="nav-link" href="{% url 'system' %}">System: <span id="livy_status" class="text-secondary">Spark</span> / <span id="celery_status" class="text-secondary">Tasks</span> / <img style="filter: invert(100%); margin-top:-2.5px;" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span style="color:hotpink;">{{COMBINE_GIT_BRANCH}} <span style="color:rgba(255,255,255,.5);">/</span> {{COMBINE_VERSION}}</span></code></a>
 	          </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Log Out</a>
+                </li>
 	        </ul>
 	        <form class="form-inline mt-2 mt-md-0" action="{% url 'search' %}" method="GET">
 	          <input class="form-control mr-sm-2" type="text" name="q" placeholder="search all records..." aria-label="Search" {% if search_string %}value="{{ search_string }}"{% endif %} />

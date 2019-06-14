@@ -35,7 +35,7 @@
                             <a href="{% url 'edit_field_mapper' fm_id=fm.id %}">
                                 <button type="button" class="btn btn-info btn-sm">Edit</button>
                             </a>
-                            <a href="{% url 'delete_field_mapper' fm_id=fm.id %}">
+                            <a href="{% url 'delete_field_mapper' fm_id=fm.id %}" onclick="return confirm('Are you sure you want to delete this Field Mapper?');">
                                 <button type="button" class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
@@ -92,7 +92,7 @@
                             <a href="{% url 'edit_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}">
+                            <a href="{% url 'delete_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}" onclick="return confirm('Are you sure you want to delete this OAI Endpoint?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
@@ -140,7 +140,7 @@
                             <a href="{% url 'transformation_scenario' ts_id=transformation.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_transformation_scenario' ts_id=transformation.id %}">
+                            <a href="{% url 'delete_transformation_scenario' ts_id=transformation.id %}" onclick="return confirm('Are you sure you want to delete this Transformation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
@@ -191,7 +191,7 @@
                             <a href="{%  url 'validation_scenario' vs_id=vs.id %}" >
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_validation_scenario' vs_id=vs.id %}" >
+                            <a href="{% url 'delete_validation_scenario' vs_id=vs.id %}" onclick="return confirm('Are you sure you want to delete this Validation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
@@ -240,7 +240,7 @@
                             <a href="{% url 'edit_rits' rits_id=rt.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_rits' rits_id=rt.id %}">
+                            <a href="{% url 'delete_rits' rits_id=rt.id %}" onclick="return confirm('Are you sure you want to delete this Record Identifier Transformation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
