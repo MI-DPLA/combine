@@ -9,7 +9,7 @@ import re
 from django.core.urlresolvers import reverse
 
 # import models
-from core import models
+from core.models import Job, Organization, RecordGroup, Record, CombineBackgroundTask, StateIO
 
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
@@ -69,7 +69,7 @@ def breadcrumb_parser(request):
     if regex_match:
 
         # get job
-        job = models.Job.objects.get(pk=int(regex_match.group(2)))
+        job = Job.objects.get(pk=int(regex_match.group(2)))
 
         # get field for analysis
         field_name = request.GET.get('field_name', None)
@@ -121,7 +121,7 @@ def breadcrumb_parser(request):
     # org
     org_m = re.match(r'(.+?/organization/([0-9]+))', request.path)
     if org_m:
-        org = models.Organization.objects.get(pk=int(org_m.group(2)))
+        org = Organization.objects.get(pk=int(org_m.group(2)))
         if org.for_analysis:
             LOGGER.debug(
                 "breadcrumbs: org is for analysis, converting breadcrumbs")
@@ -134,7 +134,7 @@ def breadcrumb_parser(request):
     # record_group
     rg_m = re.match(r'(.+?/record_group/([0-9]+))', request.path)
     if rg_m:
-        record_group = models.RecordGroup.objects.get(pk=int(rg_m.group(2)))
+        record_group = RecordGroup.objects.get(pk=int(rg_m.group(2)))
         if record_group.for_analysis:
             LOGGER.debug(
                 "breadcrumbs: rg is for analysis, converting breadcrumbs")
@@ -145,7 +145,7 @@ def breadcrumb_parser(request):
     # job
     j_m = re.match(r'(.+?/job/([0-9]+))', request.path)
     if j_m:
-        job = models.Job.objects.get(pk=int(j_m.group(2)))
+        job = Job.objects.get(pk=int(j_m.group(2)))
         if job.record_group.for_analysis:
             crumbs.append(
                 ("<span class='font-weight-bold'>Analysis</span> - %s" % job.name, j_m.group(1)))
@@ -156,7 +156,7 @@ def breadcrumb_parser(request):
     # record
     r_m = re.match(r'(.+?/record/([0-9a-z]+))', request.path)
     if r_m:
-        record = models.Record.objects.get(id=r_m.group(2))
+        record = Record.objects.get(id=r_m.group(2))
         crumbs.append(
             ("<span class='font-weight-bold'>Record</span> - <code>%s</code>" % record.record_id, r_m.group(1)))
 
@@ -170,7 +170,7 @@ def breadcrumb_parser(request):
     regex_match = re.match(
         r'(.+?/background_tasks/task/([0-9]+))', request.path)
     if regex_match:
-        background_task = models.CombineBackgroundTask.objects.get(
+        background_task = CombineBackgroundTask.objects.get(
             pk=int(regex_match.group(2)))
         crumbs.append(
             ("<span class='font-weight-bold'>Task - <code>%s</code></span>" % background_task.name,
@@ -185,7 +185,7 @@ def breadcrumb_parser(request):
     # stateio - state details
     regex_match = re.match(r'(.+?/stateio/state/([0-9a-z].*))', request.path)
     if regex_match:
-        state = models.StateIO.objects.get(id=regex_match.group(2))
+        state = StateIO.objects.get(id=regex_match.group(2))
         crumbs.append(("<span class='font-weight-bold'>State - <code>%s</code></span>" % state.name,
                        reverse('stateio_state', kwargs={'state_id': regex_match.group(2)})))
 

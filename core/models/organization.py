@@ -2,7 +2,9 @@
 from __future__ import unicode_literals
 
 # generic imports
+import datetime
 import logging
+from itertools import chain
 
 # django imports
 from django.db import models
@@ -12,7 +14,6 @@ LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
-
 
 
 class Organization(models.Model):
@@ -27,10 +28,8 @@ class Organization(models.Model):
     timestamp = models.DateTimeField(null=True, auto_now_add=True)
     for_analysis = models.BooleanField(default=0)
 
-
     def __str__(self):
         return 'Organization: %s' % self.name
-
 
     def total_record_count(self):
 
@@ -50,3 +49,9 @@ class Organization(models.Model):
 
         # return
         return total_record_count
+
+    def all_jobs(self):
+        groups = [group.all_jobs() for group in self.recordgroup_set.all()]
+        jobs = list(chain.from_iterable(groups))
+        ordered_jobs = sorted(jobs, key=lambda j: j.id)
+        return ordered_jobs

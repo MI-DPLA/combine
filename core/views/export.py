@@ -4,7 +4,9 @@ import logging
 from django.core.urlresolvers import reverse
 from django.shortcuts import redirect
 
-from core import models, tasks
+from core import tasks
+from core.models import CombineJob, CombineBackgroundTask, GlobalMessageClient,\
+    PublishedRecords
 
 LOGGER = logging.getLogger(__name__)
 
@@ -26,10 +28,10 @@ def export_documents(request,
         LOGGER.debug('exporting documents from Job')
 
         # retrieve job
-        cjob = models.CombineJob.get_combine_job(int(job_id))
+        cjob = CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Documents for Job: %s' % cjob.job.name,
             task_type='export_documents',
             task_params_json=json.dumps({
@@ -50,7 +52,7 @@ def export_documents(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
             'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s">'
@@ -70,7 +72,7 @@ def export_documents(request,
         LOGGER.debug('exporting documents for published records')
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Documents for Published Records',
             task_type='export_documents',
             task_params_json=json.dumps({
@@ -92,7 +94,7 @@ def export_documents(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
             'html': '<p><strong>Exporting Documents for %s</p><p><a href="%s"><button type="button" '
@@ -127,10 +129,10 @@ def export_mapped_fields(request,
         LOGGER.debug('exporting mapped fields from Job')
 
         # retrieve job
-        cjob = models.CombineJob.get_combine_job(int(job_id))
+        cjob = CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Mapped Fields for Job: %s' % cjob.job.name,
             task_type='export_mapped_fields',
             task_params_json=json.dumps({
@@ -153,7 +155,7 @@ def export_mapped_fields(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
             'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" '
@@ -172,7 +174,7 @@ def export_mapped_fields(request,
         LOGGER.debug('exporting mapped fields from published records')
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Mapped Fields for Published Records',
             task_type='export_mapped_fields',
             task_params_json=json.dumps({
@@ -196,7 +198,7 @@ def export_mapped_fields(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
             'html': '<p><strong>Exporting Mapped Fields for %s</p><p><a href="%s"><button type="button" '
@@ -231,10 +233,10 @@ def export_tabular_data(request,
         LOGGER.debug('exporting tabular data from Job')
 
         # retrieve job
-        cjob = models.CombineJob.get_combine_job(int(job_id))
+        cjob = CombineJob.get_combine_job(int(job_id))
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Tabular Data for Job: %s' % cjob.job.name,
             task_type='export_tabular_data',
             task_params_json=json.dumps({
@@ -257,7 +259,7 @@ def export_tabular_data(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = "Job:</strong><br>%s" % cjob.job.name
         gmc.add_gm({
             'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" '
@@ -277,10 +279,10 @@ def export_tabular_data(request,
 
         # get instance of Published model
         # TODO: not used
-        models.PublishedRecords()
+        PublishedRecords()
 
         # initiate Combine BG Task
-        combine_task = models.CombineBackgroundTask(
+        combine_task = CombineBackgroundTask(
             name='Export Tabular Data for Published Records',
             task_type='export_tabular_data',
             task_params_json=json.dumps({
@@ -304,7 +306,7 @@ def export_tabular_data(request,
         combine_task.save()
 
         # set gm
-        gmc = models.GlobalMessageClient(request.session)
+        gmc = GlobalMessageClient(request.session)
         target = ":</strong><br>Published Records"
         gmc.add_gm({
             'html': '<p><strong>Exporting Tabular Data for %s</p><p><a href="%s"><button type="button" '

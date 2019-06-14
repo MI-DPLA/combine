@@ -2,7 +2,7 @@ import logging
 
 from django.shortcuts import render, redirect
 
-from core import models
+from core.models import CombineBackgroundTask, CombineJob
 
 from .view_helpers import breadcrumb_parser
 
@@ -13,7 +13,7 @@ def bg_tasks(request):
     LOGGER.debug('retrieving background tasks')
 
     # update all tasks not marked as complete
-    nc_tasks = models.CombineBackgroundTask.objects.filter(completed=False)
+    nc_tasks = CombineBackgroundTask.objects.filter(completed=False)
     for task in nc_tasks:
         task.update()
 
@@ -26,7 +26,7 @@ def bg_tasks_delete_all(request):
     LOGGER.debug('deleting all background tasks')
 
     # delete all Combine Background Tasks
-    cts = models.CombineBackgroundTask.objects.all()
+    cts = CombineBackgroundTask.objects.all()
     for combine_task in cts:
         combine_task.delete()
 
@@ -35,12 +35,12 @@ def bg_tasks_delete_all(request):
 
 def bg_task(request, task_id):
     # get task
-    combine_task = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+    combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))
     LOGGER.debug('retrieving task: %s', combine_task)
 
     # include job if mentioned in task params
     if 'job_id' in combine_task.task_params:
-        cjob = models.CombineJob.get_combine_job(combine_task.task_params['job_id'])
+        cjob = CombineJob.get_combine_job(combine_task.task_params['job_id'])
     else:
         cjob = None
 
@@ -53,7 +53,7 @@ def bg_task(request, task_id):
 
 def bg_task_delete(request, task_id):
     # get task
-    combine_task = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+    combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))
     LOGGER.debug('deleting task: %s', combine_task)
 
     combine_task.delete()
@@ -63,7 +63,7 @@ def bg_task_delete(request, task_id):
 
 def bg_task_cancel(request, task_id):
     # get task
-    combine_task = models.CombineBackgroundTask.objects.get(pk=int(task_id))
+    combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))
     LOGGER.debug('cancelling task: %s', combine_task)
 
     # cancel

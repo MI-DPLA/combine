@@ -3,7 +3,9 @@ import json
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
-from core import models, xml2kvp
+from core import xml2kvp
+from core.models import Job, AnalysisJob, PublishedRecords, ValidationScenario, FieldMapper,\
+    RecordIdentifierTransformationScenario, DPLABulkDataDownload, CombineJob
 
 from .view_helpers import breadcrumb_parser
 
@@ -14,13 +16,13 @@ def analysis(request):
     """
 
     # get all jobs associated with record group
-    analysis_jobs = models.Job.objects.filter(job_type='AnalysisJob')
+    analysis_jobs = Job.objects.filter(job_type='AnalysisJob')
 
     # get analysis jobs hierarchy
-    analysis_hierarchy = models.AnalysisJob.get_analysis_hierarchy()
+    analysis_hierarchy = AnalysisJob.get_analysis_hierarchy()
 
     # get analysis jobs lineage
-    analysis_job_lineage = models.Job.get_all_jobs_lineage(
+    analysis_job_lineage = Job.get_all_jobs_lineage(
         organization=analysis_hierarchy['organization'],
         record_group=analysis_hierarchy['record_group'],
         exclude_analysis_jobs=False
@@ -50,7 +52,7 @@ def job_analysis(request):
     if request.method == 'GET':
 
         # retrieve jobs (limiting if needed)
-        input_jobs = models.Job.objects.all()
+        input_jobs = Job.objects.all()
 
         # limit if analysis_type set
         analysis_type = request.GET.get('type', None)
@@ -58,7 +60,7 @@ def job_analysis(request):
         if analysis_type == 'published':
 
             # load PublishedRecords
-            published = models.PublishedRecords(subset=subset)
+            published = PublishedRecords(subset=subset)
 
             # define input_jobs
             input_jobs = published.published_jobs
@@ -67,19 +69,19 @@ def job_analysis(request):
             published = None
 
         # get validation scenarios
-        validation_scenarios = models.ValidationScenario.objects.all()
+        validation_scenarios = ValidationScenario.objects.all()
 
         # get field mappers
-        field_mappers = models.FieldMapper.objects.all()
+        field_mappers = FieldMapper.objects.all()
 
         # get record identifier transformation scenarios
-        rits = models.RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformationScenario.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
-        job_lineage = models.Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
+        job_lineage = Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
 
         # get all bulk downloads
-        bulk_downloads = models.DPLABulkDataDownload.objects.all()
+        bulk_downloads = DPLABulkDataDownload.objects.all()
 
         # render page
         return render(request, 'core/job_analysis.html', {
@@ -98,10 +100,10 @@ def job_analysis(request):
     # if POST, submit job
     if request.method == 'POST':
 
-        cjob = models.CombineJob.init_combine_job(
+        cjob = CombineJob.init_combine_job(
             user=request.user,
             # TODO: record_group=record_group,
-            job_type_class=models.AnalysisJob,
+            job_type_class=AnalysisJob,
             job_params=request.POST)
 
         # start job and update status

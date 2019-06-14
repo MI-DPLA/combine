@@ -1,7 +1,7 @@
 from django.test import TestCase, Client
 
 from core.models import GlobalMessageClient
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class GlobalMessagesTestCase(TestCase):

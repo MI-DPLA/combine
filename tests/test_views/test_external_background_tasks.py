@@ -1,7 +1,7 @@
 from django.test import Client, TestCase
 
-from core import models
-from tests.test_views.utils import TestConfiguration
+from core.models import LivySession
+from tests.utils import TestConfiguration
 
 
 class ExternalBackgroundTaskTestCase(TestCase):
@@ -23,7 +23,7 @@ class ExternalBackgroundTaskTestCase(TestCase):
         self.assertIn(b'starting', response.content)
 
     def test_livy_session_stop(self):
-        livy_session = models.LivySession()
+        livy_session = LivySession()
         livy_session.start_session()
         livy_session.save()
         response = self.client.get(f'/combine/system/livy_sessions/{livy_session.session_id}/stop')

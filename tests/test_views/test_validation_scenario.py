@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import ValidationScenario
-from tests.test_views.utils import TestConfiguration
+from tests.utils import TestConfiguration
 
 
 class ValidationScenarioTestCase(TestCase):

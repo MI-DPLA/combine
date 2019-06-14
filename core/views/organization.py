@@ -3,7 +3,8 @@ import json
 
 from django.shortcuts import render, redirect
 
-from core import forms, models, tasks
+from core import forms, tasks
+from core.models import Organization, RecordGroup, CombineBackgroundTask, GlobalMessageClient
 
 from .view_helpers import breadcrumb_parser
 
@@ -20,7 +21,7 @@ def organizations(request):
         LOGGER.debug('retrieving organizations')
 
         # get all organizations
-        orgs = models.Organization.objects.exclude(for_analysis=True).all()
+        orgs = Organization.objects.exclude(for_analysis=True).all()
 
         # render page
         return render(request, 'core/organizations.html', {
@@ -44,10 +45,10 @@ def organization(request, org_id):
         """
 
     # get organization
-    org = models.Organization.objects.get(pk=org_id)
+    org = Organization.objects.get(pk=org_id)
 
     # get record groups for this organization
-    record_groups = models.RecordGroup.objects.filter(
+    record_groups = RecordGroup.objects.filter(
         organization=org).exclude(for_analysis=True)
 
     # render page
@@ -68,14 +69,14 @@ def organization_delete(request, org_id):
         """
 
     # get organization
-    org = models.Organization.objects.get(pk=org_id)
+    org = Organization.objects.get(pk=org_id)
 
     # set job status to deleting
     org.name = "%s (DELETING)" % org.name
     org.save()
 
     # initiate Combine BG Task
-    combine_task = models.CombineBackgroundTask(
+    combine_task = CombineBackgroundTask(
         name='Delete Organization: %s' % org.name,
         task_type='delete_model_instance',
         task_params_json=json.dumps({
@@ -90,5 +91,35 @@ def organization_delete(request, org_id):
     LOGGER.debug('firing bg task: %s', bg_task)
     combine_task.celery_task_id = bg_task.task_id
     combine_task.save()
+
+    return redirect('organizations')
+
+
+def organization_run_jobs(request, org_id):
+    org = Organization.objects.get(pk=int(org_id))
+    jobs = org.all_jobs()
+    tasks.rerun_jobs(jobs)
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<strong>Preparing to Rerun Job(s):</strong><br>%s' % '<br>'.join(
+            [str(j.name) for j in jobs]),
+        'class': 'success'
+    })
+    return redirect('organizations')
+
+
+def organization_stop_jobs(request, org_id):
+    org = Organization.objects.get(pk=int(org_id))
+    jobs = org.all_jobs()
+    for job in jobs:
+        LOGGER.debug('stopping Job: %s', job)
+        job.stop_job()
+
+    gmc = GlobalMessageClient(request.session)
+    gmc.add_gm({
+        'html': '<p><strong>Stopped Job(s):</strong><br>%s</p>' % (
+            '<br>'.join([j.name for j in jobs])),
+        'class': 'danger'
+    })
 
     return redirect('organizations')

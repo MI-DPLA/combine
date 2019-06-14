@@ -15,8 +15,7 @@ from django.http import JsonResponse
 from django.views import View
 
 from core.es import es_handle
-from core.models.elasticsearch import ESIndex
-from core.models.job import Record
+from core.models import ESIndex, Record
 
 from elasticsearch_dsl import Search, A, Q
 from elasticsearch_dsl.utils import AttrList
