@@ -94,6 +94,27 @@ class Job(models.Model):
     def __str__(self):
         return '%s, Job #%s' % (self.name, self.id)
 
+    @property
+    def progress_bar_motion(self):
+        return self.status in 'initializing,resetting,waiting,running'
+
+    @property
+    def progress_bar_color(self):
+        if self.status in 'initializing,resetting,waiting':
+            return 'warning'
+        if self.status in 'available,gone':
+            return 'success'
+        if self.status in 'cancelled,cancelling,failed':
+            return 'danger'
+        return ''
+
+    @property
+    def progress_bar_status(self):
+        if self.status in 'available,gone':
+            return "finished"
+        if self.status in 'cancelled,cancelling':
+            return "cancelled"
+        return self.status
 
     def job_type_family(self):
 
