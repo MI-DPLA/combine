@@ -42,6 +42,7 @@ If you just want to kick the tires, the `QuickStart guide <quickstart.html>`_ pr
    rerunning_jobs
    exporting
    background_tasks
+   graphql_endpoint
    tests
    command_line
    installing

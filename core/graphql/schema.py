@@ -14,13 +14,14 @@ from graphene_django.types import DjangoObjectType
 from graphene_mongo import MongoengineObjectType
 
 # core imports
-from core.models import Organization, RecordGroup, Job, Record
+from core.models import Organization, RecordGroup, Job, Record, RecordValidation
 
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
 
 
 class RecordMappedFields(ObjectType):
@@ -59,11 +60,20 @@ class RecordMappedFields(ObjectType):
     mods_subject_topic = String()
 
 
+
+class RecordValidationType(MongoengineObjectType):
+
+    class Meta:
+        model = RecordValidation
+
+
+
 class RecordType(MongoengineObjectType):
 
     class Meta:
         model = Record
 
+    # Mapped Fields
     mapped_fields = graphene.Field(RecordMappedFields)
 
     def resolve_mapped_fields(instance, info, **kwargs):
@@ -82,15 +92,11 @@ class RecordType(MongoengineObjectType):
         else:
             return [field_value]
 
+    # Validations
+    validations = graphene.List(RecordValidationType)
+    def resolve_validations(instance, info, **kwargs):
+        return instance.get_validation_errors()
 
-class OrganizationType(DjangoObjectType):
-    class Meta:
-        model = Organization
-
-
-class RecordGroupType(DjangoObjectType):
-    class Meta:
-        model = RecordGroup
 
 
 class JobType(DjangoObjectType):
@@ -108,19 +114,27 @@ class JobType(DjangoObjectType):
         return instance.get_records()
 
 
+
+class RecordGroupType(DjangoObjectType):
+    class Meta:
+        model = RecordGroup
+
+
+
+class OrganizationType(DjangoObjectType):
+    class Meta:
+        model = Organization
+
+
+
 class Query(graphene.ObjectType):
 
-    # Organization
-    organization = graphene.Field(OrganizationType,
-                                  id=graphene.Int(),
-                                  name=graphene.String()
-                                  )
-    all_organizations = graphene.List(OrganizationType)
+    # Record
+    all_records = graphene.List(RecordType,
+                                first=graphene.Int()
+                                )
 
-    # Record Group
-    all_record_groups = graphene.List(RecordGroupType)
-
-    # Job
+    # Jobs
     job = graphene.Field(JobType,
                          id=graphene.Int()
                          )
@@ -128,13 +142,24 @@ class Query(graphene.ObjectType):
                              first=graphene.Int()
                              )
 
-    # Record
-    all_records = graphene.List(RecordType,
-                                first=graphene.Int()
-                                )
+    # Record Groups
+    record_group = graphene.Field(RecordGroupType,
+                                  id=graphene.Int(),
+                                  name=graphene.String()
+                                  )
+    all_record_groups = graphene.List(RecordGroupType)
+
+    # Organizations
+    organization = graphene.Field(OrganizationType,
+                                  id=graphene.Int(),
+                                  name=graphene.String()
+                                  )
+    all_organizations = graphene.List(OrganizationType)
+
 
     # resolvers
     def resolve_organization(self, info, **kwargs):
+
         id = kwargs.get('id')
         name = kwargs.get('name')
 
@@ -146,11 +171,29 @@ class Query(graphene.ObjectType):
 
         return None
 
+
     def resolve_all_organizations(self, info, **kwargs):
         return Organization.objects.all()
 
+
+    def resolve_record_group(self, info, **kwargs):
+
+        id = kwargs.get('id')
+        name = kwargs.get('name')
+
+        if id is not None:
+            return RecordGroup.objects.get(pk=id)
+
+        if name is not None:
+            return RecordGroup.objects.get(name=name)
+
+        return None
+
+
     def resolve_all_record_groups(self, info, **kwargs):
+
         return RecordGroup.objects.select_related('organization').all()
+
 
     def resolve_job(self, info, **kwargs):
 
@@ -161,6 +204,7 @@ class Query(graphene.ObjectType):
 
         return None
 
+
     def resolve_all_jobs(self, info, **kwargs):
 
         first = kwargs.get('first')
@@ -170,6 +214,7 @@ class Query(graphene.ObjectType):
             return Job.objects.all()[:int(first)]
 
         return Job.objects.select_related('record_group').all()
+
 
     def resolve_all_records(self, info, **kwargs):
 
@@ -182,7 +227,8 @@ class Query(graphene.ObjectType):
         return Record.objects.all()
 
 
-# return schema
+
+# init schema
 schema = graphene.Schema(
     query=Query,
     auto_camelcase=False
