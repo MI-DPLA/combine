@@ -532,7 +532,7 @@ def rerun_jobs(request):
             job_rerun_set.update(cjob.job.get_downstream_jobs(include_self=False))
 
         if upstream_toggle:
-            job_rerun_set.update(cjob.job.get_upstream_jobs())
+            job_rerun_set.update(cjob.job.get_upstream_jobs(include_self=False))
 
         # else, just job
         job_rerun_set.add(cjob.job)
