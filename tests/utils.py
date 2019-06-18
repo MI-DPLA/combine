@@ -1,6 +1,7 @@
 from django.contrib.auth.models import User
 
-from core.models import Organization, RecordGroup, Job, Record, GlobalMessageClient
+from core.models import Organization, RecordGroup, Job, Record, GlobalMessageClient,\
+        JobInput
 
 
 class TestConfiguration:
@@ -15,6 +16,13 @@ class TestConfiguration:
                                       job_type="HarvestJob",
                                       job_details='{"test_key": "test value"}',
                                       name="Test Job")
+        self.downstream_job = Job.objects.create(record_group=self.record_group,
+                                                 user=self.user,
+                                                 job_type="TransformJob",
+                                                 job_details='{"test_key": "test value"}',
+                                                 name="Test Transform Job")
+        JobInput.objects.create(job=self.downstream_job,
+                                input_job=self.job)
         self.record = Record.objects.create(job_id=self.job.id,
                                             record_id='testrecord',
                                             document='test document')

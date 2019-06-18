@@ -16,7 +16,7 @@ from core.models import RecordGroup, Job, CombineBackgroundTask, PublishedRecord
     HarvestTabularDataJob, ESIndex
 from core.mongo import mc_handle
 
-from .view_helpers import breadcrumb_parser
+from .view_helpers import breadcrumb_parser, bool_for_string
 
 LOGGER = logging.getLogger(__name__)
 
@@ -514,11 +514,8 @@ def rerun_jobs(request):
     job_ids = request.POST.getlist('job_ids[]')
 
     # get downstream toggle
-    downstream_toggle = request.POST.get('downstream_rerun_toggle', False)
-    if downstream_toggle == 'true':
-        downstream_toggle = True
-    elif downstream_toggle == 'false':
-        downstream_toggle = False
+    downstream_toggle = bool_for_string(request.POST.get('downstream_rerun_toggle', False))
+    upstream_toggle = bool_for_string(request.POST.get('upstream_rerun_toggle', False))
 
     # set of jobs to rerun
     job_rerun_set = set()
@@ -531,14 +528,14 @@ def rerun_jobs(request):
 
         # if including downstream
         if downstream_toggle:
-
             # add rerun lineage for this job to set
-            job_rerun_set.update(cjob.job.get_downstream_jobs())
+            job_rerun_set.update(cjob.job.get_downstream_jobs(include_self=False))
+
+        if upstream_toggle:
+            job_rerun_set.update(cjob.job.get_upstream_jobs(include_self=False))
 
         # else, just job
-        else:
-
-            job_rerun_set.add(cjob.job)
+        job_rerun_set.add(cjob.job)
 
     # sort and run
     ordered_job_rerun_set = sorted(list(job_rerun_set), key=lambda j: j.id)
