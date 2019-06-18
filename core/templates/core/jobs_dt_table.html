@@ -1,5 +1,8 @@
 {% load static %}
 {% block content %}
+<script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
+<script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
+
 
 <div class="row">
 	<div class="col-md-12">
@@ -39,7 +42,7 @@
                         {{ job.id }}
                     </td>
 					<td class="{{ job.job_type_display_class }}">
-                        {{ job.timestamp }}
+                        {{ job.timestamp|date:"M d, Y, h:i A" }}
                     </td>
 					<td class="{{ job.job_type_display_class }}">
 						<a href="{{ job.job_details_url }}">
@@ -187,6 +190,7 @@
 	
 		<script>
 			$(document).ready(function() {
+			    $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
 			    jobs_table = $('#jobs_table').DataTable({
 			    	"order": [[ 1, "asc" ]],
 			    	"pageLength": 100,
