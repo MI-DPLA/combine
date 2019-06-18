@@ -126,10 +126,6 @@ class Job(models.Model):
         return self.record_group.organization_id
 
     @property
-    def record_group_id(self):
-        return self.record_group.id
-
-    @property
     def job_details_url(self):
         return reverse('job_details', kwargs={'org_id': self.organization_id,
                                               'record_group_id': self.record_group_id,
