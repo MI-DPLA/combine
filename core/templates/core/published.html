@@ -224,7 +224,7 @@
 					</td>
 					<td><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>
 					<td><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
+					<td class="{{ job.job_type_display_class }}"><a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a></td>
 					<td>{{ job.record_count }}</td>
 					<td><a href="{% url 'oai' %}?verb=ListRecords&set={{ job.publish_set_id }}" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">View OAI set <i class="la la-binoculars"></i></button></a> <a href="{% url 'job_unpublish' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-danger btn-sm">Unpublish <i class="la la-close"></i></button></a></td>
 				</tr>
