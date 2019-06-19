@@ -49,7 +49,7 @@
 							{% endif %}
 						</td>						
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
+						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp|date:"M d, Y, h:i A" }}</td>
 						{% if job.jobinput_set.all|length > 0 %}
 						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
 
@@ -92,6 +92,7 @@
 			<script>
 
 				$(document).ready(function() {
+                    $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
 				    jobs_table = $('#jobs_table').DataTable({
 				    	pageLength: 100,
 				    	lengthMenu: [ 10, 25, 100, 500 ],

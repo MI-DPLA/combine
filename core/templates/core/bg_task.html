@@ -22,7 +22,7 @@
 				<tbody>
 					<tr>
 						<td>{{ ct.get_task_type_display }}</td>
-						<td>{{ ct.start_timestamp }}</td>
+						<td>{{ ct.start_timestamp|date:"M d, Y, h:i A" }}</td>
 						<td>{{ ct.calc_elapsed_as_string }}</td>
 						<td><code>{{ ct.celery_task_id }}</code></td>
 					</tr>
