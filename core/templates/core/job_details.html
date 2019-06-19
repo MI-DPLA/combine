@@ -318,8 +318,8 @@
 								{% for input_job in cjob.job.jobinput_set.all %}
 
 									<tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-										<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.id }}</a></td>
-										<td><a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job.name }}</a></td>
+										<td><a href="{{ input_job.job_details_url }}">{{ input_job.input_job.id }}</a></td>
+										<td><a href="{{ input_job.job_details_url }}">{{ input_job.input_job.name }}</a></td>
 										<td>{{ input_job.input_job.job_type }}</td>
 
 									<!-- if job specific filters, show -->

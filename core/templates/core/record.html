@@ -131,8 +131,8 @@
 									<tr class="{{ record_stage.job.job_type_family }} {% if record.id == record_stage.id %}bold outlined_row{% endif %} {% if record_stage.error != '' %}error{% endif %}">
 										<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.id }}</a></td>
 										<td><a href="{% url 'record' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id %}">{{ record_stage.record_id }}</a></td>
-										<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.id }}</a></td>
-										<td><a href="{% url 'job_details' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id %}">{{ record_stage.job.name }}</a></td>
+										<td><a href="{{ record_stage.job.job_details_url }}">{{ record_stage.job.id }}</a></td>
+										<td><a href="{{ record_stage.job.job_details_url }}">{{ record_stage.job.name }}</a></td>
 										<td><span style="background-color:{{ record_stage.job.job_type_family }}">{{ record_stage.job.job_type }}</span></td>
 										{% if record_stage.document != '' %}
 											<td><a href="{% url 'record_document' org_id=record_stage.job.record_group.organization.id record_group_id=record_stage.job.record_group.id job_id=record_stage.job.id record_id=record_stage.id%}" target="_blank">View</a></td>
