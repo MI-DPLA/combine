@@ -1219,6 +1219,16 @@ def job_update(request, org_id, record_group_id, job_id):
                             record_group_id=cjob.job.record_group.id,
                             job_id=cjob.job.id)
 
+        if update_type == 'publish_set':
+            update_body = request.POST
+            if update_body.get('publish_set_id', None):
+                cjob.job.publish_set_id = update_body['publish_set_id']
+            if update_body.get('existing_publish_set_id', None):
+                cjob.job.publish_set_id = update_body['existing_publish_set_id']
+            redirect_anchor = update_body.get('redirect_anchor', '')
+            cjob.job.save()
+            return redirect(reverse('job_details', args=[org_id, record_group_id, job_id]) + redirect_anchor)
+
 
 ####################################################################
 # Job Validation Report       									   #
