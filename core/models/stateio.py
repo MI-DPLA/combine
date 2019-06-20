@@ -338,9 +338,9 @@ class StateIOClient():
 
         # set export_roots with model instances
         self.export_roots = {
-            'jobs':[Job.objects.get(pk=int(job)) if isinstance(job, [int, str]) else job for job in jobs],
-            'record_groups':[RecordGroup.objects.get(pk=int(record_group)) if isinstance(record_group, [int, str]) else record_group for record_group in record_groups],
-            'orgs':[Organization.objects.get(pk=int(org)) if isinstance(org, [int, str]) else org for org in orgs],
+            'jobs':[Job.objects.get(pk=int(job)) if isinstance(job, (int, str)) else job for job in jobs],
+            'record_groups':[RecordGroup.objects.get(pk=int(record_group)) if isinstance(record_group, (int, str)) else record_group for record_group in record_groups],
+            'orgs':[Organization.objects.get(pk=int(org)) if isinstance(org, (int, str)) else org for org in orgs],
         }
         # set export_root_ids with model ids
         self.export_roots_ids = {
@@ -808,7 +808,7 @@ class StateIOClient():
 
             # combine all model instances, across model types
             to_serialize = []
-            for _key, val in self.export_dict:
+            for _key, val in self.export_dict.items():
                 to_serialize.extend(val)
 
             # write as single JSON file

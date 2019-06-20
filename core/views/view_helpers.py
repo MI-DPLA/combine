@@ -18,6 +18,12 @@ LOGGER = logging.getLogger(__name__)
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 
+def bool_for_string(string):
+    if string == 'true':
+        return True
+    elif string == 'false':
+        return False
+
 # breadcrumb parser
 def breadcrumb_parser(request):
     """
