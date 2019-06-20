@@ -319,8 +319,8 @@
 							<td>{{bd.id}}</td>
 							<td><code>{{bd.s3_key}}</code></td>
 							<td>{{bd.get_status_display}}</td>
-							<td>{{bd.uploaded_timestamp}}</td>
-							<td>{{bd.downloaded_timestamp}}</td>
+							<td>{{bd.uploaded_timestamp|date:"M d, Y, h:i A"}}</td>
+							<td>{{bd.downloaded_timestamp|date:"M d, Y, h:i A"}}</td>
 							<td>{% if bd.es_index %}<a href="http://{{APP_HOST}}:9200/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a>{% endif %}</td>
 							<td><code>{{bd.filepath}}</code></td>
 						</tr>
@@ -329,6 +329,7 @@
 			</table>
 			<script>
 				$(document).ready(function() {
+                    $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
 				    $('#dbdd_table').DataTable({});			    
 				} );
 			</script>

@@ -114,6 +114,23 @@ class Job(models.Model):
             return "cancelled"
         return self.status
 
+    @property
+    def job_type_display_class(self):
+        cls_str = self.job_type_family()
+        if self.deleted:
+            cls_str += ' deleted'
+        return cls_str
+
+    @property
+    def organization_id(self):
+        return self.record_group.organization_id
+
+    @property
+    def job_details_url(self):
+        return reverse('job_details', kwargs={'org_id': self.organization_id,
+                                              'record_group_id': self.record_group_id,
+                                              'job_id': self.id})
+
     def job_type_family(self):
 
         '''

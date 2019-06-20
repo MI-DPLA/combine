@@ -22,7 +22,7 @@
 				<tbody>
 					<tr>
 						<td>{{ ct.get_task_type_display }}</td>
-						<td>{{ ct.start_timestamp }}</td>
+						<td>{{ ct.start_timestamp|date:"M d, Y, h:i A" }}</td>
 						<td>{{ ct.calc_elapsed_as_string }}</td>
 						<td><code>{{ ct.celery_task_id }}</code></td>
 					</tr>
@@ -65,19 +65,19 @@
 						{% endif %}
 
 					{% elif ct.task_type == 'job_reindex' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields <i class="la la-info-circle"></i></button></a>
+					<a href="{{ cjob.job_details_url }}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_new_validations' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
+					<a href="{{ cjob.job_details_url }}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_remove_validation' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
+					<a href="{{ cjob.job_details_url }}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_publish' or ct.task_type == 'job_unpublish' %}
 					<a href="{% url 'published' %}"><button type="button" class="btn btn-success btn-sm">View Published Jobs <i class="la la-info-circle"></i></button></a>
 
 					{% elif ct.task_type == 'job_dbdm' %}
-					<a href="{% url 'job_details' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i class="la la-info-circle"></i></button></a>
+					<a href="{{ cjob.job_details_url }}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i class="la la-info-circle"></i></button></a>
 
 					{% else %}
 						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
