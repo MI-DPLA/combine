@@ -1,4 +1,5 @@
 import ast
+from collections import Counter
 import json
 import logging
 from urllib.parse import urlencode
@@ -354,6 +355,11 @@ def job_details(request, org_id, record_group_id, job_id):
 
     # get published records, primarily for published sets
     pub_records = PublishedRecords()
+    records = cjob.job.get_records()
+
+    oai_sets = Counter()
+    for record in records:
+        oai_sets.update(record.oai_set)
 
     # get published subsets with PublishedRecords static method
     published_subsets = PublishedRecords.get_subsets()
@@ -389,7 +395,8 @@ def job_details(request, org_id, record_group_id, job_id):
         'pr': pub_records,
         'published_subsets': published_subsets,
         'es_index_str': cjob.esi.es_index_str,
-        'breadcrumbs': breadcrumb_parser(request)
+        'breadcrumbs': breadcrumb_parser(request),
+        'oai_sets': dict(oai_sets)
     })
 
 

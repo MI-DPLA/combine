@@ -1,0 +1,47 @@
+{% if job_details.oai_params %}
+    <h4>OAI Endpoint for Harvest</h4>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Name</th>
+                <th>Endpoint URL</th>
+                <th>Verb</th>
+                <th>Metadata Prefix</th>
+                <th>Scope Type</th>
+                <th>Scope Value</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>{{job_details.oai_params.id}}</td>
+                <td>{{job_details.oai_params.name}}</td>
+                <td><a href="{{job_details.oai_params.endpoint}}?verb=Identify" target="_blank">{{job_details.oai_params.endpoint}}</a></td>
+                <td><code>{{job_details.oai_params.verb}}</code></td>
+                <td><code>{{job_details.oai_params.metadataPrefix}}</code></td>
+                <td><code>{{job_details.oai_params.scope_type}}</code></td>
+                <td><code>{{job_details.oai_params.scope_value}}</code></td>
+                <td><a href="{{job_details.oai_params.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+            </tr>
+        </tbody>
+    </table>
+
+    <h4>OAI sets for harvested records</h4>
+    <table class="table table-bordered table-hover">
+        <thead>
+            <tr>
+                <th>OAI Set</th>
+                <th>Number of Records</th>
+            </tr>
+        </thead>
+        <tbody>
+        {% for set, count in oai_sets.items %}
+            <tr>
+                <td><code>{{ set }}</code></td>
+            <td>{{ count }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endif %}

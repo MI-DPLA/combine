@@ -158,7 +158,7 @@
                 <a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>
             </li>
             <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest  Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
+                <a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
@@ -650,37 +650,7 @@
 
                             <!-- HarvestJob -->
                             {% if cjob.job.job_type_family == 'HarvestJob' %}
-
-                                {% if job_details.oai_params %}
-                                    <h4>OAI Endpoint for Harvest</h4>
-                                    <table class="table table-bordered table-hover">
-                                        <thead>
-                                            <tr>
-                                                <th>ID</th>
-                                                <th>Name</th>
-                                                <th>Endpoint URL</th>
-                                                <th>Verb</th>
-                                                <th>Metadata Prefix</th>
-                                                <th>Scope Type</th>
-                                                <th>Scope Value</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            <tr>
-                                                <td>{{job_details.oai_params.id}}</td>
-                                                <td>{{job_details.oai_params.name}}</td>
-                                                <td><a href="{{job_details.oai_params.endpoint}}?verb=Identify" target="_blank">{{job_details.oai_params.endpoint}}</a></td>
-                                                <td><code>{{job_details.oai_params.verb}}</code></td>
-                                                <td><code>{{job_details.oai_params.metadataPrefix}}</code></td>
-                                                <td><code>{{job_details.oai_params.scope_type}}</code></td>
-                                                <td><code>{{job_details.oai_params.scope_value}}</code></td>
-                                                <td><a href="{{job_details.oai_params.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                {% endif %}
-
+                                {% include 'core/job_harvest_details.html' %}
                             {% endif %}
 
                             <!-- TransformJob -->
