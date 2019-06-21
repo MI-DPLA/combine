@@ -1,5 +1,4 @@
 import ast
-from collections import Counter
 import json
 import logging
 from urllib.parse import urlencode
@@ -14,7 +13,7 @@ from core.models import RecordGroup, Job, CombineBackgroundTask, PublishedRecord
     CombineJob, AnalysisJob, GlobalMessageClient, OAIEndpoint, TransformJob,\
     MergeJob, RecordIdentifierTransformationScenario, FieldMapper, DPLABulkDataDownload,\
     ValidationScenario, HarvestOAIJob, HarvestStaticXMLJob, Transformation, JobValidation,\
-    HarvestTabularDataJob, ESIndex
+    HarvestTabularDataJob, ESIndex, Record
 from core.mongo import mc_handle
 
 from .view_helpers import breadcrumb_parser, bool_for_string
@@ -355,11 +354,8 @@ def job_details(request, org_id, record_group_id, job_id):
 
     # get published records, primarily for published sets
     pub_records = PublishedRecords()
-    records = cjob.job.get_records()
 
-    oai_sets = Counter()
-    for record in records:
-        oai_sets.update(record.oai_set)
+    oai_sets = Record.objects(job_id=cjob.job.id).item_frequencies(field='oai_set')
 
     # get published subsets with PublishedRecords static method
     published_subsets = PublishedRecords.get_subsets()
