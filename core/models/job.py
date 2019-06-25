@@ -55,7 +55,7 @@ from sxsdiff.generators.github import GitHubStyledGenerator
 # toposort
 from toposort import toposort_flatten
 
-
+JOB_DETAILS_CACHES = ['detailed_record_count', 'validation_results', 'failure_count']
 
 
 class Job(models.Model):
@@ -1264,6 +1264,8 @@ class Job(models.Model):
         self.finished = False
         self.elapsed = 0
         self.deleted = True
+        self.job_details = json.dumps(
+            {k: v for k, v in self.job_details_dict.items() if k not in JOB_DETAILS_CACHES})
         self.save()
 
     def stop_job(self, cancel_livy_statement=True, kill_spark_jobs=True):
