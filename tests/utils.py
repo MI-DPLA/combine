@@ -3,6 +3,12 @@ from django.contrib.auth.models import User
 from core.models import Organization, RecordGroup, Job, Record, GlobalMessageClient,\
         JobInput
 
+TEST_DOCUMENT = '''<?xml version="1.0" encoding="UTF-8"?>
+<root xmlns:internet="http://internet.com">
+<foo>test document</foo>
+</root>
+'''
+
 
 class TestConfiguration:
     def __init__(self):
@@ -29,7 +35,7 @@ class TestConfiguration:
             record.delete()
         self.record = Record.objects.create(job_id=self.job.id,
                                             record_id='testrecord',
-                                            document='test document')
+                                            document=TEST_DOCUMENT)
         self.job.update_record_count()
 
     def record_group_path(self):
@@ -53,3 +59,6 @@ def most_recent_global_message():
     gm = gmc.session['gms'][0]
     return gm
 
+
+def json_string(string):
+    return str(string).replace("\'", "\"")

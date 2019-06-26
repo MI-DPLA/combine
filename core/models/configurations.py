@@ -670,7 +670,6 @@ class FieldMapper(models.Model):
             return json.loads(self.config_json)
         return None
 
-
     def validate_config_json(self, config_json=None):
 
         # if config_json not provided, assume use self
