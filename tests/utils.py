@@ -23,9 +23,14 @@ class TestConfiguration:
                                                  name="Test Transform Job")
         JobInput.objects.create(job=self.downstream_job,
                                 input_job=self.job)
+        # TODO: the test framework should be clearing all the dbs, not just mysql
+        old_records = Record.objects(job_id=self.job.id)
+        for record in old_records:
+            record.delete()
         self.record = Record.objects.create(job_id=self.job.id,
                                             record_id='testrecord',
                                             document='test document')
+        self.job.update_record_count()
 
     def record_group_path(self):
         return f'/combine/organization/{self.org.id}/record_group/{self.record_group.id}'

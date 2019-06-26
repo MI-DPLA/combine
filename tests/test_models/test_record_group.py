@@ -13,5 +13,6 @@ class RecordGroupModelTestCase(TestCase):
                            job_details='{"test_key": "test value"}',
                            name="Other Job")
         all_jobs = config.org.all_jobs()
-        self.assertEqual(len(all_jobs), 2)
+        self.assertEqual(len(all_jobs), 3)
         assert(all_jobs[0].id < all_jobs[1].id)
+        assert(all_jobs[1].id < all_jobs[2].id)
