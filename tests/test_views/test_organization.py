@@ -30,7 +30,7 @@ class OrganizationViewTestCase(TestCase):
         self.assertIn(b'Test Record Group', response.content)
 
     def test_delete_organization(self):
-        # This actually kicks off a background job, so it's hard to test that it worked
+        # TODO: This actually kicks off a background job, so it's hard to test that it worked
         config = TestConfiguration()
         response = self.client.get(reverse('organization_delete', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))

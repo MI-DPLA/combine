@@ -80,7 +80,7 @@
 					<a href="{{ cjob.job_details_url }}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i class="la la-info-circle"></i></button></a>
 
 					{% else %}
-						<p>No futher details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
+						<p>No further details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
 					{% endif %}
 
 					{% if 'job_id' in ct.task_params %}
