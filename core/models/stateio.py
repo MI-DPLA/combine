@@ -26,7 +26,8 @@ from core import tasks
 from core.mongo import mongoengine, mc_handle
 from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
   RecordIdentifierTransformationScenario, DPLABulkDataDownload
-from core.models.job import Job, JobValidation, JobInput, CombineJob
+from core.models.job import Job, JobValidation, JobInput
+from core.models.combine_job import CombineJob
 from core.models.livy_spark import LivySession, LivyClient
 from core.models.organization import Organization
 from core.models.publishing import PublishedRecords

@@ -928,7 +928,7 @@ class HarvestOAISpark(CombineSparkJob):
         job_id_udf = udf(lambda id: job_id, IntegerType())
         records = records.withColumn('job_id', job_id_udf(records.id))
 
-        # add oai_set, accomodating multiple sets
+        # add oai_set, accommodating multiple sets
         records = records.withColumn('oai_set', records.setIds)
 
         # add blank error column

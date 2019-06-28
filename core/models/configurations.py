@@ -548,7 +548,7 @@ class ValidationScenario(models.Model):
         '''
 
         # core models imports
-        from core.models.job import CombineJob
+        from core.models.combine_job import CombineJob
 
         # parse es validation payload
         es_payload = json.loads(self.payload)
