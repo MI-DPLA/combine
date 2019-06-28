@@ -147,7 +147,9 @@
 							</form>
 						</div>
 					</td>
-					<td class="{{ job.job_type_display_class }}">{{ job.record_count }}</td>
+					<td class="{{ job.job_type_display_class }} {% if job.record_count == 0 %}invalid_job{% endif %}">
+                        {{ job.record_count }}
+                    </td>
 					<td class="{{ job.job_type_display_class }}">
 						<a href="{{ job.job_details_url }}#spark_details_tab">
                             <button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">
