@@ -156,7 +156,7 @@ class Job(models.Model):
     def update_status(self):
 
         '''
-        Method to udpate job information based on status from Livy.
+        Method to update job information based on status from Livy.
         Jobs marked as deleted are not updated.
 
         Args:
@@ -172,13 +172,13 @@ class Job(models.Model):
 
             # if job in various status, and not finished, ping livy
             if self.status in ['initializing', 'waiting', 'pending', 'starting', 'running', 'available', 'gone']\
-            and self.url != None\
-            and not self.finished:
+                    and self.url is not None\
+                    and not self.finished:
 
                 LOGGER.debug('pinging Livy for Job status: %s', self)
                 self.refresh_from_livy(save=False)
 
-            # udpate record count if not already calculated
+            # update record count if not already calculated
             if self.record_count == 0:
 
                 # if finished, count

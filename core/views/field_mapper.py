@@ -206,5 +206,5 @@ def test_field_mapper(request):
 
         except Exception as err:
 
-            LOGGER.debug('field mapper was unsucessful')
+            LOGGER.debug('field mapper was unsuccessful')
             return JsonResponse({'error': str(err)})

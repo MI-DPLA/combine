@@ -265,7 +265,7 @@ class XML2kvp(object):
         # list of properties that are allowed to be overwritten with None
         arg_none_allowed = []
 
-        # overwite with attributes from static methods
+        # overwrite with attributes from static methods
         for k, v in kwargs.items():
             if v is not None or k in arg_none_allowed:
                 setattr(self, k, v)
