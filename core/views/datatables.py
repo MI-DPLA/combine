@@ -221,7 +221,7 @@ class DTRecordsJson(BaseDatatableView):
                     'job_id': row.job.id, 'record_id': str(row.id)
                 }))
             except:
-                return '<span style="color: red;">`</span>'
+                return '<span style="color: red;">Invalid XML</span>'
 
         # handle associated job
         if column == 'job':
