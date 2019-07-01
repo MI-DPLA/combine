@@ -111,6 +111,9 @@ div.grayed_dt_row, td.grayed_dt_row {
 .invalid_job {
 	background-color:#ff9898;
 }
+.valid_job {
+    background-color:#cbffcb;
+}
 #job_family_diagram {
 	width: 100%;
 	height: 300px;

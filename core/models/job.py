@@ -156,7 +156,7 @@ class Job(models.Model):
     def update_status(self):
 
         '''
-        Method to udpate job information based on status from Livy.
+        Method to update job information based on status from Livy.
         Jobs marked as deleted are not updated.
 
         Args:
@@ -287,7 +287,7 @@ class Job(models.Model):
 
         Returns:
             None
-                - sets attriutes of self
+                - sets attributes of self
         '''
 
         # query Livy for statement status
