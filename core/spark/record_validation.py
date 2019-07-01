@@ -482,6 +482,44 @@ class ValidationScenarioSpark(object):
         # return
         return validation_fails_rdd
 
+    def run_base_validation_scenario(self):
+        refresh_django_db_connection()
+
+        def validate_record_xml(pt):
+            for row in pt:
+                try:
+                    record_xml = etree.fromstring(row.document.encode('utf-8'))
+                except Exception as err:
+                    #TODO: why fail_count = 0 and immediately fail_count += 1?
+                    results_dict = {
+                        'fail_count': 0,
+                        'failed': []
+                    }
+                    results_dict['fail_count'] += 1
+                    results_dict['failed'].append(
+                        "XML validation exception: %s" % (str(e)))
+
+                    yield Row(
+                        record_id=row._id,
+                        record_identifier=row.record_id,
+                        job_id=row.job_id,
+                        valid=False,
+                        results_payload=json.dumps(results_dict),
+                        fail_count=results_dict['fail_count']
+                    )
+        failure_rdds = self.records_df.rdd.mapPartitions(validate_record_xml).filter(
+            lambda row: row is not None
+        )
+
+        if len(failure_rdds) > 0:
+            failures_df = failure_rdds.toDF()
+            failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+                .mode("append")\
+                .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+                .option("database", "combine")\
+                .option("collection", "record_validation").save()
+            self.update_job_record_validity()
+
     def remove_validation_scenarios(self):
         """
         Method to update validity attribute of records after removal of validation scenarios
