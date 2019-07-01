@@ -131,6 +131,15 @@
     </div>
 </div>
 
+{% if cjob.job.livy_error %}
+    <div class="row">
+        <div class="alert alert-danger">
+            An error occurred when running this Job:
+            {{ cjob.job.livy_error|linebreaks }}
+        </div>
+    </div>
+{% endif %}
+
 <div class="row">
     <div class="col-md-12">
 

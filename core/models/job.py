@@ -262,6 +262,21 @@ class Job(models.Model):
         except:
             return None
 
+    @property
+    def livy_error(self):
+        if self.response:
+            try:
+                json_response = json.loads(self.response, encoding='utf-8')
+                if json_response['output']['status'] == 'error':
+                    error_type = json_response['output']['ename']
+                    error_value = json_response['output']['evalue']
+                    error_value = error_value.split('\n')[0:2]
+                    error_string = error_type + '\n' + ('\n').join(error_value) + '...'
+                    return error_string
+            except json.JSONDecodeError:
+                return None
+        return None
+
     def refresh_from_livy(self, save=True):
 
         '''
