@@ -39,6 +39,25 @@ from core.models import Job, ValidationScenario
 # Record Validation												   #
 ####################################################################
 
+class ErrorValidator(object):
+
+    def __init__(self, err):
+        self.err = err
+
+    def validate(self, _object):
+        return False
+
+    @property
+    def validation_report(self):
+        nsmap = {'svrl': 'http://purl.oclc.org/dsdl/svrl'}
+        report = etree.Element("schematron-output", nsmap=nsmap)
+        failed_assert = etree.SubElement(report, '{%s}failed-assert' % nsmap['svrl'], test='validator', location='/')
+        text = etree.SubElement(failed_assert, '{%s}text' % nsmap['svrl'])
+        text.text = 'Invalid validator: {}'.format(str(self.err))
+        tree = etree.ElementTree(report)
+        return tree
+
+
 class ValidationScenarioSpark(object):
     """
     Class to organize methods and attributes used for running validation scenarios
@@ -143,9 +162,12 @@ class ValidationScenarioSpark(object):
 
         def validate_schematron_pt_udf(pt):
 
-            # parse schematron
-            sct_doc = etree.parse(vs_filepath)
-            validator = isoschematron.Schematron(sct_doc, store_report=True)
+            try:
+                # parse schematron
+                sct_doc = etree.parse(vs_filepath)
+                validator = isoschematron.Schematron(sct_doc, store_report=True)
+            except Exception as err:
+                validator = ErrorValidator(err)
 
             for row in pt:
 
