@@ -1,7 +1,7 @@
 from django.test import Client, TestCase
 
 from core.models import ValidationScenario
-from tests.utils import TestConfiguration
+from tests.utils import TestConfiguration, TEST_DOCUMENT
 
 
 class RecordTestCase(TestCase):
@@ -17,7 +17,7 @@ class RecordTestCase(TestCase):
 
     def test_record_document(self):
         response = self.client.get(f'{self.config.record_path()}/document')
-        self.assertEqual(b'test document', response.content)
+        self.assertEqual(TEST_DOCUMENT, str(response.content, 'utf-8'))
 
     def test_record_indexed_document(self):
         response = self.client.get(f'{self.config.record_path()}/indexed_document')

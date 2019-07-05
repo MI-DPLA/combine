@@ -3,7 +3,7 @@ from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import FieldMapper
-from tests.utils import TestConfiguration
+from tests.utils import TestConfiguration, json_string
 
 
 class FieldMapperTestCase(TestCase):
@@ -148,11 +148,10 @@ class FieldMapperTestCase(TestCase):
 
     def test_post_test_field_mapper(self):
         field_mapper = FieldMapper.objects.create(field_mapper_type='xml2kvp',
-                                                  config_json='{}',
+                                                  config_json=json_string({"add_literals": {"foo": "bar"}}),
                                                   name='test field mapper')
         response = self.client.post(reverse('test_field_mapper'), {
             'db_id': self.config.record.id,
             'fm_config_json': field_mapper.config_json
         })
-        print(response.json())
-        # TODO: put in some valid config_json
+        self.assertEqual(response.json(), {'root_foo': 'test document', 'foo': 'bar'})
