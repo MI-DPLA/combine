@@ -266,15 +266,14 @@ class Job(models.Model):
     def livy_error(self):
         if self.response:
             try:
-                response = self.response.decode('utf-8') if isinstance(self.response, bytes) else self.response
-                json_response = json.loads(response)
+                json_response = json.loads(self.response, encoding='utf-8')
                 if json_response['output']['status'] == 'error':
                     error_type = json_response['output']['ename']
                     error_value = json_response['output']['evalue']
                     error_value = error_value.split('\n')[0:2]
                     error_string = error_type + '\n' + ('\n').join(error_value) + '...'
                     return error_string
-            except (json.JSONDecodeError, TypeError):
+            except json.JSONDecodeError:
                 return None
         return None
 

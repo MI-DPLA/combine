@@ -444,15 +444,6 @@ class CombineSparkJob(object):
                     validation_scenarios=self.job_details['validation_scenarios']
                 )
                 vs.run_record_validation_scenarios()
-            else:
-                self.update_jobGroup('Validating record XML')
-                vs = ValidationScenarioSpark(
-                    spark=self.spark,
-                    job=self.job,
-                    records_df=db_records,
-                    validation_scenarios=[]
-                )
-                vs.run_base_validation_scenario()
 
             # handle DPLA Bulk Data matching, rewriting/updating records where match is found
             self.dpla_bulk_data_compare(db_records, es_rdd)
