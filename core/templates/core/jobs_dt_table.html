@@ -94,7 +94,11 @@
 						{% endif %}
 					</td>
 					<td class="{{ job.job_type_display_class }}">
+                        {% if job.record_count == 0 %}
+                        Unknown
+                        {% else %}
                         {{ job.validation_results.verdict }}
+                        {% endif %}
                     </td>
 					<td class="{{ job.job_type_display_class }}">
                         <a href="{{ job.job_details_url }}#publish_tab">
@@ -147,7 +151,9 @@
 							</form>
 						</div>
 					</td>
-					<td class="{{ job.job_type_display_class }}">{{ job.record_count }}</td>
+					<td class="{{ job.job_type_display_class }} {% if job.record_count == 0 %}warning_job{% endif %}">
+                        {% if job.record_count == 0 %}No Records Found{% else %}{{ job.record_count }}{% endif %}
+                    </td>
 					<td class="{{ job.job_type_display_class }}">
 						<a href="{{ job.job_details_url }}#spark_details_tab">
                             <button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">
@@ -197,12 +203,15 @@
 			    	"lengthMenu": [ 10, 25, 100, 500 ],
 			    	{# Jinja logic for including RecordGroups #}
 			    	{% if not for_analysis %}
-				    	"createdRow": function( row, data, dataIndex){
+				    	"createdRow": function( row, data, dataIndex) {
 
-		                    // show job valid
-		                    if (data[8] == 'False'){
-		                    	$('td:nth-child(9)', row).addClass('invalid_job');
-		                    }
+                            // show job valid
+                            if (data[8] == 'False') {
+                                $('td:nth-child(9)', row).addClass('invalid_job');
+                            } else if (data[8] == 'Unknown') {
+                                $('td:nth-child(9)', row).addClass('warning_job');
+
+                            }
 			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
@@ -210,7 +219,9 @@
 		                    // show job valid
 		                    if (data[7] == 'False'){                    	
 		                    	$('td:nth-child(8)', row).addClass('invalid_job');
-		                    }
+		                    } else if (data[7] == 'Unknown') {
+                                $('td:nth-child(8)', row).addClass('warning_job');
+                            }
 			            },
 		            {% endif %}
 		            initComplete: function () {

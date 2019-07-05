@@ -824,6 +824,10 @@ class Job(models.Model):
         if not self.finished:
             return results
 
+        if self.record_count == 0:
+            results['verdict'] = False
+            return results
+
         # no validation tests run, return True
         if self.jobvalidation_set.count() == 0:
             return results
