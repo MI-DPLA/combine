@@ -20,7 +20,7 @@ sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
 
 
 
-class XML2kvp(object):
+class XML2kvp():
     '''
     Class to handle the parsing of XML into Key/Value Pairs
 
@@ -612,14 +612,14 @@ class XML2kvp(object):
                 except:
                     self.xml = etree.fromstring(xml_input.encode('utf-8'))
                 self._parse_nsmap()
-            return (xml_input)
+            return xml_input
 
         # if etree object, to string and save
         if type(xml_input) in [etree._Element, etree._ElementTree]:
             if self.include_xml_prop:
                 self.xml = xml_input
                 self._parse_nsmap()
-            return (etree.tostring(xml_input).decode('utf-8'))
+            return etree.tostring(xml_input).decode('utf-8')
 
     def _parse_nsmap(self):
         '''
@@ -630,7 +630,8 @@ class XML2kvp(object):
         _nsmap = self.xml.nsmap.copy()
         try:
             global_ns = _nsmap.pop(None)
-            _nsmap['global_ns'] = ns0
+            # TODO: global_ns on below line was 'ns0' which doesn't exist...
+            _nsmap['global_ns'] = global_ns
         except:
             pass
         self.nsmap = _nsmap
@@ -712,8 +713,7 @@ class XML2kvp(object):
         # return
         if return_handler:
             return handler
-        else:
-            return handler.kvp_dict
+        return handler.kvp_dict
 
     @staticmethod
     def kvp_to_xml(kvp, handler=None, return_handler=False, serialize_xml=False, **kwargs):
@@ -727,7 +727,7 @@ class XML2kvp(object):
         '''
 
         # DEBUG
-        stime = time.time()
+        # stime = time.time()
 
         # init handler, overwriting defaults if not None
         if not handler:
@@ -859,8 +859,7 @@ class XML2kvp(object):
         # return
         if serialize_xml:
             return xml_record.serialize()
-        else:
-            return xml_record
+        return xml_record
 
     @staticmethod
     def k_to_xpath(k, handler=None, return_handler=False, **kwargs):
@@ -960,8 +959,7 @@ class XML2kvp(object):
         # return
         if return_handler:
             return handler
-        else:
-            return xpath
+        return xpath
 
     @staticmethod
     def kvp_to_xpath(
@@ -986,14 +984,13 @@ class XML2kvp(object):
             handler.kvp_dict = kvp
 
         # loop through and append to handler
-        for k, v in handler.kvp_dict.items():
+        for k, _v in handler.kvp_dict.items():
             XML2kvp.k_to_xpath(k, handler=handler)
 
         # return
         if return_handler:
             return handler
-        else:
-            return handler.k_xpath_dict
+        return handler.k_xpath_dict
 
     def test_kvp_to_xpath_roundtrip(self):
 
@@ -1007,6 +1004,7 @@ class XML2kvp(object):
             self._parse_nsmap()
 
         # generate xpaths values
+        # TODO: why are we assigning to self here? does that even work?
         self = XML2kvp.kvp_to_xpath(
             self.kvp_dict, handler=self, return_handler=True)
 
@@ -1020,17 +1018,17 @@ class XML2kvp(object):
                 elif type(values) in [tuple, list]:
                     values_len = len(values)
                 if len(matched_elements) != values_len:
-                    logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (
-                    k, v, values_len, len(matched_elements)))
+                    logger.debug('mismatch on %s --> %s, matched elements:values --> %s:%s',
+                    k, v, values_len, len(matched_elements))
             except etree.XPathEvalError:
-                logger.debug('problem with xpath statement: %s' % v)
-                logger.debug('could not calculate %s --> %s' % (k, v))
+                logger.debug('problem with xpath statement: %s', v)
+                logger.debug('could not calculate %s --> %s', k, v)
 
     @staticmethod
     def test_xml_to_kvp_speed(iterations, kwargs):
 
         stime = time.time()
-        for x in range(0, iterations):
+        for _ in range(0, iterations):
             XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
         print("avg for %s iterations: %s" % (iterations, (time.time() - stime) / float(iterations)))
 
@@ -1065,9 +1063,9 @@ class XML2kvp(object):
         if table_format == 'rst':
             return dashtable.data2rst(table, use_headers=True)
         elif table_format == 'md':
-            return dashtable.data2md(table, use_headers=True)
-        elif table_format == 'html':
-            return None
+            return dashtable.data2md(table)
+        # else if table format is 'html' or anything else
+        return None
 
     def _table_format_type(self, prop_type):
         '''
@@ -1077,10 +1075,10 @@ class XML2kvp(object):
         # handle single
         if type(prop_type) == str:
             return "``%s``" % prop_type
-
         # handle list
         elif type(prop_type) == list:
             return "[" + ",".join(["``%s``" % t for t in prop_type]) + "]"
+        return ""
 
     def _table_format_desc(self, desc):
         '''
@@ -1107,7 +1105,7 @@ class XML2kvp(object):
 
 
 
-class XMLRecord(object):
+class XMLRecord():
     '''
     Class to scaffold and create XML records from XML2kvp kvp
     '''

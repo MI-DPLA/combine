@@ -1,21 +1,16 @@
 # imports
 import django
 from functools import reduce
-import hashlib
 from inspect import isfunction, signature
 import json
 from lxml import etree, isoschematron
 import os
-import shutil
 import sys
 from types import ModuleType
 
 # import Row from pyspark
-from pyspark import StorageLevel
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf
 
 # import from core.spark
 try:
@@ -23,23 +18,23 @@ try:
 except:
     from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 
+# pylint: disable=wrong-import-position
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 
 from django.conf import settings
-from django.db import connection
 
 # import select models from Core
-from core.models import Job, ValidationScenario
+from core.models import ValidationScenario
 
 
 ####################################################################
 # Record Validation												   #
 ####################################################################
 
-class ErrorValidator(object):
+class ErrorValidator():
 
     def __init__(self, err):
         self.err = err
@@ -58,7 +53,7 @@ class ErrorValidator(object):
         return tree
 
 
-class ValidationScenarioSpark(object):
+class ValidationScenarioSpark():
     """
     Class to organize methods and attributes used for running validation scenarios
     """
@@ -393,10 +388,9 @@ class ValidationScenarioSpark(object):
                     return None
 
                 # else, perform join
-                else:
-                    fail_df = self.records_df.alias('records_df').join(es_df,
-                                                                       self.records_df['_id']['oid'] == es_df['_1'],
-                                                                       'leftsemi').select('_id', 'records_df.record_id')
+                fail_df = self.records_df.alias('records_df').join(es_df,
+                                                                   self.records_df['_id']['oid'] == es_df['_1'],
+                                                                   'leftsemi').select('_id', 'records_df.record_id')
 
             # add columns to df to return
             fail_df = fail_df.withColumn('failed',
@@ -434,8 +428,7 @@ class ValidationScenarioSpark(object):
             )
             return validation_fails_rdd
 
-        else:
-            return None
+        return None
 
     def _xsd_validation(self, vs, vs_id, vs_name, vs_filepath):
 

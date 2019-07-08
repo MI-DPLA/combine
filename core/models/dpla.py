@@ -21,6 +21,10 @@ from core.es import es_handle
 from core.models.configurations import DPLABulkDataDownload
 from core.models.tasks import CombineBackgroundTask
 
+
+# AWS
+import boto3
+
 import elasticsearch as es
 
 # Get an instance of a LOGGER
@@ -28,10 +32,6 @@ LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-# AWS
-import boto3
-
 
 class DPLABulkDataClient():
 

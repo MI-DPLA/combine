@@ -32,7 +32,7 @@ class DTElasticFieldSearch(View):
     '''
     Model to query ElasticSearch and return DataTables ready JSON.
     This model is a Django Class-based view.
-    This model is located in core.models, as it still may function seperate from a Django view.
+    This model is located in core.models, as it still may function separate from a Django view.
 
     NOTE: Consider breaking aggregation search to own class, very different approach
     '''
@@ -59,6 +59,8 @@ class DTElasticFieldSearch(View):
         '''
 
         LOGGER.debug('initiating DTElasticFieldSearch connector')
+
+        super(DTElasticFieldSearch, self).__init__()
 
         # fields to retrieve from index
         self.fields = fields
@@ -411,7 +413,7 @@ class DTElasticFieldSearch(View):
         self.paginate()
 
         # loop through field values
-        for index, row in self.query_results.iterrows():
+        for _index, row in self.query_results.iterrows():
 
             # iterate through columns and place in list
             row_data = [row.key, row.doc_count]
@@ -451,6 +453,7 @@ class DTElasticGenericSearch(View):
         '''
 
         LOGGER.debug('initiating DTElasticGenericSearch connector')
+        super(DTElasticGenericSearch, self).__init__()
 
         # fields to retrieve from index
         self.fields = fields

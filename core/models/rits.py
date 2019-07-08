@@ -6,15 +6,14 @@ import json
 import logging
 import re
 from types import ModuleType
+# import ElasticSearch BaseMapper and PythonUDFRecord
+from core.spark.utils import PythonUDFRecord
 
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-# import ElasticSearch BaseMapper and PythonUDFRecord
-from core.spark.utils import PythonUDFRecord
 
 
 class RITSClient():

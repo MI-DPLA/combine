@@ -4,16 +4,15 @@ from __future__ import unicode_literals
 # generic imports
 import logging
 
+from core.models.elasticsearch import ESIndex
+from core.models.job import Job, Record
+from core.mongo import mc_handle
+
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-from core.models.elasticsearch import ESIndex
-from core.models.job import Job, Record
-from core.mongo import mc_handle
-
 
 class PublishedRecords():
 

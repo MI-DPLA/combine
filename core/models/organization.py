@@ -2,7 +2,6 @@
 from __future__ import unicode_literals
 
 # generic imports
-import datetime
 import logging
 from itertools import chain
 

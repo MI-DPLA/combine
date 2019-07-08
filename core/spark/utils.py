@@ -4,6 +4,7 @@ from lxml import etree
 import os
 import sys
 
+# pylint: disable=wrong-import-position
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
     os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
@@ -20,7 +21,7 @@ def refresh_django_db_connection():
     Function to refresh connection to Django DB.
 
     Behavior with python files uploaded to Spark context via Livy is atypical when
-    it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther 
+    it comes to opening/closing connections with MySQL.  Specifically, if jobs are run farther
     apart than MySQL's `wait_timeout` setting, it will result in the error, (2006, 'MySQL server has gone away').
 
     Running this function before jobs ensures that the connection is fresh between these python files
@@ -37,7 +38,7 @@ def refresh_django_db_connection():
     connection.connect()
 
 
-class PythonUDFRecord(object):
+class PythonUDFRecord():
     """
     Class to provide a slim-downed version of core.models.Record that is used for spark UDF functions,
     and for previewing python based validations and transformations
@@ -127,5 +128,4 @@ def df_union_all(dfs):
 
     if len(dfs) > 1:
         return dfs[0].unionAll(df_union_all(dfs[1:]))
-    else:
-        return dfs[0]
+    return dfs[0]

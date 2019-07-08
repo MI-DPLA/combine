@@ -13,20 +13,18 @@ import zipfile
 # django imports
 from django.conf import settings
 
-# Get an instance of a LOGGER
-import logging
-
-LOGGER = logging.getLogger(__name__)
-
 # import celery app
 from .celery import celery_app
 
 # Combine imports
-from core import models as models
+from core import models
+from core.mongo import mc_handle
 
 # AWS
 import boto3
 
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
 
 # TODO: need some handling for failed Jobs which may not be available, but will not be changing,
 # to prevent infinite polling (https://github.com/MI-DPLA/combine/issues/192)
@@ -49,14 +47,13 @@ def delete_model_instance(instance_model, instance_id):
 
         # get model instance
         i = m.objects.get(pk=int(instance_id))
-        LOGGER.info('retrieved %s model, instance ID %s, deleting' %
-                    (m.__name__, instance_id))
+        LOGGER.info('retrieved %s model, instance ID %s, deleting',
+                    m.__name__, instance_id)
 
         # delete
         return i.delete()
 
-    else:
-        LOGGER.info('Combine model %s not found, aborting' % (instance_model))
+    LOGGER.info('Combine model %s not found, aborting', (instance_model))
 
 
 @celery_app.task()
@@ -75,13 +72,14 @@ def download_and_index_bulk_data(dbdd_id):
     dbdc = models.DPLABulkDataClient()
 
     # download data
-    LOGGER.info('downloading %s' % dbdd.s3_key)
+    LOGGER.info('downloading %s', dbdd.s3_key)
     dbdd.status = 'downloading'
     dbdd.save()
-    download_results = dbdc.download_bulk_data(dbdd.s3_key, dbdd.filepath)
+    # TODO: not doing anything with download results
+    dbdc.download_bulk_data(dbdd.s3_key, dbdd.filepath)
 
     # index data
-    LOGGER.info('indexing %s' % dbdd.filepath)
+    LOGGER.info('indexing %s', dbdd.filepath)
     dbdd.status = 'indexing'
     dbdd.save()
     es_index = dbdc.index_to_es(dbdd.s3_key, dbdd.filepath)
@@ -147,7 +145,7 @@ def create_validation_report(ct_id):
 
         # glob parts
         export_parts = glob.glob('%s/part*' % output_path)
-        LOGGER.info('found %s documents to group' % len(export_parts))
+        LOGGER.info('found %s documents to group', len(export_parts))
 
         # if output not found, exit
         if len(export_parts) == 0:
@@ -186,7 +184,7 @@ def create_validation_report(ct_id):
                     fout.write(line)
 
             # removing partitioned output
-            LOGGER.info('removing dir: %s' % output_path)
+            LOGGER.info('removing dir: %s', output_path)
             shutil.rmtree(output_path)
 
             # optionally, compress file
@@ -202,8 +200,8 @@ def create_validation_report(ct_id):
                 # establish output archive file
                 output_filename = '%s.zip' % (archive_filename_root)
 
-                with zipfile.ZipFile(output_filename, 'w', zipfile.ZIP_DEFLATED) as zip:
-                    zip.write(archive_filename_root,
+                with zipfile.ZipFile(output_filename, 'w', zipfile.ZIP_DEFLATED) as write_zip:
+                    write_zip.write(archive_filename_root,
                               archive_filename_root.split('/')[-1])
 
             # tar.gz
@@ -378,14 +376,14 @@ def export_mapped_fields(ct_id):
         elif ct.task_params['archive_type'] == 'zip':
 
             LOGGER.info('creating compressed zip archive')
-            content_type = 'application/zip'
+            # TODO: not using this? content_type = 'application/zip'
 
             # establish output archive file
             export_output_archive = '%s/%s.zip' % (
                 output_path, export_output.split('/')[-1])
 
-            with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as zip:
-                zip.write(export_output, export_output.split('/')[-1])
+            with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as write_zip:
+                write_zip.write(export_output, export_output.split('/')[-1])
 
             # set export output to archive file
             export_output = export_output_archive
@@ -605,10 +603,10 @@ def _create_export_tabular_data_archive(ct):
         export_output_archive = '%s/%s.zip' % (
             ct.task_params['output_path'], ct.task_params['archive_filename_root'])
 
-        with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as zip:
+        with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as write_zip:
             for f in glob.glob(
                     '%s/**/*.%s' % (ct.task_params['output_path'], ct.task_params['tabular_data_export_type'])):
-                zip.write(f, '/'.join(f.split('/')[-2:]))
+                write_zip.write(f, '/'.join(f.split('/')[-2:]))
 
     # tar
     elif ct.task_params['archive_type'] == 'tar':
@@ -642,7 +640,7 @@ def _create_export_tabular_data_archive(ct):
 
     # cleanup directory
     for d in pre_archive_dirs:
-        LOGGER.info('removing dir: %s' % d)
+        LOGGER.info('removing dir: %s', d)
         shutil.rmtree(d)
 
     # update task params
@@ -668,7 +666,7 @@ def export_documents(ct_id):
 
     # get CombineBackgroundTask
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    LOGGER.info('using %s' % ct)
+    LOGGER.info('using %s', ct)
 
     # generate spark code
     output_path = '/tmp/%s' % str(uuid.uuid4())
@@ -806,7 +804,7 @@ def _create_export_documents_archive(ct):
     LOGGER.info('grouping documents in XML files')
 
     export_parts = glob.glob('%s/**/part*' % ct.task_params['output_path'])
-    LOGGER.info('found %s documents to write as XML' % len(export_parts))
+    LOGGER.info('found %s documents to write as XML', len(export_parts))
     for part in export_parts:
         with open('%s.xml' % part, 'w') as f:
             f.write('<?xml version="1.0" encoding="UTF-8"?><documents>')
@@ -827,9 +825,9 @@ def _create_export_documents_archive(ct):
         export_output_archive = '%s/%s.zip' % (
             ct.task_params['output_path'], ct.task_params['archive_filename_root'])
 
-        with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as zip:
+        with zipfile.ZipFile(export_output_archive, 'w', zipfile.ZIP_DEFLATED) as write_zip:
             for f in glob.glob('%s/**/*.xml' % ct.task_params['output_path']):
-                zip.write(f, '/'.join(f.split('/')[-2:]))
+                write_zip.write(f, '/'.join(f.split('/')[-2:]))
 
     # tar
     elif ct.task_params['archive_type'] == 'tar':
@@ -861,7 +859,7 @@ def _create_export_documents_archive(ct):
 
     # cleanup directory
     for d in pre_archive_dirs:
-        LOGGER.info('removing dir: %s' % d)
+        LOGGER.info('removing dir: %s', d)
         shutil.rmtree(d)
 
     # update task params
@@ -892,7 +890,7 @@ def job_reindex(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -959,7 +957,7 @@ def job_new_validations(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1045,7 +1043,7 @@ def job_remove_validation(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1115,7 +1113,7 @@ def job_publish(ct_id):
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1130,7 +1128,7 @@ def job_publish(ct_id):
         # add publish_set_id to published subsets if present, and remove precount
         for published_subset in ct.task_params['in_published_subsets']:
             LOGGER.debug(
-                'adding publish_set_id to Published Subset: %s' % published_subset)
+                'adding publish_set_id to Published Subset: %s', published_subset)
             pr = models.PublishedRecords(subset=published_subset)
             pr.add_publish_set_id_to_subset(
                 publish_set_id=ct.task_params['publish_set_id'])
@@ -1159,7 +1157,7 @@ def job_unpublish(ct_id):
     # get CombineTask (ct)
     try:
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
@@ -1201,13 +1199,14 @@ def job_dbdm(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # get CombineJob
         cjob = models.CombineJob.get_combine_job(int(ct.task_params['job_id']))
 
         # set dbdm as False for all Records in Job
-        clear_result = models.mc_handle.combine.record.update_many({'job_id': cjob.job.id}, {'$set': {'dbdm': False}},
+        # TODO: not using this result
+        mc_handle.combine.record.update_many({'job_id': cjob.job.id}, {'$set': {'dbdm': False}},
                                                                    upsert=False)
 
         # generate spark code
@@ -1285,7 +1284,7 @@ def rerun_jobs_prep(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # loop through and run
         for job_id in ct.task_params['ordered_job_rerun_set']:
@@ -1333,7 +1332,7 @@ def clone_jobs(ct_id):
         _check_livy_session()
 
         ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-        LOGGER.info('using %s' % ct)
+        LOGGER.info('using %s', ct)
 
         # loop through and run
         skip_clones = []
@@ -1349,7 +1348,7 @@ def clone_jobs(ct_id):
                 skip_clones=skip_clones)
 
             # append newly created clones to skip_clones
-            for job, clone in clones.items():
+            for _job, clone in clones.items():
                 skip_clones.append(clone)
 
         # save export output to Combine Task output
@@ -1382,7 +1381,7 @@ def stateio_export(ct_id):
     _check_livy_session()
 
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    LOGGER.info('using %s' % ct)
+    LOGGER.info('using %s', ct)
 
     # begin export
     sio_client = models.StateIOClient()
@@ -1407,7 +1406,7 @@ def stateio_import(ct_id):
     _check_livy_session()
 
     ct = models.CombineBackgroundTask.objects.get(pk=int(ct_id))
-    LOGGER.info('using %s' % ct)
+    LOGGER.info('using %s', ct)
 
     # begin import
     sio_client = models.StateIOClient()
@@ -1430,7 +1429,7 @@ def _check_livy_session():
     if not ls:
 
         try:
-            ls_id = models.LivySession.ensure_active_session_id(None)
+            models.LivySession.ensure_active_session_id(None)
             ls = models.LivySession.get_active_session()
         except:
             raise Exception('Error while attempting to start new Livy session')
