@@ -19,10 +19,9 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 def bool_for_string(string):
-    if string == 'true':
+    if string.lower() == 'true':
         return True
-    elif string == 'false':
-        return False
+    return False
 
 # breadcrumb parser
 def breadcrumb_parser(request):
