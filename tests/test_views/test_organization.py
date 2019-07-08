@@ -48,7 +48,7 @@ class OrganizationViewTestCase(TestCase):
         response = self.client.get(reverse('organization_run_jobs', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))
         gm = most_recent_global_message()
-        self.assertEqual(gm['html'], '<strong>Preparing to Rerun Job(s):</strong><br>Test Job')
+        self.assertEqual(gm['html'], '<strong>Preparing to Rerun Job(s):</strong><br>Test Job<br>Test Transform Job')
         self.assertEqual(gm['class'], 'success')
 
     def test_organization_stop_jobs(self):
@@ -64,6 +64,6 @@ class OrganizationViewTestCase(TestCase):
         response = self.client.get(reverse('organization_stop_jobs', args=[config.org.id]))
         self.assertRedirects(response, reverse('organizations'))
         gm = most_recent_global_message()
-        self.assertEqual(gm['html'], '<p><strong>Stopped Job(s):</strong><br>Test Job</p>')
+        self.assertEqual(gm['html'], '<p><strong>Stopped Job(s):</strong><br>Test Job<br>Test Transform Job</p>')
         self.assertEqual(gm['class'], 'danger')
 

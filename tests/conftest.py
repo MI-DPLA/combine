@@ -29,7 +29,7 @@ def keep_records(request):
 
 
 # global variables object "VO"
-class Vars(object):
+class Vars():
     '''
     Object to capture and store variables used across tests
     '''
