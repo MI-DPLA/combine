@@ -118,18 +118,35 @@
             <tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
                 <td>{{ cjob.job.name }}</td>
                 <td>{{ cjob.job.job_type }}</td>
-                <td>{{ record_count_details.input_jobs.total_input_records }}</td>
-                <td>{{ record_count_details.records }}</td>
+                <td>
+                    {% if record_count_details.input_jobs is not None %}
+                    {{ record_count_details.input_jobs.total_input_record_count }}
+                    {% else %}
+                    N/A
+                    {% endif %}
+                </td>
+                <td {% if record_count_details.records == 0 %}class="invalid_job"{% endif %}>
+                    {{ record_count_details.records }}
+                </td>
                 {% if record_count_details.errors > 0 %}
-                    <td style="background-color: #ff9898;">{{ record_count_details.errors }} <a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button style="margin-left:10px;" class="btn btn-danger btn-sm">View Errors</button></a></td>
+                    <td class="invalid_job">{{ record_count_details.errors }} <a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button style="margin-left:10px;" class="btn btn-danger btn-sm">View Errors</button></a></td>
                 {% else %}
-                    <td style="background-color: #cbffcb;">{{ record_count_details.errors }}</td>
+                    <td class="valid_job">{{ record_count_details.errors }}</td>
                 {% endif %}
-                <td style="{% if cjob.job.validation_results.failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
+                <td class="{% if cjob.job.validation_results.failure_count > 0 %}invalid_job{% else %}valid_job{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
             </tr>
         </table>
     </div>
 </div>
+
+{% if cjob.job.livy_error %}
+    <div class="row">
+        <div class="alert alert-danger">
+            An error occurred when running this Job:
+            {{ cjob.job.livy_error|linebreaks }}
+        </div>
+    </div>
+{% endif %}
 
 <div class="row">
     <div class="col-md-12">
@@ -425,7 +442,7 @@
                                         <tr>
                                             <td>{{ jv.validation_scenario.name }}</td>
                                             <td>{{ jv.validation_scenario.get_validation_type_display }}</td>
-                                            <td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+                                            <td class="{% if jv.validation_failure_count > 0 %}invalid_job{% else %}valid_job{% endif %}">{{ jv.validation_failure_count }}</td>
                                             <td>
                                                 {% if jv.validation_failure_count > 0 %}
                                                     <p><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures for this Validation</button></a></p>
