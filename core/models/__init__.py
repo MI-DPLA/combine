@@ -17,6 +17,7 @@ from .record_group import RecordGroup
 from .rits import RITSClient
 from .stateio import StateIO, StateIOClient
 from .supervisor import SupervisorRPCClient
+from .error_report import ErrorReport
 
 # import signals
 from .signals import *
