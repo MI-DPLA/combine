@@ -2,11 +2,28 @@
 
 {% block content %}
 
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Other Services</h2>
+            <p>{{ mysql_info }}</p>
+        </div>
+
+        <div class="col-md-12">
+            <h3>ElasticSearch</h3>
+            <p>{{ es_info }}</p>
+        </div>
+
+        <div class="col-md-12">
+            <h3>MongoDB</h3>
+            <p>{{ mongo_info }}</p>
+        </div>
+    </div>
+
 	<div class="row">
 
 		<div class="col-md-12">
 			<h2>Livy/Spark Session</h2>
-			<p>Apache Livy is what faciliates communciation between the Combine Django application, and a Spark context for processing Jobs.  <a target="_blank" href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more about Spark and Livy in the Combine documentation</a>.</p>
+			<p>Apache Livy is what facilitates communication between the Combine Django application, and a Spark context for processing Jobs.  <a target="_blank" href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more about Spark and Livy in the Combine documentation</a>.</p>
 		</div>
 
 		<div class="col-md-12">

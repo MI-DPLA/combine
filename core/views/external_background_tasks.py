@@ -8,8 +8,8 @@ from django.shortcuts import render, redirect
 
 from core.models import LivySession, SupervisorRPCClient, LivyClient
 from core.celery import celery_app
-
-from core.mongo import settings
+from core.es import es_handle
+from core.mongo import settings, mc_handle, mongoengine
 
 from .view_helpers import breadcrumb_parser
 
@@ -67,13 +67,31 @@ def system(request):
         else:
             celery_status = 'unknown'
 
+    # get elasticsearch status
+    es_info = es_handle.cluster.health()
+
+    # mongo
+    mongo_info = mc_handle.get_database(name='combine').current_op()
+
+    # mysql
+    mysql_info = None
+
+    # redis - maybe goes with celery?
+
+    # spark - maybe goes with livy?
+
+    # hadoop - maybe goes with spark?
+
     # return
     return render(request, 'core/system.html', {
         'livy_session': livy_session,
         'livy_sessions': livy_sessions,
         'celery_status': celery_status,
         'bgtasks_proc': bgtasks_proc,
-        'breadcrumbs': breadcrumb_parser(request)
+        'breadcrumbs': breadcrumb_parser(request),
+        'es_info': es_info,
+        'mongo_info': mongo_info,
+        'mysql_info': mysql_info
     })
 
 
