@@ -2,17 +2,9 @@
 import django
 from elasticsearch import Elasticsearch
 import json
-from lxml import etree
-from lxml.etree import _Element, _ElementUnicodeResult
 import os
 import re
-import requests
 import sys
-import time
-import xmltodict
-
-# pyjxslt
-import pyjxslt
 
 # import Row from pyspark
 try:
@@ -22,6 +14,7 @@ try:
 except:
     pass
 
+# pylint: disable=wrong-import-position
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
     os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
@@ -38,7 +31,7 @@ except:
     from xml2kvp import XML2kvp
 
 
-class ESIndex(object):
+class ESIndex():
 
     """
     Class to organize methods for indexing mapped/flattened metadata into ElasticSearch (ES)
@@ -252,12 +245,12 @@ class ESIndex(object):
             }
 
         # reindex using elasticsearch client
-        reindex = es_handle_temp.reindex(
-            body=dupe_dict, wait_for_completion=wait_for_completion, refresh=refresh)
+        params = {'wait_for_completion': wait_for_completion, 'refresh': refresh}
+        reindex = es_handle_temp.reindex(body=dupe_dict, params=params)
         return reindex
 
 
-class BaseMapper(object):
+class BaseMapper():
 
     """
     All mappers extend this BaseMapper class.

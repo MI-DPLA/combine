@@ -1,5 +1,4 @@
 # python modules
-from concurrent.futures.thread import ThreadPoolExecutor
 import datetime
 import json
 import logging
@@ -37,7 +36,7 @@ else:
     }
 
 
-class OAIProvider(object):
+class OAIProvider():
     """
     Class for scaffolding and building responses to OAI queries
 
@@ -148,14 +147,14 @@ class OAIProvider(object):
         """
 
         stime = time.time()
-        logger.debug("retrieving records for verb %s" % (self.args['verb']))
+        logger.debug("retrieving records for verb %s", self.args['verb'])
 
         # get records
         records = self.published.records
 
         # if set present, filter by this set
         if self.publish_set_id:
-            logger.debug('applying publish_set_id filter: %s' %
+            logger.debug('applying publish_set_id filter: %s',
                          self.publish_set_id)
             records = records.filter(publish_set_id=self.publish_set_id)
 
@@ -192,7 +191,7 @@ class OAIProvider(object):
 
         # report
         record_nodes_num = len(self.record_nodes)
-        logger.debug("%s record(s) returned in %s" % (record_nodes_num, (float(time.time()) - float(stime))))
+        logger.debug("%s record(s) returned in %s", record_nodes_num, (float(time.time()) - float(stime)))
 
     def set_resumption_token(self, records, completeListSize=None):
         """
@@ -210,7 +209,7 @@ class OAIProvider(object):
         if self.start + self.chunk_size < completeListSize:
             # set token and slice parameters to DB
             token = str(uuid.uuid4())
-            logger.debug('setting resumption token: %s' % token)
+            logger.debug('setting resumption token: %s', token)
             oai_trans = OAITransaction(
                 verb=self.args['verb'],
                 start=self.start + self.chunk_size,
@@ -334,7 +333,7 @@ class OAIProvider(object):
         """
 
         stime = time.time()
-        logger.debug("retrieving record: %s" % (self.args['identifier']))
+        logger.debug("retrieving record: %s", self.args['identifier'])
 
         # get single row
         single_record = self.published.get_record(self.args['identifier'])
@@ -362,11 +361,11 @@ class OAIProvider(object):
 
         else:
             logger.debug(
-                'record not found for id: %s, not appending node' % self.args['identifier'])
+                'record not found for id: %s, not appending node', self.args['identifier'])
 
         # report
         etime = time.time()
-        logger.debug("%s record(s) returned in %sms" % (len(self.record_nodes), (float(etime) - float(stime)) * 1000))
+        logger.debug("%s record(s) returned in %sms", len(self.record_nodes), (float(etime) - float(stime)) * 1000)
 
     # Identify
     def _Identify(self):
@@ -522,7 +521,7 @@ class OAIProvider(object):
             self.verb_node.append(set_node)
 
 
-class OAIRecord(object):
+class OAIRecord():
     """
     Initialize OAIRecord with pid and args
     """
@@ -549,8 +548,7 @@ class OAIRecord(object):
             return '%s:%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.publish_set_id, self.record_id)
 
         # else, without
-        else:
-            return '%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.record_id)
+        return '%s:%s' % (settings.COMBINE_OAI_IDENTIFIER, self.record_id)
 
     def init_record_node(self):
         """

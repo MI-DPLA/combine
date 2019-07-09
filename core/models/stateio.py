@@ -15,11 +15,6 @@ import uuid
 from django.conf import settings
 from django.core import serializers
 
-# Get an instance of a LOGGER
-LOGGER = logging.getLogger(__name__)
-
-# Set logging levels for 3rd party modules
-logging.getLogger("requests").setLevel(logging.WARNING)
 
 # core models imports
 from core import tasks
@@ -32,6 +27,12 @@ from core.models.organization import Organization
 from core.models.publishing import PublishedRecords
 from core.models.record_group import RecordGroup
 from core.models.tasks import CombineBackgroundTask
+
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 class StateIO(mongoengine.Document):
@@ -164,7 +165,7 @@ class StateIO(mongoengine.Document):
 
         # if not yet initialized with id, do that now
         if not self.id:
-            self.save # TODO: should this be an invocation?
+            self.save()
 
         # select all Orgs
         LOGGER.debug('retrieving all Organizations')

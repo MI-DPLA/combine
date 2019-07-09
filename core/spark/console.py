@@ -6,10 +6,13 @@ import os
 import sys
 
 # pyspark imports
-from pyspark.sql.functions import udf, regexp_replace, lit
-from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType
+# pylint: disable=no-name-in-module
+from pyspark.sql.functions import lit
+# pylint: enable=no-name-in-module
+from pyspark.sql.types import StringType
 
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
+# pylint: disable=wrong-import-position
 if not hasattr(django, 'apps'):
     os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
     sys.path.append('/opt/combine')
@@ -19,10 +22,14 @@ if not hasattr(django, 'apps'):
 from django.conf import settings
 
 # import from core
-from core.models import Job, PublishedRecords, CombineBackgroundTask
+from core.models import CombineBackgroundTask
 
 # import XML2kvp from uploaded instance
-from xml2kvp import XML2kvp
+try:
+    from core.xml2kvp import XML2kvp
+except:
+    from xml2kvp import XML2kvp
+
 
 
 
@@ -376,7 +383,7 @@ def _write_tabular_csv(spark, kvp_batch_rdd, base_path, folder_name, fm_config):
     kvp_batch_df = spark.read.json(kvp_batch_rdd)
 
     # load XML2kvp instance
-    xml2kvp_defaults = XML2kvp(**fm_config)
+    _ = XML2kvp(**fm_config)
 
     # write to CSV
     kvp_batch_df.write.csv('%s/%s' % (base_path, folder_name), header=True)
@@ -465,7 +472,7 @@ def get_job_es(spark,
 
     # prep conf
     conf = {
-            "es.resource": "%s/%s" % (es_indexes,doc_type),
+            "es.resource": "%s/%s" % (es_indexes, doc_type),
             "es.output.json": "true",
             "es.input.max.docs.per.partition": "10000",
             "es.nodes": "%s:9200" % settings.ES_HOST,
@@ -503,12 +510,12 @@ def get_job_es(spark,
 
 def get_sql_job_as_df(spark, job_id, remove_id=False):
 
-    sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record',properties=settings.COMBINE_DATABASE)
+    sqldf = spark.read.jdbc(settings.COMBINE_DATABASE['jdbc_url'], 'core_record', properties=settings.COMBINE_DATABASE)
     sqldf = sqldf.filter(sqldf['job_id'] == job_id)
 
     # if remove ID
     if remove_id:
-        sqldf = sqldf.select([c for c in sqldf.columns if c != 'id' ])
+        sqldf = sqldf.select([c for c in sqldf.columns if c != 'id'])
 
     return sqldf
 

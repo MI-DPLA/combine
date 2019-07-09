@@ -9,14 +9,10 @@ import json
 from lxml import etree
 from operator import itemgetter
 import os
-import pdb
 import polling
 import re
-import requests
-import shutil
 import sys
 import textwrap
-import time
 from types import ModuleType
 import uuid
 
@@ -38,13 +34,13 @@ except:
     from core.xml2kvp import XML2kvp
 
 # import Row from pyspark
-from pyspark import StorageLevel
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, StructField, StructType, BooleanType, ArrayType, IntegerType, LongType
+from pyspark.sql.types import StringType, StructField, StructType, BooleanType, IntegerType, LongType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf, regexp_replace, lit, crc32
+from pyspark.sql.functions import udf, lit, crc32
 from pyspark.sql.window import Window
 
+# pylint: disable=wrong-import-position
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
     os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
@@ -59,9 +55,8 @@ from django.db import connection, transaction
 from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, \
     RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
 
-# import mongo dependencies
-from core.mongo import *
-
+# pylint: disable=no-else-return
+# TODO: pylint disable
 
 ####################################################################
 # Custom Exceptions 											   #
@@ -75,7 +70,7 @@ class AmbiguousIdentifier(Exception):
 # Dataframe Schemas 											   #
 ####################################################################
 
-class CombineRecordSchema(object):
+class CombineRecordSchema():
 
     """
     Class to organize Combine record spark dataframe schemas
@@ -108,7 +103,7 @@ class CombineRecordSchema(object):
 # Spark Jobs 		 											   #
 ####################################################################
 
-class CombineSparkJob(object):
+class CombineSparkJob():
 
     """
     Base class for Combine Spark Jobs.
@@ -1618,7 +1613,7 @@ class MergeSpark(CombineSparkJob):
 ####################################################################
 
 
-class CombineSparkPatch(object):
+class CombineSparkPatch():
     """
     Base class for Combine Spark Patches.
             - these are considered categorically "secondary" to the main
@@ -1804,7 +1799,7 @@ class RunDBDM(CombineSparkPatch):
 # State IO          											   #
 ####################################################################
 
-class CombineStateIO(object):
+class CombineStateIO():
     """
     Base class for Combine State IO work.
     """

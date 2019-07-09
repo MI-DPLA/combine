@@ -42,18 +42,18 @@ from core.models.record_group import RecordGroup
 from elasticsearch.exceptions import NotFoundError
 from elasticsearch_dsl import Search
 
-# Get an instance of a LOGGER
-LOGGER = logging.getLogger(__name__)
-
-# Set logging levels for 3rd party modules
-logging.getLogger("requests").setLevel(logging.WARNING)
-
 # sxsdiff
 from sxsdiff import DiffCalculator
 from sxsdiff.generators.github import GitHubStyledGenerator
 
 # toposort
 from toposort import toposort_flatten
+
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 JOB_DETAILS_CACHES = ['detailed_record_count', 'validation_results', 'failure_count']
 
@@ -267,7 +267,8 @@ class Job(models.Model):
         if self.response:
             try:
                 json_response = json.loads(self.response, encoding='utf-8')
-                if json_response['output']['status'] == 'error':
+                output = json_response.get('output')
+                if output and output.get('status') == 'error':
                     error_type = json_response['output']['ename']
                     error_value = json_response['output']['evalue']
                     error_value = error_value.split('\n')[0:2]
@@ -310,7 +311,8 @@ class Job(models.Model):
 
             # parse response
             response = livy_response.json()
-            headers = livy_response.headers
+            # TODO: what do we want with the headers?
+            _headers = livy_response.headers
 
             # update Livy information
             self.status = response['state']
@@ -1641,7 +1643,7 @@ class JobInput(models.Model):
 
 
 
-class CombineJob(object):
+class CombineJob():
 
     '''
     Class to aggregate methods useful for managing and inspecting jobs.
@@ -1981,7 +1983,7 @@ class CombineJob(object):
 
         # no active livy session, creating
         else:
-            livy_session_id = LivySession.ensure_active_session_id(None)
+            LivySession.ensure_active_session_id(None)
             self.livy_session = LivySession.get_active_session()
             self.prepare_job()
 
@@ -3685,21 +3687,24 @@ class Record(mongoengine.Document):
                             # get value for mapped field
                             field_value = mapped_dpla_fields[local_mapped_field]
 
+                            # TODO: what do we do with the match results?
                             # if list, loop through and attempt searches
                             if type(field_value) == list:
 
                                 for val in field_value:
                                     search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % val})
-                                    match_results = self.dpla_api_record_match(search_string=search_string)
+                                    _match_results = self.dpla_api_record_match(search_string=search_string)
 
                             # else if string, perform search
                             else:
                                 search_string = urllib.parse.urlencode({target_dpla_field:'"%s"' % field_value})
-                                match_results = self.dpla_api_record_match(search_string=search_string)
+                                _match_results = self.dpla_api_record_match(search_string=search_string)
 
 
                     # parse results
                     # count instances of isShownAt, a single one is good enough
+                    if not hasattr(self, "dpla_api_matches"):
+                        self.dpla_api_matches = {}
                     if 'isShownAt' in self.dpla_api_matches.keys() and len(self.dpla_api_matches['isShownAt']) == 1:
                         self.dpla_api_doc = self.dpla_api_matches['isShownAt'][0]['hit']
 

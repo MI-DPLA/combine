@@ -182,7 +182,7 @@ class Command(BaseCommand):
             logger.debug('Update snippet "%s" could not be found' %
                          options.get('run_update_snippet', None))
 
-class VersionUpdateHelper(object):
+class VersionUpdateHelper():
     '''
     Class to manage actions specific to version-to-version updates
     '''

@@ -9,19 +9,21 @@ import logging
 # django imports
 from django.db import models
 
+
+# celery
+from celery.result import AsyncResult
+# pylint: disable=import-error,no-name-in-module
+from celery.task.control import revoke
+# pylint: enable=import-error,no-name-in-module
+
+# core models imports
+from core.models import job as mod_job
+
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
-
-# celery
-from celery.result import AsyncResult
-from celery.task.control import revoke
-
-# core models imports
-from core.models import job as mod_job
-
 
 
 class CombineBackgroundTask(models.Model):

@@ -1,7 +1,6 @@
 import logging
 import re
 from django import template
-from django.conf import settings
 
 numeric_test = re.compile("^\d+$")
 register = template.Library()
@@ -22,9 +21,8 @@ def get_obj_attr(value, arg):
         return value[arg]
     elif numeric_test.match(str(arg)) and len(value) > int(arg):
         return value[int(arg)]
-    else:
-        # return settings.TEMPLATE_STRING_IF_INVALID
-        return None
+    # return settings.TEMPLATE_STRING_IF_INVALID
+    return None
 
 
 def get_dict_value(dictionary, key):

@@ -13,11 +13,6 @@ from django.contrib.auth import signals
 from django.db import models
 from django.dispatch import receiver
 
-# Get an instance of a LOGGER
-LOGGER = logging.getLogger(__name__)
-
-# Set logging levels for 3rd party modules
-logging.getLogger("requests").setLevel(logging.WARNING)
 
 from core.es import es_handle
 from core.mongo import mongoengine
@@ -29,6 +24,11 @@ from core.models.record_group import RecordGroup
 from core.models.stateio import StateIO
 from core.models.tasks import CombineBackgroundTask
 
+# Get an instance of a LOGGER
+LOGGER = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
 
 
 @receiver(signals.user_logged_in)

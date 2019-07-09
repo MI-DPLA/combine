@@ -1278,7 +1278,7 @@ def document_download(request):
     filepath = request.GET.get('filepath', None)
     name = request.GET.get('name', 'download')
     # TODO: content_type is never used
-    content_type = request.GET.get('content_type', 'text/plain')
+    request.GET.get('content_type', 'text/plain')
     preview = request.GET.get('preview', False)
 
     # if known download format, use hash and overwrite provided or defaults

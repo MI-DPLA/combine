@@ -1,11 +1,10 @@
 # general
-from core.celery import celery_app
 from django.conf import settings
 from django.db.models.query import QuerySet
 import subprocess
 
 # combine
-from core.models import LivySession, SupervisorRPCClient, CombineBackgroundTask
+from core.models import LivySession
 
 
 def combine_settings(request):
