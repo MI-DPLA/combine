@@ -3,7 +3,7 @@ from django.shortcuts import render
 from core.models import ErrorReport
 
 
-class ErrorMiddleware(object):
+class ErrorMiddleware():
     def __init__(self, get_response):
         self.get_response = get_response
 
