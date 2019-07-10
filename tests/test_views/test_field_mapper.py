@@ -8,7 +8,6 @@ from tests.utils import TestConfiguration, json_string
 
 class FieldMapperTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
 

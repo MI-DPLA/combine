@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration
 
 class PublishedTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
 

@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration
 class GlobalMessagesTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_gm_delete(self):

@@ -9,7 +9,6 @@ from tests.utils import TestConfiguration
 class RecordIdentifierTransformationScenarioTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_create_rits_get(self):

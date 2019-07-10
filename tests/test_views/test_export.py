@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration
 class ExportTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
         self.config.job.publish(publish_set_id='test publish id')
 
