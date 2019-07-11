@@ -39,7 +39,7 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 class Transformation(models.Model):
 
     '''
-    Model to handle "transformation scenarios".   Envisioned to faciliate more than just XSL transformations, but
+    Model to handle "transformation scenarios".   Envisioned to facilitate more than just XSL transformations, but
     currently, only XSLT is handled downstream
     '''
 
@@ -274,7 +274,6 @@ class Transformation(models.Model):
             if rewrite:
                 LOGGER.debug('rewriting XSL payload')
                 self.payload = etree.tostring(xsl, encoding='utf-8', xml_declaration=True).decode('utf-8')
-
 
 
 class ValidationScenario(models.Model):
@@ -593,7 +592,6 @@ class ValidationScenario(models.Model):
         }
 
 
-
 class FieldMapper(models.Model):
 
     '''
@@ -636,7 +634,6 @@ class FieldMapper(models.Model):
 
         # validate against XML2kvp schema
         jsonschema.validate(config_dict, XML2kvp.schema)
-
 
 
 class RecordIdentifierTransformationScenario(models.Model):
