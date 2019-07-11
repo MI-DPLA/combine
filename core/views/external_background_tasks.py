@@ -68,10 +68,16 @@ def system(request):
             celery_status = 'unknown'
 
     # get elasticsearch status
-    es_info = es_handle.cluster.health()
+    try:
+        es_info = es_handle.cluster.health()
+    except Exception as err:
+        es_info = "Something went wrong trying to connect to ElasticSearch: {}".format(err)
 
     # mongo
-    mongo_info = mc_handle.get_database(name='combine').current_op()
+    try:
+        mongo_info = mc_handle.get_database(name='combine').current_op()
+    except Exception as err:
+        mongo_info = "Something went wrong trying to connect to MongoDB: {}".format(err)
 
     # mysql
     mysql_info = None
