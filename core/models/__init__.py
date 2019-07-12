@@ -1,5 +1,6 @@
 # core models imports
-from .configurations import Transformation, ValidationScenario, FieldMapper,\
+from .transformation import Transformation
+from .configurations import ValidationScenario, FieldMapper,\
     RecordIdentifierTransformationScenario, DPLABulkDataDownload
 from .oai_endpoint import OAIEndpoint
 from .tasks import CombineBackgroundTask

@@ -19,7 +19,8 @@ from django.core import serializers
 # core models imports
 from core import tasks
 from core.mongo import mongoengine, mc_handle
-from core.models.configurations import Transformation, ValidationScenario, FieldMapper,\
+from core.models.transformation import Transformation
+from core.models.configurations import ValidationScenario, FieldMapper,\
   RecordIdentifierTransformationScenario, DPLABulkDataDownload
 from core.models.oai_endpoint import OAIEndpoint
 from core.models.job import Job, JobValidation, JobInput, CombineJob
