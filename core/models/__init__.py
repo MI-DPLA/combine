@@ -1,7 +1,8 @@
 # core models imports
 from .transformation import Transformation
 from .validation_scenario import ValidationScenario
-from .configurations import FieldMapper, RecordIdentifierTransformationScenario, DPLABulkDataDownload
+from .field_mapper import FieldMapper
+from .configurations import RecordIdentifierTransformationScenario, DPLABulkDataDownload
 from .oai_endpoint import OAIEndpoint
 from .tasks import CombineBackgroundTask
 from .livy_spark import LivySession, LivyClient, SparkAppAPIClient
