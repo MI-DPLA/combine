@@ -2,7 +2,8 @@
 from .transformation import Transformation
 from .validation_scenario import ValidationScenario
 from .field_mapper import FieldMapper
-from .configurations import RecordIdentifierTransformationScenario, DPLABulkDataDownload
+from .record_identifier_transformation_scenario import RecordIdentifierTransformationScenario
+from .configurations import DPLABulkDataDownload
 from .oai_endpoint import OAIEndpoint
 from .tasks import CombineBackgroundTask
 from .livy_spark import LivySession, LivyClient, SparkAppAPIClient
