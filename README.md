@@ -23,3 +23,46 @@ A GitHub repository [Combine-Docker](https://github.com/MI-DPLA/combine-docker) 
 ### Server Provisioning with Vagrant and/or Ansible
 
 To this end, use the repository, [Combine-playbook](https://github.com/MI-DPLA/combine-playbook), which has been created to assist with provisioning a server with everything neccessary, and in place, to run Combine.  This repository provides routes for server provisioning via [Vagrant](https://www.vagrantup.com/) and/or [Ansible](https://www.ansible.com/). Please visit the [Combine-playbook](https://github.com/MI-DPLA/combine-playbook) repository for more information about installation.
+
+## Tech Stack Details
+
+### Django
+
+### MySQL
+
+### Mongo
+
+### ElasticSearch
+
+### Celery
+
+### Redis
+
+### Livy
+
+### Apache Spark
+
+### Hadoop
+
+## User-suppliable Configurations
+
+### Field Mapper
+#### XML to Key-Value Pair
+#### XSL Stylesheet
+#### Python Code Snippet
+
+### Transformation
+#### XSLT Stylesheet
+#### Python Code Snippet
+#### Open Refine Actions
+
+### Validation Scenario
+#### Schematron
+#### Python Code Snippet
+#### ElasticSearch Query
+#### XML Schema
+
+### Record Identifier Transformation Scenario
+#### Regular Expression
+#### Python Code Snippet
+#### XPath Expression
