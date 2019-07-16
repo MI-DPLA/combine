@@ -27,42 +27,55 @@ To this end, use the repository, [Combine-playbook](https://github.com/MI-DPLA/c
 ## Tech Stack Details
 
 ### Django
+The whole app is a Django app.
 
 ### MySQL
+The system configuration is stored in MySQL. This includes users, organizations, record groups, jobs, transformations, validation scenarios, and so on.
 
 ### Mongo
+The harvested and transformed Records themselves are stored in MongoDB, to deal with MySQL's scaling problems.
 
 ### ElasticSearch
+We use ElasticSearch for indexing and searching the contents of Records.
 
 ### Celery
+Celery runs background tasks that don't deal with largescale data, like prepping job reruns or importing/exporting state.
 
 ### Redis
+Redis is just keeping track of Celery's job queue.
 
 ### Livy
+Livy is a REST interface to make it easier to interact with Spark.
 
 ### Apache Spark
+Spark runs all the Jobs that harvest or alter records, for better scalability.
 
 ### Hadoop
+Hadoop is just backing up Spark.
 
 ## User-suppliable Configurations
 
 ### Field Mapper
+Field Mappers let you make changes when mapping a Record from XML to key/value pairs (JSON).
 #### XML to Key-Value Pair
 #### XSL Stylesheet
 #### Python Code Snippet
 
 ### Transformation
+Transformations let you take a Record in one format and turn it into a new Record in another format.
 #### XSLT Stylesheet
 #### Python Code Snippet
 #### Open Refine Actions
 
 ### Validation Scenario
+You can run Validation Scenarios against the Records in a Job to find out which records do or do not meet the requirements of the Validation Scenario. 
 #### Schematron
 #### Python Code Snippet
 #### ElasticSearch Query
 #### XML Schema
 
 ### Record Identifier Transformation Scenario
+RITS are used to transform a Record's Identifier, which is used for publishing and for uniqueness checks.
 #### Regular Expression
 #### Python Code Snippet
 #### XPath Expression
