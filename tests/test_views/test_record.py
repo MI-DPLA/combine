@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration, TEST_DOCUMENT
 class RecordTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_get_record(self):

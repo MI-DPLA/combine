@@ -16,7 +16,9 @@ from django.dispatch import receiver
 
 from core.es import es_handle
 from core.mongo import mongoengine
-from core.models.configurations import Transformation, ValidationScenario, DPLABulkDataDownload
+from core.models.transformation import Transformation
+from core.models.validation_scenario import ValidationScenario
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
 from core.models.job import Job, JobValidation
 from core.models.livy_spark import LivySession
 from core.models.organization import Organization

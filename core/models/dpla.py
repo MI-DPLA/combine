@@ -18,7 +18,7 @@ from django.conf import settings
 # import background tasks
 from core import tasks
 from core.es import es_handle
-from core.models.configurations import DPLABulkDataDownload
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
 from core.models.tasks import CombineBackgroundTask
 
 

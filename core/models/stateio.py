@@ -19,8 +19,12 @@ from django.core import serializers
 # core models imports
 from core import tasks
 from core.mongo import mongoengine, mc_handle
-from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
-  RecordIdentifierTransformationScenario, DPLABulkDataDownload
+from core.models.transformation import Transformation
+from core.models.validation_scenario import ValidationScenario
+from core.models.field_mapper import FieldMapper
+from core.models.record_identifier_transformation_scenario import RecordIdentifierTransformationScenario
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
+from core.models.oai_endpoint import OAIEndpoint
 from core.models.job import Job, JobValidation, JobInput, CombineJob
 from core.models.livy_spark import LivySession, LivyClient
 from core.models.organization import Organization

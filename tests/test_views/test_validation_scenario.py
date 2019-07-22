@@ -12,7 +12,6 @@ class ValidationScenarioTestCase(TestCase):
 
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_create_validation_scenario_get(self):

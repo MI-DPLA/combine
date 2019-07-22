@@ -6,8 +6,6 @@ from tests.utils import TestConfiguration, most_recent_global_message
 
 
 class OrganizationViewTestCase(TestCase):
-    def setUp(self):
-        self.client = Client()
 
     def test_get_organizations(self):
         response = self.client.get(reverse('organizations'))

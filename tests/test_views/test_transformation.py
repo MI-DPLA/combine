@@ -9,7 +9,6 @@ from core.models import Transformation
 class TransformationTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)  # The configuration page requires login
 
     def test_create_transformation_scenario_get(self):

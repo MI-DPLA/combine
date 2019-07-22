@@ -33,7 +33,10 @@ from core.xml2kvp import XML2kvp
 from core import tasks, models as core_models
 from core.es import es_handle
 from core.mongo import mongoengine, mc_handle
-from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, DPLABulkDataDownload
+from core.models.transformation import Transformation
+from core.models.validation_scenario import ValidationScenario
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
+from core.models.oai_endpoint import OAIEndpoint
 from core.models.elasticsearch import ESIndex
 from core.models.livy_spark import LivySession, LivyClient, SparkAppAPIClient
 from core.models.organization import Organization

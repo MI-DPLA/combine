@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration, most_recent_global_message
 
 class RecordGroupViewTestCase(TestCase):
     def setUp(self) -> None:
-        self.client = Client()
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
 
