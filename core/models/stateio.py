@@ -20,7 +20,7 @@ from django.core import serializers
 from core import tasks
 from core.mongo import mongoengine, mc_handle
 from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
-  RecordIdentifierTransformationScenario, DPLABulkDataDownload
+  RecordIdentifierTransformation, DPLABulkDataDownload
 from core.models.job import Job, JobValidation, JobInput, CombineJob
 from core.models.livy_spark import LivySession, LivyClient
 from core.models.organization import Organization
@@ -179,7 +179,7 @@ class StateIO(mongoengine.Document):
             ValidationScenario:'validations',
             Transformation:'transformations',
             OAIEndpoint:'oai_endpoints',
-            RecordIdentifierTransformationScenario:'rits',
+            RecordIdentifierTransformation: 'rits',
             FieldMapper:'field_mapper_configs',
             DPLABulkDataDownload:'dbdd'
         }
@@ -189,7 +189,7 @@ class StateIO(mongoengine.Document):
                 ValidationScenario,
                 Transformation,
                 OAIEndpoint,
-                RecordIdentifierTransformationScenario,
+                RecordIdentifierTransformation,
                 FieldMapper,
                 DPLABulkDataDownload
             ]:
@@ -252,7 +252,7 @@ class StateIOClient():
         'orgs':Organization,
         'dbdd':DPLABulkDataDownload,
         'oai_endpoints':OAIEndpoint,
-        'rits':RecordIdentifierTransformationScenario,
+        'rits':RecordIdentifierTransformation,
         'transformations':Transformation,
         'validations':ValidationScenario
     }
@@ -622,7 +622,7 @@ class StateIOClient():
             # check job details for rits used
             if 'rits' in job.job_details_dict.keys() and job.job_details_dict['rits'] != None:
                 try:
-                    self.export_dict['rits'].add(RecordIdentifierTransformationScenario.objects.get(pk=(job.job_details_dict['rits'])))
+                    self.export_dict['rits'].add(RecordIdentifierTransformation.objects.get(pk=(job.job_details_dict['rits'])))
                 except Exception as err:
                     LOGGER.warning('Could not export Record Identifier Transformation Scenario for job %s: %s', job, str(err))
 
@@ -776,7 +776,7 @@ class StateIOClient():
             ValidationScenario:'validations',
             Transformation:'transformations',
             OAIEndpoint:'oai_endpoints',
-            RecordIdentifierTransformationScenario:'rits',
+            RecordIdentifierTransformation: 'rits',
             FieldMapper:'field_mapper_configs',
             DPLABulkDataDownload:'dbdd'
         }
@@ -1232,11 +1232,11 @@ class StateIOClient():
         #################################
 
         # loop through and create
-        for scenario in self._get_django_model_type(RecordIdentifierTransformationScenario):
+        for scenario in self._get_django_model_type(RecordIdentifierTransformation):
             LOGGER.debug('rehydrating %s', scenario)
 
             # check for identical name and payload
-            scenario_match = RecordIdentifierTransformationScenario.objects.filter(
+            scenario_match = RecordIdentifierTransformation.objects.filter(
                 name=scenario.object.name,
                 transformation_type=scenario.object.transformation_type,
                 transformation_target=scenario.object.transformation_target,

@@ -6,7 +6,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
-from core.models import RecordIdentifierTransformationScenario, Record, RITSClient
+from core.models import RecordIdentifierTransformation, Record, RITSClient
 from core.forms import RITSForm
 
 from .view_helpers import breadcrumb_parser
@@ -20,7 +20,7 @@ def rits_payload(request, rits_id):
         """
 
     # get transformation
-    rits = RecordIdentifierTransformationScenario.objects.get(
+    rits = RecordIdentifierTransformation.objects.get(
         pk=int(rits_id))
 
     # return as json package
@@ -32,7 +32,7 @@ def create_rits(request):
     if request.method == 'POST':
         form = RITSForm(request.POST)
         if form.is_valid():
-            new_rits = RecordIdentifierTransformationScenario(**form.cleaned_data)
+            new_rits = RecordIdentifierTransformation(**form.cleaned_data)
             new_rits.save()
             return redirect(reverse('configuration'))
     if form is None:
@@ -44,7 +44,7 @@ def create_rits(request):
 
 
 def edit_rits(request, rits_id):
-    rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+    rits = RecordIdentifierTransformation.objects.get(pk=int(rits_id))
     form = None
     if request.method == 'POST':
         form = RITSForm(request.POST)
@@ -64,7 +64,7 @@ def edit_rits(request, rits_id):
 
 def delete_rits(request, rits_id):
     try:
-        rits = RecordIdentifierTransformationScenario.objects.get(pk=int(rits_id))
+        rits = RecordIdentifierTransformation.objects.get(pk=int(rits_id))
         rits.delete()
     except ObjectDoesNotExist:
         pass
@@ -82,7 +82,7 @@ def test_rits(request):
         get_q = request.GET.get('q', None)
 
         # get record identifier transformation scenarios
-        rits = RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformation.objects.all()
 
         # return
         return render(request, 'core/test_rits.html', {

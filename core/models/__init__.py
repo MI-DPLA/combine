@@ -1,6 +1,6 @@
 # core models imports
 from .configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
-    RecordIdentifierTransformationScenario, DPLABulkDataDownload
+    RecordIdentifierTransformation, DPLABulkDataDownload
 from .tasks import CombineBackgroundTask
 from .livy_spark import LivySession, LivyClient, SparkAppAPIClient
 from .dpla import DPLABulkDataClient, BulkDataJSONReader, DPLARecord

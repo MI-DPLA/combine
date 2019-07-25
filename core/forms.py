@@ -1,7 +1,7 @@
 from django.forms import ModelForm
 
 # import models from core for forms
-from core.models import Organization, RecordGroup, RecordIdentifierTransformationScenario,\
+from core.models import Organization, RecordGroup, RecordIdentifierTransformation,\
     Transformation, ValidationScenario, OAIEndpoint, FieldMapper
 
 
@@ -34,7 +34,7 @@ class TransformationForm(ModelForm):
 class RITSForm(ModelForm):
 
     class Meta:
-        model = RecordIdentifierTransformationScenario
+        model = RecordIdentifierTransformation
         fields = ['name', 'transformation_type', 'transformation_target', 'regex_match_payload',
                   'regex_replace_payload', 'python_payload', 'xpath_payload']
 

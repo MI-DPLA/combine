@@ -53,7 +53,7 @@ from django.db import connection, transaction
 
 # import select models from Core
 from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, \
-    RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
+    RecordIdentifierTransformation, RecordValidation, DPLABulkDataDownload
 
 # pylint: disable=no-else-return
 # TODO: pylint disable
@@ -607,7 +607,7 @@ class CombineSparkJob():
         if rits_id and rits_id is not None:
 
             # get RITS
-            rits = RecordIdentifierTransformationScenario.objects.get(
+            rits = RecordIdentifierTransformation.objects.get(
                 pk=int(rits_id))
 
             # handle regex

@@ -684,7 +684,7 @@ class FieldMapper(models.Model):
 
 
 
-class RecordIdentifierTransformationScenario(models.Model):
+class RecordIdentifierTransformation(models.Model):
 
     '''
     Model to manage transformation scenarios for Record's record_ids (RITS)

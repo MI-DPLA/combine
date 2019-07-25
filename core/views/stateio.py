@@ -5,7 +5,7 @@ from django.contrib.auth.decorators import login_required
 from django.http import FileResponse, JsonResponse
 from django.shortcuts import render, redirect
 
-from core.models import StateIO, StateIOClient, OAIEndpoint, RecordIdentifierTransformationScenario,\
+from core.models import StateIO, StateIOClient, OAIEndpoint, RecordIdentifierTransformation,\
     GlobalMessageClient, Organization, ValidationScenario, Transformation, FieldMapper,\
     DPLABulkDataDownload
 
@@ -474,7 +474,7 @@ def _stateio_prepare_config_scenarios():
                 'transformations'),
             (config_scenarios_dict, OAIEndpoint,
              'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
-            (config_scenarios_dict, RecordIdentifierTransformationScenario, 'rits',
+            (config_scenarios_dict, RecordIdentifierTransformation, 'rits',
              'Record Identifier Transformation Scenarios', 'rits'),
             (config_scenarios_dict, FieldMapper, 'field_mapper_configs', 'Field Mapper Configurations',
              'field_mapper_configs'),

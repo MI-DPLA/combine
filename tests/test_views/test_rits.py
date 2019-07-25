@@ -2,7 +2,7 @@ from django.test import Client, TestCase
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
-from core.models import RecordIdentifierTransformationScenario
+from core.models import RecordIdentifierTransformation
 from tests.utils import TestConfiguration
 
 
@@ -25,7 +25,7 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         }
         response = self.client.post(reverse('create_rits'), post_body)
         self.assertRedirects(response, reverse('configuration'))
-        rits = RecordIdentifierTransformationScenario.objects.get(name='Test RITS')
+        rits = RecordIdentifierTransformation.objects.get(name='Test RITS')
         self.assertIsNotNone(rits.id)
         rits_dict = rits.as_dict()
         for item in post_body:
@@ -36,7 +36,7 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_rits_get(self):
-        rits = RecordIdentifierTransformationScenario.objects.create(
+        rits = RecordIdentifierTransformation.objects.create(
             name='Test RITS',
             transformation_type='python',
             transformation_target='document',
@@ -46,7 +46,7 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         self.assertIn(b'Test RITS', response.content)
 
     def test_rits_post(self):
-        rits = RecordIdentifierTransformationScenario.objects.create(
+        rits = RecordIdentifierTransformation.objects.create(
             name='Test RITS',
             transformation_type='python',
             transformation_target='document',
@@ -59,12 +59,12 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
             'name': rits.name
         })
         self.assertRedirects(response, reverse('configuration'))
-        updated_rits = RecordIdentifierTransformationScenario.objects.get(name='Test RITS')
+        updated_rits = RecordIdentifierTransformation.objects.get(name='Test RITS')
         self.assertEqual(updated_rits.python_payload, 'some other payload')
         self.assertEqual(updated_rits.id, rits.id)
 
     def test_rits_post_invalid(self):
-        rits = RecordIdentifierTransformationScenario.objects.create(
+        rits = RecordIdentifierTransformation.objects.create(
             name='Test RITS',
             transformation_type='python',
             transformation_target='document',
@@ -76,7 +76,7 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_rits_delete(self):
-        rits = RecordIdentifierTransformationScenario.objects.create(
+        rits = RecordIdentifierTransformation.objects.create(
             name='Test RITS',
             transformation_type='python',
             transformation_target='document',
@@ -85,17 +85,17 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
         response = self.client.delete(reverse('delete_rits', args=[rits.id]))
         self.assertRedirects(response, reverse('configuration'))
         with self.assertRaises(ObjectDoesNotExist):
-            RecordIdentifierTransformationScenario.objects.get(pk=int(rits.id))
+            RecordIdentifierTransformation.objects.get(pk=int(rits.id))
 
     def test_rits_delete_nonexistent(self):
         response = self.client.delete(reverse('delete_rits', args=[12345]))
         self.assertRedirects(response, reverse('configuration'))
 
     def test_rits_payload(self):
-        rits = RecordIdentifierTransformationScenario.objects.create(regex_match_payload='test match',
-                                                                     regex_replace_payload='test replace',
-                                                                     transformation_type='regex',
-                                                                     transformation_target='document')
+        rits = RecordIdentifierTransformation.objects.create(regex_match_payload='test match',
+                                                             regex_replace_payload='test replace',
+                                                             transformation_type='regex',
+                                                             transformation_target='document')
         response = self.client.get(reverse('rits_payload', args=[rits.id]))
         json = response.json()
         self.assertEqual(json['transformation_type'], 'regex')
