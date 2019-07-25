@@ -608,9 +608,12 @@ class CombineBackgroundTasksDT(BaseDatatableView):
         if column == 'completed':
             if row.completed:
                 if row.celery_status in ['STOPPED', 'REVOKED']:
-                    return "<span class='text-danger'>%s</span>" % row.celery_status
-                return "<span class='text-success'>%s</span>" % row.celery_status
-            return "<span class='text-warning'>%s</span>" % row.celery_status
+                    row_color = 'danger'
+                else:
+                    row_color = 'success'
+            else:
+                row_color = 'warning'
+            return '''<div class="progress progress-bar bg-{}" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{}</div>'''.format(row_color, row.celery_status)
 
         if column == 'duration':
             return row.calc_elapsed_as_string()
