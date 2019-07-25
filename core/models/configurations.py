@@ -56,7 +56,7 @@ class OAIEndpoint(models.Model):
             ('blackList', 'Comma-separated lists of sets to exclude from the harvest')
         ],
         default='harvestAllSets')
-    scope_value = models.CharField(max_length=1024, null=True, blank=True, default='true')
+    scope_value = models.TextField(max_length=1024, null=True, blank=True, default='true')
 
 
     def __str__(self):
@@ -98,7 +98,7 @@ class Transformation(models.Model):
             ('openrefine', 'Open Refine Actions')
         ]
     )
-    filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
+    filepath = models.TextField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
     use_as_include = models.BooleanField(default=False)
 
 
@@ -339,7 +339,7 @@ class ValidationScenario(models.Model):
             ('xsd', 'XML Schema')
         ]
     )
-    filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
+    filepath = models.TextField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
     default_run = models.BooleanField(default=1)
 
 
