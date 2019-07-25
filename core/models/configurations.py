@@ -699,10 +699,10 @@ class RecordIdentifierTransformationScenario(models.Model):
         max_length=255,
         choices=[('record_id', 'Record Identifier'), ('document', 'Record Document')]
     )
-    regex_match_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
-    regex_replace_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
+    regex_match_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
+    regex_replace_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
     python_payload = models.TextField(null=True, default=None, blank=True)
-    xpath_payload = models.CharField(null=True, default=None, max_length=4096, blank=True)
+    xpath_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
 
     def __str__(self):
         return '%s, RITS: #%s' % (self.name, self.id)
