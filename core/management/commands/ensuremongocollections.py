@@ -5,7 +5,7 @@ import logging
 from django.core.management.base import BaseCommand, CommandError
 
 # import core
-from core.models import *
+from core.models import Record, RecordValidation, IndexMappingFailure
 
 # Get an instance of a logger
 logger = logging.getLogger(__name__)
