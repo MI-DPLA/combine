@@ -220,8 +220,8 @@ class Transformation(models.Model):
             # handle empty, global namespace
             _nsmap = xsl.nsmap.copy()
             try:
-                _nsmap.pop(None)
-                _nsmap['global_ns'] = ns0
+                global_ns = _nsmap.pop(None)
+                _nsmap['global_ns'] = global_ns
             except:
                 pass
 

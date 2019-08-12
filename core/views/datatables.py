@@ -175,7 +175,7 @@ class DTRecordsJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # if job present, filter by job
         if 'job_id' in self.kwargs.keys():
@@ -191,7 +191,9 @@ class DTRecordsJson(BaseDatatableView):
             return job.get_records(success=success_filter)
 
         # else, return all records
-        return Record.objects
+        job_ids = list(map(lambda j: j.id, Job.objects.all()))
+        records = Record.objects.filter(job_id__in=job_ids)
+        return records
 
     def render_column(self, row, column):
 
@@ -199,7 +201,8 @@ class DTRecordsJson(BaseDatatableView):
         record_link = reverse(record, kwargs={
             'org_id': row.job.record_group.organization.id,
             'record_group_id': row.job.record_group.id,
-            'job_id': row.job.id, 'record_id': str(row.id)
+            'job_id': row.job.id,
+            'record_id': str(row.id)
         })
 
         # handle db_id
@@ -257,7 +260,7 @@ class DTRecordsJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 

@@ -60,6 +60,23 @@ logging.getLogger("requests").setLevel(logging.WARNING)
 
 JOB_DETAILS_CACHES = ['detailed_record_count', 'validation_results', 'failure_count']
 
+class MissingJob():
+    def __init__(self):
+        self.id = 0
+        self.name = 'No Job'
+        self.record_group = MissingRecordGroup()
+        self.job_type = 'Missing'
+
+class MissingRecordGroup():
+    def __init__(self):
+        self.id = 0
+        self.name = 'No Record Group'
+        self.organization = MissingOrganization()
+
+class MissingOrganization():
+    def __init__(self):
+        self.id = 0
+        self.name = 'No Organization'
 
 class Job(models.Model):
 
@@ -91,6 +108,13 @@ class Job(models.Model):
     note = models.TextField(null=True, default=None)
     elapsed = models.IntegerField(null=True, default=0)
     deleted = models.BooleanField(default=0)
+
+    @classmethod
+    def guaranteed_job(cls, job_id):
+        jobs = Job.objects.filter(pk=job_id)
+        if len(jobs):
+            return jobs[0]
+        return MissingJob()
 
     def __str__(self):
         return '%s, Job #%s' % (self.name, self.id)
@@ -3478,10 +3502,7 @@ class Record(mongoengine.Document):
         Method to retrieve Job from Django ORM via job_id
         '''
         if self._job is None:
-            try:
-                job = Job.objects.get(pk=self.job_id)
-            except:
-                job = False
+            job = Job.guaranteed_job(self.job_id)
             self._job = job
         return self._job
 
