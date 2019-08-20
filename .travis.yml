@@ -1,0 +1,40 @@
+language: python
+python:
+- '3.7'
+install:
+- pip install pipenv
+- SLUGIFY_USES_TEXT_UNIDECODE=yes pipenv install --dev
+script:
+- true
+after_success:
+- true
+before_deploy:
+- openssl aes-256-cbc -K $encrypted_b604608d644e_key -iv $encrypted_b604608d644e_iv -in .travis/deploy.zip.enc -out .travis/deploy.zip -d
+- unzip .travis/deploy.zip -d .travis
+- mv .travis/.gritty_travis ~/.ssh/.gritty_travis
+- mv .travis/.conan_the_deployer ~/.ssh/.conan_the_deployer
+- eval "$(ssh-agent -s)"
+- chmod 600 ~/.ssh/.gritty_travis
+- chmod 600 ~/.ssh/.conan_the_deployer
+- echo -e "Host $DEV_SERVER\n\tStrictHostKeyChecking no\n\tIdentityFile ~/.ssh/.conan_the_deployer\n"
+  >> ~/.ssh/config
+- echo -e "Host $PROD_SERVER\n\tStrictHostKeyChecking no\n\tIdentityFile ~/.ssh/.conan_the_deployer\n"
+  >> ~/.ssh/config
+- echo -e "HOST gitserv\n\tHostname remote.server.com\n\tIdentityFile ~/.ssh/.gritty_travis\n\tIdentitiesOnly
+  yes\n" >> ~/.ssh/config
+- ssh-add ~/.ssh/.gritty_travis
+- ssh-add ~/.ssh/.conan_the_deployer
+deploy:
+- provider: script
+  script: bash .travis/deploy-dev.sh
+  on:
+    branch: dev
+- provider: script
+  script: bash .travis/deploy-prod.sh
+  on:
+    branch: master
+notifications:
+  slack:
+    rooms:
+    - secure: t2abp4n0V4MbZoWj3wnYq5HgB8eednKfGJryJsvYUkhlmXSu6kr+P1RtrAPxUpK1IeH4rjpVLIFfRgEaV9WlMP/8A4Vedc4SgFJTpZ1WjGW0BFk0jndbrHsJ5UogqHnjA1kq7PTg5JRg8K1MZiasNko/MEhGlIUGVp7BN9bNJVj/fP4KiMCF1NM23TB/a5G3eKu9PB2Xaz6nEoucbcwTJU2ns8qi1Ow1IFHqe4832nDnrztogbnH18423v727ce2J2+cuv9Xc+i07CNg8A5W8sWSrAEHytNprciOOvignbHlNMUb9iBZx0TV6Xu6Cy2dbUOpo95ItgTykiXgFDnJWOphQVMPPsrsUxM5eMjbh/da6A34WpStQdiTS0idQjfpOO3vz8vHAyOsIubl/cwvg9qkXgwRqOtU7HXFShqY7FFvPe8NP7ZeHhV2VL8vGpEZ1PzfidiFgux2sVcZPEXEX3L3lDAsCspzNJq8KH/aTshD6le0XloYGyPu2JxUBsr+HauLnI/a1Z2HTHRgK0SF/6NQP+IcIMurMx3RTjbAcpWOLHt4fAAL8XS/8RiwleG55gHNchKhpwb7tzmbHTuwXiDkI18nl1An70vHfUh2duZL+LbVcdHXaAiT+vbYZtLoNOuYaUd0dnl7EjeB4O7LtVDBO1BNrpuu+HsOI4A7NTg=
+    - secure: LvfhiKQd8OGrJ6TTIC/Gwkuj90WoZitApB4UPxJZZD7Vz63YhAl7T8gXKcMEymwEAkEO0SWOkghasEh06SJqcdjvnpYVDAEMZPepHqpFmOMGLQvjqKVhtZSP62mquusu1wP8dtNseng5Tj2uAIqf4QfZyWI/p5MZkZ8obbLlCupudx6MYCDko5RwQqJntA3uFkJcI/iuHtJ7yxi7zdJJwiWmNuKEwX5PLFJguqMyA/RU6HvsPlNdWwqMsaMLNCINxP8AP91XqyjRIncZ/2+n4wILE0NQKp4sS9bWHB/VP5mLfg5NIBF29XM+atW+njjPxgU1gGyp/ceLTIOvWmkH0jEUk6mNSidK+w13ikY3weZF+O58e7LzrO22DXyWpQ5KrU2vCT/w0Av/vOYteSZj+B4yDo4lz3j+JilDvvgIdzVWMdugu9MUGzlx8cpyC0Hit7oqDyFdJ/sl0dy9eI8IS9fDMOl9w3Xt6iyuI1QXIpUuUKaxkbK7ot6BPU1zxVOs6aSRBVXNoOo/hyYiUnmuO/MP216GWup8IJLVcShWive/vg+8uDkocho/mEgf6NAmp5raC+UA4M5liKJjvAx5f2ejfxD5NNL1itFutUtDSTTXzgxNOuFNotKN1/YavT7uox+4Dd7WdNkVN3gvcgu8h3HGg4T3h6r3LgYLDgNUeZ0=
