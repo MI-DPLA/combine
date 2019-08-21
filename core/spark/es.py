@@ -118,38 +118,36 @@ class ESIndex():
         if not es_handle_temp.indices.exists(index_name):
             # put combine es index templates
             template_body = {
-                'template': '*',
-                            'settings': {
-                                'number_of_shards': 1,
-                                'number_of_replicas': 0,
-                                'refresh_interval': -1
-                            },
-                'mappings': {
-                                'record': {
-                                    "dynamic_templates": [
-                                        {
-                                            "strings": {
-                                                "match_mapping_type": "string",
-                                                "mapping": {
-                                                    "type": "text",
-                                                    "fields": {
-                                                            "keyword": {
-                                                                "type":  "keyword"
-                                                            }
-                                                    }
+                    'template': '*',
+                    'settings': {
+                        'number_of_shards': 1,
+                        'number_of_replicas': 0,
+                        'refresh_interval': -1
+                        },
+                    'mappings': {
+                        "dynamic_templates": [
+                            {
+                                "strings": {
+                                    "match_mapping_type": "string",
+                                    "mapping": {
+                                        "type": "text",
+                                        "fields": {
+                                            "keyword": {
+                                                "type":  "keyword"
                                                 }
                                             }
                                         }
-                                    ],
-                                    'date_detection': False,
-                                    'properties': {
-                                        'combine_db_id': {
-                                            'type': 'integer'
-                                        }
                                     }
                                 }
+                            ],
+                        'date_detection': False,
+                        'properties': {
+                            'combine_db_id': {
+                                'type': 'integer'
+                                }
                             }
-            }
+                        }
+                    }
             es_handle_temp.indices.put_template(
                 'combine_template', body=json.dumps(template_body))
 
