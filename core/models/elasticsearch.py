@@ -161,7 +161,7 @@ class ESIndex():
                 field_counts (dict): dictionary of fields with counts, uniqueness across index, etc.
         '''
 
-        if self.es_index != [] and es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+        if self.es_index != [] and es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total']['value'] > 0:
 
             # DEBUG
             stime = time.time()

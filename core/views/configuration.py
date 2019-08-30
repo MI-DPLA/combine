@@ -15,8 +15,7 @@ LOGGER = logging.getLogger(__name__)
 @login_required
 def configuration(request):
     # get all transformations
-    transformations = Transformation.objects.filter(
-        use_as_include=False)
+    transformations = Transformation.objects.all()
 
     # get all OAI endpoints
     oai_endpoints = OAIEndpoint.objects.all()

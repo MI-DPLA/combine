@@ -569,6 +569,7 @@ class CombineSparkJob():
             conf={
                 "es.resource": "%s/record" % es_indexes,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
+                "es.nodes.wan.only": "true",
                 "es.query": input_es_query_valve,
                 "es.read.field.exclude": "*"})
         es_df = es_rdd.map(lambda row: (row[0], )).toDF()
@@ -2114,6 +2115,7 @@ class CombineStateIOImport(CombineStateIO):
                     conf={
                         "es.resource": "%s/record" % index_name,
                         "es.nodes": "%s:9200" % settings.ES_HOST,
+                        "es.nodes.wan.only": "true",
                         "es.mapping.exclude": "temp_id",
                         "es.mapping.id": "temp_id",
                     }

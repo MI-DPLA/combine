@@ -164,6 +164,7 @@ class ESIndex():
             conf={
                 "es.resource": "%s/record" % index_name,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
+                "es.nodes.wan.only": "true",
                 "es.mapping.exclude": "temp_id,__class__",
                 "es.mapping.id": "temp_id",
             }

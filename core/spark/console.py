@@ -476,6 +476,7 @@ def get_job_es(spark,
             "es.output.json": "true",
             "es.input.max.docs.per.partition": "10000",
             "es.nodes": "%s:9200" % settings.ES_HOST,
+            "es.nodes.wan.only": "true",
     }
 
     # handle es_query
