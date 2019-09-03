@@ -567,7 +567,7 @@ class CombineSparkJob():
             keyClass="org.apache.hadoop.io.NullWritable",
             valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
             conf={
-                "es.resource": "%s/record" % es_indexes,
+                "es.resource": "%s/_doc" % es_indexes,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
                 "es.nodes.wan.only": "true",
                 "es.query": input_es_query_valve,
@@ -2113,7 +2113,7 @@ class CombineStateIOImport(CombineStateIO):
                     keyClass="org.apache.hadoop.io.NullWritable",
                     valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
                     conf={
-                        "es.resource": "%s/record" % index_name,
+                        "es.resource": "%s/_doc" % index_name,
                         "es.nodes": "%s:9200" % settings.ES_HOST,
                         "es.nodes.wan.only": "true",
                         "es.mapping.exclude": "temp_id",

@@ -51,7 +51,7 @@ class ESIndex():
             (list): list of field names
         '''
 
-        if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total'] > 0:
+        if es_handle.indices.exists(index=self.es_index) and es_handle.search(index=self.es_index)['hits']['total']['value'] > 0:
 
             # get mappings for job index
             es_r = es_handle.indices.get(index=self.es_index)
@@ -59,7 +59,8 @@ class ESIndex():
             # loop through indices and build field names
             field_names = []
             for _, index_properties in es_r.items():
-                fields = index_properties['mappings']['record']['properties']
+                LOGGER.debug(index_properties['mappings']['properties'])
+                fields = index_properties['mappings']['properties']
                 # get fields as list and extend list
                 field_names.extend(list(fields.keys()))
             # get unique list
@@ -108,7 +109,7 @@ class ESIndex():
             }
 
             # documents without
-            field_dict['doc_missing'] = sr_dict['hits']['total'] - field_dict['doc_instances']
+            field_dict['doc_missing'] = sr_dict['hits']['total']['value'] - field_dict['doc_instances']
 
             # distinct ratio
             if field_dict['val_instances'] > 0:
@@ -118,12 +119,12 @@ class ESIndex():
 
             # percentage of total documents with instance of this field
             field_dict['percentage_of_total_records'] = round(
-                (field_dict['doc_instances'] / sr_dict['hits']['total']), 4)
+                (field_dict['doc_instances'] / sr_dict['hits']['total']['value']), 4)
 
             # one, distinct value for this field, for this document
             if field_dict['distinct_ratio'] > (1.0 - one_per_doc_offset) \
              and field_dict['distinct_ratio'] < (1.0 + one_per_doc_offset) \
-             and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']])) == 1:
+             and len(set([field_dict['doc_instances'], field_dict['val_instances'], sr_dict['hits']['total']['value']])) == 1:
                 field_dict['one_distinct_per_doc'] = True
             else:
                 field_dict['one_distinct_per_doc'] = False
@@ -207,7 +208,7 @@ class ESIndex():
 
             # prepare dictionary for return
             return_dict = {
-                'total_docs':sr_dict['hits']['total'],
+                'total_docs':sr_dict['hits']['total']['value'],
                 'fields':field_count
             }
 
