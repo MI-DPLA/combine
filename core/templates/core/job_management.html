@@ -62,6 +62,11 @@
 							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
 							<label style="font-weight:normal;" for="downstream_rerun_toggle">Include Downstream?</label>
 						</span>
+                        <br>
+						<span class="switch switch-sm">
+							<input type="checkbox" class="switch-sm" id="upstream_rerun_toggle" checked>
+							<label style="font-weight:normal;" for="upstream_rerun_toggle">Include Upstream?</label>
+						</span>
 					</td>
 				</tr>
 				<tr>
@@ -73,6 +78,7 @@
 							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
 							<label style="font-weight:normal;" for="downstream_clone_toggle">Include Downstream?</label>
 						</span>
+                        <br>
 						<span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="rerun_on_clone" checked>
 							<label style="font-weight:normal;" for="rerun_on_clone">Re-Run on Clone?</label>
@@ -213,6 +219,7 @@
 
 				// get value of downstream toggle
 				var downstream_rerun_toggle = $("#downstream_rerun_toggle")[0].checked
+                var upstream_rerun_toggle = $("#upstream_rerun_toggle")[0].checked
 
 				// submit job ids via ajax
 				$.ajax({
@@ -221,6 +228,7 @@
 					data: {
 						'job_ids':job_ids,
 						'downstream_rerun_toggle':downstream_rerun_toggle,
+                        'upstream_rerun_toggle':upstream_rerun_toggle,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',

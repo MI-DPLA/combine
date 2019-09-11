@@ -49,7 +49,7 @@ and it's recommended to do so in order:
 For simplicity's sake, we will assume Combine is installed on a server
 with the domain name of ``combine``, though likely running at the IP
 ``192.168.45.10``, which the Ansible/Vagrant install from
-`Combine-Playbook <https://github.com/WSULib/combine-playbook>`__
+`Combine-Playbook <https://github.com/MI-DPLA/combine-playbook>`__
 defaults to. On most systems you can point that IP to a domain name like
 ``combine`` by modifying your ``/etc/hosts`` file on your local machine.
 **Note:** ``combine`` and ``192.168.45.10`` might be used
@@ -333,12 +333,12 @@ a directory of 250 MODS files (this was created during bootstrapping):
     /tmp/combine/qs/mods
 
 Next, we need to provide an XPath query that locates each discrete
-record within the provided MODS file. Under the section "Locate Document", for the 
+record within the provided MODS file. Under the section "Find and Parse XML Records", for the
 form field ``Root XML Element``, enter the following:
 
 ::
 
-    /mods:mods
+    mods:mods
 
 
 For the time being, we can ignore the section "Locate Identifier in Document" which would allow us to find a unique identifier via XPath in the document.  By default, it will assign a random identifier based on a hash of the document string.

@@ -1,5 +1,4 @@
 import django
-from lxml import etree
 import os
 import pytest
 import shutil
@@ -17,10 +16,10 @@ logger.setLevel(logging.DEBUG)
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
-from django.conf import settings
 
 # import core
-from core.models import *
+from core.models import Organization, RecordGroup, CombineJob, HarvestStaticXMLJob, QueryDict, Transformation,\
+    TransformJob, ValidationScenario, MergeJob
 
 
 #############################################################################

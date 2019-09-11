@@ -11,9 +11,10 @@ def test_check_for_mods_titleInfo(record, test_message="check for mods:titleInfo
 
 def test_check_dateIssued_format(record, test_message="check mods:dateIssued is YYYY-MM-DD or YYYY or YYYY-YYYY"):
     # get dateIssued elements
-    dateIssued_elements = record.xml.xpath('//mods:dateIssued', namespaces=record.nsmap)
+    dateIssued_elements = record.xml.xpath(
+        '//mods:dateIssued', namespaces=record.nsmap)
 
-    # if found, check format 
+    # if found, check format
     if len(dateIssued_elements) > 0:
 
         # loop through values and check
@@ -21,9 +22,10 @@ def test_check_dateIssued_format(record, test_message="check mods:dateIssued is 
 
             # check format
             if dateIssued.text is not None:
-                match = re.match(r'^([0-9]{4}-[0-9]{2}-[0-9]{2})|([0-9]{4})|([0-9]{4}-[0-9]{4})$', dateIssued.text)
+                match = re.match(
+                    r'^([0-9]{4}-[0-9]{2}-[0-9]{2})|([0-9]{4})|([0-9]{4}-[0-9]{4})$', dateIssued.text)
             else:
-                # allow None values to pass test 
+                # allow None values to pass test
                 return True
 
             # match found, continue

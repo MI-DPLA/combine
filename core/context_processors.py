@@ -1,11 +1,10 @@
 # general
-from core.celery import celery_app
 from django.conf import settings
 from django.db.models.query import QuerySet
 import subprocess
 
 # combine
-from core.models import LivySession, SupervisorRPCClient, CombineBackgroundTask
+from core.models import LivySession
 
 
 def combine_settings(request):
@@ -22,7 +21,8 @@ def combine_settings(request):
         'COMBINE_DEPLOYMENT',
         'COMBINE_VERSION'
     ]
-    combine_settings_dict = {k: getattr(settings, k, None) for k in combine_settings_keys}
+    combine_settings_dict = {k: getattr(
+        settings, k, None) for k in combine_settings_keys}
 
     # return
     return combine_settings_dict

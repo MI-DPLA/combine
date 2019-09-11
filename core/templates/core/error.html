@@ -1,0 +1,84 @@
+{% load static %}
+{% load core_template_filters %}
+<!doctype html>
+<html lang="en">
+	<head>
+
+		<!-- Required meta tags -->
+    	<meta charset="utf-8">
+    	<meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    	<!-- Bootstrap CSS -->
+    	<link rel="stylesheet" type="text/css" href="{% static 'core/bootstrap-4.0.0/css/bootstrap.min.css' %}">
+
+		<!-- jQuery -->
+		<script type="text/javascript" charset="utf8" src="{% static 'core/jQuery-3.2.1/jquery-3.2.1.min.js' %}"></script>
+
+		<!-- Bootstrap JS -->
+		<script src="{% static 'core/bootstrap-4.0.0/js/bootstrap.min.js' %}"></script>
+
+    	<!-- Line Awesome icon font -->
+    	<link rel="stylesheet" href="{% static 'core/line-awesome/css/line-awesome.min.css' %}">
+
+    	<!-- Combine CSS -->
+    	<link rel="stylesheet" type="text/css" href="{% static 'core/combine.css' %}">
+
+    	<title>Combine Error!</title>
+
+	</head>
+	<body>
+
+		<nav class="navbar navbar-expand-md navbar-dark sticky-top bg-dark">
+	      <a class="navbar-brand" href="{% url 'combine_home' %}">&#128668; Combine</a>
+	      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarCollapse" aria-controls="navbarCollapse" aria-expanded="false" aria-label="Toggle navigation">
+	        <span class="navbar-toggler-icon"></span>
+	      </button>
+	      <div class="collapse navbar-collapse" id="navbarCollapse">
+	        <ul class="navbar-nav mr-auto">
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'organizations' %}">Organizations</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'analysis' %}">Analysis</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'published' %}">Published</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'all_jobs' %}">All Jobs</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'configuration' %}">Configuration</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="{% url 'bg_tasks' %}">Background Tasks</a>
+	          </li>
+	          <li class="nav-item">
+	            <a class="nav-link" href="http://combine.readthedocs.io/" target="_blank">Documentation</a>
+	          </li>
+	          <li class="nav-item">
+                  <a class="nav-link" href="{% url 'system' %}">System: <span id="livy_status" class="text-secondary">Spark</span> / <span id="celery_status" class="text-secondary">Tasks</span> / <img style="filter: invert(100%); margin-top:-2.5px;" src="{% static 'core/img/gitbranch.png' %}" height=12 /> <code><span style="color:hotpink;">{{COMBINE_GIT_BRANCH}} <span style="color:rgba(255,255,255,.5);">/</span> {{COMBINE_VERSION}}</span></code></a>
+	          </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="{% url 'logout' %}">Log Out</a>
+                </li>
+	        </ul>
+	      </div>
+	    </nav>
+
+	    <main role="main" class="container">
+
+			{% block content %}
+                <div class="row mt-3">
+                    <div class="col-8 offset-2">
+                        <p>Sorry! Something went wrong. Please contact your administrator.</p>
+                        <p class="code_style">{{  report }}</p>
+                    </div>
+                </div>
+			{% endblock %}
+
+		</main>
+
+	</body>
+
+</html>

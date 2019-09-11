@@ -1,5 +1,4 @@
 from django.conf.urls import url
-from django.contrib import admin
 from django.contrib.auth import views as auth_views
 
 from . import views
@@ -11,14 +10,22 @@ urlpatterns = [
     url(r'^system$', views.system, name='system'),
 
     # User Livy sessions
-    url(r'^system/livy_sessions/start$', views.livy_session_start, name='livy_session_start'),
-    url(r'^system/livy_sessions/(?P<session_id>[0-9]+)/stop$', views.livy_session_stop, name='livy_session_stop'),
+    url(r'^system/livy_sessions/start$',
+        views.livy_session_start, name='livy_session_start'),
+    url(r'^system/livy_sessions/(?P<session_id>[0-9]+)/stop$',
+        views.livy_session_stop, name='livy_session_stop'),
     url(r'^system/bg_status$', views.system_bg_status, name='system_bg_status'),
 
     # Organizations
     url(r'^organization/all$', views.organizations, name='organizations'),
-    url(r'^organization/(?P<org_id>[0-9]+)$', views.organization, name='organization'),
-    url(r'^organization/(?P<org_id>[0-9]+)/delete$', views.organization_delete, name='organization_delete'),
+    url(r'^organization/(?P<org_id>[0-9]+)$',
+        views.organization, name='organization'),
+    url(r'^organization/(?P<org_id>[0-9]+)/delete$',
+        views.organization_delete, name='organization_delete'),
+    url(r'^organization/(?P<org_id>[0-9]+)/run_jobs$',
+        views.organization_run_jobs, name='organization_run_jobs'),
+    url(r'^organization/(?P<org_id>[0-9]+)/stop_jobs$',
+        views.organization_stop_jobs, name='organization_stop_jobs'),
 
     # Record Groups
     url(r'^record_group/(?P<record_group_id>[0-9]+)$', views.record_group_id_redirect, name='record_group_id_redirect'),
@@ -27,6 +34,10 @@ urlpatterns = [
         name='record_group'),
     url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/delete$', views.record_group_delete,
         name='record_group_delete'),
+    url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/run_jobs$',
+        views.record_group_run_jobs, name='record_group_run_jobs'),
+    url(r'^organization/(?P<org_id>[0-9]+)/record_group/(?P<record_group_id>[0-9]+)/stop_jobs$',
+        views.record_group_stop_jobs, name='record_group_stop_jobs'),
 
     # Jobs
     url(r'^job/(?P<job_id>[0-9]+)$', views.job_id_redirect, name='job_id_redirect'),
@@ -118,22 +129,67 @@ urlpatterns = [
 
     # Configuration
     url(r'^configuration$', views.configuration, name='configuration'),
-    url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$', views.transformation_scenario_payload,
-        name='transformation_scenario_payload'),
-    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$', views.oai_endpoint_payload,
-        name='oai_endpoint_payload'),
-    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$', views.validation_scenario_payload,
-        name='validation_scenario_payload'),
-    url(r'^configuration/test_validation_scenario$', views.test_validation_scenario, name='test_validation_scenario'),
-    url(r'^configuration/test_transformation_scenario$', views.test_transformation_scenario,
-        name='test_transformation_scenario'),
-    url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$', views.rits_payload, name='rits_payload'),
+    url(r'^configuration/dpla_bulk_data/download$',
+        views.dpla_bulk_data_download, name='dpla_bulk_data_download'),
+
+    # OAI Endpoints
+    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/payload$',
+        views.oai_endpoint_payload, name='oai_endpoint_payload'),
+    url(r'^configuration/oai_endpoint/create$',
+        views.create_oai_endpoint, name='create_oai_endpoint'),
+    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)$',
+        views.edit_oai_endpoint, name='edit_oai_endpoint'),
+    url(r'^configuration/oai_endpoint/(?P<oai_endpoint_id>[0-9]+)/delete$',
+        views.delete_oai_endpoint, name='delete_oai_endpoint'),
+
+    # Validation Scenarios
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/payload$',
+        views.validation_scenario_payload, name='validation_scenario_payload'),
+    url(r'^configuration/validation/create$',
+        views.create_validation_scenario, name='create_validation_scenario'),
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)$',
+        views.validation_scenario, name='validation_scenario'),
+    url(r'^configuration/validation/(?P<vs_id>[0-9]+)/delete$',
+        views.delete_validation_scenario, name='delete_validation_scenario'),
+    url(r'^configuration/validation/test$',
+        views.test_validation_scenario, name='test_validation_scenario'),
+
+    # Transformation Scenarios
+    url(r'^configuration/transformation/(?P<trans_id>[0-9]+)/payload$',
+        views.transformation_scenario_payload, name='transformation_scenario_payload'),
+    url(r'^configuration/transformation/create$',
+        views.create_transformation_scenario, name='create_transformation_scenario'),
+    url(r'^configuration/transformation/(?P<ts_id>[0-9]+)$',
+        views.transformation_scenario, name='transformation_scenario'),
+    url(r'^configuration/transformation/(?P<ts_id>[0-9]+)/delete',
+        views.delete_transformation_scenario, name='delete_transformation_scenario'),
+    url(r'^configuration/transformation/test$',
+        views.test_transformation_scenario, name='test_transformation_scenario'),
+
+    # Field Mapper Configurations
+    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/payload$',
+        views.field_mapper_payload, name='field_mapper_payload'),
+    url(r'^configuration/field_mapper/create',
+        views.create_field_mapper, name='create_field_mapper'),
+    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)$',
+        views.edit_field_mapper, name='edit_field_mapper'),
+    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/delete$',
+        views.delete_field_mapper, name='delete_field_mapper'),
+    url(r'^configuration/field_mapper/update$',
+        views.field_mapper_update, name='field_mapper_update'),
+    url(r'^configuration/test_field_mapper$',
+        views.test_field_mapper, name='test_field_mapper'),
+
+    # Record Identifier Transformation Scenarios
+    url(r'^configuration/rits/(?P<rits_id>[0-9]+)/payload$',
+        views.rits_payload, name='rits_payload'),
+    url(r'^configuration/rits/create$',
+        views.create_rits, name='create_rits'),
+    url(r'^configuration/rits/(?P<rits_id>[0-9]+)$',
+        views.edit_rits, name='edit_rits'),
+    url(r'^configuration/rits/(?P<rits_id>[0-9]+)/delete$',
+         views.delete_rits, name='delete_rits'),
     url(r'^configuration/test_rits$', views.test_rits, name='test_rits'),
-    url(r'^configuration/field_mapper/(?P<fm_id>[0-9]+)/payload$', views.field_mapper_payload,
-        name='field_mapper_payload'),
-    url(r'^configuration/field_mapper/update$', views.field_mapper_update, name='field_mapper_update'),
-    url(r'^configuration/test_field_mapper$', views.test_field_mapper, name='test_field_mapper'),
-    url(r'^configuration/dpla_bulk_data/download$', views.dpla_bulk_data_download, name='dpla_bulk_data_download'),
 
     # Publish
     url(r'^published$', views.published, name='published'),
@@ -210,7 +266,8 @@ urlpatterns = [
     url(r'^background_tasks/task/(?P<task_id>[0-9]+)/cancel$', views.bg_task_cancel, name='bg_task_cancel'),
 
     # Document Download
-    url(r'^document_download$', views.document_download, name='document_download'),
+    url(r'^document_download$', views.document_download,
+        name='document_download'),
 
     # Global Messages (GMs)
     url(r'^gm/delete$', views.gm_delete, name='gm_delete'),

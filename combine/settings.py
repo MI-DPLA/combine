@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 import os
 
 # Combine Version
-COMBINE_VERSION = 'v0.9'
+COMBINE_VERSION = 'v0.10'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -41,7 +41,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django_extensions',
-    'django.contrib.humanize'
+    'django.contrib.humanize',
+    'crispy_forms'
 ]
 
 MIDDLEWARE = [
@@ -52,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'core.errors.ErrorMiddleware',
 ]
 
 ROOT_URLCONF = 'combine.urls'
@@ -183,6 +185,9 @@ LOGGING = {
 SHELL_PLUS_POST_IMPORTS = {
     ('inc.console', '*')
 }
+
+# crispy forms
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
 
 #########################
 # Import localsettings.py

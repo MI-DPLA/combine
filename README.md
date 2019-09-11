@@ -18,7 +18,7 @@ Combine has a fair amount of server components, dependencies, and configurations
 
 ### Docker
 
-A GitHub repository [Combine-Docker](https://github.com/WSULib/combine-docker) exists to help stand up an instance of Combine as a series of interconnected Docker containers.
+A GitHub repository [Combine-Docker](https://github.com/MI-DPLA/combine-docker) exists to help stand up an instance of Combine as a series of interconnected Docker containers.
 
 ### Server Provisioning with Vagrant and/or Ansible
 

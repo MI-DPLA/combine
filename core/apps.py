@@ -14,6 +14,8 @@ logger = logging.getLogger(__name__)
 
 
 # NOTE: manual configuration of core app not currently used, but leaving if needed
+
+
 class CoreConfig(AppConfig):
     name = 'core'
 
@@ -25,13 +27,13 @@ class CoreConfig(AppConfig):
         This fires any functions defined here that are needed when Combine starts.
 
         Args:
-            (django.apps.AppConfig): instance of 'Core' application config
+                (django.apps.AppConfig): instance of 'Core' application config
 
         Returns:
-            None
+                None
         '''
 
-        logger.debug('Core application ready method preperations firing')
+        logger.debug('Core application ready method preparations firing')
 
         # create home working directory
         self.create_home_working_directory()

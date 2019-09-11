@@ -1,5 +1,8 @@
 {% load static %}
 {% block content %}
+<script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
+<script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
+
 
 <div class="row">
 	<div class="col-md-12">
@@ -29,98 +32,140 @@
 			</thead>
 			<tbody>
 			{% for job in jobs %}
-				<tr class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{% if job.job_type != 'PublishJob' %}<input class="job_id_sel" type="checkbox" value="{{ job.id }}" name="job_id">{% endif %}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.id }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.timestamp }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">{{ job.name }}</a> <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;"><i class="la la-pencil"></i></a>
+				<tr class="{{ job.job_type_display_class }}">
+					<td class="{{ job.job_type_display_class }}">
+                        {% if job.job_type != 'PublishJob' %}
+                            <input class="job_id_sel" type="checkbox" value="{{ job.id }}" name="job_id">
+                        {% endif %}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+                        {{ job.id }}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+                        {{ job.timestamp|date:"M d, Y, h:i A" }}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+						<a href="{{ job.job_details_url }}">
+                            {{ job.name }}
+                        </a>
+                        <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;">
+                            <i class="la la-pencil"></i>
+                        </a>
 						<div id="job_name_{{ job.id }}" style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
-							<form method="POST" action="{% url 'job_update_name' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
+							<form method="POST" action="{% url 'job_update_name' org_id=job.organization_id record_group_id=job.record_group_id job_id=job.id %}">
 								{% csrf_token %}
 								<div class="form-group" style="min-width: 200px;">
 									<label for="job_name">Enter new job name</label>
 									<input class="form-control" type="text" id="job_name" name="job_name" size=40 placeholder="e.g. 'New Job Name'"/>
 								</div>								
-								<button type="submit" class="btn btn-primary btn-sm">Update</button>
+								<button type="submit" class="btn btn-primary btn-sm">
+                                    Update
+                                </button>
 							</form>
 						</div>
-					</td>                    
+					</td>
 					{# Jinja logic for including Organization and RecordGroups #}
 					{% if not for_analysis %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'record_group' org_id=job.record_group.organization.id record_group_id=job.record_group.id %}">{{ job.record_group.name }}</a></a></td>
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}"><a href="{% url 'organization' org_id=job.record_group.organization.id %}">{{ job.record_group.organization.name }}</a></td>				
+						<td class="{{ job.job_type_display_class }}">
+                            <a href="{% url 'record_group' org_id=job.organization_id record_group_id=job.record_group_id %}">
+                                {{ job.record_group.name }}
+                            </a>
+                        </td>
+						<td class="{{ job.job_type_display_class }}">
+                            <a href="{% url 'organization' org_id=job.organization_id %}">
+                                {{ job.record_group.organization.name }}
+                            </a>
+                        </td>
 					{% endif %}
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.job_type_family }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						{% if job.status in 'initializing,resetting,waiting' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-						</div>
-						{% elif job.status == 'running' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-						</div>
-						{% elif job.status in 'available,gone' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">finished</div>
-						</div>						
-						{% elif job.status in 'cancelled,cancelling' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">cancelled</div>
-						</div>
-						{% elif job.status in 'failed' %}
-						<div class="progress">
-							<div class="progress-bar progress-bar bg-danger" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">failed</div>
-						</div>
+					<td class="{{ job.job_type_display_class }}">
+                        {{ job.job_type_family }}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+                        {% if job.status in 'initializing,resetting,waiting,running,available,gone,cancelled,cancelling,failed' %}
+							<div class="progress progress-bar
+                                  {% if job.progress_bar_motion %}progress-bar-striped progress-bar-animated{% endif %}
+                                  {% if job.progress_bar_color is not '' %}bg-{{ job.progress_bar_color }}{% endif %}"
+                                 role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                 style="width: 100%">
+                                {{job.progress_bar_status}}
+                            </div>
 						{% else %}
 						{{ job.status }}
 						{% endif %}
 					</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.validation_results.verdict }}</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">						
-						{% if job.published %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}danger{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Unpublish <i class="la la-close"></i></button></a>
-						{% else %}
-							<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#publish_tab"><button type="button" class="btn btn-outline-{% if not job.finished %}secondary{% else %}success{% endif %} btn-sm" {% if not job.finished %}disabled{% endif %}>Publish <i class="la la-bullhorn"></i></button></a>
-						{% endif %}
+					<td class="{{ job.job_type_display_class }}">
+                        {% if job.record_count == 0 %}
+                        Unknown
+                        {% else %}
+                        {{ job.validation_results.verdict }}
+                        {% endif %}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+                        <a href="{{ job.job_details_url }}#publish_tab">
+                            <button type="button"
+                                    class="btn
+                                    btn-outline-{% if not job.finished %}secondary{% else %}{% if job.published %}danger{% else %}success{% endif %}{% endif %}
+                                    btn-sm"
+                                    {% if not job.finished %}disabled{% endif %}>
+                                {% if job.published %}Unpublish <i class="la la-close"></i>{% else %}Publish <i class="la la-bullhorn"></i>{% endif %}
+                            </button>
+                        </a>
 					</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
+					<td class="{{ job.job_type_display_class }}">{{ job.elapsed_as_string }}<br><em>{{ job.calc_records_per_second }} r/s</em></td>
 					{% if job.jobinput_set.all|length > 0 %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
+						<td class="{{ job.job_type_display_class }}">
 
-							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Input Jobs</button>
+							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">
+                                Input Jobs
+                            </button>
 
 							<div id="input_jobs_column" style="margin-top:10px; display:none;">
 								{% for input_job in job.jobinput_set.all %}
 									<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-										<a href="{% url 'job_details' org_id=input_job.input_job.record_group.organization.id record_group_id=input_job.input_job.record_group.id job_id=input_job.input_job.id %}">{{ input_job.input_job }}</a>
+										<a href="{{ input_job.input_job.job_details_url }}">
+                                            {{ input_job.input_job }}
+                                        </a>
 									</div>
 								{% endfor %}
 							</div>
 
 						</td>
 					{% else %}
-						<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">None</td>
+						<td class="{{ job.job_type_display_class }}">None</td>
 					{% endif %}
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;"><i class="la la-pencil"></i></a>
+					<td class="{{ job.job_type_display_class }}">
+						{{ job.note }} <a href="#" onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;">
+                            <i class="la la-pencil"></i>
+                        </a>
 						<div id="job_notes_{{ job.id }}" style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
-							<form method="POST" action="{% url 'job_update_note' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}">
+							<form method="POST" action="{% url 'job_update_note' org_id=job.organization_id record_group_id=job.record_group_id job_id=job.id %}">
 								{% csrf_token %}
 								<div class="form-group">						
 									<textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{% if job.note %}{{ job.note }}{% endif %}</textarea>
 								</div>
 								<input type="hidden" name="job_id" value="{{ cjob.job.id }}">
 								<input type="hidden" name="next" value="{{ request.path }}">
-								<button type="submit" class="btn btn-primary btn-sm">Update</button>
+								<button type="submit" class="btn btn-primary btn-sm">
+                                    Update
+                                </button>
 							</form>
 						</div>
 					</td>
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">{{ job.record_count }}</td>	
-					<td class="{{ job.job_type_family }} {% if job.deleted %}deleted{% endif %}">
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}#spark_details_tab"><button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">{% if job.has_spark_failures %}<strong>Monitor <i class="la la-history"></i></strong>{% else %}Monitor <i class="la la-history"></i>{% endif %}</button></a><br>
-						<a href="{% url 'job_details' org_id=job.record_group.organization.id record_group_id=job.record_group.id job_id=job.id %}"><button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">Details <i class="la la-info-circle"></i></button></a>
+					<td class="{{ job.job_type_display_class }} {% if job.record_count == 0 %}warning_job{% endif %}">
+                        {% if job.record_count == 0 %}No Records Found{% else %}{{ job.record_count }}{% endif %}
+                    </td>
+					<td class="{{ job.job_type_display_class }}">
+						<a href="{{ job.job_details_url }}#spark_details_tab">
+                            <button type="button" class="btn {% if job.has_spark_failures %}btn-outline-danger{% else %}btn-outline-info{% endif %} btn-sm">
+                                {% if job.has_spark_failures %}<strong>{% endif %}Monitor <i class="la la-history"></i>{% if job.has_spark_failures %}</strong>{% endif %}
+                            </button>
+                        </a>
+                        <br>
+						<a href="{{ job.job_details_url }}">
+                            <button type="button" class="btn btn-outline-info btn-sm" style="margin-top:5px;">
+                                Details <i class="la la-info-circle"></i>
+                            </button>
+                        </a>
 					</td>				
 				</tr>
 			{% endfor %}
@@ -151,18 +196,22 @@
 	
 		<script>
 			$(document).ready(function() {
+			    $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
 			    jobs_table = $('#jobs_table').DataTable({
 			    	"order": [[ 1, "asc" ]],
 			    	"pageLength": 100,
 			    	"lengthMenu": [ 10, 25, 100, 500 ],
 			    	{# Jinja logic for including RecordGroups #}
 			    	{% if not for_analysis %}
-				    	"createdRow": function( row, data, dataIndex){
+				    	"createdRow": function( row, data, dataIndex) {
 
-		                    // show job valid
-		                    if (data[8] == 'False'){
-		                    	$('td:nth-child(9)', row).addClass('invalid_job');
-		                    }
+                            // show job valid
+                            if (data[8] == 'False') {
+                                $('td:nth-child(9)', row).addClass('invalid_job');
+                            } else if (data[8] == 'Unknown') {
+                                $('td:nth-child(9)', row).addClass('warning_job');
+
+                            }
 			            },
 					{% else %}
 						"createdRow": function( row, data, dataIndex){
@@ -170,7 +219,9 @@
 		                    // show job valid
 		                    if (data[7] == 'False'){                    	
 		                    	$('td:nth-child(8)', row).addClass('invalid_job');
-		                    }
+		                    } else if (data[7] == 'Unknown') {
+                                $('td:nth-child(8)', row).addClass('warning_job');
+                            }
 			            },
 		            {% endif %}
 		            initComplete: function () {

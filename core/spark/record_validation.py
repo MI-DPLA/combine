@@ -1,21 +1,16 @@
 # imports
 import django
 from functools import reduce
-import hashlib
 from inspect import isfunction, signature
 import json
 from lxml import etree, isoschematron
 import os
-import shutil
 import sys
 from types import ModuleType
 
 # import Row from pyspark
-from pyspark import StorageLevel
 from pyspark.sql import Row
-from pyspark.sql.types import StringType, IntegerType
 import pyspark.sql.functions as pyspark_sql_functions
-from pyspark.sql.functions import udf
 
 # import from core.spark
 try:
@@ -23,40 +18,58 @@ try:
 except:
     from core.spark.utils import PythonUDFRecord, refresh_django_db_connection
 
+# pylint: disable=wrong-import-position
 # init django settings file to retrieve settings
 os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 
 from django.conf import settings
-from django.db import connection
 
 # import select models from Core
-from core.models import Job, ValidationScenario
+from core.models import ValidationScenario
 
 
 ####################################################################
 # Record Validation												   #
 ####################################################################
 
-class ValidationScenarioSpark(object):
-    '''
+class ErrorValidator():
+
+    def __init__(self, err):
+        self.err = err
+
+    def validate(self, _object):
+        return False
+
+    @property
+    def validation_report(self):
+        nsmap = {'svrl': 'http://purl.oclc.org/dsdl/svrl'}
+        report = etree.Element("schematron-output", nsmap=nsmap)
+        failed_assert = etree.SubElement(report, '{%s}failed-assert' % nsmap['svrl'], test='validator', location='/')
+        text = etree.SubElement(failed_assert, '{%s}text' % nsmap['svrl'])
+        text.text = 'Invalid validator: {}'.format(str(self.err))
+        tree = etree.ElementTree(report)
+        return tree
+
+
+class ValidationScenarioSpark():
+    """
     Class to organize methods and attributes used for running validation scenarios
-    '''
+    """
 
     def __init__(self,
                  spark=None,
                  job=None,
                  records_df=None,
                  validation_scenarios=None):
-
-        '''
+        """
         Args:
-            spark (pyspark.sql.session.SparkSession): spark instance from static job methods
-            job (core.models.Job): Job instance
-            records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-            validation_scenarios (list): list of ValidationScenario job ids as integers
-        '''
+                spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+                job (core.models.Job): Job instance
+                records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+                validation_scenarios (list): list of ValidationScenario job ids as integers
+        """
 
         self.spark = spark
         self.job = job
@@ -69,22 +82,21 @@ class ValidationScenarioSpark(object):
         self.logger = log4jLogger.LogManager.getLogger(__name__)
 
     def run_record_validation_scenarios(self):
-
-        '''
+        """
         Function to run validation scenarios
         Results are written to RecordValidation table, one result, per record, per failed validation test.
 
         Validation tests may be of type:
-            - 'sch': Schematron based validation, performed with lxml etree
-            - 'python': custom python code snippets
+                - 'sch': Schematron based validation, performed with lxml etree
+                - 'python': custom python code snippets
 
         Args:
-            None
+                None
 
         Returns:
-            None
-                - writes validation fails to RecordValidation table
-        '''
+                None
+                        - writes validation fails to RecordValidation table
+        """
 
         # refresh Django DB Connection
         refresh_django_db_connection()
@@ -101,19 +113,23 @@ class ValidationScenarioSpark(object):
 
             # schematron based validation scenario
             if vs.validation_type == 'sch':
-                validation_fails_rdd = self._sch_validation(vs, vs_id, vs_name, vs_filepath)
+                validation_fails_rdd = self._sch_validation(
+                    vs, vs_id, vs_name, vs_filepath)
 
             # python based validation scenario
             elif vs.validation_type == 'python':
-                validation_fails_rdd = self._python_validation(vs, vs_id, vs_name, vs_filepath)
+                validation_fails_rdd = self._python_validation(
+                    vs, vs_id, vs_name, vs_filepath)
 
             # ElasticSearch DSL query based validation scenario
             elif vs.validation_type == 'es_query':
-                validation_fails_rdd = self._es_query_validation(vs, vs_id, vs_name, vs_filepath)
+                validation_fails_rdd = self._es_query_validation(
+                    vs, vs_id, vs_name, vs_filepath)
 
             # XML Schema (XSD) based validation scenario
             elif vs.validation_type == 'xsd':
-                validation_fails_rdd = self._xsd_validation(vs, vs_id, vs_name, vs_filepath)
+                validation_fails_rdd = self._xsd_validation(
+                    vs, vs_id, vs_name, vs_filepath)
 
             # if results, append
             if validation_fails_rdd and not validation_fails_rdd.isEmpty():
@@ -126,10 +142,10 @@ class ValidationScenarioSpark(object):
             failures_df = failures_union_rdd.toDF()
 
             # write failures
-            failures_df.write.format("com.mongodb.spark.sql.DefaultSource") \
-                .mode("append") \
-                .option("uri", "mongodb://%s" % settings.MONGO_HOST) \
-                .option("database", "combine") \
+            failures_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+                .mode("append")\
+                .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+                .option("database", "combine")\
                 .option("collection", "record_validation").save()
 
             # update validity for Job
@@ -141,9 +157,12 @@ class ValidationScenarioSpark(object):
 
         def validate_schematron_pt_udf(pt):
 
-            # parse schematron
-            sct_doc = etree.parse(vs_filepath)
-            validator = isoschematron.Schematron(sct_doc, store_report=True)
+            try:
+                # parse schematron
+                sct_doc = etree.parse(vs_filepath)
+                validator = isoschematron.Schematron(sct_doc, store_report=True)
+            except Exception as err:
+                validator = ErrorValidator(err)
 
             for row in pt:
 
@@ -166,14 +185,16 @@ class ValidationScenarioSpark(object):
 
                         # get failed
                         report_root = validator.validation_report.getroot()
-                        fails = report_root.findall('svrl:failed-assert', namespaces=report_root.nsmap)
+                        fails = report_root.findall(
+                            'svrl:failed-assert', namespaces=report_root.nsmap)
 
                         # log fail_count
                         results_dict['fail_count'] = len(fails)
 
                         # loop through fails and add to dictionary
                         for fail in fails:
-                            fail_text_elem = fail.find('svrl:text', namespaces=fail.nsmap)
+                            fail_text_elem = fail.find(
+                                'svrl:text', namespaces=fail.nsmap)
                             results_dict['failed'].append(fail_text_elem.text)
 
                         yield Row(
@@ -194,7 +215,8 @@ class ValidationScenarioSpark(object):
                         'failed': []
                     }
                     results_dict['fail_count'] += 1
-                    results_dict['failed'].append("Schematron validation exception: %s" % (str(e)))
+                    results_dict['failed'].append(
+                        "Schematron validation exception: %s" % (str(e)))
 
                     yield Row(
                         record_id=row._id,
@@ -219,15 +241,14 @@ class ValidationScenarioSpark(object):
         self.logger.info('running python validation: %s' % vs.name)
 
         def validate_python_udf(vs_id, vs_name, pyvs_funcs, row):
-
-            '''
+            """
             Loop through test functions and aggregate in fail_dict to return with Row
 
             Args:
-                vs_id (int): integer of validation scenario
-                pyvs_funcs (list): list of functions imported from user created python validation scenario payload
-                row ():
-            '''
+                    vs_id (int): integer of validation scenario
+                    pyvs_funcs (list): list of functions imported from user created python validation scenario payload
+                    row ():
+            """
 
             # prepare row as parsed document with PythonUDFRecord class
             prvb = PythonUDFRecord(row)
@@ -255,13 +276,13 @@ class ValidationScenarioSpark(object):
                     test_result = func(prvb)
 
                     # if fail, append
-                    if test_result != True:
+                    if not test_result:
 
                         # bump fail count
                         results_dict['fail_count'] += 1
 
                         # if custom message override provided, use
-                        if test_result != False:
+                        if test_result:
                             results_dict['failed'].append(test_result)
 
                         # else, default to test message
@@ -271,7 +292,8 @@ class ValidationScenarioSpark(object):
                 # if problem, report as failure with Exception string
                 except Exception as e:
                     results_dict['fail_count'] += 1
-                    results_dict['failed'].append("test '%s' had exception: %s" % (func_name, str(e)))
+                    results_dict['failed'].append(
+                        "test '%s' had exception: %s" % (func_name, str(e)))
 
             # if failed, return Row
             if results_dict['fail_count'] > 0:
@@ -293,14 +315,15 @@ class ValidationScenarioSpark(object):
 
         # get defined functions
         pyvs_funcs = []
-        test_labeled_attrs = [attr for attr in dir(temp_pyvs) if attr.lower().startswith('test')]
+        test_labeled_attrs = [attr for attr in dir(
+            temp_pyvs) if attr.lower().startswith('test')]
         for attr in test_labeled_attrs:
             attr = getattr(temp_pyvs, attr)
             if isfunction(attr):
                 pyvs_funcs.append(attr)
 
-        validation_fails_rdd = self.records_df.rdd. \
-            map(lambda row: validate_python_udf(vs_id, vs_name, pyvs_funcs, row)) \
+        validation_fails_rdd = self.records_df.rdd.\
+            map(lambda row: validate_python_udf(vs_id, vs_name, pyvs_funcs, row))\
             .filter(lambda row: row is not None)
 
         # return
@@ -332,7 +355,7 @@ class ValidationScenarioSpark(object):
                 keyClass="org.apache.hadoop.io.NullWritable",
                 valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
                 conf={
-                    "es.resource": "%s/record" % es_index,
+                    "es.resource": "%s/_doc" % es_index,
                     "es.query": es_val_query,
                     "es.read.field.include": "db_id"
                 }
@@ -340,7 +363,7 @@ class ValidationScenarioSpark(object):
 
             # if query is not empty, map to DataFrame
             if not es_rdd.isEmpty():
-                es_df = es_rdd.map(lambda row: (row[1]['db_id'],)).toDF()
+                es_df = es_rdd.map(lambda row: (row[1]['db_id'], )).toDF()
 
             # handle validity matching
             # NOTE: matching on records_df['_id']['oid'] to get str cast of Mongo ObjectId
@@ -365,10 +388,9 @@ class ValidationScenarioSpark(object):
                     return None
 
                 # else, perform join
-                else:
-                    fail_df = self.records_df.alias('records_df').join(es_df,
-                                                                       self.records_df['_id']['oid'] == es_df['_1'],
-                                                                       'leftsemi').select('_id', 'records_df.record_id')
+                fail_df = self.records_df.alias('records_df').join(es_df,
+                                                                   self.records_df['_id']['oid'] == es_df['_1'],
+                                                                   'leftsemi').select('_id', 'records_df.record_id')
 
             # add columns to df to return
             fail_df = fail_df.withColumn('failed',
@@ -382,10 +404,10 @@ class ValidationScenarioSpark(object):
         if len(fail_dfs) > 0:
 
             # merge and format
-            new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs) \
+            new_df = reduce(lambda a, b: a.unionAll(b), fail_dfs)\
                 .select("_id", "record_id", pyspark_sql_functions.explode("failed").alias("failed_values"),
                         "fail_count") \
-                .groupBy("_id", "record_id") \
+                .groupBy("_id", "record_id")\
                 .agg(pyspark_sql_functions.collect_list("failed_values").alias("failed"),
                      pyspark_sql_functions.sum("fail_count").alias("fail_count")) \
                 .select("_id", "record_id",
@@ -403,11 +425,10 @@ class ValidationScenarioSpark(object):
                 valid=False,
                 results_payload=row.data,
                 fail_count=int(row['fail_count']))
-                                                  )
+            )
             return validation_fails_rdd
 
-        else:
-            return None
+        return None
 
     def _xsd_validation(self, vs, vs_id, vs_name, vs_filepath):
 
@@ -455,7 +476,8 @@ class ValidationScenarioSpark(object):
                         'fail_count': 1,
                         'failed': []
                     }
-                    results_dict['failed'].append("XSD validation exception: %s" % (str(e)))
+                    results_dict['failed'].append(
+                        "XSD validation exception: %s" % (str(e)))
 
                     yield Row(
                         record_id=row._id,
@@ -476,61 +498,62 @@ class ValidationScenarioSpark(object):
         return validation_fails_rdd
 
     def remove_validation_scenarios(self):
-
-        '''
+        """
         Method to update validity attribute of records after removal of validation scenarios
-            - approach is to update all INVALID Records that may now be valid by lack of
-            matching record_id in remaining validation failures
-        '''
+                - approach is to update all INVALID Records that may now be valid by lack of
+                matching record_id in remaining validation failures
+        """
 
         # read current failures from Mongo
         failures_pipeline = json.dumps({'$match': {'job_id': self.job.id}})
-        failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource") \
-            .option("uri", "mongodb://%s" % settings.MONGO_HOST) \
-            .option("database", "combine") \
-            .option("collection", "record_validation") \
+        failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+            .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+            .option("database", "combine")\
+            .option("collection", "record_validation")\
             .option("pipeline", failures_pipeline).load()
 
         # if failures to work with, rewrite records with valid = True if NOT in remaining DB failures
         if not failures_df.rdd.isEmpty():
             set_valid_df = self.records_df.alias('records_df').join(
-                failures_df.select('record_id').distinct().alias('failures_df'),
+                failures_df.select(
+                    'record_id').distinct().alias('failures_df'),
                 failures_df['record_id'] == self.records_df['_id'],
-                'leftanti') \
-                .select(self.records_df.columns) \
+                'leftanti')\
+                .select(self.records_df.columns)\
                 .withColumn('valid', pyspark_sql_functions.lit(True))
         else:
             # will write all previously invalid, as valid
-            set_valid_df = self.records_df.withColumn('valid', pyspark_sql_functions.lit(True))
+            set_valid_df = self.records_df.withColumn(
+                'valid', pyspark_sql_functions.lit(True))
 
         # update validity of Records
-        set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource") \
-            .mode("append") \
-            .option("uri", "mongodb://%s" % settings.MONGO_HOST) \
-            .option("database", "combine") \
+        set_valid_df.write.format("com.mongodb.spark.sql.DefaultSource")\
+            .mode("append")\
+            .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+            .option("database", "combine")\
             .option("collection", "record").save()
 
     def update_job_record_validity(self):
-
-        '''
+        """
         Method to update validity of Records in Job based on found RecordValidadtions
-        '''
+        """
 
         # get failures
         pipeline = json.dumps({'$match': {'$and': [{'job_id': self.job.id}]}})
-        all_failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource") \
-            .option("uri", "mongodb://%s" % settings.MONGO_HOST) \
-            .option("database", "combine") \
-            .option("collection", "record_validation") \
-            .option("partitioner", "MongoSamplePartitioner") \
-            .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB) \
-            .option("pipeline", pipeline).load() \
-            .select('record_id') \
+        all_failures_df = self.spark.read.format("com.mongodb.spark.sql.DefaultSource")\
+            .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+            .option("database", "combine")\
+            .option("collection", "record_validation")\
+            .option("partitioner", "MongoSamplePartitioner")\
+            .option("spark.mongodb.input.partitionerOptions.partitionSizeMB", settings.MONGO_READ_PARTITION_SIZE_MB)\
+            .option("pipeline", pipeline).load()\
+            .select('record_id')\
             .withColumnRenamed('record_id', 'fail_id')
 
         # join, writing potentially null `fail_id` column
         fail_join = self.records_df.alias('records_df').join(
-            all_failures_df.select('fail_id').distinct().alias('all_failures_df'),
+            all_failures_df.select(
+                'fail_id').distinct().alias('all_failures_df'),
             self.records_df['_id'] == all_failures_df['fail_id'],
             'leftouter')
 
@@ -540,15 +563,15 @@ class ValidationScenarioSpark(object):
                                                                            False).otherwise(True))
 
         # subset those that need updating and flip validity
-        to_update = updated_validity.where(updated_validity['valid'] != updated_validity['update_valid']) \
-            .select(self.records_df.columns) \
+        to_update = updated_validity.where(updated_validity['valid'] != updated_validity['update_valid'])\
+            .select(self.records_df.columns)\
             .withColumn('valid', pyspark_sql_functions.when(self.records_df.valid == True, False).otherwise(True))
 
         # update in DB by overwriting
-        to_update.write.format("com.mongodb.spark.sql.DefaultSource") \
-            .mode("append") \
-            .option("uri", "mongodb://%s" % settings.MONGO_HOST) \
-            .option("database", "combine") \
+        to_update.write.format("com.mongodb.spark.sql.DefaultSource")\
+            .mode("append")\
+            .option("uri", "mongodb://%s" % settings.MONGO_HOST)\
+            .option("database", "combine")\
             .option("collection", "record").save()
 
     def export_job_validation_report(self):

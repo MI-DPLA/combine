@@ -1,8 +1,11 @@
-from django.core.management.base import BaseCommand, CommandError
+from django.core.management.base import BaseCommand
+
+from lxml import etree
+import os
+import uuid
 
 # import core
-from core.models import *
-
+from core.models import Transformation, ValidationScenario
 
 class Command(BaseCommand):
     help = 'Bootstrap Combine with some demo Transformation and Validation scenarios'
@@ -12,9 +15,9 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
 
-        ## prepare demo MODS files		
+        # prepare demo MODS files
         # parse file
-        xml_tree = etree.parse('tests/data/mods_250.xml')
+        xml_tree = etree.parse('tests/data/static_harvest_data/mods_250.xml')
         xml_root = xml_tree.getroot()
         # get namespaces
         nsmap = {}
@@ -25,7 +28,7 @@ class Command(BaseCommand):
         mods_roots = xml_root.xpath('//mods:mods', namespaces=nsmap)
         # create temp dir
         payload_dir = '/tmp/combine/qs/mods'
-        os.makedirs(payload_dir)
+        os.makedirs(payload_dir, exist_ok=True)
         # write MODS to temp dir
         for mods in mods_roots:
             with open(os.path.join(payload_dir, '%s.xml' % uuid.uuid4().hex), 'w') as f:

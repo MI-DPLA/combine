@@ -8,11 +8,8 @@ import hashlib
 import json
 from lxml import etree
 import logging
-import pdb
-from pprint import pprint, pformat
 import re
 import time
-import uuid
 import xmltodict
 
 # init logger
@@ -22,13 +19,14 @@ logger = logging.getLogger(__name__)
 sibling_hash_regex = re.compile(r'(.+?)\(([0-9a-zA-Z]+)\)|(.+)')
 
 
-class XML2kvp(object):
+
+class XML2kvp():
     '''
     Class to handle the parsing of XML into Key/Value Pairs
 
-        - utilizes xmltodict (https://github.com/martinblech/xmltodict)
-        - static methods are designed to be called without user instantiating
-        instance of XML2kvp
+            - utilizes xmltodict (https://github.com/martinblech/xmltodict)
+            - static methods are designed to be called without user instantiating
+            instance of XML2kvp
     '''
 
     # test xml
@@ -110,6 +108,7 @@ class XML2kvp(object):
 	'''
 
     # custom exception for delimiter collision
+
     class DelimiterCollision(Exception):
         pass
 
@@ -119,118 +118,117 @@ class XML2kvp(object):
         "title": "XML2kvp configuration options schema",
         "type": "object",
         "properties": {
-            "add_literals": {
-                "description": "Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]",
-                "type": "object"
-            },
+                "add_literals": {
+                    "description": "Key/value pairs for literals to mixin, e.g. ``foo``:``bar`` would create field ``foo`` with value ``bar`` [Default: ``{}``]",
+                    "type": "object"
+                },
             "capture_attribute_values": {
-                "description": "Array of attributes to capture values from and set as standalone field, e.g. if [``age``] is provided and encounters ``<foo age='42'/>``, a field ``foo_@age@`` would be created (note the additional trailing ``@`` to indicate an attribute value) with the value ``42``. [Default: ``[]``, Before: ``copy_to``, ``copy_to_regex``]",
-                "type": "array"
-            },
+                    "description": "Array of attributes to capture values from and set as standalone field, e.g. if [``age``] is provided and encounters ``<foo age='42'/>``, a field ``foo_@age@`` would be created (note the additional trailing ``@`` to indicate an attribute value) with the value ``42``. [Default: ``[]``, Before: ``copy_to``, ``copy_to_regex``]",
+                    "type": "array"
+                    },
             "concat_values_on_all_fields": {
-                "description": "Boolean or String to join all values from multivalued field on [Default: ``false``]",
-                "type": ["boolean", "string"]
-            },
+                    "description": "Boolean or String to join all values from multivalued field on [Default: ``false``]",
+                    "type": ["boolean", "string"]
+                    },
             "concat_values_on_fields": {
-                "description": "Key/value pairs for fields to concat on provided value, e.g. ``foo_bar``:``-`` if encountering ``foo_bar``:[``goober``,``tronic``] would concatenate to ``foo_bar``:``goober-tronic`` [Default: ``{}``]",
-                "type": "object"
-            },
+                    "description": "Key/value pairs for fields to concat on provided value, e.g. ``foo_bar``:``-`` if encountering ``foo_bar``:[``goober``,``tronic``] would concatenate to ``foo_bar``:``goober-tronic`` [Default: ``{}``]",
+                    "type": "object"
+                    },
             "copy_to": {
-                "description": "Key/value pairs to copy one field to another, optionally removing original field, e.g. ``foo``:``bar`` would create field ``bar`` and copy all values when encountered for ``foo`` to ``bar``, removing ``foo``.  However, the original field can be retained by setting ``remove_copied_key`` to ``true``.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':``false``, would remove field ``foo``. [Default: ``{}``]",
-                "type": "object"
-            },
+                    "description": "Key/value pairs to copy one field to another, optionally removing original field, e.g. ``foo``:``bar`` would create field ``bar`` and copy all values when encountered for ``foo`` to ``bar``, removing ``foo``.  However, the original field can be retained by setting ``remove_copied_key`` to ``true``.  Note: Can also be used to remove fields by setting the target field as false, e.g. 'foo':``false``, would remove field ``foo``. [Default: ``{}``]",
+                    "type": "object"
+                    },
             "copy_to_regex": {
-                "description": "Key/value pairs to copy one field to another, optionally removing original field, based on regex match of field, e.g. ``.*foo``:``bar`` would copy create field ``bar`` and copy all values fields ``goober_foo`` and ``tronic_foo`` to ``bar``.  Note: Can also be used to remove fields by setting the target field as false, e.g. ``.*bar``:``false``, would remove fields matching regex ``.*bar`` [Default: ``{}``]",
-                "type": "object"
-            },
+                    "description": "Key/value pairs to copy one field to another, optionally removing original field, based on regex match of field, e.g. ``.*foo``:``bar`` would copy create field ``bar`` and copy all values fields ``goober_foo`` and ``tronic_foo`` to ``bar``.  Note: Can also be used to remove fields by setting the target field as false, e.g. ``.*bar``:``false``, would remove fields matching regex ``.*bar`` [Default: ``{}``]",
+                    "type": "object"
+                    },
             "copy_value_to_regex": {
-                "description": "Key/value pairs that match values based on regex and copy to new field if matching, e.g. ``http.*``:``websites`` would create new field ``websites`` and copy ``http://exampl.com`` and ``https://example.org`` to new field ``websites`` [Default: ``{}``]",
-                "type": "object"
-            },
+                    "description": "Key/value pairs that match values based on regex and copy to new field if matching, e.g. ``http.*``:``websites`` would create new field ``websites`` and copy ``http://exampl.com`` and ``https://example.org`` to new field ``websites`` [Default: ``{}``]",
+                    "type": "object"
+                    },
             "error_on_delims_collision": {
-                "description": "Boolean to raise ``DelimiterCollision`` exception if delimiter strings from either ``node_delim`` or ``ns_prefix_delim`` collide with field name or field value (``false`` by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: ``false``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to raise ``DelimiterCollision`` exception if delimiter strings from either ``node_delim`` or ``ns_prefix_delim`` collide with field name or field value (``false`` by default for permissive mapping, but can be helpful if collisions are essential to detect) [Default: ``false``]",
+                    "type": "boolean"
+                    },
             "exclude_attributes": {
-                "description": "Array of attributes to skip when creating field names, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@goober=1000``, skipping attribute ``baz`` [Default: ``[]``]",
-                "type": "array"
-            },
+                    "description": "Array of attributes to skip when creating field names, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@goober=1000``, skipping attribute ``baz`` [Default: ``[]``]",
+                    "type": "array"
+                    },
             "exclude_elements": {
-                "description": "Array of elements to skip when creating field names, e.g. [``baz``] when encountering field ``<foo><baz><bar>tronic</bar></baz></foo>`` would create field ``foo_bar``, skipping element ``baz`` [Default: ``[]``, After: ``include_all_attributes``, ``include_attributes``]",
-                "type": "array"
-            },
+                    "description": "Array of elements to skip when creating field names, e.g. [``baz``] when encountering field ``<foo><baz><bar>tronic</bar></baz></foo>`` would create field ``foo_bar``, skipping element ``baz`` [Default: ``[]``, After: ``include_all_attributes``, ``include_attributes``]",
+                    "type": "array"
+                    },
             "include_attributes": {
-                "description": "Array of attributes to include when creating field names, despite setting of ``include_all_attributes``, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@baz=42`` [Default: ``[]``, Before: ``exclude_attributes``, After: ``include_all_attributes``]",
-                "type": "array"
-            },
+                    "description": "Array of attributes to include when creating field names, despite setting of ``include_all_attributes``, e.g. [``baz``] when encountering XML ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would create field ``foo_bar_@baz=42`` [Default: ``[]``, Before: ``exclude_attributes``, After: ``include_all_attributes``]",
+                    "type": "array"
+                    },
             "include_all_attributes": {
-                "description": "Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to consider and include all attributes when creating field names, e.g. if ``false``, XML elements ``<foo><bar baz='42' goober='1000'>tronic</baz></foo>`` would result in field name ``foo_bar`` without attributes included.  Note: the use of all attributes for creating field names has the the potential to balloon rapidly, potentially encountering ElasticSearch field limit for an index, therefore ``false`` by default.  [Default: ``false``, Before: ``include_attributes``, ``exclude_attributes``]",
+                    "type": "boolean"
+                    },
             "include_sibling_id": {
-                "description": "Boolean to append matching identifiers, as part of key name, to sibling nodes, e.g. ``foo_bar`` and `foo_baz`` might become ``foo(abc123)_bar(def456)`` and ``foo(abc123)_baz(def456)``",
-                "type": "boolean"
-            },
+                    "description": "Boolean to append matching identifiers, as part of key name, to sibling nodes, e.g. ``foo_bar`` and `foo_baz`` might become ``foo(abc123)_bar(def456)`` and ``foo(abc123)_baz(def456)``",
+                    "type": "boolean"
+                    },
             "include_meta": {
-                "description": "Boolean to include ``xml2kvp_meta`` field with output that contains all these configurations [Default: ``false``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to include ``xml2kvp_meta`` field with output that contains all these configurations [Default: ``false``]",
+                    "type": "boolean"
+                    },
             "node_delim": {
-                "description": "String to use as delimiter between XML elements and attributes when creating field name, e.g. ``___`` will convert XML ``<foo><bar>tronic</bar></foo>`` to field name ``foo___bar`` [Default: ``_``]",
-                "type": "string"
-            },
+                    "description": "String to use as delimiter between XML elements and attributes when creating field name, e.g. ``___`` will convert XML ``<foo><bar>tronic</bar></foo>`` to field name ``foo___bar`` [Default: ``_``]",
+                    "type": "string"
+                    },
             "ns_prefix_delim": {
-                "description": "String to use as delimiter between XML namespace prefixes and elements, e.g. ``|`` for the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will create field name ``ns|foo_ns:bar``.  Note: a ``|`` pipe character is used to avoid using a colon in ElasticSearch fields, which can be problematic. [Default: ``|``]",
-                "type": "string"
-            },
+                    "description": "String to use as delimiter between XML namespace prefixes and elements, e.g. ``|`` for the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will create field name ``ns|foo_ns:bar``.  Note: a ``|`` pipe character is used to avoid using a colon in ElasticSearch fields, which can be problematic. [Default: ``|``]",
+                    "type": "string"
+                    },
             "remove_copied_key": {
-                "description": "Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: ``true``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to determine if originating field will be removed from output if that field is copied to another field [Default: ``true``]",
+                    "type": "boolean"
+                    },
             "remove_copied_value": {
-                "description": "Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: ``false``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to determine if value will be removed from originating field if that value is copied to another field [Default: ``false``]",
+                    "type": "boolean"
+                    },
             "remove_ns_prefix": {
-                "description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if ``false``, the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will result in field name ``foo_bar`` without ``ns`` prefix [Default: ``true``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to determine if XML namespace prefixes are removed from field names, e.g. if ``false``, the XML ``<ns:foo><ns:bar>tronic</ns:bar></ns:foo>`` will result in field name ``foo_bar`` without ``ns`` prefix [Default: ``true``]",
+                    "type": "boolean"
+                    },
             "self_describing": {
-                "description": "Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if ``true``, and ``node_delim`` is ``___`` and ``ns_prefix_delim`` is ``|``, suffix will be ``___3|1``.  Can be useful to reverse engineer field name when not re-parsed by XML2kvp. [Default: ``false``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to include machine parsable information about delimeters used (reading right-to-left, delimeter and its length in characters) as suffix to field name, e.g. if ``true``, and ``node_delim`` is ``___`` and ``ns_prefix_delim`` is ``|``, suffix will be ``___3|1``.  Can be useful to reverse engineer field name when not re-parsed by XML2kvp. [Default: ``false``]",
+                    "type": "boolean"
+                    },
             "split_values_on_all_fields": {
-                "description": "If present, string to use for splitting values from all fields, e.g. `` `` will convert single value ``a foo bar please`` into the array of values [``a``,``foo``,``bar``,``please``] for that field [Default: ``false``]",
-                "type": ["boolean", "string"]
-            },
+                    "description": "If present, string to use for splitting values from all fields, e.g. `` `` will convert single value ``a foo bar please`` into the array of values [``a``,``foo``,``bar``,``please``] for that field [Default: ``false``]",
+                    "type": ["boolean", "string"]
+                    },
             "split_values_on_fields": {
-                "description": "Key/value pairs of field names to split, and the string to split on, e.g. ``foo_bar``:``,`` will split all values on field ``foo_bar`` on comma ``,`` [Default: ``{}``]",
-                "type": "object"
-            },
+                    "description": "Key/value pairs of field names to split, and the string to split on, e.g. ``foo_bar``:``,`` will split all values on field ``foo_bar`` on comma ``,`` [Default: ``{}``]",
+                    "type": "object"
+                    },
             "skip_attribute_ns_declarations": {
-                "description": "Boolean to remove namespace declarations as considered attributes when creating field names [Default: ``true``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to remove namespace declarations as considered attributes when creating field names [Default: ``true``]",
+                    "type": "boolean"
+                    },
             "skip_repeating_values": {
-                "description": "Boolean to determine if a field is multivalued, if those values are allowed to repeat, e.g. if set to ``false``, XML ``<foo><bar>42</bar><bar>42</bar></foo>`` would map to ``foo_bar``:``42``, removing the repeating instance of that value. [Default: ``true``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to determine if a field is multivalued, if those values are allowed to repeat, e.g. if set to ``false``, XML ``<foo><bar>42</bar><bar>42</bar></foo>`` would map to ``foo_bar``:``42``, removing the repeating instance of that value. [Default: ``true``]",
+                    "type": "boolean"
+                    },
             "skip_root": {
-                "description": "Boolean to determine if the XML root element will be included in output field names [Default: ``false``]",
-                "type": "boolean"
-            },
+                    "description": "Boolean to determine if the XML root element will be included in output field names [Default: ``false``]",
+                    "type": "boolean"
+                    },
             "repeating_element_suffix_count": {
-                "description": "Boolean to suffix field name with incrementing integer (after first instance, which does not receieve a suffix), e.g. XML ``<foo><bar>42</bar><bar>109</bar></foo>`` would map to ``foo_bar``:``42``, ``foo_bar_#1``:``109``  [Default: ``false``, Overrides: ``skip_repeating_values``]",
-                "type": "boolean"
-            }
+                    "description": "Boolean to suffix field name with incrementing integer (after first instance, which does not receieve a suffix), e.g. XML ``<foo><bar>42</bar><bar>109</bar></foo>`` would map to ``foo_bar``:``42``, ``foo_bar_#1``:``109``  [Default: ``false``, Overrides: ``skip_repeating_values``]",
+                    "type": "boolean"
+                    }
         }
     }
 
     def __init__(self, **kwargs):
-
         '''
         Args
-            kwargs (dict): Accepts named args from static methods
+                kwargs (dict): Accepts named args from static methods
         '''
 
         # defaults, overwritten by methods
@@ -267,7 +265,7 @@ class XML2kvp(object):
         # list of properties that are allowed to be overwritten with None
         arg_none_allowed = []
 
-        # overwite with attributes from static methods
+        # overwrite with attributes from static methods
         for k, v in kwargs.items():
             if v is not None or k in arg_none_allowed:
                 setattr(self, k, v)
@@ -453,13 +451,13 @@ class XML2kvp(object):
                                            {'node_delim': self.node_delim, 'ns_prefix_delim': self.ns_prefix_delim}))
 
     def _process_kvp(self, hops, value):
-
         '''
         method to add key/value pairs to saved dictionary,
         appending new values to pre-existing keys
         '''
 
         # sanitize value
+
         value = self._sanitize_value(value)
 
         # join on node delimiter
@@ -564,7 +562,8 @@ class XML2kvp(object):
                         suffix_count += 1
                     else:
                         break
-                self.kvp_dict['%s%s#%s' % (k, self.node_delim, suffix_count)] = value
+                self.kvp_dict['%s%s#%s' %
+                              (k, self.node_delim, suffix_count)] = value
 
             # already list, append
             else:
@@ -572,7 +571,6 @@ class XML2kvp(object):
                     self.kvp_dict[k].append(value)
 
     def _split_and_concat_fields(self):
-
         '''
         Method to group actions related to splitting and concatenating field values
         '''
@@ -602,7 +600,6 @@ class XML2kvp(object):
                     self.kvp_dict[k] = self.kvp_dict[k].split(v)
 
     def _parse_xml_input(self, xml_input):
-
         '''
         Note: self may be handler instance passsed
         '''
@@ -615,17 +612,16 @@ class XML2kvp(object):
                 except:
                     self.xml = etree.fromstring(xml_input.encode('utf-8'))
                 self._parse_nsmap()
-            return (xml_input)
+            return xml_input
 
         # if etree object, to string and save
         if type(xml_input) in [etree._Element, etree._ElementTree]:
             if self.include_xml_prop:
                 self.xml = xml_input
                 self._parse_nsmap()
-            return (etree.tostring(xml_input).decode('utf-8'))
+            return etree.tostring(xml_input).decode('utf-8')
 
     def _parse_nsmap(self):
-
         '''
         Note: self may be handler instance passsed
         '''
@@ -634,13 +630,13 @@ class XML2kvp(object):
         _nsmap = self.xml.nsmap.copy()
         try:
             global_ns = _nsmap.pop(None)
-            _nsmap['global_ns'] = ns0
+            # TODO: global_ns on below line was 'ns0' which doesn't exist...
+            _nsmap['global_ns'] = global_ns
         except:
             pass
         self.nsmap = _nsmap
 
     def _sanitize_value(self, value):
-
         '''
         Method to sanitize value before storage in ElasticSearch
 
@@ -657,7 +653,6 @@ class XML2kvp(object):
 
     @staticmethod
     def xml_to_kvp(xml_input, handler=None, return_handler=False, **kwargs):
-
         '''
         Static method to create key/value pairs (kvp) from XML string input
 
@@ -678,7 +673,8 @@ class XML2kvp(object):
         handler.xml_string = handler._parse_xml_input(xml_input)
 
         # parse as dictionary
-        handler.xml_dict = xmltodict.parse(handler.xml_string, xml_attribs=True)
+        handler.xml_dict = xmltodict.parse(
+            handler.xml_string, xml_attribs=True)
 
         # walk xmltodict parsed dictionary
         handler._xml_dict_parser(None, handler.xml_dict, hops=[])
@@ -717,23 +713,21 @@ class XML2kvp(object):
         # return
         if return_handler:
             return handler
-        else:
-            return handler.kvp_dict
+        return handler.kvp_dict
 
     @staticmethod
     def kvp_to_xml(kvp, handler=None, return_handler=False, serialize_xml=False, **kwargs):
-
         '''
         Method to generate XML from KVP
 
         Args:
-            kvp (dict): Dictionary of key value pairs
-            handler (XML2kvp): Instance of XML2kvp client
-            return_handler (boolean): Return XML if False, handler if True
+                kvp (dict): Dictionary of key value pairs
+                handler (XML2kvp): Instance of XML2kvp client
+                return_handler (boolean): Return XML if False, handler if True
         '''
 
         # DEBUG
-        stime = time.time()
+        # stime = time.time()
 
         # init handler, overwriting defaults if not None
         if not handler:
@@ -793,12 +787,14 @@ class XML2kvp(object):
                     node_ele = etree.Element(tag_name, nsmap=handler.nsmap)
 
                     # check for attributes
-                    if i + 1 < len(nodes) and nodes[i + 1].startswith('@'):
+                    if i+1 < len(nodes) and nodes[i+1].startswith('@'):
                         while True:
-                            for attrib in nodes[i + 1:]:
+                            for attrib in nodes[i+1:]:
                                 if attrib.startswith('@'):
-                                    attrib_name, attrib_value = attrib.split('=')
-                                    attribs[attrib_name.lstrip('@')] = attrib_value
+                                    attrib_name, attrib_value = attrib.split(
+                                        '=')
+                                    attribs[attrib_name.lstrip(
+                                        '@')] = attrib_value
                                 else:
                                     break
                             break
@@ -811,7 +807,7 @@ class XML2kvp(object):
 
             # write values and number of nodes
             # # convert with ast.literal_eval to circumvent lists/tuples record as strings in pyspark
-            # # https://github.com/WSULib/combine/issues/361#issuecomment-442510950
+            # # https://github.com/MI-DPLA/combine/issues/361#issuecomment-442510950
             if type(v) == str:
 
                 # evaluate to expose lists or tuples
@@ -824,7 +820,8 @@ class XML2kvp(object):
 
                 # split based on handler.multivalue_delim
                 if handler.multivalue_delim != None and type(v) == str and handler.multivalue_delim in v:
-                    v = [val.strip() for val in v.split(handler.multivalue_delim)]
+                    v = [val.strip()
+                         for val in v.split(handler.multivalue_delim)]
 
             # handle single value
             if type(v) == str:
@@ -862,12 +859,10 @@ class XML2kvp(object):
         # return
         if serialize_xml:
             return xml_record.serialize()
-        else:
-            return xml_record
+        return xml_record
 
     @staticmethod
     def k_to_xpath(k, handler=None, return_handler=False, **kwargs):
-
         '''
         Method to derive xpath from kvp key
         '''
@@ -885,7 +880,8 @@ class XML2kvp(object):
 
         # if include_sibling_id, strip 6 char id from end
         if handler.include_sibling_id:
-            k_parts = [part[:-8] if not part.startswith('@') else part for part in k_parts]
+            k_parts = [
+                part[:-8] if not part.startswith('@') else part for part in k_parts]
 
         # set initial on_attrib flag
         on_attrib = False
@@ -963,8 +959,7 @@ class XML2kvp(object):
         # return
         if return_handler:
             return handler
-        else:
-            return xpath
+        return xpath
 
     @staticmethod
     def kvp_to_xpath(
@@ -989,14 +984,13 @@ class XML2kvp(object):
             handler.kvp_dict = kvp
 
         # loop through and append to handler
-        for k, v in handler.kvp_dict.items():
+        for k, _v in handler.kvp_dict.items():
             XML2kvp.k_to_xpath(k, handler=handler)
 
         # return
         if return_handler:
             return handler
-        else:
-            return handler.k_xpath_dict
+        return handler.k_xpath_dict
 
     def test_kvp_to_xpath_roundtrip(self):
 
@@ -1010,7 +1004,9 @@ class XML2kvp(object):
             self._parse_nsmap()
 
         # generate xpaths values
-        self = XML2kvp.kvp_to_xpath(self.kvp_dict, handler=self, return_handler=True)
+        # TODO: why are we assigning to self here? does that even work?
+        self = XML2kvp.kvp_to_xpath(
+            self.kvp_dict, handler=self, return_handler=True)
 
         # check instances and report
         for k, v in self.k_xpath_dict.items():
@@ -1022,28 +1018,27 @@ class XML2kvp(object):
                 elif type(values) in [tuple, list]:
                     values_len = len(values)
                 if len(matched_elements) != values_len:
-                    logger.debug('mistmatch on %s --> %s, matched elements:values --> %s:%s' % (
-                    k, v, values_len, len(matched_elements)))
+                    logger.debug('mismatch on %s --> %s, matched elements:values --> %s:%s',
+                    k, v, values_len, len(matched_elements))
             except etree.XPathEvalError:
-                logger.debug('problem with xpath statement: %s' % v)
-                logger.debug('could not calculate %s --> %s' % (k, v))
+                logger.debug('problem with xpath statement: %s', v)
+                logger.debug('could not calculate %s --> %s', k, v)
 
     @staticmethod
     def test_xml_to_kvp_speed(iterations, kwargs):
 
         stime = time.time()
-        for x in range(0, iterations):
+        for _ in range(0, iterations):
             XML2kvp.xml_to_kvp(XML2kvp.test_xml, **kwargs)
         print("avg for %s iterations: %s" % (iterations, (time.time() - stime) / float(iterations)))
 
     def schema_as_table(self, table_format='rst'):
-
         '''
         Method to export schema as tabular table
-            - converts list of lists into ASCII table
+                - converts list of lists into ASCII table
 
         Args:
-            table_format (str) ['rst','md']
+                table_format (str) ['rst','md']
         '''
 
         # init table
@@ -1068,12 +1063,11 @@ class XML2kvp(object):
         if table_format == 'rst':
             return dashtable.data2rst(table, use_headers=True)
         elif table_format == 'md':
-            return dashtable.data2md(table, use_headers=True)
-        elif table_format == 'html':
-            return None
+            return dashtable.data2md(table)
+        # else if table format is 'html' or anything else
+        return None
 
     def _table_format_type(self, prop_type):
-
         '''
         Method to format XML2kvp configuration property type for table
         '''
@@ -1081,13 +1075,12 @@ class XML2kvp(object):
         # handle single
         if type(prop_type) == str:
             return "``%s``" % prop_type
-
         # handle list
         elif type(prop_type) == list:
             return "[" + ",".join(["``%s``" % t for t in prop_type]) + "]"
+        return ""
 
     def _table_format_desc(self, desc):
-
         '''
         Method to format XML2kvp configuration property description for table
         '''
@@ -1096,7 +1089,6 @@ class XML2kvp(object):
 
     @staticmethod
     def k_to_human(k, handler=None, return_handler=False, **kwargs):
-
         '''
         Method to humanize k's with sibling hashes and attributes
         '''
@@ -1105,14 +1097,15 @@ class XML2kvp(object):
         if handler.include_sibling_id:
             k = re.sub(r'\(.+?\)', '', k)
 
-            # rewrite namespace
+        # rewrite namespace
             k = re.sub(r'\%s' % handler.ns_prefix_delim, ':', k)
 
         # return
         return k
 
 
-class XMLRecord(object):
+
+class XMLRecord():
     '''
     Class to scaffold and create XML records from XML2kvp kvp
     '''
@@ -1125,12 +1118,11 @@ class XMLRecord(object):
         self.merge_metrics = {}
 
     def tether_node_lists(self):
-
         '''
         Method to tether nodes from node_lists as parent/child
 
         Returns:
-            writes parent node to self.nodes
+                writes parent node to self.nodes
         '''
 
         for node_list in self.node_lists:
@@ -1150,7 +1142,6 @@ class XMLRecord(object):
             self.nodes.append(node_list[0])
 
     def merge_root_nodes(self):
-
         '''
         Method to merge all nodes from self.nodes
         '''
@@ -1169,7 +1160,6 @@ class XMLRecord(object):
                 self.root_node.append(child)
 
     def merge_siblings(self, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
-
         '''
         Method to merge all siblings if sibling_hash provided
         '''
@@ -1201,27 +1191,28 @@ class XMLRecord(object):
 
         # remove sibling_hash_id
         if remove_sibling_hash_attrib:
-            all_siblings = self.root_node.xpath('//*[@sibling_hash_id]', namespaces=self.root_node.nsmap)
+            all_siblings = self.root_node.xpath(
+                '//*[@sibling_hash_id]', namespaces=self.root_node.nsmap)
             for sibling in all_siblings:
                 sibling.attrib.pop('sibling_hash_id')
 
     def _siblings_xpath_merge(self, sibling_hash, remove_empty_nodes=True):
-
         '''
         Internal method to handle the actual movement of sibling nodes
-            - performs XPath query
-            - moves siblings to parent of 0th result
+                - performs XPath query
+                - moves siblings to parent of 0th result
 
         Args:
-            sibling_hash (str): Sibling has to perform Xpath query with
-            remove_empty_nodes (bool): If True, remove nodes that no longer contain children
+                sibling_hash (str): Sibling has to perform Xpath query with
+                remove_empty_nodes (bool): If True, remove nodes that no longer contain children
 
         Returns:
 
         '''
 
         # xpath query to find all siblings in tree
-        siblings = self.root_node.xpath('//*[@sibling_hash_id="%s"]' % sibling_hash, namespaces=self.root_node.nsmap)
+        siblings = self.root_node.xpath(
+            '//*[@sibling_hash_id="%s"]' % sibling_hash, namespaces=self.root_node.nsmap)
 
         # metrics
         removed = 0
@@ -1252,11 +1243,11 @@ class XMLRecord(object):
                 moved += 1
 
         # return metrics
-        metrics = {'sibling_hash': sibling_hash, 'removed': removed, 'moved': moved}
+        metrics = {'sibling_hash': sibling_hash,
+                   'removed': removed, 'moved': moved}
         return metrics
 
     def serialize(self, pretty_print=True):
-
         '''
         Method to serialize self.root_node to XML
         '''

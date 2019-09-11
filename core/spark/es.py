@@ -2,17 +2,9 @@
 import django
 from elasticsearch import Elasticsearch
 import json
-from lxml import etree
-from lxml.etree import _Element, _ElementUnicodeResult
 import os
 import re
-import requests
 import sys
-import time
-import xmltodict
-
-# pyjxslt
-import pyjxslt
 
 # import Row from pyspark
 try:
@@ -22,6 +14,7 @@ try:
 except:
     pass
 
+# pylint: disable=wrong-import-position
 # check for registered apps signifying readiness, if not, run django.setup() to run as standalone
 if not hasattr(django, 'apps'):
     os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
@@ -38,27 +31,27 @@ except:
     from xml2kvp import XML2kvp
 
 
-class ESIndex(object):
-    '''
+class ESIndex():
+
+    """
     Class to organize methods for indexing mapped/flattened metadata into ElasticSearch (ES)
-    '''
+    """
 
     @staticmethod
     def index_job_to_es_spark(spark, job, records_df, field_mapper_config):
-
-        '''
+        """
         Method to index records dataframe into ES
 
         Args:
-            spark (pyspark.sql.session.SparkSession): spark instance from static job methods
-            job (core.models.Job): Job for records
-            records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
-            field_mapper_config (dict): XML2kvp field mapper configurations
+                spark (pyspark.sql.session.SparkSession): spark instance from static job methods
+                job (core.models.Job): Job for records
+                records_df (pyspark.sql.DataFrame): records as pyspark DataFrame
+                field_mapper_config (dict): XML2kvp field mapper configurations
 
         Returns:
-            None
-                - indexes records to ES
-        '''
+                None
+                        - indexes records to ES
+        """
 
         # init logging support
         spark.sparkContext.setLogLevel('INFO')
@@ -72,7 +65,8 @@ class ESIndex(object):
         def es_mapper_pt_udf(pt):
 
             # init mapper once per partition
-            mapper = index_mapper_handle(field_mapper_config=field_mapper_config)
+            mapper = index_mapper_handle(
+                field_mapper_config=field_mapper_config)
 
             for row in pt:
                 yield mapper.map_record(
@@ -106,16 +100,17 @@ class ESIndex(object):
             failures_df = failures_df.withColumn('job_id', lit(job.id))
 
             # write mapping failures to DB
-            failures_df.select(['db_id', 'record_id', 'job_id', 'mapping_error']) \
-                .write.format("com.mongodb.spark.sql.DefaultSource") \
-                .mode("append") \
-                .option("uri", "mongodb://127.0.0.1") \
-                .option("database", "combine") \
+            failures_df.select(['db_id', 'record_id', 'job_id', 'mapping_error'])\
+                .write.format("com.mongodb.spark.sql.DefaultSource")\
+                .mode("append")\
+                .option("uri", "mongodb://127.0.0.1")\
+                .option("database", "combine")\
                 .option("collection", "index_mapping_failure").save()
 
         # retrieve successes to index
         logger.info('###ES 4 -- filtering successes')
-        to_index_rdd = mapped_records_rdd.filter(lambda row: row[0] == 'success')
+        to_index_rdd = mapped_records_rdd.filter(
+            lambda row: row[0] == 'success')
 
         # create index in advance
         index_name = 'j%s' % job.id
@@ -123,14 +118,13 @@ class ESIndex(object):
         if not es_handle_temp.indices.exists(index_name):
             # put combine es index templates
             template_body = {
-                'template': '*',
-                'settings': {
-                    'number_of_shards': 1,
-                    'number_of_replicas': 0,
-                    'refresh_interval': -1
-                },
-                'mappings': {
-                    'record': {
+                    'template': '*',
+                    'settings': {
+                        'number_of_shards': 1,
+                        'number_of_replicas': 0,
+                        'refresh_interval': -1
+                        },
+                    'mappings': {
                         "dynamic_templates": [
                             {
                                 "strings": {
@@ -139,23 +133,23 @@ class ESIndex(object):
                                         "type": "text",
                                         "fields": {
                                             "keyword": {
-                                                "type": "keyword"
+                                                "type":  "keyword"
+                                                }
                                             }
                                         }
                                     }
                                 }
-                            }
-                        ],
+                            ],
                         'date_detection': False,
                         'properties': {
                             'combine_db_id': {
                                 'type': 'integer'
+                                }
                             }
                         }
                     }
-                }
-            }
-            es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+            es_handle_temp.indices.put_template(
+                'combine_template', body=json.dumps(template_body))
 
             # create index
             es_handle_temp.indices.create(index_name)
@@ -168,8 +162,9 @@ class ESIndex(object):
             keyClass="org.apache.hadoop.io.NullWritable",
             valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
             conf={
-                "es.resource": "%s/record" % index_name,
+                "es.resource": "%s/_doc" % index_name,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
+                "es.nodes.wan.only": "true",
                 "es.mapping.exclude": "temp_id,__class__",
                 "es.mapping.id": "temp_id",
             }
@@ -189,18 +184,17 @@ class ESIndex(object):
             refresh=True,
             wait_for_completion=True,
             add_copied_from=None):
-
-        '''
+        """
         Method to duplicate one ES index to another
 
         Args:
-            create_target_index (boolean): If True, check for target and create
-            source_index (str): Source ES index to copy from
-            target_index (str): Target ES index to copy to
+                create_target_index (boolean): If True, check for target and create
+                source_index (str): Source ES index to copy from
+                target_index (str): Target ES index to copy to
 
         Returns:
-            (dict): results of reindex via elasticsearch client reindex request
-        '''
+                (dict): results of reindex via elasticsearch client reindex request
+        """
 
         # get ES handle
         es_handle_temp = Elasticsearch(hosts=[settings.ES_HOST])
@@ -208,23 +202,24 @@ class ESIndex(object):
         # put/confirm combine es index templates
         template_body = {
             'template': '*',
-            'settings': {
-                'number_of_shards': 1,
-                'number_of_replicas': 0,
-                'refresh_interval': -1
-            },
+                        'settings': {
+                            'number_of_shards': 1,
+                            'number_of_replicas': 0,
+                            'refresh_interval': -1
+                        },
             'mappings': {
-                'record': {
-                    'date_detection': False,
-                    'properties': {
-                        'combine_db_id': {
-                            'type': 'integer'
+                            'record': {
+                                'date_detection': False,
+                                'properties': {
+                                    'combine_db_id': {
+                                        'type': 'integer'
+                                    }
+                                }
+                            }
                         }
-                    }
-                }
-            }
         }
-        es_handle_temp.indices.put_template('combine_template', body=json.dumps(template_body))
+        es_handle_temp.indices.put_template(
+            'combine_template', body=json.dumps(template_body))
 
         # if creating target index check if target index exists
         if create_target_index and not es_handle_temp.indices.exists(target_index):
@@ -249,29 +244,30 @@ class ESIndex(object):
             }
 
         # reindex using elasticsearch client
-        reindex = es_handle_temp.reindex(body=dupe_dict, wait_for_completion=wait_for_completion, refresh=refresh)
+        params = {'wait_for_completion': wait_for_completion, 'refresh': refresh}
+        reindex = es_handle_temp.reindex(body=dupe_dict, params=params)
         return reindex
 
 
-class BaseMapper(object):
-    '''
+class BaseMapper():
+
+    """
     All mappers extend this BaseMapper class.
 
     Contains some useful methods and attributes that other mappers may use
 
     Mappers expected to contain following methods:
-        - map_record()
-    '''
+            - map_record()
+    """
 
     # pre-compiled regex
     blank_check_regex = re.compile(r"[^ \t\n]")  # checker for blank spaces
     namespace_prefix_regex = re.compile(r'(\{.+\})?(.*)')  # element tag name
 
     def get_namespaces(self):
-
-        '''
+        """
         Method to parse namespaces from XML document and save to self.nsmap
-        '''
+        """
 
         nsmap = {}
         for ns in self.xml_root.xpath('//namespace::*'):
@@ -284,9 +280,9 @@ class BaseMapper(object):
 
 
 class XML2kvpMapper(BaseMapper):
-    '''
+    """
     Map XML to ElasticSearch friendly fields with XML2kvp
-    '''
+    """
 
     def __init__(self, field_mapper_config=None):
 
@@ -300,23 +296,22 @@ class XML2kvpMapper(BaseMapper):
                    publish_set_id=None,
                    fingerprint=None
                    ):
-
-        '''
+        """
         Map record
 
         Args:
-            record_string (str): string of record document
-            db_id (str): mongo db id
-            combine_id (str): combine_id id
-            record_id (str): record id
-            publish_set_id (str): core.models.RecordGroup.published_set_id, used to build publish identifier
-            fingerprint (str): fingerprint
+                record_string (str): string of record document
+                db_id (str): mongo db id
+                combine_id (str): combine_id id
+                record_id (str): record id
+                publish_set_id (str): core.models.RecordGroup.published_set_id, used to build publish identifier
+                fingerprint (str): fingerprint
 
         Returns:
-            (tuple):
-                0 (str): ['success','fail']
-                1 (dict): details from mapping process, success or failure
-        '''
+                (tuple):
+                        0 (str): ['success','fail']
+                        1 (dict): details from mapping process, success or failure
+        """
 
         try:
 
@@ -348,7 +343,8 @@ class XML2kvpMapper(BaseMapper):
             })
 
             # map with XML2kvp
-            kvp_dict = XML2kvp.xml_to_kvp(record_string, **self.field_mapper_config)
+            kvp_dict = XML2kvp.xml_to_kvp(
+                record_string, **self.field_mapper_config)
 
             return (
                 'success',

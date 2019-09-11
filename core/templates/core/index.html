@@ -24,7 +24,7 @@
 						<tr>
 							<td><a href="{% url 'organization' org_id=org.id %}">{{ org.name }}</a></td>
 							<td>{{ org.description }}</td>
-							<td>{{ org.timestamp }}</td>					
+							<td>{{ org.timestamp|date:"M d, Y, h:i A" }}</td>
 						</tr>
 					{% endfor %}
 				</tbody>

@@ -4,13 +4,13 @@
 body {
 	font-family: Arial, Helvetica, sans-serif;
 	font-size:90%;
-	padding-top: 4.5rem;
-	padding-right: 20px;
 	padding-bottom: 20px;
-	padding-left: 20px;
 }
 .bold {
 	font-weight: bold;
+}
+#breadcrumbs {
+    margin-top:10px;
 }
 .breadcrumb {
 	padding: 0.5rem 1rem;
@@ -110,6 +110,12 @@ div.grayed_dt_row, td.grayed_dt_row {
 }
 .invalid_job {
 	background-color:#ff9898;
+}
+.valid_job {
+    background-color:#cbffcb;
+}
+.warning_job {
+    background-color:#fff8a8;
 }
 #job_family_diagram {
 	width: 100%;
@@ -324,3 +330,6 @@ div.grayed_dt_row, td.grayed_dt_row {
     border-color: #dee2e6 #dee2e6 #fff;
 }
 
+.progress-bar.bg-warning {
+    color: #0c0c0c;
+}
