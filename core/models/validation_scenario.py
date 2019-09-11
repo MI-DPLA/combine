@@ -39,7 +39,7 @@ class ValidationScenario(models.Model):
             ('xsd', 'XML Schema')
         ]
     )
-    filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
+    filepath = models.TextField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
     default_run = models.BooleanField(default=1)
 
 

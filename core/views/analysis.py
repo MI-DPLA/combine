@@ -5,7 +5,7 @@ from django.shortcuts import render, redirect
 
 from core import xml2kvp
 from core.models import Job, AnalysisJob, PublishedRecords, ValidationScenario, FieldMapper,\
-    RecordIdentifierTransformationScenario, DPLABulkDataDownload, CombineJob
+    RecordIdentifierTransformation, DPLABulkDataDownload, CombineJob
 
 from .view_helpers import breadcrumb_parser
 
@@ -75,7 +75,7 @@ def job_analysis(request):
         field_mappers = FieldMapper.objects.all()
 
         # get record identifier transformation scenarios
-        rits = RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformation.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
         job_lineage = Job.get_all_jobs_lineage(jobs_query_set=input_jobs)

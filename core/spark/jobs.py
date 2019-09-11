@@ -53,7 +53,7 @@ from django.db import connection, transaction
 
 # import select models from Core
 from core.models import CombineJob, Job, JobInput, JobTrack, Transformation, PublishedRecords, \
-    RecordIdentifierTransformationScenario, RecordValidation, DPLABulkDataDownload
+    RecordIdentifierTransformation, RecordValidation, DPLABulkDataDownload
 
 # pylint: disable=no-else-return
 # TODO: pylint disable
@@ -567,8 +567,9 @@ class CombineSparkJob():
             keyClass="org.apache.hadoop.io.NullWritable",
             valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
             conf={
-                "es.resource": "%s/record" % es_indexes,
+                "es.resource": "%s/_doc" % es_indexes,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
+                "es.nodes.wan.only": "true",
                 "es.query": input_es_query_valve,
                 "es.read.field.exclude": "*"})
         es_df = es_rdd.map(lambda row: (row[0], )).toDF()
@@ -607,7 +608,7 @@ class CombineSparkJob():
         if rits_id and rits_id is not None:
 
             # get RITS
-            rits = RecordIdentifierTransformationScenario.objects.get(
+            rits = RecordIdentifierTransformation.objects.get(
                 pk=int(rits_id))
 
             # handle regex
@@ -2112,8 +2113,9 @@ class CombineStateIOImport(CombineStateIO):
                     keyClass="org.apache.hadoop.io.NullWritable",
                     valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
                     conf={
-                        "es.resource": "%s/record" % index_name,
+                        "es.resource": "%s/_doc" % index_name,
                         "es.nodes": "%s:9200" % settings.ES_HOST,
+                        "es.nodes.wan.only": "true",
                         "es.mapping.exclude": "temp_id",
                         "es.mapping.id": "temp_id",
                     }

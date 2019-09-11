@@ -35,7 +35,7 @@ class Transformation(models.Model):
             ('openrefine', 'Open Refine Actions')
         ]
     )
-    filepath = models.CharField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
+    filepath = models.TextField(max_length=1024, null=True, default=None, blank=True) # HiddenInput
     use_as_include = models.BooleanField(default=False)
 
 

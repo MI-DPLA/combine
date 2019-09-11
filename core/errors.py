@@ -1,3 +1,6 @@
+import sys
+import traceback
+
 from django.shortcuts import render
 
 from core.models import ErrorReport
@@ -20,4 +23,5 @@ class ErrorMiddleware():
         LOGGER.debug(traceback.print_exc())
         report = ErrorReport.create(exception)
         report.save()
+        LOGGER.debug(traceback.print_exception(*sys.exc_info()))
         return render(request, 'core/error.html', {'report': report})

@@ -11,7 +11,7 @@ from django.shortcuts import redirect, render
 from core import tasks, xml2kvp
 from core.models import RecordGroup, Job, CombineBackgroundTask, PublishedRecords,\
     CombineJob, AnalysisJob, GlobalMessageClient, OAIEndpoint, TransformJob,\
-    MergeJob, RecordIdentifierTransformationScenario, FieldMapper, DPLABulkDataDownload,\
+    MergeJob, RecordIdentifierTransformation, FieldMapper, DPLABulkDataDownload,\
     ValidationScenario, HarvestOAIJob, HarvestStaticXMLJob, Transformation, JobValidation,\
     HarvestTabularDataJob, ESIndex, Record
 from core.mongo import mc_handle
@@ -660,7 +660,7 @@ def job_harvest_oai(request, org_id, record_group_id):
         validation_scenarios = ValidationScenario.objects.all()
 
         # get record identifier transformation scenarios
-        rits = RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformation.objects.all()
 
         # get field mappers
         field_mappers = FieldMapper.objects.all()
@@ -718,7 +718,7 @@ def job_harvest_static_xml(request, org_id, record_group_id, hash_payload_filena
     field_mappers = FieldMapper.objects.all()
 
     # get record identifier transformation scenarios
-    rits = RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformation.objects.all()
 
     # get all bulk downloads
     bulk_downloads = DPLABulkDataDownload.objects.all()
@@ -776,7 +776,7 @@ def job_harvest_tabular_data(request, org_id, record_group_id, hash_payload_file
     field_mappers = FieldMapper.objects.all()
 
     # get record identifier transformation scenarios
-    rits = RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformation.objects.all()
 
     # get all bulk downloads
     bulk_downloads = DPLABulkDataDownload.objects.all()
@@ -853,7 +853,7 @@ def job_transform(request, org_id, record_group_id):
         field_mappers = FieldMapper.objects.all()
 
         # get record identifier transformation scenarios
-        rits = RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformation.objects.all()
 
         # get job lineage for all jobs (filtered to input jobs scope)
         job_lineage = Job.get_all_jobs_lineage(jobs_query_set=input_jobs)
@@ -924,7 +924,7 @@ def job_merge(request, org_id, record_group_id):
         validation_scenarios = ValidationScenario.objects.all()
 
         # get record identifier transformation scenarios
-        rits = RecordIdentifierTransformationScenario.objects.all()
+        rits = RecordIdentifierTransformation.objects.all()
 
         # get field mappers
         field_mappers = FieldMapper.objects.all()

@@ -21,7 +21,7 @@ class OAIEndpoint(models.Model):
             ('blackList', 'Comma-separated lists of sets to exclude from the harvest')
         ],
         default='harvestAllSets')
-    scope_value = models.CharField(max_length=1024, null=True, blank=True, default='true')
+    scope_value = models.TextField(max_length=1024, null=True, blank=True, default='true')
 
 
     def __str__(self):

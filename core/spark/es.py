@@ -118,38 +118,36 @@ class ESIndex():
         if not es_handle_temp.indices.exists(index_name):
             # put combine es index templates
             template_body = {
-                'template': '*',
-                            'settings': {
-                                'number_of_shards': 1,
-                                'number_of_replicas': 0,
-                                'refresh_interval': -1
-                            },
-                'mappings': {
-                                'record': {
-                                    "dynamic_templates": [
-                                        {
-                                            "strings": {
-                                                "match_mapping_type": "string",
-                                                "mapping": {
-                                                    "type": "text",
-                                                    "fields": {
-                                                            "keyword": {
-                                                                "type":  "keyword"
-                                                            }
-                                                    }
+                    'template': '*',
+                    'settings': {
+                        'number_of_shards': 1,
+                        'number_of_replicas': 0,
+                        'refresh_interval': -1
+                        },
+                    'mappings': {
+                        "dynamic_templates": [
+                            {
+                                "strings": {
+                                    "match_mapping_type": "string",
+                                    "mapping": {
+                                        "type": "text",
+                                        "fields": {
+                                            "keyword": {
+                                                "type":  "keyword"
                                                 }
                                             }
                                         }
-                                    ],
-                                    'date_detection': False,
-                                    'properties': {
-                                        'combine_db_id': {
-                                            'type': 'integer'
-                                        }
                                     }
                                 }
+                            ],
+                        'date_detection': False,
+                        'properties': {
+                            'combine_db_id': {
+                                'type': 'integer'
+                                }
                             }
-            }
+                        }
+                    }
             es_handle_temp.indices.put_template(
                 'combine_template', body=json.dumps(template_body))
 
@@ -164,8 +162,9 @@ class ESIndex():
             keyClass="org.apache.hadoop.io.NullWritable",
             valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
             conf={
-                "es.resource": "%s/record" % index_name,
+                "es.resource": "%s/_doc" % index_name,
                 "es.nodes": "%s:9200" % settings.ES_HOST,
+                "es.nodes.wan.only": "true",
                 "es.mapping.exclude": "temp_id,__class__",
                 "es.mapping.id": "temp_id",
             }

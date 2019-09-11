@@ -1,7 +1,7 @@
 from django.test import TestCase
-from core.models import RecordIdentifierTransformationScenario
+from core.models import RecordIdentifierTransformation
 
-class RecordIdentifierTransformationScenarioTestCase(TestCase):
+class RecordIdentifierTransformationTestCase(TestCase):
     @classmethod
     def setUpTestData(cls):
         cls.attributes = {
@@ -11,13 +11,13 @@ class RecordIdentifierTransformationScenarioTestCase(TestCase):
             'regex_match_payload': 'foo',
             'regex_replace_payload': 'bar'
         }
-        cls.rits = RecordIdentifierTransformationScenario(**cls.attributes)
+        cls.rits = RecordIdentifierTransformation(**cls.attributes)
 
     def test_str(self):
-        self.assertEqual('Test RITS, RITS: #{}'.format(RecordIdentifierTransformationScenarioTestCase.rits.id),
-                         format(RecordIdentifierTransformationScenarioTestCase.rits))
+        self.assertEqual('Test RITS, RITS: #{}'.format(RecordIdentifierTransformationTestCase.rits.id),
+                         format(RecordIdentifierTransformationTestCase.rits))
 
     def test_as_dict(self):
-        as_dict = RecordIdentifierTransformationScenarioTestCase.rits.as_dict()
-        for k, v in RecordIdentifierTransformationScenarioTestCase.attributes.items():
+        as_dict = RecordIdentifierTransformationTestCase.rits.as_dict()
+        for k, v in RecordIdentifierTransformationTestCase.attributes.items():
             self.assertEqual(as_dict[k], v)

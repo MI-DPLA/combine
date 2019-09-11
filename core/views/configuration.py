@@ -4,7 +4,7 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect
 
 from core.models import Transformation, OAIEndpoint, ValidationScenario, FieldMapper,\
-    RecordIdentifierTransformationScenario, DPLABulkDataDownload, DPLABulkDataClient
+    RecordIdentifierTransformation, DPLABulkDataDownload, DPLABulkDataClient
 from core.mongo import settings
 
 from .view_helpers import breadcrumb_parser
@@ -15,8 +15,7 @@ LOGGER = logging.getLogger(__name__)
 @login_required
 def configuration(request):
     # get all transformations
-    transformations = Transformation.objects.filter(
-        use_as_include=False)
+    transformations = Transformation.objects.all()
 
     # get all OAI endpoints
     oai_endpoints = OAIEndpoint.objects.all()
@@ -25,7 +24,7 @@ def configuration(request):
     validation_scenarios = ValidationScenario.objects.all()
 
     # get record identifier transformation scenarios
-    rits = RecordIdentifierTransformationScenario.objects.all()
+    rits = RecordIdentifierTransformation.objects.all()
 
     # get all bulk downloads
     bulk_downloads = DPLABulkDataDownload.objects.all()

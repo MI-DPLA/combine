@@ -3,7 +3,7 @@ from django.urls import reverse
 
 from tests.utils import TestConfiguration
 from core.models import Transformation, OAIEndpoint, ValidationScenario,\
-    RecordIdentifierTransformationScenario, DPLABulkDataDownload, FieldMapper
+    RecordIdentifierTransformation, DPLABulkDataDownload, FieldMapper
 
 
 class ConfigurationTestCase(TestCase):
@@ -16,7 +16,7 @@ class ConfigurationTestCase(TestCase):
         cls.validation_scenario = ValidationScenario(name='Class Test Validation Scenario',
                                                      validation_type='python')
         cls.validation_scenario.save()
-        cls.rits = RecordIdentifierTransformationScenario(name='Class Test RITS')
+        cls.rits = RecordIdentifierTransformation(name='Class Test RITS')
         cls.rits.save()
         cls.dpla_download = DPLABulkDataDownload()
         cls.dpla_download.save()

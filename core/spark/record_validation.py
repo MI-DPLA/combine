@@ -355,7 +355,7 @@ class ValidationScenarioSpark():
                 keyClass="org.apache.hadoop.io.NullWritable",
                 valueClass="org.elasticsearch.hadoop.mr.LinkedMapWritable",
                 conf={
-                    "es.resource": "%s/record" % es_index,
+                    "es.resource": "%s/_doc" % es_index,
                     "es.query": es_val_query,
                     "es.read.field.include": "db_id"
                 }

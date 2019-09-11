@@ -38,7 +38,7 @@ numpy==1.16.3
 openpyxl==2.4.9
 pandas==0.24.2
 pathlib2==2.3.0
-pexpect==4.2.1
+pexpect==4.7
 pickleshare==0.7.4
 polling==0.3.0
 prompt-toolkit==1.0.15

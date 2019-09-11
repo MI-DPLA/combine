@@ -29,8 +29,8 @@ class OAITransaction(models.Model):
     start = models.IntegerField(null=True, default=None)
     chunk_size = models.IntegerField(null=True, default=None)
     publish_set_id = models.CharField(max_length=255, null=True, default=None)
-    token = models.CharField(max_length=1024, db_index=True)
-    args = models.CharField(max_length=1024)
+    token = models.CharField(max_length=255, db_index=True)
+    args = models.TextField(max_length=1024)
 
 
     def __str__(self):
