@@ -208,12 +208,10 @@ class ESIndex():
                             'refresh_interval': -1
                         },
             'mappings': {
-                            'record': {
-                                'date_detection': False,
-                                'properties': {
-                                    'combine_db_id': {
-                                        'type': 'integer'
-                                    }
+                            'date_detection': False,
+                            'properties': {
+                                'combine_db_id': {
+                                    'type': 'integer'
                                 }
                             }
                         }
