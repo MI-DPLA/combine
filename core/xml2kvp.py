@@ -221,6 +221,10 @@ class XML2kvp():
             "repeating_element_suffix_count": {
                     "description": "Boolean to suffix field name with incrementing integer (after first instance, which does not receieve a suffix), e.g. XML ``<foo><bar>42</bar><bar>109</bar></foo>`` would map to ``foo_bar``:``42``, ``foo_bar_#1``:``109``  [Default: ``false``, Overrides: ``skip_repeating_values``]",
                     "type": "boolean"
+                    },
+            "add_element_root": {
+                        "description": "xml tag with which to wrap each element as a root",
+                        "type": "string"
                     }
         }
     }
@@ -735,6 +739,14 @@ class XML2kvp():
 
         # init XMLRecord
         xml_record = XMLRecord()
+        if hasattr(handler, 'add_element_root'):
+            root_node = handler.add_element_root
+            if handler.ns_prefix_delim in root_node:
+                prefix, tag_name = root_node.split(handler.ns_prefix_delim)
+                tag_name = '{%s}%s' % (handler.nsmap[prefix], tag_name)
+            else:
+                tag_name = root_node
+            xml_record.root_node = etree.Element(tag_name, nsmap=handler.nsmap)
 
         # loop through items
         for k, v in kvp.items():
@@ -1146,11 +1158,14 @@ class XMLRecord():
         Method to merge all nodes from self.nodes
         '''
 
+        node_list = self.nodes
         # set root with arbitrary first node
-        self.root_node = self.nodes[0]
+        if self.root_node is None:
+            self.root_node = self.nodes[0]
+            node_list = self.nodes[1:]
 
         # loop through others, add children to root node
-        for node in self.nodes[1:]:
+        for node in node_list:
 
             # get children
             children = node.getchildren()
@@ -1158,6 +1173,8 @@ class XMLRecord():
             # loop through and add to root node
             for child in children:
                 self.root_node.append(child)
+            if len(children) == 0 and node.tag != self.root_node.tag:
+                self.root_node.append(node)
 
     def merge_siblings(self, remove_empty_nodes=True, remove_sibling_hash_attrib=True):
         '''
@@ -1252,4 +1269,4 @@ class XMLRecord():
         Method to serialize self.root_node to XML
         '''
 
-        return etree.tostring(self.root_node, pretty_print=pretty_print).decode('utf-8')
+        return etree.tostring(self.root_node, pretty_print=pretty_print, xml_declaration=True, encoding="UTF-8").decode('utf-8')
