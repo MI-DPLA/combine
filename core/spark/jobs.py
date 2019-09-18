@@ -867,7 +867,7 @@ class HarvestOAISpark(CombineSparkJob):
         self.update_jobGroup('Running Harvest OAI Job')
 
         # prepare to harvest OAI records via Ingestion3
-        df = self.spark.read.format("dpla.ingestion3.harvesters.oai")\
+        df = self.spark.read.format("dpla.ingestion3.harvesters.oai.refactor")\
             .option("endpoint", self.job_details['oai_params']['endpoint'])\
             .option("verb", self.job_details['oai_params']['verb'])\
             .option("metadataPrefix", self.job_details['oai_params']['metadataPrefix'])
