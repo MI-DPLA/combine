@@ -27,7 +27,7 @@ from django.contrib.auth.models import User
 from django.core.exceptions import ObjectDoesNotExist
 from django.db import models, transaction
 from django.utils.datastructures import MultiValueDict
-from django.core.urlresolvers import reverse
+from django.urls import reverse
 
 from core.xml2kvp import XML2kvp
 from core import tasks, models as core_models
