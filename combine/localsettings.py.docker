@@ -52,6 +52,7 @@ Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA
 '''
 LIVY_HOST = '10.5.0.11'
 LIVY_PORT = 8998
+LIVY_UI_HOME = 'localhost/livy'
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
     'jars':[

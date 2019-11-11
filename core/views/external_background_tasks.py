@@ -69,6 +69,7 @@ def system(request):
 
     # return
     return render(request, 'core/system.html', {
+        'livy_ui_home': settings.LIVY_UI_HOME,
         'livy_session': livy_session,
         'livy_sessions': livy_sessions,
         'celery_status': celery_status,

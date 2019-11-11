@@ -31,8 +31,8 @@
 						<td>{{ livy_session.id }}</td>
 						<td>{{ livy_session.active }}</td>
 						<td>{{ livy_session.name }}</td>
-						<td>{{ livy_session.session_id }}</td>
-						<td><a href="http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}">http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}</a></td>
+            <td>{{ livy_session.session_id }}</td>
+            <td><a href="http://{{ livy_ui_home }}/ui/session/{{ livy_session.session_id }}">http://{{ livy_ui_home }}/ui/session/{{ livy_session.session_id }}</a></td>
 						<td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
 						<td>{{ livy_session.timestamp|date:"M d, Y, h:i A" }}</td>
 						<td><a href="http://{{ APP_HOST }}:{{livy_session.session_port}}">http://{{ APP_HOST }}:{{livy_session.session_port}}</a></td>
