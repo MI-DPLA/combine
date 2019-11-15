@@ -1,23 +1,6 @@
 from django.conf import settings
 
 
-'''
-Docker "combinenet" internal network assigns:
-	- host machine:		10.5.0.1
-	- elasticsearch:	10.5.0.2
-	- mongo:			10.5.0.3
-	- mysql:			10.5.0.4
-	- redis:			10.5.0.5
-	- hadoop-namenode:	10.5.0.6
-	- hadoop-datanode:	10.5.0.7
-	- spark-master:		10.5.0.8	<----- not currently used
-	- spark-worker:		10.5.0.9	<----- not currently used
-	- combine-django:	10.5.0.10
-	- livy:				10.5.0.11
-	- combine-celery:	10.5.0.12
-'''
-
-
 # Deployment type
 COMBINE_DEPLOYMENT = 'docker'
 
@@ -27,12 +10,12 @@ COMBINE_INSTALL_PATH = '/opt/combine'
 
 
 # Combine Front-End
-APP_HOST = '10.5.0.10'
+APP_HOST = 'localhost'
 
 
 # Spark Cluster Information
 # Note: configured to use Livy running in local[*] mode
-SPARK_HOST = '10.5.0.11'
+SPARK_HOST = 'livy'
 SPARK_PORT = 8080
 SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100 from here until open port is found
 
@@ -50,7 +33,7 @@ MONGO_READ_PARTITION_SIZE_MB = 4
 Combine uses Livy to issue spark statements.
 Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
 '''
-LIVY_HOST = '10.5.0.11'
+LIVY_HOST = 'livy'
 LIVY_PORT = 8998
 LIVY_UI_HOME = 'localhost/livy'
 LIVY_DEFAULT_SESSION_CONFIG = {
@@ -94,7 +77,7 @@ WRITE_AVRO = False
 
 
 # ElasicSearch server
-ES_HOST = '10.5.0.2'
+ES_HOST = 'elasticsearch'
 INDEX_TO_ES = True
 
 
@@ -128,7 +111,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://%s:3306/combine' % '10.5.0.4',
+	'jdbc_url':'jdbc:mysql://mysql:3306/combine',
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
@@ -161,8 +144,8 @@ ANALYSIS_JOBS_HIERARCHY = {
 }
 
 # Celery Configurations
-CELERY_BROKER_URL = 'redis://10.5.0.5:6379/0'
-CELERY_RESULT_BACKEND = 'redis://10.5.0.5:6379/0'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
 
 
 # StateIO Configurations
@@ -176,7 +159,7 @@ STATEIO_IMPORT_DIR = '/home/combine/data/combine/stateio/imports'
 
 
 # Mongo server
-MONGO_HOST = '10.5.0.3'
+MONGO_HOST = 'mongo'
 
 
 # Docker override for DATABASE settings
@@ -186,7 +169,7 @@ DATABASES = {
         'NAME': 'combine',
         'USER': 'combine',
         'PASSWORD': 'combine',
-        'HOST': '10.5.0.4',
+        'HOST': 'mysql',
         'PORT': '3306',
     }
 }
