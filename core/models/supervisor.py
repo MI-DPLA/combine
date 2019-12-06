@@ -17,7 +17,7 @@ class SupervisorRPCClient():
 
     def __init__(self):
 
-        self.server = xmlrpc_client.ServerProxy('http://localhost:9001/RPC2')
+        self.server = xmlrpc_client.ServerProxy('http://combine-celery:9001/RPC2')
 
 
     def get_server_state(self):
