@@ -44,14 +44,12 @@ def system(request):
         livy_sessions = livy_session
 
     # get status of background jobs
-    if not hasattr(settings, 'COMBINE_DEPLOYMENT') or settings.COMBINE_DEPLOYMENT != 'docker':
-        try:
-            supervisor = SupervisorRPCClient()
-            bgtasks_proc = supervisor.check_process('celery')
-        except:
-            LOGGER.debug('supervisor might be down?')
-            bgtasks_proc = None
-    else:
+    try:
+        supervisor = SupervisorRPCClient()
+        bgtasks_proc = supervisor.check_process('celery')
+        LOGGER.debug(bgtasks_proc)
+    except:
+        LOGGER.debug('supervisor might be down?')
         bgtasks_proc = None
 
     # get celery worker status
@@ -69,6 +67,7 @@ def system(request):
 
     # return
     return render(request, 'core/system.html', {
+        'livy_ui_home': settings.LIVY_UI_HOME,
         'livy_session': livy_session,
         'livy_sessions': livy_sessions,
         'celery_status': celery_status,
