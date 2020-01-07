@@ -495,7 +495,7 @@
                                     <td>
                                         <ul class="list-inline">
                                             <li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
-                                            <li style="display:inline;"><a href="http://{{ APP_HOST }}:9200/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
+                                            <li style="display:inline;"><a href="http://{{ ES_UI_HOME }}/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
                                             <li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
                                             <li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields <i class="la la-refresh"></i></button></a></li>
                                         </ul>
@@ -868,10 +868,9 @@
                 <div class="row">
                     <div class="col-md-12">
                         <ul class="list-inline">
-                            <li style="display:inline;"><a href="http://{{APP_HOST}}:8998{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement <i class="la la-info-circle"></i></button></a></li>
-                            <li style="display:inline;"><a href="http://{{APP_HOST}}:8998/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i class="la la-info-circle"></i></button></a></li>
-                            <li style="display:inline;"><a href="http://{{LIVY_SESSION.sparkUiUrl}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
-                            <li style="display:inline;"><a href="http://{{APP_HOST}}:8080" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Cluster GUI <i class="la la-info-circle"></i></button></a></li>
+                            <li style="display:inline;"><a href="http://{{LIVY_UI_HOME}}{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement <i class="la la-info-circle"></i></button></a></li>
+                            <li style="display:inline;"><a href="http://{{LIVY_UI_HOME}}/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i class="la la-info-circle"></i></button></a></li>
+                            <li style="display:inline;"><a href="http://{{SPARK_HOST}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
                         </ul>
                     </div>
                 </div>

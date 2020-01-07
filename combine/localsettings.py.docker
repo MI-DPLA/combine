@@ -15,7 +15,7 @@ APP_HOST = 'localhost'
 
 # Spark Cluster Information
 # Note: configured to use Livy running in local[*] mode
-SPARK_HOST = 'livy'
+SPARK_HOST = 'localhost/spark'
 SPARK_PORT = 8080
 SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100 from here until open port is found
 
@@ -78,6 +78,7 @@ WRITE_AVRO = False
 
 # ElasicSearch server
 ES_HOST = 'elasticsearch'
+ES_UI_HOME = 'localhost/es'
 INDEX_TO_ES = True
 
 

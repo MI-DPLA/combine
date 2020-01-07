@@ -1310,7 +1310,7 @@ class StateIOClient():
                 cmd = [
                     "elasticdump",
                     "--input=%(dbdd_export_path)s" % {'dbdd_export_path':dbdd_export_path},
-                    "--output=http://localhost:9200/%s" % dbdd.es_index,
+                    "--output=http://%s:9200/%s" % (settings.ES_HOST, dbdd.es_index),
                     "--ignore-errors",
                     "--noRefresh"
                 ]

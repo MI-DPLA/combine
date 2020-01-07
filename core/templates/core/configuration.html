@@ -325,7 +325,7 @@
 							<td>{{bd.get_status_display}}</td>
 							<td>{{bd.uploaded_timestamp|date:"M d, Y, h:i A"}}</td>
 							<td>{{bd.downloaded_timestamp|date:"M d, Y, h:i A"}}</td>
-							<td>{% if bd.es_index %}<a href="http://{{APP_HOST}}:9200/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a>{% endif %}</td>
+							<td>{% if bd.es_index %}<a href="http://{{ES_HOST}}/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a>{% endif %}</td>
 							<td><code>{{bd.filepath}}</code></td>
 						</tr>
 					{% endfor %}

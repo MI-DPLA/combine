@@ -145,7 +145,7 @@
 											<td>None</td>
 										{% endif %}
 										{% if record_stage.get_validation_errors.count > 0 %}<td style="background-color:#ff9898;">False</td>{% else %}<td>True{% endif %}</td>
-										<td><a href='http://{{ APP_HOST }}:9200/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.combine_id }}"' target="_blank">View</a></td>
+										<td><a href='http://{{ ES_UI_HOME }}/j{{ record_stage.job.id }}/_search?q=_id:"{{ record_stage.combine_id }}"' target="_blank">View</a></td>
 									</tr>
 								{% endfor %}
 								</tbody>

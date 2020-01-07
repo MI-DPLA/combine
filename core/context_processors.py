@@ -14,7 +14,9 @@ def combine_settings(request):
 
     # prepare combine settings
     combine_settings_keys = [
-        'APP_HOST',
+        'LIVY_UI_HOME',
+        'SPARK_HOST',
+        'ES_UI_HOME',
         'DPLA_API_KEY',
         'OAI_RESPONSE_SIZE',
         'COMBINE_OAI_IDENTIFIER',
