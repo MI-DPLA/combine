@@ -14,6 +14,7 @@ class FieldMapperTestCase(TestCase):
     def test_create_field_mapper_get(self):
         response = self.client.get(reverse('create_field_mapper'))
         self.assertIn(b'Create new Field Mapper', response.content)
+        self.assertNotIn(b'Python Code Snippet', response.content)
 
     def test_create_field_mapper_post(self):
         post_body = {
