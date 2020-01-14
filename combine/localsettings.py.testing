@@ -2,7 +2,7 @@ from django.conf import settings
 
 
 # Deployment type
-COMBINE_DEPLOYMENT = 'server'
+COMBINE_DEPLOYMENT = 'docker'
 
 
 # Combine Install Location
@@ -10,11 +10,12 @@ COMBINE_INSTALL_PATH = '/opt/combine'
 
 
 # Combine Front-End
-APP_HOST = '192.168.45.10'
+APP_HOST = 'localhost'
 
 
 # Spark Cluster Information
-SPARK_HOST = 'localhost'
+# Note: configured to use Livy running in local[*] mode
+SPARK_HOST = 'localhost/spark'
 SPARK_PORT = 8080
 SPARK_APPLICATION_ROOT_PORT = 4040 # if taken, will automatically increment +100 from here until open port is found
 
@@ -32,13 +33,13 @@ MONGO_READ_PARTITION_SIZE_MB = 4
 Combine uses Livy to issue spark statements.
 Livy provides a stateless pattern for interacting with Spark, and by proxy, DPLA code.
 '''
-LIVY_HOST = '127.0.0.1'
+LIVY_HOST = 'livy'
 LIVY_PORT = 8998
-LIVY_UI_HOME = '127.0.0.1:8998'
+LIVY_UI_HOME = 'localhost/livy'
 LIVY_DEFAULT_SESSION_CONFIG = {
     'kind':'pyspark',
     'jars':[
-    	'file:///usr/share/java/mysql.jar'
+        'file:///combinelib/mysql.jar'
     ],
     'files':[
     	'file://%s/core/spark/es.py' % COMBINE_INSTALL_PATH.rstrip('/'),
@@ -71,12 +72,13 @@ LIVY_DEFAULT_SESSION_CONFIG = {
 '''
 Make sure to note file:// or hdfs:// prefix
 '''
-BINARY_STORAGE = 'file:///home/combine/data/combine'
+BINARY_STORAGE = 'file:///home/YOUR_USER/combine/data/combine'
 WRITE_AVRO = False
 
 
 # ElasicSearch server
-ES_HOST = '127.0.0.1'
+ES_HOST = 'elasticsearch'
+ES_UI_HOME = 'localhost/es'
 INDEX_TO_ES = True
 
 
@@ -110,7 +112,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://%s:3306/combine' % APP_HOST,
+	'jdbc_url':'jdbc:mysql://mysql:3307/combine',
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
@@ -143,9 +145,10 @@ ANALYSIS_JOBS_HIERARCHY = {
 }
 
 # Celery Configurations
-CELERY_BROKER_URL = 'redis://localhost:6379/0'
-CELERY_RESULT_BACKEND = 'redis://localhost:6379/0'
-CELERY_RPC_SERVER = 'http://localhost:9001/RPC2'
+CELERY_BROKER_URL = 'redis://redis:6379/0'
+CELERY_RESULT_BACKEND = 'redis://redis:6379/0'
+CELERY_RPC_SERVER = 'http://combine-celery:9001/RPC2'
+
 
 # StateIO Configurations
 '''
@@ -153,10 +156,22 @@ Configurations used for exporting/importing "states" in Combine, including Organ
 Jobs, Validation Scenarios, Transformation Scenarios, etc.  These can be large in size, and potentially helpful
 to preserve, so /tmp is not ideal here.
 '''
-STATEIO_EXPORT_DIR = '/home/combine/data/combine/stateio/exports'
-STATEIO_IMPORT_DIR = '/home/combine/data/combine/stateio/imports'
+STATEIO_EXPORT_DIR = '/home/YOUR_USER/combine/data/combine/stateio/exports'
+STATEIO_IMPORT_DIR = '/home/YOUR_USER/combine/data/combine/stateio/imports'
 
 
 # Mongo server
-MONGO_HOST = '127.0.0.1'
+MONGO_HOST = 'localhost'
 
+
+# Docker override for DATABASE settings
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': 'combine',
+        'USER': 'combine',
+        'PASSWORD': 'combine',
+        'HOST': 'localhost',
+        'PORT': '3307',
+    }
+}
