@@ -52,11 +52,7 @@ def create_field_mapper(request):
             new_field_mapper.save()
             return redirect(reverse('configuration'))
     if form is None:
-        form = FieldMapperForm
-        if getattr(settings, 'ENABLE_PYTHON', 'false') != 'true':
-            no_python = list(filter(lambda x: x[0] != 'python',
-                form.base_fields['field_mapper_type'].choices))
-            form.base_fields['field_mapper_type'].choices = no_python
+        form = FieldMapperForm()
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Field Mapper',

@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
@@ -15,6 +15,12 @@ class FieldMapperTestCase(TestCase):
         response = self.client.get(reverse('create_field_mapper'))
         self.assertIn(b'Create new Field Mapper', response.content)
         self.assertNotIn(b'Python Code Snippet', response.content)
+
+    def test_create_python_field_mapper_get(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            response = self.client.get(reverse('create_field_mapper'))
+            self.assertIn(b'Create new Field Mapper', response.content)
+            self.assertIn(b'Python Code Snippet', response.content)
 
     def test_create_field_mapper_post(self):
         post_body = {

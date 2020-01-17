@@ -1,4 +1,5 @@
-from django.forms import ModelForm
+from django.forms import ModelForm, ChoiceField
+from django.conf import settings
 
 # import models from core for forms
 from core.models import Organization, RecordGroup, RecordIdentifierTransformation,\
@@ -57,8 +58,21 @@ class OAIEndpointForm(ModelForm):
         model = OAIEndpoint
         fields = ['name', 'endpoint', 'metadataPrefix', 'scope_type', 'scope_value']
 
+def get_field_mapper_choices():
+    choices = [
+        ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
+        ('xslt', 'XSL Stylesheet')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class FieldMapperForm(ModelForm):
+
+
+    def __init__(self, *args, **kwargs):
+        super(FieldMapperForm, self).__init__(*args, **kwargs)
+        self.fields['field_mapper_type'].choices = get_field_mapper_choices()
 
     class Meta:
         model = FieldMapper

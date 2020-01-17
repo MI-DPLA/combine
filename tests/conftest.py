@@ -15,7 +15,7 @@ sys.path.append('/opt/combine')
 django.setup()
 
 # import core
-from core.models import User
+from core.Models import User
 
 
 # use active livy
