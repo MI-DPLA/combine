@@ -79,15 +79,14 @@ class FieldMapperForm(ModelForm):
         choices = [choice for (choice, label) in self.fields['field_mapper_type'].choices]
         if value in choices:
             return value
-        raise ValidationError(
-            f"\"{value}\" is not a valid field mapper type. Please select one of the available choices. "
-            f"If you want to use python code and are receiving this error, ask your server administrator to set "
-            f"ENABLE_PYTHON=true in the server settings file."
-        )
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = FieldMapper
         fields = ['name', 'payload', 'config_json', 'field_mapper_type']
         labels = {
             'payload': 'Field Mapping Code'
+        }
+        help_texts = {
+            'field_mapper_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
         }

@@ -25,7 +25,7 @@ class FieldMapperTestCase(TestCase):
     def test_create_field_mapper_post(self):
         post_body = {
             'name': 'Test Field Mapper',
-            'field_mapper_type': 'python',
+            'field_mapper_type': 'xslt',
         }
         response = self.client.post(reverse('create_field_mapper'), post_body)
         self.assertRedirects(response, reverse('configuration'))
@@ -34,6 +34,28 @@ class FieldMapperTestCase(TestCase):
         field_mapper_dict = field_mapper.as_dict()
         for item in post_body:
             self.assertEqual(field_mapper_dict[item], post_body[item])
+
+    def test_create_python_field_mapper_post(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            post_body = {
+                'name': 'Test Python Field Mapper',
+                'field_mapper_type': 'python',
+            }
+            response = self.client.post(reverse('create_field_mapper'), post_body)
+            self.assertRedirects(response, reverse('configuration'))
+            field_mapper = FieldMapper.objects.get(name='Test Python Field Mapper')
+            self.assertIsNotNone(field_mapper.id)
+            field_mapper_dict = field_mapper.as_dict()
+            for item in post_body:
+                self.assertEqual(field_mapper_dict[item], post_body[item])
+
+    def test_create_prohibited_python_field_mapper_post(self):
+        post_body = {
+            'name': 'Test Python Field Mapper',
+            'field_mapper_type': 'python',
+        }
+        response = self.client.post(reverse('create_field_mapper'), post_body)
+        self.assertIn(b'Select a valid choice', response.content)
 
     def test_create_field_mapper_invalid(self):
         response = self.client.post(reverse('create_field_mapper'), {})

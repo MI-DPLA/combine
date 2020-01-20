@@ -1,7 +1,7 @@
 from django.test import TestCase
 from core.forms import FieldMapperForm
 
-class FormsTestCase(TestCase):
+class FieldMapperFormTestCase(TestCase):
     def test_python_prohibited(self):
         test_body = {
             'name': 'Test Field Mapper',
