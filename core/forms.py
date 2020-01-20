@@ -1,4 +1,4 @@
-from django.forms import ModelForm, ChoiceField
+from django.forms import ModelForm, ValidationError
 from django.conf import settings
 
 # import models from core for forms
@@ -69,10 +69,21 @@ def get_field_mapper_choices():
 
 class FieldMapperForm(ModelForm):
 
-
     def __init__(self, *args, **kwargs):
         super(FieldMapperForm, self).__init__(*args, **kwargs)
         self.fields['field_mapper_type'].choices = get_field_mapper_choices()
+
+    def clean_field_mapper_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['field_mapper_type']
+        choices = [choice for (choice, label) in self.fields['field_mapper_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(
+            f"\"{value}\" is not a valid field mapper type. Please select one of the available choices. "
+            f"If you want to use python code and are receiving this error, ask your server administrator to set "
+            f"ENABLE_PYTHON=true in the server settings file."
+        )
 
     class Meta:
         model = FieldMapper
