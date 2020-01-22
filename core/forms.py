@@ -37,8 +37,25 @@ class TransformationForm(ModelForm):
             'payload': 'Transformation Code'
         }
 
+def get_rits_choices():
+    choices = [('regex', 'Regular Expression'), ('xpath', 'XPath')]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class RITSForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(RITSForm, self).__init__(*args, **kwargs)
+        self.fields['transformation_type'].choices = get_rits_choices()
+
+    def clean_transformation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['transformation_type']
+        choices = [choice for (choice, label) in self.fields['transformation_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = RecordIdentifierTransformation
