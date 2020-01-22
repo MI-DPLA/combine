@@ -1,6 +1,6 @@
-from django.test import Client, TestCase
-from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.test import TestCase
+from django.urls import reverse
 
 from core.models import RecordIdentifierTransformation
 from tests.utils import TestConfiguration

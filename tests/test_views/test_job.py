@@ -1,6 +1,5 @@
-from django.test import Client, TestCase
 from django.core.urlresolvers import reverse
-
+from django.test import TestCase
 
 from core.models import Job, RecordGroup
 from tests.utils import TestConfiguration
