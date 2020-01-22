@@ -1,5 +1,5 @@
 from django.test import TestCase
-from core.forms import FieldMapperForm
+from core.forms import FieldMapperForm, get_field_mapper_choices
 
 class FieldMapperFormTestCase(TestCase):
     def test_python_prohibited(self):
@@ -18,3 +18,19 @@ class FieldMapperFormTestCase(TestCase):
             }
             form = FieldMapperForm(test_body)
             self.assertTrue(form.is_valid())
+
+    def test_get_type_choices(self):
+        choices = get_field_mapper_choices()
+        self.assertEqual(choices, [
+            ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
+            ('xslt', 'XSL Stylesheet')
+        ])
+
+    def test_get_python_type_choices(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            choices = get_field_mapper_choices()
+            self.assertEqual(choices, [
+                ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
+                ('xslt', 'XSL Stylesheet'),
+                ('python', 'Python Code Snippet')
+            ])

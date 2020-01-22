@@ -61,7 +61,10 @@ class TransformationForm(ModelForm):
         }
 
 def get_rits_choices():
-    choices = [('regex', 'Regular Expression'), ('xpath', 'XPath')]
+    choices = [
+        ('regex', 'Regular Expression'),
+        ('xpath', 'XPath')
+    ]
     if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
         choices.append(('python', 'Python Code Snippet'))
     return choices
@@ -89,6 +92,9 @@ class RITSForm(ModelForm):
             'regex_replace_payload': 'Regex Replacement',
             'python_payload': 'Python Code',
             'xpath_payload': 'XPath Query'
+        }
+        help_texts = {
+            'transformation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
         }
 
 
