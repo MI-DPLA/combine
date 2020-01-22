@@ -27,14 +27,37 @@ class ValidationScenarioForm(ModelForm):
             'payload': 'Validation Code'
         }
 
+def get_transformation_type_choices():
+    choices = [
+        ('xslt', 'XSLT Stylesheet'),
+        ('openrefine', 'Open Refine Actions')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class TransformationForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(TransformationForm, self).__init__(*args, **kwargs)
+        self.fields['transformation_type'].choices = get_transformation_type_choices()
+
+    def clean_transformation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['transformation_type']
+        choices = [choice for (choice, label) in self.fields['transformation_type'].choices]
+        if value in choices:
+            return value
+        return ValidationError(code='invalid')
 
     class Meta:
         model = Transformation
         fields = ['name', 'payload', 'transformation_type', 'use_as_include']
         labels = {
             'payload': 'Transformation Code'
+        }
+        help_texts = {
+            'transformation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
         }
 
 def get_rits_choices():
