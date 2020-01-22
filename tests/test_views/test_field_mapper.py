@@ -62,13 +62,45 @@ class FieldMapperTestCase(TestCase):
         self.assertIn(b'This field is required.', response.content)
 
     def test_edit_field_mapper_get(self):
-        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper xml2kvp',
+                                                  field_mapper_type='xml2kvp',
+                                                  payload='some code')
+        response = self.client.get(reverse('edit_field_mapper', args=[field_mapper.id]))
+        self.assertIn(b'Test Field Mapper xml2kvp', response.content)
+
+    def test_edit_python_field_mapper_get(self):
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper Py',
                                                   field_mapper_type='python',
                                                   payload='some code')
         response = self.client.get(reverse('edit_field_mapper', args=[field_mapper.id]))
-        self.assertIn(b'Test Field Mapper', response.content)
+        self.assertIn(b'Select a valid choice. python is not one of the available choices', response.content)
+
+    def test_edit_permitted_python_field_mapper_get(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            field_mapper = FieldMapper.objects.create(name='Test Field Mapper Py',
+                                                      field_mapper_type='python',
+                                                      payload='some code')
+            response = self.client.get(reverse('edit_field_mapper', args=[field_mapper.id]))
+            self.assertNotIn(b'Select a valid choice. python is not one of the available choices', response.content)
 
     def test_edit_field_mapper_post(self):
+        field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                  field_mapper_type='xml2kvp',
+                                                  payload='some code')
+        fm_id = field_mapper.id
+        post_body = {
+            'name': 'Test Field Mapper',
+            'field_mapper_type': 'xml2kvp',
+            'payload': 'some other code',
+        }
+        response = self.client.post(reverse('edit_field_mapper', args=[field_mapper.id]), post_body)
+        self.assertRedirects(response, reverse('configuration'))
+        field_mapper = FieldMapper.objects.get(pk=int(fm_id))
+        field_mapper_dict = field_mapper.as_dict()
+        for item in post_body:
+            self.assertEqual(field_mapper_dict[item], post_body[item])
+
+    def test_edit_python_field_mapper_post(self):
         field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
                                                   field_mapper_type='python',
                                                   payload='some code')
@@ -79,15 +111,30 @@ class FieldMapperTestCase(TestCase):
             'payload': 'some other code',
         }
         response = self.client.post(reverse('edit_field_mapper', args=[field_mapper.id]), post_body)
-        self.assertRedirects(response, reverse('configuration'))
-        field_mapper = FieldMapper.objects.get(pk=int(fm_id))
-        field_mapper_dict = field_mapper.as_dict()
-        for item in post_body:
-            self.assertEqual(field_mapper_dict[item], post_body[item])
+        self.assertIn(b'Select a valid choice. python is not one of the available choices', response.content)
+
+    def test_edit_permitted_python_field_mapper_post(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
+                                                      field_mapper_type='python',
+                                                      payload='some code')
+            fm_id = field_mapper.id
+            post_body = {
+                'name': 'Test Field Mapper',
+                'field_mapper_type': 'python',
+                'payload': 'some other code',
+            }
+            response = self.client.post(reverse('edit_field_mapper', args=[field_mapper.id]), post_body)
+            self.assertRedirects(response, reverse('configuration'))
+            field_mapper = FieldMapper.objects.get(pk=int(fm_id))
+            field_mapper_dict = field_mapper.as_dict()
+            for item in post_body:
+                self.assertEqual(field_mapper_dict[item], post_body[item])
+
 
     def test_edit_field_mapper_invalid(self):
         field_mapper = FieldMapper.objects.create(name='Test Field Mapper',
-                                                  field_mapper_type='python',
+                                                  field_mapper_type='xml2kvp',
                                                   payload='some code')
         post_body = {
             'payload': 'some other code',
