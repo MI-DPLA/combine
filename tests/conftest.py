@@ -1,10 +1,10 @@
-import django
-import os
-import pytest
-import sys
-
 # logging
 import logging
+import os
+import sys
+
+import django
+import pytest
 
 LOGGER = logging.getLogger(__name__)
 LOGGER.setLevel(logging.DEBUG)
@@ -14,8 +14,7 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 
-# import core
-from core.Models import User
+from django.contrib.auth.models import User
 
 
 # use active livy
