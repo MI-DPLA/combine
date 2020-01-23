@@ -17,8 +17,29 @@ class RecordGroupForm(ModelForm):
         model = RecordGroup
         fields = ['organization', 'name', 'description']
 
+def get_validation_scenario_choices():
+    choices = [
+        ('sch', 'Schematron'),
+        ('es_query', 'ElasticSearch DSL Query'),
+        ('xsd', 'XML Schema')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class ValidationScenarioForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(ValidationScenarioForm, self).__init__(*args, **kwargs)
+        self.fields['validation_type'].choices = get_validation_scenario_choices()
+
+    def clean_validation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['validation_type']
+        choices = [choice for (choice, label) in self.fields['validation_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = ValidationScenario
@@ -26,6 +47,10 @@ class ValidationScenarioForm(ModelForm):
         labels = {
             'payload': 'Validation Code'
         }
+        help_texts = {
+            'validation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
+        }
+
 
 def get_transformation_type_choices():
     choices = [
