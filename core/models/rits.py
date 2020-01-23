@@ -24,7 +24,7 @@ class RITSClient():
 
     def __init__(self, query_dict):
 
-        LOGGER.debug('initializaing RITS')
+        LOGGER.debug('initializing RITS')
 
         self.query_dict = query_dict
 

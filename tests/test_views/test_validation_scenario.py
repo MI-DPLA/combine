@@ -1,6 +1,6 @@
-from django.test import Client, TestCase
-from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.test import TestCase
+from django.urls import reverse
 
 from core.models import ValidationScenario
 from tests.utils import TestConfiguration
@@ -17,12 +17,19 @@ class ValidationScenarioTestCase(TestCase):
     def test_create_validation_scenario_get(self):
         response = self.client.get(reverse('create_validation_scenario'))
         self.assertIn(b'Create new Validation Scenario', response.content)
+        self.assertNotIn(b'Python Code Snippet', response.content)
+
+    def test_create_permitted_python_field_mapper_get(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            response = self.client.get(reverse('create_validation_scenario'))
+            self.assertIn(b'Create new Validation Scenario', response.content)
+            self.assertIn(b'Python Code Snippet', response.content)
 
     def test_create_validation_scenario_post(self):
         post_body = {
             'name': 'Test Validate',
-            'payload': 'Some python code',
-            'validation_type': 'python'}
+            'payload': 'Some elasticsearch query',
+            'validation_type': 'es_query'}
         response = self.client.post(reverse('create_validation_scenario'), post_body)
         self.assertRedirects(response, reverse('configuration'))
         scenario = ValidationScenario.objects.get(name='Test Validate')
@@ -31,21 +38,58 @@ class ValidationScenarioTestCase(TestCase):
         for item in post_body:
             self.assertEqual(scenario_dict[item], post_body[item])
 
+    def test_create_python_validation_scenario_post(self):
+        post_body = {
+            'name': 'Test Validate',
+            'payload': 'Some python code',
+            'validation_type': 'python'}
+        response = self.client.post(reverse('create_validation_scenario'), post_body)
+        self.assertIn(b'Select a valid choice', response.content)
+
+    def test_create_permitted_python_validation_scenario_post(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            post_body = {
+                'name': 'Test Validate',
+                'payload': 'Some python code',
+                'validation_type': 'python'}
+            response = self.client.post(reverse('create_validation_scenario'), post_body)
+            self.assertRedirects(response, reverse('configuration'))
+            scenario = ValidationScenario.objects.get(name='Test Validate')
+            self.assertIsNotNone(scenario.id)
+            scenario_dict = scenario.as_dict()
+            for item in post_body:
+                self.assertEqual(scenario_dict[item], post_body[item])
+
     def test_create_validation_scenario_invalid(self):
         response = self.client.post(reverse('create_validation_scenario'), {})
         self.assertIn(b'This field is required.', response.content)
 
-    def test_validation_scenario_get(self):
+    def test_edit_validation_scenario_get(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some elasticsearch query',
+                                                     validation_type='es_query')
+        response = self.client.get(reverse('validation_scenario', args=[scenario.id]))
+        self.assertIn(b'Test Validate', response.content)
+
+    def test_edit_python_validation_scenario_get(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')
         response = self.client.get(reverse('validation_scenario', args=[scenario.id]))
-        self.assertIn(b'Test Validate', response.content)
+        self.assertIn(b'Select a valid choice. python is not one of the available choices', response.content)
 
-    def test_validation_scenario_post(self):
+    def test_edit_permitted_python_validation_scenario_get(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                         payload='Some python code',
+                                                         validation_type='python')
+            response = self.client.get(reverse('validation_scenario', args=[scenario.id]))
+            self.assertNotIn(b'Select a valid choice. python is not one of the available choices', response.content)
+
+    def test_edit_validation_scenario_post(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
-                                                     payload='Some python code',
-                                                     validation_type='python')
+                                                     payload='Some elasticsearch query',
+                                                     validation_type='es_query')
         response = self.client.post(reverse('validation_scenario', args=[scenario.id]), {
             'payload': ValidationScenarioTestCase.simple_validation_payload,
             'name': scenario.name,
@@ -57,7 +101,34 @@ class ValidationScenarioTestCase(TestCase):
         self.assertEqual(scenario.name, 'Test Validate')
         self.assertEqual(scenario.payload, ValidationScenarioTestCase.simple_validation_payload)
 
-    def test_validation_scenario_invalid(self):
+    def test_edit_python_validation_scenario_post(self):
+        scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                     payload='Some python code',
+                                                     validation_type='python')
+        response = self.client.post(reverse('validation_scenario', args=[scenario.id]), {
+            'payload': ValidationScenarioTestCase.simple_validation_payload,
+            'name': scenario.name,
+            'validation_type': scenario.validation_type
+        })
+        self.assertIn(b'Select a valid choice. python is not one of the available choices', response.content)
+
+    def test_edit_permitted_python_validation_scenario_post(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            scenario = ValidationScenario.objects.create(name='Test Validate',
+                                                         payload='Some python code',
+                                                         validation_type='python')
+            response = self.client.post(reverse('validation_scenario', args=[scenario.id]), {
+                'payload': ValidationScenarioTestCase.simple_validation_payload,
+                'name': scenario.name,
+                'validation_type': scenario.validation_type
+            })
+            self.assertRedirects(response, reverse('configuration'))
+            scenario = ValidationScenario.objects.get(name='Test Validate')
+            self.assertIsNotNone(scenario.id)
+            self.assertEqual(scenario.name, 'Test Validate')
+            self.assertEqual(scenario.payload, ValidationScenarioTestCase.simple_validation_payload)
+
+    def test_edit_validation_scenario_invalid(self):
         scenario = ValidationScenario.objects.create(name='Test Validate',
                                                      payload='Some python code',
                                                      validation_type='python')

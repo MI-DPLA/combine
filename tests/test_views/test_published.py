@@ -1,7 +1,6 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from core.models import PublishedRecords
-
 from tests.utils import TestConfiguration
 
 

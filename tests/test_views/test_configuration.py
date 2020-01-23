@@ -1,9 +1,9 @@
 from django.test import TestCase
 from django.urls import reverse
 
-from tests.utils import TestConfiguration
-from core.models import Transformation, OAIEndpoint, ValidationScenario,\
+from core.models import Transformation, OAIEndpoint, ValidationScenario, \
     RecordIdentifierTransformation, DPLABulkDataDownload, FieldMapper
+from tests.utils import TestConfiguration
 
 
 class ConfigurationTestCase(TestCase):

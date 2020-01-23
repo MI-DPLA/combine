@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase
 
 from core.models import CombineBackgroundTask
 from tests.utils import TestConfiguration, json_string

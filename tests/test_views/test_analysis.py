@@ -1,9 +1,9 @@
 import json
-from django.test import Client, TestCase
+
+from django.test import TestCase
 from django.urls import reverse
 
 from core.models import AnalysisJob
-
 from tests.utils import TestConfiguration
 
 

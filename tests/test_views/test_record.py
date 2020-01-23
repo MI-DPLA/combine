@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from core.models import ValidationScenario
 from tests.utils import TestConfiguration, TEST_DOCUMENT

@@ -1,8 +1,9 @@
 from django.test import TestCase
 
-from core.views import DTRecordsJson
 from core.models import Record
+from core.views import DTRecordsJson
 from tests.utils import TestConfiguration
+
 
 class DTRecordsTestCase(TestCase):
     def test_get_initial_queryset(self):

@@ -7,6 +7,7 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.forms import model_to_dict
 from django.core.exceptions import ObjectDoesNotExist
+from django.conf import settings
 
 from core.models import FieldMapper, Record
 from core.xml2kvp import XML2kvp
@@ -51,7 +52,7 @@ def create_field_mapper(request):
             new_field_mapper.save()
             return redirect(reverse('configuration'))
     if form is None:
-        form = FieldMapperForm
+        form = FieldMapperForm()
     return render(request, 'core/new_configuration_object.html', {
         'form': form,
         'object_name': 'Field Mapper',

@@ -1,4 +1,5 @@
-from django.forms import ModelForm
+from django.forms import ModelForm, ValidationError
+from django.conf import settings
 
 # import models from core for forms
 from core.models import Organization, RecordGroup, RecordIdentifierTransformation,\
@@ -16,8 +17,29 @@ class RecordGroupForm(ModelForm):
         model = RecordGroup
         fields = ['organization', 'name', 'description']
 
+def get_validation_scenario_choices():
+    choices = [
+        ('sch', 'Schematron'),
+        ('es_query', 'ElasticSearch DSL Query'),
+        ('xsd', 'XML Schema')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class ValidationScenarioForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(ValidationScenarioForm, self).__init__(*args, **kwargs)
+        self.fields['validation_type'].choices = get_validation_scenario_choices()
+
+    def clean_validation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['validation_type']
+        choices = [choice for (choice, label) in self.fields['validation_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = ValidationScenario
@@ -25,9 +47,33 @@ class ValidationScenarioForm(ModelForm):
         labels = {
             'payload': 'Validation Code'
         }
+        help_texts = {
+            'validation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
+        }
 
+
+def get_transformation_type_choices():
+    choices = [
+        ('xslt', 'XSLT Stylesheet'),
+        ('openrefine', 'Open Refine Actions')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class TransformationForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(TransformationForm, self).__init__(*args, **kwargs)
+        self.fields['transformation_type'].choices = get_transformation_type_choices()
+
+    def clean_transformation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['transformation_type']
+        choices = [choice for (choice, label) in self.fields['transformation_type'].choices]
+        if value in choices:
+            return value
+        return ValidationError(code='invalid')
 
     class Meta:
         model = Transformation
@@ -35,9 +81,32 @@ class TransformationForm(ModelForm):
         labels = {
             'payload': 'Transformation Code'
         }
+        help_texts = {
+            'transformation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
+        }
 
+def get_rits_choices():
+    choices = [
+        ('regex', 'Regular Expression'),
+        ('xpath', 'XPath')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class RITSForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(RITSForm, self).__init__(*args, **kwargs)
+        self.fields['transformation_type'].choices = get_rits_choices()
+
+    def clean_transformation_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['transformation_type']
+        choices = [choice for (choice, label) in self.fields['transformation_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = RecordIdentifierTransformation
@@ -49,6 +118,9 @@ class RITSForm(ModelForm):
             'python_payload': 'Python Code',
             'xpath_payload': 'XPath Query'
         }
+        help_texts = {
+            'transformation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
+        }
 
 
 class OAIEndpointForm(ModelForm):
@@ -57,12 +129,35 @@ class OAIEndpointForm(ModelForm):
         model = OAIEndpoint
         fields = ['name', 'endpoint', 'metadataPrefix', 'scope_type', 'scope_value']
 
+def get_field_mapper_choices():
+    choices = [
+        ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
+        ('xslt', 'XSL Stylesheet')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices
 
 class FieldMapperForm(ModelForm):
+
+    def __init__(self, *args, **kwargs):
+        super(FieldMapperForm, self).__init__(*args, **kwargs)
+        self.fields['field_mapper_type'].choices = get_field_mapper_choices()
+
+    def clean_field_mapper_type(self):
+        cleaned_data = super().clean()
+        value = cleaned_data['field_mapper_type']
+        choices = [choice for (choice, label) in self.fields['field_mapper_type'].choices]
+        if value in choices:
+            return value
+        raise ValidationError(code='invalid')
 
     class Meta:
         model = FieldMapper
         fields = ['name', 'payload', 'config_json', 'field_mapper_type']
         labels = {
             'payload': 'Field Mapping Code'
+        }
+        help_texts = {
+            'field_mapper_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
         }
