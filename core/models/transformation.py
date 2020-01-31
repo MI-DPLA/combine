@@ -59,6 +59,11 @@ class Transformation(models.Model):
             row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
         '''
 
+        valid_types = [type for (type, label) in get_transformation_type_choices()]
+        requested_type = self.transformation_type
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for transformation scenario: {requested_type}')
+
         LOGGER.debug('transforming single record: %s', row)
 
         # run appropriate validation based on transformation type

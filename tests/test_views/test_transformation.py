@@ -7,6 +7,29 @@ from tests.utils import TestConfiguration
 
 
 class TransformationTestCase(TestCase):
+    XSLT_PAYLOAD = '''<?xml version="1.0" encoding="UTF-8"?>
+    <xsl:stylesheet xmlns:xsl="http://www.w3.org/1999/XSL/Transform" version="2.0">
+        <xsl:output method="xml" indent="yes"/>
+
+        <xsl:template match="/">
+            <xsl:call-template name="foo"/>
+        </xsl:template>
+
+        <xsl:template name="foo">
+            <bar>
+                <xsl:value-of select="*/foo"/>
+            </bar>
+        </xsl:template>
+    </xsl:stylesheet>'''
+
+    PYTHON_PAYLOAD = '''from lxml import etree
+    def python_record_transformation(record):
+        foo_elem_query = record.xml.xpath('foo', namespaces=record.nsmap)
+        foo_elem = foo_elem_query[0]
+        foo_elem.attrib['type'] = 'bar'
+        return [etree.tostring(record.xml), '', True]
+    '''
+
     def setUp(self):
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)  # The configuration page requires login
@@ -164,3 +187,41 @@ class TransformationTestCase(TestCase):
                                                        transformation_type='python')
         response = self.client.get(reverse('transformation_scenario_payload', args=[transformation.id]))
         self.assertEqual(b'test payload', response.content)
+
+    def test_get_test_transformation(self):
+        response = self.client.get(reverse('test_transformation_scenario'))
+        self.assertIn(b'Select a pre-existing Transformation Scenario', response.content)
+        self.assertNotIn(b'Python Code Snippet', response.content)
+
+    def test_get_test_transformation_python_permitted(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            response = self.client.get(reverse('test_transformation_scenario'))
+            self.assertIn(b'Select a pre-existing Transformation Scenario', response.content)
+            self.assertIn(b'Python Code Snippet', response.content)
+
+    def test_post_test_transformation(self):
+        post_body = {
+            'trans_test_type': 'single',
+            'trans_type': 'xslt',
+            'trans_payload': self.XSLT_PAYLOAD,
+            'db_id': self.config.record.id
+        }
+        #response = self.client.post(reverse('test_transformation_scenario'), post_body)
+        #print(response.json())
+        # encountering difficulty running this test with docker up; pyjxslt doesn't like
+        # requests coming across the docker barrier? it works manually tested though
+        pass
+
+    def test_post_test_transformation_python(self):
+        post_body = {
+            'trans_test_type': 'single',
+            'trans_type': 'python',
+            'trans_payload': self.PYTHON_PAYLOAD,
+            'db_id': self.config.record.id
+        }
+        response = self.client.post(reverse('test_transformation_scenario'), post_body)
+        self.assertEqual(b'requested invalid type for transformation scenario: python', response.content)
+
+    def test_post_test_transformation_python_permitted(self):
+        # assuming this is going to have the same issues as above w/ pyjxslt
+        pass
