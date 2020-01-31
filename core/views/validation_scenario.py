@@ -7,7 +7,7 @@ from django.forms.models import model_to_dict
 from django.shortcuts import render, redirect
 from django.urls import reverse
 
-from core.models import ValidationScenario, Record
+from core.models import ValidationScenario, Record, get_validation_scenario_choices
 from core.forms import ValidationScenarioForm
 
 from .view_helpers import breadcrumb_parser
@@ -91,11 +91,14 @@ def test_validation_scenario(request):
         # check for pre-requested transformation scenario
         vsid = request.GET.get('validation_scenario', None)
 
+        valid_types = get_validation_scenario_choices()
+
         # return
         return render(request, 'core/test_validation_scenario.html', {
             'q': get_q,
             'vsid': vsid,
             'validation_scenarios': validation_scenarios,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 

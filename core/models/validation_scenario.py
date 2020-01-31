@@ -66,6 +66,11 @@ class ValidationScenario(models.Model):
             row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
         '''
 
+        valid_types = [type for (type, label) in get_validation_scenario_choices()]
+        requested_type = self.validation_type
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for validation scenario: {requested_type}')
+
         # run appropriate validation based on type
         if self.validation_type == 'sch':
             result = self._validate_schematron(row)
