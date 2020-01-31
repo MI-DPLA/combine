@@ -5,7 +5,7 @@ import json
 import logging
 import re
 
-from _importlib_modulespec import ModuleType
+import importlib
 from django.conf import settings
 from django.db import models
 
@@ -132,7 +132,7 @@ class RITSClient():
                 sr = PythonUDFRecord(None, non_row_input=True, document=self.test_input)
 
             # parse user supplied python code
-            temp_mod = ModuleType('temp_mod')
+            temp_mod = importlib.types.ModuleType('temp_mod')
             exec(self.python_payload, temp_mod.__dict__)
 
             try:
