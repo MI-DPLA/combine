@@ -7,7 +7,7 @@ from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import RecordIdentifierTransformation, Record, RITSClient
-from core.forms import RITSForm
+from core.forms import RITSForm, get_rits_choices
 
 from .view_helpers import breadcrumb_parser
 
@@ -84,10 +84,13 @@ def test_rits(request):
         # get record identifier transformation scenarios
         rits = RecordIdentifierTransformation.objects.all()
 
+        valid_types = get_rits_choices()
+
         # return
         return render(request, 'core/test_rits.html', {
             'q': get_q,
             'rits': rits,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 

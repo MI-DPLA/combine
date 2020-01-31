@@ -8,6 +8,7 @@ import re
 from types import ModuleType
 # import ElasticSearch BaseMapper and PythonUDFRecord
 from core.spark.utils import PythonUDFRecord
+from core.forms import get_rits_choices
 
 # Get an instance of a LOGGER
 LOGGER = logging.getLogger(__name__)
@@ -31,6 +32,11 @@ class RITSClient():
         # parse data
         self.target = self.query_dict.get('record_id_transform_target', None)
         LOGGER.debug('target is %s', self.target)
+
+        valid_types = [type for (type, label) in get_rits_choices()]
+        requested_type = self.query_dict.get('record_id_transform_type', None)
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for RITS: {requested_type}')
 
         # parse regex
         if self.query_dict.get('record_id_transform_type', None) == 'regex':
@@ -75,6 +81,10 @@ class RITSClient():
         '''
         method to test record_id transformation based on user input
         '''
+        valid_types = [type for (type, label) in get_rits_choices()]
+        requested_type = self.transform_type
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for RITS: {requested_type}')
 
         # handle regex
         if self.transform_type == 'regex':
