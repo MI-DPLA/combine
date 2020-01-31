@@ -91,7 +91,7 @@ class DTElasticFieldSearch(View):
     def filter(self):
 
         '''
-        Filter based on dt_input paramters
+        Filter based on dt_input parameters
 
         Args:
             None
@@ -214,7 +214,7 @@ class DTElasticFieldSearch(View):
     def paginate(self):
 
         '''
-        Paginate based on dt_input paramters
+        Paginate based on dt_input parameters
 
         Args:
             None
@@ -428,7 +428,7 @@ class DTElasticGenericSearch(View):
     '''
     Model to query ElasticSearch and return DataTables ready JSON.
     This model is a Django Class-based view.
-    This model is located in core.models, as it still may function seperate from a Django view.
+    This model is located in core.models, as it still may function separately from a Django view.
     '''
 
     def __init__(
@@ -484,7 +484,7 @@ class DTElasticGenericSearch(View):
     def filter(self):
 
         '''
-        Filter based on dt_input paramters
+        Filter based on dt_input parameters
 
         Args:
             None
@@ -556,7 +556,7 @@ class DTElasticGenericSearch(View):
     def paginate(self):
 
         '''
-        Paginate based on dt_input paramters
+        Paginate based on dt_input parameters
 
         Args:
             None

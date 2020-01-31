@@ -131,9 +131,9 @@ class PublishedRecords():
 
         '''
         Wrapper for ESIndex.count_indexed_fields
-            - stores results in Mongo to avoid re-calcing everytime
+            - stores results in Mongo to avoid re-calculating every time
                 - stored as misc/published_field_counts
-            - checks Mongo for stored metrics, if not found, calcs and stores
+            - checks Mongo for stored metrics, if not found, calculates and stores
             - when Jobs are published, this Mongo entry is removed forcing a re-calc
 
         Args:
@@ -230,7 +230,7 @@ class PublishedRecords():
                 'include_non_set_records':True
             }
 
-        # udpate mongo doc
+        # update mongo doc
         result = mc_handle.combine.misc.update_one(
             {'_id':self.ps_doc['_id']},
             {'$set':update_dict}, upsert=True)

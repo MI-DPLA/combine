@@ -167,7 +167,7 @@
                                     <select class="form-control" id="mapped_fields_export_type"
                                             name="mapped_fields_export_type" required>
                                         <option value="json">JSON (line-delimited, recommended)</option>
-                                        <option value="csv">CSV (tabular, comma seperated)</option>
+                                        <option value="csv">CSV (tabular, comma separated)</option>
                                     </select>
                                     <small id="mapped_fields_export_type" class="form-text text-muted">
                                         <strong>Note:</strong> Mapped fields exported as .csv are more prone to messy
@@ -208,7 +208,7 @@
                                             the value <code>typing</code>. This can handy for analysis, as distinct
                                             values for this field are in distinct columns.</p>
 
-                                        <p>But some pipelines are prepared for fields that are comman separated when
+                                        <p>But some pipelines are prepared for fields that are comma separated when
                                             repeating, e.g. Kibana. If checked, the result would be a
                                             <strong>single</strong> field called <code>mods_subject_topic</code> and a
                                             single, comma separated value of <code>history,boating,typing</code>.</p>
@@ -393,14 +393,14 @@
                                     <label for="tabular_data_export_type">Select export format:</label>
                                     <select class="form-control" id="tabular_data_export_type"
                                             name="tabular_data_export_type" required>
-                                        <option value="csv">CSV (tabular, comma seperated)</option>
+                                        <option value="csv">CSV (tabular, comma separated)</option>
                                         <option value="json">JSON (line-delimited)</option>
                                     </select>
                                     <small id="tabular_data_export_type" class="form-text text-muted">
                                         <strong>Note:</strong> Mapped fields exported as .csv are more prone to messy
                                         data due to column delimiters and newline characters that may exist within field
                                         values, but, may be easier to edit outside of Combine before re-ingesting. JSON
-                                        "roundtrips" easier, but can be more difficult to edit.
+                                        "round trips" easier, but can be more difficult to edit.
                                     </small>
                                 </div>
                             </div>
@@ -626,7 +626,7 @@
                                                 }
                                             });
                                         } else {
-                                            alert('A name for this configuration is rquired!');
+                                            alert('A name for this configuration is required!');
                                         }
                                     }
 

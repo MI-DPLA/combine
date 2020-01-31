@@ -158,7 +158,7 @@
                         update_lineage_on_filter();
                     });
 
-                    // special case behavior for selectin publish jobs only
+                    // special case behavior for selecting published jobs only
                     {% if analysis_type == 'published' %}
                         update_lineage_on_filter();
                         $("#jobs_table input").prop('checked', true);

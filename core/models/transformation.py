@@ -108,14 +108,14 @@ class Transformation(models.Model):
             LOGGER.debug('python transformation running')
 
             # prepare row as parsed document with PythonUDFRecord class
-            prtb = PythonUDFRecord(row)
+            parsed_record = PythonUDFRecord(row)
 
             # get python function from Transformation Scenario
             temp_pyts = ModuleType('temp_pyts')
             exec(self.payload, temp_pyts.__dict__)
 
             # run transformation
-            trans_result = temp_pyts.python_record_transformation(prtb)
+            trans_result = temp_pyts.python_record_transformation(parsed_record)
 
             # check that trans_result is a list
             if not isinstance(trans_result, list):
@@ -142,8 +142,8 @@ class Transformation(models.Model):
             # parse or_actions
             or_actions = json.loads(self.payload)
 
-            # load record as prtb
-            prtb = PythonUDFRecord(row)
+            # load record as parsed_record
+            parsed_record = PythonUDFRecord(row)
 
             # loop through actions
             for event in or_actions:
@@ -156,17 +156,17 @@ class Transformation(models.Model):
                     LOGGER.debug("using xpath value: %s", xpath)
 
                     # find elements for potential edits
-                    eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+                    elements = parsed_record.xml.xpath(xpath, namespaces=parsed_record.nsmap)
 
                     # loop through elements
-                    for ele in eles:
+                    for elem in elements:
 
                         # loop through edits
                         for edit in event['edits']:
 
                             # check if element text in from, change
-                            if ele.text in edit['from']:
-                                ele.text = edit['to']
+                            if elem.text in edit['from']:
+                                elem.text = edit['to']
 
                 # handle jython
                 if event['op'] == 'core/text-transform' and event['expression'].startswith('jython:'):
@@ -186,14 +186,14 @@ class Transformation(models.Model):
                     LOGGER.debug("using xpath value: %s", xpath)
 
                     # find elements for potential edits
-                    eles = prtb.xml.xpath(xpath, namespaces=prtb.nsmap)
+                    elements = parsed_record.xml.xpath(xpath, namespaces=parsed_record.nsmap)
 
                     # loop through elements
-                    for ele in eles:
-                        ele.text = temp_pyts.temp_func(ele.text)
+                    for elem in elements:
+                        elem.text = temp_pyts.temp_func(elem.text)
 
             # re-serialize as trans_result
-            return etree.tostring(prtb.xml).decode('utf-8')
+            return etree.tostring(parsed_record.xml).decode('utf-8')
 
         except Exception as err:
             # set trans_result tuple

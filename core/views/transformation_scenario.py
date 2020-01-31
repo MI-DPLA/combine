@@ -198,7 +198,7 @@ def test_transformation_scenario(request):
 
         except Exception as err:
             LOGGER.debug(
-                'test transformation scenario was unsucessful, deleting temporary')
+                'test transformation scenario was unsuccessful, deleting temporary')
             try:
                 if request.POST.get('trans_test_type') == 'single':
                     trans.delete()

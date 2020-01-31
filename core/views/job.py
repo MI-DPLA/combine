@@ -628,7 +628,7 @@ def job_parameters(request, org_id, record_group_id, job_id):
         # return
         return JsonResponse(cjob.job.job_details_dict)
 
-    # if POST, udpate
+    # if POST, update
     if request.method == 'POST':
 
         # get job_details as JSON
@@ -653,7 +653,7 @@ def job_harvest_oai(request, org_id, record_group_id):
 
     # if GET, prepare form
     if request.method == 'GET':
-        # retrieve all OAI endoints
+        # retrieve all OAI endpoints
         oai_endpoints = OAIEndpoint.objects.all()
 
         # get validation scenarios

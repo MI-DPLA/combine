@@ -167,8 +167,8 @@ class ValidationScenario(models.Model):
             if inspect.isfunction(attr):
                 pyvs_funcs.append(attr)
 
-        # instantiate prvb
-        prvb = PythonUDFRecord(row)
+        # instantiate parsed_record
+        parsed_record = PythonUDFRecord(row)
 
         # prepare results_dict
         results_dict = {
@@ -191,7 +191,7 @@ class ValidationScenario(models.Model):
             try:
 
                 # run test
-                test_result = func(prvb)
+                test_result = func(parsed_record)
 
                 # if fail, append
                 if test_result != True:

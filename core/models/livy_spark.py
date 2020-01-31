@@ -229,13 +229,13 @@ class LivySession(models.Model):
         '''
         Method to ensure passed session id:
             - matches current active Livy session saved to DB
-            - in a state to recieve additional jobs
+            - in a state to receive additional jobs
 
         Args:
             session_id (int): session id to check
 
         Returns:
-            (int): passed sessionid if active and ready,
+            (int): passed session_id if active and ready,
                 or new session_id if started
         '''
 
@@ -267,7 +267,7 @@ class LivySession(models.Model):
             if session_id == active_ls.session_id:
 
                 if active_ls.status in ['idle', 'busy']:
-                    LOGGER.debug('active livy session found, state is %s, ready to receieve new jobs, submitting livy job', active_ls.status)
+                    LOGGER.debug('active livy session found, state is %s, ready to receive new jobs, submitting livy job', active_ls.status)
 
                 else:
                     LOGGER.debug('active livy session is found, state %s, but stale, restarting livy session', active_ls.status)

@@ -50,7 +50,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
         LOGGER.debug("superuser detected, not initiating Livy session")
         return False
 
-    # else, continune with user sessions
+    # else, continue with user sessions
     LOGGER.debug('Checking for pre-existing livy sessions')
 
     # get "active" user sessions

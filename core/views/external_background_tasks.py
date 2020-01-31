@@ -169,7 +169,7 @@ def system_bg_status(request):
     # get celery worker status
     active_tasks = celery_app.control.inspect().active()
 
-    # if None, assume celery app stopeed
+    # if None, assume celery app stopped
     if active_tasks is None:
         celery_status = 'stopped'
 

@@ -60,7 +60,7 @@ class DTPublishedJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get PublishedRecords instance
         pub_records = PublishedRecords(subset=self.kwargs.get('subset', None))
@@ -127,7 +127,7 @@ class DTPublishedJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search) |
                                mongoengine.Q(publish_set_id=search))
@@ -180,7 +180,7 @@ class DTRecordsJson(BaseDatatableView):
         # if job present, filter by job
         if 'job_id' in self.kwargs.keys():
 
-            # get jobself.kwargs['job_id']
+            # get job self.kwargs['job_id']
             job = Job.objects.get(pk=self.kwargs['job_id'])
 
             # return filtered queryset
@@ -270,7 +270,7 @@ class DTRecordsJson(BaseDatatableView):
 
 class DTIndexingFailuresJson(BaseDatatableView):
     """
-                Databales JSON response for Indexing Failures
+                Datatables JSON response for Indexing Failures
                 """
 
     # define the columns that will be returned
@@ -285,7 +285,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -348,7 +348,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job_validation = JobValidation.objects.get(
@@ -400,7 +400,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(record_id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
         # return
         return qs
 
@@ -432,7 +432,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job and records
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -481,7 +481,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 
@@ -516,7 +516,7 @@ class JobRecordDiffs(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -597,7 +597,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
         return CombineBackgroundTask.objects
 
     def render_column(self, row, column):

@@ -100,7 +100,7 @@
                                     });
                                 }
 
-                                // dselect matches
+                                // deselect matches
                                 function jobs_search_deselect_matches() {
                                     matches = $("#jobs_hierarchy_tree .jstree-search")
                                     matches.each(function (index, match) {
@@ -291,7 +291,7 @@
 
 
                 // function to update GET parameters when search options applied (page is not reloaded)
-                function udpate_get_parameters() {
+                function update_get_parameters() {
 
                     query_string_obj = null;
 
@@ -304,8 +304,8 @@
                     query_string_obj = query_string_obj.set('jobs', jobs);
 
                     // update URL
-                    var newurl = window.location.protocol + "//" + window.location.host + window.location.pathname + query_string_obj.toString();
-                    window.history.pushState({path: newurl}, '', newurl);
+                    var new_url = window.location.protocol + "//" + window.location.host + window.location.pathname + query_string_obj.toString();
+                    window.history.pushState({path: new_url}, '', new_url);
 
                 }
 
@@ -314,7 +314,7 @@
                 function update_table() {
 
                     // update get params
-                    udpate_get_parameters();
+                    update_get_parameters();
 
                     // reload table
                     table.ajax.reload();

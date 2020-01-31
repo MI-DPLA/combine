@@ -165,7 +165,7 @@ def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, reco
     """
         Return side_by_side diff of Record against Input Record
                 - uses sxsdiff (https://github.com/timonwong/sxsdiff)
-                - if embed == true, strip some uncessary HTML and return
+                - if embed == true, strip some unnecessary HTML and return
         """
 
     # get record

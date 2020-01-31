@@ -266,7 +266,7 @@ class Job(models.Model):
     def calc_records_per_second(self):
 
         '''
-        Method to calculcate records per second, if total known.
+        Method to calculate records per second, if total known.
         If running, use current elapsed, if finished, use total elapsed.
 
         Args:
@@ -546,7 +546,7 @@ class Job(models.Model):
 
         '''
         Not entirely removing the possibility of storing jobs on HDFS, this method returns self.job_output as
-        filesystem location and strips any righthand slash
+        filesystem location and strips any right-hand slash
 
         Args:
             None
@@ -1010,7 +1010,7 @@ class Job(models.Model):
     def update_job_details(self, update_dict, save=True):
 
         '''
-        Method to update job_details by providing a dictionary to update with, optiontally saving
+        Method to update job_details by providing a dictionary to update with, optionally saving
 
         Args:
             update_dict (dict): dictionary of key/value pairs to update job_details JSON with
@@ -1343,7 +1343,7 @@ class Job(models.Model):
                     LOGGER.debug('error canceling Livy statement: %s', self.url)
 
             # retrieve list of spark jobs, killing two most recent
-            # note: repeate x3 if job turnover so quick enough that kill is missed
+            # note: repeat x3 if job turnover so quick enough that kill is missed
             if kill_spark_jobs:
                 try:
                     for _ in range(0, 3):
@@ -1391,7 +1391,7 @@ class Job(models.Model):
             input_job_ids.append(input_job.id)
             self.update_job_details({'input_job_ids':input_job_ids})
 
-            # if job spec input filteres provided, add
+            # if job spec input filters provided, add
             if job_spec_input_filters != None:
                 input_filters = self.job_details_dict['input_filters']
                 input_filters['job_specific'][str(input_job.id)] = job_spec_input_filters
@@ -1745,7 +1745,7 @@ class CombineJob():
             job_details (dict): optional, pre-loaded job_details dict
 
         Returns:
-            - inititates core.models.Job instance
+            - initiates core.models.Job instance
             - initiates job_details
                 - parses *shared* parameters across all Job types
             - passes unsaved job instance and initiated job_details dictionary to job_type_class
@@ -1988,7 +1988,7 @@ class CombineJob():
             LOGGER.debug('Job #%s was not found, returning False', job_id)
             return False
 
-        # using job_type, return instance of approriate job type
+        # using job_type, return instance of appropriate job type
         return globals()[j.job_type](job_id=job_id)
 
 
@@ -2681,7 +2681,7 @@ class HarvestOAIJob(HarvestJob):
 
         '''
         return harvest job specific errors
-        NOTE: Currently, we are not saving errors from OAI harveset, and so, cannot retrieve...
+        NOTE: Currently, we are not saving errors from OAI harvest, and so, cannot retrieve...
         '''
 
         return None
@@ -3828,7 +3828,7 @@ class Record(mongoengine.Document):
     def get_lineage_url_paths(self):
 
         '''
-        get paths of Record, Record Group, and Organzation
+        get paths of Record, Record Group, and Organization
         '''
 
         record_lineage_urls = {

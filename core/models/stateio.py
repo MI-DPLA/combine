@@ -515,7 +515,7 @@ class StateIOClient():
                 self.export_dict['jobs'].update(upstream_jobs)
 
 
-        # topopgraphically sort all queued export jobs, and write to manifest
+        # topographically sort all queued export jobs, and write to manifest
         self.export_dict['jobs'] = Job._topographic_sort_jobs(self.export_dict['jobs'])
         self.export_manifest['jobs'] = [job.id for job in self.export_dict['jobs']]
 
@@ -650,7 +650,7 @@ class StateIOClient():
                     # add to export_dict
                     self.export_dict['dbdd'].add(dbdd)
 
-                    # export DBDD index from ElaticSearch
+                    # export DBDD index from ElasticSearch
                     # prepare dbdd export dir
                     dbdd_export_path = '%s/dbdd' % self.export_path
                     if not os.path.isdir(dbdd_export_path):
@@ -829,7 +829,7 @@ class StateIOClient():
         # if compressing, zip up directory, and remove originals after archive created
         if self.compress:
 
-            LOGGER.debug("compressiong exported state at %s", self.export_path)
+            LOGGER.debug("compressing exported state at %s", self.export_path)
 
             # establish output archive file
             export_filename = '%s/%s' % (settings.STATEIO_EXPORT_DIR, self.export_manifest['export_id'])
@@ -847,7 +847,7 @@ class StateIOClient():
             # remove originals
             shutil.rmtree(self.export_path)
 
-            # update export path and manifeset
+            # update export path and manifest
             self.export_path = new_export_path
             self.export_manifest['export_path'] = self.export_path
 
@@ -892,7 +892,7 @@ class StateIOClient():
                     'id':export.id
                 })
 
-        # write Published Subests to export manifest
+        # write Published Subsets to export manifest
         self._collect_published_subsets()
 
         # write count to exports
@@ -1065,11 +1065,11 @@ class StateIOClient():
             self.import_manifest['export_manifest'] = self.export_manifest
 
         # deserialize django objects
-        self.deser_django_objects = []
+        self.deserialized_django_objects = []
         with open('%s/django_objects.json' % self.import_path, 'r') as in_file:
             django_objects_json = in_file.read()
         for obj in serializers.deserialize('json', django_objects_json):
-            self.deser_django_objects.append(obj)
+            self.deserialized_django_objects.append(obj)
 
 
     def _prepare_files(self):
@@ -1108,7 +1108,7 @@ class StateIOClient():
                 import_base_dir = root
         # if not found, raise Exception
         if not import_base_dir:
-            raise Exception('could not find export_manfiest.json, aborting')
+            raise Exception('could not find export_manifest.json, aborting')
 
         # if import_base_dir != self.import_path, move everything to self.import_path
         if import_base_dir != self.import_path:
@@ -1303,7 +1303,7 @@ class StateIOClient():
                 # get dbdd
                 dbdd = DPLABulkDataDownload.objects.get(pk=(scenario.object.id))
 
-                # import DBDD index to ElaticSearch
+                # import DBDD index to ElasticSearch
                 dbdd_export_path = '%s/dbdd/dbdd%s.json' % (self.import_path, orig_id)
 
                 # build command list
@@ -1677,19 +1677,19 @@ class StateIOClient():
         by instance type and id.
 
         Could be more performant, but length of deserialized objects
-        makes it relatively negligable.
+        makes it relatively negligible.
 
         Args:
             instance_id (int): model instance PK
-            intsance_type (django.models.model): model instance type
+            instance_type (django.models.model): model instance type
 
         Returns:
             (core.models.model): Model instance based on matching id and type
         '''
 
-        # if instances not provided, assumed self.deser_django_objects
+        # if instances not provided, assumed self.deserialized_django_objects
         if instances == None:
-            instances = self.deser_django_objects
+            instances = self.deserialized_django_objects
 
         # loop through deserialized objects
         for obj in instances:
@@ -1710,9 +1710,9 @@ class StateIOClient():
             (list): List of model instances that match type
         '''
 
-        # if instances not provided, assumed self.deser_django_objects
+        # if instances not provided, assumed self.deserialized_django_objects
         if instances == None:
-            instances = self.deser_django_objects
+            instances = self.deserialized_django_objects
 
         # return list
         return [obj for obj in instances if isinstance(obj.object, instance_type)]
