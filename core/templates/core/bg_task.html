@@ -2,135 +2,178 @@
 {% load static %}
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<h2>Combine Background Task: <code>{{ ct.name }}</code></h2>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Combine Background Task: <code>{{ ct.name }}</code></h2>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
-				<thead>
-					<tr>
-						<th>Type</th>
-						<th>Started</th>
-						<th>Duration</th>
-						<th>Celery Task ID</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>{{ ct.get_task_type_display }}</td>
-						<td>{{ ct.start_timestamp|date:"M d, Y, h:i A" }}</td>
-						<td>{{ ct.calc_elapsed_as_string }}</td>
-						<td><code>{{ ct.celery_task_id }}</code></td>
-					</tr>
-				</tbody>
-			</table>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <table id='bg_tasks_dt' class="table table-bordered table-hover dt_table">
+                <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Started</th>
+                    <th>Duration</th>
+                    <th>Celery Task ID</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td>{{ ct.get_task_type_display }}</td>
+                    <td>{{ ct.start_timestamp|date:"M d, Y, h:i A" }}</td>
+                    <td>{{ ct.calc_elapsed_as_string }}</td>
+                    <td><code>{{ ct.celery_task_id }}</code></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>Task Details</h3>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Task Details</h3>
 
-			<div class="row">
-				<div class="col-md-12">
+            <div class="row">
+                <div class="col-md-12">
 
-					<!-- handle different task types below -->
+                    <!-- handle different task types below -->
 
-					{% if ct.task_type == 'validation_report' %}
-					<a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}"><button type="button" class="btn btn-success btn-sm">Download Validation Report <i class="la la-download"></i></button></a>
+                    {% if ct.task_type == 'validation_report' %}
+                        <a href="{% url 'document_download' %}?filepath={{ ct.task_output.output_filename }}&name={{ ct.task_params.report_name }}&download_format={{ ct.task_output.report_format }}">
+                            <button type="button" class="btn btn-success btn-sm">Download Validation Report <i
+                                    class="la la-download"></i></button>
+                        </a>
 
-					{% elif ct.task_type == 'export_mapped_fields' %}
-						{% if 's3_export' in ct.task_params %}
-							<a href="https://s3.amazonaws.com/{{ct.task_params.s3_bucket}}/{{ct.task_params.s3_key}}"><button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i class="la la-download"></i></button></a>
-						{% else %}
-							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain"><button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i class="la la-download"></i></button></a>
-						{% endif %}
+                    {% elif ct.task_type == 'export_mapped_fields' %}
+                        {% if 's3_export' in ct.task_params %}
+                            <a href="https://s3.amazonaws.com/{{ ct.task_params.s3_bucket }}/{{ ct.task_params.s3_key }}">
+                                <button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type=text/plain">
+                                <button type="button" class="btn btn-success btn-sm">Download Mapped Fields <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% endif %}
 
-					{% elif ct.task_type == 'export_documents' %}
-						{% if 's3_export' in ct.task_params %}
-							<a href="https://s3.amazonaws.com/{{ct.task_params.s3_bucket}}/{{ct.task_params.s3_key}}"><button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i class="la la-download"></i></button></a>
-						{% else %}
-							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i class="la la-download"></i></button></a>
-						{% endif %}
+                    {% elif ct.task_type == 'export_documents' %}
+                        {% if 's3_export' in ct.task_params %}
+                            <a href="https://s3.amazonaws.com/{{ ct.task_params.s3_bucket }}/{{ ct.task_params.s3_key }}">
+                                <button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}">
+                                <button type="button" class="btn btn-success btn-sm">Download Documents as Archive <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% endif %}
 
-					{% elif ct.task_type == 'export_tabular_data' %}
-						{% if 's3_export' in ct.task_params %}
-							<a href="https://s3.amazonaws.com/{{ct.task_params.s3_bucket}}/{{ct.task_params.s3_key}}"><button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i class="la la-download"></i></button></a>
-						{% else %}
-							<a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}"><button type="button" class="btn btn-success btn-sm">Download Tabular Data as Archive <i class="la la-download"></i></button></a>
-						{% endif %}
+                    {% elif ct.task_type == 'export_tabular_data' %}
+                        {% if 's3_export' in ct.task_params %}
+                            <a href="https://s3.amazonaws.com/{{ ct.task_params.s3_bucket }}/{{ ct.task_params.s3_key }}">
+                                <button type="button" class="btn btn-success btn-sm">Download Archive from S3 <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% else %}
+                            <a href="{% url 'document_download' %}?filepath={{ ct.task_output.export_output }}&name={{ ct.task_output.name }}&content_type={{ ct.task_output.content_type }}">
+                                <button type="button" class="btn btn-success btn-sm">Download Tabular Data as Archive <i
+                                        class="la la-download"></i></button>
+                            </a>
+                        {% endif %}
 
-					{% elif ct.task_type == 'job_reindex' %}
-					<a href="{{ cjob.job_details_url }}#field_breakdown_tab"><button type="button" class="btn btn-success btn-sm">View Indexed Fields <i class="la la-info-circle"></i></button></a>
+                    {% elif ct.task_type == 'job_reindex' %}
+                        <a href="{{ cjob.job_details_url }}#field_breakdown_tab">
+                            <button type="button" class="btn btn-success btn-sm">View Indexed Fields <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
 
-					{% elif ct.task_type == 'job_new_validations' %}
-					<a href="{{ cjob.job_details_url }}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
+                    {% elif ct.task_type == 'job_new_validations' %}
+                        <a href="{{ cjob.job_details_url }}#validation_tab">
+                            <button type="button" class="btn btn-success btn-sm">View Job Validations <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
 
-					{% elif ct.task_type == 'job_remove_validation' %}
-					<a href="{{ cjob.job_details_url }}#validation_tab"><button type="button" class="btn btn-success btn-sm">View Job Validations <i class="la la-info-circle"></i></button></a>
+                    {% elif ct.task_type == 'job_remove_validation' %}
+                        <a href="{{ cjob.job_details_url }}#validation_tab">
+                            <button type="button" class="btn btn-success btn-sm">View Job Validations <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
 
-					{% elif ct.task_type == 'job_publish' or ct.task_type == 'job_unpublish' %}
-					<a href="{% url 'published' %}"><button type="button" class="btn btn-success btn-sm">View Published Jobs <i class="la la-info-circle"></i></button></a>
+                    {% elif ct.task_type == 'job_publish' or ct.task_type == 'job_unpublish' %}
+                        <a href="{% url 'published' %}">
+                            <button type="button" class="btn btn-success btn-sm">View Published Jobs <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
 
-					{% elif ct.task_type == 'job_dbdm' %}
-					<a href="{{ cjob.job_details_url }}#dpla_bulk_data_tab"><button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i class="la la-info-circle"></i></button></a>
+                    {% elif ct.task_type == 'job_dbdm' %}
+                        <a href="{{ cjob.job_details_url }}#dpla_bulk_data_tab">
+                            <button type="button" class="btn btn-success btn-sm">View DPLA Bulk Data Match results <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
 
-					{% else %}
-						<p>No further details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
-					{% endif %}
+                    {% else %}
+                        <p>No further details for the task type: <strong>{{ ct.get_task_type_display }}</strong>.</p>
+                    {% endif %}
 
-					{% if 'job_id' in ct.task_params %}
-					<a href="{% url 'job_id_redirect' job_id=ct.task_params.job_id %}"><button type="button" class="btn btn-success btn-sm">View Originating Job <i class="la la-info-circle"></i></button></a>
-					{% endif %}
+                    {% if 'job_id' in ct.task_params %}
+                        <a href="{% url 'job_id_redirect' job_id=ct.task_params.job_id %}">
+                            <button type="button" class="btn btn-success btn-sm">View Originating Job <i
+                                    class="la la-info-circle"></i></button>
+                        </a>
+                    {% endif %}
 
-				</div>
-			</div>
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-12">
-					<h4>Task Output</h4>
-					{% if ct.task_output_json %}
-						<pre><code id="task_output_parsed" class="json">{{ ct.task_output_json|safe }}</code></pre>
-						<script>
-							$("#task_output_parsed").html( JSON.stringify({{ ct.task_output_json|safe }}, null, 2) );
-							$("#task_output_parsed").each(function(i, block) {
-								hljs.highlightBlock(block);
-							});
-						</script>
-					{% else %}
-						<p style="color:red;">No task output found</p>
-					{% endif %}
-				</div>
-			</div>
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Task Output</h4>
+                    {% if ct.task_output_json %}
+                        <pre><code id="task_output_parsed" class="json">{{ ct.task_output_json|safe }}</code></pre>
+                        <script>
+                            $("#task_output_parsed").html(JSON.stringify({{ ct.task_output_json|safe }}, null, 2));
+                            $("#task_output_parsed").each(function (i, block) {
+                                hljs.highlightBlock(block);
+                            });
+                        </script>
+                    {% else %}
+                        <p style="color:red;">No task output found</p>
+                    {% endif %}
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-12">
-					<h4>Task Parameters</h4>
-					{% if ct.task_params_json %}
-						<pre><code id="task_params_parsed" class="json">{{ ct.task_params_json|safe }}</code></pre>
-						<script>
-							$("#task_params_parsed").html( JSON.stringify({{ ct.task_params_json|safe }}, null, 2) );
-							$("#task_params_parsed").each(function(i, block) {
-								hljs.highlightBlock(block);
-							});
-						</script>
-					{% else %}
-						<p style="color:red;">No task parameters found</p>
-					{% endif %}
-				</div>
-			</div>
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Task Parameters</h4>
+                    {% if ct.task_params_json %}
+                        <pre><code id="task_params_parsed" class="json">{{ ct.task_params_json|safe }}</code></pre>
+                        <script>
+                            $("#task_params_parsed").html(JSON.stringify({{ ct.task_params_json|safe }}, null, 2));
+                            $("#task_params_parsed").each(function (i, block) {
+                                hljs.highlightBlock(block);
+                            });
+                        </script>
+                    {% else %}
+                        <p style="color:red;">No task parameters found</p>
+                    {% endif %}
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-12">
-					<p><a href="{% url 'bg_task_delete' task_id=ct.id %}"><button type="button" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task <i class="la la-close"></i></button></a></p>
-				</div>
-			</div>
+            <div class="row">
+                <div class="col-md-12">
+                    <p><a href="{% url 'bg_task_delete' task_id=ct.id %}">
+                        <button type="button" class="btn btn-danger btn-sm"
+                                onclick="return confirm('Are you sure you want to remove this task?');">Delete this Task
+                            <i class="la la-close"></i></button>
+                    </a></p>
+                </div>
+            </div>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
 {% endblock %}

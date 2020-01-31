@@ -1,34 +1,39 @@
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<div class="gray_box">
-				<h5>Record Input Validity</h5>
-				<p>From the options below, select what kind of records from the selected input jobs will be used: <span class="font-weight-bold text-warning">all</span> records, those that <span class="font-weight-bold text-success">passed</span> validation, or those that <span class="font-weight-bold text-danger">failed</span>.</p>
-				
-				<div class="form-check">
-					<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
-					<label class="form-check-label" for="all">
-					<span class="text-warning">All records</span> (default)
-					</label>
-				</div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="gray_box">
+                <h5>Record Input Validity</h5>
+                <p>From the options below, select what kind of records from the selected input jobs will be used: <span
+                        class="font-weight-bold text-warning">all</span> records, those that <span
+                        class="font-weight-bold text-success">passed</span> validation, or those that <span
+                        class="font-weight-bold text-danger">failed</span>.</p>
 
-				<div class="form-check">
-					<input class="form-check-input" type="radio" name="input_validity_valve" id="valid" value="valid">
-					<label class="form-check-label" for="valid">
-					<span class="text-success">Passed validation</span>
-					</label>
-				</div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all"
+                           checked>
+                    <label class="form-check-label" for="all">
+                        <span class="text-warning">All records</span> (default)
+                    </label>
+                </div>
 
-				<div class="form-check">
-					<input class="form-check-input" type="radio" name="input_validity_valve" id="invalid" value="invalid">
-					<label class="form-check-label" for="invalid">
-					<span class="text-danger">Failed validation</span>
-					</label>
-				</div>
-				
-			</div>
-		</div>
-	</div>
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="input_validity_valve" id="valid" value="valid">
+                    <label class="form-check-label" for="valid">
+                        <span class="text-success">Passed validation</span>
+                    </label>
+                </div>
+
+                <div class="form-check">
+                    <input class="form-check-input" type="radio" name="input_validity_valve" id="invalid"
+                           value="invalid">
+                    <label class="form-check-label" for="invalid">
+                        <span class="text-danger">Failed validation</span>
+                    </label>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 {% endblock %}

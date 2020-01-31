@@ -2,260 +2,263 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Test Validation Scenario</h2>
-			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#validation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Test Validation Scenario</h2>
+            <p><a href="http://combine.readthedocs.io/en/dev/configuration.html#validation-scenario" target="_blank">
+                <button type="button" class="btn btn-outline-info btn-sm">Instructions</button>
+            </a></p>
+        </div>
+    </div>
 
-	{% if q and vsid %}
-		<div class="alert alert-success alert-dismissible fade show" role="alert">
-			Record and Validation Scenario have been automatically loaded, click the "<strong>Test Validation</strong>" button below to run Validation!
-			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-			<span aria-hidden="true">&times;</span>
-			</button>
-		</div>
-	{% endif %}
+    {% if q and vsid %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            Record and Validation Scenario have been automatically loaded, click the "<strong>Test Validation</strong>"
+            button below to run Validation!
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    {% endif %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<!-- All Records DT table -->
-			{% include 'core/records_dt_table.html' %}
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <!-- All Records DT table -->
+            {% include 'core/records_dt_table.html' %}
+        </div>
+    </div>
 
-	<!-- input payload -->
-	<div class="row">
-		<div class="col-md-12">
-			<h3>Validation Payload</h3>
-			<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
+    <!-- input payload -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Validation Payload</h3>
+            <p>Paste/edit your validation schematron or python script in the textbox below, or select from a
+                pre-existing validation scenario to test or edit:</p>
 
-			<!-- pre-existing Validation Scenario -->
-			<div class="row">
-				<div class="col-md-6">
-					<div class="form-group">
-						<label for="vs_exists">Select a pre-existing Validation Scenario</label>
-						<select id="vs_exists" class="form-control">
-							<option value=''></option>
-							{% for vs in validation_scenarios %}
-								<option value="{{vs.id}}|{{vs.validation_type}}">{{vs.name}}</option>
-							{% endfor %}
-						</select>
-					</div>
-				</div>
-			</div>
-
-			<!-- Validation Scenario payload -->
-			<div class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<textarea id="vs_payload" class="form-control" rows="15"></textarea>
-					</div>
-				</div>
-			</div>
-
-			<!-- Validation Scenario type -->
-			<div class="row">
-				<div class="col-md-6">
-					<div class="form-group">
-						<label for="vs_type">Select Validation Scenario type</label>
-						<select id="vs_type" class="form-control">
-							<option value=''></option>
-							{% for value, label in valid_types %}
-                            <option value="{{ value }}">{{ label }}</option>
+            <!-- pre-existing Validation Scenario -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="vs_exists">Select a pre-existing Validation Scenario</label>
+                        <select id="vs_exists" class="form-control">
+                            <option value=''></option>
+                            {% for vs in validation_scenarios %}
+                                <option value="{{ vs.id }}|{{ vs.validation_type }}">{{ vs.name }}</option>
                             {% endfor %}
-						</select>
-                        <small class="form-text text-muted">If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.</small>
-					</div>
-				</div>
-			</div>
+                        </select>
+                    </div>
+                </div>
+            </div>
 
-			<button class="btn btn-success btn-sm" id="test_vs">Test Validation</button>
-		</div>
-	</div>
+            <!-- Validation Scenario payload -->
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <textarea id="vs_payload" class="form-control" rows="15"></textarea>
+                    </div>
+                </div>
+            </div>
 
-	<!-- validation results -->
-	<div class="row">
-		<div class="col-md-6">
-			<h4>Parsed Validation Results</h4>
-			<pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
-		</div>
-		<div class="col-md-6">
-			<h4>Raw Validation Results</h4>
-			<div class="form-group">
-				<!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
-				<code id="vs_results_raw">Raw results will show here...</code>
-			</div>
-		</div>
-	</div>
+            <!-- Validation Scenario type -->
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="form-group">
+                        <label for="vs_type">Select Validation Scenario type</label>
+                        <select id="vs_type" class="form-control">
+                            <option value=''></option>
+                            {% for value, label in valid_types %}
+                                <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">If you want to use python code and it is not available, ask
+                            your server administrator to set ENABLE_PYTHON=true in the server settings file.
+                        </small>
+                    </div>
+                </div>
+            </div>
 
-	<script>
+            <button class="btn btn-success btn-sm" id="test_vs">Test Validation</button>
+        </div>
+    </div>
 
-		// global variables
-		var sel_row_id;
+    <!-- validation results -->
+    <div class="row">
+        <div class="col-md-6">
+            <h4>Parsed Validation Results</h4>
+            <pre><code id="vs_results_parsed" class="json">Parsed results will show here...</code></pre>
+        </div>
+        <div class="col-md-6">
+            <h4>Raw Validation Results</h4>
+            <div class="form-group">
+                <!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
+                <code id="vs_results_raw">Raw results will show here...</code>
+            </div>
+        </div>
+    </div>
 
-		// capture clicked row
-		$(document).ready(function() {
-			$("#datatables_records tbody").on( 'click', 'tr', function () {
+    <script>
 
-				// loop through and remove other selections
-				$("#datatables_records tbody tr.selected").each(function(i, block){
-					$(block).removeClass('selected');
-				});
+        // global variables
+        var sel_row_id;
 
-				// show selection
-				$(this).toggleClass('selected');
+        // capture clicked row
+        $(document).ready(function () {
+            $("#datatables_records tbody").on('click', 'tr', function () {
 
-				// get record id
-			    sel_row = $(this).children(":first");
-			    sel_row_id = sel_row.find('code').html()
-			} );
-		});
+                // loop through and remove other selections
+                $("#datatables_records tbody tr.selected").each(function (i, block) {
+                    $(block).removeClass('selected');
+                });
 
-		// capture pre-existing validation scenarios and paste
-		$(document).ready(function(){
-			$("#vs_exists").change(function(){
+                // show selection
+                $(this).toggleClass('selected');
 
-				if (this.value != ''){
+                // get record id
+                sel_row = $(this).children(":first");
+                sel_row_id = sel_row.find('code').html()
+            });
+        });
 
-					// get vs info
-					var vs_info = this.value.split('|');
+        // capture pre-existing validation scenarios and paste
+        $(document).ready(function () {
+            $("#vs_exists").change(function () {
 
-					// update validation dropdown type
-					$("#vs_type").val(vs_info[1]);
+                if (this.value != '') {
 
-					// get payload
-					$.ajax({
-						type: "GET",
-						url: "/combine/configuration/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
-						dataType:'text',
-						success: function(data){
-							$("#vs_payload").val(data);
-						}
-					});
-				}
+                    // get vs info
+                    var vs_info = this.value.split('|');
 
-				else {
+                    // update validation dropdown type
+                    $("#vs_type").val(vs_info[1]);
 
-					// clear validation dropdown type
-					$("#vs_type").val(this.value);
+                    // get payload
+                    $.ajax({
+                        type: "GET",
+                        url: "/combine/configuration/validation/VS_ID/payload".replace('VS_ID', vs_info[0]),
+                        dataType: 'text',
+                        success: function (data) {
+                            $("#vs_payload").val(data);
+                        }
+                    });
+                } else {
 
-					// clear payload box
-					$("#vs_payload").val('');
-				}
+                    // clear validation dropdown type
+                    $("#vs_type").val(this.value);
 
-			})
-		});
+                    // clear payload box
+                    $("#vs_payload").val('');
+                }
 
-		$(document).ready(function(){
-			$("#test_vs").click(function(){
+            })
+        });
 
-				// change this to dynamically grab from selected rows in records table
-				var db_id = sel_row_id;
-				if (typeof db_id == 'undefined') {
-					alert('Click a row from the table at the top to run a Validation Test against...');
-				}
+        $(document).ready(function () {
+            $("#test_vs").click(function () {
 
-				// get vs_payload
-				var vs_payload = $("#vs_payload").val();
+                // change this to dynamically grab from selected rows in records table
+                var db_id = sel_row_id;
+                if (typeof db_id == 'undefined') {
+                    alert('Click a row from the table at the top to run a Validation Test against...');
+                }
 
-				// get vs_type
-				var vs_type = $("#vs_type").val();
+                // get vs_payload
+                var vs_payload = $("#vs_payload").val();
 
-				// issue ajax request and get parsed validation results
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_validation_scenario' %}",
-					data: {
-						'db_id':db_id,
-						'vs_payload':vs_payload,
-						'vs_type':vs_type,
-						'vs_name':'temp_vs',
-						'vs_results_format':'parsed',
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						$("#vs_results_parsed").html(JSON.stringify(data, null, 2));
-						$("#vs_results_parsed").each(function(i, block) {
-							hljs.highlightBlock(block);
-						});
+                // get vs_type
+                var vs_type = $("#vs_type").val();
 
-						// highlight background
-						if (data.fail_count == 0){
-							$("#vs_results_parsed").css('background-color','#e0ffdf');
-						}
-						else {
-							$("#vs_results_parsed").css('background-color','#ffe7f4');
-						}
-					}
-				});
+                // issue ajax request and get parsed validation results
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'test_validation_scenario' %}",
+                    data: {
+                        'db_id': db_id,
+                        'vs_payload': vs_payload,
+                        'vs_type': vs_type,
+                        'vs_name': 'temp_vs',
+                        'vs_results_format': 'parsed',
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'json',
+                    success: function (data) {
+                        $("#vs_results_parsed").html(JSON.stringify(data, null, 2));
+                        $("#vs_results_parsed").each(function (i, block) {
+                            hljs.highlightBlock(block);
+                        });
 
-				// issue ajax request and get raw validation results
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_validation_scenario' %}",
-					data: {
-						'db_id':db_id,
-						'vs_payload':vs_payload,
-						'vs_type':vs_type,
-						'vs_name':'temp_vs',
-						'vs_results_format':'raw',
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'text',
-					success: function(data){
+                        // highlight background
+                        if (data.fail_count == 0) {
+                            $("#vs_results_parsed").css('background-color', '#e0ffdf');
+                        } else {
+                            $("#vs_results_parsed").css('background-color', '#ffe7f4');
+                        }
+                    }
+                });
 
-						// hash to translate vs_type to output serialization format
-						vs_type_output_hash = {
-							'sch':'xml',
-							'python':'json',
-							'xsd':'text'
-						}
+                // issue ajax request and get raw validation results
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'test_validation_scenario' %}",
+                    data: {
+                        'db_id': db_id,
+                        'vs_payload': vs_payload,
+                        'vs_type': vs_type,
+                        'vs_name': 'temp_vs',
+                        'vs_results_format': 'raw',
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'text',
+                    success: function (data) {
 
-						// add raw data to div
-						$("#vs_results_raw").html(escapeHtmlEntities(data));
+                        // hash to translate vs_type to output serialization format
+                        vs_type_output_hash = {
+                            'sch': 'xml',
+                            'python': 'json',
+                            'xsd': 'text'
+                        }
 
-						// update class for <code> tag for hljs and init
-						$("#vs_results_raw").removeClass();
-						$("#vs_results_raw").addClass(vs_type_output_hash[vs_type]);
-						$("#vs_results_raw").each(function(i, block) {
-							hljs.highlightBlock(block);
-						});
-					}
-				});
+                        // add raw data to div
+                        $("#vs_results_raw").html(escapeHtmlEntities(data));
 
-				// https://stackoverflow.com/a/10825766/1196358
-				function escapeHtmlEntities (str) {
-				  // No jQuery, so use string replace.
-				  return str
-				    .replace(/&/g, '&amp;')
-				    .replace(/>/g, '&gt;')
-				    .replace(/</g, '&lt;')
-				    .replace(/"/g, '&quot;');
-				}
+                        // update class for <code> tag for hljs and init
+                        $("#vs_results_raw").removeClass();
+                        $("#vs_results_raw").addClass(vs_type_output_hash[vs_type]);
+                        $("#vs_results_raw").each(function (i, block) {
+                            hljs.highlightBlock(block);
+                        });
+                    }
+                });
 
-			})
-		});
+                // https://stackoverflow.com/a/10825766/1196358
+                function escapeHtmlEntities(str) {
+                    // No jQuery, so use string replace.
+                    return str
+                        .replace(/&/g, '&amp;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/</g, '&lt;')
+                        .replace(/"/g, '&quot;');
+                }
 
-		// run post records DT table draw specific to validation testing
-		function run_view_specific_dt_draw(dt){
+            })
+        });
 
-			// if search term provided AND only one result, select
-			{% if q %}
-				if (dt.api.length == 1){
-					$("tr").click();
-				}
-			{% endif %}
+        // run post records DT table draw specific to validation testing
+        function run_view_specific_dt_draw(dt) {
 
-			// if transformation scenario requested, select from dropdown
-			{% if vsid %}
-				$("#vs_exists").val("{{ vsid }}").change();
-			{% endif %}
+            // if search term provided AND only one result, select
+            {% if q %}
+                if (dt.api.length == 1) {
+                    $("tr").click();
+                }
+            {% endif %}
 
-		}
+            // if transformation scenario requested, select from dropdown
+            {% if vsid %}
+                $("#vs_exists").val("{{ vsid }}").change();
+            {% endif %}
 
-	</script>
+        }
+
+    </script>
 
 {% endblock %}

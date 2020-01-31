@@ -2,124 +2,140 @@
 
 {% block content %}
 
-	{% if update_type %}
-	
-		<div class="row">
-			<div class="col-md-12">
-					<h3>Update Job: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
-			</div>
-		</div>
+    {% if update_type %}
 
-		<!-- Re-Map and Index -->
-		{% if update_type == 'reindex' %}
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Update Job: <span
+                        class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span>
+                </h3>
+            </div>
+        </div>
 
-			<div class="row">
-				<div class="col-md-12">
-					<h4>Re-Map and Re-Index Records</h4>					
-				</div>
-			</div>
+        <!-- Re-Map and Index -->
+        {% if update_type == 'reindex' %}
 
-			<div class="row">
-				<div class="col-md-12">
-					
-					<p>Select and configure Field Mapping configurations below:</p>
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Re-Map and Re-Index Records</h4>
+                </div>
+            </div>
 
-					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+            <div class="row">
+                <div class="col-md-12">
 
-						{% csrf_token %}
+                    <p>Select and configure Field Mapping configurations below:</p>
 
-						<div id="index_mapping_tab" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-							{# Field Mapper Selection #}
-							{% include 'core/field_mapper_select.html' %}
-						</div>
+                    <form method="POST"
+                          action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
-						<!-- submit job update form -->
-						<input type="hidden" name="update_type" value="reindex" />
-						<button type="submit" class="btn btn-success btn-sm">Re-Map and Index Records for this Job</button>
+                        {% csrf_token %}
 
-					</form>
+                        <div id="index_mapping_tab" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                            {# Field Mapper Selection #}
+                            {% include 'core/field_mapper_select.html' %}
+                        </div>
 
-				</div>
-			</div>
+                        <!-- submit job update form -->
+                        <input type="hidden" name="update_type" value="reindex"/>
+                        <button type="submit" class="btn btn-success btn-sm">Re-Map and Index Records for this Job
+                        </button>
 
-		<!-- New Validations -->
-		{% elif update_type == 'validations' %}
+                    </form>
 
-			<div class="row">
-				<div class="col-md-12">
-					<h4>Run new Validations</h4>					
-				</div>
-			</div>
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-6">
-					<p>Run new or additional Validations for this Job using the form below:</p>
+            <!-- New Validations -->
+        {% elif update_type == 'validations' %}
 
-					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>Run new Validations</h4>
+                </div>
+            </div>
 
-						{% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
+                    <p>Run new or additional Validations for this Job using the form below:</p>
 
-						<div id="validation_tests_tab" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-							{# Record Validation Selection #}
-							{% include 'core/record_validation_select.html' %}
-						</div>
+                    <form method="POST"
+                          action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
-						<!-- submit job update form -->
-						<input type="hidden" name="update_type" value="validations" />
-						<button type="submit" class="btn btn-success btn-sm">Run new Validations for this Job</button>
+                        {% csrf_token %}
 
-					</form>
+                        <div id="validation_tests_tab" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                            {# Record Validation Selection #}
+                            {% include 'core/record_validation_select.html' %}
+                        </div>
 
-				</div>
-			</div>
+                        <!-- submit job update form -->
+                        <input type="hidden" name="update_type" value="validations"/>
+                        <button type="submit" class="btn btn-success btn-sm">Run new Validations for this Job</button>
 
-		<!-- New Validations -->
-		{% elif update_type == 'dbdm' %}
+                    </form>
 
-			<div class="row">
-				<div class="col-md-12">
-					<h4>DPLA Bulk Data Match</h4>					
-				</div>
-			</div>
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-6">					
+            <!-- New Validations -->
+        {% elif update_type == 'dbdm' %}
 
-					<form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+            <div class="row">
+                <div class="col-md-12">
+                    <h4>DPLA Bulk Data Match</h4>
+                </div>
+            </div>
 
-						{% csrf_token %}
+            <div class="row">
+                <div class="col-md-6">
 
-						<div id="bulk_download_check" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-							{# Bulk Data Download Comparison #}
-							{% include 'core/bulk_download_compare_select.html' %}
-						</div>
+                    <form method="POST"
+                          action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
-						<!-- submit job update form -->
-						<input type="hidden" name="update_type" value="dbdm" />
-						<button type="submit" class="btn btn-success btn-sm">Run new DPLA Bulk Data Match</button>
+                        {% csrf_token %}
 
-					</form>
+                        <div id="bulk_download_check" class="tab-pane container"
+                             style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                            {# Bulk Data Download Comparison #}
+                            {% include 'core/bulk_download_compare_select.html' %}
+                        </div>
 
-				</div>
-			</div>
+                        <!-- submit job update form -->
+                        <input type="hidden" name="update_type" value="dbdm"/>
+                        <button type="submit" class="btn btn-success btn-sm">Run new DPLA Bulk Data Match</button>
 
-		{% endif %}
+                    </form>
 
-	{% else %}
+                </div>
+            </div>
 
-		<div class="row">
-			<div class="col-md-12">
-				<h3>Update Job</h3>
-				<p>Jobs may be "updated" in the following ways:
-					<ul class="list-inline">
-						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Index Metadata</button></a></li>
-						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=rerun_validations"><button type="button" class="btn btn-success btn-sm">Run New Validations</button></a></li>
-						<li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm"><button type="button" class="btn btn-success btn-sm">Run DPLA Bulk Data Match</button></a></li>
-					</ul>
-				</p>
-			</div>
-		</div>
+        {% endif %}
 
-	{% endif %}
+    {% else %}
+
+        <div class="row">
+            <div class="col-md-12">
+                <h3>Update Job</h3>
+                <p>Jobs may be "updated" in the following ways:
+                <ul class="list-inline">
+                    <li style="display:inline;"><a
+                            href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex">
+                        <button type="button" class="btn btn-success btn-sm">Re-Map and Index Metadata</button>
+                    </a></li>
+                    <li style="display:inline;"><a
+                            href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=rerun_validations">
+                        <button type="button" class="btn btn-success btn-sm">Run New Validations</button>
+                    </a></li>
+                    <li style="display:inline;"><a
+                            href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm">
+                        <button type="button" class="btn btn-success btn-sm">Run DPLA Bulk Data Match</button>
+                    </a></li>
+                </ul>
+                </p>
+            </div>
+        </div>
+
+    {% endif %}
 
 {% endblock %}

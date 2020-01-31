@@ -2,351 +2,392 @@
 {% load static %}
 
 {% block content %}
-<script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
-<script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
+    <script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
+    <script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
 
-	
-	<div class="row">
-		<div class="col-md-12">
-			<h2>Configurations</h2>
-			<p>Below are the categories of pre-configured settings and user created scenarios for use in Combine.  You can create and edit them through this interface, or you can use the Django admin console.</p>
-			<p><a href="/admin/core"><button type="button" class="btn btn-primary btn-sm">Django Admin Console <i class="la la-gears"></i></button></a></p>
-		</div>
-	</div>
 
-	<div id="field_mappers_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Field Mapper Configurations</h3>
-			<p>The following configurations are used as configurations for mapping XML documents to "flat" fields for indexing and analysis.  Though configurations can be modified on-the-fly for each Job run or re-indexed, this provides an ability to save particularly useful or complex configurations to reuse at a later time.</p>
-			<table id="field_mappers_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Name</th>
-						<th>Type</th>					
-						<th>Configuration JSON</th>
-                        <th></th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for fm in field_mappers %}
-					<tr>
-						<td>{{fm.id}}</td>
-						<td>{{fm.name}}</td>
-						<td>{{fm.get_field_mapper_type_display}}</td>						
-						<td><a href="{% url 'field_mapper_payload' fm_id=fm.id %}?doc_type=config">View configuration JSON</a></td>
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Configurations</h2>
+            <p>Below are the categories of pre-configured settings and user created scenarios for use in Combine. You
+                can create and edit them through this interface, or you can use the Django admin console.</p>
+            <p><a href="/admin/core">
+                <button type="button" class="btn btn-primary btn-sm">Django Admin Console <i class="la la-gears"></i>
+                </button>
+            </a></p>
+        </div>
+    </div>
+
+    <div id="field_mappers_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Field Mapper Configurations</h3>
+            <p>The following configurations are used as configurations for mapping XML documents to "flat" fields for
+                indexing and analysis. Though configurations can be modified on-the-fly for each Job run or re-indexed,
+                this provides an ability to save particularly useful or complex configurations to reuse at a later
+                time.</p>
+            <table id="field_mappers_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Configuration JSON</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for fm in field_mappers %}
+                    <tr>
+                        <td>{{ fm.id }}</td>
+                        <td>{{ fm.name }}</td>
+                        <td>{{ fm.get_field_mapper_type_display }}</td>
+                        <td><a href="{% url 'field_mapper_payload' fm_id=fm.id %}?doc_type=config">View configuration
+                            JSON</a></td>
                         <td>
                             <a href="{% url 'edit_field_mapper' fm_id=fm.id %}">
                                 <button type="button" class="btn btn-info btn-sm">Edit</button>
                             </a>
-                            <a href="{% url 'delete_field_mapper' fm_id=fm.id %}" onclick="return confirm('Are you sure you want to delete this Field Mapper?');">
+                            <a href="{% url 'delete_field_mapper' fm_id=fm.id %}"
+                               onclick="return confirm('Are you sure you want to delete this Field Mapper?');">
                                 <button type="button" class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#field_mappers_table').DataTable({});			    
-				} );
-			</script>
-			<p>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#field_mappers_table').DataTable({});
+                });
+            </script>
+            <p>
                 <a href="{% url 'test_field_mapper' %}">
-                    <button type="button" class="btn btn-success btn-sm">Test Field Mapper <i class="la la-wrench"></i></button>
+                    <button type="button" class="btn btn-success btn-sm">Test Field Mapper <i class="la la-wrench"></i>
+                    </button>
                 </a>
                 <a href="{% url 'create_field_mapper' %}">
-                    <button type="button" class="btn btn-info btn-sm">Create Field Mapper <i class="la la-plus"></i></button>
+                    <button type="button" class="btn btn-info btn-sm">Create Field Mapper <i class="la la-plus"></i>
+                    </button>
                 </a>
             </p>
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div id="oai_endpoints_anchor" class="row">
-		<div class="col-md-12">
-			<h3>OAI Endpoints for Harvest</h3>
-			<p>These are pre-configured OAI endpoints used for Harvest jobs.  Other than the endpoint URL, all values are defaults and can be overridden at the time of harvest.  Combine uses <a href="https://github.com/dpla/ingestion3#oai-pmh" target="_blank">DPLA's Ingestion 3 for OAI harvesting</a>, where more information about these settings can be found.</p>
-			<table id="oai_endpoints_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Name</th>
-						<th>Endpoint URL</th>
-						<th>Verb</th>
-						<th>Metadata Prefix</th>
-						<th>Scope Type</th>
-						<th>Scope Value</th>
-						<th>Actions</th>
-                        <th></th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for oai_endpoint in oai_endpoints %}
-					<tr>
-						<td>{{oai_endpoint.id}}</td>
-						<td>{{oai_endpoint.name}}</td>
-						<td><a href="{{oai_endpoint.endpoint}}?verb=Identify" target="_blank">{{oai_endpoint.endpoint}}</a></td>
-						<td><code>{{oai_endpoint.verb}}</code></td>
-						<td><code>{{oai_endpoint.metadataPrefix}}</code></td>
-						<td><code>{{oai_endpoint.scope_type}}</code></td>
-						<td><code>{{oai_endpoint.scope_value}}</code></td>
-						<td><a href="{{oai_endpoint.endpoint}}?verb=ListSets" target="_blank">List Sets</a></td>
+    <div id="oai_endpoints_anchor" class="row">
+        <div class="col-md-12">
+            <h3>OAI Endpoints for Harvest</h3>
+            <p>These are pre-configured OAI endpoints used for Harvest jobs. Other than the endpoint URL, all values are
+                defaults and can be overridden at the time of harvest. Combine uses <a
+                        href="https://github.com/dpla/ingestion3#oai-pmh" target="_blank">DPLA's Ingestion 3 for OAI
+                    harvesting</a>, where more information about these settings can be found.</p>
+            <table id="oai_endpoints_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Endpoint URL</th>
+                    <th>Verb</th>
+                    <th>Metadata Prefix</th>
+                    <th>Scope Type</th>
+                    <th>Scope Value</th>
+                    <th>Actions</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for oai_endpoint in oai_endpoints %}
+                    <tr>
+                        <td>{{ oai_endpoint.id }}</td>
+                        <td>{{ oai_endpoint.name }}</td>
+                        <td><a href="{{ oai_endpoint.endpoint }}?verb=Identify"
+                               target="_blank">{{ oai_endpoint.endpoint }}</a></td>
+                        <td><code>{{ oai_endpoint.verb }}</code></td>
+                        <td><code>{{ oai_endpoint.metadataPrefix }}</code></td>
+                        <td><code>{{ oai_endpoint.scope_type }}</code></td>
+                        <td><code>{{ oai_endpoint.scope_value }}</code></td>
+                        <td><a href="{{ oai_endpoint.endpoint }}?verb=ListSets" target="_blank">List Sets</a></td>
                         <td>
                             <a href="{% url 'edit_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}" onclick="return confirm('Are you sure you want to delete this OAI Endpoint?');">
+                            <a href="{% url 'delete_oai_endpoint' oai_endpoint_id=oai_endpoint.id %}"
+                               onclick="return confirm('Are you sure you want to delete this OAI Endpoint?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#oai_endpoints_table').DataTable({});			    
-				} );
-			</script>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#oai_endpoints_table').DataTable({});
+                });
+            </script>
             <p>
                 <a href="{% url 'create_oai_endpoint' %}">
-                    <button type="button" class="btn btn-info btn-sm">Create OAI Endpoint <i class="la la-plus"></i></button>
+                    <button type="button" class="btn btn-info btn-sm">Create OAI Endpoint <i class="la la-plus"></i>
+                    </button>
                 </a>
             </p>
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div id="transformations_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Transformation Scenarios</h3>
-			<p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile, DPLA metadata profile)</p>
-			<table id="transformations_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Name</th>
-						<th>Type</th>
-						<th>Path on disk</th>
-						<th>Transformation Payload</th>
-                        <th></th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for transformation in transformations %}
-					<tr>
-						<td>{{transformation.id}}</td>
-						<td>{{transformation.name}}</td>
-						<td>{{transformation.get_transformation_type_display}}</td>
-						<td><code>{{transformation.filepath}}</code></td>
-						<td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View {{ transformation.get_transformation_type_display }}</a></td>
+    <div id="transformations_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Transformation Scenarios</h3>
+            <p>These are used for transforming harvested records into another format (e.g. Service Hub metadata profile,
+                DPLA metadata profile)</p>
+            <table id="transformations_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Path on disk</th>
+                    <th>Transformation Payload</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for transformation in transformations %}
+                    <tr>
+                        <td>{{ transformation.id }}</td>
+                        <td>{{ transformation.name }}</td>
+                        <td>{{ transformation.get_transformation_type_display }}</td>
+                        <td><code>{{ transformation.filepath }}</code></td>
+                        <td>
+                            <a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View {{ transformation.get_transformation_type_display }}</a>
+                        </td>
                         <td>
                             <a href="{% url 'transformation_scenario' ts_id=transformation.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_transformation_scenario' ts_id=transformation.id %}" onclick="return confirm('Are you sure you want to delete this Transformation Scenario?');">
+                            <a href="{% url 'delete_transformation_scenario' ts_id=transformation.id %}"
+                               onclick="return confirm('Are you sure you want to delete this Transformation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#transformations_table').DataTable({});			    
-				} );
-			</script>
-			<p>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#transformations_table').DataTable({});
+                });
+            </script>
+            <p>
                 <a href="{% url 'test_transformation_scenario' %}">
-                    <button type="button" class="btn btn-success btn-sm">Test Transformation Scenario <i class="la la-wrench"></i></button>
+                    <button type="button" class="btn btn-success btn-sm">Test Transformation Scenario <i
+                            class="la la-wrench"></i></button>
                 </a>
                 <a href="{% url 'create_transformation_scenario' %}">
-                    <button type="button" class="btn btn-info btn-sm">Create Transformation Scenario <i class="la la-plus"></i></button>
+                    <button type="button" class="btn btn-info btn-sm">Create Transformation Scenario <i
+                            class="la la-plus"></i></button>
                 </a>
             </p>
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div id="validations_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Validation Scenarios</h3>
-			<p>These validation scenarios are used to validate records after a job has completed.  A single validation may contain multiple tests (both schematron and python type).</p>
-			<table id="validations_table" class="table table-bordered table-hover">
-				<thead>					
-					<tr>
-						<th>ID</th>
-						<th>Name</th>
-						<th>Type</th>
-						<th>Path on disk</th>
-						<th>Validation Payload</th>
-                        <th></th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for vs in validation_scenarios %}
-					<tr>
-						<td>{{vs.id}}</td>
-						<td>{{vs.name}}</td>
-						<td>{{vs.get_validation_type_display}}</td>
-						<td><code>{{vs.filepath}}</code></td>
-						<td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Code</a></td>
+    <div id="validations_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Validation Scenarios</h3>
+            <p>These validation scenarios are used to validate records after a job has completed. A single validation
+                may contain multiple tests (both schematron and python type).</p>
+            <table id="validations_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Path on disk</th>
+                    <th>Validation Payload</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for vs in validation_scenarios %}
+                    <tr>
+                        <td>{{ vs.id }}</td>
+                        <td>{{ vs.name }}</td>
+                        <td>{{ vs.get_validation_type_display }}</td>
+                        <td><code>{{ vs.filepath }}</code></td>
+                        <td><a href="{% url 'validation_scenario_payload' vs_id=vs.id %}">View Validation Code</a></td>
                         <td>
-                            <a href="{%  url 'validation_scenario' vs_id=vs.id %}" >
+                            <a href="{% url 'validation_scenario' vs_id=vs.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_validation_scenario' vs_id=vs.id %}" onclick="return confirm('Are you sure you want to delete this Validation Scenario?');">
+                            <a href="{% url 'delete_validation_scenario' vs_id=vs.id %}"
+                               onclick="return confirm('Are you sure you want to delete this Validation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#validations_table').DataTable({});			    
-				} );
-			</script>
-			<p>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#validations_table').DataTable({});
+                });
+            </script>
+            <p>
                 <a href="{% url 'test_validation_scenario' %}">
-                    <button type="button" class="btn btn-success btn-sm">Test Validation Scenario <i class="la la-wrench"></i></button>
+                    <button type="button" class="btn btn-success btn-sm">Test Validation Scenario <i
+                            class="la la-wrench"></i></button>
                 </a>
                 <a href="{% url 'create_validation_scenario' %}">
-                    <button type="button" class="btn btn-info btn-sm">Create Validation Scenario <i class="la la-plus"></i></button>
+                    <button type="button" class="btn btn-info btn-sm">Create Validation Scenario <i
+                            class="la la-plus"></i></button>
                 </a>
             </p>
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div id="rits_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Record Identifier Transformation Scenarios</h3>
-			<p>View and manage scenarios for transforming Record Identifiers in Combine.</p>
-			<table id="rits_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>Name</th>
-						<th>Type</th>
-						<th>Target</th>
-                        <th></th>
-					</tr>
-				</thead>
-				<tbody>
-				{% for rt in rits %}
-					<tr>
-						<td>{{rt.id}}</td>
-						<td>{{rt.name}}</td>
-						<td>{{rt.get_transformation_type_display}}</td>
-						<td>{{rt.get_transformation_target_display}}</td>
+    <div id="rits_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Record Identifier Transformation Scenarios</h3>
+            <p>View and manage scenarios for transforming Record Identifiers in Combine.</p>
+            <table id="rits_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Type</th>
+                    <th>Target</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for rt in rits %}
+                    <tr>
+                        <td>{{ rt.id }}</td>
+                        <td>{{ rt.name }}</td>
+                        <td>{{ rt.get_transformation_type_display }}</td>
+                        <td>{{ rt.get_transformation_target_display }}</td>
                         <td>
                             <a href="{% url 'edit_rits' rits_id=rt.id %}">
                                 <button class="btn btn-sm btn-info">Edit</button>
                             </a>
-                            <a href="{% url 'delete_rits' rits_id=rt.id %}" onclick="return confirm('Are you sure you want to delete this Record Identifier Transformation Scenario?');">
+                            <a href="{% url 'delete_rits' rits_id=rt.id %}"
+                               onclick="return confirm('Are you sure you want to delete this Record Identifier Transformation Scenario?');">
                                 <button class="btn btn-sm btn-danger">Delete</button>
                             </a>
                         </td>
-					</tr>
-				{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#rits_table').DataTable({});			    
-				} );
-			</script>
-			<p>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#rits_table').DataTable({});
+                });
+            </script>
+            <p>
                 <a href="{% url 'test_rits' %}">
-                    <button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario <i class="la la-wrench"></i></button>
+                    <button type="button" class="btn btn-success btn-sm">Test Record Identifier Transformation Scenario
+                        <i class="la la-wrench"></i></button>
                 </a>
                 <a href="{% url 'create_rits' %}">
-                    <button type="button" class="btn btn-sm btn-info">Create Record Identifier Transformation Scenario <i class="la la-plus"></i></button>
+                    <button type="button" class="btn btn-sm btn-info">Create Record Identifier Transformation Scenario
+                        <i class="la la-plus"></i></button>
                 </a>
             </p>
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div id="oai_server_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Combine OAI Server</h3>
-			<p>Combine comes with a built-in OAI server to serve published RecordGroups.  Currently, these settings are configured in <code>localsettings.py</code>.</p>
-			<table id="oai_server_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Setting</th>
-						<th>Description</th>
-						<th>Value</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td><code>OAI_RESPONSE_SIZE</code></td>
-						<td>How many records to return per OAI response</td>
-						<td><code>{{ OAI_RESPONSE_SIZE }}</code></td>
-					</tr>
-					<tr>
-						<td><code>COMBINE_OAI_IDENTIFIER</code></td>
-						<td>It is common for OAI servers (producers) to prefix Record identifiers on the way out with an identifier unique to the server.  This setting can also be configured to mirror the identifier used in other/previous OAI servers to mimick downstream identifiers.</td>
-						<td><code>{{ COMBINE_OAI_IDENTIFIER }}</code></td>
-					</tr>
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
-				    $('#oai_server_table').DataTable({});			    
-				} );
-			</script>
-		</div>
-	</div>
+    <div id="oai_server_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Combine OAI Server</h3>
+            <p>Combine comes with a built-in OAI server to serve published RecordGroups. Currently, these settings are
+                configured in <code>localsettings.py</code>.</p>
+            <table id="oai_server_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>Setting</th>
+                    <th>Description</th>
+                    <th>Value</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td><code>OAI_RESPONSE_SIZE</code></td>
+                    <td>How many records to return per OAI response</td>
+                    <td><code>{{ OAI_RESPONSE_SIZE }}</code></td>
+                </tr>
+                <tr>
+                    <td><code>COMBINE_OAI_IDENTIFIER</code></td>
+                    <td>It is common for OAI servers (producers) to prefix Record identifiers on the way out with an
+                        identifier unique to the server. This setting can also be configured to mirror the identifier
+                        used in other/previous OAI servers to mimick downstream identifiers.
+                    </td>
+                    <td><code>{{ COMBINE_OAI_IDENTIFIER }}</code></td>
+                </tr>
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
+                    $('#oai_server_table').DataTable({});
+                });
+            </script>
+        </div>
+    </div>
 
-	<div id="dbdd_anchor" class="row">
-		<div class="col-md-12">
-			<h3>DPLA Bulk Data Downloads</h3>
-			<p>Manage local, <a href="https://pro.dp.la/developers/bulk-download">bulk data downloads from DPLA</a>.</p>
-			<table id="dbdd_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>ID</th>
-						<th>S3 Bucket Key</th>
-						<th>Status</th>
-						<th>Uploaded to S3</th>
-						<th>Downloaded to Combine</th>
-						<th>ElasticSearch index</th>
-						<th>Filepath</th>
-					</tr>
-				</thead>
-				<tbody>
-					{% for bd in bulk_downloads %}
-						<tr>
-							<td>{{bd.id}}</td>
-							<td><code>{{bd.s3_key}}</code></td>
-							<td>{{bd.get_status_display}}</td>
-							<td>{{bd.uploaded_timestamp|date:"M d, Y, h:i A"}}</td>
-							<td>{{bd.downloaded_timestamp|date:"M d, Y, h:i A"}}</td>
-							<td>{% if bd.es_index %}<a href="http://{{ES_HOST}}/{{bd.es_index}}/_search" target="_blank"><code>{{bd.es_index}}</code></a>{% endif %}</td>
-							<td><code>{{bd.filepath}}</code></td>
-						</tr>
-					{% endfor %}
-				</tbody>
-			</table>
-			<script>
-				$(document).ready(function() {
+    <div id="dbdd_anchor" class="row">
+        <div class="col-md-12">
+            <h3>DPLA Bulk Data Downloads</h3>
+            <p>Manage local, <a href="https://pro.dp.la/developers/bulk-download">bulk data downloads from DPLA</a>.</p>
+            <table id="dbdd_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>S3 Bucket Key</th>
+                    <th>Status</th>
+                    <th>Uploaded to S3</th>
+                    <th>Downloaded to Combine</th>
+                    <th>ElasticSearch index</th>
+                    <th>Filepath</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for bd in bulk_downloads %}
+                    <tr>
+                        <td>{{ bd.id }}</td>
+                        <td><code>{{ bd.s3_key }}</code></td>
+                        <td>{{ bd.get_status_display }}</td>
+                        <td>{{ bd.uploaded_timestamp|date:"M d, Y, h:i A" }}</td>
+                        <td>{{ bd.downloaded_timestamp|date:"M d, Y, h:i A" }}</td>
+                        <td>{% if bd.es_index %}<a href="http://{{ ES_HOST }}/{{ bd.es_index }}/_search"
+                                                   target="_blank"><code>{{ bd.es_index }}</code></a>{% endif %}</td>
+                        <td><code>{{ bd.filepath }}</code></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+            <script>
+                $(document).ready(function () {
                     $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
-				    $('#dbdd_table').DataTable({});			    
-				} );
-			</script>
-			<p><a href="{% url 'dpla_bulk_data_download' %}"><button type="button" class="btn btn-success btn-sm">Download and Index Bulk Data <i class="la la-cloud-download"></i></button></a></p>
-		</div>
-	</div>
+                    $('#dbdd_table').DataTable({});
+                });
+            </script>
+            <p><a href="{% url 'dpla_bulk_data_download' %}">
+                <button type="button" class="btn btn-success btn-sm">Download and Index Bulk Data <i
+                        class="la la-cloud-download"></i></button>
+            </a></p>
+        </div>
+    </div>
 
-	<div id="dbdd_anchor" class="row">
-		<div class="col-md-12">
-			<h3>Combine State Export/Import</h3>						
-			<p><a href="{% url 'stateio' %}"><button type="button" class="btn btn-success btn-sm">State Export/Import <i class="la la-cloud-download"></i></button></a></p>
-		</div>
-	</div>
+    <div id="dbdd_anchor" class="row">
+        <div class="col-md-12">
+            <h3>Combine State Export/Import</h3>
+            <p><a href="{% url 'stateio' %}">
+                <button type="button" class="btn btn-success btn-sm">State Export/Import <i
+                        class="la la-cloud-download"></i></button>
+            </a></p>
+        </div>
+    </div>
 
 
 

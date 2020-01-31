@@ -2,58 +2,63 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">Transform Record ID</span></h3>
-			<p>Transform a Record's <code>record_id</code> that is used as the unique identifier for publishing.  An example might be modifying a portion of the <code>record_id</code> from an original Harvest job that no longer matches the desired final, published identifier for this Record.</p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>New Job: <span class="font-weight-bold">Transform Record ID</span></h3>
+            <p>Transform a Record's <code>record_id</code> that is used as the unique identifier for publishing. An
+                example might be modifying a portion of the <code>record_id</code> from an original Harvest job that no
+                longer matches the desired final, published identifier for this Record.</p>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<form method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
+    <div class="row">
+        <div class="col-md-12">
+            <form method="POST"
+                  action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
-				{% csrf_token %}
-	
-				<div class="row">
-					<div class="col-md-6">
-						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
-					</div>
-				</div>
+                {% csrf_token %}
 
-				<div class="row">
-					<div class="col-md-12">
-						<!-- Job Select -->
-						{% include 'core/job_input_select.html' %}
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-6">
+                        <!-- optional job details -->
+                        {% include 'core/job_optional_details.html' %}
+                    </div>
+                </div>
 
-				<div class="row">
-					<div class="col-md-6">
+                <div class="row">
+                    <div class="col-md-12">
+                        <!-- Job Select -->
+                        {% include 'core/job_input_select.html' %}
+                    </div>
+                </div>
 
-						<div class="form-group">
-							<label for="transformation_id">Select Transformation Scenario to use</label>
-							<select class="form-control" id="transformation_id" name="transformation_id" required>
-								{% for transformation in transformations %}
-									<option value="{{ transformation.id }}">{{ transformation.name }} ({{ transformation.transformation_type }})</option>	
-								{% endfor %}						
-							</select>
-						</div>
-				
-						<!-- Field Mapper Selection -->
-						{% include 'core/field_mapper_select.html' %}
+                <div class="row">
+                    <div class="col-md-6">
 
-						<!-- Record Validation Selection -->
-						{% include 'core/record_validation_select.html' %}
+                        <div class="form-group">
+                            <label for="transformation_id">Select Transformation Scenario to use</label>
+                            <select class="form-control" id="transformation_id" name="transformation_id" required>
+                                {% for transformation in transformations %}
+                                    <option value="{{ transformation.id }}">{{ transformation.name }}
+                                        ({{ transformation.transformation_type }})
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
 
-					</div>
-				</div>
-				
-				<button type="submit" class="btn btn-primary btn-sm">Run Job</button>
+                        <!-- Field Mapper Selection -->
+                        {% include 'core/field_mapper_select.html' %}
 
-			</form>
-		</div>
-	</div>
+                        <!-- Record Validation Selection -->
+                        {% include 'core/record_validation_select.html' %}
+
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-sm">Run Job</button>
+
+            </form>
+        </div>
+    </div>
 
 {% endblock %}

@@ -1,443 +1,506 @@
 {% extends 'core/base.html' %}
 {% load static %}
 {% block content %}
-{% load core_template_filters %}
+    {% load core_template_filters %}
 
-<div class="row">
-    <div class="col-md-12">
-        <h3>Job Details: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span> <a href="#" onclick="$('#job_name_notes_update').fadeToggle(); return false;"><i class="la la-pencil"></i></a></h3>
-    </div>
-    <div id="job_name_notes_update" class="col-md-12" style="display:none;">
-
-        <div id="job_name_update" class="col-md-6">
-            <form method="POST" action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label for="job_name">Update Job name</label>
-                    <input type="text" class="form-control" id="job_name" name="job_name" placeholder="Better Job Name">
-                </div>
-                <button type="submit" class="btn btn-primary btn-sm">Update Name</button>
-            </form>
-        </div>
-
-        <div id="job_notes_section" class="col-md-6" style="margin-top:20px;">
-            <form method="POST" action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-                {% csrf_token %}
-
-                <div class="form-group">
-                    <label for="job_notes">Create/Update Job notes</label>
-                    <textarea class="form-control" name="job_note" id="job_notes" rows="3" placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
-                </div>
-                <input type="hidden" name="job_id" value="{{ cjob.job.id }}">
-                <input type="hidden" name="next" value="{{ request.path }}">
-                <button type="submit" class="btn btn-primary btn-sm">Update Notes</button>
-            </form>
-        </div>
-
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <div id="job_family_diagram_container">
-            <style type="text/css">
-                #job_family_diagram {
-                    height: 200px;
-                }
-            </style>
-            <div id="job_family_diagram"></div>
-            <script type="text/javascript">
-
-                // parse job lineage json
-                job_lineage = JSON.parse('{{ job_lineage_json|safe|escapejs }}');
-
-                // style nodes
-                $(job_lineage.nodes).each(function(){
-                    styleNetworkNodes(this);
-                });
-
-                // style edges
-                $(job_lineage.edges).each(function(){
-                    styleNetworkEdges(this);
-                });
-
-                // init as viz data
-                var nodes = new vis.DataSet(job_lineage.nodes);
-                var edges = new vis.DataSet(job_lineage.edges);
-
-                // create a network
-                var container = document.getElementById('job_family_diagram');
-                var data = {
-                    nodes: nodes,
-                    edges: edges
-                };
-                var options = {
-                    clickToUse:false,
-                    interaction:{
-                        zoomView:false,
-                        multiselect: false,
-                        navigationButtons: true,
-                    },
-                    layout:{
-                        hierarchical: {
-                            enabled:true,
-                            levelSeparation: 720,
-                            nodeSpacing: 100,
-                            treeSpacing: 100,
-                            blockShifting: true,
-                            edgeMinimization: true,
-                            parentCentralization: true,
-                            direction: 'LR',        // UD, DU, LR, RL
-                            sortMethod: 'directed'   // hubsize, directed
-                        }
-                    }
-                };
-
-                // fire network
-                var network = new vis.Network(container, data, options);
-
-                // fit all nodes in viewport
-                network.fit();
-
-            </script>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-12">
-        <table class="table table-bordered table-hover">
-            <tr>
-                <th>Job Name</th>
-                <th>Job Type</th>
-                <th>Total Input Records</th>
-                <th>Successfully Processed</th>
-                <th>Error in Processing</th>
-                <th>Failed Validation</th>
-            </tr>
-            <tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
-                <td>{{ cjob.job.name }}</td>
-                <td>{{ cjob.job.job_type }}</td>
-                <td>
-                    {% if record_count_details.input_jobs is not None %}
-                    {{ record_count_details.input_jobs.total_input_record_count }}
-                    {% else %}
-                    N/A
-                    {% endif %}
-                </td>
-                <td {% if record_count_details.records == 0 %}class="invalid_job"{% endif %}>
-                    {{ record_count_details.records }}
-                </td>
-                {% if record_count_details.errors > 0 %}
-                    <td class="invalid_job">{{ record_count_details.errors }} <a href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button style="margin-left:10px;" class="btn btn-danger btn-sm">View Errors</button></a></td>
-                {% else %}
-                    <td class="valid_job">{{ record_count_details.errors }}</td>
-                {% endif %}
-                <td class="{% if cjob.job.validation_results.failure_count > 0 %}invalid_job{% else %}valid_job{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
-            </tr>
-        </table>
-    </div>
-</div>
-
-{% if cjob.job.livy_error %}
     <div class="row">
-        <div class="alert alert-danger">
-            An error occurred when running this Job:
-            {{ cjob.job.livy_error|linebreaks }}
+        <div class="col-md-12">
+            <h3>Job Details: <span
+                    class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span>
+                <a href="#" onclick="$('#job_name_notes_update').fadeToggle(); return false;"><i
+                        class="la la-pencil"></i></a></h3>
+        </div>
+        <div id="job_name_notes_update" class="col-md-12" style="display:none;">
+
+            <div id="job_name_update" class="col-md-6">
+                <form method="POST"
+                      action="{% url 'job_update_name' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="job_name">Update Job name</label>
+                        <input type="text" class="form-control" id="job_name" name="job_name"
+                               placeholder="Better Job Name">
+                    </div>
+                    <button type="submit" class="btn btn-primary btn-sm">Update Name</button>
+                </form>
+            </div>
+
+            <div id="job_notes_section" class="col-md-6" style="margin-top:20px;">
+                <form method="POST"
+                      action="{% url 'job_update_note' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                    {% csrf_token %}
+
+                    <div class="form-group">
+                        <label for="job_notes">Create/Update Job notes</label>
+                        <textarea class="form-control" name="job_note" id="job_notes" rows="3"
+                                  placeholder="Enter Job notes here...">{{ cjob.job.note }}</textarea>
+                    </div>
+                    <input type="hidden" name="job_id" value="{{ cjob.job.id }}">
+                    <input type="hidden" name="next" value="{{ request.path }}">
+                    <button type="submit" class="btn btn-primary btn-sm">Update Notes</button>
+                </form>
+            </div>
+
         </div>
     </div>
-{% endif %}
 
-<div class="row">
-    <div class="col-md-12">
+    <div class="row">
+        <div class="col-md-12">
+            <div id="job_family_diagram_container">
+                <style type="text/css">
+                    #job_family_diagram {
+                        height: 200px;
+                    }
+                </style>
+                <div id="job_family_diagram"></div>
+                <script type="text/javascript">
 
-        <!-- Navigation -->
-        <ul id="tabs" class="nav nav-tabs">
-            <li class="nav-item">
-                <a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped Fields</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#manage_tab">Manage</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#publish_tab">Publish</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA Bulk Data Matches</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#job_type_specific_tab" onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#job_params_tab">Job Parameters</a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link" data-toggle="tab" href="#spark_details_tab">Spark Details</a>
-            </li>
-        </ul>
+                    // parse job lineage json
+                    job_lineage = JSON.parse('{{ job_lineage_json|safe|escapejs }}');
 
-        <!-- Tabbed Content -->
-        <div class="tab-content">
+                    // style nodes
+                    $(job_lineage.nodes).each(function () {
+                        styleNetworkNodes(this);
+                    });
 
-            <div id="records_tab" class="tab-pane full_width_tab active">
-                <div class="row">
-                    <div class="col-md-12">
-                        <!-- Indexing Records DT Table -->
-                        {% include 'core/records_dt_table.html' %}
-                    </div>
-                </div>
+                    // style edges
+                    $(job_lineage.edges).each(function () {
+                        styleNetworkEdges(this);
+                    });
+
+                    // init as viz data
+                    var nodes = new vis.DataSet(job_lineage.nodes);
+                    var edges = new vis.DataSet(job_lineage.edges);
+
+                    // create a network
+                    var container = document.getElementById('job_family_diagram');
+                    var data = {
+                        nodes: nodes,
+                        edges: edges
+                    };
+                    var options = {
+                        clickToUse: false,
+                        interaction: {
+                            zoomView: false,
+                            multiselect: false,
+                            navigationButtons: true,
+                        },
+                        layout: {
+                            hierarchical: {
+                                enabled: true,
+                                levelSeparation: 720,
+                                nodeSpacing: 100,
+                                treeSpacing: 100,
+                                blockShifting: true,
+                                edgeMinimization: true,
+                                parentCentralization: true,
+                                direction: 'LR',        // UD, DU, LR, RL
+                                sortMethod: 'directed'   // hubsize, directed
+                            }
+                        }
+                    };
+
+                    // fire network
+                    var network = new vis.Network(container, data, options);
+
+                    // fit all nodes in viewport
+                    network.fit();
+
+                </script>
             </div>
+        </div>
+    </div>
 
-            <div id="manage_tab" class="tab-pane full_width_tab">
-
-                <!-- hidden input for pre-selected jobs -->
-                <input style="display:none;" class="job_id_sel" type="checkbox" value="{{ cjob.job.id }}" name="job_id" checked>
-
-                <!-- job management blocks -->
-                {% include 'core/job_management.html' %}
-
-            </div>
-
-            <div id="publish_tab" class="tab-pane full_width_tab">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h4>Publish Job</h4>
-                    </div>
-                </div>
-
-                <div class="row">
-                    <div class="col-md-12">
-                        {% if cjob.job.published %}
-                        <p>This Job is currently <strong>published</strong>:</p>
-                        <table class="table table-bordered table-hover">
-                            <thead>
-                                <tr>
-                                    <th>Publish Set ID</th>
-                                    <th>Record Count</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr>
-                                    <td>
-                                        {% if cjob.job.publish_set_id %}
-                                            <p><a href="{% url 'oai' %}?verb=ListRecords&set={{ cjob.job.publish_set_id }}" target="_blank">{{ cjob.job.publish_set_id }}</a></p>
-                                        {% else %}
-                                            <span style="color:red;"><strong>Not set</strong></span>
-                                        {% endif %}
-                                    </td>
-                                    <td>{{ cjob.job.record_count }}</td>
-                                    <td>
-                                        <a onclick="return confirm('Are you sure you want to unpublish this Job?');"
-                                           href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
-                                            <button type="button" class="btn btn-danger btn-sm">
-                                                Unpublish <i class="la la-close"></i>
-                                            </button>
-                                        </a>
-                                        {% if cjob.job.publish_set_id %}
-                                            <button id="publish_set_id_button" type="button" class="btn btn-sm btn-info">Change Publish Set ID</button>
-                                        {% else %}
-                                            <button id="publish_set_id_button" type="button" class="btn btn-sm btn-success">Add Publish Set ID</button>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        {%  else %}
-                        <p>This job is currently <strong>unpublished</strong>.  Publish using the form below, by optionally creating a <a target="_blank" href="https://combine.readthedocs.io/en/master/publishing.html#how-does-publishing-work-in-combine">Publish Set ID</a>, and optionally including in a <a target="_blank" href="https://combine.readthedocs.io/en/master/publishing.html#published-subsets">Published Subset</a>:</p>
+    <div class="row">
+        <div class="col-md-12">
+            <table class="table table-bordered table-hover">
+                <tr>
+                    <th>Job Name</th>
+                    <th>Job Type</th>
+                    <th>Total Input Records</th>
+                    <th>Successfully Processed</th>
+                    <th>Error in Processing</th>
+                    <th>Failed Validation</th>
+                </tr>
+                <tr class="{{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">
+                    <td>{{ cjob.job.name }}</td>
+                    <td>{{ cjob.job.job_type }}</td>
+                    <td>
+                        {% if record_count_details.input_jobs is not None %}
+                            {{ record_count_details.input_jobs.total_input_record_count }}
+                        {% else %}
+                            N/A
                         {% endif %}
-                        <div id="publish_set_id_form" {% if cjob.job.published %}hidden="hidden"{% endif %}>
-                            <form method="POST"
-                                  {% if cjob.job.published %}
-                                  action="{% url 'job_update' org_id=cjob.job.record_group.organization_id record_group_id=cjob.job.record_group_id job_id=cjob.job.id %}"
-                                  {% else %}
-                                  action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"
-                                  {% endif %}>
+                    </td>
+                    <td {% if record_count_details.records == 0 %}class="invalid_job"{% endif %}>
+                        {{ record_count_details.records }}
+                    </td>
+                    {% if record_count_details.errors > 0 %}
+                        <td class="invalid_job">{{ record_count_details.errors }} <a
+                                href="{% url 'job_errors' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                            <button style="margin-left:10px;" class="btn btn-danger btn-sm">View Errors</button>
+                        </a></td>
+                    {% else %}
+                        <td class="valid_job">{{ record_count_details.errors }}</td>
+                    {% endif %}
+                    <td class="{% if cjob.job.validation_results.failure_count > 0 %}invalid_job{% else %}valid_job{% endif %}">{{ cjob.job.validation_results.failure_count }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
 
-                                {% csrf_token %}
+    {% if cjob.job.livy_error %}
+        <div class="row">
+            <div class="alert alert-danger">
+                An error occurred when running this Job:
+                {{ cjob.job.livy_error|linebreaks }}
+            </div>
+        </div>
+    {% endif %}
 
-                                <div class="form-group">
-                                    <label for="publish_set_id">{% if cjob.job.published %}New {% endif %}Publish Set Id</label>
-                                    <input type="text" class="form-control" id="publish_set_id" name="publish_set_id"
-                                           placeholder="{% if cjob.job.publish_set_id %}{{ cjob.job.publish_set_id }}{% else %}e.g. fedora_records{% endif %}" />
-                                    <input type="hidden" name="redirect_anchor" value="#publish_tab" />
-                                    {% if cjob.job.published %}
-                                    <input type="hidden" name="update_type" value="publish_set" />
-                                    {% endif %}
-                                    <small id="publish_set_id_help" class="form-text text-muted">Publish Set ID may be left blank to not include in a Publish set.</small>
-                                </div>
+    <div class="row">
+        <div class="col-md-12">
 
-                                {% if pr.sets|length > 0 %}
-                                    <div class="form-group">
-                                        <label for="existing_publish_set_id">Or, include Job in a pre-existing Publish Set ID:</label>
-                                        {% for set,jobs in pr.sets.items %}
-                                            <div class="radio">
-                                                <label>
-                                                    <input type="radio" value="{{set}}" name="existing_publish_set_id" /> {{set}}
-                                                </label>
-                                            </div>
-                                        {% endfor %}
-                                    </div>
-                                {% endif %}
+            <!-- Navigation -->
+            <ul id="tabs" class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#records_tab" onclick="update_table_widths();">Records</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#field_breakdown_tab" onclick="update_table_widths();">Mapped
+                        Fields</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#manage_tab">Manage</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#publish_tab">Publish</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#io_tab">Input Jobs</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#validation_tab">Validation</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#dpla_bulk_data_tab" onclick="update_table_widths();">DPLA
+                        Bulk Data Matches</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#job_type_specific_tab"
+                       onclick="update_table_widths();">{% if cjob.job.job_type_family == 'HarvestJob' %}Harvest
+                        Details{% elif cjob.job.job_type_family == 'TransformJob' %}Transform
+                        Details{% elif cjob.job.job_type_family == 'MergeJob' %}Merge
+                        Details{% elif cjob.job.job_type_family == 'AnalysisJob' %}Analysis Details{% endif %}</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#export_tab">Export</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#job_params_tab">Job Parameters</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#spark_details_tab">Spark Details</a>
+                </li>
+            </ul>
 
-                                {% if published_subsets|length > 0 %}
+            <!-- Tabbed Content -->
+            <div class="tab-content">
 
-                                    <p><strong>Include this Publish Set in a pre-existing <a target="_blank" href="https://combine.readthedocs.io/en/dev/publishing.html#published-subsets">Published Subset</a>?</strong></p>
-
-                                    <table class="table table-bordered table-hover">
-                                        <tr>
-                                            <th>Include?</th>
-                                            <th>Name</th>
-                                            <th>Description</th>
-                                            <th>Associated Publish Set IDs</th>
-                                            <th>Includes Records not part of a set?</th>
-                                            <th>Record Count</th>
-                                            <th>Actions</th>
-                                        </tr>
-
-                                        {% for subset in published_subsets %}
-                                        <tr {% if published.subset == subset.name %}style="background-color:#fedeff;"{% endif %}>
-                                            <td><input type="checkbox" value="{{subset.name}}" name="published_subsets" /></td>
-                                            <td><code>{{subset.name}}</code> {% if published.subset == subset.name %}(currently viewing){% endif %}</td>
-                                            <td>{{subset.description}}</td>
-                                            <td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
-                                            <td>{{ subset.include_non_set_records}}</td>
-                                            <td>{{ subset.counts.total_docs }}</td>
-                                            <td><a href="{% url 'published_subset' subset=subset.name %}"><button type="button" class="btn btn-outline-info btn-sm">View</button></a></td>
-                                        </tr>
-                                        {% endfor %}
-
-                                    </table>
-
-                                {% endif %}
-
-                                <button type="submit" class="btn btn-success btn-sm">
-                                    {% if cjob.job.published %}Change Publish Set ID{% else %}Publish Job <i class="la la-bullhorn"></i>{% endif %}
-                                </button>
-                            </form>
+                <div id="records_tab" class="tab-pane full_width_tab active">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <!-- Indexing Records DT Table -->
+                            {% include 'core/records_dt_table.html' %}
                         </div>
                     </div>
                 </div>
-            {% if cjob.job.published %}
-                <script>
-                    $(document).ready(function() {
-                        $('#publish_set_id_button').click(function() {
-                            $('#publish_set_id_form').removeAttr('hidden')
-                        })
-                    })
-                </script>
-            {% endif %}
-            </div>
 
-            <div id="io_tab" class="tab-pane full_width_tab">
-                <div class="row">
+                <div id="manage_tab" class="tab-pane full_width_tab">
 
-                    <!-- Job Inputs -->
-                    {% if cjob.job.job_type_family != 'HarvestJob' %}
-                    <div class="col-md-12">
-                        <h4>Input Jobs</h4>
-                        <p>The following Jobs were used as input for this <strong>{{ cjob.job.job_type_family }}</strong>.</p>
-                        <table class="table table-bordered table-hover">
-                            <tr>
-                                <th>Input Job ID</th>
-                                <th>Input Job Name</th>
-                                <th>Job Type</th>
-                                <th>Job Specific Filters Applied?</th>
-                                <th>Validity</th>
-                                <th>De-Dupe Records</th>
-                                <th>Mapped Field Query Filtered</th>
-                                <th>Numerical Limit</th>
-                                <th>Total Passed Records</th>
-                            </tr>
-                            {% for input_job in cjob.job.jobinput_set.all %}
+                    <!-- hidden input for pre-selected jobs -->
+                    <input style="display:none;" class="job_id_sel" type="checkbox" value="{{ cjob.job.id }}"
+                           name="job_id" checked>
 
-                                <tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
-                                    <td><a href="{{ input_job.job_details_url }}">{{ input_job.input_job.id }}</a></td>
-                                    <td><a href="{{ input_job.job_details_url }}">{{ input_job.input_job.name }}</a></td>
-                                    <td>{{ input_job.input_job.job_type }}</td>
+                    <!-- job management blocks -->
+                    {% include 'core/job_management.html' %}
 
-                                <!-- if job specific filters, show -->
-                                {% if input_job.input_job.id|slugify in cjob.job.job_details_dict.input_filters.job_specific.keys %}
-                                    {% with input_job.input_job.id|slugify as job_id_str %}
-                                        {% with cjob.job.job_details_dict.input_filters.job_specific|get_dict_value:job_id_str as job_spec_filters %}
-                                            <td>True</td>
-                                            <td>{% if job_spec_filters.input_validity_valve == 'invalid' %}<span class="text-danger">Failed Validation</span>{% elif job_spec_filters.input_validity_valve == 'valid'%}<span class="text-success">Passed Validation</span>{% else %}<span class="text-warning">Ignored Validation</span>{% endif %}</td>
-                                            <td>{{ job_spec_filters.filter_dupe_record_ids }}</td>
-                                            <td>{% if job_spec_filters.input_es_query_valve %}<code>{{ job_spec_filters.input_es_query_valve|safe }}</code>{% else %}None{% endif %}</td>
-                                            <td>{{ job_spec_filters.input_numerical_valve }}</td>
-                                            <td>{{ input_job.passed_records }}</td>
-                                        {% endwith %}
-                                    {% endwith %}
+                </div>
 
-                                <!-- else, show global input filters -->
-                                {% else %}
-                                    <td>False</td>
-                                    <td>{% if cjob.job.job_details_dict.input_filters.input_validity_valve == 'invalid' %}<span class="text-danger">Failed Validation</span>{% elif cjob.job.job_details_dict.input_filters.input_validity_valve == 'valid'%}<span class="text-success">Passed Validation</span>{% else %}<span class="text-warning">Ignored Validation</span>{% endif %}</td>
-                                    <td>{{ cjob.job.job_details_dict.input_filters.filter_dupe_record_ids }}</td>
-                                    <td>{% if cjob.job.job_details_dict.input_filters.input_es_query_valve %}<code>{{ cjob.job.job_details_dict.input_filters.input_es_query_valve|safe }}</code>{% else %}None{% endif %}</td>
-                                    <td>{{ cjob.job.job_details_dict.input_filters.input_numerical_valve }}</td>
-                                    <td>{{ input_job.passed_records }}</td>
-
-                                {% endif %}
-                                </tr>
-
-                            {% endfor %}
-                            <tr>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td></td>
-                                <td><strong>Total:</strong></td>
-                                <td>{{ record_count_details.input_jobs.total_input_record_count }}</td>
-                            </tr>
-                        </table>
+                <div id="publish_tab" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Publish Job</h4>
+                        </div>
                     </div>
-                    {% else %}
-                    <div class="col-md-12">
-                        <p>No Jobs were used as input for this Job.</p>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            {% if cjob.job.published %}
+                                <p>This Job is currently <strong>published</strong>:</p>
+                                <table class="table table-bordered table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Publish Set ID</th>
+                                        <th>Record Count</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    <tr>
+                                        <td>
+                                            {% if cjob.job.publish_set_id %}
+                                                <p>
+                                                    <a href="{% url 'oai' %}?verb=ListRecords&set={{ cjob.job.publish_set_id }}"
+                                                       target="_blank">{{ cjob.job.publish_set_id }}</a></p>
+                                            {% else %}
+                                                <span style="color:red;"><strong>Not set</strong></span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ cjob.job.record_count }}</td>
+                                        <td>
+                                            <a onclick="return confirm('Are you sure you want to unpublish this Job?');"
+                                               href="{% url 'job_unpublish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                                                <button type="button" class="btn btn-danger btn-sm">
+                                                    Unpublish <i class="la la-close"></i>
+                                                </button>
+                                            </a>
+                                            {% if cjob.job.publish_set_id %}
+                                                <button id="publish_set_id_button" type="button"
+                                                        class="btn btn-sm btn-info">Change Publish Set ID
+                                                </button>
+                                            {% else %}
+                                                <button id="publish_set_id_button" type="button"
+                                                        class="btn btn-sm btn-success">Add Publish Set ID
+                                                </button>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                <p>This job is currently <strong>unpublished</strong>. Publish using the form below, by
+                                    optionally creating a <a target="_blank"
+                                                             href="https://combine.readthedocs.io/en/master/publishing.html#how-does-publishing-work-in-combine">Publish
+                                        Set ID</a>, and optionally including in a <a target="_blank"
+                                                                                     href="https://combine.readthedocs.io/en/master/publishing.html#published-subsets">Published
+                                        Subset</a>:</p>
+                            {% endif %}
+                            <div id="publish_set_id_form" {% if cjob.job.published %}hidden="hidden"{% endif %}>
+                                <form method="POST"
+                                        {% if cjob.job.published %}
+                                      action="{% url 'job_update' org_id=cjob.job.record_group.organization_id record_group_id=cjob.job.record_group_id job_id=cjob.job.id %}"
+                                        {% else %}
+                                      action="{% url 'job_publish' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"
+                                        {% endif %}>
+
+                                    {% csrf_token %}
+
+                                    <div class="form-group">
+                                        <label for="publish_set_id">{% if cjob.job.published %}New {% endif %}Publish
+                                            Set Id</label>
+                                        <input type="text" class="form-control" id="publish_set_id"
+                                               name="publish_set_id"
+                                               placeholder="
+                                                       {% if cjob.job.publish_set_id %}{{ cjob.job.publish_set_id }}{% else %}e.g. fedora_records{% endif %}"/>
+                                        <input type="hidden" name="redirect_anchor" value="#publish_tab"/>
+                                        {% if cjob.job.published %}
+                                            <input type="hidden" name="update_type" value="publish_set"/>
+                                        {% endif %}
+                                        <small id="publish_set_id_help" class="form-text text-muted">Publish Set ID may
+                                            be left blank to not include in a Publish set.
+                                        </small>
+                                    </div>
+
+                                    {% if pr.sets|length > 0 %}
+                                        <div class="form-group">
+                                            <label for="existing_publish_set_id">Or, include Job in a pre-existing
+                                                Publish Set ID:</label>
+                                            {% for set,jobs in pr.sets.items %}
+                                                <div class="radio">
+                                                    <label>
+                                                        <input type="radio" value="{{ set }}"
+                                                               name="existing_publish_set_id"/> {{ set }}
+                                                    </label>
+                                                </div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+
+                                    {% if published_subsets|length > 0 %}
+
+                                        <p><strong>Include this Publish Set in a pre-existing <a target="_blank"
+                                                                                                 href="https://combine.readthedocs.io/en/dev/publishing.html#published-subsets">Published
+                                            Subset</a>?</strong></p>
+
+                                        <table class="table table-bordered table-hover">
+                                            <tr>
+                                                <th>Include?</th>
+                                                <th>Name</th>
+                                                <th>Description</th>
+                                                <th>Associated Publish Set IDs</th>
+                                                <th>Includes Records not part of a set?</th>
+                                                <th>Record Count</th>
+                                                <th>Actions</th>
+                                            </tr>
+
+                                            {% for subset in published_subsets %}
+                                                <tr {% if published.subset == subset.name %}style="background-color:#fedeff;"{% endif %}>
+                                                    <td><input type="checkbox" value="{{ subset.name }}"
+                                                               name="published_subsets"/></td>
+                                                    <td><code>{{ subset.name }}</code>
+                                                        {% if published.subset == subset.name %}(currently
+                                                            viewing){% endif %}</td>
+                                                    <td>{{ subset.description }}</td>
+                                                    <td><code>{{ subset.publish_set_ids|join:", " }}</code></td>
+                                                    <td>{{ subset.include_non_set_records }}</td>
+                                                    <td>{{ subset.counts.total_docs }}</td>
+                                                    <td><a href="{% url 'published_subset' subset=subset.name %}">
+                                                        <button type="button" class="btn btn-outline-info btn-sm">View
+                                                        </button>
+                                                    </a></td>
+                                                </tr>
+                                            {% endfor %}
+
+                                        </table>
+
+                                    {% endif %}
+
+                                    <button type="submit" class="btn btn-success btn-sm">
+                                        {% if cjob.job.published %}Change Publish Set ID{% else %}Publish Job
+                                            <i class="la la-bullhorn"></i>{% endif %}
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
                     </div>
+                    {% if cjob.job.published %}
+                        <script>
+                            $(document).ready(function () {
+                                $('#publish_set_id_button').click(function () {
+                                    $('#publish_set_id_form').removeAttr('hidden')
+                                })
+                            })
+                        </script>
                     {% endif %}
-
                 </div>
-            </div>
 
-            <div id="validation_tab" class="tab-pane full_width_tab">
-                <div class="row">
-                    <div class="col-md-12">
-                        <h3>Validation Scenarios</h3>
+                <div id="io_tab" class="tab-pane full_width_tab">
+                    <div class="row">
+
+                        <!-- Job Inputs -->
+                        {% if cjob.job.job_type_family != 'HarvestJob' %}
+                            <div class="col-md-12">
+                                <h4>Input Jobs</h4>
+                                <p>The following Jobs were used as input for this
+                                    <strong>{{ cjob.job.job_type_family }}</strong>.</p>
+                                <table class="table table-bordered table-hover">
+                                    <tr>
+                                        <th>Input Job ID</th>
+                                        <th>Input Job Name</th>
+                                        <th>Job Type</th>
+                                        <th>Job Specific Filters Applied?</th>
+                                        <th>Validity</th>
+                                        <th>De-Dupe Records</th>
+                                        <th>Mapped Field Query Filtered</th>
+                                        <th>Numerical Limit</th>
+                                        <th>Total Passed Records</th>
+                                    </tr>
+                                    {% for input_job in cjob.job.jobinput_set.all %}
+
+                                        <tr class="{{ input_job.input_job.job_type_family }} {% if input_job.input_job.deleted %}deleted{% endif %}">
+                                            <td>
+                                                <a href="{{ input_job.job_details_url }}">{{ input_job.input_job.id }}</a>
+                                            </td>
+                                            <td>
+                                                <a href="{{ input_job.job_details_url }}">{{ input_job.input_job.name }}</a>
+                                            </td>
+                                            <td>{{ input_job.input_job.job_type }}</td>
+
+                                            <!-- if job specific filters, show -->
+                                            {% if input_job.input_job.id|slugify in cjob.job.job_details_dict.input_filters.job_specific.keys %}
+                                                {% with input_job.input_job.id|slugify as job_id_str %}
+                                                    {% with cjob.job.job_details_dict.input_filters.job_specific|get_dict_value:job_id_str as job_spec_filters %}
+                                                        <td>True</td>
+                                                        <td>{% if job_spec_filters.input_validity_valve == 'invalid' %}
+                                                            <span class="text-danger">Failed Validation</span>{% elif job_spec_filters.input_validity_valve == 'valid' %}
+                                                            <span class="text-success">Passed Validation</span>{% else %}
+                                                            <span class="text-warning">Ignored Validation</span>{% endif %}
+                                                        </td>
+                                                        <td>{{ job_spec_filters.filter_dupe_record_ids }}</td>
+                                                        <td>{% if job_spec_filters.input_es_query_valve %}
+                                                            <code>{{ job_spec_filters.input_es_query_valve|safe }}</code>{% else %}
+                                                            None{% endif %}</td>
+                                                        <td>{{ job_spec_filters.input_numerical_valve }}</td>
+                                                        <td>{{ input_job.passed_records }}</td>
+                                                    {% endwith %}
+                                                {% endwith %}
+
+                                                <!-- else, show global input filters -->
+                                            {% else %}
+                                                <td>False</td>
+                                                <td>
+                                                    {% if cjob.job.job_details_dict.input_filters.input_validity_valve == 'invalid' %}
+                                                        <span class="text-danger">Failed Validation</span>{% elif cjob.job.job_details_dict.input_filters.input_validity_valve == 'valid' %}
+                                                        <span class="text-success">Passed Validation</span>{% else %}
+                                                        <span class="text-warning">Ignored Validation</span>{% endif %}
+                                                </td>
+                                                <td>{{ cjob.job.job_details_dict.input_filters.filter_dupe_record_ids }}</td>
+                                                <td>
+                                                    {% if cjob.job.job_details_dict.input_filters.input_es_query_valve %}
+                                                        <code>{{ cjob.job.job_details_dict.input_filters.input_es_query_valve|safe }}</code>{% else %}
+                                                        None{% endif %}</td>
+                                                <td>{{ cjob.job.job_details_dict.input_filters.input_numerical_valve }}</td>
+                                                <td>{{ input_job.passed_records }}</td>
+
+                                            {% endif %}
+                                        </tr>
+
+                                    {% endfor %}
+                                    <tr>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td></td>
+                                        <td><strong>Total:</strong></td>
+                                        <td>{{ record_count_details.input_jobs.total_input_record_count }}</td>
+                                    </tr>
+                                </table>
+                            </div>
+                        {% else %}
+                            <div class="col-md-12">
+                                <p>No Jobs were used as input for this Job.</p>
+                            </div>
+                        {% endif %}
+
                     </div>
                 </div>
 
-                <div class="row">
-                    <div class="col-md-12">
+                <div id="validation_tab" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h3>Validation Scenarios</h3>
+                        </div>
+                    </div>
 
-                        {% if cjob.job.jobvalidation_set.count > 0 %}
-                            <p>The following Validation Scenarios have been run for this Job:</p>
-                            <table class="table table-bordered table-hover">
-                                <thead>
+                    <div class="row">
+                        <div class="col-md-12">
+
+                            {% if cjob.job.jobvalidation_set.count > 0 %}
+                                <p>The following Validation Scenarios have been run for this Job:</p>
+                                <table class="table table-bordered table-hover">
+                                    <thead>
                                     <tr>
                                         <th>Validation</th>
                                         <th>Validation Type</th>
                                         <th>Record Validation Failure Count</th>
                                         <th>Actions</th>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                    </thead>
+                                    <tbody>
                                     {% for jv in cjob.job.jobvalidation_set.all %}
                                         <tr>
                                             <td>{{ jv.validation_scenario.name }}</td>
@@ -445,441 +508,513 @@
                                             <td class="{% if jv.validation_failure_count > 0 %}invalid_job{% else %}valid_job{% endif %}">{{ jv.validation_failure_count }}</td>
                                             <td>
                                                 {% if jv.validation_failure_count > 0 %}
-                                                    <p><a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}"><button type="button" class="btn btn-primary btn-sm">See Failures for this Validation</button></a></p>
+                                                    <p>
+                                                        <a href="{% url 'job_validation_scenario_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}">
+                                                            <button type="button" class="btn btn-primary btn-sm">See
+                                                                Failures for this Validation
+                                                            </button>
+                                                        </a></p>
                                                 {% endif %}
-                                                <p><form method="POST" action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input type="hidden" name="update_type" value="remove_validation" ></input><input type="hidden" name="jv_id" value="{{jv.id}}"></input><button type="submit" class="btn btn-danger btn-sm">Remove Validation from Job <i class="la la-close"></i></button></form></p>
+                                                <p>
+                                                <form method="POST"
+                                                      action="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">{% csrf_token %}<input
+                                                        type="hidden" name="update_type"
+                                                        value="remove_validation"></input><input type="hidden"
+                                                                                                 name="jv_id"
+                                                                                                 value="{{ jv.id }}"></input>
+                                                    <button type="submit" class="btn btn-danger btn-sm">Remove
+                                                        Validation from Job <i class="la la-close"></i></button>
+                                                </form>
+                                                </p>
                                             </td>
                                         </tr>
                                     {% endfor %}
-                                </tbody>
-                            </table>
-                            {% if cjob.job.validation_results.verdict == False %}
-                                <p><a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-success btn-sm">Generate Validation Results Report</button></a></p>
+                                    </tbody>
+                                </table>
+                                {% if cjob.job.validation_results.verdict == False %}
+                                    <p>
+                                        <a href="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                                            <button type="button" class="btn btn-success btn-sm">Generate Validation
+                                                Results Report
+                                            </button>
+                                        </a></p>
                                 {% endif %}
 
-                        {% else %}
-                            <p>No Validations have been run for this Job.</p>
-                        {% endif %}
+                            {% else %}
+                                <p>No Validations have been run for this Job.</p>
+                            {% endif %}
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>
+                                <a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations">
+                                    <button type="button" class="btn btn-success btn-sm">Run new Validations for this
+                                        Job <i class="la la-plus"></i></button>
+                                </a></p>
+                        </div>
                     </div>
 
                 </div>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=validations"><button type="button" class="btn btn-success btn-sm">Run new Validations for this Job <i class="la la-plus"></i></button></a></p>
+                <div id="field_breakdown_tab" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-8">
+                            <!-- <p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p> -->
+                        </div>
                     </div>
-                </div>
-
-            </div>
-
-            <div id="field_breakdown_tab" class="tab-pane full_width_tab">
-                <div class="row">
-                    <div class="col-md-8">
-                        <!-- <p>To get a sense of how fields are used and distributed across a job, each record is mapped to a flat representation of its metadata, and then indexed in ElasticSearch.</p> -->
-                    </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <table class="table table-bordered table-hover">
-                            <thead>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <table class="table table-bordered table-hover">
+                                <thead>
                                 <tr>
                                     <th>Total Records for Job</th>
                                     <th>Successfully Mapped</th>
                                     <th>Actions</th>
                                 </tr>
-                            </thead>
-                            <tbody>
+                                </thead>
+                                <tbody>
                                 <tr>
                                     <td>{{ record_count_details.records }}</td>
                                     <td>{% if field_counts %}{{ field_counts.total_docs }}{% else %}0{% endif %}</td>
                                     <td>
                                         <ul class="list-inline">
-                                            <li style="display:inline;"><a href="#" onclick="$('#job_fm_config_json_container').toggle(); return false;"><button type="button" class="btn btn-info btn-sm">Show Field Mapping Configuration Used</button></a></li>
-                                            <li style="display:inline;"><a href="http://{{ ES_UI_HOME }}/j{{ cjob.job.id }}/_search" target="_blank"><button type="button" class="btn btn-info btn-sm">Browse ElasticSearch Index</button></a></li>
-                                            <li style="display:inline;"><a href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}"><button type="button" class="btn btn-danger btn-sm">View Mapping and Indexing Errors</button></a></li>
-                                            <li style="display:inline;"><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex"><button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index Fields <i class="la la-refresh"></i></button></a></li>
+                                            <li style="display:inline;"><a href="#"
+                                                                           onclick="$('#job_fm_config_json_container').toggle(); return false;">
+                                                <button type="button" class="btn btn-info btn-sm">Show Field Mapping
+                                                    Configuration Used
+                                                </button>
+                                            </a></li>
+                                            <li style="display:inline;"><a
+                                                    href="http://{{ ES_UI_HOME }}/j{{ cjob.job.id }}/_search"
+                                                    target="_blank">
+                                                <button type="button" class="btn btn-info btn-sm">Browse ElasticSearch
+                                                    Index
+                                                </button>
+                                            </a></li>
+                                            <li style="display:inline;"><a
+                                                    href="{% url 'job_indexing_failures' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+                                                <button type="button" class="btn btn-danger btn-sm">View Mapping and
+                                                    Indexing Errors
+                                                </button>
+                                            </a></li>
+                                            <li style="display:inline;"><a
+                                                    href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=reindex">
+                                                <button type="button" class="btn btn-success btn-sm">Re-Map and Re-Index
+                                                    Fields <i class="la la-refresh"></i></button>
+                                            </a></li>
                                         </ul>
                                     </td>
                                 </tr>
-                            </tbody>
-                        </table>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
-                </div>
 
-                <div id="job_fm_config_json_container" class="row" style="display:none;">
-                    <div class="col-md-12">
-                        <p>The following Field Mapper configurations were used for this Job:</p>
-
-                        <div id="jsoneditor" style="height:450px;"></div>
-                        <script>
-                            // create the editor
-                            var container = document.getElementById("jsoneditor");
-                            var options = {
-                                mode: 'code',
-                                modes: ['code', 'text', 'view'],
-                                sortObjectKeys: true,
-                                name: 'field_mapping_configuration',
-                                onModeChange: function(nm, om){
-                                    if (nm == 'view'){
-                                        $("#jsoneditor").css('height','');
-                                    }
-                                    else {
-                                        $("#jsoneditor").css('height','450px');
-                                    }
-                                },
-                                navigationBar:false
-                            };
-                            var editor = new JSONEditor(container, options);
-
-                            // set json to editor
-                            editor.set({{ cjob.job.get_fm_config_json|safe }});
-                        </script>
-                    </div>
-                </div>
-
-                <!-- Indexed Fields Analysis DT Table -->
-                {% include 'core/indexed_fields_dt_table.html' %}
-            </div>
-
-            <div id="dpla_bulk_data_tab" class="tab-pane full_width_tab">
-
-                {% if dpla_bulk_data_matches %}
-
-                    <div class="row">
+                    <div id="job_fm_config_json_container" class="row" style="display:none;">
                         <div class="col-md-12">
-                            <p>A DPLA Bulk Data comparison was run for this Job, by looking for matching URL values for the mapped field <code>dpla_isShownAt</code> in Combine Records, and <code>isShownAt</code> in DPLA Items from bulk data.  The following table shows matches and misses.</p>
-                            <table class="table table-bordered table-hover">
-                                <thead>
+                            <p>The following Field Mapper configurations were used for this Job:</p>
+
+                            <div id="jsoneditor" style="height:450px;"></div>
+                            <script>
+                                // create the editor
+                                var container = document.getElementById("jsoneditor");
+                                var options = {
+                                    mode: 'code',
+                                    modes: ['code', 'text', 'view'],
+                                    sortObjectKeys: true,
+                                    name: 'field_mapping_configuration',
+                                    onModeChange: function (nm, om) {
+                                        if (nm == 'view') {
+                                            $("#jsoneditor").css('height', '');
+                                        } else {
+                                            $("#jsoneditor").css('height', '450px');
+                                        }
+                                    },
+                                    navigationBar: false
+                                };
+                                var editor = new JSONEditor(container, options);
+
+                                // set json to editor
+                                editor.set({{ cjob.job.get_fm_config_json|safe }});
+                            </script>
+                        </div>
+                    </div>
+
+                    <!-- Indexed Fields Analysis DT Table -->
+                    {% include 'core/indexed_fields_dt_table.html' %}
+                </div>
+
+                <div id="dpla_bulk_data_tab" class="tab-pane full_width_tab">
+
+                    {% if dpla_bulk_data_matches %}
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>A DPLA Bulk Data comparison was run for this Job, by looking for matching URL values
+                                    for the mapped field <code>dpla_isShownAt</code> in Combine Records, and <code>isShownAt</code>
+                                    in DPLA Items from bulk data. The following table shows matches and misses.</p>
+                                <table class="table table-bordered table-hover">
+                                    <thead>
                                     <tr>
                                         <th>DPLA Bulk Data Download</th>
                                         <th>Total Records in Job</th>
                                         <th>Matches</th>
                                         <th>Misses</th>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                    </thead>
+                                    <tbody>
                                     <tr>
                                         <td><code>{{ dpla_bulk_data_matches.dbdd.s3_key }}</code></td>
                                         <td>{{ record_count_details.records }}</td>
                                         <td class="bg_light_green">{{ dpla_bulk_data_matches.matches }}</td>
                                         <td class="bg_light_red">{{ dpla_bulk_data_matches.misses }}</td>
-                                </tbody>
-                            </table>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- DataTable of DPLA Matches -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <h4>Record Matches</h4>
-                            <table id='dpla_bulk_data_matches_table' class="table table-bordered table-hover dt_table">
-                                <thead>
+                        <!-- DataTable of DPLA Matches -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4>Record Matches</h4>
+                                <table id='dpla_bulk_data_matches_table'
+                                       class="table table-bordered table-hover dt_table">
+                                    <thead>
                                     <th>DB ID</th>
                                     <th>Record ID</th>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
 
-                    <!-- DataTable of DPLA Misses -->
-                    <div class="row">
-                        <div class="col-md-12">
-                            <h4>Record Misses</h4>
-                            <table id='dpla_bulk_data_misses_table' class="table table-bordered table-hover dt_table">
-                                <thead>
+                        <!-- DataTable of DPLA Misses -->
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4>Record Misses</h4>
+                                <table id='dpla_bulk_data_misses_table'
+                                       class="table table-bordered table-hover dt_table">
+                                    <thead>
                                     <th>DB ID</th>
                                     <th>Record ID</th>
-                                </thead>
-                                <tbody></tbody>
-                            </table>
+                                    </thead>
+                                    <tbody></tbody>
+                                </table>
+                            </div>
                         </div>
-                    </div>
 
-                    <script>
+                        <script>
 
-                        // Matches Datatable
-                        $(document).ready(function() {
-                            matches_table = $('#dpla_bulk_data_matches_table').dataTable({
-                                "processing": true,
-                                "serverSide": true,
-                                "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
-                                "searchDelay": 1000,
-                                "pageLength": 10,
-                                "order": [],
-                                "columns": [
-                                    {
-                                        title: "DB ID"
-                                    },
-                                    {
-                                        title: "Record ID"
-                                    }
-                                ],
+                            // Matches Datatable
+                            $(document).ready(function () {
+                                matches_table = $('#dpla_bulk_data_matches_table').dataTable({
+                                    "processing": true,
+                                    "serverSide": true,
+                                    "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='matches' %}",
+                                    "searchDelay": 1000,
+                                    "pageLength": 10,
+                                    "order": [],
+                                    "columns": [
+                                        {
+                                            title: "DB ID"
+                                        },
+                                        {
+                                            title: "Record ID"
+                                        }
+                                    ],
+                                });
                             });
-                        });
 
-                        // Misses Datatable
-                        $(document).ready(function() {
-                            misses_table = $('#dpla_bulk_data_misses_table').dataTable({
-                                "processing": true,
-                                "serverSide": true,
-                                "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
-                                "searchDelay": 1000,
-                                "pageLength": 10,
-                                "order": [],
-                                "columns": [
-                                    {
-                                        title: "DB ID"
-                                    },
-                                    {
-                                        title: "Record ID"
-                                    }
-                                ],
+                            // Misses Datatable
+                            $(document).ready(function () {
+                                misses_table = $('#dpla_bulk_data_misses_table').dataTable({
+                                    "processing": true,
+                                    "serverSide": true,
+                                    "ajax": "{% url 'dpla_bulk_data_matches' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id match_type='misses' %}",
+                                    "searchDelay": 1000,
+                                    "pageLength": 10,
+                                    "order": [],
+                                    "columns": [
+                                        {
+                                            title: "DB ID"
+                                        },
+                                        {
+                                            title: "Record ID"
+                                        }
+                                    ],
+                                });
                             });
-                        });
 
-                    </script>
+                        </script>
 
-                {% else %}
+                    {% else %}
+
+                        <div class="row">
+                            <div class="col-md-12">
+                                <p>No DPLA Bulk Data Comparisons have been done for this Job.</p>
+                            </div>
+                        </div>
+
+                    {% endif %}
 
                     <div class="row">
                         <div class="col-md-12">
-                            <p>No DPLA Bulk Data Comparisons have been done for this Job.</p>
+                            <p>
+                                <a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm">
+                                    <button type="button" class="btn btn-success btn-sm">Run new DPLA Bulk Data match
+                                        for this Job <i class="la la-plus"></i></button>
+                                </a></p>
                         </div>
                     </div>
 
-                {% endif %}
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <p><a href="{% url 'job_update' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}?update_type=dbdm"><button type="button" class="btn btn-success btn-sm">Run new DPLA Bulk Data match for this Job <i class="la la-plus"></i></button></a></p>
-                    </div>
                 </div>
 
-            </div>
+                <div id="job_type_specific_tab" class="tab-pane full_width_tab">
 
-            <div id="job_type_specific_tab" class="tab-pane full_width_tab">
+                    <!-- Details specific to Job Type -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="job_type_specific">
 
-                <!-- Details specific to Job Type -->
-                <div class="row">
-                    <div class="col-md-12">
-                        <div id="job_type_specific">
+                                <!-- HarvestJob -->
+                                {% if cjob.job.job_type_family == 'HarvestJob' %}
+                                    {% include 'core/job_harvest_details.html' %}
+                                {% endif %}
 
-                            <!-- HarvestJob -->
-                            {% if cjob.job.job_type_family == 'HarvestJob' %}
-                                {% include 'core/job_harvest_details.html' %}
-                            {% endif %}
+                                <!-- TransformJob -->
+                                {% if cjob.job.job_type_family == 'TransformJob' %}
 
-                            <!-- TransformJob -->
-                            {% if cjob.job.job_type_family == 'TransformJob' %}
-
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <h4>Transformation Scenarios Used</h4>
-                                        <table class="table table-bordered table-hover">
-                                            <tr>
-                                                <th>Order Applied</th>
-                                                <th>Transformation ID</th>
-                                                <th>Name</th>
-                                                <th>Type</th>
-                                                <th>Transformation Payload</th>
-                                            </tr>
-                                            {% for transformation in job_details.transformation.scenarios %}
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <h4>Transformation Scenarios Used</h4>
+                                            <table class="table table-bordered table-hover">
                                                 <tr>
-                                                    <td><code>{{transformation.index}}</code></td>
-                                                    <td><code>{{transformation.id}}</code></td>
-                                                    <td>{{transformation.name}}</td>
-                                                    <td>{{transformation.type_human}}</td>
-                                                    <td><a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a></td>
+                                                    <th>Order Applied</th>
+                                                    <th>Transformation ID</th>
+                                                    <th>Name</th>
+                                                    <th>Type</th>
+                                                    <th>Transformation Payload</th>
                                                 </tr>
-                                            {% endfor %}
-                                        </table>
+                                                {% for transformation in job_details.transformation.scenarios %}
+                                                    <tr>
+                                                        <td><code>{{ transformation.index }}</code></td>
+                                                        <td><code>{{ transformation.id }}</code></td>
+                                                        <td>{{ transformation.name }}</td>
+                                                        <td>{{ transformation.type_human }}</td>
+                                                        <td>
+                                                            <a href="{% url 'transformation_scenario_payload' trans_id=transformation.id %}">View</a>
+                                                        </td>
+                                                    </tr>
+                                                {% endfor %}
+                                            </table>
+                                        </div>
                                     </div>
-                                </div>
 
-                                <div class="row">
-                                    <div class="col-md-12">
-                                        <h4>Transformed Records</h4>
-                                        <p>See below for a table of all records that were altered in some way during this Transform Job.  Clicking a Record will navigate directly to the Record's changes during Transformation.</p>
+                                    <div class="row">
+                                        <div class="col-md-12">
+                                            <h4>Transformed Records</h4>
+                                            <p>See below for a table of all records that were altered in some way during
+                                                this Transform Job. Clicking a Record will navigate directly to the
+                                                Record's changes during Transformation.</p>
 
-                                        <!-- Record Diff table -->
-                                        <table id='job_record_diffs' class="table table-bordered table-hover dt_table">
-                                            <thead>
+                                            <!-- Record Diff table -->
+                                            <table id='job_record_diffs'
+                                                   class="table table-bordered table-hover dt_table">
+                                                <thead>
                                                 <th>DB ID</th>
                                                 <th>Record ID</th>
-                                            </thead>
-                                            <tbody></tbody>
-                                        </table>
+                                                </thead>
+                                                <tbody></tbody>
+                                            </table>
 
-                                        <script>
-                                            // Matches Datatable
-                                            $(document).ready(function() {
-                                                matches_table = $('#job_record_diffs').dataTable({
-                                                    "processing": true,
-                                                    "serverSide": true,
-                                                    "ajax": "{% url 'job_record_diffs' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
-                                                    "searchDelay": 1000,
-                                                    "pageLength": 10,
-                                                    "order": [[ 1, "desc" ]],
-                                                    "columns": [
-                                                        {
-                                                            title: "DB ID"
-                                                        },
-                                                        {
-                                                            title: "Record ID"
-                                                        }
-                                                    ],
+                                            <script>
+                                                // Matches Datatable
+                                                $(document).ready(function () {
+                                                    matches_table = $('#job_record_diffs').dataTable({
+                                                        "processing": true,
+                                                        "serverSide": true,
+                                                        "ajax": "{% url 'job_record_diffs' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+                                                        "searchDelay": 1000,
+                                                        "pageLength": 10,
+                                                        "order": [[1, "desc"]],
+                                                        "columns": [
+                                                            {
+                                                                title: "DB ID"
+                                                            },
+                                                            {
+                                                                title: "Record ID"
+                                                            }
+                                                        ],
+                                                    });
                                                 });
-                                            });
-                                        </script>
+                                            </script>
+                                        </div>
                                     </div>
-                                </div>
 
-                            {% endif %}
+                                {% endif %}
 
-                            <!-- MergeJob -->
-                            {% if cjob.job.job_type_family == 'MergeJob' %}
-                                <p>No additional information at this time for Duplicate / Merge / Analysis jobs.</p>
-                            {% endif %}
+                                <!-- MergeJob -->
+                                {% if cjob.job.job_type_family == 'MergeJob' %}
+                                    <p>No additional information at this time for Duplicate / Merge / Analysis jobs.</p>
+                                {% endif %}
 
-                            <!-- PublishJob -->
-                            {% if cjob.job.job_type_family == 'PublishJob' %}
-                                <p>No additional information at this time for Publish jobs.</p>
-                            {% endif %}
+                                <!-- PublishJob -->
+                                {% if cjob.job.job_type_family == 'PublishJob' %}
+                                    <p>No additional information at this time for Publish jobs.</p>
+                                {% endif %}
 
-                            <!-- AnalysisJob -->
-                            {% if cjob.job.job_type_family == 'AnalysisJob' %}
-                                <p>No additional information at this time for Analysis jobs.</p>
-                            {% endif %}
+                                <!-- AnalysisJob -->
+                                {% if cjob.job.job_type_family == 'AnalysisJob' %}
+                                    <p>No additional information at this time for Analysis jobs.</p>
+                                {% endif %}
 
+                            </div>
                         </div>
                     </div>
+
                 </div>
 
-            </div>
+                <div id="export_tab" class="tab-pane full_width_tab">
 
-            <div id="export_tab" class="tab-pane full_width_tab">
+                    <!-- export content -->
+                    {% include 'core/export.html' %}
 
-                <!-- export content -->
-                {% include 'core/export.html' %}
+                </div>
 
-            </div>
+                <div id="job_params_tab" class="tab-pane full_width_tab">
 
-            <div id="job_params_tab" class="tab-pane full_width_tab">
-
-                <div class="row">
-                    <div class="col-md-12">
-                        <h4>Job Parameters</h4>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Job Parameters</h4>
+                        </div>
                     </div>
-                </div>
 
-                <div class="row">
-                    <div class="col-md-12">
-                        <div id="job_params" style="height:640px;"></div>
-                        <!-- hidden textarea for JSON to submit with form -->
-                        <textarea style="display:none;" rows=10 class="code_style form-control" name="job_params_json" id="job_params_json"></textarea>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div id="job_params" style="height:640px;"></div>
+                            <!-- hidden textarea for JSON to submit with form -->
+                            <textarea style="display:none;" rows=10 class="code_style form-control"
+                                      name="job_params_json" id="job_params_json"></textarea>
+                            <script>
+                                // create the editor
+                                var container = document.getElementById("job_params");
+                                var options = {
+                                    mode: 'view',
+                                    modes: ['code', 'text', 'view'],
+                                    sortObjectKeys: true,
+                                    name: 'job_parameters',
+                                    onChange: function () {
+                                        // update hidden textarea from editor contents
+                                        if (job_details_editor) {
+                                            $("#job_params_json").val(JSON.stringify(job_details_editor.get()));
+                                        }
+                                    },
+                                    onModeChange: function (nm, om) {
+                                        if (nm == 'view') {
+                                            $("#job_params").css('height', '');
+                                        } else {
+                                            $("#job_params").css('height', '450px');
+                                        }
+                                    },
+                                    navigationBar: true
+                                };
+                                var job_details_editor = new JSONEditor(container, options);
+
+                                // set json to editor
+                                job_details_editor.set({{ cjob.job.job_details|safe }});
+                            </script>
+                        </div>
+                    </div>
+
+                    <div class="row" style="margin-top:15px;">
+                        <div class="col-md-12">
+                            <p>
+                                <button class="btn btn-outline-success btn-sm"
+                                        onclick="update_job_params(); return false;">Update Job Parameters
+                                </button>
+                            </p>
+                            <div id="job_params_alerts"></div>
+                        </div>
+
                         <script>
-                            // create the editor
-                            var container = document.getElementById("job_params");
-                            var options = {
-                                mode: 'view',
-                                modes: ['code', 'text', 'view'],
-                                sortObjectKeys: true,
-                                name: 'job_parameters',
-                                onChange: function(){
-                                    // update hidden textarea from editor contents
-                                    if (job_details_editor) {
-                                        $("#job_params_json").val(JSON.stringify(job_details_editor.get()));
-                                    }
-                                },
-                                onModeChange: function(nm, om){
-                                    if (nm == 'view'){
-                                        $("#job_params").css('height','');
-                                    }
-                                    else {
-                                        $("#job_params").css('height','450px');
-                                    }
-                                },
-                                navigationBar:true
-                            };
-                            var job_details_editor = new JSONEditor(container, options);
 
-                            // set json to editor
-                            job_details_editor.set({{ cjob.job.job_details|safe }});
-                        </script>
-                    </div>
-                </div>
+                            function update_job_params() {
 
-                <div class="row" style="margin-top:15px;">
-                    <div class="col-md-12">
-                        <p><button class="btn btn-outline-success btn-sm" onclick="update_job_params(); return false;">Update Job Parameters</button></p>
-                        <div id="job_params_alerts"></div>
-                    </div>
+                                // get job_details as JSON
+                                job_details_json = JSON.stringify(job_details_editor.get());
 
-                    <script>
+                                // fire ajax to update job_details
+                                $.ajax({
+                                    type: "POST",
+                                    url: "{% url 'job_parameters' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
+                                    data: {
+                                        'job_details_json': job_details_json,
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                    },
+                                    dataType: 'json',
+                                    success: function (data) {
 
-                        function update_job_params(){
-
-                            // get job_details as JSON
-                            job_details_json = JSON.stringify(job_details_editor.get());
-
-                            // fire ajax to update job_details
-                            $.ajax({
-                                type: "POST",
-                                url: "{% url 'job_parameters' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}",
-                                data: {
-                                    'job_details_json':job_details_json,
-                                    'csrfmiddlewaretoken': '{{ csrf_token }}'
-                                },
-                                dataType:'json',
-                                success: function(data){
-
-                                    // notify user
-                                    alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+                                        // notify user
+                                        alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
                                         ${data.msg}
                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                         </button>
                                     </div>`
-                                    $("#job_params_alerts").append(alert);
-                                },
-                                error: function(data){
+                                        $("#job_params_alerts").append(alert);
+                                    },
+                                    error: function (data) {
 
-                                    // notify user
-                                    alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+                                        // notify user
+                                        alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
                                         ${data.responseJSON.msg}
                                         <button type="button" class="close" data-dismiss="alert" aria-label="Close">
                                         <span aria-hidden="true">&times;</span>
                                         </button>
                                     </div>`
-                                    $("#job_params_alerts").append(alert);
-                                }
-                            });
+                                        $("#job_params_alerts").append(alert);
+                                    }
+                                });
 
-                        }
+                            }
 
-                    </script>
+                        </script>
 
-                </div>
-
-            </div>
-
-            <div id="spark_details_tab" class="tab-pane full_width_tab">
-                <div class="row">
-                    <div class="col-md-12">
-                        <ul class="list-inline">
-                            <li style="display:inline;"><a href="http://{{LIVY_UI_HOME}}{{cjob.job.url}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Statement <i class="la la-info-circle"></i></button></a></li>
-                            <li style="display:inline;"><a href="http://{{LIVY_UI_HOME}}/ui/session/{{LIVY_SESSION.session_id}}/log" target="_blank"><button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i class="la la-info-circle"></i></button></a></li>
-                            <li style="display:inline;"><a href="http://{{SPARK_HOST}}" target="_blank"><button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i class="la la-info-circle"></i></button></a></li>
-                        </ul>
                     </div>
+
                 </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <h4>Spark Jobs/Tasks Run</h4>
-                        {% if cjob.job.get_spark_jobs %}
-                            <table class="table table-bordered table-hover">
-                                <thead>
+
+                <div id="spark_details_tab" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-12">
+                            <ul class="list-inline">
+                                <li style="display:inline;"><a href="http://{{ LIVY_UI_HOME }}{{ cjob.job.url }}"
+                                                               target="_blank">
+                                    <button type="button" class="btn btn-primary btn-sm">Livy Statement <i
+                                            class="la la-info-circle"></i></button>
+                                </a></li>
+                                <li style="display:inline;"><a
+                                        href="http://{{ LIVY_UI_HOME }}/ui/session/{{ LIVY_SESSION.session_id }}/log"
+                                        target="_blank">
+                                    <button type="button" class="btn btn-primary btn-sm">Livy Session Logs <i
+                                            class="la la-info-circle"></i></button>
+                                </a></li>
+                                <li style="display:inline;"><a href="http://{{ SPARK_HOST }}" target="_blank">
+                                    <button type="button" class="btn btn-primary btn-sm">Spark Application GUI <i
+                                            class="la la-info-circle"></i></button>
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Spark Jobs/Tasks Run</h4>
+                            {% if cjob.job.get_spark_jobs %}
+                                <table class="table table-bordered table-hover">
+                                    <thead>
                                     <tr>
                                         <th>ID</th>
                                         <th>Description</th>
@@ -890,62 +1025,61 @@
                                         <th>Completed</th>
                                         <th>Duration</th>
                                     </tr>
-                                </thead>
-                                <tbody>
+                                    </thead>
+                                    <tbody>
                                     {% for spark_job in cjob.job.get_spark_jobs %}
                                         <tr class="{% if spark_job.status == 'FAILED' %}bg_light_red{% elif spark_job.status == 'RUNNING' %}bg_light_yellow{% elif spark_job.status == 'SUCCEEDED' %}bg_light_green{% endif %}">
-                                            <td>{{ spark_job.jobId }}</td>
-                                            <td>{{ spark_job.description }}</td>
-                                            <td>{{ spark_job.name }}</td>
-                                            <td>{{ spark_job.status }}</td>
-                                            <td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
-                                            <td>{{ spark_job.submissionTime }}</td>
-                                            <td>{{ spark_job.completionTime }}</td>
-                                            <td>{{ spark_job.duration_s }}</td>
+                                        <td>{{ spark_job.jobId }}</td>
+                                        <td>{{ spark_job.description }}</td>
+                                        <td>{{ spark_job.name }}</td>
+                                        <td>{{ spark_job.status }}</td>
+                                        <td>{{ spark_job.numCompletedTasks }}/{{ spark_job.numTasks }}</td>
+                                        <td>{{ spark_job.submissionTime }}</td>
+                                        <td>{{ spark_job.completionTime }}</td>
+                                        <td>{{ spark_job.duration_s }}</td>
                                     {% endfor %}
-                                </tbody>
-                            </table>
-                        {% else %}
-                        <p>Could not retrieve information about Spark Tasks/Jobs.</p>
-                        {% endif %}
+                                    </tbody>
+                                </table>
+                            {% else %}
+                                <p>Could not retrieve information about Spark Tasks/Jobs.</p>
+                            {% endif %}
+                        </div>
                     </div>
-                </div>
-                <div class="row">
-                    <div class="col-md-12">
-                        <h4>Livy Statement Information</h4>
-                        <div id="livy_statement" style="height:450px;"></div>
-                        <script>
-                            // create the editor
-                            var container = document.getElementById("livy_statement");
-                            var options = {
-                                mode: 'view',
-                                modes: ['code', 'text', 'view'],
-                                sortObjectKeys: true,
-                                name: 'livy_response',
-                                onModeChange: function(nm, om){
-                                    if (nm == 'view'){
-                                        $("#livy_statement").css('height','');
-                                    }
-                                    else {
-                                        $("#livy_statement").css('height','450px');
-                                    }
-                                },
-                                navigationBar:false
-                            };
-                            var editor = new JSONEditor(container, options);
+                    <div class="row">
+                        <div class="col-md-12">
+                            <h4>Livy Statement Information</h4>
+                            <div id="livy_statement" style="height:450px;"></div>
+                            <script>
+                                // create the editor
+                                var container = document.getElementById("livy_statement");
+                                var options = {
+                                    mode: 'view',
+                                    modes: ['code', 'text', 'view'],
+                                    sortObjectKeys: true,
+                                    name: 'livy_response',
+                                    onModeChange: function (nm, om) {
+                                        if (nm == 'view') {
+                                            $("#livy_statement").css('height', '');
+                                        } else {
+                                            $("#livy_statement").css('height', '450px');
+                                        }
+                                    },
+                                    navigationBar: false
+                                };
+                                var editor = new JSONEditor(container, options);
 
-                            // set json to editor and expand
-                            editor.set({{ cjob.job.response|safe }});
-                            editor.expandAll();
-                        </script>
+                                // set json to editor and expand
+                                editor.set({{ cjob.job.response|safe }});
+                                editor.expandAll();
+                            </script>
+                        </div>
                     </div>
                 </div>
+
             </div>
 
         </div>
-
     </div>
-</div>
 
 {% endblock %}
 

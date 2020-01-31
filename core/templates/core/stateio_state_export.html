@@ -2,155 +2,179 @@
 
 {% block content %}
 
-	<script>
+    <script>
 
-		search_config = {			
-			'show_only_matches':false, // isolate matches
-			'delay':500, // delay for search keyup
-			'fuzzy':false // fuzzy matching
-		}
+        search_config = {
+            'show_only_matches': false, // isolate matches
+            'delay': 500, // delay for search keyup
+            'fuzzy': false // fuzzy matching
+        }
 
-	</script>
+    </script>
 
-	<style>
+    <style>
 
-		.tree_select {
-			background-color: rgb(245, 245, 245);
-			max-height:640px;			
-			overflow-y: scroll;
-			padding:10px;
-			border-radius: 5px;
-		}
-		.jstree-default .jstree-search {
-			color:black;
-			background-color: #ffff93;
-		}
+        .tree_select {
+            background-color: rgb(245, 245, 245);
+            max-height: 640px;
+            overflow-y: scroll;
+            padding: 10px;
+            border-radius: 5px;
+        }
 
-	</style>
+        .jstree-default .jstree-search {
+            color: black;
+            background-color: #ffff93;
+        }
 
-	<div class="row">
-		<div class="col-md-12">
-			<h2>Export State: <code>{{state.name}}</code></h2>
-			<table id="exports_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Task ID</th>
-						<th>Export ID</th>
-						<th>Export Path</th>
-						<th>Status</th>
-						<th>Exported Objects</th>
-						<th>Manifests</th>
-						<th>Actions</th>
-					</tr>
-				</thead>
-				<tbody>					
-					<tr>
-						<td class="export_state"><code>{{state.id}}</code></td>
-						<td class="export_state"><code>{{state.export_id}}</code></td>
-						<td class="export_state"><code>{{state.export_path}}</code></td>
-						<td class="export_state">{{state.status}}</td>
-						<td class="export_state"><code>{{state.export_manifest.exports.count}}</code></td>
-						<td class="export_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=state.id manifest_type='export_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button></a></td>
-						<td class="export_state"><a href="{% url 'stateio_state_download' state_id=state.id %}"><button type="button" class="btn btn-outline-success btn-sm">Download <i class="la la-cloud-download"></i></button></a> <a href="{% url 'stateio_state_delete' state_id=state.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
-					</tr>					
-				</tbody>
-			</table>
-		</div>
-	</div>
+    </style>
 
-	<!-- imports that use this export -->
-	<div class="row">
-		<div class="col-md-12">
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Export State: <code>{{ state.name }}</code></h2>
+            <table id="exports_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>Task ID</th>
+                    <th>Export ID</th>
+                    <th>Export Path</th>
+                    <th>Status</th>
+                    <th>Exported Objects</th>
+                    <th>Manifests</th>
+                    <th>Actions</th>
+                </tr>
+                </thead>
+                <tbody>
+                <tr>
+                    <td class="export_state"><code>{{ state.id }}</code></td>
+                    <td class="export_state"><code>{{ state.export_id }}</code></td>
+                    <td class="export_state"><code>{{ state.export_path }}</code></td>
+                    <td class="export_state">{{ state.status }}</td>
+                    <td class="export_state"><code>{{ state.export_manifest.exports.count }}</code></td>
+                    <td class="export_state"><a target="_blank"
+                                                href="{% url 'stateio_state_manifest' state_id=state.id manifest_type='export_manifest' %}">
+                        <button type="button" class="btn btn-outline-info btn-sm">Export Manifest</button>
+                    </a></td>
+                    <td class="export_state"><a href="{% url 'stateio_state_download' state_id=state.id %}">
+                        <button type="button" class="btn btn-outline-success btn-sm">Download <i
+                                class="la la-cloud-download"></i></button>
+                    </a> <a href="{% url 'stateio_state_delete' state_id=state.id %}"
+                            onclick="return confirm('Are you sure you want to delete this state?')">
+                        <button type="button" class="btn btn-outline-danger btn-sm">Delete</button>
+                    </a></td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
 
-			<h3>Associated Imports</h3>
-			{% if associated_imports.count > 0 %}
-				<p>The following are <strong>Imports</strong> associated with this Export:</p>
+    <!-- imports that use this export -->
+    <div class="row">
+        <div class="col-md-12">
 
-				<table id="imports_table" class="table table-bordered table-hover">
-					<thead>
-						<tr>
-							<th>Task ID</th>						
-							<th>Import Name</th>
-							<th>Import Path</th>
-							<th>Status</th>
-							<th>Imported Objects</th>
-							<th>Manifests</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						{% for import in associated_imports %}
-							<tr>
-								<td class="import_state"><code>{{import.id}}</code></td>							
-								<td class="import_state">{{import.name}}</td>
-								<td class="import_state"><code>{{import.import_path}}</code></td>
-								<td class="import_state">{{import.status}}</td>
-								<td class="import_state"><code>{{import.import_manifest.imports.count}}</code></td>
-								<td class="import_state"><a target="_blank" href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='import_manifest' %}"><button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button></a></td>
-								<td class="import_state"><a href="{% url 'stateio_state' state_id=import.id %}"><button type="button" class="btn btn-outline-info btn-sm">Details</button></a> <a href="{% url 'stateio_state_delete' state_id=import.id %}" onclick="return confirm('Are you sure you want to delete this state?')"><button type="button" class="btn btn-outline-danger btn-sm">Delete</button></a></td>
-							</tr>
-						{% endfor %}
-					</tbody>
-				</table>
-				{% else %}
-					<p>No associated <strong>Imports</strong> were found in this instance of Combine.</p>
-				{% endif %}
+            <h3>Associated Imports</h3>
+            {% if associated_imports.count > 0 %}
+                <p>The following are <strong>Imports</strong> associated with this Export:</p>
 
-		</div>
-	</div>
+                <table id="imports_table" class="table table-bordered table-hover">
+                    <thead>
+                    <tr>
+                        <th>Task ID</th>
+                        <th>Import Name</th>
+                        <th>Import Path</th>
+                        <th>Status</th>
+                        <th>Imported Objects</th>
+                        <th>Manifests</th>
+                        <th>Actions</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for import in associated_imports %}
+                        <tr>
+                            <td class="import_state"><code>{{ import.id }}</code></td>
+                            <td class="import_state">{{ import.name }}</td>
+                            <td class="import_state"><code>{{ import.import_path }}</code></td>
+                            <td class="import_state">{{ import.status }}</td>
+                            <td class="import_state"><code>{{ import.import_manifest.imports.count }}</code></td>
+                            <td class="import_state"><a target="_blank"
+                                                        href="{% url 'stateio_state_manifest' state_id=import.id manifest_type='import_manifest' %}">
+                                <button type="button" class="btn btn-outline-info btn-sm">Import Manifest</button>
+                            </a></td>
+                            <td class="import_state"><a href="{% url 'stateio_state' state_id=import.id %}">
+                                <button type="button" class="btn btn-outline-info btn-sm">Details</button>
+                            </a> <a href="{% url 'stateio_state_delete' state_id=import.id %}"
+                                    onclick="return confirm('Are you sure you want to delete this state?')">
+                                <button type="button" class="btn btn-outline-danger btn-sm">Delete</button>
+                            </a></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No associated <strong>Imports</strong> were found in this instance of Combine.</p>
+            {% endif %}
 
-	<!-- exports -->
-	<div class="row">
-		<div class="col-md-12">
+        </div>
+    </div>
 
-			<h3>Exported Objects</h3>
+    <!-- exports -->
+    <div class="row">
+        <div class="col-md-12">
 
-			{% if state.export_manifest.exports.count %}
-				<p>The following <code>{{state.export_manifest.exports.count}}</code> objects were exported:</p>
+            <h3>Exported Objects</h3>
 
-				<div class="tree_select">
-					<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button></p>
-					<div id="io_results_tree"></div>
-				</div>
+            {% if state.export_manifest.exports.count %}
+                <p>The following <code>{{ state.export_manifest.exports.count }}</code> objects were exported:</p>
 
-				<script>
+                <div class="tree_select">
+                    <p class="form-inline"><input id="configs_search" type="text" class="form-control"
+                                                  style="width:300px;" placeholder="search..."/>
+                        <button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm"
+                                onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button>
+                    </p>
+                    <div id="io_results_tree"></div>
+                </div>
 
-					// init hierarchy
-					io_results_obj = JSON.parse(`{{io_results_json|safe|escapejs}}`);
+                <script>
 
-					// init tree
-					$(document).ready(function(){
-						
-						io_results_tree = $('#io_results_tree').jstree({
-							'plugins':["search"],
-							'core':{
-								'data':io_results_obj							
-							},
-							'search':search_config
-						});
+                    // init hierarchy
+                    io_results_obj = JSON.parse(`{{io_results_json|safe|escapejs}}`);
 
-						// search
-						var to = false;
-							$('#configs_search').keyup(function () {
-							if(to) { clearTimeout(to); }
-								to = setTimeout(function () {
-								var v = $('#configs_search').val();
-							$('#io_results_tree').jstree(true).search(v);
-							}, search_config.delay);
-						});
+                    // init tree
+                    $(document).ready(function () {
 
-						// highlight io_results
-						$("li [io_obj=true]").css('color','green');
-							
-					});
+                        io_results_tree = $('#io_results_tree').jstree({
+                            'plugins': ["search"],
+                            'core': {
+                                'data': io_results_obj
+                            },
+                            'search': search_config
+                        });
 
-				</script>
+                        // search
+                        var to = false;
+                        $('#configs_search').keyup(function () {
+                            if (to) {
+                                clearTimeout(to);
+                            }
+                            to = setTimeout(function () {
+                                var v = $('#configs_search').val();
+                                $('#io_results_tree').jstree(true).search(v);
+                            }, search_config.delay);
+                        });
 
-			{% else %}
-				<p>No objects were exported.</p>
-			{% endif %}
+                        // highlight io_results
+                        $("li [io_obj=true]").css('color', 'green');
 
-		</div>
-	</div>
+                    });
+
+                </script>
+
+            {% else %}
+                <p>No objects were exported.</p>
+            {% endif %}
+
+        </div>
+    </div>
 
 {% endblock %}

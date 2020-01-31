@@ -1,117 +1,132 @@
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<div class="alert alert-warning alert-dismissible fade show" role="alert">
-				Use the form below <strong>filter</strong> input Records from input Jobs.  <strong>Note:</strong> by default, filtering is applied to <strong>all</strong> input Jobs, but Job-specific filtering can be applied by clicking the filter icon <span style="font-size:150%;"><i class="la la-filter"></i></span> next to the Job checkbox in the table above.
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-				<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                Use the form below <strong>filter</strong> input Records from input Jobs. <strong>Note:</strong> by
+                default, filtering is applied to <strong>all</strong> input Jobs, but Job-specific filtering can be
+                applied by clicking the filter icon <span style="font-size:150%;"><i class="la la-filter"></i></span>
+                next to the Job checkbox in the table above.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<div class="gray_box">				
+    <div class="row">
+        <div class="col-md-12">
+            <div class="gray_box">
 
-				<div class="row">
-					<div class="col-md-12">
-						<h5>Filter by Record Validity</h5>
-						<p>Filter Records based on Validation Results:</p>
-						
-						<div class="form-check">
-							<input class="form-check-input" type="radio" name="input_validity_valve" id="all" value="all" checked>
-							<label class="form-check-label" for="all">
-							<span class="text-warning">All records</span>
-							</label>
-						</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Filter by Record Validity</h5>
+                        <p>Filter Records based on Validation Results:</p>
 
-						<div class="form-check">
-							<input class="form-check-input" type="radio" name="input_validity_valve" id="valid" value="valid">
-							<label class="form-check-label" for="valid">
-							<span class="text-success">Passed validation</span>
-							</label>
-						</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="input_validity_valve" id="all"
+                                   value="all" checked>
+                            <label class="form-check-label" for="all">
+                                <span class="text-warning">All records</span>
+                            </label>
+                        </div>
 
-						<div class="form-check">
-							<input class="form-check-input" type="radio" name="input_validity_valve" id="invalid" value="invalid">
-							<label class="form-check-label" for="invalid">
-							<span class="text-danger">Failed validation</span>
-							</label>
-						</div>
-					</div>
-				</div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="input_validity_valve" id="valid"
+                                   value="valid">
+                            <label class="form-check-label" for="valid">
+                                <span class="text-success">Passed validation</span>
+                            </label>
+                        </div>
 
-				<div class="row">
-					<div class="col-md-12">
-						<h5>Limit Number of Records</h5>
-						<p>Numerically limit Records from each input Job:</p>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="input_validity_valve" id="invalid"
+                                   value="invalid">
+                            <label class="form-check-label" for="invalid">
+                                <span class="text-danger">Failed validation</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
 
-						<div style="width:50%" class="form-group">							
-							<input type="text" class="form-control" id="input_numerical_valve" name="input_numerical_valve" placeholder="e.g. 1000"/>
-						</div>						
-						
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Limit Number of Records</h5>
+                        <p>Numerically limit Records from each input Job:</p>
 
-				<div class="row">
-					<div class="col-md-12">
-						<h5>Filter Duplicates</h5>
-						<p>Remove duplicates based on Record Identifier (<code>record_id</code>):</p>
+                        <div style="width:50%" class="form-group">
+                            <input type="text" class="form-control" id="input_numerical_valve"
+                                   name="input_numerical_valve" placeholder="e.g. 1000"/>
+                        </div>
 
-						<div class="form-check">
-							<input class="form-check-input" type="radio" name="filter_dupe_record_ids" id="filter_dupes_yes" value="true" checked>
-							<label class="form-check-label" for="filter_dupes_yes">
-							<span>Yes</span>
-							</label>
-						</div>
+                    </div>
+                </div>
 
-						<div class="form-check">
-							<input class="form-check-input" type="radio" name="filter_dupe_record_ids" id="filter_dupes_no" value="false">
-							<label class="form-check-label" for="filter_dupes_no">
-							<span>No</span>
-							</label>
-						</div>					
-						
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Filter Duplicates</h5>
+                        <p>Remove duplicates based on Record Identifier (<code>record_id</code>):</p>
 
-				<div class="row">
-					<div class="col-md-12">
-						<h5>Filter by Mapped Fields</h5>
-						<p>Filter Records by providing an <a href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch query</a> that will search against <a href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped fields</a> from input Jobs:</p>
-						<div class="form-group">
-							<label for="input_es_query_valve">ElasticSearch Query DSL</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="filter_dupe_record_ids"
+                                   id="filter_dupes_yes" value="true" checked>
+                            <label class="form-check-label" for="filter_dupes_yes">
+                                <span>Yes</span>
+                            </label>
+                        </div>
 
-							<textarea style="display:none;" rows=10 class="code_style form-control" id="input_es_query_valve" name="input_es_query_valve" placeholder='e.g. {"query":{"match":{"mods_subject_topic":"Scaffolding"}}}'></textarea>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="filter_dupe_record_ids"
+                                   id="filter_dupes_no" value="false">
+                            <label class="form-check-label" for="filter_dupes_no">
+                                <span>No</span>
+                            </label>
+                        </div>
 
-							<!-- visible JSON editor -->
-							<div id="es_query_json" style="height:450px;"></div>
-							
-							<script>
-						        // create the editor
-						        var container = document.getElementById("es_query_json");
-						        var options = {
-						        	mode: 'code',
-			    					modes: ['code', 'text', 'tree'],
-			    					onChange: function(){
-			    						// update hidden textarea from editor contents
-			    						$("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
-			    					},
-			    					sortObjectKeys: true,
-			    					name: 'elasticsearch_query',
-			    					// schema: SCHEMA JSON HERE,
-						        };
-						        var es_query_editor = new JSONEditor(container, options);						        
-						    </script>
+                    </div>
+                </div>
 
-						</div>
-					</div>
-				</div>
-				
-			</div>
-		</div>
-	</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <h5>Filter by Mapped Fields</h5>
+                        <p>Filter Records by providing an <a
+                                href="https://www.elastic.co/guide/en/elasticsearch/reference/5.5/query-dsl.html">ElasticSearch
+                            query</a> that will search against <a
+                                href="http://combine.readthedocs.io/en/master/analysis.html#analyzing-indexed-fields">mapped
+                            fields</a> from input Jobs:</p>
+                        <div class="form-group">
+                            <label for="input_es_query_valve">ElasticSearch Query DSL</label>
+
+                            <textarea style="display:none;" rows=10 class="code_style form-control"
+                                      id="input_es_query_valve" name="input_es_query_valve"
+                                      placeholder='e.g. {"query":{"match":{"mods_subject_topic":"Scaffolding"}}}'></textarea>
+
+                            <!-- visible JSON editor -->
+                            <div id="es_query_json" style="height:450px;"></div>
+
+                            <script>
+                                // create the editor
+                                var container = document.getElementById("es_query_json");
+                                var options = {
+                                    mode: 'code',
+                                    modes: ['code', 'text', 'tree'],
+                                    onChange: function () {
+                                        // update hidden textarea from editor contents
+                                        $("#input_es_query_valve").val(JSON.stringify(es_query_editor.get()));
+                                    },
+                                    sortObjectKeys: true,
+                                    name: 'elasticsearch_query',
+                                    // schema: SCHEMA JSON HERE,
+                                };
+                                var es_query_editor = new JSONEditor(container, options);
+                            </script>
+
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
 
 {% endblock %}

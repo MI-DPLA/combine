@@ -1,609 +1,718 @@
 {% load static %}
 {% block content %}
-{% load core_template_filters %}
-
-	<div class="row">
-		<div class="col-md-12">
-
-			<div class="alert alert-info alert-dismissible fade show" role="alert">
-				Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped Fields</strong>, or <strong>Tabular Data</strong>.  <a target="_blank" href="https://combine.readthedocs.io/en/master/exporting.html#exporting-records">Click here for documentation</a>.
-				<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-				<span aria-hidden="true">&times;</span>
-				</button>
-			</div>
-
-			<ul id="export_tabs" class="nav nav-tabs">
-				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#export_tabular_data">Export Tabular Data</a>
-				</li>
-			</ul>
-
-			<div class="tab-content">
-
-				<div id="export_documents" class="tab-pane full_width_tab active">
-					<div class="row">
-						<div class="col-md-6">
-
-							<!-- form for Job mapped fields export -->
-							{% if cjob %}
-								<form method="POST" action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
-							{% else %}
-								{% if published.subset %}
-									<form method="POST" action="{% url 'export_documents' export_source='published' subset=published.subset %}">
-								{% else %}
-									<form method="POST" action="{% url 'export_documents' export_source='published' %}">
-								{% endif %}
-							{% endif %}
-
-								{% csrf_token %}
-
-								<div class="form-group">
-									<label for="records_per_file">XML Records per file</label>
-									<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
-									<small id="records_per_file_help" class="form-text text-muted">Optional</small>
-								</div>
-
-								<div class="form-group">
-									<label for="archive_type">Select archive file type</label>
-									<select class="form-control" id="archive_type" name="archive_type" required>
-										<option value="zip">Compressed Zip file</option>
-										<option value="targz">Compressed Tar file</option>
-										<option value="tar">Uncompressed Tar file</option>
-									</select>
-								</div>
-
-								<div id="s3_export_documents_form">
-									<div class="form-group">
-										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="s3_export_documents" name="s3_export"/ onclick="$('#s3_export_documents_options').fadeToggle();">
-											<label class="form-check-label" for="s3_export_documents">
-												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
-											</label>
-										</div>
-										<div id="s3_export_documents_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
-
-											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
-
-												<ul>
-													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
-													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
-												</ul>
-
-											</p>
-
-											<div class="form-group">
-												<label for="s3_bucket">S3 Bucket</label>
-												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
-												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
-											</div>
-
-											<div class="form-group">
-												<label for="s3_key">S3 Key</label>
-												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
-												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
-											</div>
-
-											<div class="form-group">
-												<label for="s3_export_type">Export as:</label>
-												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
-													<option value="spark_df">Spark DataFrame</option>
-													<option value="archive">Archive file</option>
-												</select>
-											</div>
-
-											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
-
-											<script>
-
-												function test_s3_bucket_write(){
-													alert("Not yet implemented.");
-												}
-
-											</script>
-
-										</div>
-									</div>
-								</div>
-
-								<button type="submit" class="btn btn-success btn-sm">Export Documents <i class="la la-download"></i></button>
-
-							</form>
-						</div>
-					</div>
-				</div>
-
-				<div id="export_mapped_fields" class="tab-pane full_width_tab">
-					<div class="row">
-						<div class="col-md-12">
-
-							<!-- form for Job mapped fields export -->
-							{% if cjob %}
-								<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='job' job_id=cjob.job.id %}">
-							{% else %}
-								{% if published.subset %}
-									<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' subset=published.subset %}">
-								{% else %}
-									<form id="export_mapped_fields_form" method="POST" action="{% url 'export_mapped_fields' export_source='published' %}">
-								{% endif %}
-							{% endif %}
-
-								{% csrf_token %}
-
-								<!-- json or csv -->
-								<div style="width:50%;">
-									<div class="form-group">
-										<label for="mapped_fields_export_type">Select export format:</label>
-										<select class="form-control" id="mapped_fields_export_type" name="mapped_fields_export_type" required>
-											<option value="json">JSON (line-delimited, recommended)</option>
-											<option value="csv">CSV (tabular, comma seperated) </option>
-										</select>
-										<small id="mapped_fields_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values.  Exporting Mapped Fields as JSON handles this more deftly, and is recommended.</small>
-									</div>
-								</div>
-
-								<div id="kibana_checkbox" style="display:none;">
-									<div class="form-group">
-										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="kibana_style" name="kibana_style"/ checked>
-											<label class="form-check-label" for="kibana_style">
-												Export CSV "Kibana style"? <button type="button" class="btn btn-outline-info btn-sm" onclick="$('#kibana_style_info').fadeToggle();">More Information</button>
-											</label>
-										</div>
-										<div id="kibana_style_info" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
-											<p>"Kibana style" is referring to the <a href="https://www.elastic.co/products/kibana">Kibana application</a> for visualize and analyzing ElasticSearch indexes, and addresses fields that have <strong>multiple values</strong>.</p>
-
-											<p>For example, consider an ElasticSearch field called <code>mods_subject_topic</code>, with multiple values of <code>history</code>, <code>boating</code>, and <code>typing</code>.  If Kibana style is <strong>not</strong> checked/used -- which is the default behavior -- this would result in three distinct columns in the generated .csv file with a number affixed to the field name: <code>mods_subject_topic.0</code> with the value <code>historyM</code>, <code>mods_subject_topic.1</code> with the value <code>boating</code>, and <code>mods_subject_topic.2</code> with the value <code>typing</code>.  This can handy for analysis, as distinct values for this field are in distinct columns.</p>
-
-											<p>But some pipelines are prepared for fields that are comman separated when repeating, e.g. Kibana.  If checked, the result would be a <strong>single</strong> field called <code>mods_subject_topic</code> and a single, comma separated value of <code>history,boating,typing</code>.</p>
-										</div>
-									</div>
-								</div>
-								<script>
-									// listener for CSV select
-									$('#mapped_fields_export_type').on('change', function() {
-										if (this.value == 'csv') {
-											$('#kibana_checkbox').show();
-										}
-										else {
-											$('#kibana_checkbox').hide();
-										}
-									})
-								</script>
-
-								<div style="width:50%;">
-									<div class="form-group">
-										<label for="archive_type">Select archive file type</label>
-										<select class="form-control" id="archive_type" name="archive_type" required>
-											<option value="none">Uncompressed</option>
-											<option value="zip">Compressed Zip file</option>
-											<option value="targz">Compressed Tar file</option>
-										</select>
-									</div>
-								</div>
-
-								<p>By default, <strong>all</strong> mapped fields are included in the report, but you may optionally select a smaller subset of fields to export by clicking the button below.</p>
-
-								<!-- select mapped fields -->
-								{% include 'core/select_mapped_fields.html' %}
-
-								<div id="s3_export_mapped_fields_form" style="width:50%;">
-									<div class="form-group">
-										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="s3_export_mapped_fields" name="s3_export"/ onclick="$('#s3_export_mapped_fields_options').fadeToggle();">
-											<label class="form-check-label" for="s3_export_mapped_fields">
-												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
-											</label>
-										</div>
-										<div id="s3_export_mapped_fields_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
-
-											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
-
-												<ul>
-													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
-													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
-												</ul>
-
-											</p>
-
-											<div class="form-group">
-												<label for="s3_bucket">S3 Bucket</label>
-												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
-												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
-											</div>
-
-											<div class="form-group">
-												<label for="s3_key">S3 Key</label>
-												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
-												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
-											</div>
-
-											<div class="form-group">
-												<label for="s3_export_type">Export as:</label>
-												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
-													<option value="archive">Archive file</option>
-												</select>
-											</div>
-
-											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
-
-											<script>
-
-												function test_s3_bucket_write(){
-													alert("Not yet implemented.");
-												}
-
-											</script>
-
-										</div>
-									</div>
-								</div>
-
-								<button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped Fields <i class="la la-download"></i></button>
-
-								<script>
-
-									$(document).ready(function() {
-
-										// init datatables
-									    mapped_field_export_select_table = $('#select_mapped_fields').DataTable({
-									    	"pageLength": 10,
-									    	"lengthMenu": [ 10, 25, 100, 500 ]
-									    });
-
-									    // listener for checkboxes
-									    $("#select_all_fields").click(function(){
-										    cells = mapped_field_export_select_table.cells().nodes();
-										    $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
-									    });
-
-										// submit form via javascript
-									    /*
-									    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
-									    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
-									    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
-
-									    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
-									    DataTable.
-									    */
-									    $("#form_submit_button").click(function(){
-
-									    	// remove any pre-existing temp, hidden inputs
-									    	$("#hidden_field_inputs input").each(function(){
-									    		$(this).remove();
-									    	});
-
-									    	// write all field checkboxes as temporary, hidden inputs
-									    	cells = mapped_field_export_select_table.cells().nodes();
-									    	checkboxes = $(cells).find(':checked');
-									    	checkboxes.each(function(){
-									    		console.log(this);
-									    		$("#hidden_field_inputs").append("<input class='hidden_input' type='hidden' name='mapped_field_include' value='"+$(this).attr('value')+"'/>")
-									    	});
-
-									    	// submit form
-									    	$("#export_mapped_fields_form").submit();
-
-									    });
-								    });
-
-								</script>
-
-							</form>
-
-						</div>
-					</div>
-				</div>
-
-				<div id="export_tabular_data" class="tab-pane full_width_tab">
-					<div class="row">
-						<div class="col-md-12">
-
-							<!-- form for Job mapped fields export -->
-							{% if cjob %}
-							<form method="POST" action="{% url 'export_tabular_data' export_source='job' job_id=cjob.job.id %}">
-							{% else %}
-								{% if published.subset %}
-									<form method="POST" action="{% url 'export_tabular_data' export_source='published' subset=published.subset %}">
-								{% else %}
-									<form method="POST" action="{% url 'export_tabular_data' export_source='published' %}">
-								{% endif %}
-							{% endif %}
-
-								{% csrf_token %}
-
-								<!-- json or csv -->
-								<div style="width:50%;">
-									<div class="form-group">
-										<label for="tabular_data_export_type">Select export format:</label>
-										<select class="form-control" id="tabular_data_export_type" name="tabular_data_export_type" required>
-											<option value="csv">CSV (tabular, comma seperated)</option>
-											<option value="json">JSON (line-delimited)</option>
-										</select>
-										<small id="tabular_data_export_type" class="form-text text-muted"><strong>Note:</strong> Mapped fields exported as .csv are more prone to messy data due to column delimiters and newline characters that may exist within field values, but, may be easier to edit outside of Combine before re-ingesting.  JSON "roundtrips" easier, but can be more difficult to edit.</small>
-									</div>
-								</div>
-
-								<div class="form-group">
-									<label for="records_per_file">XML Records per file</label>
-									<input type="text" class="form-control" name="records_per_file" id="records_per_file" placeholder="e.g. 500 (default)">
-									<small id="records_per_file_help" class="form-text text-muted">Optional</small>
-								</div>
-
-								<div class="form-group">
-									<label for="archive_type">Select archive file type</label>
-									<select class="form-control" id="archive_type" name="archive_type" required>
-										<option value="zip">Compressed Zip file</option>
-										<option value="targz">Compressed Tar file</option>
-										<option value="tar">Uncompressed Tar file</option>
-									</select>
-								</div>
-
-								<!-- fm_export_config_json -->
-								<div class="row">
-
-									<div class="col-md-12">
-
-										<div class="gray_box">
-
-											<h5>Tabular Data Export Parameters</h5>
-
-											<p>Select a pre-existing field mapper configuration, or edit the one below, to be used for exporting tabular data.</p>
-
-											<div class="form-group">
-												<label for="harvest_field_mapper">Configuration Name</label>
-												<select class="form-control" id="harvest_field_mapper" name="harvest_field_mapper">
-													{% if orig_fm_config_json %}
-														<option value="job_fm_config_json">Configuration used for Job: {{cjob.job.name}}</option>
-													{% endif %}
-													<option value="default">Default</option>
-													{% for fm in field_mappers %}
-														<option value='{{ fm.id }}'>{{ fm.name }}</option>
-													{% endfor %}
-												</select>
-											</div>
-
-											<!-- hidden textarea for JSON to submit with form -->
-											<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_export_config_json" id="fm_export_config_json"></textarea>
-
-											<!-- visible JSON editor -->
-											<div id="harvest_config_editor" style="height:450px;"></div>
-
-											<script>
-										        // create the editor
-										        var container = document.getElementById("harvest_config_editor");
-										        var options = {
-										        	mode: 'code',
-							    					modes: ['code', 'text', 'tree'],
-							    					onChange: function(){
-							    						// update hidden textarea from editor contents
-							    						$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
-							    					},
-							    					sortObjectKeys: true,
-							    					name: 'harvest_field_mapping_configuration',
-							    					schema: {{xml2kvp_handle.schema|safe}},
-							    					navigationBar:false
-										        };
-										        var harvest_editor = new JSONEditor(container, options);
-
-										        // set json to editor
-										        harvest_editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
-
-										        // update textarea
-										        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
-										    </script>
-
-										    <div class="row" style="margin-top:15px;">
-												<div class="col-md-12">
-													<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_export_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options" onclick="save_current_fm_export_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_export_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_harvest_config_help').toggle(); return false;">What do these configurations mean?</button></p>
-													<div id="fm_harvest_config_alerts"></div>
-													<div id="fm_harvest_config_help" style="display:none;">
-														<!-- loop through configurations from schema, creating table of their description -->
-														<table id="jobs_table" class="table table-bordered table-hover">
-															<thead>
-																<tr>
-																	<th style="width: 20%">Parameter</th>
-																	<th>Type</th>
-																	<th>Description></th>
-																</tr>
-															</thead>
-															<tbody>
-																{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
-																	<tr>
-																		<td><code>{{param}}</code></td>
-																		<td><code>{{details.type}}</code></td>
-																		<td>{{details.description}}</td>
-																	</tr>
-																{% endfor %}
-															</tbody>
-														</table>
-													</div>
-												</div>
-											</div>
-
-										</div>
-									</div>
-
-									<script>
-
-										// store default config json
-										default_fm_harvest_config = {{ xml2kvp_handle.config_json|safe }};
-
-										// load saved field mapper configs
-										$(document).ready(function(){
-											$("#harvest_field_mapper").change(function(){
-
-												if (this.value != 'default'){
-
-													// get payload
-													$.ajax({
-														type: "GET",
-														url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
-														dataType:'json',
-														success: function(data){
-															// update harvest_editor
-															harvest_editor.set(data);
-															// update textarea
-											        		$("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
-											        		// show update button
-											        		$(".pre_harvest_fm_config_options").show();
-														}
-													});
-												}
-
-												else {
-													// update harvest_editor
-													harvest_editor.set(default_fm_harvest_config);
-													// update textarea
-											        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
-											        // hide update options
-									        		$(".pre_harvest_fm_config_options").hide();
-												}
-
-											})
-										});
-
-										// save current config
-										function save_current_fm_export_config_json(update_type, fm_id=null, fm_name=null){
-
-											// grab config
-											fm_export_config_json = $("#fm_export_config_json").val();
-											console.log(fm_export_config_json);
-
-											if (update_type == 'new'){
-												// get name of new FieldMapper from user
-												var fm_name = prompt("Save these Field Mapper configurations as:");
-											}
-
-											else if (update_type == 'update'){
-												// get current id of FieldMapper selected
-												fm_id = $("#harvest_field_mapper").val();
-												fm_name = $("#harvest_field_mapper").html();
-											}
-
-											else if (update_type == 'delete'){
-												// get current id of FieldMapper selected
-												fm_id = $("#harvest_field_mapper").val();
-												fm_name = $("#harvest_field_mapper").html();
-												// switch back to default
-												$("#harvest_field_mapper").val('default');
-												$("#harvest_field_mapper").change();
-											}
-
-											// fire ajax to create/save
-											if (fm_name != null && fm_name != '') {
-												$.ajax({
-													type: "POST",
-													url: "/combine/configuration/field_mapper/update",
-													data: {
-														'update_type':update_type,
-														'fm_id':fm_id,
-														'fm_config_json':fm_export_config_json,
-														'fm_name':fm_name,
-														'csrfmiddlewaretoken': '{{ csrf_token }}'
-													},
-													dataType:'json',
-													success: function(data){
-
-														// notify user
-														alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+    {% load core_template_filters %}
+
+    <div class="row">
+        <div class="col-md-12">
+
+            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                Select a tab below to export Records as <strong>full XML Documents</strong>, <strong>Mapped
+                Fields</strong>, or <strong>Tabular Data</strong>. <a target="_blank"
+                                                                      href="https://combine.readthedocs.io/en/master/exporting.html#exporting-records">Click
+                here for documentation</a>.
+                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+
+            <ul id="export_tabs" class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#export_documents">Export Documents</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#export_mapped_fields">Export Mapped Fields</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#export_tabular_data">Export Tabular Data</a>
+                </li>
+            </ul>
+
+            <div class="tab-content">
+
+                <div id="export_documents" class="tab-pane full_width_tab active">
+                    <div class="row">
+                        <div class="col-md-6">
+
+                            <!-- form for Job mapped fields export -->
+                            {% if cjob %}
+                                <form method="POST"
+                                      action="{% url 'export_documents' export_source='job' job_id=cjob.job.id %}">
+                            {% else %}
+                                {% if published.subset %}
+                                    <form method="POST"
+                                          action="{% url 'export_documents' export_source='published' subset=published.subset %}">
+                                {% else %}
+                                    <form method="POST" action="{% url 'export_documents' export_source='published' %}">
+                                {% endif %}
+                            {% endif %}
+
+                            {% csrf_token %}
+
+                            <div class="form-group">
+                                <label for="records_per_file">XML Records per file</label>
+                                <input type="text" class="form-control" name="records_per_file" id="records_per_file"
+                                       placeholder="e.g. 500 (default)">
+                                <small id="records_per_file_help" class="form-text text-muted">Optional</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="archive_type">Select archive file type</label>
+                                <select class="form-control" id="archive_type" name="archive_type" required>
+                                    <option value="zip">Compressed Zip file</option>
+                                    <option value="targz">Compressed Tar file</option>
+                                    <option value="tar">Uncompressed Tar file</option>
+                                </select>
+                            </div>
+
+                            <div id="s3_export_documents_form">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true"
+                                               id="s3_export_documents" name="s3_export"/
+                                        onclick="$('#s3_export_documents_options').fadeToggle();">
+                                        <label class="form-check-label" for="s3_export_documents">
+                                            <img src="{% static 'core/img/s3.png' %}" height=25/> Export to Amazon S3
+                                            Bucket?
+                                        </label>
+                                    </div>
+                                    <div id="s3_export_documents_options" class="bg-light"
+                                         style="padding:20px; border-radius:5px; display: none;">
+
+                                        <p>Instead of writing exports to the local filesystem, write exports to Amazon
+                                            AWS S3 storage. Some considerations:
+
+                                        <ul>
+                                            <li>S3 buckets <strong>must exist</strong> prior to export, they will not be
+                                                created
+                                            </li>
+                                            <li>Key in bucket <strong>must not exist</strong>, they will not overwrite
+                                            </li>
+                                        </ul>
+
+                                        </p>
+
+                                        <div class="form-group">
+                                            <label for="s3_bucket">S3 Bucket</label>
+                                            <input type="text" class="form-control" name="s3_bucket" id="s3_bucket"
+                                                   placeholder="e.g. combine-1">
+                                            <small id="records_per_file_help" class="form-text text-muted">Must exist,
+                                                and have write permissions
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="s3_key">S3 Key</label>
+                                            <input type="text" class="form-control" name="s3_key" id="s3_key"
+                                                   placeholder="e.g. 02_2019_published_records">
+                                            <small id="records_per_file_help" class="form-text text-muted">Avoid spaces,
+                                                punctuation, and special characters
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="s3_export_type">Export as:</label>
+                                            <select class="form-control" id="s3_export_type" name="s3_export_type"
+                                                    required>
+                                                <option value="spark_df">Spark DataFrame</option>
+                                                <option value="archive">Archive file</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
+
+                                        <script>
+
+                                            function test_s3_bucket_write() {
+                                                alert("Not yet implemented.");
+                                            }
+
+                                        </script>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button type="submit" class="btn btn-success btn-sm">Export Documents <i
+                                    class="la la-download"></i></button>
+
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="export_mapped_fields" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-12">
+
+                            <!-- form for Job mapped fields export -->
+                            {% if cjob %}
+                                <form id="export_mapped_fields_form" method="POST"
+                                      action="{% url 'export_mapped_fields' export_source='job' job_id=cjob.job.id %}">
+                            {% else %}
+                                {% if published.subset %}
+                                    <form id="export_mapped_fields_form" method="POST"
+                                          action="{% url 'export_mapped_fields' export_source='published' subset=published.subset %}">
+                                {% else %}
+                                    <form id="export_mapped_fields_form" method="POST"
+                                          action="{% url 'export_mapped_fields' export_source='published' %}">
+                                {% endif %}
+                            {% endif %}
+
+                            {% csrf_token %}
+
+                            <!-- json or csv -->
+                            <div style="width:50%;">
+                                <div class="form-group">
+                                    <label for="mapped_fields_export_type">Select export format:</label>
+                                    <select class="form-control" id="mapped_fields_export_type"
+                                            name="mapped_fields_export_type" required>
+                                        <option value="json">JSON (line-delimited, recommended)</option>
+                                        <option value="csv">CSV (tabular, comma seperated)</option>
+                                    </select>
+                                    <small id="mapped_fields_export_type" class="form-text text-muted">
+                                        <strong>Note:</strong> Mapped fields exported as .csv are more prone to messy
+                                        data due to column delimiters and newline characters that may exist within field
+                                        values. Exporting Mapped Fields as JSON handles this more deftly, and is
+                                        recommended.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div id="kibana_checkbox" style="display:none;">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true" id="kibana_style"
+                                               name="kibana_style"/ checked>
+                                        <label class="form-check-label" for="kibana_style">
+                                            Export CSV "Kibana style"?
+                                            <button type="button" class="btn btn-outline-info btn-sm"
+                                                    onclick="$('#kibana_style_info').fadeToggle();">More Information
+                                            </button>
+                                        </label>
+                                    </div>
+                                    <div id="kibana_style_info" class="bg-light"
+                                         style="padding:20px; border-radius:5px; display: none;">
+                                        <p>"Kibana style" is referring to the <a
+                                                href="https://www.elastic.co/products/kibana">Kibana application</a> for
+                                            visualize and analyzing ElasticSearch indexes, and addresses fields that
+                                            have <strong>multiple values</strong>.</p>
+
+                                        <p>For example, consider an ElasticSearch field called
+                                            <code>mods_subject_topic</code>, with multiple values of
+                                            <code>history</code>, <code>boating</code>, and <code>typing</code>. If
+                                            Kibana style is <strong>not</strong> checked/used -- which is the default
+                                            behavior -- this would result in three distinct columns in the generated
+                                            .csv file with a number affixed to the field name: <code>mods_subject_topic.0</code>
+                                            with the value <code>historyM</code>, <code>mods_subject_topic.1</code> with
+                                            the value <code>boating</code>, and <code>mods_subject_topic.2</code> with
+                                            the value <code>typing</code>. This can handy for analysis, as distinct
+                                            values for this field are in distinct columns.</p>
+
+                                        <p>But some pipelines are prepared for fields that are comman separated when
+                                            repeating, e.g. Kibana. If checked, the result would be a
+                                            <strong>single</strong> field called <code>mods_subject_topic</code> and a
+                                            single, comma separated value of <code>history,boating,typing</code>.</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <script>
+                                // listener for CSV select
+                                $('#mapped_fields_export_type').on('change', function () {
+                                    if (this.value == 'csv') {
+                                        $('#kibana_checkbox').show();
+                                    } else {
+                                        $('#kibana_checkbox').hide();
+                                    }
+                                })
+                            </script>
+
+                            <div style="width:50%;">
+                                <div class="form-group">
+                                    <label for="archive_type">Select archive file type</label>
+                                    <select class="form-control" id="archive_type" name="archive_type" required>
+                                        <option value="none">Uncompressed</option>
+                                        <option value="zip">Compressed Zip file</option>
+                                        <option value="targz">Compressed Tar file</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <p>By default, <strong>all</strong> mapped fields are included in the report, but you may
+                                optionally select a smaller subset of fields to export by clicking the button below.</p>
+
+                            <!-- select mapped fields -->
+                            {% include 'core/select_mapped_fields.html' %}
+
+                            <div id="s3_export_mapped_fields_form" style="width:50%;">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true"
+                                               id="s3_export_mapped_fields" name="s3_export"/
+                                        onclick="$('#s3_export_mapped_fields_options').fadeToggle();">
+                                        <label class="form-check-label" for="s3_export_mapped_fields">
+                                            <img src="{% static 'core/img/s3.png' %}" height=25/> Export to Amazon S3
+                                            Bucket?
+                                        </label>
+                                    </div>
+                                    <div id="s3_export_mapped_fields_options" class="bg-light"
+                                         style="padding:20px; border-radius:5px; display: none;">
+
+                                        <p>Instead of writing exports to the local filesystem, write exports to Amazon
+                                            AWS S3 storage. Some considerations:
+
+                                        <ul>
+                                            <li>S3 buckets <strong>must exist</strong> prior to export, they will not be
+                                                created
+                                            </li>
+                                            <li>Key in bucket <strong>must not exist</strong>, they will not overwrite
+                                            </li>
+                                        </ul>
+
+                                        </p>
+
+                                        <div class="form-group">
+                                            <label for="s3_bucket">S3 Bucket</label>
+                                            <input type="text" class="form-control" name="s3_bucket" id="s3_bucket"
+                                                   placeholder="e.g. combine-1">
+                                            <small id="records_per_file_help" class="form-text text-muted">Must exist,
+                                                and have write permissions
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="s3_key">S3 Key</label>
+                                            <input type="text" class="form-control" name="s3_key" id="s3_key"
+                                                   placeholder="e.g. 02_2019_published_records">
+                                            <small id="records_per_file_help" class="form-text text-muted">Avoid spaces,
+                                                punctuation, and special characters
+                                            </small>
+                                        </div>
+
+                                        <div class="form-group">
+                                            <label for="s3_export_type">Export as:</label>
+                                            <select class="form-control" id="s3_export_type" name="s3_export_type"
+                                                    required>
+                                                <option value="archive">Archive file</option>
+                                            </select>
+                                        </div>
+
+                                        <!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
+
+                                        <script>
+
+                                            function test_s3_bucket_write() {
+                                                alert("Not yet implemented.");
+                                            }
+
+                                        </script>
+
+                                    </div>
+                                </div>
+                            </div>
+
+                            <button id="form_submit_button" type="button" class="btn btn-success btn-sm">Export Mapped
+                                Fields <i class="la la-download"></i></button>
+
+                            <script>
+
+                                $(document).ready(function () {
+
+                                    // init datatables
+                                    mapped_field_export_select_table = $('#select_mapped_fields').DataTable({
+                                        "pageLength": 10,
+                                        "lengthMenu": [10, 25, 100, 500]
+                                    });
+
+                                    // listener for checkboxes
+                                    $("#select_all_fields").click(function () {
+                                        cells = mapped_field_export_select_table.cells().nodes();
+                                        $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
+                                    });
+
+                                    // submit form via javascript
+                                    /*
+                                    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
+                                    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
+                                    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
+
+                                    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
+                                    DataTable.
+                                    */
+                                    $("#form_submit_button").click(function () {
+
+                                        // remove any pre-existing temp, hidden inputs
+                                        $("#hidden_field_inputs input").each(function () {
+                                            $(this).remove();
+                                        });
+
+                                        // write all field checkboxes as temporary, hidden inputs
+                                        cells = mapped_field_export_select_table.cells().nodes();
+                                        checkboxes = $(cells).find(':checked');
+                                        checkboxes.each(function () {
+                                            console.log(this);
+                                            $("#hidden_field_inputs").append("<input class='hidden_input' type='hidden' name='mapped_field_include' value='" + $(this).attr('value') + "'/>")
+                                        });
+
+                                        // submit form
+                                        $("#export_mapped_fields_form").submit();
+
+                                    });
+                                });
+
+                            </script>
+
+                            </form>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div id="export_tabular_data" class="tab-pane full_width_tab">
+                    <div class="row">
+                        <div class="col-md-12">
+
+                            <!-- form for Job mapped fields export -->
+                            {% if cjob %}
+                                <form method="POST"
+                                      action="{% url 'export_tabular_data' export_source='job' job_id=cjob.job.id %}">
+                            {% else %}
+                                {% if published.subset %}
+                                    <form method="POST"
+                                          action="{% url 'export_tabular_data' export_source='published' subset=published.subset %}">
+                                {% else %}
+                                    <form method="POST"
+                                          action="{% url 'export_tabular_data' export_source='published' %}">
+                                {% endif %}
+                            {% endif %}
+
+                            {% csrf_token %}
+
+                            <!-- json or csv -->
+                            <div style="width:50%;">
+                                <div class="form-group">
+                                    <label for="tabular_data_export_type">Select export format:</label>
+                                    <select class="form-control" id="tabular_data_export_type"
+                                            name="tabular_data_export_type" required>
+                                        <option value="csv">CSV (tabular, comma seperated)</option>
+                                        <option value="json">JSON (line-delimited)</option>
+                                    </select>
+                                    <small id="tabular_data_export_type" class="form-text text-muted">
+                                        <strong>Note:</strong> Mapped fields exported as .csv are more prone to messy
+                                        data due to column delimiters and newline characters that may exist within field
+                                        values, but, may be easier to edit outside of Combine before re-ingesting. JSON
+                                        "roundtrips" easier, but can be more difficult to edit.
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="records_per_file">XML Records per file</label>
+                                <input type="text" class="form-control" name="records_per_file" id="records_per_file"
+                                       placeholder="e.g. 500 (default)">
+                                <small id="records_per_file_help" class="form-text text-muted">Optional</small>
+                            </div>
+
+                            <div class="form-group">
+                                <label for="archive_type">Select archive file type</label>
+                                <select class="form-control" id="archive_type" name="archive_type" required>
+                                    <option value="zip">Compressed Zip file</option>
+                                    <option value="targz">Compressed Tar file</option>
+                                    <option value="tar">Uncompressed Tar file</option>
+                                </select>
+                            </div>
+
+                            <!-- fm_export_config_json -->
+                            <div class="row">
+
+                                <div class="col-md-12">
+
+                                    <div class="gray_box">
+
+                                        <h5>Tabular Data Export Parameters</h5>
+
+                                        <p>Select a pre-existing field mapper configuration, or edit the one below, to
+                                            be used for exporting tabular data.</p>
+
+                                        <div class="form-group">
+                                            <label for="harvest_field_mapper">Configuration Name</label>
+                                            <select class="form-control" id="harvest_field_mapper"
+                                                    name="harvest_field_mapper">
+                                                {% if orig_fm_config_json %}
+                                                    <option value="job_fm_config_json">Configuration used for
+                                                        Job: {{ cjob.job.name }}</option>
+                                                {% endif %}
+                                                <option value="default">Default</option>
+                                                {% for fm in field_mappers %}
+                                                    <option value='{{ fm.id }}'>{{ fm.name }}</option>
+                                                {% endfor %}
+                                            </select>
+                                        </div>
+
+                                        <!-- hidden textarea for JSON to submit with form -->
+                                        <textarea style="display:none;" rows=10 class="code_style form-control"
+                                                  name="fm_export_config_json" id="fm_export_config_json"></textarea>
+
+                                        <!-- visible JSON editor -->
+                                        <div id="harvest_config_editor" style="height:450px;"></div>
+
+                                        <script>
+                                            // create the editor
+                                            var container = document.getElementById("harvest_config_editor");
+                                            var options = {
+                                                mode: 'code',
+                                                modes: ['code', 'text', 'tree'],
+                                                onChange: function () {
+                                                    // update hidden textarea from editor contents
+                                                    $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+                                                },
+                                                sortObjectKeys: true,
+                                                name: 'harvest_field_mapping_configuration',
+                                                schema: {{xml2kvp_handle.schema|safe}},
+                                                navigationBar: false
+                                            };
+                                            var harvest_editor = new JSONEditor(container, options);
+
+                                            // set json to editor
+                                            harvest_editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
+
+                                            // update textarea
+                                            $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+                                        </script>
+
+                                        <div class="row" style="margin-top:15px;">
+                                            <div class="col-md-12">
+                                                <p>
+                                                    <button class="btn btn-outline-success btn-sm"
+                                                            onclick="save_current_fm_export_config_json('new'); return false;">
+                                                        Save as new configurations
+                                                    </button>
+                                                    <button style="display:none;"
+                                                            class="btn btn-outline-warning btn-sm pre_harvest_fm_config_options"
+                                                            onclick="save_current_fm_export_config_json('update'); return false;">
+                                                        Update saved configurations
+                                                    </button>
+                                                    <button style="display:none;"
+                                                            class="btn btn-outline-danger btn-sm pre_harvest_fm_config_options"
+                                                            onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_export_config_json('delete'); return false;">
+                                                        Delete saved configurations
+                                                    </button>
+                                                    <button class="btn btn-outline-info btn-sm"
+                                                            onclick="$('#fm_harvest_config_help').toggle(); return false;">
+                                                        What do these configurations mean?
+                                                    </button>
+                                                </p>
+                                                <div id="fm_harvest_config_alerts"></div>
+                                                <div id="fm_harvest_config_help" style="display:none;">
+                                                    <!-- loop through configurations from schema, creating table of their description -->
+                                                    <table id="jobs_table" class="table table-bordered table-hover">
+                                                        <thead>
+                                                        <tr>
+                                                            <th style="width: 20%">Parameter</th>
+                                                            <th>Type</th>
+                                                            <th>Description></th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody>
+                                                        {% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+                                                            <tr>
+                                                                <td><code>{{ param }}</code></td>
+                                                                <td><code>{{ details.type }}</code></td>
+                                                                <td>{{ details.description }}</td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div>
+                                </div>
+
+                                <script>
+
+                                    // store default config json
+                                    default_fm_harvest_config = {{ xml2kvp_handle.config_json|safe }};
+
+                                    // load saved field mapper configs
+                                    $(document).ready(function () {
+                                        $("#harvest_field_mapper").change(function () {
+
+                                            if (this.value != 'default') {
+
+                                                // get payload
+                                                $.ajax({
+                                                    type: "GET",
+                                                    url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+                                                    dataType: 'json',
+                                                    success: function (data) {
+                                                        // update harvest_editor
+                                                        harvest_editor.set(data);
+                                                        // update textarea
+                                                        $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+                                                        // show update button
+                                                        $(".pre_harvest_fm_config_options").show();
+                                                    }
+                                                });
+                                            } else {
+                                                // update harvest_editor
+                                                harvest_editor.set(default_fm_harvest_config);
+                                                // update textarea
+                                                $("#fm_export_config_json").val(JSON.stringify(harvest_editor.get()));
+                                                // hide update options
+                                                $(".pre_harvest_fm_config_options").hide();
+                                            }
+
+                                        })
+                                    });
+
+                                    // save current config
+                                    function save_current_fm_export_config_json(update_type, fm_id = null, fm_name = null) {
+
+                                        // grab config
+                                        fm_export_config_json = $("#fm_export_config_json").val();
+                                        console.log(fm_export_config_json);
+
+                                        if (update_type == 'new') {
+                                            // get name of new FieldMapper from user
+                                            var fm_name = prompt("Save these Field Mapper configurations as:");
+                                        } else if (update_type == 'update') {
+                                            // get current id of FieldMapper selected
+                                            fm_id = $("#harvest_field_mapper").val();
+                                            fm_name = $("#harvest_field_mapper").html();
+                                        } else if (update_type == 'delete') {
+                                            // get current id of FieldMapper selected
+                                            fm_id = $("#harvest_field_mapper").val();
+                                            fm_name = $("#harvest_field_mapper").html();
+                                            // switch back to default
+                                            $("#harvest_field_mapper").val('default');
+                                            $("#harvest_field_mapper").change();
+                                        }
+
+                                        // fire ajax to create/save
+                                        if (fm_name != null && fm_name != '') {
+                                            $.ajax({
+                                                type: "POST",
+                                                url: "/combine/configuration/field_mapper/update",
+                                                data: {
+                                                    'update_type': update_type,
+                                                    'fm_id': fm_id,
+                                                    'fm_config_json': fm_export_config_json,
+                                                    'fm_name': fm_name,
+                                                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                                },
+                                                dataType: 'json',
+                                                success: function (data) {
+
+                                                    // notify user
+                                                    alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
 															${data.msg}
 															<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 															<span aria-hidden="true">&times;</span>
 															</button>
 														</div>`
-														$("#fm_harvest_config_alerts").append(alert);
-													},
-													error: function(data){
+                                                    $("#fm_harvest_config_alerts").append(alert);
+                                                },
+                                                error: function (data) {
 
-														// notify user
-														alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+                                                    // notify user
+                                                    alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
 															${data.responseJSON.msg}
 															<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 															<span aria-hidden="true">&times;</span>
 															</button>
 														</div>`
-														$("#fm_harvest_config_alerts").append(alert);
-													}
-												});
-											}
-											else {
-												alert('A name for this configuration is rquired!');
-											}
-										}
+                                                    $("#fm_harvest_config_alerts").append(alert);
+                                                }
+                                            });
+                                        } else {
+                                            alert('A name for this configuration is rquired!');
+                                        }
+                                    }
 
-									</script>
+                                </script>
 
-								</div>
+                            </div>
 
-								<div id="s3_export_tabular_data_form">
-									<div class="form-group">
-										<div class="form-check">
-											<input class="form-check-input" type="checkbox" value="true" id="s3_export_tabular_data" name="s3_export"/ onclick="$('#s3_export_tabular_data_options').fadeToggle();">
-											<label class="form-check-label" for="s3_export_tabular_data">
-												<img src="{% static 'core/img/s3.png' %}" height=25 /> Export to Amazon S3 Bucket?
-											</label>
-										</div>
-										<div id="s3_export_tabular_data_options" class="bg-light" style="padding:20px; border-radius:5px; display: none;">
+                            <div id="s3_export_tabular_data_form">
+                                <div class="form-group">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="true"
+                                               id="s3_export_tabular_data" name="s3_export"/
+                                        onclick="$('#s3_export_tabular_data_options').fadeToggle();">
+                                        <label class="form-check-label" for="s3_export_tabular_data">
+                                            <img src="{% static 'core/img/s3.png' %}" height=25/> Export to Amazon S3
+                                            Bucket?
+                                        </label>
+                                    </div>
+                                    <div id="s3_export_tabular_data_options" class="bg-light"
+                                         style="padding:20px; border-radius:5px; display: none;">
 
-											<p>Instead of writing exports to the local filesystem, write exports to Amazon AWS S3 storage.  Some considerations:
+                                        <p>Instead of writing exports to the local filesystem, write exports to Amazon
+                                            AWS S3 storage. Some considerations:
 
-												<ul>
-													<li>S3 buckets <strong>must exist</strong> prior to export, they will not be created</li>
-													<li>Key in bucket <strong>must not exist</strong>, they will not overwrite</li>
-												</ul>
+                                        <ul>
+                                            <li>S3 buckets <strong>must exist</strong> prior to export, they will not be
+                                                created
+                                            </li>
+                                            <li>Key in bucket <strong>must not exist</strong>, they will not overwrite
+                                            </li>
+                                        </ul>
 
-											</p>
+                                        </p>
 
-											<div class="form-group">
-												<label for="s3_bucket">S3 Bucket</label>
-												<input type="text" class="form-control" name="s3_bucket" id="s3_bucket" placeholder="e.g. combine-1">
-												<small id="records_per_file_help" class="form-text text-muted">Must exist, and have write permissions</small>
-											</div>
+                                        <div class="form-group">
+                                            <label for="s3_bucket">S3 Bucket</label>
+                                            <input type="text" class="form-control" name="s3_bucket" id="s3_bucket"
+                                                   placeholder="e.g. combine-1">
+                                            <small id="records_per_file_help" class="form-text text-muted">Must exist,
+                                                and have write permissions
+                                            </small>
+                                        </div>
 
-											<div class="form-group">
-												<label for="s3_key">S3 Key</label>
-												<input type="text" class="form-control" name="s3_key" id="s3_key" placeholder="e.g. 02_2019_published_records">
-												<small id="records_per_file_help" class="form-text text-muted">Avoid spaces, punctuation, and special characters</small>
-											</div>
+                                        <div class="form-group">
+                                            <label for="s3_key">S3 Key</label>
+                                            <input type="text" class="form-control" name="s3_key" id="s3_key"
+                                                   placeholder="e.g. 02_2019_published_records">
+                                            <small id="records_per_file_help" class="form-text text-muted">Avoid spaces,
+                                                punctuation, and special characters
+                                            </small>
+                                        </div>
 
-											<div class="form-group">
-												<label for="s3_export_type">Export as:</label>
-												<select class="form-control" id="s3_export_type" name="s3_export_type" required>
-													<option value="spark_df">Spark DataFrame</option>
-													<option value="archive">Archive file</option>
-												</select>
-											</div>
+                                        <div class="form-group">
+                                            <label for="s3_export_type">Export as:</label>
+                                            <select class="form-control" id="s3_export_type" name="s3_export_type"
+                                                    required>
+                                                <option value="spark_df">Spark DataFrame</option>
+                                                <option value="archive">Archive file</option>
+                                            </select>
+                                        </div>
 
-											<!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
+                                        <!-- <p><button type="button" class="btn btn-primary btn-sm" onclick="test_s3_bucket_write();">Test Write Permission to S3 Bucket</button></p> -->
 
-											<script>
+                                        <script>
 
-												function test_s3_bucket_write(){
-													alert("Not yet implemented.");
-												}
+                                            function test_s3_bucket_write() {
+                                                alert("Not yet implemented.");
+                                            }
 
-											</script>
+                                        </script>
 
-										</div>
-									</div>
-								</div>
+                                    </div>
+                                </div>
+                            </div>
 
-								<button type="submit" class="btn btn-success btn-sm">Export Tabular Data <i class="la la-download"></i></button>
+                            <button type="submit" class="btn btn-success btn-sm">Export Tabular Data <i
+                                    class="la la-download"></i></button>
 
-							</form>
-						</div>
-					</div>
-				</div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
 
-			</div>
+            </div>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
 {% endblock %}

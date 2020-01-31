@@ -2,16 +2,16 @@
 
 {% block content %}
 
-<h2>All Jobs</h2>
+    <h2>All Jobs</h2>
 
-<p>The following table represents all jobs currently in Combine, across all Organizations and Record Groups.</p>
+    <p>The following table represents all jobs currently in Combine, across all Organizations and Record Groups.</p>
 
-<!-- optional job lineage network node graph -->
-{% include 'core/job_lineage_network.html' %}
+    <!-- optional job lineage network node graph -->
+    {% include 'core/job_lineage_network.html' %}
 
-<div>
-<!-- optional job note -->
-{% include 'core/jobs_dt_table.html' %}
-</div>
+    <div>
+        <!-- optional job note -->
+        {% include 'core/jobs_dt_table.html' %}
+    </div>
 
 {% endblock %}

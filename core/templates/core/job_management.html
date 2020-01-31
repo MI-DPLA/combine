@@ -1,298 +1,311 @@
 {% load static %}
 {% block content %}
 
-<div class="row">
+    <div class="row">
 
-	<div class="col-md-12">
-		<h4>Job Management</h4>
-	</div>
+        <div class="col-md-12">
+            <h4>Job Management</h4>
+        </div>
 
-	<div class="col-md-12">
-		<table class="table table-bordered table-hover">
-			<tbody>
-				<tr>
-					<td><strong>Move</strong> selected Job(s) to another Record Group within this Organization</td>
-					<td style="width:20%; text-align:left;">
-						<div class="form-group">
-							<select class="form-control" id="record_group_id_select" name="record_group_id_select" required>
-								<option value=''>Select Record Group...</option>
-								{% for target_record_group in record_group.organization.recordgroup_set.all %}
-									<option value="{{ target_record_group.id }}">{{ target_record_group.name }}</option>
-								{% endfor %}
-							</select>
-						</div>
-				    	<button type="button" id="move" class="btn btn-success btn-sm" value="move" onclick="move_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Move This Job {% else %}Move Selected Jobs{% endif %} <i class="la la-arrow-right"></i></button>
-			    		<br><br>
-						<span class="switch switch-sm">
+        <div class="col-md-12">
+            <table class="table table-bordered table-hover">
+                <tbody>
+                <tr>
+                    <td><strong>Move</strong> selected Job(s) to another Record Group within this Organization</td>
+                    <td style="width:20%; text-align:left;">
+                        <div class="form-group">
+                            <select class="form-control" id="record_group_id_select" name="record_group_id_select"
+                                    required>
+                                <option value=''>Select Record Group...</option>
+                                {% for target_record_group in record_group.organization.recordgroup_set.all %}
+                                    <option value="{{ target_record_group.id }}">{{ target_record_group.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <button type="button" id="move" class="btn btn-success btn-sm" value="move"
+                                onclick="move_jobs(); return false;">
+                            {% if request.resolver_match.url_name == 'job_details' %}Move This Job {% else %}Move
+                                Selected Jobs{% endif %} <i class="la la-arrow-right"></i></button>
+                        <br><br>
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_move_toggle">
 							<label style="font-weight:normal;" for="downstream_move_toggle">Include Downstream?</label>
 						</span>
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Stop</strong></td>
-					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="stop_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Stop This Job {% else %}Stop Selected Jobs{% endif %} <i class="la la-stop"></i></button>
-						<br><br>
-						<span class="switch switch-sm">
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Stop</strong></td>
+                    <td style="width:20%; text-align:left;">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="stop_jobs(); return false;">
+                            {% if request.resolver_match.url_name == 'job_details' %}Stop This Job {% else %}Stop
+                                Selected Jobs{% endif %} <i class="la la-stop"></i></button>
+                        <br><br>
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_stop_toggle">
 							<label style="font-weight:normal;" for="downstream_stop_toggle">Include Downstream?</label>
 						</span>
 
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Delete</strong></td>
-					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Delete This Job {% else %}Delete Selected Jobs{% endif %} <i class="la la-close"></i></button>
-						<br><br>
-						<span class="switch switch-sm">
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Delete</strong></td>
+                    <td style="width:20%; text-align:left;">
+                        <button type="button" class="btn btn-danger btn-sm" onclick="delete_jobs(); return false;">
+                            {% if request.resolver_match.url_name == 'job_details' %}Delete This Job {% else %}Delete
+                                Selected Jobs{% endif %} <i class="la la-close"></i></button>
+                        <br><br>
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_delete_toggle">
-							<label style="font-weight:normal;" for="downstream_delete_toggle">Include Downstream?</label>
+							<label style="font-weight:normal;"
+                                   for="downstream_delete_toggle">Include Downstream?</label>
 						</span>
 
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Re-Run</strong></td>
-					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Re-Run This Job {% else %}Re-Run Selected Jobs{% endif %} <i class="la la-refresh"></i></button>
-						<br><br>
-						<span class="switch switch-sm">
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Re-Run</strong></td>
+                    <td style="width:20%; text-align:left;">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="rerun_jobs(); return false;">
+                            {% if request.resolver_match.url_name == 'job_details' %}Re-Run This Job {% else %}Re-Run
+                                Selected Jobs{% endif %} <i class="la la-refresh"></i></button>
+                        <br><br>
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_rerun_toggle" checked>
 							<label style="font-weight:normal;" for="downstream_rerun_toggle">Include Downstream?</label>
 						</span>
                         <br>
-						<span class="switch switch-sm">
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="upstream_rerun_toggle" checked>
 							<label style="font-weight:normal;" for="upstream_rerun_toggle">Include Upstream?</label>
 						</span>
-					</td>
-				</tr>
-				<tr>
-					<td><strong>Clone</strong></td>
-					<td style="width:20%; text-align:left;">
-						<button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">{% if request.resolver_match.url_name == 'job_details' %}Clone This Job {% else %}Clone Selected Jobs{% endif %} <i class="la la-clone"></i></button>
-						<br><br>
-						<span class="switch switch-sm">
+                    </td>
+                </tr>
+                <tr>
+                    <td><strong>Clone</strong></td>
+                    <td style="width:20%; text-align:left;">
+                        <button type="button" class="btn btn-warning btn-sm" onclick="clone_jobs(); return false;">
+                            {% if request.resolver_match.url_name == 'job_details' %}Clone This Job {% else %}Clone
+                                Selected Jobs{% endif %} <i class="la la-clone"></i></button>
+                        <br><br>
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="downstream_clone_toggle" checked>
 							<label style="font-weight:normal;" for="downstream_clone_toggle">Include Downstream?</label>
 						</span>
                         <br>
-						<span class="switch switch-sm">
+                        <span class="switch switch-sm">
 							<input type="checkbox" class="switch-sm" id="rerun_on_clone" checked>
 							<label style="font-weight:normal;" for="rerun_on_clone">Re-Run on Clone?</label>
 						</span>
-					</td>
-				</tr>
-			</tbody>
-		</table>
-	</div>
+                    </td>
+                </tr>
+                </tbody>
+            </table>
+        </div>
 
-	<script>
+        <script>
 
-        // handle bulk moving of jobs
-		function move_jobs(){
+            // handle bulk moving of jobs
+            function move_jobs() {
 
-			confirmation = confirm('Are you sure you want to move these Job(s)?');
-			if (confirmation){
+                confirmation = confirm('Are you sure you want to move these Job(s)?');
+                if (confirmation) {
 
-				// get values for job_ids
-				job_ids = [];
-				$(".job_id_sel:checkbox:checked").each(function(i){
-					job_ids.push($(this).val());
-				});
+                    // get values for job_ids
+                    job_ids = [];
+                    $(".job_id_sel:checkbox:checked").each(function (i) {
+                        job_ids.push($(this).val());
+                    });
 
-				// get value of downstream toggle
-				var downstream_move_toggle = $("#downstream_move_toggle")[0].checked
+                    // get value of downstream toggle
+                    var downstream_move_toggle = $("#downstream_move_toggle")[0].checked
 
-				// get value for record_group_id
-				var e = document.getElementById("record_group_id_select");
-				var record_group_id = e.options[e.selectedIndex].value;
+                    // get value for record_group_id
+                    var e = document.getElementById("record_group_id_select");
+                    var record_group_id = e.options[e.selectedIndex].value;
 
-				// submit job ids via ajax
-				$.ajax({
-					type: "POST",
-					url: "{% url 'move_jobs' %}",
-					data: {
-						'job_ids':job_ids,
-						'record_group_id':record_group_id,
-						'downstream_move_toggle':downstream_move_toggle,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						// redirect to target record group
-						window.location.href = '/combine/record_group/' + record_group_id;
-					}
-				});
-			}
-		}
+                    // submit job ids via ajax
+                    $.ajax({
+                        type: "POST",
+                        url: "{% url 'move_jobs' %}",
+                        data: {
+                            'job_ids': job_ids,
+                            'record_group_id': record_group_id,
+                            'downstream_move_toggle': downstream_move_toggle,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        dataType: 'json',
+                        success: function (data) {
+                            // redirect to target record group
+                            window.location.href = '/combine/record_group/' + record_group_id;
+                        }
+                    });
+                }
+            }
 
-        // handle bulk job deletion
-		function stop_jobs(){
+            // handle bulk job deletion
+            function stop_jobs() {
 
-			confirmation = confirm('Are you sure you want to stop the selected Job(s)?');
-			if (confirmation){
+                confirmation = confirm('Are you sure you want to stop the selected Job(s)?');
+                if (confirmation) {
 
-				// get values for job_ids
-				job_ids = [];
-				$(".job_id_sel:checkbox:checked").each(function(i){
-					job_ids.push($(this).val());
-				});
+                    // get values for job_ids
+                    job_ids = [];
+                    $(".job_id_sel:checkbox:checked").each(function (i) {
+                        job_ids.push($(this).val());
+                    });
 
-				// get value of downstream toggle
-				var downstream_stop_toggle = $("#downstream_stop_toggle")[0].checked
+                    // get value of downstream toggle
+                    var downstream_stop_toggle = $("#downstream_stop_toggle")[0].checked
 
-				// submit job ids via ajax
-				$.ajax({
-					type: "POST",
-					url: "{% url 'stop_jobs' %}",
-					data: {
-						'job_ids':job_ids,
-						'downstream_stop_toggle':downstream_stop_toggle,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						if (data.results == true) {
-							location.reload();
-						}
-					}
-				});
-			}
-		}
+                    // submit job ids via ajax
+                    $.ajax({
+                        type: "POST",
+                        url: "{% url 'stop_jobs' %}",
+                        data: {
+                            'job_ids': job_ids,
+                            'downstream_stop_toggle': downstream_stop_toggle,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        dataType: 'json',
+                        success: function (data) {
+                            if (data.results == true) {
+                                location.reload();
+                            }
+                        }
+                    });
+                }
+            }
 
-        // handle bulk job deletion
-		function delete_jobs(){
+            // handle bulk job deletion
+            function delete_jobs() {
 
-			confirmation = confirm('Are you sure you want to delete the selected Job(s)?');
-			if (confirmation){
+                confirmation = confirm('Are you sure you want to delete the selected Job(s)?');
+                if (confirmation) {
 
-				// get values for job_ids
-				job_ids = [];
-				$(".job_id_sel:checkbox:checked").each(function(i){
-					job_ids.push($(this).val());
-				});
+                    // get values for job_ids
+                    job_ids = [];
+                    $(".job_id_sel:checkbox:checked").each(function (i) {
+                        job_ids.push($(this).val());
+                    });
 
-				// get value of downstream toggle
-				var downstream_delete_toggle = $("#downstream_delete_toggle")[0].checked
+                    // get value of downstream toggle
+                    var downstream_delete_toggle = $("#downstream_delete_toggle")[0].checked
 
-				// submit job ids via ajax
-				$.ajax({
-					type: "POST",
-					url: "{% url 'delete_jobs' %}",
-					data: {
-						'job_ids':job_ids,
-						'downstream_delete_toggle':downstream_delete_toggle,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
+                    // submit job ids via ajax
+                    $.ajax({
+                        type: "POST",
+                        url: "{% url 'delete_jobs' %}",
+                        data: {
+                            'job_ids': job_ids,
+                            'downstream_delete_toggle': downstream_delete_toggle,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        dataType: 'json',
+                        success: function (data) {
 
-						{% if cjob %}
-						if (data.results == true) {
-							window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
-						}
-						{% else %}
-						if (data.results == true) {
-							location.reload();
-						}
-						{% endif %}
+                            {% if cjob %}
+                                if (data.results == true) {
+                                    window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
+                                }
+                            {% else %}
+                                if (data.results == true) {
+                                    location.reload();
+                                }
+                            {% endif %}
 
-					}
-				});
-			}
-		}
+                        }
+                    });
+                }
+            }
 
-		// handle rerunning jobs
-		function rerun_jobs(){
+            // handle rerunning jobs
+            function rerun_jobs() {
 
-			confirmation = confirm('Are you sure you want to re-run selected Job(s)?');
-			if (confirmation){
+                confirmation = confirm('Are you sure you want to re-run selected Job(s)?');
+                if (confirmation) {
 
-				// get values for job_ids
-				job_ids = [];
-				$(".job_id_sel:checkbox:checked").each(function(i){
-					job_ids.push($(this).val());
-				});
+                    // get values for job_ids
+                    job_ids = [];
+                    $(".job_id_sel:checkbox:checked").each(function (i) {
+                        job_ids.push($(this).val());
+                    });
 
-				// get value of downstream toggle
-				var downstream_rerun_toggle = $("#downstream_rerun_toggle")[0].checked
-                var upstream_rerun_toggle = $("#upstream_rerun_toggle")[0].checked
+                    // get value of downstream toggle
+                    var downstream_rerun_toggle = $("#downstream_rerun_toggle")[0].checked
+                    var upstream_rerun_toggle = $("#upstream_rerun_toggle")[0].checked
 
-				// submit job ids via ajax
-				$.ajax({
-					type: "POST",
-					url: "{% url 'rerun_jobs' %}",
-					data: {
-						'job_ids':job_ids,
-						'downstream_rerun_toggle':downstream_rerun_toggle,
-                        'upstream_rerun_toggle':upstream_rerun_toggle,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						{% if cjob %}
-						if (data.results == true) {
-							window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
-						}
-						{% else %}
-						if (data.results == true) {
-							location.reload();
-						}
-						{% endif %}
-					}
-				});
-			}
-		}
+                    // submit job ids via ajax
+                    $.ajax({
+                        type: "POST",
+                        url: "{% url 'rerun_jobs' %}",
+                        data: {
+                            'job_ids': job_ids,
+                            'downstream_rerun_toggle': downstream_rerun_toggle,
+                            'upstream_rerun_toggle': upstream_rerun_toggle,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        dataType: 'json',
+                        success: function (data) {
+                            {% if cjob %}
+                                if (data.results == true) {
+                                    window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
+                                }
+                            {% else %}
+                                if (data.results == true) {
+                                    location.reload();
+                                }
+                            {% endif %}
+                        }
+                    });
+                }
+            }
 
-		// handle job cloning
-		function clone_jobs(){
+            // handle job cloning
+            function clone_jobs() {
 
-			confirmation = confirm('Are you sure you want to clone selected Job(s)?');
-			if (confirmation){
+                confirmation = confirm('Are you sure you want to clone selected Job(s)?');
+                if (confirmation) {
 
-				// get values for job_ids
-				job_ids = [];
-				$(".job_id_sel:checkbox:checked").each(function(i){
-					job_ids.push($(this).val());
-				});
+                    // get values for job_ids
+                    job_ids = [];
+                    $(".job_id_sel:checkbox:checked").each(function (i) {
+                        job_ids.push($(this).val());
+                    });
 
-				// get value of downstream toggle
-				var downstream_clone_toggle = $("#downstream_clone_toggle")[0].checked
+                    // get value of downstream toggle
+                    var downstream_clone_toggle = $("#downstream_clone_toggle")[0].checked
 
-				// get value of downstream toggle
-				var rerun_on_clone = $("#rerun_on_clone")[0].checked
+                    // get value of downstream toggle
+                    var rerun_on_clone = $("#rerun_on_clone")[0].checked
 
-				// submit job ids via ajax
-				$.ajax({
-					type: "POST",
-					url: "{% url 'clone_jobs' %}",
-					data: {
-						'job_ids':job_ids,
-						'downstream_clone_toggle':downstream_clone_toggle,
-						'rerun_on_clone':rerun_on_clone,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						{% if cjob %}
-						if (data.results == true) {
-							window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
-						}
-						{% else %}
-						if (data.results == true) {
-							location.reload();
-						}
-						{% endif %}
-					}
-				});
-			}
-		}
+                    // submit job ids via ajax
+                    $.ajax({
+                        type: "POST",
+                        url: "{% url 'clone_jobs' %}",
+                        data: {
+                            'job_ids': job_ids,
+                            'downstream_clone_toggle': downstream_clone_toggle,
+                            'rerun_on_clone': rerun_on_clone,
+                            'csrfmiddlewaretoken': '{{ csrf_token }}'
+                        },
+                        dataType: 'json',
+                        success: function (data) {
+                            {% if cjob %}
+                                if (data.results == true) {
+                                    window.location.href = '{% url "record_group" org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id %}';
+                                }
+                            {% else %}
+                                if (data.results == true) {
+                                    location.reload();
+                                }
+                            {% endif %}
+                        }
+                    });
+                }
+            }
 
-	</script>
+        </script>
 
-</div>
+    </div>
 
 {% endblock %}
