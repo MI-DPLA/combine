@@ -6,8 +6,8 @@ from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
 
-from core.models import RecordIdentifierTransformation, Record, RITSClient
-from core.forms import RITSForm, get_rits_choices
+from core.models import RecordIdentifierTransformation, Record, RITSClient, get_rits_choices
+from core.forms import RITSForm
 
 from .view_helpers import breadcrumb_parser
 
