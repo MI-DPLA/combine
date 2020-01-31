@@ -5,6 +5,8 @@ from __future__ import unicode_literals
 import inspect
 import json
 import logging
+
+from django.conf import settings
 from lxml import etree, isoschematron
 from types import ModuleType
 
@@ -63,6 +65,11 @@ class ValidationScenario(models.Model):
         Args:
             row (core.models.Record): Record instance, called "row" here to mirror spark job iterating over DataFrame
         '''
+
+        valid_types = [type for (type, label) in get_validation_scenario_choices()]
+        requested_type = self.validation_type
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for validation scenario: {requested_type}')
 
         # run appropriate validation based on type
         if self.validation_type == 'sch':
@@ -336,3 +343,14 @@ class ValidationScenario(models.Model):
             'parsed':results_dict,
             'raw':validation_msg
         }
+
+
+def get_validation_scenario_choices():
+    choices = [
+        ('sch', 'Schematron'),
+        ('es_query', 'ElasticSearch DSL Query'),
+        ('xsd', 'XML Schema')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices

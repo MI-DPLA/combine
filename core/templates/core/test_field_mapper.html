@@ -1,10 +1,10 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
+
 	<div class="row">
 		<div class="col-md-8">
-			<h2>Test Field Mapper</h2>			
+			<h2>Test Field Mapper</h2>
 			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#field-mapper-configurations" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
 		</div>
 	</div>
@@ -25,12 +25,12 @@
 		</div>
 	</div>
 
-	<!-- input paylaod -->
+	<!-- input payload -->
 	<div class="row">
 		<div class="col-md-12">
 			<h3>Field Mapper Configuration JSON</h3>
 			<p>Paste/edit your Field Mapper configuration JSON, or select from a pre-existing Field Mapper to test:</p>
-			
+
 			<!-- pre-existing FieldMapper -->
 			<div class="row">
 				<div class="col-md-4">
@@ -40,7 +40,7 @@
 							<option value="default">Default</option>
 							{% for fm in field_mappers %}
 								<option value='{{ fm.id }}'>{{ fm.name }}</option>
-							{% endfor %}					
+							{% endfor %}
 						</select>
 					</div>
 				</div>
@@ -57,7 +57,7 @@
 
 					<!-- visible JSON editor -->
 					<div id="jsoneditor" style="height:450px;"></div>
-					
+
 					<script>
 				        // create the editor
 				        var container = document.getElementById("jsoneditor");
@@ -118,7 +118,7 @@
 	</div>
 
 	<!-- mapping results -->
-	<div class="row">		
+	<div class="row">
 		<div class="col-md-12">
 			<h4>Mapping Results</h4>
 			<!-- mapping results -->
@@ -136,19 +136,19 @@
 							$("#jsonresults").css('height','');
 						}
 						else {
-							$("#jsonresults").css('height','450px');	
+							$("#jsonresults").css('height','450px');
 						}
-					},					
+					},
 					navigationBar:false
 		        };
 		        var editor_results = new JSONEditor(container, options);
 
 		        // set json to editor_results
-		        editor_results.set({});		        
+		        editor_results.set({});
 		    </script>
 		</div>
 	</div>
-	
+
 
 	<script>
 
@@ -187,15 +187,15 @@
 						type: "GET",
 						url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
 						dataType:'json',
-						success: function(data){							
+						success: function(data){
 							// update editor
 							editor.set(data);
 							// update textarea
 			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
 			        		// show update button
 			        		$(".pre_fm_config_options").show();
-						}			
-					});	
+						}
+					});
 				}
 
 				else {
@@ -206,7 +206,7 @@
 			        $("#fm_config_json").val(JSON.stringify(editor.get()));
 			        // hide update options
 	        		$(".pre_fm_config_options").hide();
-					
+
 				}
 
 			})
@@ -230,7 +230,7 @@
 					url: "{% url 'test_field_mapper' %}",
 					data: {
 						'db_id':db_id,
-						'fm_config_json':fm_config_json,						
+						'fm_config_json':fm_config_json,
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
@@ -240,7 +240,7 @@
 						editor_results.set(data);
 						editor_results.expandAll();
 
-					}			
+					}
 				});
 			})
 		});
@@ -257,14 +257,14 @@
 
 			// if transformation scenario requested, select from dropdown
 			{% if fmid %}
-				$("#field_mapper").val("{{ fmid }}").change();				
+				$("#field_mapper").val("{{ fmid }}").change();
 			{% endif %}
-			
+
 		}
 
 		// save current config
 		function save_current_fm_config_json(update_type, fm_id=null, fm_name=null){
-			
+
 			// grab config
 			fm_config_json = $("#fm_config_json").val();
 
@@ -299,7 +299,7 @@
 				},
 				dataType:'json',
 				success: function(data){
-					
+
 					// notify user
 					alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
 						${data.msg}
@@ -311,11 +311,11 @@
 					$(".expiring").fadeTo(2500, 500).fadeOut(500, function(){
 					    $(".expiring").fadeOut(500);
 					});
-				}			
-			});	
-			
+				}
+			});
+
 		}
-		
+
 	</script>
 
 {% endblock %}

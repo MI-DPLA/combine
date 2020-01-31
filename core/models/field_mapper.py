@@ -7,6 +7,7 @@ import jsonschema
 import logging
 
 # django imports
+from django.conf import settings
 from django.db import models
 
 # import xml2kvp
@@ -61,3 +62,13 @@ class FieldMapper(models.Model):
 
         # validate against XML2kvp schema
         jsonschema.validate(config_dict, XML2kvp.schema)
+
+
+def get_field_mapper_choices():
+    choices = [
+        ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
+        ('xslt', 'XSL Stylesheet')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices

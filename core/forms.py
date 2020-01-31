@@ -1,9 +1,9 @@
 from django.forms import ModelForm, ValidationError
-from django.conf import settings
 
 # import models from core for forms
 from core.models import Organization, RecordGroup, RecordIdentifierTransformation,\
-    Transformation, ValidationScenario, OAIEndpoint, FieldMapper
+    Transformation, ValidationScenario, OAIEndpoint, FieldMapper, get_rits_choices,\
+    get_field_mapper_choices, get_validation_scenario_choices, get_transformation_type_choices
 
 
 class OrganizationForm(ModelForm):
@@ -17,15 +17,6 @@ class RecordGroupForm(ModelForm):
         model = RecordGroup
         fields = ['organization', 'name', 'description']
 
-def get_validation_scenario_choices():
-    choices = [
-        ('sch', 'Schematron'),
-        ('es_query', 'ElasticSearch DSL Query'),
-        ('xsd', 'XML Schema')
-    ]
-    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
-        choices.append(('python', 'Python Code Snippet'))
-    return choices
 
 class ValidationScenarioForm(ModelForm):
 
@@ -52,15 +43,6 @@ class ValidationScenarioForm(ModelForm):
         }
 
 
-def get_transformation_type_choices():
-    choices = [
-        ('xslt', 'XSLT Stylesheet'),
-        ('openrefine', 'Open Refine Actions')
-    ]
-    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
-        choices.append(('python', 'Python Code Snippet'))
-    return choices
-
 class TransformationForm(ModelForm):
 
     def __init__(self, *args, **kwargs):
@@ -85,14 +67,6 @@ class TransformationForm(ModelForm):
             'transformation_type': 'If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.'
         }
 
-def get_rits_choices():
-    choices = [
-        ('regex', 'Regular Expression'),
-        ('xpath', 'XPath')
-    ]
-    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
-        choices.append(('python', 'Python Code Snippet'))
-    return choices
 
 class RITSForm(ModelForm):
 
@@ -129,14 +103,6 @@ class OAIEndpointForm(ModelForm):
         model = OAIEndpoint
         fields = ['name', 'endpoint', 'metadataPrefix', 'scope_type', 'scope_value']
 
-def get_field_mapper_choices():
-    choices = [
-        ('xml2kvp', 'XML to Key/Value Pair (XML2kvp)'),
-        ('xslt', 'XSL Stylesheet')
-    ]
-    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
-        choices.append(('python', 'Python Code Snippet'))
-    return choices
 
 class FieldMapperForm(ModelForm):
 

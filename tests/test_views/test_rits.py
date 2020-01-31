@@ -7,6 +7,10 @@ from tests.utils import TestConfiguration
 
 
 class RecordIdentifierTransformationTestCase(TestCase):
+    simple_python_payload = '''
+def transform_identifier(ident):
+    return 'transformed'
+    '''
     def setUp(self):
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
@@ -189,3 +193,49 @@ class RecordIdentifierTransformationTestCase(TestCase):
         self.assertEqual(json['transformation_target'], 'document')
         self.assertEqual(json['regex_match_payload'], 'test match')
         self.assertEqual(json['regex_replace_payload'], 'test replace')
+
+    def test_get_test_rits(self):
+        response = self.client.get(reverse('test_rits'))
+        self.assertIn(b'select a pre-existing Record Identifier Transformation Scenario', response.content)
+        self.assertNotIn(b'Python Code Snippet', response.content)
+
+    def test_get_test_rits_python_permitted(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            response = self.client.get(reverse('test_rits'))
+            self.assertIn(b'select a pre-existing Record Identifier Transformation Scenario', response.content)
+            self.assertIn(b'Python Code Snippet', response.content)
+
+    def test_post_test_rits(self):
+        post_body = {
+            'regex_match_payload': 'test document',
+            'regex_replace_payload': 'test replace',
+            'record_id_transform_type': 'regex',
+            'record_id_transform_target': 'document',
+            'db_id': self.config.record.id
+        }
+        response = self.client.post(reverse('test_rits'), post_body)
+        self.assertEqual(response.json(), {
+                             'results': '<?xml version="1.0" encoding="UTF-8"?>\n<root xmlns:internet="http://internet.com">\n<foo>test replace</foo>\n</root>\n',
+                             'success': True
+                         })
+
+    def test_post_test_rits_python(self):
+        post_body = {
+            'record_id_transform_type': 'python',
+            'python_payload': '',
+            'record_id_transform_target': 'record_id',
+            'db_id': self.config.record.id
+        }
+        response = self.client.post(reverse('test_rits'), post_body)
+        self.assertEqual(response.json(), {'results': 'requested invalid type for RITS: python', 'success': False})
+
+    def test_post_test_rits_python_permitted(self):
+        with self.settings(ENABLE_PYTHON='true'):
+            post_body = {
+                'record_id_transform_type': 'python',
+                'python_payload': self.simple_python_payload,
+                'record_id_transform_target': 'record_id',
+                'db_id': self.config.record.id
+            }
+            response = self.client.post(reverse('test_rits'), post_body)
+            self.assertEqual(response.json(), {'results': 'transformed', 'success': True})

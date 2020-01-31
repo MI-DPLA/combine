@@ -10,6 +10,7 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from core.models import Record, Transformation
 from core.forms import TransformationForm
+from core.models.transformation import get_transformation_type_choices
 
 from .view_helpers import breadcrumb_parser
 
@@ -98,11 +99,14 @@ def test_transformation_scenario(request):
         # check for pre-requested transformation scenario
         tsid = request.GET.get('transformation_scenario', None)
 
+        valid_types = get_transformation_type_choices()
+
         # return
         return render(request, 'core/test_transformation_scenario.html', {
             'q': get_q,
             'tsid': tsid,
             'transformation_scenarios': transformation_scenarios,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 

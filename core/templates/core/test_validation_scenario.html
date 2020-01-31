@@ -1,7 +1,7 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
+
 	<div class="row">
 		<div class="col-md-8">
 			<h2>Test Validation Scenario</h2>
@@ -19,21 +19,21 @@
 	{% endif %}
 
 	<div class="row">
-		<div class="col-md-12">			
+		<div class="col-md-12">
 			<!-- All Records DT table -->
 			{% include 'core/records_dt_table.html' %}
 		</div>
 	</div>
 
-	<!-- input paylaod -->
+	<!-- input payload -->
 	<div class="row">
 		<div class="col-md-12">
 			<h3>Validation Payload</h3>
 			<p>Paste/edit your validation schematron or python script in the textbox below, or select from a pre-existing validation scenario to test or edit:</p>
-			
+
 			<!-- pre-existing Validation Scenario -->
 			<div class="row">
-				<div class="col-md-4">
+				<div class="col-md-6">
 					<div class="form-group">
 						<label for="vs_exists">Select a pre-existing Validation Scenario</label>
 						<select id="vs_exists" class="form-control">
@@ -49,7 +49,7 @@
 			<!-- Validation Scenario payload -->
 			<div class="row">
 				<div class="col-md-12">
-					<div class="form-group">				
+					<div class="form-group">
 						<textarea id="vs_payload" class="form-control" rows="15"></textarea>
 					</div>
 				</div>
@@ -57,20 +57,20 @@
 
 			<!-- Validation Scenario type -->
 			<div class="row">
-				<div class="col-md-4">
+				<div class="col-md-6">
 					<div class="form-group">
 						<label for="vs_type">Select Validation Scenario type</label>
 						<select id="vs_type" class="form-control">
 							<option value=''></option>
-							<option value="sch">Schematron</option>
-							<option value="python">Python code</option>
-							<option value="es_query">ElasticSearch DSL query</option>
-							<option value="xsd">XML Schema</option>
+							{% for value, label in valid_types %}
+                            <option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}
 						</select>
+                        <small class="form-text text-muted">If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.</small>
 					</div>
 				</div>
 			</div>
-			
+
 			<button class="btn btn-success btn-sm" id="test_vs">Test Validation</button>
 		</div>
 	</div>
@@ -83,7 +83,7 @@
 		</div>
 		<div class="col-md-6">
 			<h4>Raw Validation Results</h4>
-			<div class="form-group">				
+			<div class="form-group">
 				<!-- <textarea id="vs_results_raw" class="form-control" rows="15">Raw results will show here...</textarea> -->
 				<code id="vs_results_raw">Raw results will show here...</code>
 			</div>
@@ -132,12 +132,12 @@
 						dataType:'text',
 						success: function(data){
 							$("#vs_payload").val(data);
-						}			
-					});	
+						}
+					});
 				}
 
 				else {
-					
+
 					// clear validation dropdown type
 					$("#vs_type").val(this.value);
 
@@ -176,7 +176,7 @@
 						'csrfmiddlewaretoken': '{{ csrf_token }}'
 					},
 					dataType:'json',
-					success: function(data){																		
+					success: function(data){
 						$("#vs_results_parsed").html(JSON.stringify(data, null, 2));
 						$("#vs_results_parsed").each(function(i, block) {
 							hljs.highlightBlock(block);
@@ -184,12 +184,12 @@
 
 						// highlight background
 						if (data.fail_count == 0){
-							$("#vs_results_parsed").css('background-color','#e0ffdf');	
+							$("#vs_results_parsed").css('background-color','#e0ffdf');
 						}
 						else {
-							$("#vs_results_parsed").css('background-color','#ffe7f4');		
+							$("#vs_results_parsed").css('background-color','#ffe7f4');
 						}
-					}			
+					}
 				});
 
 				// issue ajax request and get raw validation results
@@ -223,7 +223,7 @@
 						$("#vs_results_raw").each(function(i, block) {
 							hljs.highlightBlock(block);
 						});
-					}			
+					}
 				});
 
 				// https://stackoverflow.com/a/10825766/1196358
@@ -251,11 +251,11 @@
 
 			// if transformation scenario requested, select from dropdown
 			{% if vsid %}
-				$("#vs_exists").val("{{ vsid }}").change();				
+				$("#vs_exists").val("{{ vsid }}").change();
 			{% endif %}
-			
+
 		}
-		
+
 	</script>
 
 {% endblock %}

@@ -1,10 +1,10 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
+
 	<div class="row">
 		<div class="col-md-8">
-			<h2>Test Record Identifier Transformation Scenario</h2>			
+			<h2>Test Record Identifier Transformation Scenario</h2>
 			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#record-identifier-transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
 		</div>
 	</div>
@@ -17,10 +17,10 @@
 	</div>
 
 
-	<!-- input paylaod -->
+	<!-- input payload -->
 	<div class="row">
-		<div class="col-md-6">			
-			
+		<div class="col-md-6">
+
 			<div class="row">
 				<div class="col-md-12">
 					<div class="form-group">
@@ -43,13 +43,14 @@
 					</div>
 
 					<div class="form-group">
-						<label for="record_id_transform_type">Select the transformation typ:</label>
+						<label for="record_id_transform_type">Select the transformation type:</label>
 						<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
 							<option value=''>Select one...</option>
-							<option value='regex'>Regular Expression</option>
-							<option value='python'>Python Code Snippet</option>
-							<option value='xpath'>XPath Expression</option>
+                            {% for value, label in valid_types %}
+							<option value='{{ value }}'>{{ label }}</option>
+                            {% endfor %}
 						</select>
+                        <small class="form-text text-muted">If you want to use python code and it is not available, ask your server administrator to set ENABLE_PYTHON=true in the server settings file.</small>
 					</div>
 				</div>
 			</div>
@@ -75,7 +76,7 @@
 
 					<div class="tab-content">
 
-						<div id="regex_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">						
+						<div id="regex_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
 							<div class="form-group">
 								<label for="regex_match_payload">Regex match pattern:</label>
 								<p class="font-italic">Python regular expression syntax required</p>
@@ -115,7 +116,7 @@
 
 		<div class="col-md-6">
 			<h5>Results</h5>
-			<div class="form-group">				
+			<div class="form-group">
 				<p id="rits_results_raw">Results will show here...</p>
 			</div>
 		</div>
@@ -140,7 +141,7 @@
 				}
 			})
 		});
-			
+
 		// capture clicked row
 		$(document).ready(function() {
 			$("#datatables_records tbody").on( 'click', 'tr', function () {
@@ -163,7 +164,7 @@
 		$(document).ready(function(){
 			$("#rt_exists").change(function(){
 
-				if (this.value != ''){					
+				if (this.value != ''){
 
 					// get payload
 					$.ajax({
@@ -171,7 +172,7 @@
 						url: "/combine/configuration/rits/RITS_ID/payload".replace('RITS_ID', $(this).val()),
 						dataType:'json',
 						success: function(data){
-							
+
 							// update target
 							$("#record_id_transform_target").val(data['transformation_target']);
 
@@ -196,8 +197,8 @@
 
 							// select pane
 							$('#type_payload_tabs a[href="#'+data['transformation_type']+'_tab"]').tab('show');
-						}			
-					});	
+						}
+					});
 				}
 
 			})
@@ -231,14 +232,14 @@
 
 						// show results
 
-						if (data['success'] == true){							
+						if (data['success'] == true){
 							$("#rits_results_raw").html("<code class='text-success'>"+data['results']+"</span>");
 						}
 						else {
 							$("#rits_results_raw").html("<code class='text-danger'>"+data['results']+"</span>");
 						}
 
-					}			
+					}
 				});
 
 			})
@@ -253,9 +254,9 @@
 					$("tr").click();
 				}
 			{% endif %}
-			
+
 		}
-		
+
 	</script>
 
 {% endblock %}
