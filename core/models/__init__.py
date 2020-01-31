@@ -1,7 +1,7 @@
 # core models imports
-from .transformation import Transformation
-from .validation_scenario import ValidationScenario
-from .field_mapper import FieldMapper
+from .transformation import Transformation, get_transformation_type_choices
+from .validation_scenario import ValidationScenario, get_validation_scenario_choices
+from .field_mapper import FieldMapper, get_field_mapper_choices
 from .record_identifier_transformation_scenario import RecordIdentifierTransformation, RITSClient, get_rits_choices
 from .dpla_bulk_data_download import DPLABulkDataDownload
 from .oai_endpoint import OAIEndpoint

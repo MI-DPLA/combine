@@ -5,6 +5,8 @@ from __future__ import unicode_literals
 import inspect
 import json
 import logging
+
+from django.conf import settings
 from lxml import etree, isoschematron
 from types import ModuleType
 
@@ -336,3 +338,14 @@ class ValidationScenario(models.Model):
             'parsed':results_dict,
             'raw':validation_msg
         }
+
+
+def get_validation_scenario_choices():
+    choices = [
+        ('sch', 'Schematron'),
+        ('es_query', 'ElasticSearch DSL Query'),
+        ('xsd', 'XML Schema')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices

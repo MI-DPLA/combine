@@ -1,5 +1,8 @@
 from django.test import TestCase
-from core.forms import RITSForm, get_rits_choices
+
+from core.forms import RITSForm
+from core.models import get_rits_choices
+
 
 class RITSFormTestCase(TestCase):
     def test_python_prohibited(self):

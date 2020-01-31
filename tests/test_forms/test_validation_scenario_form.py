@@ -1,5 +1,8 @@
 from django.test import TestCase
-from core.forms import ValidationScenarioForm, get_validation_scenario_choices
+
+from core.forms import ValidationScenarioForm
+from core.models import get_validation_scenario_choices
+
 
 class ValidationScenarioTestCase(TestCase):
     def test_python_prohibited(self):

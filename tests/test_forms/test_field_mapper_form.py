@@ -1,5 +1,8 @@
 from django.test import TestCase
-from core.forms import FieldMapperForm, get_field_mapper_choices
+
+from core.forms import FieldMapperForm
+from core.models import get_field_mapper_choices
+
 
 class FieldMapperFormTestCase(TestCase):
     def test_python_prohibited(self):

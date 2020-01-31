@@ -256,3 +256,13 @@ class Transformation(models.Model):
             if rewrite:
                 LOGGER.debug('rewriting XSL payload')
                 self.payload = etree.tostring(xsl, encoding='utf-8', xml_declaration=True).decode('utf-8')
+
+
+def get_transformation_type_choices():
+    choices = [
+        ('xslt', 'XSLT Stylesheet'),
+        ('openrefine', 'Open Refine Actions')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices

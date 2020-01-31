@@ -1,5 +1,8 @@
 from django.test import TestCase
-from core.forms import TransformationForm, get_transformation_type_choices
+
+from core.forms import TransformationForm
+from core.models import get_transformation_type_choices
+
 
 class TransformationFormTestCase(TestCase):
     def test_python_prohibited(self):
