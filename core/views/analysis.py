@@ -9,7 +9,7 @@ from core.models import Job, AnalysisJob, PublishedRecords, ValidationScenario, 
 
 from .view_helpers import breadcrumb_parser
 
-
+@login_required
 def analysis(request):
     """
     Analysis home

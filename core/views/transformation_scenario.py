@@ -7,6 +7,7 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.decorators import login_required
 
 from core.models import Record, Transformation
 from core.forms import TransformationForm
@@ -16,7 +17,7 @@ from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def transformation_scenario_payload(request, trans_id):
     """
         View payload for transformation scenario
@@ -37,7 +38,7 @@ def transformation_scenario_payload(request, trans_id):
     if transformation.transformation_type == 'openrefine':
         return HttpResponse(transformation.payload, content_type='text/plain')
 
-
+@login_required
 def create_transformation_scenario(request):
     form = None
     if request.method == "POST":
@@ -53,7 +54,7 @@ def create_transformation_scenario(request):
         'object_name': 'Transformation Scenario'
     })
 
-
+@login_required
 def transformation_scenario(request, ts_id):
     transformation = Transformation.objects.get(pk=int(ts_id))
     form = None
@@ -72,7 +73,7 @@ def transformation_scenario(request, ts_id):
         'object_name': 'Transformation Scenario',
     })
 
-
+@login_required
 def delete_transformation_scenario(request, ts_id):
     try:
         transformation = Transformation.objects.get(pk=int(ts_id))
@@ -81,7 +82,7 @@ def delete_transformation_scenario(request, ts_id):
         pass
     return redirect(reverse('configuration'))
 
-
+@login_required
 def test_transformation_scenario(request):
     """
         View to live test transformation scenarios

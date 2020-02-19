@@ -2,6 +2,8 @@ import logging
 import json
 
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
+
 
 from core import forms, tasks
 from core.models import Organization, RecordGroup, CombineBackgroundTask, GlobalMessageClient
@@ -10,7 +12,7 @@ from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def organizations(request):
     """
         View all Organizations
@@ -38,7 +40,7 @@ def organizations(request):
 
         return redirect('organization', org_id=new_org.id)
 
-
+@login_required
 def organization(request, org_id):
     """
         Details for Organization
@@ -58,7 +60,7 @@ def organization(request, org_id):
         'breadcrumbs': breadcrumb_parser(request)
     })
 
-
+@login_required
 def organization_delete(request, org_id):
     """
         Delete Organization
@@ -94,7 +96,7 @@ def organization_delete(request, org_id):
 
     return redirect('organizations')
 
-
+@login_required
 def organization_run_jobs(request, org_id):
     org = Organization.objects.get(pk=int(org_id))
     jobs = org.all_jobs()
@@ -107,7 +109,7 @@ def organization_run_jobs(request, org_id):
     })
     return redirect('organizations')
 
-
+@login_required
 def organization_stop_jobs(request, org_id):
     org = Organization.objects.get(pk=int(org_id))
     jobs = org.all_jobs()

@@ -2,13 +2,14 @@ import json
 import logging
 
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 from .view_helpers import breadcrumb_parser
 from .stateio import _stateio_prepare_job_hierarchy
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def search(request):
     """
     Global search of Records
