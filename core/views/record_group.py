@@ -26,7 +26,7 @@ def record_group_id_redirect(request, record_group_id):
                     org_id=rec_group.organization.id,
                     record_group_id=rec_group.id)
 
-
+@login_required
 def record_group_new(request, org_id):
     """
         Create new Record Group
@@ -42,7 +42,7 @@ def record_group_new(request, org_id):
         # redirect to organization page
         return redirect('record_group', org_id=org_id, record_group_id=new_rg.id)
 
-
+@login_required
 def record_group_delete(request, org_id, record_group_id):
     """
         Create new Record Group

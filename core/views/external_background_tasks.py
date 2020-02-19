@@ -147,7 +147,7 @@ def bgtasks_proc_stderr_log(request):
     # redirect
     return HttpResponse(log_tail, content_type='text/plain')
 
-
+@login_required
 def system_bg_status(request):
     """
     View to return status on:

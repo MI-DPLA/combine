@@ -1236,7 +1236,7 @@ def job_update(request, org_id, record_group_id, job_id):
 ####################################################################
 # Job Validation Report       									   #
 ####################################################################
-
+@login_required
 def document_download(request):
     """
     Args (GET params):
