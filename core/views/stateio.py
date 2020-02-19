@@ -469,8 +469,7 @@ def _stateio_prepare_config_scenarios():
     for model_tup in [
             (config_scenarios_dict, ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
              'validations'),
-            (
-                config_scenarios_dict, Transformation, 'transformations', 'Transformation Scenarios',
+            (config_scenarios_dict, Transformation, 'transformations', 'Transformation Scenarios',
                 'transformations'),
             (config_scenarios_dict, OAIEndpoint,
              'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),

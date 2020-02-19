@@ -956,27 +956,8 @@ class StateIOClient():
         #debug
         import_stime = time.time()
 
-        # mint new import id
-        self.import_id = uuid.uuid4().hex
 
-        # init import_manifest
-        self.import_manifest = {
-            'combine_version':getattr(settings, 'COMBINE_VERSION', None),
-            'import_id':self.import_id,
-            'import_name':import_name,
-            'export_path':export_path,
-            'pk_hash':{
-                'jobs':{},
-                'record_groups':{},
-                'orgs':{},
-                'transformations':{},
-                'validations':{},
-                'oai_endpoints':{},
-                'rits':{},
-                'field_mapper_configs':{},
-                'dbdd':{}
-            }
-        }
+        self.initialize_import_manifest(export_path, import_name)
 
         # init/update associated StateIO instance
         update_dict = {
@@ -1040,6 +1021,29 @@ class StateIOClient():
 
         LOGGER.debug('state %s imported in %ss', self.import_id, (time.time()-import_stime))
 
+    def initialize_import_manifest(self, export_path, import_name):
+        # mint new import id
+        self.import_id = uuid.uuid4().hex
+
+        # init import_manifest
+        self.import_manifest = {
+            'combine_version': getattr(settings, 'COMBINE_VERSION', None),
+            'import_id': self.import_id,
+            'import_name': import_name,
+            'export_path': export_path,
+            'pk_hash': {
+                'jobs': {},
+                'record_groups': {},
+                'orgs': {},
+                'transformations': {},
+                'transformation_file_paths': {},
+                'validations': {},
+                'oai_endpoints': {},
+                'rits': {},
+                'field_mapper_configs': {},
+                'dbdd': {}
+            }
+        }
 
     def _load_state(self, export_path):
 
@@ -1136,21 +1140,7 @@ class StateIOClient():
             LOGGER.debug('rehydrating %s', transformation)
 
             # check for identical name and payload
-            ts_match = Transformation.objects.filter(name=transformation.object.name, payload=transformation.object.payload).order_by('id')
-
-            # matching scenario found
-            if ts_match.count() > 0:
-                LOGGER.debug('found identical Transformation, skipping creation, adding to hash')
-                self.import_manifest['pk_hash']['transformations'][transformation.object.id] = ts_match.first().id
-
-            # not found, creating
-            else:
-                LOGGER.debug('Transformation not found, creating')
-                ts_orig_id = transformation.object.id
-                transformation.object.id = None
-                transformation.save()
-                self.import_manifest['pk_hash']['transformations'][ts_orig_id] = transformation.object.id
-
+            self.rehydrate_transformation(transformation)
 
         #################################
         # VALIDATION SCENARIOS
@@ -1320,6 +1310,26 @@ class StateIOClient():
                 # run cmd
                 os.system(" ".join(cmd))
 
+    def rehydrate_transformation(self, transformation):
+        ts_match = Transformation.objects.filter(name=transformation.object.name,
+                                                 payload=transformation.object.payload).order_by('id')
+        # matching scenario found
+        if ts_match.count() > 0:
+            LOGGER.debug('found identical Transformation, skipping creation, adding to hash')
+            self.import_manifest['pk_hash']['transformations'][transformation.object.id] = ts_match.first().id
+            self.import_manifest['pk_hash']['transformation_file_paths'][
+                transformation.object.filepath] = ts_match.first().filepath
+
+        # not found, creating
+        else:
+            LOGGER.debug('Transformation not found, creating')
+            ts_orig_id = transformation.object.id
+            ts_orig_filepath = transformation.object.filepath
+            transformation.object.id = None
+            transformation.save()
+            self.import_manifest['pk_hash']['transformations'][ts_orig_id] = transformation.object.id
+            self.import_manifest['pk_hash']['transformation_file_paths'][
+                ts_orig_filepath] = transformation.object.filepath
 
     def _import_hierarchy(self):
 
@@ -1656,7 +1666,17 @@ class StateIOClient():
             try:
                 LOGGER.debug('TransformJob encountered, updating job details')
                 transformation = job.job_details_dict['transformation']
-                transformation['id'] = pk_hash['transformations'].get(transformation['id'], transformation['id'])
+                scenarios = transformation['scenarios']
+                scenarios_json = []
+                for scenario in scenarios:
+                    transform_id = scenario['id']
+                    transform_index = scenario['index']
+                    scenario['id'] = pk_hash['transformations'].get(transform_id, transform_id)
+                    scenarios_json.append({'index': transform_index, 'trans_id': transform_id})
+                transformation = {
+                    'scenarios': scenarios,
+                    'scenarios_json': json.dumps(scenarios_json)
+                }
                 update_dict['transformation'] = transformation
             except:
                 LOGGER.debug('error with updating job_details: transformation')
