@@ -1139,8 +1139,9 @@ class StateIOClient():
         for transformation in self._get_django_model_type(Transformation):
             LOGGER.debug('rehydrating %s', transformation)
 
-            # check for identical name and payload
             self.rehydrate_transformation(transformation)
+        # after rehydrating all transformations, fix includes
+        self.fix_transformation_includes()
 
         #################################
         # VALIDATION SCENARIOS
@@ -1310,7 +1311,24 @@ class StateIOClient():
                 # run cmd
                 os.system(" ".join(cmd))
 
+    def fix_transformation_includes(self):
+        for orig_id in self.import_manifest['pk_hash']['transformations']:
+            new_ts_id = self.import_manifest['pk_hash']['transformations'][orig_id]
+            transform = Transformation.objects.get(id=new_ts_id)
+            file_paths = self.import_manifest['pk_hash']['transformation_file_paths']
+            payload = transform.payload
+            for old_id in file_paths:
+                old_filepath = file_paths[old_id]
+                if old_filepath in payload:
+                    new_id = self.import_manifest['pk_hash']['transformations'][old_id]
+                    new_transform = Transformation.objects.get(id=new_id)
+                    if old_filepath is not None and new_transform.filepath is not None:
+                        payload = payload.replace(old_filepath, new_transform.filepath)
+            transform.payload = payload
+            transform.save()
+
     def rehydrate_transformation(self, transformation):
+        # check for identical name and payload
         ts_match = Transformation.objects.filter(name=transformation.object.name,
                                                  payload=transformation.object.payload).order_by('id')
         # matching scenario found
@@ -1318,7 +1336,7 @@ class StateIOClient():
             LOGGER.debug('found identical Transformation, skipping creation, adding to hash')
             self.import_manifest['pk_hash']['transformations'][transformation.object.id] = ts_match.first().id
             self.import_manifest['pk_hash']['transformation_file_paths'][
-                transformation.object.filepath] = ts_match.first().filepath
+                transformation.object.id] = transformation.object.filepath
 
         # not found, creating
         else:
@@ -1329,7 +1347,7 @@ class StateIOClient():
             transformation.save()
             self.import_manifest['pk_hash']['transformations'][ts_orig_id] = transformation.object.id
             self.import_manifest['pk_hash']['transformation_file_paths'][
-                ts_orig_filepath] = transformation.object.filepath
+                ts_orig_id] = ts_orig_filepath
 
     def _import_hierarchy(self):
 
