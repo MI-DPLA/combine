@@ -2,6 +2,7 @@ import json
 import logging
 
 from django.core.urlresolvers import reverse
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
 from core import tasks
@@ -10,7 +11,7 @@ from core.models import CombineJob, CombineBackgroundTask, GlobalMessageClient,\
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def export_documents(request,
                      export_source=None,
                      job_id=None,
@@ -105,7 +106,7 @@ def export_documents(request,
 
         return redirect('published')
 
-
+@login_required
 def export_mapped_fields(request,
                          export_source=None,
                          job_id=None,
@@ -209,7 +210,7 @@ def export_mapped_fields(request,
 
         return redirect('published')
 
-
+@login_required
 def export_tabular_data(request,
                         export_source=None,
                         job_id=None,

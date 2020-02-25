@@ -1,6 +1,7 @@
 import logging
 
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 
 from core.models import CombineBackgroundTask, CombineJob
 
@@ -8,7 +9,7 @@ from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def bg_tasks(request):
     LOGGER.debug('retrieving background tasks')
 
@@ -21,7 +22,7 @@ def bg_tasks(request):
         'breadcrumbs': breadcrumb_parser(request)
     })
 
-
+@login_required
 def bg_tasks_delete_all(request):
     LOGGER.debug('deleting all background tasks')
 
@@ -32,7 +33,7 @@ def bg_tasks_delete_all(request):
 
     return redirect('bg_tasks')
 
-
+@login_required
 def bg_task(request, task_id):
     # get task
     combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))
@@ -50,7 +51,7 @@ def bg_task(request, task_id):
         'breadcrumbs': breadcrumb_parser(request)
     })
 
-
+@login_required
 def bg_task_delete(request, task_id):
     # get task
     combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))
@@ -60,7 +61,7 @@ def bg_task_delete(request, task_id):
 
     return redirect('bg_tasks')
 
-
+@login_required
 def bg_task_cancel(request, task_id):
     # get task
     combine_task = CombineBackgroundTask.objects.get(pk=int(task_id))

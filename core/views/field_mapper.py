@@ -8,6 +8,7 @@ from django.urls import reverse
 from django.forms import model_to_dict
 from django.core.exceptions import ObjectDoesNotExist
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 
 from core.models import FieldMapper, Record
 from core.xml2kvp import XML2kvp
@@ -17,7 +18,7 @@ from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def field_mapper_payload(request, fm_id):
 
     """
@@ -41,7 +42,7 @@ def field_mapper_payload(request, fm_id):
         if doc_type and doc_type == 'payload':
             return JsonResponse(json.loads(field_mapper.payload))
 
-
+@login_required
 def create_field_mapper(request):
 
     form = None
@@ -58,7 +59,7 @@ def create_field_mapper(request):
         'object_name': 'Field Mapper',
     })
 
-
+@login_required
 def edit_field_mapper(request, fm_id):
 
     field_mapper = FieldMapper.objects.get(pk=int(fm_id))
@@ -78,7 +79,7 @@ def edit_field_mapper(request, fm_id):
         'object_name': 'Field Mapper',
     })
 
-
+@login_required
 def delete_field_mapper(request, fm_id):
 
     try:
@@ -88,7 +89,7 @@ def delete_field_mapper(request, fm_id):
         pass
     return redirect(reverse('configuration'))
 
-
+@login_required
 def field_mapper_update(request):
 
     """
@@ -157,7 +158,7 @@ def field_mapper_update(request):
                              'msg': 'Field Mapper configurations for <strong>%s</strong> were <strong>deleted</strong>' % field_mapper.name},
                             status=200)
 
-
+@login_required
 def test_field_mapper(request):
 
     """
