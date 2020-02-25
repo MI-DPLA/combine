@@ -9,3 +9,4 @@ from .models import Organization, RecordGroup, Job, OAIEndpoint, LivySession, Tr
 # register models
 admin.site.register([Organization, RecordGroup, Job, OAIEndpoint, LivySession, Transformation, ValidationScenario,
                      RecordIdentifierTransformation, DPLABulkDataDownload, FieldMapper, ErrorReport])
+admin.site.site_url = '/combine'
