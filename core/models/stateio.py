@@ -11,6 +11,8 @@ import shutil
 import time
 import uuid
 
+from json import JSONDecodeError
+
 # django imports
 from django.conf import settings
 from django.core import serializers
@@ -1319,10 +1321,10 @@ class StateIOClient():
             payload = transform.payload
             for old_id in file_paths:
                 old_filepath = file_paths[old_id]
-                if old_filepath in payload:
+                if old_filepath is not None and old_filepath in payload:
                     new_id = self.import_manifest['pk_hash']['transformations'][old_id]
                     new_transform = Transformation.objects.get(id=new_id)
-                    if old_filepath is not None and new_transform.filepath is not None:
+                    if new_transform.filepath is not None:
                         payload = payload.replace(old_filepath, new_transform.filepath)
             transform.payload = payload
             transform.save()
@@ -1622,6 +1624,11 @@ class StateIOClient():
 
         # update dictionary
         update_dict = {}
+        try:
+            json.loads(job.job_details)
+        except JSONDecodeError:
+            job.job_details = job.job_details.replace("'",'"')
+
 
         # update validation_scenarios
         if 'validation_scenarios' in job.job_details_dict.keys():
@@ -1682,19 +1689,7 @@ class StateIOClient():
         # if Transform, update transformation
         if job.job_type == 'TransformJob':
             try:
-                LOGGER.debug('TransformJob encountered, updating job details')
-                transformation = job.job_details_dict['transformation']
-                scenarios = transformation['scenarios']
-                scenarios_json = []
-                for scenario in scenarios:
-                    transform_id = scenario['id']
-                    transform_index = scenario['index']
-                    scenario['id'] = pk_hash['transformations'].get(transform_id, transform_id)
-                    scenarios_json.append({'index': transform_index, 'trans_id': transform_id})
-                transformation = {
-                    'scenarios': scenarios,
-                    'scenarios_json': json.dumps(scenarios_json)
-                }
+                transformation = self.update_transform_job(job, pk_hash)
                 update_dict['transformation'] = transformation
             except:
                 LOGGER.debug('error with updating job_details: transformation')
@@ -1707,6 +1702,22 @@ class StateIOClient():
         cjob.job.spark_code = cjob.prepare_job(return_job_code=True)
         cjob.job.save()
 
+    def update_transform_job(self, job, pk_hash):
+        LOGGER.debug('TransformJob encountered, updating job details')
+        transformation = job.job_details_dict['transformation']
+        scenarios = transformation['scenarios']
+        scenarios_json = []
+        for scenario in scenarios:
+            transform_id = scenario['id']
+            transform_index = scenario['index']
+            new_id = pk_hash['transformations'].get(transform_id, transform_id)
+            scenario['id'] = new_id
+            scenarios_json.append({'index': transform_index, 'trans_id': new_id})
+        transformation = {
+            'scenarios': scenarios,
+            'scenarios_json': json.dumps(scenarios_json)
+        }
+        return transformation
 
     def _get_django_model_instance(self, instance_id, instance_type, instances=None):
 
