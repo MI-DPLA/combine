@@ -1,8 +1,29 @@
-{% block content %}
-  <h2>Combine Login</h2>
-  <form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">Login</button>
-  </form>
-{% endblock %}
+{% load static %}
+
+<!doctype html>
+<html lang="en">
+<head>
+        <!-- Required meta tags -->
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'core/bootstrap-4.0.0/css/bootstrap.min.css' %}">
+
+    <!-- Combine CSS -->
+    <link rel="stylesheet" type="text/css" href="{% static 'core/combine.css' %}">
+
+    <title>Login | Combine</title>
+
+</head>
+<body>
+    <main>
+        <h1>Combine Login</h1>
+        <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit">Login</button>
+        </form>
+    </main>
+</body>
+</html>
