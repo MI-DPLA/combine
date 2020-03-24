@@ -10,7 +10,7 @@
             <table id="jobs_table" class="table table-bordered table-hover">
                 <thead>
                 <tr>
-                    <th></th>
+                    <th>Select Job</th>
                     <th>Job ID</th>
                     <th>Last Updated</th>
                     <th>Name</th>
@@ -48,17 +48,17 @@
                             <a href="{{ job.job_details_url }}">
                                 {{ job.name }}
                             </a>
-                            <a href="#" onclick="$('#job_name_{{ job.id }}').fadeToggle(); return false;">
-                                <i class="la la-pencil"></i>
-                            </a>
-                            <div id="job_name_{{ job.id }}"
+                            <button class="btn btn-outline-secondary btn-sm" onclick="$('#job_name_{{ job.id }}_div').fadeToggle(); return false;">
+                                <i class="la la-pencil"></i> Edit Name
+                            </button>
+                            <div id="job_name_{{ job.id }}_div"
                                  style="display:none; margin-top:10px; padding:10px; border-radius:10px; background-color:pink;">
                                 <form method="POST"
                                       action="{% url 'job_update_name' org_id=job.organization_id record_group_id=job.record_group_id job_id=job.id %}">
                                     {% csrf_token %}
                                     <div class="form-group" style="min-width: 200px;">
-                                        <label for="job_name">Enter new job name</label>
-                                        <input class="form-control" type="text" id="job_name" name="job_name" size=40
+                                        <label for="job_name_{{ job.id }}">Enter new job name</label>
+                                        <input class="form-control" type="text" id="job_name_{{ job.id }}" name="job_name" size=40
                                                placeholder="e.g. 'New Job Name'"/>
                                     </div>
                                     <button type="submit" class="btn btn-primary btn-sm">
@@ -143,18 +143,19 @@
                             <td class="{{ job.job_type_display_class }}">None</td>
                         {% endif %}
                         <td class="{{ job.job_type_display_class }}">
-                            {{ job.note }} <a href="#"
-                                              onclick="$('#job_notes_{{ job.id }}').fadeToggle(); return false;">
-                            <i class="la la-pencil"></i>
-                        </a>
-                            <div id="job_notes_{{ job.id }}"
+                            {{ job.note }} <button class="btn btn-outline-secondary btn-sm"
+                                              onclick="$('#job_notes_{{ job.id }}_div').fadeToggle(); return false;">
+                            <i class="la la-pencil"></i> Edit Notes
+                        </button>
+                            <div id="job_notes_{{ job.id }}_div"
                                  style="display:none; background-color:pink; width:250px; padding:10px; border-radius:10px;">
                                 <form method="POST"
                                       action="{% url 'job_update_note' org_id=job.organization_id record_group_id=job.record_group_id job_id=job.id %}">
                                     {% csrf_token %}
                                     <div class="form-group">
-                                        <textarea class="form-control" name="job_note" id="job_notes" rows="3"
-                                                  placeholder="Enter Job notes here...">{% if job.note %}
+                                        <label for="job_notes_{{ job.id }}">Job notes</label>
+                                        <textarea class="form-control" name="job_note" id="job_notes_{{ job.id }}" rows="3"
+                                                  placeholder="Enter notes here...">{% if job.note %}
                                             {{ job.note }}{% endif %}</textarea>
                                     </div>
                                     <input type="hidden" name="job_id" value="{{ cjob.job.id }}">
@@ -188,24 +189,24 @@
                 </tbody>
                 <tfoot>
                 <tr>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
+                    <th scope="row">Filter By Column</th>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                     {# Jinja logic for including RecordGroups #}
                     {% if not for_analysis %}
-                        <th></th>
-                        <th></th>
+                        <td></td>
+                        <td></td>
                     {% endif %}
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
-                    <th></th>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
+                    <td></td>
                 </tr>
                 </tfoot>
             </table>
@@ -248,11 +249,15 @@
                             {% endif %}
                             this.api().columns(filter_cols).every(function () {
                                 var column = this;
-                                var select = $('<select><option value="">All</option></select>')
-                                    .appendTo($(column.footer()).empty())
+                                var head = $(column.header()).text()
+                                console.log(head)
+                                var column_id = head.replace(' ', '-').toLowerCase()
+                                var label = 'Filter Jobs By ' + head + ':'
+                                var select = $('<select id="' + column_id + '" aria-label="'+ label + '"><option value="">All</option></select>')
+                                    .appendTo($(column.footer()))
                                     .on('change', function () {
-                                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
-                                        column.search(val ? '^' + val + '$' : '', true, false).draw();
+                                        var val = $.fn.dataTable.util.escapeRegex($(this).val().trim());
+                                        column.search(val ? val : '', true, false).draw();
                                     });
 
                                 column.data().unique().sort().each(function (d, j) {
