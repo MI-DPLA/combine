@@ -6,8 +6,10 @@ main {
 }
 body {
 	font-family: Arial, Helvetica, sans-serif;
-	font-size:90%;
 	padding-bottom: 20px;
+}
+a {
+    color: #3455db;
 }
 .bold {
 	font-weight: bold;
@@ -19,9 +21,9 @@ body {
 	padding: 0.5rem 1rem;
 	margin-bottom: 0.5rem;
 }
-.code_style {
+.code_style, code {
 	font-family: SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
-	color: #e83e8c;
+	color: #AA00AA;
 	word-break: break-word;
 }
 .container {
@@ -332,6 +334,19 @@ div.grayed_dt_row, td.grayed_dt_row {
     background-color: #fffdb6;
     border-color: #dee2e6 #dee2e6 #fff;
 }
+
+.navbar, .navbar .btn {
+    font-weight: 700;
+}
+
+.navbar .code_style {
+    color: hotpink;
+}
+
+.navbar .text-danger {
+    color: #f64747 !important;
+}
+
 
 .progress-bar.bg-warning {
     color: #0c0c0c;
