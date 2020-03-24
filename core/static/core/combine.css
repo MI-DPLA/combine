@@ -69,6 +69,9 @@ label {
 .btn {
     font-weight: 700;
 }
+.text-success {
+    color: #218739 !important;
+}
 
 /* consider darkening lines in table with something similar */
 .table-bordered td, .table-bordered th {
@@ -350,6 +353,9 @@ div.grayed_dt_row, td.grayed_dt_row {
     color: #f64747 !important;
 }
 
+.navbar .text-success {
+    color: #28a745 !important;
+}
 
 .progress-bar.bg-warning {
     color: #0c0c0c;
