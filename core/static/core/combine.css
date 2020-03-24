@@ -66,6 +66,9 @@ label {
 	position:fixed;
 	z-index:1030;
 }
+.btn {
+    font-weight: 700;
+}
 
 /* consider darkening lines in table with something similar */
 .table-bordered td, .table-bordered th {
