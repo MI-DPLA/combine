@@ -5,15 +5,16 @@ from django.forms.models import model_to_dict
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.decorators import login_required
 
-from core.models import RecordIdentifierTransformation, Record, RITSClient
+from core.models import RecordIdentifierTransformation, Record, RITSClient, get_rits_choices
 from core.forms import RITSForm
 
 from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def rits_payload(request, rits_id):
     """
         View payload for record identifier transformation scenario
@@ -26,7 +27,7 @@ def rits_payload(request, rits_id):
     # return as json package
     return JsonResponse(model_to_dict(rits))
 
-
+@login_required
 def create_rits(request):
     form = None
     if request.method == 'POST':
@@ -42,7 +43,7 @@ def create_rits(request):
         'object_name': 'Record Identifier Transformation Scenario',
     })
 
-
+@login_required
 def edit_rits(request, rits_id):
     rits = RecordIdentifierTransformation.objects.get(pk=int(rits_id))
     form = None
@@ -61,7 +62,7 @@ def edit_rits(request, rits_id):
         'object_name': 'Record Identifier Transformation Scenario',
     })
 
-
+@login_required
 def delete_rits(request, rits_id):
     try:
         rits = RecordIdentifierTransformation.objects.get(pk=int(rits_id))
@@ -70,7 +71,7 @@ def delete_rits(request, rits_id):
         pass
     return redirect(reverse('configuration'))
 
-
+@login_required
 def test_rits(request):
     """
         View to live test record identifier transformation scenarios
@@ -84,10 +85,13 @@ def test_rits(request):
         # get record identifier transformation scenarios
         rits = RecordIdentifierTransformation.objects.all()
 
+        valid_types = get_rits_choices()
+
         # return
         return render(request, 'core/test_rits.html', {
             'q': get_q,
             'rits': rits,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 

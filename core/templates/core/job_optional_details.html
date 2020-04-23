@@ -1,23 +1,25 @@
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-6">
-			<!-- Job Name -->
-			<div class="form-group">
-				<label for="job_name">Name</label>
-				<input type="text" class="form-control" name="job_name" id="job_name" placeholder="My Job Name">
-				<small id="job_name_help" class="form-text text-muted">Optional</small>
-			</div>
-		</div>
+    <div class="row">
+        <div class="col-md-6">
+            <!-- Job Name -->
+            <div class="form-group">
+                <label for="job_name">Name</label>
+                <input type="text" class="form-control" name="job_name" id="job_name" placeholder="My Job Name">
+                <small id="job_name_help" class="form-text text-muted">Optional</small>
+            </div>
+        </div>
 
-		<div class="col-md-6">
-			<!-- Job Notes -->
-			<div class="form-group">
-				<label for="job_note">Notes</label>
-				<textarea class="form-control" name="job_note" id="job_note" placeholder="This job is particularly notable and/or interesting because...">{% if published.subset %}Analysis job for Published Subset: {{published.subset}}{% endif %}</textarea>
-				<small id="job_note_help" class="form-text text-muted">Optional</small>
-			</div>
-		</div>
-	</div>
+        <div class="col-md-6">
+            <!-- Job Notes -->
+            <div class="form-group">
+                <label for="job_note">Notes</label>
+                <textarea class="form-control" name="job_note" id="job_note"
+                          placeholder="This job is particularly notable and/or interesting because...">{% if published.subset %}
+                    Analysis job for Published Subset: {{ published.subset }}{% endif %}</textarea>
+                <small id="job_note_help" class="form-text text-muted">Optional</small>
+            </div>
+        </div>
+    </div>
 
 {% endblock %}

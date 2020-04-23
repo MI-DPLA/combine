@@ -2,49 +2,50 @@
 
 {% block content %}
 
-	<h3>Job Validation Scenario Failures: <code>{{ jv.validation_scenario.name }}</code></h3>
+    <h3>Job Validation Scenario Failures: <code>{{ jv.validation_scenario.name }}</code></h3>
 
-	<p>The following records had failures for the Validation Scenario, "{{ jv.validation_scenario.name }}".  Click a record to see record details, including breakdown of each validation failure.</p> 
+    <p>The following records had failures for the Validation Scenario, "{{ jv.validation_scenario.name }}". Click a
+        record to see record details, including breakdown of each validation failure.</p>
 
-	<!-- DataTable of Record Failures for this Job, for this Validation Scenario -->	
-	<table id='datatables_job_validation_scenario_failures' class="table table-bordered table-hover">
-		<thead>
-			<th>DB ID</th>
-			<th>Record ID</th>
-			<th>Failed Tests</th>
-			<th>Failure Count</th>
-		</thead>
-		<tbody></tbody>
-	</table>
+    <!-- DataTable of Record Failures for this Job, for this Validation Scenario -->
+    <table id='datatables_job_validation_scenario_failures' class="table table-bordered table-hover">
+        <thead>
+        <th>DB ID</th>
+        <th>Record ID</th>
+        <th>Failed Tests</th>
+        <th>Failure Count</th>
+        </thead>
+        <tbody></tbody>
+    </table>
 
 
-	<script>
+    <script>
 
-		$(document).ready(function() {
-		    var oTable = $('#datatables_job_validation_scenario_failures').dataTable({
-		        "processing": true,
-		        "serverSide": true,
-		        "ajax": "{% url 'job_validation_scenario_failures_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}",
-		        "searchDelay": 1000,
-		        "pageLength": 10,
-		        "order": [[ 1, "desc" ]],
-		        "columns": [
-		            { 
-		            	title: "DB ID"
-	            	},
-		            { 
-		            	title: "Record ID"
-		            },
-		            {
-		            	title: "Validation Results Payload"
-		            },
-		            {
-		            	title: "Failure Count"
-		            }
-		        ],
-		    });
-		});
-	</script>
+        $(document).ready(function () {
+            var oTable = $('#datatables_job_validation_scenario_failures').dataTable({
+                "processing": true,
+                "serverSide": true,
+                "ajax": "{% url 'job_validation_scenario_failures_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id job_validation_id=jv.id %}",
+                "searchDelay": 1000,
+                "pageLength": 10,
+                "order": [[1, "desc"]],
+                "columns": [
+                    {
+                        title: "DB ID"
+                    },
+                    {
+                        title: "Record ID"
+                    },
+                    {
+                        title: "Validation Results Payload"
+                    },
+                    {
+                        title: "Failure Count"
+                    }
+                ],
+            });
+        });
+    </script>
 
 
 {% endblock %}

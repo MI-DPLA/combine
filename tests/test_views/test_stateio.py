@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from core.models import StateIO
 from tests.utils import TestConfiguration
@@ -6,7 +6,6 @@ from tests.utils import TestConfiguration
 
 class StateIOTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
 

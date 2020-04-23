@@ -3,174 +3,217 @@
 
 {% block content %}
 
-	<script>
+    <script>
 
-		search_config = {			
-			'show_only_matches':false, // isolate matches
-			'delay':500, // delay for search keyup
-			'fuzzy':false // fuzzy matching
-		}
+        search_config = {
+            'show_only_matches': false, // isolate matches
+            'delay': 500, // delay for search keyup
+            'fuzzy': false // fuzzy matching
+        }
 
-	</script>
+    </script>
 
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Export State</h2>
-			<p>To prepare a state for export, use for the form below to select <strong>Organizations</strong>, <strong>Record Groups</strong>, <strong>Jobs</strong>, and <strong>Configuration Scenarios</strong> to include.  When ready, click "Export State" at the bottom.</p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Export State</h2>
+            <p>To prepare a state for export, use for the form below to select <strong>Organizations</strong>, <strong>Record
+                Groups</strong>, <strong>Jobs</strong>, and <strong>Configuration Scenarios</strong> to include. When
+                ready, click "Export State" at the bottom.</p>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-8">			
-			<div class="form-group">
-				<label for="export_name">Export Name</label>
-				<input type="text" class="form-control" name="export_name" id="export_name" placeholder="My Export Name">
-				<small id="job_name_help" class="form-text text-muted">Optional</small>
-			</div>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-8">
+            <div class="form-group">
+                <label for="export_name">Export Name</label>
+                <input type="text" class="form-control" name="export_name" id="export_name"
+                       placeholder="My Export Name">
+                <small id="job_name_help" class="form-text text-muted">Optional</small>
+            </div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-8">
-			<h3>Organizations, Record Groups, Jobs</h3>
-			<p>Select Organizations, Record Groups, and Jobs to be included in the exported state.  Keep in mind, during the export preparation process, all connected Organizations, Record Groups, and Jobs -- both "upstream" and "downstream" -- will be included as well.  You will be given the opportunity in the confirmation screen to preview this.</p>
-			<div class="tree_select">
-				<p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i></button></p>
-				<div id="jobs_hierarchy_tree"></div>
+    <div class="row">
+        <div class="col-md-8">
+            <h3>Organizations, Record Groups, Jobs</h3>
+            <p>Select Organizations, Record Groups, and Jobs to be included in the exported state. Keep in mind, during
+                the export preparation process, all connected Organizations, Record Groups, and Jobs -- both "upstream"
+                and "downstream" -- will be included as well. You will be given the opportunity in the confirmation
+                screen to preview this.</p>
+            <div class="tree_select">
+                <p class="form-inline"><input id="jobs_search" type="text" class="form-control" style="width:300px;"
+                                              placeholder="search..."/>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm"
+                            onclick="$('#jobs_search').val('').keyup(); "><i class="la la-close"></i></button>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm"
+                            onclick="jobs_search_select_matches();">Select Matches <i class="la la-check"></i></button>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm"
+                            onclick="jobs_search_deselect_matches();">De-Select Matches <i class="la la-close"></i>
+                    </button>
+                </p>
+                <div id="jobs_hierarchy_tree"></div>
 
-				<script>
+                <script>
 
-					// init hierarchy
-					job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe|escapejs}}`);
+                    // init hierarchy
+                    job_hierarchy_obj = JSON.parse(`{{job_hierarchy_json|safe|escapejs}}`);
 
-					// init tree
-					$(document).ready(function(){
-						jobs_tree = $('#jobs_hierarchy_tree').jstree({
-							'plugins':["wholerow","checkbox","search"],
-							'core':{
-								'data':job_hierarchy_obj
-							},
-							'search':search_config
-						});
-					});
+                    // init tree
+                    $(document).ready(function () {
+                        jobs_tree = $('#jobs_hierarchy_tree').jstree({
+                            'plugins': ["wholerow", "checkbox", "search"],
+                            'core': {
+                                'data': job_hierarchy_obj
+                            },
+                            'search': search_config
+                        });
+                    });
 
-					// search
-					var to = false;
-						$('#jobs_search').keyup(function () {
-						if(to) { clearTimeout(to); }
-							to = setTimeout(function () {
-							var v = $('#jobs_search').val();
-						$('#jobs_hierarchy_tree').jstree(true).search(v);
-						}, search_config.delay);
-					});
+                    // search
+                    var to = false;
+                    $('#jobs_search').keyup(function () {
+                        if (to) {
+                            clearTimeout(to);
+                        }
+                        to = setTimeout(function () {
+                            var v = $('#jobs_search').val();
+                            $('#jobs_hierarchy_tree').jstree(true).search(v);
+                        }, search_config.delay);
+                    });
 
-					// select matches
-					function jobs_search_select_matches(){					
-						matches = $("#jobs_hierarchy_tree .jstree-search")
-						matches.each(function(index, match){jobs_tree.jstree(true).select_node(match);});
-					}
+                    // select matches
+                    function jobs_search_select_matches() {
+                        matches = $("#jobs_hierarchy_tree .jstree-search")
+                        matches.each(function (index, match) {
+                            jobs_tree.jstree(true).select_node(match);
+                        });
+                    }
 
-					// dselect matches
-					function jobs_search_deselect_matches(){					
-						matches = $("#jobs_hierarchy_tree .jstree-search")
-						matches.each(function(index, match){jobs_tree.jstree(true).deselect_node(match);});
-					}
+                    // deselect matches
+                    function jobs_search_deselect_matches() {
+                        matches = $("#jobs_hierarchy_tree .jstree-search")
+                        matches.each(function (index, match) {
+                            jobs_tree.jstree(true).deselect_node(match);
+                        });
+                    }
 
-				</script>
-			</div>
+                </script>
+            </div>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-8">
-			<h3>Configurations and Scenarios</h3>
-			<p>Select what configuration and scenarios to export.  Keep in mind, scenarios associated with selected Jobs will be included automatically, but it's also possible to include configurations and scenarios <strong>only</strong>, or ones that are <strong>not</strong> associated with selected Jobs, but should be included in export.</p>
-			<div class="tree_select">
-				<p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:300px;" placeholder="search..."/><button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm" onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button><button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm" onclick="configs_search_select_matches();">Select Matches</button><button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm" onclick="configs_search_deselect_matches();">De-Select Matches</button></p>
-				<div id="config_scenarios_tree"></div>
+    <div class="row">
+        <div class="col-md-8">
+            <h3>Configurations and Scenarios</h3>
+            <p>Select what configuration and scenarios to export. Keep in mind, scenarios associated with selected Jobs
+                will be included automatically, but it's also possible to include configurations and scenarios <strong>only</strong>,
+                or ones that are <strong>not</strong> associated with selected Jobs, but should be included in export.
+            </p>
+            <div class="tree_select">
+                <p class="form-inline"><input id="configs_search" type="text" class="form-control" style="width:300px;"
+                                              placeholder="search..."/>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-danger btn-sm"
+                            onclick="$('#configs_search').val('').keyup(); "><i class="la la-close"></i></button>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-success btn-sm"
+                            onclick="configs_search_select_matches();">Select Matches
+                    </button>
+                    <button style="margin-left:5px;" type="button" class="btn btn-outline-warning btn-sm"
+                            onclick="configs_search_deselect_matches();">De-Select Matches
+                    </button>
+                </p>
+                <div id="config_scenarios_tree"></div>
 
-				<script>
+                <script>
 
-					// init hierarchy
-					config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe|escapejs}}`);
-					$(document).ready(function(){
-						configs_tree = $('#config_scenarios_tree').jstree({
-							'plugins':["wholerow","checkbox","search"],
-							'core':{
-								'data':config_scenarios_obj
-							},
-							'search':search_config
-						});
-					});
+                    // init hierarchy
+                    config_scenarios_obj = JSON.parse(`{{config_scenarios_json|safe|escapejs}}`);
+                    $(document).ready(function () {
+                        configs_tree = $('#config_scenarios_tree').jstree({
+                            'plugins': ["wholerow", "checkbox", "search"],
+                            'core': {
+                                'data': config_scenarios_obj
+                            },
+                            'search': search_config
+                        });
+                    });
 
-					// search
-					var to = false;
-						$('#configs_search').keyup(function () {
-						if(to) { clearTimeout(to); }
-							to = setTimeout(function () {
-							var v = $('#configs_search').val();
-						$('#config_scenarios_tree').jstree(true).search(v);
-						}, search_config.delay);
-					});
+                    // search
+                    var to = false;
+                    $('#configs_search').keyup(function () {
+                        if (to) {
+                            clearTimeout(to);
+                        }
+                        to = setTimeout(function () {
+                            var v = $('#configs_search').val();
+                            $('#config_scenarios_tree').jstree(true).search(v);
+                        }, search_config.delay);
+                    });
 
-					// select matches
-					function configs_search_select_matches(){					
-						matches = $("#config_scenarios_tree .jstree-search")
-						matches.each(function(index, match){configs_tree.jstree(true).select_node(match);});
-					}
+                    // select matches
+                    function configs_search_select_matches() {
+                        matches = $("#config_scenarios_tree .jstree-search")
+                        matches.each(function (index, match) {
+                            configs_tree.jstree(true).select_node(match);
+                        });
+                    }
 
-					// dselect matches
-					function configs_search_deselect_matches(){					
-						matches = $("#config_scenarios_tree .jstree-search")
-						matches.each(function(index, match){configs_tree.jstree(true).deselect_node(match);});
-					}
+                    // deselect matches
+                    function configs_search_deselect_matches() {
+                        matches = $("#config_scenarios_tree .jstree-search")
+                        matches.each(function (index, match) {
+                            configs_tree.jstree(true).deselect_node(match);
+                        });
+                    }
 
-				</script>
-			</div>
+                </script>
+            </div>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">			
-			<p><button type="button" class="btn btn-success btn-sm" onclick="init_export();">Export State <i class="la la-download"></i></button></p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <p>
+                <button type="button" class="btn btn-success btn-sm" onclick="init_export();">Export State <i
+                        class="la la-download"></i></button>
+            </p>
+        </div>
+    </div>
 
-	<script>
+    <script>
 
-		function init_export(){
+        function init_export() {
 
-			// get all jobs_hierarchy
-			jobs_hierarchy_ids = jobs_tree.jstree(true).get_selected();
+            // get all jobs_hierarchy
+            jobs_hierarchy_ids = jobs_tree.jstree(true).get_selected();
 
-			// get config_scenarios
-			config_scenarios_ids = configs_tree.jstree(true).get_selected();
+            // get config_scenarios
+            config_scenarios_ids = configs_tree.jstree(true).get_selected();
 
-			// fire ajax POST
-			$.ajax({
-				type: "POST",
-				url: "{% url 'stateio_export' %}",
-				data: {					
-					'jobs_hierarchy_ids':jobs_hierarchy_ids,
-					'config_scenarios_ids':config_scenarios_ids,
-					'export_name':$("#export_name").val(),
-					'csrfmiddlewaretoken': '{{ csrf_token }}'
-				},
-				dataType:'json',
-				success: function(data){				
-					console.log(data);
-					window.location.href = "{% url 'stateio' %}";
-				},
-				error: function(data){				
-					console.log(data.responseJSON.msg);
-				}
-			});
+            // fire ajax POST
+            $.ajax({
+                type: "POST",
+                url: "{% url 'stateio_export' %}",
+                data: {
+                    'jobs_hierarchy_ids': jobs_hierarchy_ids,
+                    'config_scenarios_ids': config_scenarios_ids,
+                    'export_name': $("#export_name").val(),
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: function (data) {
+                    console.log(data);
+                    window.location.href = "{% url 'stateio' %}";
+                },
+                error: function (data) {
+                    console.log(data.responseJSON.msg);
+                }
+            });
 
-		}
+        }
 
-	</script>
+    </script>
 
 
 

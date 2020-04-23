@@ -16,7 +16,9 @@ from django.dispatch import receiver
 
 from core.es import es_handle
 from core.mongo import mongoengine
-from core.models.configurations import Transformation, ValidationScenario, DPLABulkDataDownload
+from core.models.transformation import Transformation
+from core.models.validation_scenario import ValidationScenario
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
 from core.models.job import Job, JobValidation
 from core.models.livy_spark import LivySession
 from core.models.organization import Organization
@@ -48,7 +50,7 @@ def user_login_handle_livy_sessions(sender, user, **kwargs):
         LOGGER.debug("superuser detected, not initiating Livy session")
         return False
 
-    # else, continune with user sessions
+    # else, continue with user sessions
     LOGGER.debug('Checking for pre-existing livy sessions')
 
     # get "active" user sessions

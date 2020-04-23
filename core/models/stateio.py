@@ -11,6 +11,8 @@ import shutil
 import time
 import uuid
 
+from json import JSONDecodeError
+
 # django imports
 from django.conf import settings
 from django.core import serializers
@@ -19,8 +21,12 @@ from django.core import serializers
 # core models imports
 from core import tasks
 from core.mongo import mongoengine, mc_handle
-from core.models.configurations import OAIEndpoint, Transformation, ValidationScenario, FieldMapper,\
-  RecordIdentifierTransformation, DPLABulkDataDownload
+from core.models.transformation import Transformation
+from core.models.validation_scenario import ValidationScenario
+from core.models.field_mapper import FieldMapper
+from core.models.record_identifier_transformation_scenario import RecordIdentifierTransformation
+from core.models.dpla_bulk_data_download import DPLABulkDataDownload
+from core.models.oai_endpoint import OAIEndpoint
 from core.models.job import Job, JobValidation, JobInput, CombineJob
 from core.models.livy_spark import LivySession, LivyClient
 from core.models.organization import Organization
@@ -511,7 +517,7 @@ class StateIOClient():
                 self.export_dict['jobs'].update(upstream_jobs)
 
 
-        # topopgraphically sort all queued export jobs, and write to manifest
+        # topographically sort all queued export jobs, and write to manifest
         self.export_dict['jobs'] = Job._topographic_sort_jobs(self.export_dict['jobs'])
         self.export_manifest['jobs'] = [job.id for job in self.export_dict['jobs']]
 
@@ -646,7 +652,7 @@ class StateIOClient():
                     # add to export_dict
                     self.export_dict['dbdd'].add(dbdd)
 
-                    # export DBDD index from ElaticSearch
+                    # export DBDD index from ElasticSearch
                     # prepare dbdd export dir
                     dbdd_export_path = '%s/dbdd' % self.export_path
                     if not os.path.isdir(dbdd_export_path):
@@ -825,7 +831,7 @@ class StateIOClient():
         # if compressing, zip up directory, and remove originals after archive created
         if self.compress:
 
-            LOGGER.debug("compressiong exported state at %s", self.export_path)
+            LOGGER.debug("compressing exported state at %s", self.export_path)
 
             # establish output archive file
             export_filename = '%s/%s' % (settings.STATEIO_EXPORT_DIR, self.export_manifest['export_id'])
@@ -843,7 +849,7 @@ class StateIOClient():
             # remove originals
             shutil.rmtree(self.export_path)
 
-            # update export path and manifeset
+            # update export path and manifest
             self.export_path = new_export_path
             self.export_manifest['export_path'] = self.export_path
 
@@ -888,7 +894,7 @@ class StateIOClient():
                     'id':export.id
                 })
 
-        # write Published Subests to export manifest
+        # write Published Subsets to export manifest
         self._collect_published_subsets()
 
         # write count to exports
@@ -952,27 +958,8 @@ class StateIOClient():
         #debug
         import_stime = time.time()
 
-        # mint new import id
-        self.import_id = uuid.uuid4().hex
 
-        # init import_manifest
-        self.import_manifest = {
-            'combine_version':getattr(settings, 'COMBINE_VERSION', None),
-            'import_id':self.import_id,
-            'import_name':import_name,
-            'export_path':export_path,
-            'pk_hash':{
-                'jobs':{},
-                'record_groups':{},
-                'orgs':{},
-                'transformations':{},
-                'validations':{},
-                'oai_endpoints':{},
-                'rits':{},
-                'field_mapper_configs':{},
-                'dbdd':{}
-            }
-        }
+        self.initialize_import_manifest(export_path, import_name)
 
         # init/update associated StateIO instance
         update_dict = {
@@ -1036,6 +1023,29 @@ class StateIOClient():
 
         LOGGER.debug('state %s imported in %ss', self.import_id, (time.time()-import_stime))
 
+    def initialize_import_manifest(self, export_path, import_name):
+        # mint new import id
+        self.import_id = uuid.uuid4().hex
+
+        # init import_manifest
+        self.import_manifest = {
+            'combine_version': getattr(settings, 'COMBINE_VERSION', None),
+            'import_id': self.import_id,
+            'import_name': import_name,
+            'export_path': export_path,
+            'pk_hash': {
+                'jobs': {},
+                'record_groups': {},
+                'orgs': {},
+                'transformations': {},
+                'transformation_file_paths': {},
+                'validations': {},
+                'oai_endpoints': {},
+                'rits': {},
+                'field_mapper_configs': {},
+                'dbdd': {}
+            }
+        }
 
     def _load_state(self, export_path):
 
@@ -1061,11 +1071,11 @@ class StateIOClient():
             self.import_manifest['export_manifest'] = self.export_manifest
 
         # deserialize django objects
-        self.deser_django_objects = []
+        self.deserialized_django_objects = []
         with open('%s/django_objects.json' % self.import_path, 'r') as in_file:
             django_objects_json = in_file.read()
         for obj in serializers.deserialize('json', django_objects_json):
-            self.deser_django_objects.append(obj)
+            self.deserialized_django_objects.append(obj)
 
 
     def _prepare_files(self):
@@ -1104,7 +1114,7 @@ class StateIOClient():
                 import_base_dir = root
         # if not found, raise Exception
         if not import_base_dir:
-            raise Exception('could not find export_manfiest.json, aborting')
+            raise Exception('could not find export_manifest.json, aborting')
 
         # if import_base_dir != self.import_path, move everything to self.import_path
         if import_base_dir != self.import_path:
@@ -1131,22 +1141,9 @@ class StateIOClient():
         for transformation in self._get_django_model_type(Transformation):
             LOGGER.debug('rehydrating %s', transformation)
 
-            # check for identical name and payload
-            ts_match = Transformation.objects.filter(name=transformation.object.name, payload=transformation.object.payload).order_by('id')
-
-            # matching scenario found
-            if ts_match.count() > 0:
-                LOGGER.debug('found identical Transformation, skipping creation, adding to hash')
-                self.import_manifest['pk_hash']['transformations'][transformation.object.id] = ts_match.first().id
-
-            # not found, creating
-            else:
-                LOGGER.debug('Transformation not found, creating')
-                ts_orig_id = transformation.object.id
-                transformation.object.id = None
-                transformation.save()
-                self.import_manifest['pk_hash']['transformations'][ts_orig_id] = transformation.object.id
-
+            self.rehydrate_transformation(transformation)
+        # after rehydrating all transformations, fix includes
+        self.fix_transformation_includes()
 
         #################################
         # VALIDATION SCENARIOS
@@ -1299,14 +1296,14 @@ class StateIOClient():
                 # get dbdd
                 dbdd = DPLABulkDataDownload.objects.get(pk=(scenario.object.id))
 
-                # import DBDD index to ElaticSearch
+                # import DBDD index to ElasticSearch
                 dbdd_export_path = '%s/dbdd/dbdd%s.json' % (self.import_path, orig_id)
 
                 # build command list
                 cmd = [
                     "elasticdump",
                     "--input=%(dbdd_export_path)s" % {'dbdd_export_path':dbdd_export_path},
-                    "--output=http://localhost:9200/%s" % dbdd.es_index,
+                    "--output=http://%s:9200/%s" % (settings.ES_HOST, dbdd.es_index),
                     "--ignore-errors",
                     "--noRefresh"
                 ]
@@ -1316,6 +1313,43 @@ class StateIOClient():
                 # run cmd
                 os.system(" ".join(cmd))
 
+    def fix_transformation_includes(self):
+        for orig_id in self.import_manifest['pk_hash']['transformations']:
+            new_ts_id = self.import_manifest['pk_hash']['transformations'][orig_id]
+            transform = Transformation.objects.get(id=new_ts_id)
+            file_paths = self.import_manifest['pk_hash']['transformation_file_paths']
+            payload = transform.payload
+            for old_id in file_paths:
+                old_filepath = file_paths[old_id]
+                if old_filepath is not None and old_filepath in payload:
+                    new_id = self.import_manifest['pk_hash']['transformations'][old_id]
+                    new_transform = Transformation.objects.get(id=new_id)
+                    if new_transform.filepath is not None:
+                        payload = payload.replace(old_filepath, new_transform.filepath)
+            transform.payload = payload
+            transform.save()
+
+    def rehydrate_transformation(self, transformation):
+        # check for identical name and payload
+        ts_match = Transformation.objects.filter(name=transformation.object.name,
+                                                 payload=transformation.object.payload).order_by('id')
+        # matching scenario found
+        if ts_match.count() > 0:
+            LOGGER.debug('found identical Transformation, skipping creation, adding to hash')
+            self.import_manifest['pk_hash']['transformations'][transformation.object.id] = ts_match.first().id
+            self.import_manifest['pk_hash']['transformation_file_paths'][
+                transformation.object.id] = transformation.object.filepath
+
+        # not found, creating
+        else:
+            LOGGER.debug('Transformation not found, creating')
+            ts_orig_id = transformation.object.id
+            ts_orig_filepath = transformation.object.filepath
+            transformation.object.id = None
+            transformation.save()
+            self.import_manifest['pk_hash']['transformations'][ts_orig_id] = transformation.object.id
+            self.import_manifest['pk_hash']['transformation_file_paths'][
+                ts_orig_id] = ts_orig_filepath
 
     def _import_hierarchy(self):
 
@@ -1590,6 +1624,11 @@ class StateIOClient():
 
         # update dictionary
         update_dict = {}
+        try:
+            json.loads(job.job_details)
+        except JSONDecodeError:
+            job.job_details = job.job_details.replace("'",'"')
+
 
         # update validation_scenarios
         if 'validation_scenarios' in job.job_details_dict.keys():
@@ -1650,9 +1689,7 @@ class StateIOClient():
         # if Transform, update transformation
         if job.job_type == 'TransformJob':
             try:
-                LOGGER.debug('TransformJob encountered, updating job details')
-                transformation = job.job_details_dict['transformation']
-                transformation['id'] = pk_hash['transformations'].get(transformation['id'], transformation['id'])
+                transformation = self.update_transform_job(job, pk_hash)
                 update_dict['transformation'] = transformation
             except:
                 LOGGER.debug('error with updating job_details: transformation')
@@ -1665,6 +1702,22 @@ class StateIOClient():
         cjob.job.spark_code = cjob.prepare_job(return_job_code=True)
         cjob.job.save()
 
+    def update_transform_job(self, job, pk_hash):
+        LOGGER.debug('TransformJob encountered, updating job details')
+        transformation = job.job_details_dict['transformation']
+        scenarios = transformation['scenarios']
+        scenarios_json = []
+        for scenario in scenarios:
+            transform_id = scenario['id']
+            transform_index = scenario['index']
+            new_id = pk_hash['transformations'].get(transform_id, transform_id)
+            scenario['id'] = new_id
+            scenarios_json.append({'index': transform_index, 'trans_id': new_id})
+        transformation = {
+            'scenarios': scenarios,
+            'scenarios_json': json.dumps(scenarios_json)
+        }
+        return transformation
 
     def _get_django_model_instance(self, instance_id, instance_type, instances=None):
 
@@ -1673,19 +1726,19 @@ class StateIOClient():
         by instance type and id.
 
         Could be more performant, but length of deserialized objects
-        makes it relatively negligable.
+        makes it relatively negligible.
 
         Args:
             instance_id (int): model instance PK
-            intsance_type (django.models.model): model instance type
+            instance_type (django.models.model): model instance type
 
         Returns:
             (core.models.model): Model instance based on matching id and type
         '''
 
-        # if instances not provided, assumed self.deser_django_objects
+        # if instances not provided, assumed self.deserialized_django_objects
         if instances == None:
-            instances = self.deser_django_objects
+            instances = self.deserialized_django_objects
 
         # loop through deserialized objects
         for obj in instances:
@@ -1706,9 +1759,9 @@ class StateIOClient():
             (list): List of model instances that match type
         '''
 
-        # if instances not provided, assumed self.deser_django_objects
+        # if instances not provided, assumed self.deserialized_django_objects
         if instances == None:
-            instances = self.deser_django_objects
+            instances = self.deserialized_django_objects
 
         # return list
         return [obj for obj in instances if isinstance(obj.object, instance_type)]

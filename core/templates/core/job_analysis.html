@@ -1,73 +1,84 @@
 {% extends 'core/base.html' %}
+{% load static %}
 
 {% block content %}
+    <script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
+    <script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">Analysis</span></h3>
 
-			<p>Run a new analysis job based on previously run jobs.</p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>New Job: <span class="font-weight-bold">Analysis</span></h3>
 
-	<div class="row">
-		<div class="col-md-12">
-			<form id="job_init_form" method="POST" action="{% url 'job_analysis' %}">
+            <p>Run a new analysis job based on previously run jobs.</p>
+        </div>
+    </div>
 
-				{% csrf_token %}
+    <div class="row">
+        <div class="col-md-12">
+            <form id="job_init_form" method="POST" action="{% url 'job_analysis' %}">
 
-				<div class="row">
-					<div class="col-md-12">
-						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
-					</div>
-				</div>
+                {% csrf_token %}
 
-				<div class="row">
-					<div class="col-md-12">
+                <div class="row">
+                    <div class="col-md-12">
+                        <!-- optional job details -->
+                        {% include 'core/job_optional_details.html' %}
+                    </div>
+                </div>
 
-						{% if analysis_type == 'published' %}
-							{% if published.subset %}
-								<div class="alert alert-success alert-dismissible fade show" role="alert">
-									Automatically filtering and selecting <strong>Published Subset: <code>{{published.subset}}</code></strong> for analysis, continue with other analysis options below...
-									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-									<span aria-hidden="true">&times;</span>
-									</button>
-								</div>
-							{% else %}
-								<div class="alert alert-success alert-dismissible fade show" role="alert">
-									Automatically filtering and selecting <strong>all Published Jobs</strong> for analysis, continue with other analysis options below...
-									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-									<span aria-hidden="true">&times;</span>
-									</button>
-								</div>
-							{% endif %}
-						{% else %}
-							<div class="alert alert-warning alert-dismissible fade show" role="alert">
-								Showing <strong>all</strong> Jobs from <strong>all</strong> Record Groups.  To view Jobs from a particular Organization or Record Group, use the dropdown filters in the table below
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-								<span aria-hidden="true">&times;</span>
-								</button>
-							</div>
-							<div class="alert alert-danger alert-dismissible fade show" role="alert">
-								<strong>Analysis</strong> Jobs require a single, or multiple, <strong>input Job(s)</strong>.  Select from the table below.
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-								<span aria-hidden="true">&times;</span>
-								</button>
-							</div>
-						{% endif %}
-						<!-- Job Select -->
-						{% include 'core/job_input_select.html' %}
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-12">
 
-				<!-- Optional Job Processing -->
-				{% include 'core/job_optional_processing.html' %}
+                        {% if analysis_type == 'published' %}
+                            {% if published.subset %}
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    Automatically filtering and selecting <strong>Published Subset:
+                                    <code>{{ published.subset }}</code></strong> for analysis, continue with other
+                                    analysis options below...
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% else %}
+                                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                                    Automatically filtering and selecting <strong>all Published Jobs</strong> for
+                                    analysis, continue with other analysis options below...
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                            {% endif %}
+                        {% else %}
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                Showing <strong>all</strong> Jobs from <strong>all</strong> Record Groups. To view Jobs
+                                from a particular Organization or Record Group, use the dropdown filters in the table
+                                below
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                            <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                                <strong>Analysis</strong> Jobs require a single, or multiple, <strong>input
+                                Job(s)</strong>. Select from the table below.
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        {% endif %}
+                        <!-- Job Select -->
+                        {% include 'core/job_input_select.html' %}
+                    </div>
+                </div>
 
-				<button type="submit" class="btn btn-success btn-sm">Run Analysis Job <i class="la la-play"></i></button>
+                <!-- Optional Job Processing -->
+                {% include 'core/job_optional_processing.html' %}
 
-			</form>
-		</div>
-	</div>
+                <button type="submit" class="btn btn-success btn-sm">Run Analysis Job <i class="la la-play"></i>
+                </button>
+
+            </form>
+        </div>
+    </div>
 
 {% endblock %}

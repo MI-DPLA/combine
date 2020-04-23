@@ -1,38 +1,43 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Download Bulk DPLA Data</h2>			
-		</div>
-	</div>
+
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Download Bulk DPLA Data</h2>
+        </div>
+    </div>
 
 
-	{% if bulk_data_keys %}
-		<div class="row">
-			<div class="col-md-6">
-				<form method="POST" action="{% url 'dpla_bulk_data_download' %}">
-					{% csrf_token %}
-					<div class="form-group">
-						<label for="object_key">Select Bulk Data to download and index</label>
-						<select class="form-control" id="object_key" name="object_key">
-							{% for key in bulk_data_keys %}
-								<option data-year="{{key.year}}" data-month="{{key.month}}" value="{{key.key}}">{{key.key}} ({{key.size}})</option>
-							{% endfor %}
-						</select>
-					</div>
+    {% if bulk_data_keys %}
+        <div class="row">
+            <div class="col-md-6">
+                <form method="POST" action="{% url 'dpla_bulk_data_download' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="object_key">Select Bulk Data to download and index</label>
+                        <select class="form-control" id="object_key" name="object_key">
+                            {% for key in bulk_data_keys %}
+                                <option data-year="{{ key.year }}" data-month="{{ key.month }}"
+                                        value="{{ key.key }}">{{ key.key }} ({{ key.size }})
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-					<p><button type="submit" class="btn btn-primary btn-sm">Download and Index Bulk Data</button></p>
-				</form>
-			</div>
-		</div>
-	{% else %}
-		<div class="row">
-			<div class="col-md-6">
-				<p>AWS S3 credentials have not yet been set, please set these in <code>localsettings.py</code> to facilitate the DPLA bulk data download and comparison.</p>
-			</div>
-		</div>
-	{% endif %}
+                    <p>
+                        <button type="submit" class="btn btn-primary btn-sm">Download and Index Bulk Data</button>
+                    </p>
+                </form>
+            </div>
+        </div>
+    {% else %}
+        <div class="row">
+            <div class="col-md-6">
+                <p>AWS S3 credentials have not yet been set, please set these in <code>localsettings.py</code> to
+                    facilitate the DPLA bulk data download and comparison.</p>
+            </div>
+        </div>
+    {% endif %}
 
 {% endblock %}

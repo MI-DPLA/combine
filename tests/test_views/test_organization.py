@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 from django.urls import reverse
 
 from core.models import Organization, RecordGroup, Job
@@ -6,8 +6,6 @@ from tests.utils import TestConfiguration, most_recent_global_message
 
 
 class OrganizationViewTestCase(TestCase):
-    def setUp(self):
-        self.client = Client()
 
     def test_get_organizations(self):
         response = self.client.get(reverse('organizations'))

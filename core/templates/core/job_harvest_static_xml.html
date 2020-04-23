@@ -2,158 +2,194 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">Static XML Harvest</span></h3>
-			<p>Harvest records from static XML files.</p>
-		</div>
-	</div>
-		
-
-	<div class="row">
-		<div class="col-md-12">
-			<form id="job_init_form" method="POST" action="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}" enctype="multipart/form-data">
-
-				<div class="row">
-					<div class="col-md-12">
-						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
-					</div>
-				</div>
-
-				<!-- static payload -->
-				<div class="row">
-					<div class="col-md-12">
-						<div class="alert alert-danger alert-dismissible fade show" role="alert">
-							The following are <strong>required</strong> parameters for this Job
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
-						{% csrf_token %}						
-
-						<!-- payload -->
-						<h5>Provide Static Content</h5>
-						<p>For static harvests, optionally upload content, or provide a folder location on the filesystem where content can be found.</p>
-						
-						<ul class="nav nav-tabs">
-							<li class="nav-item">
-								<a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload</a>
-							</li>
-							<li class="nav-item">								
-								<a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
-							</li>					
-						</ul>
-
-						<div class="tab-content">
-
-							<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-								<div class="alert alert-warning alert-dismissible fade show" role="alert">
-									Upload a single file with multiple XML records, or an archive of files in either .tar or .zip format
-									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-									<span aria-hidden="true">&times;</span>
-									</button>
-								</div>								
-								<div class="custom-file">
-								   <input type="file" id="static_payload" name="static_payload" class="custom-file-input">
-								   <label for="static_payload" class="custom-file-label">Choose file...</label>
-								</div>
-								<script>
-									$('.custom-file-input').on('change', function() { 
-									   let fileName = $(this).val().split('\\').pop(); 
-									   $(this).next('.custom-file-label').addClass("selected").html(fileName); 
-									});
-								</script>
-							</div>
-
-							<div id="filesystem_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-								<div class="alert alert-warning alert-dismissible fade show" role="alert">
-									<strong>Note:</strong> only directories are allowed, all files in this location will be recursively found and harvested
-									<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-									<span aria-hidden="true">&times;</span>
-									</button>
-								</div>
-								<label for="static_filepath">Location of XML files on disk:</label>
-								<input type="text" class="form-control" id="static_filepath" name="static_filepath" placeholder="e.g. /foo/bar/baz">
-							</div>
-
-						</div>
-					</div>
-				</div>
-
-				<div class="row">
-
-					<!-- start and end tags -->
-					<div class="col-md-6">
-						<h5>Find and Parse XML Records</h5>
-						<p>To locate and parse XML records from the provided file(s), additional information is needed: the root XML element for each record, and if needed, additional XML namespace declarations.</p>
-
-						<table class="table table-bordered table-hover">							
-							<tbody>
-								<tr>
-									<th>Root XML element</th>
-									<td>Because static XML harvests may be looping through many files, directories, archives, or single XML files, a <span class="font-weight-bold">root XML element</span> is needed to locate XML documents that should be parsed and used.  Unlike XPath, only the element name is needed.  For example, a <code>mods:mods</code> would be sufficient for MODS records with a namespace, or <code>oai_dc</code> for OAI Dublin Core records.</td>
-								</tr>
-								<tr>
-									<th>Re-write XML root element declarations</th>
-									<td>Because Combine does not use XPath to parse the records, it is possible that records will be retrieved without required namespaces (often only declared at the root element).  Here, you may optionally rewrite the declaration for each Record.  For example, if providing the XML root <code>mods:mods</code> results in root XML nodes that look like <code>&lt;mods:mods&gt;</code>, the declaration </code> <code>xmlns:mods="http://www.loc.gov/mods/v3"</code> could be passed and will be added to each record resulting in <code>&lt;mods:mods xmlns:mods="http://www.loc.gov/mods/v3"&gt;</code>, which is valid XML.</td>
-								</tr>
-							</tbody>
-						</table>
-
-						<div class="form-group">
-							<label for="document_element_root">Root XML Element:</label>
-							<input type="text" class="form-control" id="document_element_root" name="document_element_root" placeholder="e.g. mods:mods, oai_dc, etc.">
-						</div>
-
-						<div class="form-group">
-							<label for="additional_namespace_decs">Re-write Root XML Declaration (if needed):</label>
-							<input type="text" class="form-control" id="additional_namespace_decs" name="additional_namespace_decs" placeholder='e.g. xmlns:mods="http://www.loc.gov/mods/v3"'>
-						</div>
-
-					</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>New Job: <span class="font-weight-bold">Static XML Harvest</span></h3>
+            <p>Harvest records from static XML files.</p>
+        </div>
+    </div>
 
 
-					<!-- xpath for identifiers -->
-					<div class="col-md-6">
-						<h5>Locate Identifier in Document</h5>
-						<p>Finally, an optional XPath expression can be provided to locate a unique, meaningful identifier for each document.</p>
-						<p><span class="font-weight-bold">Note:</span> While not required, this is encouraged.  In the absence of an XPath expression to locate an identifier, an MD5 hash of the document's contents will be created, which might help with potential duplicate records.  However, if the document changes harvest-to-harvest, this identifier will not remain constant.  Furthermore, this MD5 hash identifier will propogate through Combine and eventually be used for publishing, which is important to consider.</p>
-						<table class="table table-bordered table-hover">
-							<thead>
-								<tr>
-									<th>Description</th>
-									<th>Example</th>
-								</tr>
-							</thead>
-							<tbody>
-								<tr>
-									<td>Use Dublin Core <code>&lt;dc:identifier&gt;</code> element.</td>
-									<td><code>//dc:identifier</code></td>
-								</tr>
-								<tr>
-									<td>Locate <code>&lt;mods:url&gt;</code> element with <code>access</code> attribute.</td>
-									<td><code>//mods:mods/mods:location/mods:url[@access]</code></td>
-								</tr>						
-							</tbody>
-						</table>
-						
-						<div class="form-group">
-							<label for="xpath_record_id">XPath for Record Identifier:</label>
-							<input type="text" class="form-control" id="xpath_record_id" name="xpath_record_id" placeholder="e.g. //dc:identifier">
-						</div>
-					</div>
+    <div class="row">
+        <div class="col-md-12">
+            <form id="job_init_form" method="POST"
+                  action="{% url 'job_harvest_static_xml' org_id=record_group.organization.id record_group_id=record_group.id %}"
+                  enctype="multipart/form-data">
 
-				</div>				
-				
-				<!-- Optional Job Processing -->
-				{% include 'core/job_optional_processing.html' %}
+                <div class="row">
+                    <div class="col-md-12">
+                        <!-- optional job details -->
+                        {% include 'core/job_optional_details.html' %}
+                    </div>
+                </div>
 
-				<button type="submit" class="btn btn-success btn-sm">Run Static Harvest Job <i class="la la-play"></i></button>
+                <!-- static payload -->
+                <div class="row">
+                    <div class="col-md-12">
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            The following are <strong>required</strong> parameters for this Job
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        {% csrf_token %}
 
-			</form>
+                        <!-- payload -->
+                        <h5>Provide Static Content</h5>
+                        <p>For static harvests, optionally upload content, or provide a folder location on the
+                            filesystem where content can be found.</p>
 
-		</div>
-	</div>
+                        <ul class="nav nav-tabs">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+
+                            <div id="upload_tab" class="tab-pane active container"
+                                 style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                    Upload a single file with multiple XML records, or an archive of files in either
+                                    .tar or .zip format
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <div class="custom-file">
+                                    <input type="file" id="static_payload" name="static_payload"
+                                           class="custom-file-input">
+                                    <label for="static_payload" class="custom-file-label">Choose file...</label>
+                                </div>
+                                <script>
+                                    $('.custom-file-input').on('change', function () {
+                                        let fileName = $(this).val().split('\\').pop();
+                                        $(this).next('.custom-file-label').addClass("selected").html(fileName);
+                                    });
+                                </script>
+                            </div>
+
+                            <div id="filesystem_tab" class="tab-pane container"
+                                 style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                                <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                    <strong>Note:</strong> only directories are allowed, all files in this location will
+                                    be recursively found and harvested
+                                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                        <span aria-hidden="true">&times;</span>
+                                    </button>
+                                </div>
+                                <label for="static_filepath">Location of XML files on disk:</label>
+                                <input type="text" class="form-control" id="static_filepath" name="static_filepath"
+                                       placeholder="e.g. /foo/bar/baz">
+                            </div>
+
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row">
+
+                    <!-- start and end tags -->
+                    <div class="col-md-6">
+                        <h5>Find and Parse XML Records</h5>
+                        <p>To locate and parse XML records from the provided file(s), additional information is needed:
+                            the root XML element for each record, and if needed, additional XML namespace
+                            declarations.</p>
+
+                        <table class="table table-bordered table-hover">
+                            <tbody>
+                            <tr>
+                                <th>Root XML element</th>
+                                <td>Because static XML harvests may be looping through many files, directories,
+                                    archives, or single XML files, a <span
+                                            class="font-weight-bold">root XML element</span> is needed to locate XML
+                                    documents that should be parsed and used. Unlike XPath, only the element name is
+                                    needed. For example, a <code>mods:mods</code> would be sufficient for MODS records
+                                    with a namespace, or <code>oai_dc</code> for OAI Dublin Core records.
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Re-write XML root element declarations</th>
+                                <td>Because Combine does not use XPath to parse the records, it is possible that records
+                                    will be retrieved without required namespaces (often only declared at the root
+                                    element). Here, you may optionally rewrite the declaration for each Record. For
+                                    example, if providing the XML root <code>mods:mods</code> results in root XML nodes
+                                    that look like <code>&lt;mods:mods&gt;</code>, the declaration </code> <code>xmlns:mods="http://www.loc.gov/mods/v3"</code>
+                                    could be passed and will be added to each record resulting in <code>&lt;mods:mods
+                                        xmlns:mods="http://www.loc.gov/mods/v3"&gt;</code>, which is valid XML.
+                                </td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="form-group">
+                            <label for="document_element_root">Root XML Element:</label>
+                            <input type="text" class="form-control" id="document_element_root"
+                                   name="document_element_root" placeholder="e.g. mods:mods, oai_dc, etc.">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="additional_namespace_decs">Re-write Root XML Declaration (if needed):</label>
+                            <input type="text" class="form-control" id="additional_namespace_decs"
+                                   name="additional_namespace_decs"
+                                   placeholder='e.g. xmlns:mods="http://www.loc.gov/mods/v3"'>
+                        </div>
+
+                    </div>
+
+
+                    <!-- xpath for identifiers -->
+                    <div class="col-md-6">
+                        <h5>Locate Identifier in Document</h5>
+                        <p>Finally, an optional XPath expression can be provided to locate a unique, meaningful
+                            identifier for each document.</p>
+                        <p><span class="font-weight-bold">Note:</span> While not required, this is encouraged. In the
+                            absence of an XPath expression to locate an identifier, an MD5 hash of the document's
+                            contents will be created, which might help with potential duplicate records. However, if the
+                            document changes harvest-to-harvest, this identifier will not remain constant. Furthermore,
+                            this MD5 hash identifier will propagate through Combine and eventually be used for
+                            publishing, which is important to consider.</p>
+                        <table class="table table-bordered table-hover">
+                            <thead>
+                            <tr>
+                                <th>Description</th>
+                                <th>Example</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td>Use Dublin Core <code>&lt;dc:identifier&gt;</code> element.</td>
+                                <td><code>//dc:identifier</code></td>
+                            </tr>
+                            <tr>
+                                <td>Locate <code>&lt;mods:url&gt;</code> element with <code>access</code> attribute.
+                                </td>
+                                <td><code>//mods:mods/mods:location/mods:url[@access]</code></td>
+                            </tr>
+                            </tbody>
+                        </table>
+
+                        <div class="form-group">
+                            <label for="xpath_record_id">XPath for Record Identifier:</label>
+                            <input type="text" class="form-control" id="xpath_record_id" name="xpath_record_id"
+                                   placeholder="e.g. //dc:identifier">
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Optional Job Processing -->
+                {% include 'core/job_optional_processing.html' %}
+
+                <button type="submit" class="btn btn-success btn-sm">Run Static Harvest Job <i class="la la-play"></i>
+                </button>
+
+            </form>
+
+        </div>
+    </div>
 
 {% endblock %}

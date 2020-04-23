@@ -1,6 +1,6 @@
-from django.test import Client, TestCase
-from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.test import TestCase
+from django.urls import reverse
 
 from core.models import OAIEndpoint
 from tests.utils import TestConfiguration
@@ -8,7 +8,6 @@ from tests.utils import TestConfiguration
 
 class OAIEndpointTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
         self.config = TestConfiguration()
         self.client.force_login(self.config.user)
 

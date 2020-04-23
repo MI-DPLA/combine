@@ -2,188 +2,211 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">OAI Harvest</span></h3>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>New Job: <span class="font-weight-bold">OAI Harvest</span></h3>
 
-			<p>Harvest records via OAI-PMH from a remote endpoint.</p>
-		</div>
-	</div>
+            <p>Harvest records via OAI-PMH from a remote endpoint.</p>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<form id="job_init_form" method="POST" action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
+    <div class="row">
+        <div class="col-md-12">
+            <form id="job_init_form" method="POST"
+                  action="{% url 'job_harvest_oai' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
-				{% csrf_token %}
+                {% csrf_token %}
 
-				<div class="row">
+                <div class="row">
 
-					<div class="col-md-12">
+                    <div class="col-md-12">
 
-						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
+                        <!-- optional job details -->
+                        {% include 'core/job_optional_details.html' %}
 
-						<!-- OAI endpoint -->
-						<div class="alert alert-danger alert-dismissible fade show" role="alert">
-							The following are <strong>required</strong> parameters for this Job
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
-						<div class="form-group">
-							<label for="oai_endpoint_id">Select <a target="_blank" href="{% url 'configuration' %}#oai_endpoints_anchor">pre-existing OAI endpoint</a> to use for harvest</label>
-							<select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
-								<option value="">Select an oai endpoint...</option>
-								{% for oai_endpoint in oai_endpoints %}
-									<option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
-								{% endfor %}
-							</select>
-						</div>
+                        <!-- OAI endpoint -->
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            The following are <strong>required</strong> parameters for this Job
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="form-group">
+                            <label for="oai_endpoint_id">Select <a target="_blank"
+                                                                   href="{% url 'configuration' %}#oai_endpoints_anchor">pre-existing
+                                OAI endpoint</a> to use for harvest</label>
+                            <select class="form-control" id="oai_endpoint_id" name="oai_endpoint_id" required>
+                                <option value="">Select an oai endpoint...</option>
+                                {% for oai_endpoint in oai_endpoints %}
+                                    <option value="{{ oai_endpoint.id }}">{{ oai_endpoint.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
 
-						<!-- optional OAI endpoint defaults overrides -->
-						<div id="oai_endpoint_defaults" style="background-color:rgb(245,245,245); padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
-							<div class="alert alert-warning alert-dismissible fade show" role="alert">
-								The following are default settings for this pre-configured OAI Endpoint, but can be selectively overridden for this job
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-								<span aria-hidden="true">&times;</span>
-								</button>
-							</div>
+                        <!-- optional OAI endpoint defaults overrides -->
+                        <div id="oai_endpoint_defaults"
+                             style="background-color:rgb(245,245,245); padding:10px; border-radius:10px; margin-bottom:20px; display:none;">
+                            <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                                The following are default settings for this pre-configured OAI Endpoint, but can be
+                                selectively overridden for this job
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
 
-							<div class="form-group">
-								<label for="endpoint">OAI URL endpoint</label>
-								<input type="text" class="form-control" id="endpoint" name="endpoint" placeholder="http://example.org/oai" disabled>
-								<p style="margin-top:10px;"><a target="_blank" id="oai_endpoint_Identify" href="#"><button type="button" class="btn btn-outline-info btn-sm">Identify <i class="la la-binoculars"></i></button></a> <a target="_blank" id="oai_endpoint_ListSets" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Sets <i class="la la-th-list"></i></button></a> <a target="_blank" id="oai_endpoint_ListMetadataFormats" href="#"><button type="button" class="btn btn-outline-info btn-sm">List Metadata Formats <i class="la la-th-list"></i></button></a></p>
-							</div>
+                            <div class="form-group">
+                                <label for="endpoint">OAI URL endpoint</label>
+                                <input type="text" class="form-control" id="endpoint" name="endpoint"
+                                       placeholder="http://example.org/oai" disabled>
+                                <p style="margin-top:10px;"><a target="_blank" id="oai_endpoint_Identify" href="#">
+                                    <button type="button" class="btn btn-outline-info btn-sm">Identify <i
+                                            class="la la-binoculars"></i></button>
+                                </a> <a target="_blank" id="oai_endpoint_ListSets" href="#">
+                                    <button type="button" class="btn btn-outline-info btn-sm">List Sets <i
+                                            class="la la-th-list"></i></button>
+                                </a> <a target="_blank" id="oai_endpoint_ListMetadataFormats" href="#">
+                                    <button type="button" class="btn btn-outline-info btn-sm">List Metadata Formats <i
+                                            class="la la-th-list"></i></button>
+                                </a></p>
+                            </div>
 
-							<div style="display:none;" class="form-group">
-								<label for="verb">OAI Verb</label>
-								<select class="form-control" id="verb" name="verb">
-									<option value="">Select OAI verb...</option>
-									<option value="ListRecords">ListRecords</option>
-									<option value="ListSets">ListSets</option>
-								</select>
-							</div>
+                            <div style="display:none;" class="form-group">
+                                <label for="verb">OAI Verb</label>
+                                <select class="form-control" id="verb" name="verb">
+                                    <option value="">Select OAI verb...</option>
+                                    <option value="ListRecords">ListRecords</option>
+                                    <option value="ListSets">ListSets</option>
+                                </select>
+                            </div>
 
-							<div class="form-group">
-								<label for="metadataPrefix">OAI metadata format (<code>metadataPrefix</code>)</label>
-								<input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix" placeholder="note: is case sensitive, e.g. mods, MODS, oai_dc, etc.">
-							</div>
+                            <div class="form-group">
+                                <label for="metadataPrefix">OAI metadata format (<code>metadataPrefix</code>)</label>
+                                <input type="text" class="form-control" id="metadataPrefix" name="metadataPrefix"
+                                       placeholder="note: is case sensitive, e.g. mods, MODS, oai_dc, etc.">
+                            </div>
 
-							<div class="form-group">
-								<label for="scope_type">Harvest type</label>
-								<select class="form-control" id="scope_type" name="scope_type">
-									<option value="harvestAllSets">Harvest all sets</option>
-									<option value="setList">List of sets to harvest (comma separated)</option>
-									<option value="blackList">Harvest all sets, but with list of sets to exclude (comma separated)</option>
-									<option value="harvestAllRecords">Harvest all records (slowest, but will harvest records NOT in sets)</option>
-								</select>
-							</div>
+                            <div class="form-group">
+                                <label for="scope_type">Harvest type</label>
+                                <select class="form-control" id="scope_type" name="scope_type">
+                                    <option value="harvestAllSets">Harvest all sets</option>
+                                    <option value="setList">List of sets to harvest (comma separated)</option>
+                                    <option value="blackList">Harvest all sets, but with list of sets to exclude (comma
+                                        separated)
+                                    </option>
+                                    <option value="harvestAllRecords">Harvest all records (slowest, but will harvest
+                                        records NOT in sets)
+                                    </option>
+                                </select>
+                            </div>
 
-							<div id="scope_value_block" class="form-group">
-								<label id="scope_value_label" for="scope_value">Scope value</label>
-								<input type="text" class="form-control" id="scope_value" name="scope_value" placeholder="set1,set2,set3 (comma separated)">
-							</div>
+                            <div id="scope_value_block" class="form-group">
+                                <label id="scope_value_label" for="scope_value">Scope value</label>
+                                <input type="text" class="form-control" id="scope_value" name="scope_value"
+                                       placeholder="set1,set2,set3 (comma separated)">
+                            </div>
 
-							<!-- include header toggle -->
-							<div class="form-group">
+                            <!-- include header toggle -->
+                            <div class="form-group">
 								<span class="switch switch-sm">
-									<input type="checkbox" class="switch-sm" id="include_oai_record_header" name="include_oai_record_header" value="true">
+									<input type="checkbox" class="switch-sm" id="include_oai_record_header"
+                                           name="include_oai_record_header" value="true">
 									<label style="font-weight:bold; font-size:110%;" for="include_oai_record_header">Include <code>&lt;header&gt;</code> with OAI record XML?</label>
 								</span>
-							</div>
+                            </div>
 
-						</div>
+                        </div>
 
-					</div>
+                    </div>
 
-				</div>
+                </div>
 
-				<!-- Optional Job Processing -->
-				{% include 'core/job_optional_processing.html' %}
+                <!-- Optional Job Processing -->
+                {% include 'core/job_optional_processing.html' %}
 
-				<button type="submit" class="btn btn-success btn-sm">Run OAI Harvest Job <i class="la la-play"></i></button>
+                <button type="submit" class="btn btn-success btn-sm">Run OAI Harvest Job <i class="la la-play"></i>
+                </button>
 
-			</form>
+            </form>
 
-			<script>
+            <script>
 
-			// save all oai endpoints as parsed javascript values for previewing
-			oes = {}
-			{% for oai_endpoint in oai_endpoints %}
-				oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
-			{% endfor %}
+                // save all oai endpoints as parsed javascript values for previewing
+                oes = {}
+                {% for oai_endpoint in oai_endpoints %}
+                    oes[{{ oai_endpoint.id }}] = {{ oai_endpoint.as_dict|safe }};
+                {% endfor %}
 
-			// listen for scope type change
-			$(function() {
-			    $("#scope_type").change(function() {
+                // listen for scope type change
+                $(function () {
+                    $("#scope_type").change(function () {
 
-			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'harvestAllSets') {
-			    		// hide scope value block
-			    		$("#scope_value_block").hide();
-			    	}
+                        // harvest all sets
+                        if ($("#scope_type").val() == 'harvestAllSets') {
+                            // hide scope value block
+                            $("#scope_value_block").hide();
+                        }
 
-			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'setList') {
-			    		// set scope value label
-			    		$("#scope_value_label").html('OAI sets to <span class="text-success">include</span>');
-			    		// show scope value block
-			    		$("#scope_value_block").show();
-			    	}
+                        // harvest all sets
+                        if ($("#scope_type").val() == 'setList') {
+                            // set scope value label
+                            $("#scope_value_label").html('OAI sets to <span class="text-success">include</span>');
+                            // show scope value block
+                            $("#scope_value_block").show();
+                        }
 
-			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'blackList') {
-			    		// set scope value label
-			    		$("#scope_value_label").html('OAI sets to <span class="text-danger">exclude</span>');
-			    		// show scope value block
-			    		$("#scope_value_block").show();
-			    	}
+                        // harvest all sets
+                        if ($("#scope_type").val() == 'blackList') {
+                            // set scope value label
+                            $("#scope_value_label").html('OAI sets to <span class="text-danger">exclude</span>');
+                            // show scope value block
+                            $("#scope_value_block").show();
+                        }
 
-			    	// harvest all sets
-			    	if ($("#scope_type").val() == 'harvestAllRecords') {
-			    		// hide scope value block
-			    		$("#scope_value_block").hide();
-			    	}
+                        // harvest all sets
+                        if ($("#scope_type").val() == 'harvestAllRecords') {
+                            // hide scope value block
+                            $("#scope_value_block").hide();
+                        }
 
-		    	});
-	    	});
+                    });
+                });
 
-			// listen for OAI endpoint change
-			$(function() {
-			    $("#oai_endpoint_id").change(function() {
+                // listen for OAI endpoint change
+                $(function () {
+                    $("#oai_endpoint_id").change(function () {
 
-			    	// get id
-			        oe_id = $('option:selected', this).val()
+                        // get id
+                        oe_id = $('option:selected', this).val()
 
-			        // set endpoint URL
-			        $('#endpoint').val(oes[oe_id].endpoint);
+                        // set endpoint URL
+                        $('#endpoint').val(oes[oe_id].endpoint);
 
-			        // update identify and list sets buttons
-			        $("#oai_endpoint_Identify").attr('href',(oes[oe_id].endpoint + '?verb=Identify'));
-			        $("#oai_endpoint_ListSets").attr('href',(oes[oe_id].endpoint + '?verb=ListSets'));
-			        $("#oai_endpoint_ListMetadataFormats").attr('href',(oes[oe_id].endpoint + '?verb=ListMetadataFormats'));
+                        // update identify and list sets buttons
+                        $("#oai_endpoint_Identify").attr('href', (oes[oe_id].endpoint + '?verb=Identify'));
+                        $("#oai_endpoint_ListSets").attr('href', (oes[oe_id].endpoint + '?verb=ListSets'));
+                        $("#oai_endpoint_ListMetadataFormats").attr('href', (oes[oe_id].endpoint + '?verb=ListMetadataFormats'));
 
-			        // set verb
-			        $('#verb option[value="'+oes[oe_id].verb+'"]').attr("selected", "selected");
+                        // set verb
+                        $('#verb option[value="' + oes[oe_id].verb + '"]').attr("selected", "selected");
 
-			        // set metadata Prefix
-			        $('#metadataPrefix').val(oes[oe_id].metadataPrefix);
+                        // set metadata Prefix
+                        $('#metadataPrefix').val(oes[oe_id].metadataPrefix);
 
-			        // set scope type
-			        $('#scope_type option[value="'+oes[oe_id].scope_type+'"]').attr("selected", "selected");
-			        $("#scope_type").change();
+                        // set scope type
+                        $('#scope_type option[value="' + oes[oe_id].scope_type + '"]').attr("selected", "selected");
+                        $("#scope_type").change();
 
-			        // set scope value
-			        $('#scope_value').val(oes[oe_id].scope_value);
+                        // set scope value
+                        $('#scope_value').val(oes[oe_id].scope_value);
 
-			        // show defaults
-			        $('#oai_endpoint_defaults').show();
-			    });
-			});
+                        // show defaults
+                        $('#oai_endpoint_defaults').show();
+                    });
+                });
 
-			</script>
-		</p>
-	</p>
+            </script>
+            </p>
+            </p>
 
 
 {% endblock %}

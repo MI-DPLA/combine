@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from core.models import ValidationScenario
 from tests.utils import TestConfiguration, TEST_DOCUMENT
@@ -7,7 +7,6 @@ from tests.utils import TestConfiguration, TEST_DOCUMENT
 class RecordTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_get_record(self):

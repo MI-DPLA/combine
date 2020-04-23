@@ -1,36 +1,40 @@
 {% block content %}
 
-	<div id="record_identifier_transformation_pane" class="row">
-		<div class="col-md-12">
-			
-			<div class="gray_box">
-				
-				<h5>Transform Identifier</h5>
+    <div id="record_identifier_transformation_pane" class="row">
+        <div class="col-md-12">
 
-				<p>For Records in this Job, optionally transform the Record's Identifier (<code>record_id</code>) -- used for publishing and uniqueness checks -- with a <a target="_blank" href="{% url 'configuration' %}#rits_anchor">pre-existing Record Identifier Transformation Scenario (RITS)</a>.</p>
-				
-				<div class="row">
-					<div class="col-md-12" style="padding:20px;">
+            <div class="gray_box">
 
-						{% if rits|length > 0 %}
+                <h5>Transform Identifier</h5>
 
-							<div class="form-group">
-								<select class="form-control" id="rits" name="rits">
-									<option value=''>Select a Record Identifier Transformation Scenario...</option>
-									{% for rt in rits %}
-										<option value='{{ rt.id }}'>{{ rt.name }}</option>
-									{% endfor %}					
-								</select>
-							</div>
+                <p>For Records in this Job, optionally transform the Record's Identifier (<code>record_id</code>) --
+                    used for publishing and uniqueness checks -- with a <a target="_blank"
+                                                                           href="{% url 'configuration' %}#rits_anchor">pre-existing
+                        Record Identifier Transformation Scenario (RITS)</a>.</p>
 
-						{% else %}
-							<p class="font-weight-bold"style="margin-bottom:0px;">No pre-existing transformations found. <a href="{% url 'configuration' %}">Create one!</a></p>
-						{% endif %}
+                <div class="row">
+                    <div class="col-md-12" style="padding:20px;">
 
-					</div>
-				</div>
-			</div>
-		</div>
-	</div>
-				
+                        {% if rits|length > 0 %}
+
+                            <div class="form-group">
+                                <select class="form-control" id="rits" name="rits">
+                                    <option value=''>Select a Record Identifier Transformation Scenario...</option>
+                                    {% for rt in rits %}
+                                        <option value='{{ rt.id }}'>{{ rt.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+
+                        {% else %}
+                            <p class="font-weight-bold" style="margin-bottom:0px;">No pre-existing transformations
+                                found. <a href="{% url 'configuration' %}">Create one!</a></p>
+                        {% endif %}
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
 {% endblock %}

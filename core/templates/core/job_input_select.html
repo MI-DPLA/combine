@@ -1,158 +1,173 @@
 {% load static %}
 
-{% block content %}	
-<script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
-<script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
+{% block content %}
+    <script type="text/javascript" charset="utf8" src="{% static 'core/moment.min.js' %}"></script>
+    <script type="text/javascript" charset="utf8" src="{% static 'core/datetime-moment.js' %}"></script>
 
 
-	<!-- optional job lineage network node graph -->
-	{% include 'core/job_lineage_network.html' %}
+    <!-- optional job lineage network node graph -->
+    {% include 'core/job_lineage_network.html' %}
 
-	<div class="row" {% if analysis_type == 'published' %}style="display:none;"{% endif %}>
-		<div class="col-md-12">			
-			<table id="jobs_table" class="table table-bordered table-hover">
-				<thead>
-					<tr>
-						<th>Select</th>
-						<th>Job ID</th>
-						<th>Name</th>
-						<th>Organization</th>
-						<th>Record Group</th>
-						<th>Job Type</th>
-						<th>Status</th>						
-						<th>Is Valid</th>
-						<th>Timestamp</th>
-						<th>Input</th>
-						<th>Notes</th>
-						<th>Record Count</th>						
-					</tr>
-				</thead>				
-				<tbody>
-				{% for job in input_jobs %}
-					<tr class="{{ job.job_type_display_class }}">
-						<td class="{{ job.job_type_display_class }}"><input type="checkbox" name="input_job_id" value="{{ job.id }}" /><button style="margin-left:10px;" type="button" class="btn btn-outline-primary btn-sm" data-toggle="modal" data-target="#jobSpecModal" data-input_job_id="{{ job.id }}" data-input_job_name="{{ job.name }}"><i class="la la-filter"></i></button></td>
-						<td class="{{ job.job_type_display_class }}">{{ job.id }}</td>
-						<td class="{{ job.job_type_display_class }}">{{ job.name }}</td>
-						<td class="{{ job.job_type_display_class }}">{{ job.record_group.organization.name }}</td>
-						<td class="{{ job.job_type_display_class }}">{{ job.record_group.name }}</td>
-						<td class="{{ job.job_type_display_class }}">{{ job.job_type_family }}</td>
-						<td class="{{ job.job_type_display_class }}">
-							{% if job.status in 'init,waiting' %}
-							<div class="progress">
-								<div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-							</div>
-							{% elif job.status == 'running' %}
-							<div class="progress">
-								<div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{{job.status}}</div>
-							</div>
-							{% elif job.status in 'available,gone' %}
-							<div class="progress">
-								<div class="progress-bar progress-bar bg-success" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">finished</div>
-							</div>
-							{% else %}
-							{{ job.status }}
-							{% endif %}
-						</td>						
-						<td class="{{ job.job_type_display_class }}">{{ job.validation_results.verdict }}</td>
-						<td class="{{ job.job_type_display_class }}">{{ job.timestamp|date:"M d, Y, h:i A" }}</td>
-						{% if job.jobinput_set.all|length > 0 %}
-						<td class="{{ job.job_type_display_class }}">
+    <div class="row" {% if analysis_type == 'published' %}style="display:none;"{% endif %}>
+        <div class="col-md-12">
+            <table id="jobs_table" class="table table-bordered table-hover">
+                <thead>
+                <tr>
+                    <th>Select</th>
+                    <th>Job ID</th>
+                    <th>Name</th>
+                    <th>Organization</th>
+                    <th>Record Group</th>
+                    <th>Job Type</th>
+                    <th>Status</th>
+                    <th>Is Valid</th>
+                    <th>Timestamp</th>
+                    <th>Input</th>
+                    <th>Notes</th>
+                    <th>Record Count</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for job in input_jobs %}
+                    <tr class="{{ job.job_type_display_class }}">
+                        <td class="{{ job.job_type_display_class }}"><input type="checkbox" name="input_job_id"
+                                                                            value="{{ job.id }}"/>
+                            <button style="margin-left:10px;" type="button" class="btn btn-outline-primary btn-sm"
+                                    data-toggle="modal" data-target="#jobSpecModal" data-input_job_id="{{ job.id }}"
+                                    data-input_job_name="{{ job.name }}"><i class="la la-filter"></i></button>
+                        </td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.id }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.name }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.record_group.organization.name }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.record_group.name }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.job_type_family }}</td>
+                        <td class="{{ job.job_type_display_class }}">
+                            {% if job.status in 'init,waiting' %}
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning"
+                                         role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                         style="width: 100%">{{ job.status }}</div>
+                                </div>
+                            {% elif job.status == 'running' %}
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                         role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"
+                                         style="width: 100%">{{ job.status }}</div>
+                                </div>
+                            {% elif job.status in 'available,gone' %}
+                                <div class="progress">
+                                    <div class="progress-bar progress-bar bg-success" role="progressbar"
+                                         aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">
+                                        finished
+                                    </div>
+                                </div>
+                            {% else %}
+                                {{ job.status }}
+                            {% endif %}
+                        </td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.validation_results.verdict }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.timestamp|date:"M d, Y, h:i A" }}</td>
+                        {% if job.jobinput_set.all|length > 0 %}
+                            <td class="{{ job.job_type_display_class }}">
 
-							<button style="cursor:pointer;" onclick="$($(this).siblings()[0]).toggle(); return false;" type="button" class="btn btn-outline-info btn-sm">Show Input Jobs</button>
+                                <button style="cursor:pointer;"
+                                        onclick="$($(this).siblings()[0]).toggle(); return false;" type="button"
+                                        class="btn btn-outline-info btn-sm">Show Input Jobs
+                                </button>
 
-							<div id="input_jobs_column" style="margin-top:10px; display:none;">
-								{% for input_job in job.jobinput_set.all %}
-									<div class="{{ input_job.input_job.job_type_family }}" style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
-										<a href="{{ input_job.job_details_url }}">{{ input_job.input_job }}</a>
-									</div>
-								{% endfor %}
-							</div>
+                                <div id="input_jobs_column" style="margin-top:10px; display:none;">
+                                    {% for input_job in job.jobinput_set.all %}
+                                        <div class="{{ input_job.input_job.job_type_family }}"
+                                             style="padding:10px; clear:both; border: 1px dotted black; margin-bottom:2px;">
+                                            <a href="{{ input_job.job_details_url }}">{{ input_job.input_job }}</a>
+                                        </div>
+                                    {% endfor %}
+                                </div>
 
-						</td>
-					{% else %}
-						<td class="{{ job.job_type_display_class }}">None</td>
-					{% endif %}						
-						<td class="{{ job.job_type_display_class }}">{{ job.note }}</td>						
-						<td class="{{ job.job_type_display_class }}">{{ job.record_count }}</td>
-					</tr>
-				{% endfor %}
-				</tbody>
-				<tfoot>
-					<tr>
-						<th></th>
-						<th></th>
-						<th></th>
-						<th>Organization</th>
-						<th>Record Group</th>
-						<th>Job Type</th>
-						<th></th>						
-						<th>Valid</th>
-						<th></th>
-						<th></th>
-						<th></th>
-						<th></th>						
-					</tr>
-				</tfoot>
-			</table>
-			<script>
+                            </td>
+                        {% else %}
+                            <td class="{{ job.job_type_display_class }}">None</td>
+                        {% endif %}
+                        <td class="{{ job.job_type_display_class }}">{{ job.note }}</td>
+                        <td class="{{ job.job_type_display_class }}">{{ job.record_count }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                <tr>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th>Organization</th>
+                    <th>Record Group</th>
+                    <th>Job Type</th>
+                    <th></th>
+                    <th>Valid</th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                    <th></th>
+                </tr>
+                </tfoot>
+            </table>
+            <script>
 
-				$(document).ready(function() {
+                $(document).ready(function () {
                     $.fn.dataTable.moment('MMM DD, YYYY, HH:mm A')
-				    jobs_table = $('#jobs_table').DataTable({
-				    	pageLength: 100,
-				    	lengthMenu: [ 10, 25, 100, 500 ],
-				    	createdRow: function( row, data, dataIndex){
-		                    $('td', row).addClass(data[4]);
-		                    if (data[7] == 'False'){                    	
-		                    	$('td:nth-child(8)', row).addClass('invalid_job');
-		                    }
-			            },
-			            paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
-			            initComplete: function () {
-				            this.api().columns([3,4,5,7,8]).every( function () {
-				                var column = this;
-				                var select = $('<select><option value="">All</option></select>')
-				                    .appendTo( $(column.footer()).empty() )
-				                    .on( 'change', function () {
-				                        var val = $.fn.dataTable.util.escapeRegex($(this).val());				 
-				                        column.search( val ? '^'+val+'$' : '', true, false ).draw();
-				                    } );
-				 
-				                column.data().unique().sort().each( function ( d, j ) {
+                    jobs_table = $('#jobs_table').DataTable({
+                        pageLength: 100,
+                        lengthMenu: [10, 25, 100, 500],
+                        createdRow: function (row, data, dataIndex) {
+                            $('td', row).addClass(data[4]);
+                            if (data[7] == 'False') {
+                                $('td:nth-child(8)', row).addClass('invalid_job');
+                            }
+                        },
+                        paging: false, // likely not too many jobs, sidesteps problem with paged checkboxes
+                        initComplete: function () {
+                            this.api().columns([3, 4, 5, 7, 8]).every(function () {
+                                var column = this;
+                                var select = $('<select><option value="">All</option></select>')
+                                    .appendTo($(column.footer()).empty())
+                                    .on('change', function () {
+                                        var val = $.fn.dataTable.util.escapeRegex($(this).val());
+                                        column.search(val ? '^' + val + '$' : '', true, false).draw();
+                                    });
 
-				                	{# handle analysis of published records differently #}
-				                	{% if analysis_type == 'published' %}
-					                	if (d == 'PublishJob'){
-					                		select.append( '<option selected value="'+d+'">'+d+'</option>' )
-					                		column.search( 'PublishJob' ? '^PublishJob$' : '', true, false ).draw();
-					                	}
-					                	else {
-					                		select.append( '<option value="'+d+'">'+d+'</option>' )	
-					                	}
-				                	{% else %}
-				                		select.append( '<option value="'+d+'">'+d+'</option>' )	
-				                	{% endif %}
-				                    
-				                });
-				            } );
-				        }
-				    });
+                                column.data().unique().sort().each(function (d, j) {
 
-				    // fire when table redrawn
-				    jobs_table.on( 'draw', function () {
-					    update_lineage_on_filter();
-					} );
+                                    {# handle analysis of published records differently #}
+                                    {% if analysis_type == 'published' %}
+                                        if (d == 'PublishJob') {
+                                            select.append('<option selected value="' + d + '">' + d + '</option>')
+                                            column.search('PublishJob' ? '^PublishJob$' : '', true, false).draw();
+                                        } else {
+                                            select.append('<option value="' + d + '">' + d + '</option>')
+                                        }
+                                    {% else %}
+                                        select.append('<option value="' + d + '">' + d + '</option>')
+                                    {% endif %}
 
-				    // special case behavior for selectin publish jobs only
-					{% if analysis_type == 'published' %}
-						update_lineage_on_filter();
-						$("#jobs_table input").prop('checked', true);
-					{% endif %}
+                                });
+                            });
+                        }
+                    });
 
-				} );
+                    // fire when table redrawn
+                    jobs_table.on('draw', function () {
+                        update_lineage_on_filter();
+                    });
 
-			</script>
-		</div>
-	</div>
+                    // special case behavior for selecting published jobs only
+                    {% if analysis_type == 'published' %}
+                        update_lineage_on_filter();
+                        $("#jobs_table input").prop('checked', true);
+                    {% endif %}
+
+                });
+
+            </script>
+        </div>
+    </div>
 
 {% endblock %}

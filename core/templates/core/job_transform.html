@@ -2,178 +2,191 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<h3>New Job: <span class="font-weight-bold">Transform Document</span></h3>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h3>New Job: <span class="font-weight-bold">Transform Document</span></h3>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<form id="job_init_form" method="POST" action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
+    <div class="row">
+        <div class="col-md-12">
+            <form id="job_init_form" method="POST"
+                  action="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">
 
-				{% csrf_token %}
+                {% csrf_token %}
 
-				<div class="row">
-					<div class="col-md-12">
-						<!-- optional job details -->
-						{% include 'core/job_optional_details.html' %}
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        <!-- optional job details -->
+                        {% include 'core/job_optional_details.html' %}
+                    </div>
+                </div>
 
-				<div class="row">
-					<div class="col-md-12">
-						{% if input_job_scope == None %}
-							<div class="alert alert-info alert-dismissible fade show" role="alert">
-								Showing Jobs from <span class="font-weight-bold">Record Group only</span>.  <a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}?scope=all_jobs">Click here to show Jobs from <span class="font-weight-bold">all Record Groups</span>.</a>
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-								<span aria-hidden="true">&times;</span>
-								</button>
-							</div>
-						{% else %}
-							<div class="alert alert-info alert-dismissible fade show" role="alert">
-								Showing Jobs from <span class="font-weight-bold">All Record Groups</span>.  <a href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Click here to show Jobs from <span class="font-weight-bold">this Record Group only</span>.</a>
-								<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-								<span aria-hidden="true">&times;</span>
-								</button>
-							</div>
-						{% endif %}
-						<div class="alert alert-danger alert-dismissible fade show" role="alert">
-							<strong>Transform</strong> Jobs require a single, or multiple, <strong>input Job(s)</strong>.  Select from the table below.
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
-						<!-- Job Select -->
-						{% include 'core/job_input_select.html' %}
-					</div>
-				</div>
+                <div class="row">
+                    <div class="col-md-12">
+                        {% if input_job_scope == None %}
+                            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                Showing Jobs from <span class="font-weight-bold">Record Group only</span>. <a
+                                    href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}?scope=all_jobs">Click
+                                here to show Jobs from <span class="font-weight-bold">all Record Groups</span>.</a>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        {% else %}
+                            <div class="alert alert-info alert-dismissible fade show" role="alert">
+                                Showing Jobs from <span class="font-weight-bold">All Record Groups</span>. <a
+                                    href="{% url 'job_transform' org_id=record_group.organization.id record_group_id=record_group.id %}">Click
+                                here to show Jobs from <span class="font-weight-bold">this Record Group only</span>.</a>
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </button>
+                            </div>
+                        {% endif %}
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            <strong>Transform</strong> Jobs require a single, or multiple, <strong>input Job(s)</strong>.
+                            Select from the table below.
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <!-- Job Select -->
+                        {% include 'core/job_input_select.html' %}
+                    </div>
+                </div>
 
-				<div class="row">
-					<div class="col-md-12">
+                <div class="row">
+                    <div class="col-md-12">
 
-						<div class="alert alert-danger alert-dismissible fade show" role="alert">
-							The following are <strong>required</strong> parameters for this Job
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
+                        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                            The following are <strong>required</strong> parameters for this Job
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
 
-						<!-- multiple, sortable transformations -->
-						<input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
-						<div class="row">
-							<div class="col-md-12">
-								<h4>Select Transformation Scenarios</h4>
-								<p>Use the tables below to select, and order, Transformation Scenarios that will be applied.</p>
-								<ol>
-									<li>First, <strong>drag</strong> desired Transformations from the table on the left to the table on the right.</li>
-									<li>Second, confirm the <strong>order</strong> of the selected Transformations in which they should be chained together and applied.</li>
-								</ol>
+                        <!-- multiple, sortable transformations -->
+                        <input type="hidden" name="sel_trans_json" id="sel_trans_json"/>
+                        <div class="row">
+                            <div class="col-md-12">
+                                <h4>Select Transformation Scenarios</h4>
+                                <p>Use the tables below to select, and order, Transformation Scenarios that will be
+                                    applied.</p>
+                                <ol>
+                                    <li>First, <strong>drag</strong> desired Transformations from the table on the left
+                                        to the table on the right.
+                                    </li>
+                                    <li>Second, confirm the <strong>order</strong> of the selected Transformations in
+                                        which they should be chained together and applied.
+                                    </li>
+                                </ol>
 
-							</div>
-						</div>
-						<div class="row">
+                            </div>
+                        </div>
+                        <div class="row">
 
-							<div class="col-md-6">
-								<h6>Available Transformations</h6>
-								<ul class="draggable_ul available_transforms">
-									{% for transformation in transformations %}
-										<li data-trans_id={{transformation.id}} ><span class="draggable_span">{{transformation.name}}</span></li>
-									{% endfor %}
-								</ul>
-							</div>
+                            <div class="col-md-6">
+                                <h6>Available Transformations</h6>
+                                <ul class="draggable_ul available_transforms">
+                                    {% for transformation in transformations %}
+                                        <li data-trans_id={{ transformation.id }}><span
+                                                class="draggable_span">{{ transformation.name }}</span></li>
+                                    {% endfor %}
+                                </ul>
+                            </div>
 
-							<div class="col-md-6">
-								<h6>Selected Transformations</h6>
-								<ul class="draggable_ul selected_transforms">
-								</ul>
-							</div>
+                            <div class="col-md-6">
+                                <h6>Selected Transformations</h6>
+                                <ul class="draggable_ul selected_transforms">
+                                </ul>
+                            </div>
 
-						</div>
-						<script>
+                        </div>
+                        <script>
 
-							// init available transforms
-							var available = sortable('.available_transforms', {
-								acceptFrom: ".selected_transforms, .available_transforms",
-								items:'li',
-								forcePlaceholderSize: true,
-								placeholderClass: 'ph-class',
-							});
+                            // init available transforms
+                            var available = sortable('.available_transforms', {
+                                acceptFrom: ".selected_transforms, .available_transforms",
+                                items: 'li',
+                                forcePlaceholderSize: true,
+                                placeholderClass: 'ph-class',
+                            });
 
-							// init selected transforms
-							var selected = sortable('.selected_transforms', {
-								acceptFrom: ".available_transforms, .selected_transforms",
-								items:'li',
-								forcePlaceholderSize: true,
-								placeholderClass: 'ph-class',
-							});
+                            // init selected transforms
+                            var selected = sortable('.selected_transforms', {
+                                acceptFrom: ".available_transforms, .selected_transforms",
+                                items: 'li',
+                                forcePlaceholderSize: true,
+                                placeholderClass: 'ph-class',
+                            });
 
 
-							function ser_sel_trans(){
+                            function ser_sel_trans() {
 
-								/*
-								Function to serialize and capture ordered transformation ids
+                                /*
+                                Function to serialize and capture ordered transformation ids
 
-								Args:
-									None
+                                Args:
+                                    None
 
-								Returns:
-									(JSON): prepares JSON of selected transformations with index and trans_id
+                                Returns:
+                                    (JSON): prepares JSON of selected transformations with index and trans_id
 
-								*/
+                                */
 
-								sel_trans_obj = [];
+                                sel_trans_obj = [];
 
-								// serialize
-								sel_trans = sortable('.selected_transforms', 'serialize')[0];
+                                // serialize
+                                sel_trans = sortable('.selected_transforms', 'serialize')[0];
 
-								// loop
-								for (var i = 0; i < sel_trans.items.length; i++) {
-									trans = sel_trans.items[i];
-									sel_trans_obj.push({
-										'index':trans.index,
-										'trans_id':parseInt(trans.node.attributes['data-trans_id'].value)
-									})
-								}
+                                // loop
+                                for (var i = 0; i < sel_trans.items.length; i++) {
+                                    trans = sel_trans.items[i];
+                                    sel_trans_obj.push({
+                                        'index': trans.index,
+                                        'trans_id': parseInt(trans.node.attributes['data-trans_id'].value)
+                                    })
+                                }
 
-								// debug
-								console.log(sel_trans_obj);
+                                // debug
+                                console.log(sel_trans_obj);
 
-								// return
-								return sel_trans_obj;
+                                // return
+                                return sel_trans_obj;
 
-							}
+                            }
 
-							// serialize selections before form submit, write to hidden
-							$('#job_init_form').submit(function() {
+                            // serialize selections before form submit, write to hidden
+                            $('#job_init_form').submit(function () {
 
-								console.log('serializing selected transformations');
+                                console.log('serializing selected transformations');
 
-								// serialize
-								sel_trans_obj = ser_sel_trans();
+                                // serialize
+                                sel_trans_obj = ser_sel_trans();
 
-								// set hidden input with serialized JSON
-								sel_trans_json = JSON.stringify(sel_trans_obj)
-								$("#sel_trans_json").val(sel_trans_json);
+                                // set hidden input with serialized JSON
+                                sel_trans_json = JSON.stringify(sel_trans_obj)
+                                $("#sel_trans_json").val(sel_trans_json);
 
-							});
+                            });
 
-						</script>
+                        </script>
 
-					</div>
-				</div>
+                    </div>
+                </div>
 
-				<!-- Optional Job Processing -->
-				{% include 'core/job_optional_processing.html' %}
+                <!-- Optional Job Processing -->
+                {% include 'core/job_optional_processing.html' %}
 
-				<button type="submit" class="btn btn-success btn-sm">Run Transform Job <i class="la la-play"></i></button>
+                <button type="submit" class="btn btn-success btn-sm">Run Transform Job <i class="la la-play"></i>
+                </button>
 
-			</form>
+            </form>
 
-			<!-- Modals -->
-			{% include 'core/job_spec_input_filters.html' %}
+            <!-- Modals -->
+            {% include 'core/job_spec_input_filters.html' %}
 
-		</div>
-	</div>
+        </div>
+    </div>
 
 {% endblock %}

@@ -63,7 +63,7 @@ class GlobalMessageClient():
 
         Args:
             gm_dict (dict): Dictionary of message contents
-            forced_delay (int): Forced delay as convenient squeeze point to stave race condititions
+            forced_delay (int): Forced delay as convenient squeeze point to stave off race conditions
         '''
 
         # check for 'gms' key in session, create if not present

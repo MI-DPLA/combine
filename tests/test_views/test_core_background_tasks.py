@@ -1,4 +1,4 @@
-from django.test import TestCase, Client
+from django.test import TestCase
 
 from core.models import CombineBackgroundTask
 from tests.utils import TestConfiguration, json_string
@@ -6,7 +6,6 @@ from tests.utils import TestConfiguration, json_string
 
 class BackgroundTaskTestCase(TestCase):
     def setUp(self):
-        self.client = Client()
         self.config = TestConfiguration()
         task_params_json = {"job_id": self.config.job.id,
                             "record_group_id": self.config.record_group.id,

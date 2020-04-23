@@ -119,3 +119,9 @@ class RecordGroup(models.Model):
         jobs = self.job_set.all()
         ordered_jobs = sorted(jobs, key=lambda j: j.id)
         return ordered_jobs
+
+    @property
+    def last_modified(self):
+        jobs = self.job_set.all()
+        timestamps = [job.timestamp for job in jobs]
+        return max(timestamps)

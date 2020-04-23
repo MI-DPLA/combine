@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals
 
-# generic imports
 import json
 import logging
 import re
-from types import ModuleType
-# import ElasticSearch BaseMapper and PythonUDFRecord
+
+import importlib
+from django.conf import settings
+from django.db import models
+
 from core.spark.utils import PythonUDFRecord
 
 # Get an instance of a LOGGER
@@ -14,6 +16,37 @@ LOGGER = logging.getLogger(__name__)
 
 # Set logging levels for 3rd party modules
 logging.getLogger("requests").setLevel(logging.WARNING)
+
+LOGGER = logging.getLogger(__name__)
+
+# Set logging levels for 3rd party modules
+logging.getLogger("requests").setLevel(logging.WARNING)
+
+class RecordIdentifierTransformation(models.Model):
+
+    '''
+    Model to manage transformation scenarios for Record's record_ids (RITS)
+    '''
+
+    name = models.CharField(max_length=255)
+    transformation_type = models.CharField(
+        max_length=255,
+        choices=[('regex', 'Regular Expression'), ('python', 'Python Code Snippet'), ('xpath', 'XPath Expression')]
+    )
+    transformation_target = models.CharField(
+        max_length=255,
+        choices=[('record_id', 'Record Identifier'), ('document', 'Record Document')]
+    )
+    regex_match_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
+    regex_replace_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
+    python_payload = models.TextField(null=True, default=None, blank=True)
+    xpath_payload = models.TextField(null=True, default=None, max_length=4096, blank=True)
+
+    def __str__(self):
+        return '%s, RITS: #%s' % (self.name, self.id)
+
+    def as_dict(self):
+        return self.__dict__
 
 
 class RITSClient():
@@ -24,13 +57,18 @@ class RITSClient():
 
     def __init__(self, query_dict):
 
-        LOGGER.debug('initializaing RITS')
+        LOGGER.debug('initializing RITS')
 
         self.query_dict = query_dict
 
         # parse data
         self.target = self.query_dict.get('record_id_transform_target', None)
         LOGGER.debug('target is %s', self.target)
+
+        valid_types = [type for (type, label) in get_rits_choices()]
+        requested_type = self.query_dict.get('record_id_transform_type', None)
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for RITS: {requested_type}')
 
         # parse regex
         if self.query_dict.get('record_id_transform_type', None) == 'regex':
@@ -75,6 +113,10 @@ class RITSClient():
         '''
         method to test record_id transformation based on user input
         '''
+        valid_types = [type for (type, label) in get_rits_choices()]
+        requested_type = self.transform_type
+        if requested_type not in valid_types and requested_type is not None:
+            raise Exception(f'requested invalid type for RITS: {requested_type}')
 
         # handle regex
         if self.transform_type == 'regex':
@@ -90,7 +132,7 @@ class RITSClient():
                 sr = PythonUDFRecord(None, non_row_input=True, document=self.test_input)
 
             # parse user supplied python code
-            temp_mod = ModuleType('temp_mod')
+            temp_mod = importlib.types.ModuleType('temp_mod')
             exec(self.python_payload, temp_mod.__dict__)
 
             try:
@@ -129,3 +171,13 @@ class RITSClient():
         '''
 
         return json.dumps(self.__dict__)
+
+
+def get_rits_choices():
+    choices = [
+        ('regex', 'Regular Expression'),
+        ('xpath', 'XPath')
+    ]
+    if getattr(settings, 'ENABLE_PYTHON', 'false') == 'true':
+        choices.append(('python', 'Python Code Snippet'))
+    return choices

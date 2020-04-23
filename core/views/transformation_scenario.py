@@ -7,15 +7,17 @@ from django.http import HttpResponse
 from django.shortcuts import render, redirect
 from django.urls import reverse
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.decorators import login_required
 
 from core.models import Record, Transformation
 from core.forms import TransformationForm
+from core.models.transformation import get_transformation_type_choices
 
 from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def transformation_scenario_payload(request, trans_id):
     """
         View payload for transformation scenario
@@ -36,7 +38,7 @@ def transformation_scenario_payload(request, trans_id):
     if transformation.transformation_type == 'openrefine':
         return HttpResponse(transformation.payload, content_type='text/plain')
 
-
+@login_required
 def create_transformation_scenario(request):
     form = None
     if request.method == "POST":
@@ -52,7 +54,7 @@ def create_transformation_scenario(request):
         'object_name': 'Transformation Scenario'
     })
 
-
+@login_required
 def transformation_scenario(request, ts_id):
     transformation = Transformation.objects.get(pk=int(ts_id))
     form = None
@@ -71,7 +73,7 @@ def transformation_scenario(request, ts_id):
         'object_name': 'Transformation Scenario',
     })
 
-
+@login_required
 def delete_transformation_scenario(request, ts_id):
     try:
         transformation = Transformation.objects.get(pk=int(ts_id))
@@ -80,7 +82,7 @@ def delete_transformation_scenario(request, ts_id):
         pass
     return redirect(reverse('configuration'))
 
-
+@login_required
 def test_transformation_scenario(request):
     """
         View to live test transformation scenarios
@@ -98,11 +100,14 @@ def test_transformation_scenario(request):
         # check for pre-requested transformation scenario
         tsid = request.GET.get('transformation_scenario', None)
 
+        valid_types = get_transformation_type_choices()
+
         # return
         return render(request, 'core/test_transformation_scenario.html', {
             'q': get_q,
             'tsid': tsid,
             'transformation_scenarios': transformation_scenarios,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 
@@ -194,7 +199,7 @@ def test_transformation_scenario(request):
 
         except Exception as err:
             LOGGER.debug(
-                'test transformation scenario was unsucessful, deleting temporary')
+                'test transformation scenario was unsuccessful, deleting temporary')
             try:
                 if request.POST.get('trans_test_type') == 'single':
                     trans.delete()

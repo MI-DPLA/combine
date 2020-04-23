@@ -295,7 +295,7 @@ def stateio_export(request):
         export_name = request.POST.get('export_name', None)
         if export_name == '':
             export_name = None
-        LOGGER.debug('initing export: %s', export_name)
+        LOGGER.debug('initializing export: %s', export_name)
 
         # capture and parse jobs_hierarchy_ids
         jobs_hierarchy_ids = request.POST.getlist('jobs_hierarchy_ids[]')
@@ -469,8 +469,7 @@ def _stateio_prepare_config_scenarios():
     for model_tup in [
             (config_scenarios_dict, ValidationScenario, 'validation_scenarios', 'Validation Scenarios',
              'validations'),
-            (
-                config_scenarios_dict, Transformation, 'transformations', 'Transformation Scenarios',
+            (config_scenarios_dict, Transformation, 'transformations', 'Transformation Scenarios',
                 'transformations'),
             (config_scenarios_dict, OAIEndpoint,
              'oai_endpoints', 'OAI Endpoints', 'oai_endpoints'),
@@ -506,7 +505,7 @@ def stateio_import(request):
         import_name = request.POST.get('import_name', None)
         if import_name == '':
             import_name = None
-        LOGGER.debug('initing import: %s', import_name)
+        LOGGER.debug('initializing import: %s', import_name)
 
         # handle filesystem location
         if request.POST.get('filesystem_location', None) not in ['', None]:

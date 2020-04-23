@@ -1,321 +1,338 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Test Field Mapper</h2>			
-			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#field-mapper-configurations" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
-		</div>
-	</div>
 
-	{% if q and fmid %}
-		<div class="alert alert-success alert-dismissible fade show" role="alert">
-			<strong>Input Record</strong> used for Field Mapping and <strong>Field Mapper configuration</strong> have been automatically loaded, click the "<strong>Test Field Mapper</strong>" button to preview mapping!
-			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-			<span aria-hidden="true">&times;</span>
-			</button>
-		</div>
-	{% endif %}
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Test Field Mapper</h2>
+            <p><a href="http://combine.readthedocs.io/en/dev/configuration.html#field-mapper-configurations"
+                  target="_blank">
+                <button type="button" class="btn btn-outline-info btn-sm">Instructions</button>
+            </a></p>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<!-- All Records DT table -->
-			{% include 'core/records_dt_table.html' %}
-		</div>
-	</div>
+    {% if q and fmid %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Input Record</strong> used for Field Mapping and <strong>Field Mapper configuration</strong> have
+            been automatically loaded, click the "<strong>Test Field Mapper</strong>" button to preview mapping!
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    {% endif %}
 
-	<!-- input paylaod -->
-	<div class="row">
-		<div class="col-md-12">
-			<h3>Field Mapper Configuration JSON</h3>
-			<p>Paste/edit your Field Mapper configuration JSON, or select from a pre-existing Field Mapper to test:</p>
-			
-			<!-- pre-existing FieldMapper -->
-			<div class="row">
-				<div class="col-md-4">
-					<div class="form-group">
-						<label for="field_mapper">Configuration Name</label>
-						<select class="form-control" id="field_mapper" name="field_mapper">
-							<option value="default">Default</option>
-							{% for fm in field_mappers %}
-								<option value='{{ fm.id }}'>{{ fm.name }}</option>
-							{% endfor %}					
-						</select>
-					</div>
-				</div>
-			</div>
+    <div class="row">
+        <div class="col-md-12">
+            <!-- All Records DT table -->
+            {% include 'core/records_dt_table.html' %}
+        </div>
+    </div>
 
-			<!-- Field Mapper configuration JSON -->
-			<div class="row">
-				<div class="col-md-12">
+    <!-- input payload -->
+    <div class="row">
+        <div class="col-md-12">
+            <h3>Field Mapper Configuration JSON</h3>
+            <p>Paste/edit your Field Mapper configuration JSON, or select from a pre-existing Field Mapper to test:</p>
 
-					<div style="display:none;" class="form-group">
-						<label for="fm_config_json">Configuration JSON</label>
-						<textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json" placeholder="">{{ xml2kvp_handle.config_json|safe }}</textarea>
-					</div>
+            <!-- pre-existing FieldMapper -->
+            <div class="row">
+                <div class="col-md-4">
+                    <div class="form-group">
+                        <label for="field_mapper">Configuration Name</label>
+                        <select class="form-control" id="field_mapper" name="field_mapper">
+                            <option value="default">Default</option>
+                            {% for fm in field_mappers %}
+                                <option value='{{ fm.id }}'>{{ fm.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                </div>
+            </div>
 
-					<!-- visible JSON editor -->
-					<div id="jsoneditor" style="height:450px;"></div>
-					
-					<script>
-				        // create the editor
-				        var container = document.getElementById("jsoneditor");
-				        var options = {
-				        	mode: 'code',
-	    					modes: ['code', 'text', 'tree'],
-	    					onChange: function(){
-	    						// update hidden textarea from editor contents
-	    						$("#fm_config_json").val(JSON.stringify(editor.get()));
-	    					},
-	    					sortObjectKeys: true,
-	    					name: 'field_mapping_configuration',
-	    					schema: {{xml2kvp_handle.schema|safe}},
-	    					navigationBar:false
-				        };
-				        var editor = new JSONEditor(container, options);
+            <!-- Field Mapper configuration JSON -->
+            <div class="row">
+                <div class="col-md-12">
 
-				        // set json to editor
-				        editor.set({{ xml2kvp_handle.config_json|safe }});
+                    <div style="display:none;" class="form-group">
+                        <label for="fm_config_json">Configuration JSON</label>
+                        <textarea class="code_style form-control" rows=18 name="fm_config_json" id="fm_config_json"
+                                  placeholder="">{{ xml2kvp_handle.config_json|safe }}</textarea>
+                    </div>
 
-				        // update textarea
-				        $("#fm_config_json").val(JSON.stringify(editor.get()));
-				    </script>
+                    <!-- visible JSON editor -->
+                    <div id="jsoneditor" style="height:450px;"></div>
 
-				    <div class="row" style="margin-top:15px;">
-						<div class="col-md-12">
-							<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_fm_config_options" onclick="save_current_fm_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_config_help').toggle(); return false;">What do these configurations mean?</button></p>
-							<div id="fm_config_alerts"></div>
-							<div id="fm_config_help" style="display:none;">
-								<!-- loop through configurations from schema, creating table of their description -->
-								<table id="jobs_table" class="table table-bordered table-hover">
-									<thead>
-										<tr>
-											<th>Parameter</th>
-											<th>Type</th>
-											<th>Description></th>
-										</tr>
-									</thead>
-									<tbody>
-										{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
-											<tr>
-												<td><code>{{param}}</code></td>
-												<td><code>{{details.type}}</code></td>
-												<td>{{details.description}}</td>
-											</tr>
-										{% endfor %}
-									</tbody>
-								</table>
-							</div>
-						</div>
-					</div>
+                    <script>
+                        // create the editor
+                        var container = document.getElementById("jsoneditor");
+                        var options = {
+                            mode: 'code',
+                            modes: ['code', 'text', 'tree'],
+                            onChange: function () {
+                                // update hidden textarea from editor contents
+                                $("#fm_config_json").val(JSON.stringify(editor.get()));
+                            },
+                            sortObjectKeys: true,
+                            name: 'field_mapping_configuration',
+                            schema: {{xml2kvp_handle.schema|safe}},
+                            navigationBar: false
+                        };
+                        var editor = new JSONEditor(container, options);
 
-				</div>
-			</div>
+                        // set json to editor
+                        editor.set({{ xml2kvp_handle.config_json|safe }});
 
-			<button class="btn btn-success btn-sm" id="test_fm">Test Field Mapper</button>
-		</div>
-	</div>
+                        // update textarea
+                        $("#fm_config_json").val(JSON.stringify(editor.get()));
+                    </script>
 
-	<!-- mapping results -->
-	<div class="row">		
-		<div class="col-md-12">
-			<h4>Mapping Results</h4>
-			<!-- mapping results -->
-			<div id="jsonresults" style="height:450px;"></div>
-			<script>
-		        // create the editor
-		        var container = document.getElementById("jsonresults");
-		        var options = {
-		        	mode: 'view',
-					modes: ['code', 'text', 'view'],
-					sortObjectKeys: true,
-					name: 'xml2kvp_mapping_results',
-					onModeChange: function(nm, om){
-						if (nm == 'view'){
-							$("#jsonresults").css('height','');
-						}
-						else {
-							$("#jsonresults").css('height','450px');	
-						}
-					},					
-					navigationBar:false
-		        };
-		        var editor_results = new JSONEditor(container, options);
+                    <div class="row" style="margin-top:15px;">
+                        <div class="col-md-12">
+                            <p>
+                                <button class="btn btn-outline-success btn-sm"
+                                        onclick="save_current_fm_config_json('new'); return false;">Save as new
+                                    configurations
+                                </button>
+                                <button style="display:none;"
+                                        class="btn btn-outline-warning btn-sm pre_fm_config_options"
+                                        onclick="save_current_fm_config_json('update'); return false;">Update saved
+                                    configurations
+                                </button>
+                                <button style="display:none;"
+                                        class="btn btn-outline-danger btn-sm pre_fm_config_options"
+                                        onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_config_json('delete'); return false;">
+                                    Delete saved configurations
+                                </button>
+                                <button class="btn btn-outline-info btn-sm"
+                                        onclick="$('#fm_config_help').toggle(); return false;">What do these
+                                    configurations mean?
+                                </button>
+                            </p>
+                            <div id="fm_config_alerts"></div>
+                            <div id="fm_config_help" style="display:none;">
+                                <!-- loop through configurations from schema, creating table of their description -->
+                                <table id="jobs_table" class="table table-bordered table-hover">
+                                    <thead>
+                                    <tr>
+                                        <th>Parameter</th>
+                                        <th>Type</th>
+                                        <th>Description></th>
+                                    </tr>
+                                    </thead>
+                                    <tbody>
+                                    {% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+                                        <tr>
+                                            <td><code>{{ param }}</code></td>
+                                            <td><code>{{ details.type }}</code></td>
+                                            <td>{{ details.description }}</td>
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
 
-		        // set json to editor_results
-		        editor_results.set({});		        
-		    </script>
-		</div>
-	</div>
-	
+                </div>
+            </div>
 
-	<script>
+            <button class="btn btn-success btn-sm" id="test_fm">Test Field Mapper</button>
+        </div>
+    </div>
 
-		// global variables
-		var sel_row_id;
+    <!-- mapping results -->
+    <div class="row">
+        <div class="col-md-12">
+            <h4>Mapping Results</h4>
+            <!-- mapping results -->
+            <div id="jsonresults" style="height:450px;"></div>
+            <script>
+                // create the editor
+                var container = document.getElementById("jsonresults");
+                var options = {
+                    mode: 'view',
+                    modes: ['code', 'text', 'view'],
+                    sortObjectKeys: true,
+                    name: 'xml2kvp_mapping_results',
+                    onModeChange: function (nm, om) {
+                        if (nm == 'view') {
+                            $("#jsonresults").css('height', '');
+                        } else {
+                            $("#jsonresults").css('height', '450px');
+                        }
+                    },
+                    navigationBar: false
+                };
+                var editor_results = new JSONEditor(container, options);
 
-		// capture clicked row
-		$(document).ready(function() {
-			$("#datatables_records tbody").on( 'click', 'tr', function () {
+                // set json to editor_results
+                editor_results.set({});
+            </script>
+        </div>
+    </div>
 
-				// loop through and remove other selections
-				$("#datatables_records tbody tr.selected").each(function(i, block){
-					$(block).removeClass('selected');
-				});
 
-				// show selection
-				$(this).toggleClass('selected');
+    <script>
 
-				// get record id
-			    sel_row = $(this).children(":first");
-			    sel_row_id = sel_row.find('code').html()
-			} );
-		});
+        // global variables
+        var sel_row_id;
 
-		// store default fm config json
-		default_fm_config = {{ xml2kvp_handle.config_json|safe }};
+        // capture clicked row
+        $(document).ready(function () {
+            $("#datatables_records tbody").on('click', 'tr', function () {
 
-		// load saved field mapper configs
-		$(document).ready(function(){
-			$("#field_mapper").change(function(){
+                // loop through and remove other selections
+                $("#datatables_records tbody tr.selected").each(function (i, block) {
+                    $(block).removeClass('selected');
+                });
 
-				if (this.value != 'default'){
+                // show selection
+                $(this).toggleClass('selected');
 
-					// get payload
-					$.ajax({
-						type: "GET",
-						url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
-						dataType:'json',
-						success: function(data){							
-							// update editor
-							editor.set(data);
-							// update textarea
-			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
-			        		// show update button
-			        		$(".pre_fm_config_options").show();
-						}			
-					});	
-				}
+                // get record id
+                sel_row = $(this).children(":first");
+                sel_row_id = sel_row.find('code').html()
+            });
+        });
 
-				else {
+        // store default fm config json
+        default_fm_config = {{ xml2kvp_handle.config_json|safe }};
 
-					// update editor
-					editor.set(default_fm_config);
-					// update textarea
-			        $("#fm_config_json").val(JSON.stringify(editor.get()));
-			        // hide update options
-	        		$(".pre_fm_config_options").hide();
-					
-				}
+        // load saved field mapper configs
+        $(document).ready(function () {
+            $("#field_mapper").change(function () {
 
-			})
-		});
+                if (this.value != 'default') {
 
-		$(document).ready(function(){
-			$("#test_fm").click(function(){
+                    // get payload
+                    $.ajax({
+                        type: "GET",
+                        url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+                        dataType: 'json',
+                        success: function (data) {
+                            // update editor
+                            editor.set(data);
+                            // update textarea
+                            $("#fm_config_json").val(JSON.stringify(editor.get()));
+                            // show update button
+                            $(".pre_fm_config_options").show();
+                        }
+                    });
+                } else {
 
-				// change this to dynamically grab from selected rows in records table
-				var db_id = sel_row_id;
-				if (typeof db_id == 'undefined') {
-					alert('Click a row from the table at the top test Field Mapper...');
-				}
+                    // update editor
+                    editor.set(default_fm_config);
+                    // update textarea
+                    $("#fm_config_json").val(JSON.stringify(editor.get()));
+                    // hide update options
+                    $(".pre_fm_config_options").hide();
 
-				// get trans_payload
-				var fm_config_json = $("#fm_config_json").val();
+                }
 
-				// issue ajax request and get transformation results
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_field_mapper' %}",
-					data: {
-						'db_id':db_id,
-						'fm_config_json':fm_config_json,						
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
+            })
+        });
 
-						// update editor_results
-						editor_results.set(data);
-						editor_results.expandAll();
+        $(document).ready(function () {
+            $("#test_fm").click(function () {
 
-					}			
-				});
-			})
-		});
+                // change this to dynamically grab from selected rows in records table
+                var db_id = sel_row_id;
+                if (typeof db_id == 'undefined') {
+                    alert('Click a row from the table at the top test Field Mapper...');
+                }
 
-		// run post records DT table draw specific to transformation testing
-		function run_view_specific_dt_draw(dt){
+                // get trans_payload
+                var fm_config_json = $("#fm_config_json").val();
 
-			// if search term provided AND only one result, select
-			{% if q %}
-				if (dt.api.length == 1){
-					$("tr").click();
-				}
-			{% endif %}
+                // issue ajax request and get transformation results
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'test_field_mapper' %}",
+                    data: {
+                        'db_id': db_id,
+                        'fm_config_json': fm_config_json,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'json',
+                    success: function (data) {
 
-			// if transformation scenario requested, select from dropdown
-			{% if fmid %}
-				$("#field_mapper").val("{{ fmid }}").change();				
-			{% endif %}
-			
-		}
+                        // update editor_results
+                        editor_results.set(data);
+                        editor_results.expandAll();
 
-		// save current config
-		function save_current_fm_config_json(update_type, fm_id=null, fm_name=null){
-			
-			// grab config
-			fm_config_json = $("#fm_config_json").val();
+                    }
+                });
+            })
+        });
 
-			if (update_type == 'new'){
-				// get name of new FieldMapper from user
-				var fm_name = prompt("Save these Field Mapper configurations as:");
-			}
+        // run post records DT table draw specific to transformation testing
+        function run_view_specific_dt_draw(dt) {
 
-			else if (update_type == 'update'){
-				// get current id of FieldMapper selected
-				fm_id = $("#field_mapper").val();
-			}
+            // if search term provided AND only one result, select
+            {% if q %}
+                if (dt.api.length == 1) {
+                    $("tr").click();
+                }
+            {% endif %}
 
-			else if (update_type == 'delete'){
-				// get current id of FieldMapper selected
-				fm_id = $("#field_mapper").val();
-				// switch back to default
-				$("#field_mapper").val('default');
-				$("#field_mapper").change();
-			}
+            // if transformation scenario requested, select from dropdown
+            {% if fmid %}
+                $("#field_mapper").val("{{ fmid }}").change();
+            {% endif %}
 
-			// fire ajax to create/save
-			$.ajax({
-				type: "POST",
-				url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
-				data: {
-					'update_type':update_type,
-					'fm_id':fm_id,
-					'fm_config_json':fm_config_json,
-					'fm_name':fm_name,
-					'csrfmiddlewaretoken': '{{ csrf_token }}'
-				},
-				dataType:'json',
-				success: function(data){
-					
-					// notify user
-					alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+        }
+
+        // save current config
+        function save_current_fm_config_json(update_type, fm_id = null, fm_name = null) {
+
+            // grab config
+            fm_config_json = $("#fm_config_json").val();
+
+            if (update_type == 'new') {
+                // get name of new FieldMapper from user
+                var fm_name = prompt("Save these Field Mapper configurations as:");
+            } else if (update_type == 'update') {
+                // get current id of FieldMapper selected
+                fm_id = $("#field_mapper").val();
+            } else if (update_type == 'delete') {
+                // get current id of FieldMapper selected
+                fm_id = $("#field_mapper").val();
+                // switch back to default
+                $("#field_mapper").val('default');
+                $("#field_mapper").change();
+            }
+
+            // fire ajax to create/save
+            $.ajax({
+                type: "POST",
+                url: "/combine/configuration/field_mapper/update".replace('FM_ID', this.value),
+                data: {
+                    'update_type': update_type,
+                    'fm_id': fm_id,
+                    'fm_config_json': fm_config_json,
+                    'fm_name': fm_name,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                dataType: 'json',
+                success: function (data) {
+
+                    // notify user
+                    alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
 						${data.msg}
 						<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 						<span aria-hidden="true">&times;</span>
 						</button>
 					</div>`
-					$("#fm_config_alerts").append(alert);
-					$(".expiring").fadeTo(2500, 500).fadeOut(500, function(){
-					    $(".expiring").fadeOut(500);
-					});
-				}			
-			});	
-			
-		}
-		
-	</script>
+                    $("#fm_config_alerts").append(alert);
+                    $(".expiring").fadeTo(2500, 500).fadeOut(500, function () {
+                        $(".expiring").fadeOut(500);
+                    });
+                }
+            });
+
+        }
+
+    </script>
 
 {% endblock %}

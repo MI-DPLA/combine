@@ -1,502 +1,523 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Test Transformation Scenario <a href="http://combine.readthedocs.io/en/dev/configuration.html#transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></h2>
-		</div>
-	</div>
-
-	{% if q and tsid %}
-		<div class="alert alert-success alert-dismissible fade show" role="alert">
-			<strong>Input Record</strong> used for Transformation and <strong>Transformation Scenario</strong> have been automatically loaded, click the "<strong>Test Transformation</strong>" button below to run Transformation results!
-			<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-			<span aria-hidden="true">&times;</span>
-			</button>
-		</div>
-	{% endif %}
-
-	<div class="row">
-		<div class="col-md-12">
-			<!-- All Records DT table -->
-			{% include 'core/records_dt_table.html' %}
-		</div>
-	</div>
-
-	<!-- Testing Navigation -->
-	<div class="row">
-		<div class="col-md-12">
-			<ul class="nav nav-tabs">				
-				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#test_single_trans_tab">Test/Edit Single Transformation</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#test_mult_trans_tab">Test Multiple, Ordered Transformations</a>
-				</li>				
-			</ul>
-		</div>
-	</div>
-
-	
-	<!-- Tabbed Content -->
-	<div class="tab-content">
-
-		<!-- test/edit single -->
-		<div id="test_single_trans_tab" class="tab-pane full_width_tab active">
-			
-			<div class="row">
-				<div class="col-md-12">
-					<h3>Test/Edit Single Transformation</h3>
-					<p>Paste/edit the Transformation content in the textbox below, or select from a pre-existing Transformation Scenario to test:</p>
-					
-					<!-- pre-existing Validation Scenario -->
-					<div class="row">
-						<div class="col-md-4">
-							<div class="form-group">
-								<label for="trans_exists">Select a pre-existing Validation Scenario</label>
-								<select id="trans_exists" class="form-control">
-									<option value=''></option>
-									{% for trans in transformation_scenarios %}
-										<option value="{{trans.id}}|{{trans.transformation_type}}">{{trans.name}}</option>
-									{% endfor %}
-								</select>
-							</div>
-						</div>
-					</div>
-
-					<!-- Validation Scenario payload -->
-					<div class="row">
-						<div class="col-md-12">
-							<div class="form-group">				
-								<textarea id="trans_payload" class="form-control" rows="15"></textarea>
-							</div>
-						</div>
-					</div>
-
-					<!-- Validation Scenario type -->
-					<div class="row">
-						<div class="col-md-4">
-							<div class="form-group">
-								<label for="trans_type">Select Transformation Scenario type</label>
-								<select id="trans_type" class="form-control">
-									<option value=''></option>
-									<option value="xslt">XSLT</option>
-									<option value="python">Python code</option>
-									<option value="openrefine">OpenRefine Actions</option>
-								</select>
-							</div>
-						</div>
-					</div>
-					
-					<button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
-				</div>
-			</div>
-
-			<script>				
-
-				// capture pre-existing validation scenarios and paste
-				$(document).ready(function(){
-					$("#trans_exists").change(function(){
-
-						if (this.value != ''){
-
-							// get trans info
-							var trans_info = this.value.split('|');
-
-							// update validation dropdown type
-							$("#trans_type").val(trans_info[1]);
-
-							// get payload
-							$.ajax({
-								type: "GET",
-								url: "/combine/configuration/transformation/TRANS_ID/payload".replace('TRANS_ID', trans_info[0]),
-								dataType:'text',
-								success: function(data){
-									$("#trans_payload").val(data);
-								}			
-							});	
-						}
-
-						else {
-							
-							// clear validation dropdown type
-							$("#trans_type").val(this.value);
-
-							// clear payload box
-							$("#trans_payload").val('');
-						}
-
-					})
-				});
-
-				$(document).ready(function(){
-					$("#test_trans").click(function(){				
-
-						// change this to dynamically grab from selected rows in records table
-						var db_id = sel_row_id;
-						if (typeof db_id == 'undefined') {
-							alert('Click a row from the table at the top to run a Transformation Test against...');
-							return false;
-						}
-
-						// get trans_payload
-						var trans_payload = $("#trans_payload").val();
-
-						// get trans_type
-						var trans_type = $("#trans_type").val();
-
-						// issue ajax request and get transformation results
-						$.ajax({
-							type: "POST",
-							url: "{% url 'test_transformation_scenario' %}",
-							data: {
-								'db_id':db_id,
-								'trans_payload':trans_payload,
-								'trans_type':trans_type,
-								'trans_name':'temp_trans',
-								'response_type':'transformed_doc',
-								'trans_test_type':'single',
-								'csrfmiddlewaretoken': '{{ csrf_token }}'
-							},
-							dataType:'text',
-							success: function(data){
-
-								// add raw data to div
-								$("#trans_results").html(escapeHtmlEntities(data));
-
-								// init hljs						
-								$("#trans_results").each(function(i, block) {
-									hljs.highlightBlock(block);
-								});
-							}			
-						});
-
-						// issue ajax request and get combined diff
-						$.ajax({
-							type: "POST",
-							url: "{% url 'test_transformation_scenario' %}",
-							data: {
-								'db_id':db_id,
-								'trans_payload':trans_payload,
-								'trans_type':trans_type,
-								'trans_name':'temp_trans',
-								'response_type':'combined_html',
-								'trans_test_type':'single',
-								'csrfmiddlewaretoken': '{{ csrf_token }}'
-							},
-							dataType:'text',
-							success: function(data){
-								// add raw data to div
-								$("#combined_diff_results").html(data);
-							}			
-						});
-
-						// issue ajax request and get side_by_side diff
-						$.ajax({
-							type: "POST",
-							url: "{% url 'test_transformation_scenario' %}",
-							data: {
-								'db_id':db_id,
-								'trans_payload':trans_payload,
-								'trans_type':trans_type,
-								'trans_name':'temp_trans',
-								'response_type':'side_by_side_html',
-								'trans_test_type':'single',
-								'csrfmiddlewaretoken': '{{ csrf_token }}'
-							},
-							dataType:'text',
-							success: function(data){
-								// add raw data to div
-								$("#side_by_side_diff_results").html(data);
-							}			
-						});
-
-						// https://stackoverflow.com/a/10825766/1196358
-						function escapeHtmlEntities (str) {
-						  // No jQuery, so use string replace.
-						  return str
-						    .replace(/&/g, '&amp;')
-						    .replace(/>/g, '&gt;')
-						    .replace(/</g, '&lt;')
-						    .replace(/"/g, '&quot;');
-						}
-
-					})
-				});
-				
-			</script>
-		</div>
-
-		<!-- test/edit single -->
-		<div id="test_mult_trans_tab" class="tab-pane full_width_tab">
-			
-			<div class="row">
-				<div class="col-md-12">
-					<h3>Test Multiple Transformations</h3>
-
-					<!-- multiple, sortable transformations -->					
-					<div class="row">
-						<div class="col-md-12">							
-							<p>Use the tables below to select, and order, Transformation Scenarios that will be applied.</p>
-							<ol>
-								<li>First, <strong>drag</strong> desired Transformations from the table on the left to the table on the right.</li>
-								<li>Second, confirm the <strong>order</strong> of the selected Transformations in which they should be chained together and applied.</li>
-							</ol>
-
-						</div>
-					</div>
-					<div class="row">
-
-						<div class="col-md-6">
-							<h6>Available Transformations</h6>
-							<ul class="draggable_ul available_transforms">
-								{% for transformation in transformation_scenarios %}
-									<li data-trans_id={{transformation.id}} ><button class="draggable_button btn-outline-primary btn-sm">{{transformation.name}}</button></li>									
-								{% endfor %}
-							</ul>
-						</div>
-
-						<div class="col-md-6">
-							<h6>Selected Transformations</h6>
-							<ul class="draggable_ul selected_transforms">
-							</ul>
-						</div>
-
-					</div>
-
-					<div class="row">
-						<div class="col-md-12">
-							<p><button class="btn btn-success btn-sm" id="test_mult_trans">Test Transformations</button></p>
-						</div>
-					</div>
-
-					<script>
-
-						// init available transforms
-						var available = sortable('.available_transforms', {								
-							acceptFrom: ".selected_transforms, .available_transforms",								
-							items:'li',
-							forcePlaceholderSize: true,
-							placeholderClass: 'ph-class', 								
-						});
-
-						// init selected transforms
-						var selected = sortable('.selected_transforms', {								
-							acceptFrom: ".available_transforms, .selected_transforms",								
-							items:'li',
-							forcePlaceholderSize: true,
-							placeholderClass: 'ph-class', 
-						});
-
-						
-						function ser_sel_trans(){
-
-							/*
-							Function to serialize and capture ordered transformation ids									
-
-							Args:
-								None
-
-							Returns:
-								(JSON): prepares JSON of selected transformations with index and trans_id
-
-							*/
-
-							sel_trans_obj = [];
-
-							// serialize 
-							sel_trans = sortable('.selected_transforms', 'serialize')[0];
-
-							// loop
-							for (var i = 0; i < sel_trans.items.length; i++) {
-								trans = sel_trans.items[i];
-								sel_trans_obj.push({
-									'index':trans.index,
-									'trans_id':parseInt(trans.node.attributes['data-trans_id'].value)
-								})									
-							}							
-
-							// return
-							return sel_trans_obj;
-
-						}
-
-						$(document).ready(function(){
-							$("#test_mult_trans").click(function(){				
-
-								// change this to dynamically grab from selected rows in records table
-								var db_id = sel_row_id;
-								if (typeof db_id == 'undefined') {
-									alert('Click a row from the table at the top to run a Transformation Test against...');
-									return false;
-								}
-
-								// serialize transformation selections
-								sel_trans_obj = ser_sel_trans();								
-								sel_trans_json = JSON.stringify(sel_trans_obj)								
-
-								// issue ajax request and get transformation results
-								$.ajax({
-									type: "POST",
-									url: "{% url 'test_transformation_scenario' %}",
-									data: {
-										'db_id':db_id,
-										'sel_trans_json':sel_trans_json,
-										'response_type':'transformed_doc',
-										'trans_test_type':'multiple',
-										'csrfmiddlewaretoken': '{{ csrf_token }}'
-									},
-									dataType:'text',
-									success: function(data){
-
-										// add raw data to div
-										$("#trans_results").html(escapeHtmlEntities(data));
-
-										// init hljs						
-										$("#trans_results").each(function(i, block) {
-											hljs.highlightBlock(block);
-										});
-									}			
-								});
-
-								// issue ajax request and get combined diff
-								$.ajax({
-									type: "POST",
-									url: "{% url 'test_transformation_scenario' %}",
-									data: {
-										'db_id':db_id,
-										'sel_trans_json':sel_trans_json,
-										'response_type':'combined_html',
-										'trans_test_type':'multiple',
-										'csrfmiddlewaretoken': '{{ csrf_token }}'
-									},
-									dataType:'text',
-									success: function(data){
-										// add raw data to div
-										$("#combined_diff_results").html(data);
-									}			
-								});
-
-								// issue ajax request and get side_by_side diff
-								$.ajax({
-									type: "POST",
-									url: "{% url 'test_transformation_scenario' %}",
-									data: {
-										'db_id':db_id,
-										'sel_trans_json':sel_trans_json,
-										'response_type':'side_by_side_html',
-										'trans_test_type':'multiple',
-										'csrfmiddlewaretoken': '{{ csrf_token }}'
-									},
-									dataType:'text',
-									success: function(data){
-										// add raw data to div
-										$("#side_by_side_diff_results").html(data);
-									}			
-								});
-
-								// https://stackoverflow.com/a/10825766/1196358
-								function escapeHtmlEntities (str) {
-								  // No jQuery, so use string replace.
-								  return str
-								    .replace(/&/g, '&amp;')
-								    .replace(/>/g, '&gt;')
-								    .replace(/</g, '&lt;')
-								    .replace(/"/g, '&quot;');
-								}
-
-							})
-						});
-
-					</script>
-				</div>
-			</div>
-		</div>
-
-	</div>
-
-	<!-- validation results -->
-	<div class="row">		
-		<div class="col-md-12">
-			<h4>Transformation Results</h4>
-			<ul class="nav nav-tabs">				
-				<li class="nav-item">
-					<a class="nav-link active" data-toggle="tab" href="#raw_transform">Transformed XML</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#combined_diff">Combined Diff</a>
-				</li>
-				<li class="nav-item">
-					<a class="nav-link" data-toggle="tab" href="#side_by_side_diff">Side-by-Side Comparison</a>
-				</li>
-			</ul>
-		</div>
-	</div>
-	<div class="row">		
-		<div class="col-md-12">
-
-			<div class="tab-content">
-
-				<div id="raw_transform" class="tab-pane full_width_tab active">
-					<div>
-						<pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Transformed document will show here...</code></pre>
-					</div>
-				</div>
-
-				<div id="combined_diff" class="tab-pane full_width_tab">
-					<div id="combined_diff_results"></div>
-				</div>
-
-				<div id="side_by_side_diff" class="tab-pane full_width_tab">
-					<div id="side_by_side_diff_results"></div>
-				</div>
-
-			</div>
-
-		</div>
-	</div>
-
-	<script>
-
-		// global variables
-		var sel_row_id;
-
-		// capture clicked row
-		$(document).ready(function() {
-			$("#datatables_records tbody").on( 'click', 'tr', function () {
-
-				// loop through and remove other selections
-				$("#datatables_records tbody tr.selected").each(function(i, block){
-					$(block).removeClass('selected');
-				});
-
-				// show selection
-				$(this).toggleClass('selected');
-
-				// get record id
-			    sel_row = $(this).children(":first");
-			    sel_row_id = sel_row.find('code').html()
-			} );
-		});
-
-		// run post records DT table draw specific to transformation testing
-		function run_view_specific_dt_draw(dt){
-
-			// if search term provided AND only one result, select
-			{% if q %}
-				if (dt.api.length == 1){
-					$("tr").click();
-				}
-			{% endif %}
-
-			// if transformation scenario requested, select from dropdown
-			{% if tsid %}
-				$("#trans_exists").val("{{ tsid }}").change();				
-			{% endif %}
-			
-		}
-
-	</script>
+
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Test Transformation Scenario <a
+                    href="http://combine.readthedocs.io/en/dev/configuration.html#transformation-scenario"
+                    target="_blank">
+                <button type="button" class="btn btn-outline-info btn-sm">Instructions</button>
+            </a></h2>
+        </div>
+    </div>
+
+    {% if q and tsid %}
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <strong>Input Record</strong> used for Transformation and <strong>Transformation Scenario</strong> have been
+            automatically loaded, click the "<strong>Test Transformation</strong>" button below to run Transformation
+            results!
+            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+            </button>
+        </div>
+    {% endif %}
+
+    <div class="row">
+        <div class="col-md-12">
+            <!-- All Records DT table -->
+            {% include 'core/records_dt_table.html' %}
+        </div>
+    </div>
+
+    <!-- Testing Navigation -->
+    <div class="row">
+        <div class="col-md-12">
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#test_single_trans_tab">Test/Edit Single
+                        Transformation</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#test_mult_trans_tab">Test Multiple, Ordered
+                        Transformations</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+
+    <!-- Tabbed Content -->
+    <div class="tab-content">
+
+        <!-- test/edit single -->
+        <div id="test_single_trans_tab" class="tab-pane full_width_tab active">
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h3>Test/Edit Single Transformation</h3>
+                    <p>Paste/edit the Transformation content in the textbox below, or select from a pre-existing
+                        Transformation Scenario to test:</p>
+
+                    <!-- pre-existing Transformation Scenario -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="trans_exists">Select a pre-existing Transformation Scenario</label>
+                                <select id="trans_exists" class="form-control">
+                                    <option value=''></option>
+                                    {% for trans in transformation_scenarios %}
+                                        <option value="{{ trans.id }}|{{ trans.transformation_type }}">{{ trans.name }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transformation Scenario payload -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <div class="form-group">
+                                <textarea id="trans_payload" class="form-control" rows="15"></textarea>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Transformation Scenario type -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="trans_type">Select Transformation Scenario type</label>
+                                <select id="trans_type" class="form-control">
+                                    <option value=''></option>
+                                    {% for value, label in valid_types %}
+                                        <option value="{{ value }}">{{ label }}</option>
+                                    {% endfor %}
+                                </select>
+                                <small class="form-text text-muted">If you want to use python code and it is not
+                                    available, ask your server administrator to set ENABLE_PYTHON=true in the server
+                                    settings file.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button class="btn btn-success btn-sm" id="test_trans">Test Transformation</button>
+                </div>
+            </div>
+
+            <script>
+
+                // capture pre-existing validation scenarios and paste
+                $(document).ready(function () {
+                    $("#trans_exists").change(function () {
+
+                        if (this.value != '') {
+
+                            // get trans info
+                            var trans_info = this.value.split('|');
+
+                            // update validation dropdown type
+                            $("#trans_type").val(trans_info[1]);
+
+                            // get payload
+                            $.ajax({
+                                type: "GET",
+                                url: "/combine/configuration/transformation/TRANS_ID/payload".replace('TRANS_ID', trans_info[0]),
+                                dataType: 'text',
+                                success: function (data) {
+                                    $("#trans_payload").val(data);
+                                }
+                            });
+                        } else {
+
+                            // clear validation dropdown type
+                            $("#trans_type").val(this.value);
+
+                            // clear payload box
+                            $("#trans_payload").val('');
+                        }
+
+                    })
+                });
+
+                $(document).ready(function () {
+                    $("#test_trans").click(function () {
+
+                        // change this to dynamically grab from selected rows in records table
+                        var db_id = sel_row_id;
+                        if (typeof db_id == 'undefined') {
+                            alert('Click a row from the table at the top to run a Transformation Test against...');
+                            return false;
+                        }
+
+                        // get trans_payload
+                        var trans_payload = $("#trans_payload").val();
+
+                        // get trans_type
+                        var trans_type = $("#trans_type").val();
+
+                        // issue ajax request and get transformation results
+                        $.ajax({
+                            type: "POST",
+                            url: "{% url 'test_transformation_scenario' %}",
+                            data: {
+                                'db_id': db_id,
+                                'trans_payload': trans_payload,
+                                'trans_type': trans_type,
+                                'trans_name': 'temp_trans',
+                                'response_type': 'transformed_doc',
+                                'trans_test_type': 'single',
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            },
+                            dataType: 'text',
+                            success: function (data) {
+
+                                // add raw data to div
+                                $("#trans_results").html(escapeHtmlEntities(data));
+
+                                // init hljs
+                                $("#trans_results").each(function (i, block) {
+                                    hljs.highlightBlock(block);
+                                });
+                            }
+                        });
+
+                        // issue ajax request and get combined diff
+                        $.ajax({
+                            type: "POST",
+                            url: "{% url 'test_transformation_scenario' %}",
+                            data: {
+                                'db_id': db_id,
+                                'trans_payload': trans_payload,
+                                'trans_type': trans_type,
+                                'trans_name': 'temp_trans',
+                                'response_type': 'combined_html',
+                                'trans_test_type': 'single',
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            },
+                            dataType: 'text',
+                            success: function (data) {
+                                // add raw data to div
+                                $("#combined_diff_results").html(data);
+                            }
+                        });
+
+                        // issue ajax request and get side_by_side diff
+                        $.ajax({
+                            type: "POST",
+                            url: "{% url 'test_transformation_scenario' %}",
+                            data: {
+                                'db_id': db_id,
+                                'trans_payload': trans_payload,
+                                'trans_type': trans_type,
+                                'trans_name': 'temp_trans',
+                                'response_type': 'side_by_side_html',
+                                'trans_test_type': 'single',
+                                'csrfmiddlewaretoken': '{{ csrf_token }}'
+                            },
+                            dataType: 'text',
+                            success: function (data) {
+                                // add raw data to div
+                                $("#side_by_side_diff_results").html(data);
+                            }
+                        });
+
+                        // https://stackoverflow.com/a/10825766/1196358
+                        function escapeHtmlEntities(str) {
+                            // No jQuery, so use string replace.
+                            return str
+                                .replace(/&/g, '&amp;')
+                                .replace(/>/g, '&gt;')
+                                .replace(/</g, '&lt;')
+                                .replace(/"/g, '&quot;');
+                        }
+
+                    })
+                });
+
+            </script>
+        </div>
+
+        <!-- test/edit single -->
+        <div id="test_mult_trans_tab" class="tab-pane full_width_tab">
+
+            <div class="row">
+                <div class="col-md-12">
+                    <h3>Test Multiple Transformations</h3>
+
+                    <!-- multiple, sortable transformations -->
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>Use the tables below to select, and order, Transformation Scenarios that will be
+                                applied.</p>
+                            <ol>
+                                <li>First, <strong>drag</strong> desired Transformations from the table on the left to
+                                    the table on the right.
+                                </li>
+                                <li>Second, confirm the <strong>order</strong> of the selected Transformations in which
+                                    they should be chained together and applied.
+                                </li>
+                            </ol>
+
+                        </div>
+                    </div>
+                    <div class="row">
+
+                        <div class="col-md-6">
+                            <h6>Available Transformations</h6>
+                            <ul class="draggable_ul available_transforms">
+                                {% for transformation in transformation_scenarios %}
+                                    <li data-trans_id={{ transformation.id }}>
+                                        <button class="draggable_button btn-outline-primary btn-sm">{{ transformation.name }}</button>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6>Selected Transformations</h6>
+                            <ul class="draggable_ul selected_transforms">
+                            </ul>
+                        </div>
+
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12">
+                            <p>
+                                <button class="btn btn-success btn-sm" id="test_mult_trans">Test Transformations
+                                </button>
+                            </p>
+                        </div>
+                    </div>
+
+                    <script>
+
+                        // init available transforms
+                        var available = sortable('.available_transforms', {
+                            acceptFrom: ".selected_transforms, .available_transforms",
+                            items: 'li',
+                            forcePlaceholderSize: true,
+                            placeholderClass: 'ph-class',
+                        });
+
+                        // init selected transforms
+                        var selected = sortable('.selected_transforms', {
+                            acceptFrom: ".available_transforms, .selected_transforms",
+                            items: 'li',
+                            forcePlaceholderSize: true,
+                            placeholderClass: 'ph-class',
+                        });
+
+
+                        function ser_sel_trans() {
+
+                            /*
+                            Function to serialize and capture ordered transformation ids
+
+                            Args:
+                                None
+
+                            Returns:
+                                (JSON): prepares JSON of selected transformations with index and trans_id
+
+                            */
+
+                            sel_trans_obj = [];
+
+                            // serialize
+                            sel_trans = sortable('.selected_transforms', 'serialize')[0];
+
+                            // loop
+                            for (var i = 0; i < sel_trans.items.length; i++) {
+                                trans = sel_trans.items[i];
+                                sel_trans_obj.push({
+                                    'index': trans.index,
+                                    'trans_id': parseInt(trans.node.attributes['data-trans_id'].value)
+                                })
+                            }
+
+                            // return
+                            return sel_trans_obj;
+
+                        }
+
+                        $(document).ready(function () {
+                            $("#test_mult_trans").click(function () {
+
+                                // change this to dynamically grab from selected rows in records table
+                                var db_id = sel_row_id;
+                                if (typeof db_id == 'undefined') {
+                                    alert('Click a row from the table at the top to run a Transformation Test against...');
+                                    return false;
+                                }
+
+                                // serialize transformation selections
+                                sel_trans_obj = ser_sel_trans();
+                                sel_trans_json = JSON.stringify(sel_trans_obj)
+
+                                // issue ajax request and get transformation results
+                                $.ajax({
+                                    type: "POST",
+                                    url: "{% url 'test_transformation_scenario' %}",
+                                    data: {
+                                        'db_id': db_id,
+                                        'sel_trans_json': sel_trans_json,
+                                        'response_type': 'transformed_doc',
+                                        'trans_test_type': 'multiple',
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                    },
+                                    dataType: 'text',
+                                    success: function (data) {
+
+                                        // add raw data to div
+                                        $("#trans_results").html(escapeHtmlEntities(data));
+
+                                        // init hljs
+                                        $("#trans_results").each(function (i, block) {
+                                            hljs.highlightBlock(block);
+                                        });
+                                    }
+                                });
+
+                                // issue ajax request and get combined diff
+                                $.ajax({
+                                    type: "POST",
+                                    url: "{% url 'test_transformation_scenario' %}",
+                                    data: {
+                                        'db_id': db_id,
+                                        'sel_trans_json': sel_trans_json,
+                                        'response_type': 'combined_html',
+                                        'trans_test_type': 'multiple',
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                    },
+                                    dataType: 'text',
+                                    success: function (data) {
+                                        // add raw data to div
+                                        $("#combined_diff_results").html(data);
+                                    }
+                                });
+
+                                // issue ajax request and get side_by_side diff
+                                $.ajax({
+                                    type: "POST",
+                                    url: "{% url 'test_transformation_scenario' %}",
+                                    data: {
+                                        'db_id': db_id,
+                                        'sel_trans_json': sel_trans_json,
+                                        'response_type': 'side_by_side_html',
+                                        'trans_test_type': 'multiple',
+                                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                                    },
+                                    dataType: 'text',
+                                    success: function (data) {
+                                        // add raw data to div
+                                        $("#side_by_side_diff_results").html(data);
+                                    }
+                                });
+
+                                // https://stackoverflow.com/a/10825766/1196358
+                                function escapeHtmlEntities(str) {
+                                    // No jQuery, so use string replace.
+                                    return str
+                                        .replace(/&/g, '&amp;')
+                                        .replace(/>/g, '&gt;')
+                                        .replace(/</g, '&lt;')
+                                        .replace(/"/g, '&quot;');
+                                }
+
+                            })
+                        });
+
+                    </script>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- validation results -->
+    <div class="row">
+        <div class="col-md-12">
+            <h4>Transformation Results</h4>
+            <ul class="nav nav-tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-toggle="tab" href="#raw_transform">Transformed XML</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#combined_diff">Combined Diff</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-toggle="tab" href="#side_by_side_diff">Side-by-Side Comparison</a>
+                </li>
+            </ul>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-12">
+
+            <div class="tab-content">
+
+                <div id="raw_transform" class="tab-pane full_width_tab active">
+                    <div>
+                        <pre><code id="trans_results" style="padding:10px; border-radius:10px;" class="xml">Transformed document will show here...</code></pre>
+                    </div>
+                </div>
+
+                <div id="combined_diff" class="tab-pane full_width_tab">
+                    <div id="combined_diff_results"></div>
+                </div>
+
+                <div id="side_by_side_diff" class="tab-pane full_width_tab">
+                    <div id="side_by_side_diff_results"></div>
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+
+        // global variables
+        var sel_row_id;
+
+        // capture clicked row
+        $(document).ready(function () {
+            $("#datatables_records tbody").on('click', 'tr', function () {
+
+                // loop through and remove other selections
+                $("#datatables_records tbody tr.selected").each(function (i, block) {
+                    $(block).removeClass('selected');
+                });
+
+                // show selection
+                $(this).toggleClass('selected');
+
+                // get record id
+                sel_row = $(this).children(":first");
+                sel_row_id = sel_row.find('code').html()
+            });
+        });
+
+        // run post records DT table draw specific to transformation testing
+        function run_view_specific_dt_draw(dt) {
+
+            // if search term provided AND only one result, select
+            {% if q %}
+                if (dt.api.length == 1) {
+                    $("tr").click();
+                }
+            {% endif %}
+
+            // if transformation scenario requested, select from dropdown
+            {% if tsid %}
+                $("#trans_exists").val("{{ tsid }}").change();
+            {% endif %}
+
+        }
+
+    </script>
 
 {% endblock %}

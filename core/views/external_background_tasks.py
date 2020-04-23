@@ -44,14 +44,12 @@ def system(request):
         livy_sessions = livy_session
 
     # get status of background jobs
-    if not hasattr(settings, 'COMBINE_DEPLOYMENT') or settings.COMBINE_DEPLOYMENT != 'docker':
-        try:
-            supervisor = SupervisorRPCClient()
-            bgtasks_proc = supervisor.check_process('celery')
-        except:
-            LOGGER.debug('supervisor might be down?')
-            bgtasks_proc = None
-    else:
+    try:
+        supervisor = SupervisorRPCClient()
+        bgtasks_proc = supervisor.check_process('celery')
+        LOGGER.debug(bgtasks_proc)
+    except:
+        LOGGER.debug('supervisor might be down?')
         bgtasks_proc = None
 
     # get celery worker status
@@ -69,6 +67,7 @@ def system(request):
 
     # return
     return render(request, 'core/system.html', {
+        'livy_ui_home': settings.LIVY_UI_HOME,
         'livy_session': livy_session,
         'livy_sessions': livy_sessions,
         'celery_status': celery_status,
@@ -148,7 +147,7 @@ def bgtasks_proc_stderr_log(request):
     # redirect
     return HttpResponse(log_tail, content_type='text/plain')
 
-
+@login_required
 def system_bg_status(request):
     """
     View to return status on:
@@ -170,7 +169,7 @@ def system_bg_status(request):
     # get celery worker status
     active_tasks = celery_app.control.inspect().active()
 
-    # if None, assume celery app stopeed
+    # if None, assume celery app stopped
     if active_tasks is None:
         celery_status = 'stopped'
 

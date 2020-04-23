@@ -4,8 +4,8 @@ backports.shutil-get-terminal-size==1.0.0
 blinker==1.4
 boto3
 bs4==0.0.1
-redis==3.2.1
-celery==4.3.0
+redis==3.3.11
+celery==4.4.0rc2
 certifi==2017.7.27.1
 chardet==3.0.4
 cloudpickle==0.4.0
@@ -30,6 +30,7 @@ ipython==6.1.0
 ipython-genutils==0.2.0
 jedi==0.10.2
 jsonschema==2.6.0
+kombu==4.6.3
 livy==0.3.0
 lxml==4.3.3
 mongoengine==0.15.3

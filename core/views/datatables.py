@@ -60,7 +60,7 @@ class DTPublishedJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get PublishedRecords instance
         pub_records = PublishedRecords(subset=self.kwargs.get('subset', None))
@@ -127,7 +127,7 @@ class DTPublishedJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search) |
                                mongoengine.Q(publish_set_id=search))
@@ -175,12 +175,12 @@ class DTRecordsJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # if job present, filter by job
         if 'job_id' in self.kwargs.keys():
 
-            # get jobself.kwargs['job_id']
+            # get job self.kwargs['job_id']
             job = Job.objects.get(pk=self.kwargs['job_id'])
 
             # return filtered queryset
@@ -191,7 +191,9 @@ class DTRecordsJson(BaseDatatableView):
             return job.get_records(success=success_filter)
 
         # else, return all records
-        return Record.objects
+        job_ids = list(map(lambda j: j.id, Job.objects.all()))
+        records = Record.objects.filter(job_id__in=job_ids)
+        return records
 
     def render_column(self, row, column):
 
@@ -199,7 +201,8 @@ class DTRecordsJson(BaseDatatableView):
         record_link = reverse(record, kwargs={
             'org_id': row.job.record_group.organization.id,
             'record_group_id': row.job.record_group.id,
-            'job_id': row.job.id, 'record_id': str(row.id)
+            'job_id': row.job.id,
+            'record_id': str(row.id)
         })
 
         # handle db_id
@@ -257,7 +260,7 @@ class DTRecordsJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 
@@ -267,7 +270,7 @@ class DTRecordsJson(BaseDatatableView):
 
 class DTIndexingFailuresJson(BaseDatatableView):
     """
-                Databales JSON response for Indexing Failures
+                Datatables JSON response for Indexing Failures
                 """
 
     # define the columns that will be returned
@@ -282,7 +285,7 @@ class DTIndexingFailuresJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -345,7 +348,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job_validation = JobValidation.objects.get(
@@ -397,7 +400,7 @@ class DTJobValidationScenarioFailuresJson(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(record_id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
         # return
         return qs
 
@@ -429,7 +432,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job and records
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -478,7 +481,7 @@ class DTDPLABulkDataMatches(BaseDatatableView):
                     oid = ObjectId(search)
                     qs = qs.filter(mongoengine.Q(id=oid))
                 except:
-                    LOGGER.debug('recieved 24 chars, but not ObjectId')
+                    LOGGER.debug('received 24 chars, but not ObjectId')
             else:
                 qs = qs.filter(mongoengine.Q(record_id=search))
 
@@ -513,7 +516,7 @@ class JobRecordDiffs(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
 
         # get job
         job = Job.objects.get(pk=self.kwargs['job_id'])
@@ -594,7 +597,7 @@ class CombineBackgroundTasksDT(BaseDatatableView):
 
     def get_initial_queryset(self):
 
-        # return queryset used as base for futher sorting/filtering
+        # return queryset used as base for further sorting/filtering
         return CombineBackgroundTask.objects
 
     def render_column(self, row, column):
@@ -608,9 +611,12 @@ class CombineBackgroundTasksDT(BaseDatatableView):
         if column == 'completed':
             if row.completed:
                 if row.celery_status in ['STOPPED', 'REVOKED']:
-                    return "<span class='text-danger'>%s</span>" % row.celery_status
-                return "<span class='text-success'>%s</span>" % row.celery_status
-            return "<span class='text-warning'>%s</span>" % row.celery_status
+                    row_color = 'danger'
+                else:
+                    row_color = 'success'
+            else:
+                row_color = 'warning'
+            return '''<div class="progress progress-bar bg-{}" role="progressbar" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100" style="width: 100%">{}</div>'''.format(row_color, row.celery_status)
 
         if column == 'duration':
             return row.calc_elapsed_as_string()

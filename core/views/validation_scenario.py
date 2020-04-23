@@ -2,19 +2,20 @@ import logging
 import uuid
 
 from django.core.exceptions import ObjectDoesNotExist
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse, JsonResponse
 from django.forms.models import model_to_dict
 from django.shortcuts import render, redirect
 from django.urls import reverse
 
-from core.models import ValidationScenario, Record
+from core.models import ValidationScenario, Record, get_validation_scenario_choices
 from core.forms import ValidationScenarioForm
 
 from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def validation_scenario_payload(request, vs_id):
     """
         View payload for validation scenario
@@ -29,7 +30,7 @@ def validation_scenario_payload(request, vs_id):
 
     return HttpResponse(scenario.payload, content_type='text/plain')
 
-
+@login_required
 def create_validation_scenario(request):
     # TODO: do we care about deduplicating validation scenarios?
     form = None
@@ -46,7 +47,7 @@ def create_validation_scenario(request):
         'object_name': 'Validation Scenario',
     })
 
-
+@login_required
 def validation_scenario(request, vs_id):
     scenario = ValidationScenario.objects.get(pk=int(vs_id))
     form = None
@@ -65,7 +66,7 @@ def validation_scenario(request, vs_id):
         'object_name': 'Validation Scenario',
     })
 
-
+@login_required
 def delete_validation_scenario(request, vs_id):
     try:
         scenario = ValidationScenario.objects.get(pk=int(vs_id))
@@ -74,7 +75,7 @@ def delete_validation_scenario(request, vs_id):
         pass
     return redirect(reverse('configuration'))
 
-
+@login_required
 def test_validation_scenario(request):
     """
         View to live test validation scenario
@@ -91,11 +92,14 @@ def test_validation_scenario(request):
         # check for pre-requested transformation scenario
         vsid = request.GET.get('validation_scenario', None)
 
+        valid_types = get_validation_scenario_choices()
+
         # return
         return render(request, 'core/test_validation_scenario.html', {
             'q': get_q,
             'vsid': vsid,
             'validation_scenarios': validation_scenarios,
+            'valid_types': valid_types,
             'breadcrumbs': breadcrumb_parser(request)
         })
 

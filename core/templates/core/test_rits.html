@@ -1,261 +1,277 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-	
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Test Record Identifier Transformation Scenario</h2>			
-			<p><a href="http://combine.readthedocs.io/en/dev/configuration.html#record-identifier-transformation-scenario" target="_blank"><button type="button" class="btn btn-outline-info btn-sm">Instructions</button></a></p>
-		</div>
-	</div>
 
-	<div class="row">
-		<div class="col-md-12">
-			<!-- All Records DT table -->
-			{% include 'core/records_dt_table.html' %}
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Test Record Identifier Transformation Scenario</h2>
+            <p>
+                <a href="http://combine.readthedocs.io/en/dev/configuration.html#record-identifier-transformation-scenario"
+                   target="_blank">
+                    <button type="button" class="btn btn-outline-info btn-sm">Instructions</button>
+                </a></p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12">
+            <!-- All Records DT table -->
+            {% include 'core/records_dt_table.html' %}
+        </div>
+    </div>
 
 
-	<!-- input paylaod -->
-	<div class="row">
-		<div class="col-md-6">			
-			
-			<div class="row">
-				<div class="col-md-12">
-					<div class="form-group">
-						<label for="rt_exists">Optionally, select a pre-existing Record Identifier Transformation Scenario</label>
-						<select id="rt_exists" class="form-control">
-							<option value=''>Select a pre-existing scenario...</option>
-							{% for rt in rits %}
-								<option value="{{rt.id}}">{{rt.name}}</option>
-							{% endfor %}
-						</select>
-					</div>
+    <!-- input payload -->
+    <div class="row">
+        <div class="col-md-6">
 
-					<div class="form-group">
-						<label for="record_id_transform_target">Select what will be used as input for the transformation process</label>
-						<select class="form-control" id="record_id_transform_target" name="record_id_transform_target">
-							<option value=''>Select one...</option>
-							<option value='record_id'>Record's identifier</option>
-							<option value='document'>Record's XML document</option>
-						</select>
-					</div>
+            <div class="row">
+                <div class="col-md-12">
+                    <div class="form-group">
+                        <label for="rt_exists">Optionally, select a pre-existing Record Identifier Transformation
+                            Scenario</label>
+                        <select id="rt_exists" class="form-control">
+                            <option value=''>Select a pre-existing scenario...</option>
+                            {% for rt in rits %}
+                                <option value="{{ rt.id }}">{{ rt.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
 
-					<div class="form-group">
-						<label for="record_id_transform_type">Select the transformation typ:</label>
-						<select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
-							<option value=''>Select one...</option>
-							<option value='regex'>Regular Expression</option>
-							<option value='python'>Python Code Snippet</option>
-							<option value='xpath'>XPath Expression</option>
-						</select>
-					</div>
-				</div>
-			</div>
+                    <div class="form-group">
+                        <label for="record_id_transform_target">Select what will be used as input for the transformation
+                            process</label>
+                        <select class="form-control" id="record_id_transform_target" name="record_id_transform_target">
+                            <option value=''>Select one...</option>
+                            <option value='record_id'>Record's identifier</option>
+                            <option value='document'>Record's XML document</option>
+                        </select>
+                    </div>
 
-			<div class="row" style="display:none;">
-				<div class="col-md-12">
-					<ul id="type_payload_tabs" class="nav nav-tabs">
-						<li class="nav-item">
-							<a class="nav-link" data-toggle="tab" href="#regex_tab">Regex</a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" data-toggle="tab" href="#python_tab">Python</a>
-						</li>
-						<li class="nav-item">
-							<a class="nav-link" data-toggle="tab" href="#xpath_tab">XPath</a>
-						</li>
-					</ul>
-				</div>
-			</div>
+                    <div class="form-group">
+                        <label for="record_id_transform_type">Select the transformation type:</label>
+                        <select class="form-control" id="record_id_transform_type" name="record_id_transform_type">
+                            <option value=''>Select one...</option>
+                            {% for value, label in valid_types %}
+                                <option value='{{ value }}'>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                        <small class="form-text text-muted">If you want to use python code and it is not available, ask
+                            your server administrator to set ENABLE_PYTHON=true in the server settings file.
+                        </small>
+                    </div>
+                </div>
+            </div>
 
-			<div class="row">
-				<div class="col-md-12">
+            <div class="row" style="display:none;">
+                <div class="col-md-12">
+                    <ul id="type_payload_tabs" class="nav nav-tabs">
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="tab" href="#regex_tab">Regex</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="tab" href="#python_tab">Python</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-toggle="tab" href="#xpath_tab">XPath</a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
-					<div class="tab-content">
+            <div class="row">
+                <div class="col-md-12">
 
-						<div id="regex_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">						
-							<div class="form-group">
-								<label for="regex_match_payload">Regex match pattern:</label>
-								<p class="font-italic">Python regular expression syntax required</p>
-								<input type="text" class="code_style form-control" id="regex_match_payload" name="regex_match_payload"/>
-							</div>
-							<div class="form-group">
-								<label for="regex_replace_payload">Regex replace pattern:</label>
-								<p class="font-italic">Python regular expression syntax required</p>
-								<input type="text" class="code_style form-control" id="regex_replace_payload" name="regex_replace_payload"/>
-							</div>
-						</div>
+                    <div class="tab-content">
 
-						<div id="python_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
-							<div class="form-group">
-								<label for="python_payload">Python code for transformation:</label>
-								<p class="font-italic">A function named <code>transform_identifier(record)</code> is required, with the single argument <code>record</code> containing the properties outlined above</p>
-								<textarea class="code_style form-control" id="python_payload" name="python_payload" rows="3"></textarea>
-							</div>
-						</div>
+                        <div id="regex_tab" class="tab-pane container"
+                             style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
+                            <div class="form-group">
+                                <label for="regex_match_payload">Regex match pattern:</label>
+                                <p class="font-italic">Python regular expression syntax required</p>
+                                <input type="text" class="code_style form-control" id="regex_match_payload"
+                                       name="regex_match_payload"/>
+                            </div>
+                            <div class="form-group">
+                                <label for="regex_replace_payload">Regex replace pattern:</label>
+                                <p class="font-italic">Python regular expression syntax required</p>
+                                <input type="text" class="code_style form-control" id="regex_replace_payload"
+                                       name="regex_replace_payload"/>
+                            </div>
+                        </div>
 
-						<div id="xpath_tab" class="tab-pane container" style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
-							<div class="form-group">
-								<label for="xpath_payload">XPath expression:</label>
-								<p class="font-italic">Only works with "Record's XML document" as input</p>
-								<input type="text" class="code_style form-control" id="xpath_payload" name="xpath_payload"/>
-							</div>
-						</div>
+                        <div id="python_tab" class="tab-pane container"
+                             style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
+                            <div class="form-group">
+                                <label for="python_payload">Python code for transformation:</label>
+                                <p class="font-italic">A function named <code>transform_identifier(record)</code> is
+                                    required, with the single argument <code>record</code> containing the properties
+                                    outlined above</p>
+                                <textarea class="code_style form-control" id="python_payload" name="python_payload"
+                                          rows="3"></textarea>
+                            </div>
+                        </div>
 
-					</div>
+                        <div id="xpath_tab" class="tab-pane container"
+                             style="padding-left:0px; margin-bottom:20px; margin-left:0px;">
+                            <div class="form-group">
+                                <label for="xpath_payload">XPath expression:</label>
+                                <p class="font-italic">Only works with "Record's XML document" as input</p>
+                                <input type="text" class="code_style form-control" id="xpath_payload"
+                                       name="xpath_payload"/>
+                            </div>
+                        </div>
 
-				</div>
-			</div>
+                    </div>
 
-			<button class="btn btn-success btn-sm" id="test_rits">Test Record Identifier Transformation</button>
+                </div>
+            </div>
 
-		</div>
+            <button class="btn btn-success btn-sm" id="test_rits">Test Record Identifier Transformation</button>
 
-		<div class="col-md-6">
-			<h5>Results</h5>
-			<div class="form-group">				
-				<p id="rits_results_raw">Results will show here...</p>
-			</div>
-		</div>
+        </div>
 
-	</div>
+        <div class="col-md-6">
+            <h5>Results</h5>
+            <div class="form-group">
+                <p id="rits_results_raw">Results will show here...</p>
+            </div>
+        </div>
 
-	<script>
+    </div>
 
-		// global variables
-		var sel_row_id;
+    <script>
 
-		// listen for transformation type change and show inputs
-		$(document).ready(function(){
-			$("#record_id_transform_type").change(function(){
-				type_val = $("#record_id_transform_type").val();
-				if (type_val != ''){
-					$('#type_payload_tabs a[href="#'+type_val+'_tab"]').tab('show');
-				}
-				else {
-					$(".tab-content .tab-pane").removeClass('active');
-					$("#type_payload_tabs .nav-item").removeClass('active');
-				}
-			})
-		});
-			
-		// capture clicked row
-		$(document).ready(function() {
-			$("#datatables_records tbody").on( 'click', 'tr', function () {
+        // global variables
+        var sel_row_id;
 
-				// loop through and remove other selections
-				$("#datatables_records tbody tr.selected").each(function(i, block){
-					$(block).removeClass('selected');
-				});
+        // listen for transformation type change and show inputs
+        $(document).ready(function () {
+            $("#record_id_transform_type").change(function () {
+                type_val = $("#record_id_transform_type").val();
+                if (type_val != '') {
+                    $('#type_payload_tabs a[href="#' + type_val + '_tab"]').tab('show');
+                } else {
+                    $(".tab-content .tab-pane").removeClass('active');
+                    $("#type_payload_tabs .nav-item").removeClass('active');
+                }
+            })
+        });
 
-				// show selection
-				$(this).toggleClass('selected');
+        // capture clicked row
+        $(document).ready(function () {
+            $("#datatables_records tbody").on('click', 'tr', function () {
 
-				// get record id
-			    sel_row = $(this).children(":first");
-			    sel_row_id = sel_row.find('code').html()
-			} );
-		});
+                // loop through and remove other selections
+                $("#datatables_records tbody tr.selected").each(function (i, block) {
+                    $(block).removeClass('selected');
+                });
 
-		// capture pre-existing validation scenarios and paste
-		$(document).ready(function(){
-			$("#rt_exists").change(function(){
+                // show selection
+                $(this).toggleClass('selected');
 
-				if (this.value != ''){					
+                // get record id
+                sel_row = $(this).children(":first");
+                sel_row_id = sel_row.find('code').html()
+            });
+        });
 
-					// get payload
-					$.ajax({
-						type: "GET",
-						url: "/combine/configuration/rits/RITS_ID/payload".replace('RITS_ID', $(this).val()),
-						dataType:'json',
-						success: function(data){
-							
-							// update target
-							$("#record_id_transform_target").val(data['transformation_target']);
+        // capture pre-existing validation scenarios and paste
+        $(document).ready(function () {
+            $("#rt_exists").change(function () {
 
-							// update type
-							$("#record_id_transform_type").val(data['transformation_type']);
+                if (this.value != '') {
 
-							// handle regex
-							if (data['transformation_type'] == 'regex') {
-								$("#regex_match_payload").val(data['regex_match_payload']);
-								$("#regex_replace_payload").val(data['regex_replace_payload']);
-							}
+                    // get payload
+                    $.ajax({
+                        type: "GET",
+                        url: "/combine/configuration/rits/RITS_ID/payload".replace('RITS_ID', $(this).val()),
+                        dataType: 'json',
+                        success: function (data) {
 
-							// handle python
-							if (data['transformation_type'] == 'python') {
-								$("#python_payload").val(data['python_payload']);
-							}
+                            // update target
+                            $("#record_id_transform_target").val(data['transformation_target']);
 
-							// handle xpath
-							if (data['transformation_type'] == 'xpath') {
-								$("#xpath_payload").val(data['xpath_payload']);
-							}
+                            // update type
+                            $("#record_id_transform_type").val(data['transformation_type']);
 
-							// select pane
-							$('#type_payload_tabs a[href="#'+data['transformation_type']+'_tab"]').tab('show');
-						}			
-					});	
-				}
+                            // handle regex
+                            if (data['transformation_type'] == 'regex') {
+                                $("#regex_match_payload").val(data['regex_match_payload']);
+                                $("#regex_replace_payload").val(data['regex_replace_payload']);
+                            }
 
-			})
-		});
+                            // handle python
+                            if (data['transformation_type'] == 'python') {
+                                $("#python_payload").val(data['python_payload']);
+                            }
 
-		$(document).ready(function(){
-			$("#test_rits").click(function(){
+                            // handle xpath
+                            if (data['transformation_type'] == 'xpath') {
+                                $("#xpath_payload").val(data['xpath_payload']);
+                            }
 
-				// get selected db row
-				var db_id = sel_row_id;
+                            // select pane
+                            $('#type_payload_tabs a[href="#' + data['transformation_type'] + '_tab"]').tab('show');
+                        }
+                    });
+                }
 
-				// issue ajax request and get raw validation results
-				$.ajax({
-					type: "POST",
-					url: "{% url 'test_rits' %}",
-					data: {
-						'db_id':db_id,
-						'record_id_transform_target':$("#record_id_transform_target").val(),
-						'record_id_transform_type':$("#record_id_transform_type").val(),
-						'regex_match_payload':$("#regex_match_payload").val(),
-						'regex_replace_payload':$("#regex_replace_payload").val(),
-						'python_payload':$("#python_payload").val(),
-						'xpath_payload':$("#xpath_payload").val(),
-						'test_transform_input':$("#test_transform_input").val(),
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
+            })
+        });
 
-						console.log(data);
+        $(document).ready(function () {
+            $("#test_rits").click(function () {
 
-						// show results
+                // get selected db row
+                var db_id = sel_row_id;
 
-						if (data['success'] == true){							
-							$("#rits_results_raw").html("<code class='text-success'>"+data['results']+"</span>");
-						}
-						else {
-							$("#rits_results_raw").html("<code class='text-danger'>"+data['results']+"</span>");
-						}
+                // issue ajax request and get raw validation results
+                $.ajax({
+                    type: "POST",
+                    url: "{% url 'test_rits' %}",
+                    data: {
+                        'db_id': db_id,
+                        'record_id_transform_target': $("#record_id_transform_target").val(),
+                        'record_id_transform_type': $("#record_id_transform_type").val(),
+                        'regex_match_payload': $("#regex_match_payload").val(),
+                        'regex_replace_payload': $("#regex_replace_payload").val(),
+                        'python_payload': $("#python_payload").val(),
+                        'xpath_payload': $("#xpath_payload").val(),
+                        'test_transform_input': $("#test_transform_input").val(),
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'json',
+                    success: function (data) {
 
-					}			
-				});
+                        console.log(data);
 
-			})
-		});
+                        // show results
 
-		// run post records DT table draw specific to transformation testing
-		function run_view_specific_dt_draw(dt){
+                        if (data['success'] == true) {
+                            $("#rits_results_raw").html("<code class='text-success'>" + data['results'] + "</span>");
+                        } else {
+                            $("#rits_results_raw").html("<code class='text-danger'>" + data['results'] + "</span>");
+                        }
 
-			// if search term provided AND only one result, select
-			{% if q %}
-				if (dt.api.length == 1){
-					$("tr").click();
-				}
-			{% endif %}
-			
-		}
-		
-	</script>
+                    }
+                });
+
+            })
+        });
+
+        // run post records DT table draw specific to transformation testing
+        function run_view_specific_dt_draw(dt) {
+
+            // if search term provided AND only one result, select
+            {% if q %}
+                if (dt.api.length == 1) {
+                    $("tr").click();
+                }
+            {% endif %}
+
+        }
+
+    </script>
 
 {% endblock %}

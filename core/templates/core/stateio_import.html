@@ -3,98 +3,107 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-8">
-			<h2>Import State</h2>
-			<p>Use the form below to import a previously exported Combine state.</p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-8">
+            <h2>Import State</h2>
+            <p>Use the form below to import a previously exported Combine state.</p>
+        </div>
+    </div>
 
-	<form method="POST" action="{% url 'stateio_import' %}" enctype="multipart/form-data">
+    <form method="POST" action="{% url 'stateio_import' %}" enctype="multipart/form-data">
 
-		{% csrf_token %}
+        {% csrf_token %}
 
-		<div class="row">
-			<div class="col-md-8">
-				<div class="form-group">
-					<label for="import_name">Import Name</label>
-					<input type="text" class="form-control" name="import_name" id="import_name" placeholder="My Import Name">
-					<small id="job_name_help" class="form-text text-muted">Optional</small>
-				</div>
-			</div>
-		</div>
+        <div class="row">
+            <div class="col-md-8">
+                <div class="form-group">
+                    <label for="import_name">Import Name</label>
+                    <input type="text" class="form-control" name="import_name" id="import_name"
+                           placeholder="My Import Name">
+                    <small id="job_name_help" class="form-text text-muted">Optional</small>
+                </div>
+            </div>
+        </div>
 
-		<div class="row">
-			<div class="col-md-8">
+        <div class="row">
+            <div class="col-md-8">
 
-				<ul class="nav nav-tabs">
-					<li class="nav-item">
-						<a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload State</a>
-					</li>
-					<li class="nav-item">								
-						<a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
-					</li>
-					<li class="nav-item">								
-						<a class="nav-link" data-toggle="tab" href="#url_tab">URL</a>
-					</li>
-				</ul>
+                <ul class="nav nav-tabs">
+                    <li class="nav-item">
+                        <a class="nav-link active" data-toggle="tab" href="#upload_tab">Upload State</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#filesystem_tab">Filesystem</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-toggle="tab" href="#url_tab">URL</a>
+                    </li>
+                </ul>
 
-				<div class="tab-content">
+                <div class="tab-content">
 
-					<div id="upload_tab" class="tab-pane active container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-						<div class="alert alert-warning alert-dismissible fade show" role="alert">
-							Upload an exported state as a single archive file (.zip, .tar, .tar.gz)
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>								
-						<div class="custom-file">
-						   <input type="file" id="export_upload_payload" name="export_upload_payload" class="custom-file-input">
-						   <label for="export_upload_payload" class="custom-file-label">Choose file...</label>
-						</div>
-						<script>
-							$('.custom-file-input').on('change', function() { 
-							   let fileName = $(this).val().split('\\').pop(); 
-							   $(this).next('.custom-file-label').addClass("selected").html(fileName); 
-							});
-						</script>
-					</div>
+                    <div id="upload_tab" class="tab-pane active container"
+                         style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            Upload an exported state as a single archive file (.zip, .tar, .tar.gz)
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <div class="custom-file">
+                            <input type="file" id="export_upload_payload" name="export_upload_payload"
+                                   class="custom-file-input">
+                            <label for="export_upload_payload" class="custom-file-label">Choose file...</label>
+                        </div>
+                        <script>
+                            $('.custom-file-input').on('change', function () {
+                                let fileName = $(this).val().split('\\').pop();
+                                $(this).next('.custom-file-label').addClass("selected").html(fileName);
+                            });
+                        </script>
+                    </div>
 
-					<div id="filesystem_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-						<div class="alert alert-warning alert-dismissible fade show" role="alert">
-							Provide a location of an export on disk.  Will handle location of a <strong>directory</strong> or single <strong>archive file</strong> (.zip, .tar, .tar.gz), copying or unpacking either to a new import directory.
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
-						<label for="filesystem_location">Location of export on disk:</label>
-						<input type="text" class="form-control" id="filesystem_location" name="filesystem_location" placeholder="e.g. /foo/bar/baz">
-					</div>
+                    <div id="filesystem_tab" class="tab-pane container"
+                         style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            Provide a location of an export on disk. Will handle location of a
+                            <strong>directory</strong> or single <strong>archive file</strong> (.zip, .tar, .tar.gz),
+                            copying or unpacking either to a new import directory.
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <label for="filesystem_location">Location of export on disk:</label>
+                        <input type="text" class="form-control" id="filesystem_location" name="filesystem_location"
+                               placeholder="e.g. /foo/bar/baz">
+                    </div>
 
-					<div id="url_tab" class="tab-pane container" style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
-						<div class="alert alert-warning alert-dismissible fade show" role="alert">
-							Provide a URL where an export may be retrieved from.  Expecting single <strong>archive file</strong> (.zip, .tar, .tar.gz), which will be downloaded and unpacked.
-							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
-							<span aria-hidden="true">&times;</span>
-							</button>
-						</div>
-						<label for="url_location">URL:</label>
-						<input type="text" class="form-control" id="url_location" name="url_location" placeholder="e.g. http://example.org/combine_exports/export.zip">
-					</div>
+                    <div id="url_tab" class="tab-pane container"
+                         style="margin-top:20px; margin-bottom:20px; margin-left:0px;">
+                        <div class="alert alert-warning alert-dismissible fade show" role="alert">
+                            Provide a URL where an export may be retrieved from. Expecting single <strong>archive
+                            file</strong> (.zip, .tar, .tar.gz), which will be downloaded and unpacked.
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <label for="url_location">URL:</label>
+                        <input type="text" class="form-control" id="url_location" name="url_location"
+                               placeholder="e.g. http://example.org/combine_exports/export.zip">
+                    </div>
 
-				</div>
+                </div>
 
-			</div>
-		</div>
+            </div>
+        </div>
 
 
+        <div class="row">
+            <div class="col-md-8">
+                <button type="submit" class="btn btn-success btn-sm">Import State</i></button>
+            </div>
+        </div>
 
-		<div class="row">
-			<div class="col-md-8">
-				<button type="submit" class="btn btn-success btn-sm">Import State</i></button>
-			</div>
-		</div>
-
-	</form>
+    </form>
 
 {% endblock %}

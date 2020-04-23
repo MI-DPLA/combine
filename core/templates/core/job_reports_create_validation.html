@@ -1,138 +1,150 @@
 {% extends 'core/base.html' %}
 
 {% block content %}
-{% load core_template_filters %}
+    {% load core_template_filters %}
 
 
-	<div class="row">
-		<div class="col-md-12">
-			<h2>Validation Results Report</h2>
-			<p><span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></p>
-		</div>
-	</div>
+    <div class="row">
+        <div class="col-md-12">
+            <h2>Validation Results Report</h2>
+            <p><span
+                    class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span>
+            </p>
+        </div>
+    </div>
 
-	<div class="row">
+    <div class="row">
 
-		<div class="col-md-12">
-			<h3>New Report</h3>
-		</div>
+        <div class="col-md-12">
+            <h3>New Report</h3>
+        </div>
 
-		<div class="col-md-12">
+        <div class="col-md-12">
 
-			<form id="report_form" method="POST" action="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
+            <form id="report_form" method="POST"
+                  action="{% url 'job_reports_create_validation' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id %}">
 
-				{% csrf_token %}
+                {% csrf_token %}
 
-				<div class="row">
-					<div class="col-md-6">
+                <div class="row">
+                    <div class="col-md-6">
 
-						<div class="form-group">
-							<label for="report_name">Report filename (optional):</label>
-							<input type="text" class="form-control" name="report_name" id="report_name" placeholder="e.g. fedora_records_transformed">
-							<small id="report_name_help" class="form-text text-muted">Note: file extension not needed, and avoid spaces or special characters where possible</small>
-						</div>
+                        <div class="form-group">
+                            <label for="report_name">Report filename (optional):</label>
+                            <input type="text" class="form-control" name="report_name" id="report_name"
+                                   placeholder="e.g. fedora_records_transformed">
+                            <small id="report_name_help" class="form-text text-muted">Note: file extension not needed,
+                                and avoid spaces or special characters where possible
+                            </small>
+                        </div>
 
-						<div class="form-group">
-							<label for="report_format">Select output format for report:</label>
-							<select class="form-control" id="report_format" name="report_format">
-								<option value='tsv'>TSV (tabular, tab seperated)</option>
-								<option value='csv'>CSV (tabular, comma seperated)</option>
-								<option value='json'>JSON (line-delimited)</option>
-							</select>
-							<small id="report_format_help" class="form-text text-muted">Note: if including mapped fields, line-delimited JSON better handles metadata with special characters and linebreaks</small>
-						</div>
+                        <div class="form-group">
+                            <label for="report_format">Select output format for report:</label>
+                            <select class="form-control" id="report_format" name="report_format">
+                                <option value='tsv'>TSV (tabular, tab separated)</option>
+                                <option value='csv'>CSV (tabular, comma separated)</option>
+                                <option value='json'>JSON (line-delimited)</option>
+                            </select>
+                            <small id="report_format_help" class="form-text text-muted">Note: if including mapped
+                                fields, line-delimited JSON better handles metadata with special characters and
+                                linebreaks
+                            </small>
+                        </div>
 
-						<div class="form-group">
-							<label for="compression_type">Select compression for file</label>
-							<select class="form-control" id="compression_type" name="compression_type" required>
-								<option value="none">None</option>
-								<option value="zip">Compressed Zip file</option>
-								<option value="targz">Compressed Tar file</option>
-							</select>
-						</div>
+                        <div class="form-group">
+                            <label for="compression_type">Select compression for file</label>
+                            <select class="form-control" id="compression_type" name="compression_type" required>
+                                <option value="none">None</option>
+                                <option value="zip">Compressed Zip file</option>
+                                <option value="targz">Compressed Tar file</option>
+                            </select>
+                        </div>
 
-						{% if cjob.job.jobvalidation_set.count > 0 %}
-							<div>
-								<p><strong>Select Validation Scenarios that were run for this Job to include in report:</strong></p>
-								<table class="table table-bordered table-hover" style="background-color:white;">
-									<tr>
-										<th>Validation Name</th>
-										<th>Validation Type</th>
-										<th>Record Validation Failure Count</th>
-										<th>Select</th>
-									</tr>
-									{% for jv in cjob.job.jobvalidation_set.all %}			
-										<tr>
-											<td>{{ jv.validation_scenario.name }}</td>
-											<td>{{ jv.validation_scenario.get_validation_type_display }}</td>
-											<td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
-											<td><input type="checkbox" name="validation_scenario" checked value="{{ jv.validation_scenario.id }}"/></td>
-										</tr>
-									{% endfor %}
-								</table>
-							</div>
-						{% endif %}
+                        {% if cjob.job.jobvalidation_set.count > 0 %}
+                            <div>
+                                <p><strong>Select Validation Scenarios that were run for this Job to include in
+                                    report:</strong></p>
+                                <table class="table table-bordered table-hover" style="background-color:white;">
+                                    <tr>
+                                        <th>Validation Name</th>
+                                        <th>Validation Type</th>
+                                        <th>Record Validation Failure Count</th>
+                                        <th>Select</th>
+                                    </tr>
+                                    {% for jv in cjob.job.jobvalidation_set.all %}
+                                        <tr>
+                                            <td>{{ jv.validation_scenario.name }}</td>
+                                            <td>{{ jv.validation_scenario.get_validation_type_display }}</td>
+                                            <td style="{% if jv.validation_failure_count > 0 %}background-color: #ff9898;{% else %}background-color: #cbffcb;{% endif %}">{{ jv.validation_failure_count }}</td>
+                                            <td><input type="checkbox" name="validation_scenario" checked
+                                                       value="{{ jv.validation_scenario.id }}"/></td>
+                                        </tr>
+                                    {% endfor %}
+                                </table>
+                            </div>
+                        {% endif %}
 
-					</div>
-				</div>
+                    </div>
+                </div>
 
-				<!-- select mapped fields -->
-				<p>Optionally, include mapped fields to include in report as columns (e.g. fields that might be helpful in identifying why validation failed for that row):</p>
-				{% include 'core/select_mapped_fields.html' %}
+                <!-- select mapped fields -->
+                <p>Optionally, include mapped fields to include in report as columns (e.g. fields that might be helpful
+                    in identifying why validation failed for that row):</p>
+                {% include 'core/select_mapped_fields.html' %}
 
-				<p>
-					<button type="button" class="btn-success btn-sm" id="form_submit_button">Generate report</button>
-				</p>
+                <p>
+                    <button type="button" class="btn-success btn-sm" id="form_submit_button">Generate report</button>
+                </p>
 
-				<script>
-					$(document).ready(function() {
-					    
-					    // init datatables
-					    table = $('#select_mapped_fields').DataTable({
-					    	"pageLength": 10,
-					    	"lengthMenu": [ 10, 25, 100, 500 ]
-					    });
+                <script>
+                    $(document).ready(function () {
 
-					    // listener for checkboxes
-					    $("#select_all_fields").click(function(){			    	
-						    cells = table.cells().nodes();						    
-						    $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
-					    });
+                        // init datatables
+                        table = $('#select_mapped_fields').DataTable({
+                            "pageLength": 10,
+                            "lengthMenu": [10, 25, 100, 500]
+                        });
 
-					    // submit form via javascript
-					    /*
-					    Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
-					    work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
-					    temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
-					    
-					    Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
-					    DataTable.
-					    */
-					    $("#form_submit_button").click(function(){
+                        // listener for checkboxes
+                        $("#select_all_fields").click(function () {
+                            cells = table.cells().nodes();
+                            $(cells).find(':checkbox').prop("checked", !$(cells).find(':checkbox').prop("checked"));
+                        });
 
-					    	// remove any pre-existing temp, hidden inputs
-					    	$("#hidden_field_inputs input").each(function(){
-					    		$(this).remove();
-					    	});
+                        // submit form via javascript
+                        /*
+                        Because the input checkboxes for a DataTable are dynamic, Django's normal method of .getlist() does not
+                        work, as it cannot capture checkboxes not currently rendered on the page.  This workaround writes
+                        temporary hidden inputs to the form before submit, clearing any pre-existing before submit as well.
 
-					    	// write all field checkboxes as temporary, hidden inputs
-					    	cells = table.cells().nodes();
-					    	checkboxes = $(cells).find(':checked');
-					    	checkboxes.each(function(){
-					    		console.log(this);
-					    		$("#hidden_field_inputs").append("<input class='hidden_input' type='hidden' name='mapped_field_include' value='"+$(this).attr('value')+"'/>")
-					    	});
+                        Django picks up the form name "mapped_field_include", not "mapped_field_include_dynamic" from the actual
+                        DataTable.
+                        */
+                        $("#form_submit_button").click(function () {
 
-					    	// submit form
-					    	$("#report_form").submit();
+                            // remove any pre-existing temp, hidden inputs
+                            $("#hidden_field_inputs input").each(function () {
+                                $(this).remove();
+                            });
 
-					    });
+                            // write all field checkboxes as temporary, hidden inputs
+                            cells = table.cells().nodes();
+                            checkboxes = $(cells).find(':checked');
+                            checkboxes.each(function () {
+                                console.log(this);
+                                $("#hidden_field_inputs").append("<input class='hidden_input' type='hidden' name='mapped_field_include' value='" + $(this).attr('value') + "'/>")
+                            });
 
-					});
-				</script>
+                            // submit form
+                            $("#report_form").submit();
 
-			</form>
-		</div>
-	</div>
+                        });
+
+                    });
+                </script>
+
+            </form>
+        </div>
+    </div>
 
 {% endblock %}

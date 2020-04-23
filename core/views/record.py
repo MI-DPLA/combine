@@ -3,6 +3,7 @@ import logging
 
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 
 from core.models import Record, ValidationScenario
 
@@ -10,7 +11,7 @@ from .view_helpers import breadcrumb_parser
 
 LOGGER = logging.getLogger(__name__)
 
-
+@login_required
 def record(request, org_id, record_group_id, job_id, record_id):
     """
         Single Record page
@@ -72,7 +73,7 @@ def record(request, org_id, record_group_id, job_id, record_id):
         'breadcrumbs': breadcrumb_parser(request)
     })
 
-
+@login_required
 def record_document(request, org_id, record_group_id, job_id, record_id):
     """
         View document for record
@@ -84,7 +85,7 @@ def record_document(request, org_id, record_group_id, job_id, record_id):
     # return document as XML
     return HttpResponse(rec.document, content_type='text/xml')
 
-
+@login_required
 def record_indexed_document(request, org_id, record_group_id, job_id, record_id):
     """
         View indexed, ES document for record
@@ -96,7 +97,7 @@ def record_indexed_document(request, org_id, record_group_id, job_id, record_id)
     # return ES document as JSON
     return JsonResponse(rec.get_es_doc())
 
-
+@login_required
 def record_error(request, org_id, record_group_id, job_id, record_id):
     """
         View document for record
@@ -108,7 +109,7 @@ def record_error(request, org_id, record_group_id, job_id, record_id):
     # return document as XML
     return HttpResponse("<pre>%s</pre>" % rec.error)
 
-
+@login_required
 def record_validation_scenario(request, org_id, record_group_id, job_id, record_id, job_validation_id):
     """
         Re-run validation test for single record
@@ -137,7 +138,7 @@ def record_validation_scenario(request, org_id, record_group_id, job_id, record_
         # return
         return JsonResponse(vs_result['parsed'], safe=False)
 
-
+@login_required
 def record_combined_diff_html(request, org_id, record_group_id, job_id, record_id):
     """
         Return combined diff of Record against Input Record
@@ -160,12 +161,12 @@ def record_combined_diff_html(request, org_id, record_group_id, job_id, record_i
 
     return HttpResponse("Record was not altered during Transformation.", content_type='text/html')
 
-
+@login_required
 def record_side_by_side_diff_html(request, org_id, record_group_id, job_id, record_id):
     """
         Return side_by_side diff of Record against Input Record
                 - uses sxsdiff (https://github.com/timonwong/sxsdiff)
-                - if embed == true, strip some uncessary HTML and return
+                - if embed == true, strip some unnecessary HTML and return
         """
 
     # get record

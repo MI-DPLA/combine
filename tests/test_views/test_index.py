@@ -1,4 +1,4 @@
-from django.test import Client, TestCase
+from django.test import TestCase
 
 from tests.utils import TestConfiguration
 
@@ -6,7 +6,6 @@ from tests.utils import TestConfiguration
 class IndexTestCase(TestCase):
     def setUp(self):
         self.config = TestConfiguration()
-        self.client = Client()
         self.client.force_login(self.config.user)
 
     def test_index(self):

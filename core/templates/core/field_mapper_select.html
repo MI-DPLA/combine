@@ -1,206 +1,215 @@
 {% block content %}
-{% load core_template_filters %}
+    {% load core_template_filters %}
 
-	<div class="row">
-		<div class="col-md-12">
-			<div class="gray_box">
-				
-				<div class="form-group">
-					<label for="field_mapper">Configuration Name</label>
-					<select class="form-control" id="field_mapper" name="field_mapper">
-						{% if orig_fm_config_json %}
-							<option value="job_fm_config_json">Configuration used for Job: {{cjob.job.name}}</option>
-						{% endif %}
-						<option value="default">Default</option>
-						{% for fm in field_mappers %}
-							<option value='{{ fm.id }}'>{{ fm.name }}</option>
-						{% endfor %}
-					</select>
-				</div>
+    <div class="row">
+        <div class="col-md-12">
+            <div class="gray_box">
 
-				<!-- hidden textarea for JSON to submit with form -->
-				<textarea style="display:none;" rows=10 class="code_style form-control" name="fm_config_json" id="fm_config_json"></textarea>
+                <div class="form-group">
+                    <label for="field_mapper">Configuration Name</label>
+                    <select class="form-control" id="field_mapper" name="field_mapper">
+                        {% if orig_fm_config_json %}
+                            <option value="job_fm_config_json">Configuration used for Job: {{ cjob.job.name }}</option>
+                        {% endif %}
+                        <option value="default">Default</option>
+                        {% for fm in field_mappers %}
+                            <option value='{{ fm.id }}'>{{ fm.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
 
-				<!-- visible JSON editor -->
-				<div id="jsoneditor" style="height:450px;"></div>
-				
-				<script>
-			        // create the editor
-			        var container = document.getElementById("jsoneditor");
-			        var options = {
-			        	mode: 'code',
-    					modes: ['code', 'text', 'tree'],
-    					onChange: function(){
-    						// update hidden textarea from editor contents
-    						$("#fm_config_json").val(JSON.stringify(editor.get()));
-    					},
-    					sortObjectKeys: true,
-    					name: 'field_mapping_configuration',
-    					schema: {{xml2kvp_handle.schema|safe}},
-    					navigationBar:false
-			        };
-			        var editor = new JSONEditor(container, options);
+                <!-- hidden textarea for JSON to submit with form -->
+                <textarea style="display:none;" rows=10 class="code_style form-control" name="fm_config_json"
+                          id="fm_config_json"></textarea>
 
-			        // set json to editor
-			        editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
+                <!-- visible JSON editor -->
+                <div id="jsoneditor" style="height:450px;"></div>
 
-			        // update textarea
-			        $("#fm_config_json").val(JSON.stringify(editor.get()));
-			    </script>
+                <script>
+                    // create the editor
+                    var container = document.getElementById("jsoneditor");
+                    var options = {
+                        mode: 'code',
+                        modes: ['code', 'text', 'tree'],
+                        onChange: function () {
+                            // update hidden textarea from editor contents
+                            $("#fm_config_json").val(JSON.stringify(editor.get()));
+                        },
+                        sortObjectKeys: true,
+                        name: 'field_mapping_configuration',
+                        schema: {{xml2kvp_handle.schema|safe}},
+                        navigationBar: false
+                    };
+                    var editor = new JSONEditor(container, options);
 
-			    <div class="row" style="margin-top:15px;">
-					<div class="col-md-12">
-						<p><button class="btn btn-outline-success btn-sm" onclick="save_current_fm_config_json('new'); return false;">Save as new configurations</button> <button style="display:none;" class="btn btn-outline-warning btn-sm pre_fm_config_options" onclick="save_current_fm_config_json('update'); return false;">Update saved configurations</button> <button style="display:none;" class="btn btn-outline-danger btn-sm pre_fm_config_options" onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_config_json('delete'); return false;">Delete saved configurations</button> <button class="btn btn-outline-info btn-sm" onclick="$('#fm_config_help').toggle(); return false;">What do these configurations mean?</button></p>
-						<div id="fm_config_alerts"></div>
-						<div id="fm_config_help" style="display:none;">
-							<!-- loop through configurations from schema, creating table of their description -->
-							<table id="jobs_table" class="table table-bordered table-hover">
-								<thead>
-									<tr>
-										<th style="width: 20%">Parameter</th>
-										<th>Type</th>
-										<th>Description></th>
-									</tr>
-								</thead>
-								<tbody>
-									{% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
-										<tr>
-											<td><code>{{param}}</code></td>
-											<td><code>{{details.type}}</code></td>
-											<td>{{details.description}}</td>
-										</tr>
-									{% endfor %}
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</div>
+                    // set json to editor
+                    editor.set({% if orig_fm_config_json %}{{ orig_fm_config_json|safe }}{% else %}{{ xml2kvp_handle.config_json|safe }}{% endif %});
 
-			</div>
-		</div>
-	</div>
+                    // update textarea
+                    $("#fm_config_json").val(JSON.stringify(editor.get()));
+                </script>
 
-	<script>
+                <div class="row" style="margin-top:15px;">
+                    <div class="col-md-12">
+                        <p>
+                            <button class="btn btn-outline-success btn-sm"
+                                    onclick="save_current_fm_config_json('new'); return false;">Save as new
+                                configurations
+                            </button>
+                            <button style="display:none;" class="btn btn-outline-warning btn-sm pre_fm_config_options"
+                                    onclick="save_current_fm_config_json('update'); return false;">Update saved
+                                configurations
+                            </button>
+                            <button style="display:none;" class="btn btn-outline-danger btn-sm pre_fm_config_options"
+                                    onclick="confirm('Are you sure you want to delete these saved Field Mapping configurations?'); save_current_fm_config_json('delete'); return false;">
+                                Delete saved configurations
+                            </button>
+                            <button class="btn btn-outline-info btn-sm"
+                                    onclick="$('#fm_config_help').toggle(); return false;">What do these configurations
+                                mean?
+                            </button>
+                        </p>
+                        <div id="fm_config_alerts"></div>
+                        <div id="fm_config_help" style="display:none;">
+                            <!-- loop through configurations from schema, creating table of their description -->
+                            <table id="jobs_table" class="table table-bordered table-hover">
+                                <thead>
+                                <tr>
+                                    <th style="width: 20%">Parameter</th>
+                                    <th>Type</th>
+                                    <th>Description></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                {% for param,details in xml2kvp_handle.schema.properties.items|dictsort:"0.lower" %}
+                                    <tr>
+                                        <td><code>{{ param }}</code></td>
+                                        <td><code>{{ details.type }}</code></td>
+                                        <td>{{ details.description }}</td>
+                                    </tr>
+                                {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
 
-		// capture job config json, if present
-		{% if orig_fm_config_json %}
-			orig_fm_config_json = {{ orig_fm_config_json|safe }};
-		{% endif %}
+            </div>
+        </div>
+    </div>
 
-		// store default config json
-		default_fm_config = {{ xml2kvp_handle.config_json|safe }};
+    <script>
 
-		// load saved field mapper configs
-		$(document).ready(function(){
-			$("#field_mapper").change(function(){
+        // capture job config json, if present
+        {% if orig_fm_config_json %}
+            orig_fm_config_json = {{ orig_fm_config_json|safe }};
+        {% endif %}
 
-				if (this.value != 'default' && this.value != 'job_fm_config_json' ){
+        // store default config json
+        default_fm_config = {{ xml2kvp_handle.config_json|safe }};
 
-					// get payload
-					$.ajax({
-						type: "GET",
-						url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
-						dataType:'json',
-						success: function(data){
-							// update editor
-							editor.set(data);
-							// update textarea
-			        		$("#fm_config_json").val(JSON.stringify(editor.get()));
-			        		// show update button
-			        		$(".pre_fm_config_options").show();
-						}
-					});
-				}
+        // load saved field mapper configs
+        $(document).ready(function () {
+            $("#field_mapper").change(function () {
 
-				else if (this.value == 'job_fm_config_json'){
-					// update editor
-					editor.set(orig_fm_config_json);
-					// update textarea
-			        $("#fm_config_json").val(JSON.stringify(editor.get()));
-			        // hide update options
-	        		$(".pre_fm_config_options").hide();
-				}
+                if (this.value != 'default' && this.value != 'job_fm_config_json') {
 
-				else {
-					// update editor
-					editor.set(default_fm_config);
-					// update textarea
-			        $("#fm_config_json").val(JSON.stringify(editor.get()));
-			        // hide update options
-	        		$(".pre_fm_config_options").hide();
-				}
+                    // get payload
+                    $.ajax({
+                        type: "GET",
+                        url: "/combine/configuration/field_mapper/FM_ID/payload".replace('FM_ID', this.value),
+                        dataType: 'json',
+                        success: function (data) {
+                            // update editor
+                            editor.set(data);
+                            // update textarea
+                            $("#fm_config_json").val(JSON.stringify(editor.get()));
+                            // show update button
+                            $(".pre_fm_config_options").show();
+                        }
+                    });
+                } else if (this.value == 'job_fm_config_json') {
+                    // update editor
+                    editor.set(orig_fm_config_json);
+                    // update textarea
+                    $("#fm_config_json").val(JSON.stringify(editor.get()));
+                    // hide update options
+                    $(".pre_fm_config_options").hide();
+                } else {
+                    // update editor
+                    editor.set(default_fm_config);
+                    // update textarea
+                    $("#fm_config_json").val(JSON.stringify(editor.get()));
+                    // hide update options
+                    $(".pre_fm_config_options").hide();
+                }
 
-			})
-		});
+            })
+        });
 
-		// save current config
-		function save_current_fm_config_json(update_type, fm_id=null, fm_name=null){
-			
-			// grab config
-			fm_config_json = $("#fm_config_json").val();
+        // save current config
+        function save_current_fm_config_json(update_type, fm_id = null, fm_name = null) {
 
-			if (update_type == 'new'){
-				// get name of new FieldMapper from user
-				var fm_name = prompt("Save these Field Mapper configurations as:");
-			}
+            // grab config
+            fm_config_json = $("#fm_config_json").val();
 
-			else if (update_type == 'update'){
-				// get current id of FieldMapper selected
-				fm_id = $("#field_mapper").val();
-				fm_name = $("#harvest_field_mapper").html();
-			}
+            if (update_type == 'new') {
+                // get name of new FieldMapper from user
+                var fm_name = prompt("Save these Field Mapper configurations as:");
+            } else if (update_type == 'update') {
+                // get current id of FieldMapper selected
+                fm_id = $("#field_mapper").val();
+                fm_name = $("#harvest_field_mapper").html();
+            } else if (update_type == 'delete') {
+                // get current id of FieldMapper selected
+                fm_id = $("#field_mapper").val();
+                fm_name = $("#harvest_field_mapper").html();
+                // switch back to default
+                $("#field_mapper").val('default');
+                $("#field_mapper").change();
+            }
 
-			else if (update_type == 'delete'){
-				// get current id of FieldMapper selected
-				fm_id = $("#field_mapper").val();
-				fm_name = $("#harvest_field_mapper").html();
-				// switch back to default
-				$("#field_mapper").val('default');
-				$("#field_mapper").change();
-			}
+            // fire ajax to create/save
+            if (fm_name != null && fm_name != '') {
+                $.ajax({
+                    type: "POST",
+                    url: "/combine/configuration/field_mapper/update",
+                    data: {
+                        'update_type': update_type,
+                        'fm_id': fm_id,
+                        'fm_config_json': fm_config_json,
+                        'fm_name': fm_name,
+                        'csrfmiddlewaretoken': '{{ csrf_token }}'
+                    },
+                    dataType: 'json',
+                    success: function (data) {
 
-			// fire ajax to create/save
-			if (fm_name != null && fm_name != '') {
-				$.ajax({
-					type: "POST",
-					url: "/combine/configuration/field_mapper/update",
-					data: {
-						'update_type':update_type,
-						'fm_id':fm_id,
-						'fm_config_json':fm_config_json,
-						'fm_name':fm_name,
-						'csrfmiddlewaretoken': '{{ csrf_token }}'
-					},
-					dataType:'json',
-					success: function(data){
-						
-						// notify user
-						alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
+                        // notify user
+                        alert = `<div class="alert alert-success alert-dismissible fade show expiring" role="alert">
 							${data.msg}
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 							</button>
 						</div>`
-						$("#fm_config_alerts").append(alert);
-					},
-					error: function(data){
-						
-						// notify user
-						alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
+                        $("#fm_config_alerts").append(alert);
+                    },
+                    error: function (data) {
+
+                        // notify user
+                        alert = `<div class="alert alert-danger alert-dismissible fade show expiring" role="alert">
 							${data.responseJSON.msg}
 							<button type="button" class="close" data-dismiss="alert" aria-label="Close">
 							<span aria-hidden="true">&times;</span>
 							</button>
 						</div>`
-						$("#fm_config_alerts").append(alert);
-					}
-				});
-			}
-			else {
-				alert('A name for this configuration is rquired!');								
-			}
-		}
+                        $("#fm_config_alerts").append(alert);
+                    }
+                });
+            } else {
+                alert('A name for this configuration is required!');
+            }
+        }
 
-	</script>
+    </script>
 
 {% endblock %}

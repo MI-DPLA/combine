@@ -2,97 +2,99 @@
 
 {% block content %}
 
-	<div class="row">
-		<div class="col-md-12">
+    <div class="row">
+        <div class="col-md-12">
 
-			<h3>Errors in Processing: <span class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span></h3>
+            <h3>Errors in Processing: <span
+                    class="font-weight-bold {{ cjob.job.job_type_family }} {% if cjob.job.deleted %}deleted{% endif %}">{{ cjob.job.name }}</span>
+            </h3>
 
-			<p>The table below contains all Records that reported an error during the Job processing.</p>
+            <p>The table below contains all Records that reported an error during the Job processing.</p>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
-	<div class="row">
-		<div class="col-md-12">
+    <div class="row">
+        <div class="col-md-12">
 
-			<table id='datatables_records' class="dt_table">
-				<thead>
-					<th>DB ID</th>		
-					<th>Record ID</th>
-					<th>Job</th>
-					<th>Originating OAI set</th>
-					<th>Unique</th>		
-					<th>Document</th>
-					<th>Error</th>
-					<th>Validation Results</th>
-				</thead>
-				<tbody>
-				</tbody>
-			</table>
+            <table id='datatables_records' class="dt_table">
+                <thead>
+                <th>DB ID</th>
+                <th>Record ID</th>
+                <th>Job</th>
+                <th>Originating OAI set</th>
+                <th>Unique</th>
+                <th>Document</th>
+                <th>Error</th>
+                <th>Validation Results</th>
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
 
-			<script>
+            <script>
 
-				/*
-				If template variable `cjob` is present, return records for that job.
-				Else, return all records.
-				*/
-				$(document).ready(function() {
+                /*
+                If template variable `cjob` is present, return records for that job.
+                Else, return all records.
+                */
+                $(document).ready(function () {
 
-					// check for record limiter				
-			    	{% if q %}
-				    	q = '{{ q }}';
-				    {% else %}
-				    	q = '';
-			    	{% endif %}
+                    // check for record limiter
+                    {% if q %}
+                        q = '{{ q }}';
+                    {% else %}
+                        q = '';
+                    {% endif %}
 
-					records_datatable = $('#datatables_records').dataTable({
-						"processing": true,
-						"serverSide": true,
-						"search": {
-						    "search": q				    
-						},
-						"order": [],
+                    records_datatable = $('#datatables_records').dataTable({
+                        "processing": true,
+                        "serverSide": true,
+                        "search": {
+                            "search": q
+                        },
+                        "order": [],
 
-						{# if cjob is present, limit to Job records only #}
-						{% if cjob %}
-							"ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id success_filter=0 %}",
-						{# else, return all records #}
-						{% else %}
-							"ajax": "{% url 'all_records_dt_json' %}",
-						{% endif %}
+                        {# if cjob is present, limit to Job records only #}
+                        {% if cjob %}
+                            "ajax": "{% url 'records_dt_json' org_id=cjob.job.record_group.organization.id record_group_id=cjob.job.record_group.id job_id=cjob.job.id success_filter=0 %}",
+                            {# else, return all records #}
+                        {% else %}
+                            "ajax": "{% url 'all_records_dt_json' %}",
+                        {% endif %}
 
-						"searchDelay": 1500,
-						"pageLength": 10,
-						"createdRow": function( row, data, dataIndex){
-			                if( data[4] ==  false){
-			                    $(row).css('background-color','rgb(255, 241, 241)');
-			                }
-			            },
-			            "columnDefs": [
-				            {
-								"targets": 7,
-								"orderable": true
-							},
-							{% if cjob %}
-							{
-								"targets": 2,
-								"visible": false
-							},
-							{% endif %}
-						],
-						"initComplete": function(settings, json){
+                        "searchDelay": 1500,
+                        "pageLength": 10,
+                        "createdRow": function (row, data, dataIndex) {
+                            if (data[4] == false) {
+                                $(row).css('background-color', 'rgb(255, 241, 241)');
+                            }
+                        },
+                        "columnDefs": [
+                            {
+                                "targets": 7,
+                                "orderable": true
+                            },
+                            {% if cjob %}
+                                {
+                                    "targets": 2,
+                                    "visible": false
+                                },
+                            {% endif %}
+                        ],
+                        "initComplete": function (settings, json) {
 
-							// check if view specific function defined
-							if (typeof run_view_specific_dt_draw === "function"){
-								run_view_specific_dt_draw(this);	
-							}				
-						}
-					});
-				});
+                            // check if view specific function defined
+                            if (typeof run_view_specific_dt_draw === "function") {
+                                run_view_specific_dt_draw(this);
+                            }
+                        }
+                    });
+                });
 
-			</script>
+            </script>
 
-		</div>
-	</div>
+        </div>
+    </div>
 
 {% endblock %}

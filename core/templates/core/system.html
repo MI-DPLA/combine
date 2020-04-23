@@ -2,76 +2,107 @@
 
 {% block content %}
 
-	<div class="row">
+    <div class="row">
 
-		<div class="col-md-12">
-			<h2>Livy/Spark Session</h2>
-			<p>Apache Livy is what faciliates communciation between the Combine Django application, and a Spark context for processing Jobs.  <a target="_blank" href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more about Spark and Livy in the Combine documentation</a>.</p>
-		</div>
+        <div class="col-md-12">
+            <h2>Livy/Spark Session</h2>
+            <p>Apache Livy is what facilitates communication between the Combine Django application, and a Spark context
+                for processing Jobs. <a target="_blank"
+                                        href="http://combine.readthedocs.io/en/master/spark_and_livy.html">Read more
+                    about Spark and Livy in the Combine documentation</a>.</p>
+        </div>
 
-		<div class="col-md-12">
+        <div class="col-md-12">
 
-			{% if not livy_session %}
-			<p><a href="{% url 'livy_session_start' %}"><button type="button" class="btn btn-success btn-sm">Start New Livy Session <i class="la la-power-off"></i></button></a></p>
-			{% else %}
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>ID</th>
-					<th>Active</th>
-					<th>Name</th>
-					<th>Livy Session ID</th>
-					<th>Livy Session</th>
-					<th>Status</th>
-					<th>Timestamp</th>
-					<th>Spark Application</th>
-					<th>Actions</th>
-				</tr>
-				{% for livy_session in livy_sessions %}
-					<tr>
-						<td>{{ livy_session.id }}</td>
-						<td>{{ livy_session.active }}</td>
-						<td>{{ livy_session.name }}</td>
-						<td>{{ livy_session.session_id }}</td>
-						<td><a href="http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}">http://{{ APP_HOST }}:8998/ui/session/{{ livy_session.session_id }}</a></td>
-						<td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
-						<td>{{ livy_session.timestamp|date:"M d, Y, h:i A" }}</td>
-						<td><a href="http://{{ APP_HOST }}:{{livy_session.session_port}}">http://{{ APP_HOST }}:{{livy_session.session_port}}</a></td>
-						<td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}" onclick="return confirm('Are you sure you want to stop/remove this Livy session?  If so, it will have to be manually restarted for any jobs to run!');"><button type="button" class="btn btn-danger btn-sm">{% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}Stop <i class="la la-close"></i>{% else %}Remove <i class="la la-close"></i>{% endif %}</button></a> <a href="{% url 'livy_session_start' %}?restart=true" onclick="return confirm('Are you sure you want to restart this Livy session?  If so, this may take a few moments to restart...');"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a></td>
-					</tr>
-				{% endfor %}
-			</table>
-			{% endif %}
+            {% if not livy_session %}
+                <p><a href="{% url 'livy_session_start' %}">
+                    <button type="button" class="btn btn-success btn-sm">Start New Livy Session <i
+                            class="la la-power-off"></i></button>
+                </a></p>
+            {% else %}
+                <table class="table table-bordered table-hover">
+                    <tr>
+                        <th>ID</th>
+                        <th>Active</th>
+                        <th>Name</th>
+                        <th>Livy Session ID</th>
+                        <th>Livy Session</th>
+                        <th>Status</th>
+                        <th>Timestamp</th>
+                        <th>Spark Application</th>
+                        <th>Actions</th>
+                    </tr>
+                    {% for livy_session in livy_sessions %}
+                        <tr>
+                            <td>{{ livy_session.id }}</td>
+                            <td>{{ livy_session.active }}</td>
+                            <td>{{ livy_session.name }}</td>
+                            <td>{{ livy_session.session_id }}</td>
+                            <td>
+                                <a href="http://{{ livy_ui_home }}/ui/session/{{ livy_session.session_id }}">http://{{ livy_ui_home }}/ui/session/{{ livy_session.session_id }}</a>
+                            </td>
+                            <td class="{% if livy_session.status == 'idle' %}bg_light_green{% elif livy_session.status == 'starting' or livy_session.status == 'busy' %}bg_light_yellow{% else %}bg_light_red{% endif %}">{{ livy_session.status }}</td>
+                            <td>{{ livy_session.timestamp|date:"M d, Y, h:i A" }}</td>
+                            <td><a href="http://{{ SPARK_HOST }}">http://{{ SPARK_HOST }}</a></td>
+                            <td><a href="{% url 'livy_session_stop' session_id=livy_session.id %}"
+                                   onclick="return confirm('Are you sure you want to stop/remove this Livy session?  If so, it will have to be manually restarted for any jobs to run!');">
+                                <button type="button" class="btn btn-danger btn-sm">
+                                    {% if livy_session.status == 'idle' or livy_session.status == 'busy' or livy_session.status == 'starting' %}
+                                        Stop <i class="la la-close"></i>{% else %}Remove
+                                        <i class="la la-close"></i>{% endif %}</button>
+                            </a> <a href="{% url 'livy_session_start' %}?restart=true"
+                                    onclick="return confirm('Are you sure you want to restart this Livy session?  If so, this may take a few moments to restart...');">
+                                <button type="button" class="btn btn-warning btn-sm">Restart <i
+                                        class="la la-refresh"></i></button>
+                            </a></td>
+                        </tr>
+                    {% endfor %}
+                </table>
+            {% endif %}
 
-		</div>
+        </div>
 
-	</div>
+    </div>
 
-	<div class="row">
+    <div class="row">
 
-		<div class="col-md-12">
-			<h2>Background Tasks</h2>
-			<p>In addition to using Spark to run long-running Jobs, Combine also leverages background tasks to perform other non-Spark, long-running tasks.</p>
-		</div>
+        <div class="col-md-12">
+            <h2>Background Tasks</h2>
+            <p>In addition to using Spark to run long-running Jobs, Combine also leverages background tasks to perform
+                other non-Spark, long-running tasks.</p>
+        </div>
 
-		<div class="col-md-12">
+        <div class="col-md-12">
 
-			<table class="table table-bordered table-hover">
-				<tr>
-					<th>Name</th>
-					<th>Status</th>
-					<th>Logs</th>
-					<th>Actions</th>
-				</tr>
-				<tr>
-					<td>Combine Background Tasks</td>
-					<td class="{% if celery_status == 'idle' %}bg_light_green{% else %}bg_light_red{% endif %}">{{celery_status}}</td>
-					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}<a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}"><button type="button" class="btn btn-info btn-sm">View Logs Snippet</button></a>{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Logs not available in Docker</button>{% endif %}</td>
-					<td>{% if COMBINE_DEPLOYMENT != 'docker' %}{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING'%}<a href="{% url 'bgtasks_proc_action' proc_action='stop' %}"><button type="button" class="btn btn-danger btn-sm">Stop <i class="la la-close"></i></button></a> <a href="{% url 'bgtasks_proc_action' proc_action='restart' %}"><button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i></button></a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}"><button type="button" class="btn btn-success btn-sm">Start <i class="la la-power-off"></i></button></a>{% endif %}{% else %}<button type="button" class="btn btn-info btn-sm" disabled>Start/Stop not available in Docker</button>{% endif %}</td>
-				</tr>
-			</table>
+            <table class="table table-bordered table-hover">
+                <tr>
+                    <th>Name</th>
+                    <th>Status</th>
+                    <th>Logs</th>
+                    <th>Actions</th>
+                </tr>
+                <tr>
+                    <td>Combine Background Tasks</td>
+                    <td class="{% if celery_status == 'idle' %}bg_light_green{% else %}bg_light_red{% endif %}">{{ celery_status }}</td>
+                    <td><a target="_blank" href="{% url 'bgtasks_proc_stderr_log' %}">
+                        <button type="button" class="btn btn-info btn-sm">View Logs Snippet</button>
+                    </a></td>
+                    <td>{% if bgtasks_proc.statename == 'RUNNING' or bgtasks_proc.statename == 'STARTING' %}
+                        <a href="{% url 'bgtasks_proc_action' proc_action='stop' %}">
+                            <button type="button" class="btn btn-danger btn-sm">Stop <i class="la la-close"></i>
+                            </button>
+                        </a><a href="{% url 'bgtasks_proc_action' proc_action='restart' %}">
+                            <button type="button" class="btn btn-warning btn-sm">Restart <i class="la la-refresh"></i>
+                            </button>
+                        </a>{% else %}<a href="{% url 'bgtasks_proc_action' proc_action='start' %}">
+                            <button type="button" class="btn btn-success btn-sm">Start <i class="la la-power-off"></i>
+                            </button>
+                        </a>{% endif %}</td>
+                </tr>
+            </table>
 
-		</div>
+        </div>
 
-	</div>
+    </div>
 
 {% endblock %}
