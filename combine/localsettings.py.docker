@@ -112,7 +112,7 @@ METADATA_PREFIXES = {
 
 # Database configurations for use in Spark context
 COMBINE_DATABASE = {
-	'jdbc_url':'jdbc:mysql://mysql:3306/combine',
+	'jdbc_url':'jdbc:mysql://mysql:3307/combine',
 	'user':settings.DATABASES['default']['USER'],
 	'password':settings.DATABASES['default']['PASSWORD']
 }
@@ -172,6 +172,6 @@ DATABASES = {
         'USER': 'combine',
         'PASSWORD': 'combine',
         'HOST': 'mysql',
-        'PORT': '3306',
+        'PORT': '3307',
     }
 }
