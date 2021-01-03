@@ -78,7 +78,7 @@ WRITE_AVRO = False
 
 # ElasicSearch server
 ES_HOST = 'elasticsearch'
-ES_UI_HOME = 'localhost/es'
+ES_UI_HOME = '/es'
 INDEX_TO_ES = True
 
 
