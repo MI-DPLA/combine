@@ -35,7 +35,7 @@ livy==0.3.0
 lxml==4.3.3
 mongoengine==0.15.3
 mysqlclient==1.4.2
-numpy==1.16.3
+numpy==1.21.0
 openpyxl==2.4.9
 pandas==0.24.2
 pathlib2==2.3.0
