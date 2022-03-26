@@ -5,7 +5,7 @@ blinker==1.4
 boto3
 bs4==0.0.1
 redis==3.3.11
-celery==4.4.0rc2
+celery==5.2.2
 certifi==2017.7.27.1
 chardet==3.0.4
 cloudpickle==0.4.0
