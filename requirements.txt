@@ -33,7 +33,7 @@ jsonschema==2.6.0
 kombu==4.6.3
 livy==0.3.0
 lxml==4.3.3
-mongoengine==0.15.3
+mongoengine==0.20.0
 mysqlclient==1.4.2
 numpy==1.16.3
 openpyxl==2.4.9
@@ -60,6 +60,7 @@ requests==2.22.0
 requests-kerberos==0.11.0
 responses==0.8.1
 scandir==1.5
+setuptools<58
 Sickle==0.6.2
 simplegeneric==0.8.1
 six==1.10.0
