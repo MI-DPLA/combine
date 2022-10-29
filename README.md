@@ -10,19 +10,21 @@ The name "Combine", pronounced /kämˌbīn/, is a nod to the [combine harvester 
 
 [![Documentation Status](https://readthedocs.org/projects/combine/badge/?version=master)](http://combine.readthedocs.io/en/master/?badge=master)
 
-Documentation is available at [Read the Docs](http://combine.readthedocs.io/).
+The combine team is in the process of updating the documentation. The installation process and user interface have had significant changes. In the meantime some out-of-date documentation is available at [Read the Docs](http://combine.readthedocs.io/).
 
 ## Installation
 
-Combine has a fair amount of server components, dependencies, and configurations that must be in place to work, as it leverages [Apache Spark](https://spark.apache.org/), among other applications, for processing on the backend.  There are a couple of deployment options.
+Combine has a fair amount of server components, dependencies, and configurations that must be in place to work, as it leverages [Apache Spark](https://spark.apache.org/), among other applications, for processing on the backend.  For previous version of combine there were a couple of deployment options. However, for the current and future versions (v0.11.1 and after) only the docker option is available.
 
 ### Docker
 
 A GitHub repository [Combine-Docker](https://github.com/MI-DPLA/combine-docker) exists to help stand up an instance of Combine as a series of interconnected Docker containers.
 
-### Server Provisioning with Vagrant and/or Ansible
+### Security Warning
 
-To this end, use the repository, [Combine-playbook](https://github.com/MI-DPLA/combine-playbook), which has been created to assist with provisioning a server with everything neccessary, and in place, to run Combine.  This repository provides routes for server provisioning via [Vagrant](https://www.vagrantup.com/) and/or [Ansible](https://www.ansible.com/). Please visit the [Combine-playbook](https://github.com/MI-DPLA/combine-playbook) repository for more information about installation.
+Combine code should be run behind your institution's firewall on a secured server. Access to combine should be protected by your instituion-wide identity and password system, preferably using two-factor authentication. If your institution supports using VPNs for access to the server's network that is a good additional step. 
+
+This is in addition to the combine's own passwords. While we haven't got explicit documentation on how to set up SSL inside the provided nginx in combine it's possible and strongly recommended.
 
 ## Tech Stack Details
 

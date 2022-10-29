@@ -17,8 +17,10 @@ os.environ['DJANGO_SETTINGS_MODULE'] = 'combine.settings'
 sys.path.append('/opt/combine')
 django.setup()
 
+from django.http import QueryDict
+
 # import core
-from core.models import Organization, RecordGroup, CombineJob, HarvestStaticXMLJob, QueryDict, Transformation,\
+from core.models import Organization, RecordGroup, CombineJob, HarvestStaticXMLJob, Transformation,\
     TransformJob, ValidationScenario, MergeJob
 
 

@@ -123,5 +123,8 @@ class RecordGroup(models.Model):
     @property
     def last_modified(self):
         jobs = self.job_set.all()
-        timestamps = [job.timestamp for job in jobs]
-        return max(timestamps)
+        if not jobs:
+            return None
+        else:
+            timestamps = [job.timestamp for job in jobs]
+            return max(timestamps)
