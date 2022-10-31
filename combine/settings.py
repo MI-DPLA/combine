@@ -13,7 +13,7 @@ https://docs.djangoproject.com/en/1.11/ref/settings/
 import os
 
 # Combine Version
-COMBINE_VERSION = 'v0.11.2-SNAPSHOT'
+COMBINE_VERSION = 'v0.11'
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -89,7 +89,7 @@ DATABASES = {
         'USER': 'combine',
         'PASSWORD': 'combine',
         'HOST': '127.0.0.1',
-        'PORT': '3307',
+        'PORT': '3306',
     }
 }
 # SILENCED_SYSTEM_CHECKS = ['mysql.E001']
