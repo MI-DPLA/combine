@@ -1,8 +1,7 @@
 appnope==0.1.0
-avro==1.11.0
-backports.shutil-get-terminal-size==1.0.0
+avro==1.11.3
 blinker==1.4
-boto3
+boto3==1.5.2
 bs4==0.0.1
 redis==3.3.11
 celery==4.4.0rc2
@@ -19,7 +18,7 @@ django-datatables-view==1.14.0
 django-extensions==1.9.0
 django-filter==1.1.0
 django-tables2==1.13.0
-elasticsearch==5.4.0
+elasticsearch==5.5.2
 elasticsearch-dsl==5.3.0
 enum34==1.1.6
 filelock==2.0.6

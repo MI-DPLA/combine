@@ -11,5 +11,5 @@ import mongoengine
 # import pymongo and establish client
 import pymongo
 
-mongoengine.connect('combine', host=settings.MONGO_HOST, port=27017)
+mongoengine.connect('combine', host=settings.MONGO_HOST, port=27017, connectTimeoutMS=60000, serverSelectionTimeoutMS=90000)
 mc_handle = pymongo.MongoClient(host=settings.MONGO_HOST, port=27017)

@@ -503,6 +503,7 @@ class Job(models.Model):
 
     def get_detailed_job_record_count(self, force_recount=False):
 
+        force_recount = False
         '''
         Return details of record counts for input jobs, successes, and errors
 
