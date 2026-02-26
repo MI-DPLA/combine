@@ -89,7 +89,7 @@ DATABASES = {
         'USER': 'combine',
         'PASSWORD': 'combine',
         'HOST': '127.0.0.1',
-        'PORT': '3306',
+        'PORT': '3307',
     }
 }
 # SILENCED_SYSTEM_CHECKS = ['mysql.E001']
