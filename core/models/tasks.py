@@ -13,7 +13,7 @@ from django.db import models
 # celery
 from celery.result import AsyncResult
 # pylint: disable=import-error,no-name-in-module
-from celery.task.control import revoke
+from celery.control import revoke
 # pylint: enable=import-error,no-name-in-module
 
 # core models imports
